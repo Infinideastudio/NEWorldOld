@@ -6,7 +6,7 @@ namespace TextRenderer{
 	unsigned int Font;
 	int gloop;
 	int ww, wh;
-	float r=0.0f, g=0.0f, b=0.0f, a=1.0f;
+	float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
 	unsigned int unicodeTex[256];
 	bool unicodeTexAval[256];
 	bool useUnicodeASCIIFont;

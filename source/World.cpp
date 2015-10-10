@@ -182,7 +182,9 @@ namespace world{
 
 		loadedChunks += cc;
 		if (loadedChunks > chunkArraySize) {
-			chunkArraySize += 1024;
+			if (chunkArraySize < 1024) chunkArraySize = 1024;
+			else chunkArraySize *= 2;
+			while (chunkArraySize < loadedChunks) chunkArraySize *= 2;
 			chunks = (chunk*)realloc(chunks, chunkArraySize * sizeof(chunk));
 			if (chunks == nullptr && loadedChunks != 0) {
 				printf("[Console][Error]");
@@ -199,24 +201,11 @@ namespace world{
 	void ReduceChunkArray(int cc){
 
 		loadedChunks -= cc;
-		if (chunkArraySize - 1024 > loadedChunks){
-			chunkArraySize -= 1024;
-			chunks = (chunk*)realloc(chunks, chunkArraySize * sizeof(chunk));
-			if (chunks == nullptr && loadedChunks != 0) {
-				printf("[Console][Error]");
-				printf("Chunk Array reducing error.\n");
-				saveAllChunks();
-				destroyAllChunks();
-				glfwTerminate();
-				exit(0);
-			}
-		}
 
 	}
 
-	void renderblock(int x, int y, int z, int chunkindex) {
+	void renderblock(int x, int y, int z, chunk* chunkptr) {
 		
-		chunk* chunkptr = &chunks[chunkindex];
 		double colors, color1, color2, color3, color4, tcx, tcy, size, EPS = 0.0;
 		int cx = chunkptr->cx, cy = chunkptr->cy, cz = chunkptr->cz;
 		int gx = cx * 16 + x, gy = cy * 16 + y, gz = cz * 16 + z;
@@ -238,7 +227,7 @@ namespace world{
 
 		size = 1 / 8.0f - EPS;
 		
-		if (blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz + 1, blocks::ROCK, chunkindex) == blocks::GRASS) {
+		if (blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz + 1, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -282,7 +271,7 @@ namespace world{
 
 		}
 
-		if (blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz - 1, blocks::ROCK, chunkindex) == blocks::GRASS) {
+		if (blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz - 1, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -326,7 +315,7 @@ namespace world{
 
 		}
 
-		if (blk[0] == blocks::GRASS && getblock(gx + 1, gy - 1, gz, blocks::ROCK, chunkindex) == blocks::GRASS) {
+		if (blk[0] == blocks::GRASS && getblock(gx + 1, gy - 1, gz, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -369,7 +358,7 @@ namespace world{
 
 		}
 
-		if (blk[0] == blocks::GRASS && getblock(gx - 1, gy - 1, gz, blocks::ROCK, chunkindex) == blocks::GRASS) {
+		if (blk[0] == blocks::GRASS && getblock(gx - 1, gy - 1, gz, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -630,15 +619,15 @@ namespace world{
 		}
 	}
 
-	block getblock(int x, int y, int z, block mask, int cindex){
+	block getblock(int x, int y, int z, block mask, chunk* cptr){
 		//获取XYZ的方块
 		int cx, cy, cz;
 		cx = getchunkpos(x);cy = getchunkpos(y);cz = getchunkpos(z);
 		if (chunkOutOfBound(cx, cy, cz))return blocks::AIR;
 		int bx, by, bz;
 		bx = getblockpos(x);by = getblockpos(y);bz = getblockpos(z);
-		if (cindex != -1 && cx == chunks[cindex].cx && cy == chunks[cindex].cy && cz == chunks[cindex].cz){
-			return chunks[cindex].getblock(bx, by, bz);
+		if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz){
+			return cptr->getblock(bx, by, bz);
 		}
 		int ci = getChunkIndex(cx, cy, cz);
 		if (ci != -1)return chunks[ci].getblock(bx, by, bz);
