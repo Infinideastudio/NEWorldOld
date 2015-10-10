@@ -154,7 +154,6 @@ namespace world{
 		
 		rebuiltChunks++;
 		updatedChunks++;
-		cindex = getChunkIndex(cx, cy, cz);
 
 		if (renderBuilt == false){
 			renderBuilt = true;
@@ -167,7 +166,7 @@ namespace world{
 				for (z = 0; z < 16; z++) {
 					if (pblocks[x*256 + y*16 + z] == blocks::AIR) continue;
 					if (!BlockInfo(pblocks[x*256 + y*16 + z]).isTranslucent())
-						renderblock(x, y, z, cindex);
+						renderblock(x, y, z, this);
 				}
 			}
 		}
@@ -179,7 +178,7 @@ namespace world{
 				for (z = 0; z < 16; z++){
 					if (pblocks[x*256 + y*16 + z] == blocks::AIR) continue;
 					if (BlockInfo(pblocks[x*256 + y*16 + z]).isTranslucent() && BlockInfo(pblocks[x*256 + y*16 + z]).isSolid())
-						renderblock(x, y, z, cindex);
+						renderblock(x, y, z, this);
 				}
 			}
 		}
@@ -191,7 +190,7 @@ namespace world{
 				for (z = 0; z < 16; z++){
 					if (pblocks[x*256 + y*16 + z] == blocks::AIR) continue;
 					if (!BlockInfo(pblocks[x*256 + y*16 + z]).isSolid())
-						renderblock(x, y, z, cindex);
+						renderblock(x, y, z, this);
 				}
 			}
 		}
