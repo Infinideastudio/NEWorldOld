@@ -13,7 +13,7 @@ namespace WorldGen{
 	void perlinNoiseInit(int mapseed){
 		srand(mapseed);
 		for (int i = 0; i < 256; i++){
-			perm[i] = (double)(rnd() * 256.0);
+			perm[i] = rnd() * 256.0;
 		}
 		seed = mapseed;
 	}

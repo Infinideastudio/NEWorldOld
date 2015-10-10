@@ -55,9 +55,9 @@ namespace world{
 	vector<Hitbox::AABB> getHitboxes(Hitbox::AABB box);
 	bool inWater(Hitbox::AABB box);
 
-	void renderblock(int x, int y, int z, int chunkindex);
+	void renderblock(int x, int y, int z, chunk* chunkptr);
 	void updateblock(int x, int y, int z, bool blockchanged);
-	block getblock(int x, int y, int z, block mask = blocks::AIR, int cindex = -1);
+	block getblock(int x, int y, int z, block mask = blocks::AIR, chunk* cptr = nullptr);
 	brightness getbrightness(int x, int y, int z, int cindex = -1);
 	void setblock(int x, int y, int z, block Block);
 	void setbrightness(int x, int y, int z, brightness Brightness);

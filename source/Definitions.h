@@ -1,5 +1,7 @@
 #pragma once
-#pragma comment(linker, "/SUBSYSTEM:\"WINDOWS,5.01\" /ENTRY:\"mainCRTStartup\"")
+#ifndef _DEBUG
+#pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
+#endif
 #include "stdinclude.h"
 
 /*
@@ -74,7 +76,6 @@ extern float playerHeightExt;
 extern int windowwidth;
 extern int windowheight;
 extern bool gamebegin, bagOpened;
-extern int k;
 
 extern TextureID BlockTexture[20];
 extern TextureID BlockTextures;
