@@ -85,7 +85,7 @@ int selbx, selby, selbz, selcx, selcy, selcz;
 	和我的不一样，把这几行注释掉吧。。。)
 	=======================================
 	等等不对啊！！！明明都改成c++了。。。还说是FB。。。
-	VC++编译器应该不会在这儿报错吧23333333
+	C++编译器应该不会在这儿报错吧23333333
 #endif
 
 //==============================  Main Program  ================================//
@@ -999,7 +999,7 @@ void drawMain() {
 
 	//删除已卸载区块的VBO
 	if (world::vbuffersShouldDelete.size() > 0){
-		glDeleteBuffersARB(world::vbuffersShouldDelete.size(), &*world::vbuffersShouldDelete.begin());
+		glDeleteBuffersARB(world::vbuffersShouldDelete.size(), world::vbuffersShouldDelete.data());
 		world::vbuffersShouldDelete.clear();
 	}
 	
@@ -1060,24 +1060,6 @@ void drawMain() {
 		glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
 	}
 
-	/*
-	Hitbox::AABB t;
-	t.xmin = world::ciArray.originX * 16;
-	t.xmax = world::ciArray.originX * 16 + world::ciArray.size * 16;
-	t.ymin = world::ciArray.originY * 16;
-	t.ymax = world::ciArray.originY * 16 + world::ciArray.size * 16;
-	t.zmin = world::ciArray.originZ * 16;
-	t.zmax = world::ciArray.originZ * 16 + world::ciArray.size * 16;
-
-	Hitbox::AABB t2;
-	t2.xmin = world::HMap.originX;
-	t2.xmax = world::HMap.originX + world::HMap.size;
-	t2.ymin = 36.0;
-	t2.ymax = 36.0;
-	t2.zmin = world::HMap.originZ;
-	t2.zmax = world::HMap.originZ + world::HMap.size;
-	*/
-
 	MutexUnlock(Mutex);
 
 	glLoadIdentity();
@@ -1117,10 +1099,6 @@ void drawMain() {
 	glRotated(player::lookupdown, 1, 0, 0);
 	glRotated(360.0 - player::heading, 0, 1, 0);
 	glTranslated(-xpos, -ypos, -zpos);
-	//glDisable(GL_TEXTURE_2D);
-	//glEnableClientState(GL_VERTEX_ARRAY);
-	//drawCloud(player::xpos, player::zpos);
-	//glDisableClientState(GL_VERTEX_ARRAY);
 	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_CULL_FACE);
 	
@@ -1174,7 +1152,7 @@ void drawMain() {
 	//屏幕刷新，千万别删，后果自负！！！
 	//====refresh====//
 	MutexUnlock(Mutex);
-	glFinish();
+	//glFinish();
 	glfwSwapBuffers(MainWindow);
 	glfwPollEvents();
 	MutexLock(Mutex);
@@ -1731,10 +1709,9 @@ void saveScreenshot(int x, int y, int w, int h, string filename){
 	while (h % 4 != 0){ h -= 1; }
 	scrBuffer.sizeX = w;
 	scrBuffer.sizeY = h;
-	scrBuffer.buffer = (ubyte*)malloc(w*h * 3);
-	glReadPixels(x, y, w, h, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer);
+	scrBuffer.buffer = unique_ptr<ubyte[]>((ubyte*)malloc(w*h * 3));
+	glReadPixels(x, y, w, h, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
 	Textures::SaveRGBImage(filename, scrBuffer);
-	free(scrBuffer.buffer);
 }
 
 void createThumbnail(){

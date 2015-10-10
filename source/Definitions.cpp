@@ -32,7 +32,6 @@ float playerHeightExt;
 int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度
 bool gamebegin, bagOpened;
-int k;
 
 TextureID BlockTexture[20];
 TextureID BlockTextures;

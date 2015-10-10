@@ -276,7 +276,7 @@ void worldmenu(){
 			vscroll->barpos = 0;
 			chosenWorldName = "";
 			//查找所有世界存档
-			Textures::TEXTURE_RGB* tmb;
+			Textures::TEXTURE_RGB tmb;
 			long hFile = 0;
 			_finddata_t fileinfo;
 			if ((hFile = _findfirst(string("Worlds\\*").c_str(), &fileinfo)) != -1)
@@ -298,9 +298,9 @@ void worldmenu(){
 								glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size() - 1]);
 								glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 								glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-								glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb->sizeX, tmb->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, tmb->buffer);
-								texSizeX[texSizeX.size() - 1] = tmb->sizeX;
-								texSizeY[texSizeY.size() - 1] = tmb->sizeY;
+								glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb.sizeX, tmb.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, tmb.buffer.get());
+								texSizeX[texSizeX.size() - 1] = tmb.sizeX;
+								texSizeY[texSizeY.size() - 1] = tmb.sizeY;
 							}
 							file.close();
 						}
