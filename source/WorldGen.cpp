@@ -6,8 +6,8 @@ namespace WorldGen{
 
 	double	perm[256];
 	int		seed;
-	double	NoiseScaleX = 2;
-	double	NoiseScaleZ = 2;
+	double	NoiseScaleX = 16;
+	double	NoiseScaleZ = 16;
 	int		WaterLevel = 30;
 
 	void perlinNoiseInit(int mapseed){
