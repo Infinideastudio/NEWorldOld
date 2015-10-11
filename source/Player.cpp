@@ -1,8 +1,12 @@
 #include "Player.h"
 #include "World.h"
 
+bool canGliding = false; //滑翔
 bool FLY;      //飞行
 bool CROSS;    //穿墙 ←_← (Superman!)
+
+double glidingMinimumSpeed = pow(1, 2) / 2;
+
 namespace player{
 	Hitbox::AABB playerbox;
 	float height = 1.2f;     //玩家的高度
@@ -12,6 +16,7 @@ namespace player{
 	bool Running = false;
 	bool NearWall = false;
 	bool inWater = false;
+	double glidingEnergy, glidingSpeed;
 	double speed;
 	int AirJumps;
 	int cxt, cyt, czt, cxtl, cytl, cztl;
@@ -80,7 +85,15 @@ namespace player{
 				}
 				Hitbox::Move(playerbox, 0.0, 0.0, za);
 			}
-			if (ya != yal && yal<0.0) OnGround = true; else OnGround = false;
+			if (ya != yal && yal < 0.0) {
+				OnGround = true;
+				player::glidingEnergy = 0;
+				player::glidingSpeed = 0;
+			}
+			else {
+				OnGround = false;
+				player::startGliding();
+			}
 			if (ya != yal && yal>0.0) jump = 0.0;
 			if (xa != xal || za != zal) NearWall = true; else NearWall = false;
 			xd = xa; yd = ya; zd = za;
@@ -135,7 +148,7 @@ namespace player{
 		std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
 		if (!isave.is_open()) return;
 		isave << curversion << OnGround << Running << AirJumps << lookupdown << heading << xpos << ypos << zpos
-			  << jump << xlookspeed << ylookspeed << FLY << CROSS;
+			<< jump << xlookspeed << ylookspeed << FLY << CROSS << canGliding;
 		isave.write((char*)inventorybox, sizeof(inventorybox));
 		isave.write((char*)inventorypcs, sizeof(inventorypcs));
 		isave << itemInHand;
@@ -151,7 +164,7 @@ namespace player{
 		iload >> targetVersion;
 		if (targetVersion != VERSION) return;
 		iload >> OnGround >> Running >> AirJumps >> lookupdown >> heading
-			  >> xpos >> ypos >> zpos >> jump >> xlookspeed >> ylookspeed >> FLY >> CROSS;
+			>> xpos >> ypos >> zpos >> jump >> xlookspeed >> ylookspeed >> FLY >> CROSS >> canGliding;
 		iload.read((char*)inventorybox, sizeof(inventorybox));
 		iload.read((char*)inventorypcs, sizeof(inventorypcs));
 		iload.close();
