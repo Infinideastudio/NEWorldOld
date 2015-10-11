@@ -78,15 +78,15 @@ namespace Textures {
 		return ((getTextureIndex(iblock, side) - 1) >> 3) / 8.0;
 	}
 
-	TEXTURE_RGB LoadRGBImage(string Filename) {
+	void LoadRGBImage(TEXTURE_RGB& tex, string Filename) {
 		unsigned char col[3];
 		unsigned int ind = 0;
-		TEXTURE_RGB bitmap; //返回位图
+		TEXTURE_RGB& bitmap = tex; //返回位图
 		bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
 		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //位图文件（二进制）
 		if (!bmpfile.is_open()) {
 			printf("[console][Warning] Cannot load %s\n", Filename.c_str());
-			return TEXTURE_RGB();
+			return;
 		}
 		BITMAPINFOHEADER bih; //各种关于位图的参数
 		BITMAPFILEHEADER bfh; //各种关于文件的参数
@@ -99,24 +99,23 @@ namespace Textures {
 		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
 			//把BGR格式转换为RGB格式
 			bmpfile.read((char*)col, 3);
-			bitmap.buffer.get()[ind++] = col[2]; //R
-			bitmap.buffer.get()[ind++] = col[1]; //G
-			bitmap.buffer.get()[ind++] = col[0]; //B
+			bitmap.buffer[ind++] = col[2]; //R
+			bitmap.buffer[ind++] = col[1]; //G
+			bitmap.buffer[ind++] = col[0]; //B
 		}
 		bmpfile.close();
-		return bitmap;
 	}
 
-	TEXTURE_RGBA LoadRGBAImage(string Filename, string MkFilename) {
+	void LoadRGBAImage(TEXTURE_RGBA& tex, string Filename, string MkFilename) {
 		unsigned char col[3];
 		unsigned int ind = 0;
-		TEXTURE_RGBA bitmap; //返回位图
+		TEXTURE_RGBA& bitmap = tex; //返回位图
 		bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
 		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //位图文件（二进制）
 		std::ifstream maskfile(MkFilename, std::ios::binary | std::ios::in); //遮罩位图文件（二进制）
 		if (!bmpfile.is_open()) {
 			printf("[console][Warning] Cannot load %s\n", Filename.c_str());
-			return TEXTURE_RGBA();
+			return;
 		}
 		BITMAPFILEHEADER bfh; //各种关于文件的参数
 		BITMAPINFOHEADER bih; //各种关于位图的参数
@@ -132,28 +131,27 @@ namespace Textures {
 		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
 			//把BGR格式转换为RGB格式
 			bmpfile.read((char*)col, 3);
-			bitmap.buffer.get()[ind++] = col[2]; //R
-			bitmap.buffer.get()[ind++] = col[1]; //G
-			bitmap.buffer.get()[ind++] = col[0]; //B
+			bitmap.buffer[ind++] = col[2]; //R
+			bitmap.buffer[ind++] = col[1]; //G
+			bitmap.buffer[ind++] = col[0]; //B
 			if (noMaskFile) {
-				bitmap.buffer.get()[ind++] = 255;
+				bitmap.buffer[ind++] = 255;
 			}
 			else {
 				//将遮罩图的红色通道反相作为Alpha通道
 				maskfile.read((char*)col, 3);
-				bitmap.buffer.get()[ind++] = 255 - col[2]; //A
+				bitmap.buffer[ind++] = 255 - col[2]; //A
 			}
 		}
 		bmpfile.close();
 		maskfile.close();
-		return bitmap;
 	}
 
 	TextureID LoadRGBTexture(string Filename) {
 		TEXTURE_RGB image;
-		ubyte *ip, *tp;
+		ubyte *ip;
 		TextureID ret;
-		image = LoadRGBImage(Filename);
+		LoadRGBImage(image, Filename);
 		glGenTextures(1, &ret);
 		glBindTexture(GL_TEXTURE_2D, ret);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -161,12 +159,13 @@ namespace Textures {
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.sizeX, image.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, image.buffer.get());
 		return ret;
 	}
+	
 	TextureID LoadFontTexture(string Filename) {
 		TEXTURE_RGBA Texture;
 		TEXTURE_RGB image;
 		ubyte *ip, *tp;
 		TextureID ret;
-		image = LoadRGBImage(Filename);
+		LoadRGBImage(image, Filename);
 		Texture.sizeX = image.sizeX;
 		Texture.sizeY = image.sizeY;
 		Texture.buffer = unique_ptr<ubyte[]>(new unsigned char[image.sizeX * image.sizeY * 4]);
@@ -228,7 +227,8 @@ namespace Textures {
 
 	TextureID LoadRGBATexture(string Filename, string MkFilename) {
 		TextureID ret;
-		TEXTURE_RGBA image = LoadRGBAImage(Filename, MkFilename);
+		TEXTURE_RGBA image;
+		LoadRGBAImage(image, Filename, MkFilename);
 		glGenTextures(1, &ret);
 		glBindTexture(GL_TEXTURE_2D, ret);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
