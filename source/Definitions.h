@@ -57,7 +57,6 @@ extern int viewdistance;
 extern int cloudwidth;
 extern int selectPrecision;
 extern int selectDistance;
-extern float playerheight;
 extern float walkspeed;
 extern float runspeed;
 extern int MaxAirJumps;
@@ -71,7 +70,6 @@ extern float skycolorG;
 extern float skycolorB;
 extern float FOVyRunning;
 extern float FOVyExt;
-extern float playerHeightExt;
 
 extern int windowwidth;
 extern int windowheight;

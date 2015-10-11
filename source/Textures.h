@@ -48,9 +48,9 @@ namespace Textures{
 
 	double getTexcoordY(block iblock, ubyte side);
 
-	TEXTURE_RGB LoadRGBImage(string Filename);
+	void LoadRGBImage(TEXTURE_RGB& tex, string Filename);
 
-	TEXTURE_RGBA LoadRGBAImage(string Filename, string MkFilename);
+	void LoadRGBAImage(TEXTURE_RGBA& tex, string Filename, string MkFilename);
 
 	TextureID LoadRGBTexture(string Filename);
 
