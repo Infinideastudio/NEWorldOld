@@ -663,7 +663,7 @@ void updategame(){
 					}
 				}
 				//放置方块
-				if ((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB) && player::inventorypcs[3][player::itemInHand] > 0) {
+				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB)) && player::inventorypcs[3][player::itemInHand] > 0) {
 					puted = true;
 					switch (sidedistmin) {
 					case 1:
@@ -687,7 +687,7 @@ void updategame(){
 					}
 					if (puted) {
 						player::inventorypcs[3][player::itemInHand]--;
-						if (player::inventorypcs[3][player::itemInHand] == 0) player::inventorypcs[3][player::itemInHand] = blocks::AIR;
+						if (player::inventorypcs[3][player::itemInHand] == 0) player::inventorybox[3][player::itemInHand] = blocks::AIR;
 					}
 				}
 				break;
@@ -734,7 +734,7 @@ void updategame(){
 		mxl = mx; myl = my;
 
 		//移动！(生命在于运动)
-		if (glfwGetKey(MainWindow, GLFW_KEY_W) == 1) {
+		if (glfwGetKey(MainWindow, GLFW_KEY_W) || player::gliding()) {
 			if (!WP) {
 				if (Wprstm == 0.0) {
 					Wprstm = timer();
@@ -746,8 +746,16 @@ void updategame(){
 			}
 			if (Wprstm != 0.0 && timer() - Wprstm > 0.5) Wprstm = 0.0;
 			WP = true;
-			player::xa = -sin(player::heading*M_PI / 180.0) * player::speed;
-			player::za = -cos(player::heading*M_PI / 180.0) * player::speed;
+			if (!player::gliding()) {
+				player::xa = -sin(player::heading*M_PI / 180.0) * player::speed;
+				player::za = -cos(player::heading*M_PI / 180.0) * player::speed;
+			}
+			else {
+				player::xa = sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+				player::ya = cos(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+				player::za = cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+				if (player::ya < 0) player::ya *= 2;
+			}
 		}
 		else {
 			player::Running = false;
@@ -756,25 +764,25 @@ void updategame(){
 		if (player::Running)player::speed = runspeed;
 		else player::speed = walkspeed;
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS) {
+		if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!player::gliding()) {
 			player::xa = sin(player::heading*M_PI / 180.0) * player::speed;
 			player::za = cos(player::heading*M_PI / 180.0) * player::speed;
 			Wprstm = 0.0;
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS) {
+		if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!player::gliding()) {
 			player::xa = sin((player::heading - 90)*M_PI / 180.0) * player::speed;
 			player::za = cos((player::heading - 90)*M_PI / 180.0) * player::speed;
 			Wprstm = 0.0;
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS) {
+		if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS&&!player::gliding()) {
 			player::xa = -sin((player::heading - 90)*M_PI / 180.0) * player::speed;
 			player::za = -cos((player::heading - 90)*M_PI / 180.0) * player::speed;
 			Wprstm = 0.0;
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS) {
+		if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!player::gliding()) {
 			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
 				player::xa = -sin(player::heading*M_PI / 180.0) * runspeed * 10;
 				player::za = -cos(player::heading*M_PI / 180.0) * runspeed * 10;
@@ -786,9 +794,16 @@ void updategame(){
 			}
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS) {
-			player::xa = sin(player::heading*M_PI / 180.0) * runspeed * 10;
-			player::za = cos(player::heading*M_PI / 180.0) * runspeed * 10;
+		if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS&&!player::gliding()) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+				player::xa = sin(player::heading*M_PI / 180.0) * runspeed * 10;
+				player::za = cos(player::heading*M_PI / 180.0) * runspeed * 10;
+			}
+			else {
+				player::xa = -sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+				player::ya = -cos(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+				player::za = -cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+			}
 		}
 
 		//切换方块
@@ -801,7 +816,7 @@ void updategame(){
 			if (!player::inWater) {
 				if ((player::OnGround || player::AirJumps < MaxAirJumps) && FLY == false && CROSS == false){
 					if (player::OnGround == false) player::AirJumps++;
-					player::jump = 0.25; player::OnGround = false;
+					player::jump = 0.25; player::OnGround = false; player::startGliding();
 				}
 				if (FLY || CROSS) { player::ya += walkspeed; isPressed(GLFW_KEY_SPACE, true); }
 				Wprstm = 0.0;
@@ -812,11 +827,11 @@ void updategame(){
 			}
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS){
-			if (CROSS || FLY){
+		if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !player::gliding()) {
+			if (CROSS || FLY) {
 				player::ya -= walkspeed;
 			}
-			else{
+			else {
 				if (player::heightExt > -0.59f)  player::heightExt -= 0.1f; else player::heightExt = -0.6f;
 			}
 			Wprstm = 0.0;
@@ -837,7 +852,7 @@ void updategame(){
 		}
 		if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
 		if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
-
+		if (isPressed(GLFW_KEY_F6) == GLFW_PRESS && player::OnGround) canGliding = !canGliding;
 	}
 	
 	if (glfwGetKey(MainWindow, GLFW_KEY_E) == GLFW_PRESS && ep == false){
@@ -858,33 +873,34 @@ void updategame(){
 	}
 
 	//跳跃
-	if (!player::inWater){
-		if (FLY == false && CROSS == false){
-			player::ya = -0.001;
-			if (player::OnGround){
+	if (!player::gliding()) {
+		if (!player::inWater) {
+			if (!FLY && !CROSS && !player::gliding() && !glfwGetKey(MainWindow, GLFW_KEY_R) && !glfwGetKey(MainWindow, GLFW_KEY_F)) {
+				player::ya = -0.001;
+				if (player::OnGround) {
+					player::jump = 0.0;
+					player::AirJumps = 0;
+					isPressed(GLFW_KEY_SPACE, true);
+				}
+				else {
+					player::jump -= 0.02;
+					player::ya = player::jump;
+				}
+			}
+			else {
 				player::jump = 0.0;
 				player::AirJumps = 0;
-				isPressed(GLFW_KEY_SPACE, true);
-			}
-			else{
-				player::jump -= 0.02;
-				player::ya = player::jump;
 			}
 		}
-		else{
+		else {
 			player::jump = 0.0;
 			player::AirJumps = 0;
+			isPressed(GLFW_KEY_SPACE, true);
+			if (player::ya <= 0.001) {
+				player::ya = -0.001;
+				if (!player::OnGround) player::ya = -0.1;
+			}
 		}
-	}
-	else{
-		player::jump = 0.0;
-		player::AirJumps = 0;
-		isPressed(GLFW_KEY_SPACE, true);
-		if (player::ya <= 0.001){
-			player::ya = -0.001;
-			if (!player::OnGround) player::ya = -0.1;
-		}
-
 	}
 
 	//if (player::NearWall && FLY == false && CROSS == false){
@@ -892,6 +908,22 @@ void updategame(){
 	//	player::jump = 0.0
 	//  //爬墙
 	//}
+	
+	if (player::gliding() && player::jump<=0) {
+		double& E = player::glidingEnergy;
+		double oldh = player::ypos + player::height + player::heightExt + player::ya;
+		double h = oldh;
+		if (E - glidingMinimumSpeed < h*g) {  //小于最小速度
+			//double pGMS = pow(glidingMinimumSpeed / 2, 2);  //试图降低高度来换速度
+			//if (E - pGMS > 0) {
+			//	h = (E - pGMS) / g;
+			//}
+			h = (E - glidingMinimumSpeed) / g;
+		}
+		player::glidingSpeed = sqrt(2 * (E - g*h));
+		E -= EDrop;
+		player::ya += h - oldh;
+	}
 
 	mbp = mb;
 	FirstFrameThisUpdate = true;
@@ -1391,6 +1423,14 @@ void drawGUI() {
 		ss << "NEWorld v" << VERSION << " [OpenGL " << GLVersionMajor << "." << GLVersionMinor << "|" << GLVersionRev << "]";
 		debugText(ss.str()); ss.str("");
 		ss << "Flying:" << boolstr(FLY);
+		debugText(ss.str()); ss.str("");
+		ss << "Can Gliding:" << boolstr(canGliding);
+		debugText(ss.str()); ss.str("");
+		ss << "Gliding:" << boolstr(player::gliding());
+		debugText(ss.str()); ss.str("");
+		ss << "Energy:" << player::glidingEnergy;
+		debugText(ss.str()); ss.str("");
+		ss << "Speed:" << player::glidingSpeed;
 		debugText(ss.str()); ss.str("");
 		ss << "Debug Mode:" << boolstr(DebugMode);
 		debugText(ss.str()); ss.str("");

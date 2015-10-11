@@ -13,7 +13,6 @@ int viewdistance = 8;           //视野距离
 int cloudwidth = 10;            //云的宽度
 int selectPrecision = 100;      //选择方块的精度
 int selectDistance = 5;         //选择方块的距离
-float playerheight = 1.2f;      //玩家的高度
 float walkspeed = 0.15f;        //玩家前进速度
 float runspeed = 0.3f;          //玩家跑步速度
 int MaxAirJumps = 3 - 1;        //空中N段连跳
@@ -27,7 +26,6 @@ float skycolorG = 1.0f;         //天空颜色Green
 float skycolorB = 1.0f;         //天空颜色Blue
 float FOVyRunning = 8.0f;
 float FOVyExt;
-float playerHeightExt;
 
 int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度
