@@ -141,7 +141,7 @@ namespace world{
 		}
 #endif
 		//建立chunk显示列表
-		int x, y, z, cindex;
+		int x, y, z;
 		for (x = -1; x <= 1; x++) {
 			for (y = -1; y <= 1; y++) {
 				for (z = -1; z <= 1; z++) {

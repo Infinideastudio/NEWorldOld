@@ -293,7 +293,7 @@ void worldmenu(){
 							texSizeX.push_back(0);
 							texSizeY.push_back(0);
 							if (file.is_open()){
-								tmb = Textures::LoadRGBImage("Worlds\\" + string(fileinfo.name) + "\\Thumbnail.bmp");
+								Textures::LoadRGBImage(tmb, "Worlds\\" + string(fileinfo.name) + "\\Thumbnail.bmp");
 								glGenTextures(1, &thumbnails[thumbnails.size() - 1]);
 								glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size() - 1]);
 								glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
