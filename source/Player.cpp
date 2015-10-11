@@ -5,7 +5,7 @@ bool canGliding = false; //»¬Ïè
 bool FLY;      //·ÉÐÐ
 bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
 
-double glidingMinimumSpeed = pow(1, 2) / 2;
+double glidingMinimumSpeed = pow(12, 2) / 2;
 
 namespace player{
 	Hitbox::AABB playerbox;
