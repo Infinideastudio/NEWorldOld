@@ -11,7 +11,7 @@
 #endif
 */
 
-//#define NEWORLD_DEBUG
+#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG
 #define NEWORLD_DEBUG_CONSOLE_OUTPUT
 #define NEWORLD_DEBUG_NO_FILEIO
@@ -60,7 +60,7 @@ extern int selectDistance;
 extern float walkspeed;
 extern float runspeed;
 extern int MaxAirJumps;
-extern bool UseCIArray;
+extern bool UseCPArray;
 extern bool SmoothLighting;
 extern bool NiceGrass;
 extern int linelength;
@@ -118,8 +118,8 @@ extern PFNGLDETACHOBJECTARBPROC glDetachObjectARB;
 extern PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-extern int c_getChunkIndexFromCIA;
-extern int c_getChunkIndexFromSearch;
+extern int c_getChunkPtrFromCPA;
+extern int c_getChunkPtrFromSearch;
 extern int c_getHeightFromHMap;
 extern int c_getHeightFromWorldGen;
 #endif
