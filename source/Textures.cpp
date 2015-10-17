@@ -149,7 +149,6 @@ namespace Textures {
 
 	TextureID LoadRGBTexture(string Filename) {
 		TEXTURE_RGB image;
-		ubyte *ip;
 		TextureID ret;
 		LoadRGBImage(image, Filename);
 		glGenTextures(1, &ret);

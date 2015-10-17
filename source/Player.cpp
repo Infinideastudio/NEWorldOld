@@ -5,8 +5,6 @@ bool canGliding = false; //滑翔
 bool FLY;      //飞行
 bool CROSS;    //穿墙 ←_← (Superman!)
 
-double glidingMinimumSpeed = pow(12, 2) / 2;
-
 namespace player{
 	Hitbox::AABB playerbox;
 	float height = 1.2f;     //玩家的高度
@@ -23,6 +21,8 @@ namespace player{
 	double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
 	double xlookspeed, ylookspeed;
 	int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
+	double wingsAngle;
+
 	block BlockInHand = blocks::AIR;
 	ubyte itemInHand = 0;
 	block inventorybox[4][10];
@@ -90,10 +90,7 @@ namespace player{
 				player::glidingEnergy = 0;
 				player::glidingSpeed = 0;
 			}
-			else {
-				OnGround = false;
-				player::startGliding();
-			}
+			else OnGround = false;
 			if (ya != yal && yal>0.0) jump = 0.0;
 			if (xa != xal || za != zal) NearWall = true; else NearWall = false;
 			xd = xa; yd = ya; zd = za;
@@ -142,7 +139,6 @@ namespace player{
 
 	void save(string worldn){
 		uint32 curversion = VERSION;
-
 		std::stringstream ss;
 		ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
 		std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
@@ -158,7 +154,7 @@ namespace player{
 	void load(string worldn){
 		uint32 targetVersion;
 		std::stringstream ss;
-		ss <<"Worlds\\" << worldn << "player.NEWorldPlayer";
+		ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
 		std::ifstream iload(ss.str().c_str(), std::ios::binary | std::ios::in);
 		if (!iload.is_open()) return;
 		iload >> targetVersion;
@@ -167,6 +163,7 @@ namespace player{
 			>> xpos >> ypos >> zpos >> jump >> xlookspeed >> ylookspeed >> FLY >> CROSS >> canGliding;
 		iload.read((char*)inventorybox, sizeof(inventorybox));
 		iload.read((char*)inventorypcs, sizeof(inventorypcs));
+		iload >> itemInHand;
 		iload.close();
 	}
 
@@ -202,6 +199,24 @@ namespace player{
 				}
 			}
 		}
+	}
+
+	double getLiftCoefficient(){
+		//获取翅膀升力系数
+		double a = wingsAngle;
+		return sin(2.0*a*M_PI/180.0);
+	}
+
+	double getDragCoefficient(){
+		//获取翅膀阻力系数
+		double a = wingsAngle;
+		return 1.0-cos(2.0*a*M_PI/180.0);
+	}
+
+	double getDragCoefficientY(){
+		//获取垂直方向翅膀阻力系数
+		double a = abs(wingsAngle + 90.0);
+		return 1.0-cos(2.0*a*M_PI/180.0);
 	}
 
 }
