@@ -3,7 +3,7 @@
 #include "Renderer.h"
 #include "WorldGen.h"
 
-extern bool UseCIArray;
+extern bool UseCPArray;
 extern int viewdistance;
 
 namespace world{
@@ -12,16 +12,16 @@ namespace world{
 	brightness skylight = 15;         //Sky light level
 	brightness BRIGHTNESSMAX = 15;    //Maximum brightness
 	brightness BRIGHTNESSMIN = 2;     //Mimimum brightness
-	brightness BRIGHTNESSDEC = 1;    //Brightness decrease
+	brightness BRIGHTNESSDEC = 1;     //Brightness decrease
 	chunk EmptyChunk = chunk();
 	unsigned int EmptyBuffer;
 
-	chunk* chunks;
+	chunk** chunks;
 	int loadedChunks, chunkArraySize;
-	int ciCacheIndex = -1;
-	unsigned long long ciCacheID = 0;
-	bool ciArrayAval;
-	chunkIndexArray ciArray;
+	chunk* cpCachePtr = nullptr;
+	unsigned long long cpCacheID = 0;
+	bool cpArrayAval;
+	chunkPtrArray cpArray;
 	HeightMap HMap;
 	int cloud[128][128];
 	int rebuiltChunks, rebuiltChunksCount;
@@ -45,18 +45,19 @@ namespace world{
 		system(ss.str().c_str());
 
 		WorldGen::perlinNoiseInit(3404);
-		ciCacheIndex = -1;
-		ciCacheID = 0;
+		cpCachePtr = nullptr;
+		cpCacheID = 0;
 
-		if (UseCIArray){
-			ciArray.setSize((viewdistance + 2) * 2);
-			ciArrayAval = !ciArray.create();
-			if (!ciArrayAval)DebugWarning("ChunkIndexArray not avaliable because it couldn't be created.");
+		if (UseCPArray){
+			cpArray.setSize((viewdistance + 2) * 2);
+			cpArrayAval = !cpArray.create();
+			if (!cpArrayAval)DebugWarning("Chunk Pointer Array not avaliable because it couldn't be created.");
 		}
-		else ciArrayAval = false;
+		else cpArrayAval = false;
 		HMap.setSize((viewdistance + 2) * 2 * 16);
 		HMap.create();
-		loadedChunkArray = nullptr;
+		int lcasize = (viewdistance + 1) * 2;
+		loadedChunkArray = new bool[lcasize*lcasize*lcasize];
 
 	}
 
@@ -69,40 +70,42 @@ namespace world{
 		last = loadedChunks - 1;
 		middle = (first + last) / 2;
 		if (loadedChunks > 0){
-			while (first <= last && chunks[middle].id != cid){
-				if (chunks[middle].id > cid) last = middle - 1;
-				if (chunks[middle].id < cid) first = middle + 1;
+			while (first <= last && chunks[middle]->id != cid){
+				if (chunks[middle]->id > cid) last = middle - 1;
+				if (chunks[middle]->id < cid) first = middle + 1;
 				middle = (first + last) / 2;
 			}
-			if (chunks[middle].id == cid){
+			if (chunks[middle]->id == cid){
 				printf("[Console][Error]");
 				printf("Chunk(%d,%d,%d)has been loaded,when adding chunk.\n", x, y, z);
-				return &chunks[middle];
+				return chunks[middle];
 			}
 		}
 		ExpandChunkArray(1);
 		for (i = loadedChunks - 1; i >= first + 1; i--){
 			chunks[i] = chunks[i - 1];
 		}
-		chunks[first] = EmptyChunk;
-		chunks[first].Init(x, y, z, cid);
-		if (ciCacheIndex>=first)ciCacheIndex++;
-		if(ciArrayAval)ciArray.AddChunk(first,x,y,z);
-		return &chunks[first];
+		chunks[first] = new chunk();
+		chunks[first]->Init(x, y, z, cid);
+		cpCacheID = cid;
+		cpCachePtr = chunks[first];
+		if(cpArrayAval)cpArray.AddChunk(chunks[first],x,y,z);
+		return chunks[first];
 	}
 
-	void DeleteChunk(int index){
+	void DeleteChunk(int x, int y, int z){
+		int index = world::getChunkPtrIndex(x, y, z);
+		delete chunks[index];
 		for (int i = index; i < loadedChunks - 1; i++){
 			chunks[i] = chunks[i + 1];
 		}
-		chunks[loadedChunks - 1] = EmptyChunk;
-		ReduceChunkArray(1);
-		if (ciCacheIndex == index){
-			ciCacheID = 0;
-			ciCacheIndex = -1;
+		if (cpCachePtr == chunks[index]){
+			cpCacheID = 0;
+			cpCachePtr = nullptr;
 		}
-		if (ciCacheIndex > index)ciCacheIndex--;
-		if(ciArrayAval)ciArray.DeleteChunk(index);
+		if (cpArrayAval)cpArray.DeleteChunk(x, y, z);
+		chunks[loadedChunks - 1] = nullptr;
+		ReduceChunkArray(1);
 	}
 
 	uint64 getChunkID(int x, int y, int z){
@@ -120,62 +123,72 @@ namespace world{
 
 	bool chunkLoaded(int x, int y, int z){
 		if (chunkOutOfBound(x, y, z))return false;
-		if (getChunkIndex(x, y, z) != -1)return true;
+		if (getChunkPtr(x, y, z) != nullptr)return true;
 		return false;
 	}
 
-	int getChunkIndex(int x, int y, int z){
+	int getChunkPtrIndex(int x, int y, int z){
 		unsigned long long cid = getChunkID(x, y, z);
-		int ret;
-		if (ciCacheID == cid && ciCacheIndex != -1){
-			return ciCacheIndex;
-		}
-		else{
-			if (ciArrayAval){
-				ret = ciArray.getChunkIndex(x, y, z);
-				if (ret != -1){
-					ciCacheID = cid;
-					ciCacheIndex = ret;
-					return ret;
-				}
-			}
-			int first, last, middle;                                        //Chunk ID
-			ret = -1;
-			//二分查找,GO!
+		int first, last, middle;
+		//二分查找,GO!
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-			c_getChunkIndexFromSearch++;
+		c_getChunkPtrFromSearch++;
 #endif
-			first = 0;
-			last = loadedChunks - 1;
+		first = 0;
+		last = loadedChunks - 1;
+		middle = (first + last) / 2;
+		while (first <= last && chunks[middle]->id != cid){
+			if (chunks[middle]->id > cid) last = middle - 1; else first = middle + 1;
 			middle = (first + last) / 2;
-			if (loadedChunks > 0){
-				while (first <= last && chunks[middle].id != cid){
-					if (chunks[middle].id > cid) last = middle - 1;
-					if (chunks[middle].id < cid) first = middle + 1;
-					middle = (first + last) / 2;
-				}
-				if (chunks[middle].id == cid){
-					ret = middle;
-					ciCacheID = cid;
-					ciCacheIndex = middle;
-					if (ciArrayAval && ciArray.elementExists(x - ciArray.originX, y - ciArray.originY, z - ciArray.originZ)){
-						ciArray.array[(x - ciArray.originX)*ciArray.size2 + (y - ciArray.originY)*ciArray.size + (z - ciArray.originZ)] = middle;
-					}
-				}
-			}
 		}
-		return ret;
-
+		if (chunks[middle]->id == cid)return middle;
+#ifdef NEWORLD_DEBUG
+		DebugError("getChunkPtrIndex Error!");
+#endif
+		return -1;
 	}
 
 	chunk* getChunkPtr(int x, int y, int z){
-		
-		int i = getChunkIndex(x, y, z);
-		if (i != -1)return &chunks[i];
-		printf("[Console][Error]");
-		printf("Chunk(%d,%d,%d)is not exist,when getting pointer.\n", x, y, z);
+		unsigned long long cid = getChunkID(x, y, z);
+		if (cpCacheID == cid && cpCachePtr != nullptr){
+			return cpCachePtr;
+		}
+		else{
+			chunk* ret = nullptr;
+			if (cpArrayAval){
+				ret = cpArray.getChunkPtr(x, y, z);
+				if (ret != nullptr){
+					cpCacheID = cid;
+					cpCachePtr = ret;
+					return ret;
+				}
+			}
+			if (loadedChunks > 0){
+				int first, last, middle;
+				//二分查找,GO!
+#ifdef NEWORLD_DEBUG_PERFORMANCE_REC
+				c_getChunkPtrFromSearch++;
+#endif
+				first = 0;
+				last = loadedChunks - 1;
+				middle = (first + last) / 2;
+				while (first <= last && chunks[middle]->id != cid){
+					if (chunks[middle]->id > cid) last = middle - 1; else first = middle + 1;
+					middle = (first + last) / 2;
+				}
+				if (chunks[middle]->id == cid){
+					ret = chunks[middle];
+					cpCacheID = cid;
+					cpCachePtr = ret;
+					if (cpArrayAval && cpArray.elementExists(x - cpArray.originX, y - cpArray.originY, z - cpArray.originZ)){
+						cpArray.array[(x - cpArray.originX)*cpArray.size2 + (y - cpArray.originY)*cpArray.size + (z - cpArray.originZ)] = chunks[middle];
+					}
+					return ret;
+				}
+			}
+		}
 		return nullptr;
-
+		//return &EmptyChunk;
 	}
 
 	void ExpandChunkArray(int cc){
@@ -185,7 +198,7 @@ namespace world{
 			if (chunkArraySize < 1024) chunkArraySize = 1024;
 			else chunkArraySize *= 2;
 			while (chunkArraySize < loadedChunks) chunkArraySize *= 2;
-			chunks = (chunk*)realloc(chunks, chunkArraySize * sizeof(chunk));
+			chunks = (chunk**)realloc(chunks, chunkArraySize * sizeof(chunk*));
 			if (chunks == nullptr && loadedChunks != 0) {
 				printf("[Console][Error]");
 				printf("Chunk Array expanding error.\n");
@@ -199,9 +212,7 @@ namespace world{
 	}
 
 	void ReduceChunkArray(int cc){
-
 		loadedChunks -= cc;
-
 	}
 
 	void renderblock(int x, int y, int z, chunk* chunkptr) {
@@ -475,7 +486,7 @@ namespace world{
 
 		for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++){
 			for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++){
-				for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++){ //? check
+				for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++){
 					if (BlockInfo(getblock(a, b, c)).isSolid()){
 						blockbox.xmin = a - 0.5;
 						blockbox.xmax = a + 0.5;
@@ -496,9 +507,9 @@ namespace world{
 	bool inWater(Hitbox::AABB box){
 		Hitbox::AABB blockbox;
 		int a, b, c;
-		for (a = int(box.xmin + 0.5) - 1; a != int(box.xmax + 0.5); a++){
-			for (b = int(box.ymin + 0.5) - 1; b != int(box.ymax + 0.5); b++){
-				for (c = int(box.zmin + 0.5) - 1; c != int(box.zmax + 0.5); c++){
+		for (a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5); a++){
+			for (b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5); b++){
+				for (c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5); c++){
 					if (getblock(a, b, c) == blocks::WATER) {
 						blockbox.xmin = a - 0.5;
 						blockbox.xmax = a + 0.5;
@@ -629,26 +640,24 @@ namespace world{
 		if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz){
 			return cptr->getblock(bx, by, bz);
 		}
-		int ci = getChunkIndex(cx, cy, cz);
-		if (ci != -1)return chunks[ci].getblock(bx, by, bz);
+		chunk* ci = getChunkPtr(cx, cy, cz);
+		if (ci != nullptr)return ci->getblock(bx, by, bz);
 		return mask;
 	}
 
-	brightness getbrightness(int x, int y, int z, int cindex){
-
+	brightness getbrightness(int x, int y, int z, chunk* cptr){
 		//获取XYZ的亮度
 		int cx, cy, cz;
 		cx = getchunkpos(x);cy = getchunkpos(y);cz = getchunkpos(z);
 		if (chunkOutOfBound(cx, cy, cz))return skylight;
 		int bx, by, bz;
 		bx = getblockpos(x);by = getblockpos(y);bz = getblockpos(z);
-		if (cindex != -1 && cx == chunks[cindex].cx && cy == chunks[cindex].cy && cz == chunks[cindex].cz){
-			return chunks[cindex].getbrightness(bx, by, bz);
+		if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz){
+			return cptr->getbrightness(bx, by, bz);
 		}
-		int ci = getChunkIndex(cx, cy, cz);
-		if (ci != -1)return chunks[ci].getbrightness(bx, by, bz);
+		chunk* ci = getChunkPtr(cx, cy, cz);
+		if (ci != nullptr)return ci->getbrightness(bx, by, bz);
 		return skylight;
-
 	}
 
 	void setblock(int x, int y, int z, block Blockname){
@@ -665,9 +674,9 @@ namespace world{
 		bz = getblockpos(z);
 
 		if (!chunkOutOfBound(cx, cy, cz)){
-			int i = getChunkIndex(cx, cy, cz);
-			if (i != -1){
-				chunks[i].setblock(bx, by, bz, Blockname);
+			chunk* i = getChunkPtr(cx, cy, cz);
+			if (i != nullptr){
+				i->setblock(bx, by, bz, Blockname);
 				updateblock(x, y, z, true);
 			}
 		}
@@ -688,9 +697,9 @@ namespace world{
 		bz = getblockpos(z);
 
 		if (!chunkOutOfBound(cx, cy, cz)){
-			int i = getChunkIndex(cx, cy, cz);
-			if (i != -1){
-				chunks[i].setbrightness(bx, by, bz, Brightness);
+			chunk* i = getChunkPtr(cx, cy, cz);
+			if (i != nullptr){
+				i->setbrightness(bx, by, bz, Brightness);
 			}
 		}
 
@@ -734,10 +743,10 @@ namespace world{
 		czp = getchunkpos(zpos);
 
 		for (int ci = 0; ci < loadedChunks; ci++) {
-			if (chunks[ci].updated) {
-				cx = chunks[ci].cx;
-				cy = chunks[ci].cy;
-				cz = chunks[ci].cz;
+			if (chunks[ci]->updated) {
+				cx = chunks[ci]->cx;
+				cy = chunks[ci]->cy;
+				cz = chunks[ci]->cz;
 				if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance)) continue;
 				xd = cx * 16 + 7 - xpos;
 				yd = cy * 16 + 7 - ypos;
@@ -766,9 +775,6 @@ namespace world{
 		int xd, yd, zd, distsqr, first, middle, last;
 		int lcasize = (viewdistance + 1) * 2;
 		int lcadelta = viewdistance + 1;
-		if (loadedChunkArray == nullptr){
-			loadedChunkArray = new bool[lcasize*lcasize*lcasize];
-		}
 		memset(loadedChunkArray, false, lcasize*lcasize*lcasize*sizeof(bool));
 
 		cxp = getchunkpos(xpos);
@@ -776,9 +782,9 @@ namespace world{
 		czp = getchunkpos(zpos);
 
 		for (int ci = 0; ci < loadedChunks; ci++) {
-			cx = chunks[ci].cx;
-			cy = chunks[ci].cy;
-			cz = chunks[ci].cz;
+			cx = chunks[ci]->cx;
+			cy = chunks[ci]->cy;
+			cz = chunks[ci]->cz;
 			if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance + 1)) {
 				xd = cx * 16 + 7 - xpos;
 				yd = cy * 16 + 7 - ypos;
@@ -861,7 +867,7 @@ namespace world{
 #ifndef NEWORLD_DEBUG_NO_FILEIO
 		int i;
 		for (i = 0; i != loadedChunks ; i++){
-			chunks[i].SaveToFile();
+			chunks[i]->SaveToFile();
 		}
 #endif
 	}
@@ -869,16 +875,16 @@ namespace world{
 	void destroyAllChunks(){
 
 		for (int i = 0; i != loadedChunks ; i++){
-			if (!chunks[i].Empty){
-				chunks[i].destroyRender();
-				chunks[i].destroy();
+			if (!chunks[i]->Empty){
+				chunks[i]->destroyRender();
+				chunks[i]->destroy();
 			}
 		}
 		free(chunks);
 		chunks = nullptr;
 		loadedChunks = 0;
 		chunkArraySize = 0;
-		if(ciArrayAval)ciArray.destroy();
+		if(cpArrayAval)cpArray.destroy();
 		HMap.destroy();
 
 		rebuiltChunks = 0; rebuiltChunksCount = 0;
