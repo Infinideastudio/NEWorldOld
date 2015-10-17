@@ -53,13 +53,13 @@
     <ClInclude Include="source\Frustum.h">
       <Filter>源代码</Filter>
     </ClInclude>
-    <ClInclude Include="source\ChunkIndexArray.h">
-      <Filter>源代码</Filter>
-    </ClInclude>
     <ClInclude Include="source\WorldGen.h">
       <Filter>源代码</Filter>
     </ClInclude>
     <ClInclude Include="source\HeightMap.h">
+      <Filter>源代码</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ChunkPtrArray.h">
       <Filter>源代码</Filter>
     </ClInclude>
   </ItemGroup>
@@ -103,13 +103,13 @@
     <ClCompile Include="source\Frustum.cpp">
       <Filter>源代码</Filter>
     </ClCompile>
-    <ClCompile Include="source\ChunkIndexArray.cpp">
-      <Filter>源代码</Filter>
-    </ClCompile>
     <ClCompile Include="source\WorldGen.cpp">
       <Filter>源代码</Filter>
     </ClCompile>
     <ClCompile Include="source\HeightMap.cpp">
+      <Filter>源代码</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ChunkPtrArray.cpp">
       <Filter>源代码</Filter>
     </ClCompile>
   </ItemGroup>
