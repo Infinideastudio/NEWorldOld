@@ -16,7 +16,7 @@ int selectDistance = 5;         //选择方块的距离
 float walkspeed = 0.15f;        //玩家前进速度
 float runspeed = 0.3f;          //玩家跑步速度
 int MaxAirJumps = 3 - 1;        //空中N段连跳
-bool UseCIArray = true;         //使用CIA
+bool UseCPArray = true;         //使用CIA
 bool SmoothLighting = true;     //平滑光照
 bool NiceGrass = true;          //草地材质连接
 int linelength = 10;            //跟F3的准星有关。。。
@@ -81,8 +81,8 @@ PFNGLDETACHOBJECTARBPROC glDetachObjectARB;
 PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-int c_getChunkIndexFromCIA;
-int c_getChunkIndexFromSearch;
+int c_getChunkPtrFromCPA;
+int c_getChunkPtrFromSearch;
 int c_getHeightFromHMap;
 int c_getHeightFromWorldGen;
 #endif
@@ -104,15 +104,15 @@ void Sleep(unsigned int ms){
 #endif
 
 void DebugWarning(string msg){
-	//SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
 	printf("[Debug][Warning]");
-	//SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
 	printf("%s\n", msg.c_str());
 }
 
 void DebugError(string msg){
-	//SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
 	printf("[Debug][Error]");
-	//SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
 	printf("%s\n",msg.c_str());
 }
