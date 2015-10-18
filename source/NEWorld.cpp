@@ -738,13 +738,13 @@ void updategame(){
 		mxl = mx; myl = my;
 
 		//移动！(生命在于运动)
-		if (glfwGetKey(MainWindow, GLFW_KEY_W)) {
+		if (glfwGetKey(MainWindow, GLFW_KEY_W) || player::gliding()) {
 			if (!WP) {
 				if (Wprstm == 0.0) {
 					Wprstm = timer();
 				}
 				else {
-					if (timer() - Wprstm <= 0.5 && !player::gliding()) { player::Running = true; Wprstm = 0.0; }
+					if (timer() - Wprstm <= 0.5) { player::Running = true; Wprstm = 0.0; }
 					else Wprstm = timer();
 				}
 			}
@@ -754,9 +754,11 @@ void updategame(){
 				player::xa = -sin(player::heading*M_PI / 180.0) * player::speed;
 				player::za = -cos(player::heading*M_PI / 180.0) * player::speed;
 			}
-			else{
-				player::wingsAngle += 1.0;
-				if (player::wingsAngle > 90.0)player::wingsAngle = 90.0;
+			else {
+				player::xa = sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+				player::ya = cos(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+				player::za = cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+				if (player::ya < 0) player::ya *= 2;
 			}
 		}
 		else {
@@ -766,16 +768,10 @@ void updategame(){
 		if (player::Running)player::speed = runspeed;
 		else player::speed = walkspeed;
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS) {
-			if (!player::gliding()) {
-				player::xa = sin(player::heading*M_PI / 180.0) * player::speed;
-				player::za = cos(player::heading*M_PI / 180.0) * player::speed;
-				Wprstm = 0.0;
-			}
-			else{
-				player::wingsAngle -= 1.0;
-				if (player::wingsAngle < -90.0)player::wingsAngle = -90.0;
-			}
+		if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!player::gliding()) {
+			player::xa = sin(player::heading*M_PI / 180.0) * player::speed;
+			player::za = cos(player::heading*M_PI / 180.0) * player::speed;
+			Wprstm = 0.0;
 		}
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!player::gliding()) {
@@ -835,10 +831,6 @@ void updategame(){
 			}
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_SPACE) == GLFW_PRESS && player::gliding()){
-			player::glidingSpeed += 0.03;
-		}
-
 		if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !player::gliding()) {
 			if (CROSS || FLY) {
 				player::ya -= walkspeed;
@@ -847,6 +839,13 @@ void updategame(){
 				if (player::heightExt > -0.59f)  player::heightExt -= 0.1f; else player::heightExt = -0.6f;
 			}
 			Wprstm = 0.0;
+		}
+
+		if (glfwGetKey(MainWindow, GLFW_KEY_K)&&canGliding&&!player::OnGround&&!player::gliding()) {
+			double h = player::ypos + player::height + player::heightExt;
+			player::glidingEnergy = g*h;
+			player::glidingSpeed = 0;
+			player::glidingNow = true;
 		}
 
 		//各种设置切换
@@ -864,7 +863,7 @@ void updategame(){
 		}
 		if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
 		if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
-		if (isPressed(GLFW_KEY_F6) == GLFW_PRESS && player::OnGround) canGliding = !canGliding;
+		if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) canGliding = !canGliding;
 	}
 	
 	if (glfwGetKey(MainWindow, GLFW_KEY_E) == GLFW_PRESS && ep == false){
@@ -921,23 +920,17 @@ void updategame(){
 	//	player::ya += walkspeed
 	//	player::jump = 0.0
 	//}
-	 
-	//坑爹的滑翔
-	if (player::gliding() && !player::OnGround) {
-
-		double ma = 50.0; //玩家重量
-		double speed = sqrt(player::xd*player::xd + player::yd*player::yd + player::zd*player::zd); //玩家速度
-		double qs = 1.2*speed*speed/2.0*1.0; //动压*参考面积
-		double lc = player::getLiftCoefficient(); //升力系数
-		//double ld = player::getDragCoefficient(); //阻力系数
-		player::glidingSpeed *= 0.98;
-		player::ya *= 0.98;
-		player::ya += lc*qs / ma;
-		player::ya -= 0.025 / ma;
-		player::xa = sin(M_PI / 180 * (player::heading - 180)) * player::glidingSpeed;
-		player::za = cos(M_PI / 180 * (player::heading - 180)) * player::glidingSpeed;
-		//player::wingsAngle *= 0.99;
-
+	
+	if (player::gliding()) {
+		double& E = player::glidingEnergy;
+		double oldh = player::ypos + player::height + player::heightExt + player::ya;
+		double h = oldh;
+		if (E - glidingMinimumSpeed < h*g) {  //小于最小速度
+			h = (E - glidingMinimumSpeed) / g;
+		}
+		player::glidingSpeed = sqrt(2 * (E - g*h));
+		E -= EDrop;
+		player::ya += h - oldh;
 	}
 
 	mbp = mb;
@@ -1285,16 +1278,6 @@ void drawGUI(){
 	glDepthFunc(GL_ALWAYS);
 	glDisable(GL_TEXTURE_2D);
 	glEnable(GL_LINE_SMOOTH);
-
-	if (player::gliding()){
-		glLineWidth(1);
-		glBegin(GL_LINES);
-		glColor4f(gui::FgR, gui::FgG, gui::FgB, 0.8f);
-		glVertex2i(windowwidth / 2, windowheight / 2);
-		glVertex2i(windowwidth / 2 + int(cos(player::wingsAngle*M_PI / 180.0)*50.0), windowheight / 2 - int(sin(player::wingsAngle*M_PI / 180.0)*50.0));
-		glEnd();
-	}
-
 	int seldes_100 = int(seldes / 100);
 
 	if (DebugMode) {
