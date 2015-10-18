@@ -497,13 +497,11 @@ void updategame(){
 		int sumUnload;
 		sumUnload = world::chunkUnloads > 4 ? 4 : world::chunkUnloads;
 		for (int i = 0; i < sumUnload; i++) {
-			int cx = world::chunkUnloadList[i][1];
-			int cy = world::chunkUnloadList[i][2];
-			int cz = world::chunkUnloadList[i][3];
-			world::chunk* cp = world::getChunkPtr(cx, cy, cz);
+			world::chunk* cp = world::chunkUnloadList[i].first;
 #ifdef NEWORLD_DEBUG
 			if (cp == nullptr)DebugError("Unload error!");
 #endif
+			int cx = cp->cx, cy = cp->cy, cz = cp->cz;
 			cp->Unload();
 			world::DeleteChunk(cx, cy, cz);
 		}
