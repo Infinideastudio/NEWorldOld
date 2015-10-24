@@ -24,12 +24,12 @@ namespace world{
 	chunkPtrArray cpArray;
 	HeightMap HMap;
 	int cloud[128][128];
-	int updatedChunksCount, updatedChunksCounter;
-	int unloadedChunksCount, unloadedChunksCounter;
-	//int chunkBuildRenderList[256][2]
-	vector<updatedChunksItem> updatedChunks;
+	int rebuiltChunks, rebuiltChunksCount;
+	int updatedChunks, updatedChunksCount;
+	int unloadedChunks, unloadedChunksCount;
+	int chunkBuildRenderList[256][2];
 	int chunkLoadList[256][4];
-	int chunkUnloadList[256][4];
+	pair<chunk*, int> chunkUnloadList[256];
 	vector<unsigned int> vbuffersShouldDelete;
 	int chunkBuildRenders, chunkLoads, chunkUnloads;
 	bool* loadedChunkArray = nullptr; //Accelerate sort
@@ -43,7 +43,7 @@ namespace world{
 		ss.clear(); ss.str("");
 		ss << "mkdir Worlds\\" << worldname << "\\chunks";
 		system(ss.str().c_str());
-		
+
 		WorldGen::perlinNoiseInit(3404);
 		cpCachePtr = nullptr;
 		cpCacheID = 0;
@@ -141,7 +141,7 @@ namespace world{
 			if (chunks[middle]->id > cid) last = middle - 1; else first = middle + 1;
 			middle = (first + last) / 2;
 		}
-		if (chunks[middle]->id == cid)return middle;
+		if (chunks[middle]->id == cid) return middle;
 #ifdef NEWORLD_DEBUG
 		DebugError("getChunkPtrIndex Error!");
 #endif
@@ -477,7 +477,6 @@ namespace world{
 		}
 	}
 
-
 	vector<Hitbox::AABB> getHitboxes(Hitbox::AABB box){
 		//返回与box相交的所有方块AABB
 
@@ -599,7 +598,7 @@ namespace world{
 				else{
 
 					//Opaque block
-					getChunkPtr(cx, cy, cz)->setbrightness(bx, by, bz, 0);
+					cptr->setbrightness(bx, by, bz, 0);
 					if (getblock(x, y, z) == blocks::GLOWSTONE || getblock(x, y, z) == blocks::LAVA){
 						cptr->setbrightness(bx, by, bz, BRIGHTNESSMAX);
 					}
@@ -618,13 +617,13 @@ namespace world{
 					updateblock(x, y, z - 1, false);
 				}
 
-				setChunkUpdated(cx, cy, cz);
-				if (bx == 15 && cx<worldsize - 1) setChunkUpdated(cx + 1, cy, cz);
-				if (bx == 0 && cx>-worldsize) setChunkUpdated(cx - 1, cy, cz);
-				if (by == 15 && cy<worldheight - 1) setChunkUpdated(cx, cy + 1, cz);
-				if (by == 0 && cy>-worldheight) setChunkUpdated(cx, cy - 1, cz);
-				if (bz == 15 && cz<worldsize - 1) setChunkUpdated(cx, cy, cz + 1);
-				if (bz == 0 && cz>-worldsize) setChunkUpdated(cx, cy, cz - 1);
+				setChunkUpdated(cx, cy, cz, true);
+				if (bx == 15 && cx<worldsize - 1) setChunkUpdated(cx + 1, cy, cz, true);
+				if (bx == 0 && cx>-worldsize) setChunkUpdated(cx - 1, cy, cz, true);
+				if (by == 15 && cy<worldheight - 1) setChunkUpdated(cx, cy + 1, cz, true);
+				if (by == 0 && cy>-worldheight) setChunkUpdated(cx, cy - 1, cz, true);
+				if (bz == 15 && cz<worldsize - 1) setChunkUpdated(cx, cy, cz + 1, true);
+				if (bz == 0 && cz>-worldsize) setChunkUpdated(cx, cy, cz - 1, true);
 
 			}
 		}
@@ -641,7 +640,7 @@ namespace world{
 			return cptr->getblock(bx, by, bz);
 		}
 		chunk* ci = getChunkPtr(cx, cy, cz);
-		if (ci != nullptr)return ci->getblock(bx, by, bz);
+		if (ci != nullptr) return ci->getblock(bx, by, bz);
 		return mask;
 	}
 
@@ -734,22 +733,19 @@ namespace world{
 
 	}
 
-	/*
 	void sortChunkBuildRenderList(int xpos, int ypos, int zpos) {
 		int cxp, cyp, czp, cx, cy, cz, p = 0;
 		int xd, yd, zd, distsqr;
-		chunk* cp;
-		
+
 		cxp = getchunkpos(xpos);
 		cyp = getchunkpos(ypos);
 		czp = getchunkpos(zpos);
-		
+
 		for (int ci = 0; ci < loadedChunks; ci++) {
 			if (chunks[ci]->updated) {
-				cp = chunks[ci];
-				cx = cp->cx;
-				cy = cp->cy;
-				cz = cp->cz;
+				cx = chunks[ci]->cx;
+				cy = chunks[ci]->cy;
+				cz = chunks[ci]->cz;
 				if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance)) continue;
 				xd = cx * 16 + 7 - xpos;
 				yd = cy * 16 + 7 - ypos;
@@ -771,7 +767,6 @@ namespace world{
 		}
 		chunkBuildRenders = p;
 	}
-	*/
 
 	void sortChunkLoadUnloadList(int xpos, int ypos, int zpos) {
 
@@ -798,22 +793,18 @@ namespace world{
 				first = 0; last = pl - 1;
 				while (first <= last) {
 					middle = (first + last) / 2;
-					if (distsqr > chunkUnloadList[middle][0])last = middle - 1;
+					if (distsqr > chunkUnloadList[middle].second)last = middle - 1;
 					else first = middle + 1;
 				}
 				if (first > pl || first >= 4) continue;
 				i = first;
 
 				for (int j = 3; j > i; j--) {
-					chunkUnloadList[j][0] = chunkUnloadList[j - 1][0];
-					chunkUnloadList[j][1] = chunkUnloadList[j - 1][1];
-					chunkUnloadList[j][2] = chunkUnloadList[j - 1][2];
-					chunkUnloadList[j][3] = chunkUnloadList[j - 1][3];
+					chunkUnloadList[j].first = chunkUnloadList[j - 1].first;
+					chunkUnloadList[j].second = chunkUnloadList[j - 1].second;
 				}
-				chunkUnloadList[i][0] = distsqr;
-				chunkUnloadList[i][1] = cx;
-				chunkUnloadList[i][2] = cy;
-				chunkUnloadList[i][3] = cz;
+				chunkUnloadList[i].first = chunks[ci];
+				chunkUnloadList[i].second = distsqr;
 
 				if (pl < 4) pl++;
 			}
@@ -891,9 +882,10 @@ namespace world{
 		if(cpArrayAval)cpArray.destroy();
 		HMap.destroy();
 
-		updatedChunksCount = 0; updatedChunksCounter = 0;
-		unloadedChunksCount = 0; unloadedChunksCounter = 0;
-		updatedChunks.clear();
+		rebuiltChunks = 0; rebuiltChunksCount = 0;
+		updatedChunks = 0; updatedChunksCount = 0;
+		unloadedChunks = 0; unloadedChunksCount = 0;
+		memset(chunkBuildRenderList, 0, 256 * 2 * sizeof(int));
 		memset(chunkLoadList, 0, 256 * 4 * sizeof(int));
 		memset(chunkUnloadList, 0, 256 * 4 * sizeof(int));
 		chunkBuildRenders = 0; chunkLoads = 0; chunkUnloads = 0;

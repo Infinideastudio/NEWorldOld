@@ -5,23 +5,7 @@
 #include "Chunk.h"
 #include "Hitbox.h"
 
-namespace player {
-	extern double xpos, ypos, zpos;
-}
-
 namespace world{
-
-	struct updatedChunksItem{
-		chunk* ptr;
-		int x, y, z;
-		updatedChunksItem(){}
-		updatedChunksItem(chunk* _ptr, int _x,int _y,int _z):ptr(_ptr), x(_x),y(_y),z(_z) {}
-		bool operator< (const updatedChunksItem& uci) const {
-			int xd = (int)player::xpos - x, yd = (int)player::ypos - y, zd = (int)player::zpos - z;
-			int xd1 = (int)player::xpos - uci.x, yd1 = (int)player::ypos - uci.y, zd1 = (int)player::zpos - uci.z;
-			return sqrt(xd*xd + yd*yd + zd*zd) > sqrt(xd1*xd1 + yd1*yd1 + zd1*zd1);
-		}
-	};
 
 	extern string worldname;
 	const int worldsize = 134217728;
@@ -43,12 +27,12 @@ namespace world{
 	extern bool cpArrayAval;
 
 	extern int cloud[128][128];
-	extern int updatedChunksCount, updatedChunksCounter;
-	extern int unloadedChunksCount, unloadedChunksCounter;
-	//extern int chunkBuildRenderList[256][2];
-	extern vector<updatedChunksItem> updatedChunks; //更新了的区块
+	extern int rebuiltChunks, rebuiltChunksCount;
+	extern int updatedChunks, updatedChunksCount;
+	extern int unloadedChunks, unloadedChunksCount;
+	extern int chunkBuildRenderList[256][2];
 	extern int chunkLoadList[256][4];
-	extern int chunkUnloadList[256][4];
+	extern pair<chunk*, int> chunkUnloadList[256];
 	extern vector<unsigned int> vbuffersShouldDelete;
 	extern int chunkBuildRenders, chunkLoads, chunkUnloads;
 	extern bool* loadedChunkArray;
@@ -84,14 +68,11 @@ namespace world{
 	inline bool chunkUpdated(int x, int y, int z){
 		return getChunkPtr(x, y, z)->updated;
 	}
-	inline void setChunkUpdated(int x, int y, int z){
+	inline void setChunkUpdated(int x, int y, int z, bool value){
 		chunk* i = getChunkPtr(x, y, z);
-		if (i != nullptr) {
-			i->updated = true;
-			updatedChunks.push_back(updatedChunksItem(i, x * 16 + 7, y * 16 + 7, z * 16 + 7));
-		}
+		if (i != nullptr) i->updated = value;
 	}
-	//void sortChunkBuildRenderList(int xpos, int ypos, int zpos);
+	void sortChunkBuildRenderList(int xpos, int ypos, int zpos);
 	void sortChunkLoadUnloadList(int xpos, int ypos, int zpos);
 
 	void saveAllChunks();
