@@ -29,7 +29,7 @@ namespace world{
 	//int chunkBuildRenderList[256][2]
 	vector<updatedChunksItem> updatedChunks;
 	int chunkLoadList[256][4];
-	pair<chunk*, int> chunkUnloadList[256];
+	int chunkUnloadList[256][4];
 	vector<unsigned int> vbuffersShouldDelete;
 	int chunkBuildRenders, chunkLoads, chunkUnloads;
 	bool* loadedChunkArray = nullptr; //Accelerate sort
@@ -599,7 +599,7 @@ namespace world{
 				else{
 
 					//Opaque block
-					cptr->setbrightness(bx, by, bz, 0);
+					getChunkPtr(cx, cy, cz)->setbrightness(bx, by, bz, 0);
 					if (getblock(x, y, z) == blocks::GLOWSTONE || getblock(x, y, z) == blocks::LAVA){
 						cptr->setbrightness(bx, by, bz, BRIGHTNESSMAX);
 					}
@@ -798,18 +798,22 @@ namespace world{
 				first = 0; last = pl - 1;
 				while (first <= last) {
 					middle = (first + last) / 2;
-					if (distsqr > chunkUnloadList[middle].second)last = middle - 1;
+					if (distsqr > chunkUnloadList[middle][0])last = middle - 1;
 					else first = middle + 1;
 				}
 				if (first > pl || first >= 4) continue;
 				i = first;
 
 				for (int j = 3; j > i; j--) {
-					chunkUnloadList[j].first = chunkUnloadList[j - 1].first;
-					chunkUnloadList[j].second = chunkUnloadList[j - 1].second;
+					chunkUnloadList[j][0] = chunkUnloadList[j - 1][0];
+					chunkUnloadList[j][1] = chunkUnloadList[j - 1][1];
+					chunkUnloadList[j][2] = chunkUnloadList[j - 1][2];
+					chunkUnloadList[j][3] = chunkUnloadList[j - 1][3];
 				}
-				chunkUnloadList[i].first = chunks[ci];
-				chunkUnloadList[i].second = distsqr;
+				chunkUnloadList[i][0] = distsqr;
+				chunkUnloadList[i][1] = cx;
+				chunkUnloadList[i][2] = cy;
+				chunkUnloadList[i][3] = cz;
 
 				if (pl < 4) pl++;
 			}
