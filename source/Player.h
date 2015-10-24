@@ -2,15 +2,9 @@
 #include "Definitions.h"
 #include "Hitbox.h"
 
-const double g = 9.8;
-const double EDrop = 0.1;
-const double speedCast = 1 / 20.0;
-
 extern bool canGliding;  //»¬Ïè
 extern bool FLY;      //·ÉÐÐ
 extern bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
-
-extern double glidingMinimumSpeed;
 
 namespace player{
 
@@ -23,6 +17,9 @@ namespace player{
 	void save(string worldn);
 	void load(string worldn);
 	void additem(block itemname);
+	double getLiftCoefficient();
+	double getDragCoefficient();
+	double getDragCoefficientY();
 
 	extern Hitbox::AABB playerbox;
 
@@ -31,7 +28,6 @@ namespace player{
 	extern bool Running;
 	extern bool NearWall;
 	extern bool inWater;
-	extern bool glidingNow;
 
 	extern double speed;
 	extern int AirJumps;
@@ -39,6 +35,7 @@ namespace player{
 	extern double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
 	extern double xlookspeed, ylookspeed;
 	extern int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
+	extern double wingsAngle;
 
 	extern float height;
 	extern float heightExt;
@@ -49,6 +46,6 @@ namespace player{
 	extern block inventorypcs[4][10];
 
 	extern double glidingEnergy, glidingSpeed;
-	inline bool gliding() { return glidingNow; }
+	inline bool gliding() { return canGliding&&!OnGround; }
 
 }

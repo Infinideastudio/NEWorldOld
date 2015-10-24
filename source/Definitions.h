@@ -6,12 +6,13 @@
 
 /*
 #define NEWORLD_COMPILE_DISABLE_SECURE
-#ifndef nullptr
 #define nullptr NULL
+#ifndef M_PI
+#define M_PI 3.14159265898
 #endif
 */
 
-#define NEWORLD_DEBUG
+//#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG
 #define NEWORLD_DEBUG_CONSOLE_OUTPUT
 #define NEWORLD_DEBUG_NO_FILEIO
