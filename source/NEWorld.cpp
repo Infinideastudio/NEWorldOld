@@ -1,5 +1,5 @@
-//==============================   Initialize   ================================//
-//==============================³õÊ¼»¯(°üÀ¨ÉÁÆÁ)================================//
+ï»¿//==============================   Initialize   ================================//
+//==============================åˆå§‹åŒ–(åŒ…æ‹¬é—ªå±)================================//
 
 #include "Definitions.h"
 
@@ -80,19 +80,19 @@ bool selce;
 int selbx, selby, selbz, selcx, selcy, selcz;
 
 #if 0
-	woca, ÕâÑù×¢ÊÍ¶¼ĞĞ£¿£¡
-	(Õâ¶ù±àÒë²»¹ıÈ¥µÄÍ¯Ğ¬£¬ÄãµÄFB±àÒëÆ÷°æ±¾Ã²ËÆ
-	ºÍÎÒµÄ²»Ò»Ñù£¬°ÑÕâ¼¸ĞĞ×¢ÊÍµô°É¡£¡£¡£)
+	woca, è¿™æ ·æ³¨é‡Šéƒ½è¡Œï¼Ÿï¼
+	(è¿™å„¿ç¼–è¯‘ä¸è¿‡å»çš„ç«¥é‹ï¼Œä½ çš„FBç¼–è¯‘å™¨ç‰ˆæœ¬è²Œä¼¼
+	å’Œæˆ‘çš„ä¸ä¸€æ ·ï¼ŒæŠŠè¿™å‡ è¡Œæ³¨é‡Šæ‰å§ã€‚ã€‚ã€‚)
 	=======================================
-	µÈµÈ²»¶Ô°¡£¡£¡£¡Ã÷Ã÷¶¼¸Ä³Éc++ÁË¡£¡£¡£»¹ËµÊÇFB¡£¡£¡£
-	C++±àÒëÆ÷Ó¦¸Ã²»»áÔÚÕâ¶ù±¨´í°É23333333
+	ç­‰ç­‰ä¸å¯¹å•Šï¼ï¼ï¼æ˜æ˜éƒ½æ”¹æˆc++äº†ã€‚ã€‚ã€‚è¿˜è¯´æ˜¯FBã€‚ã€‚ã€‚
+	C++ç¼–è¯‘å™¨åº”è¯¥ä¸ä¼šåœ¨è¿™å„¿æŠ¥é”™å§23333333
 #endif
 
 //==============================  Main Program  ================================//
-//==============================     Ö÷³ÌĞò     ================================//
+//==============================     ä¸»ç¨‹åº     ================================//
 
 int main(){
-	//ÎÔ²ÛÖÕÓÚ½øÈëmainº¯ÊıÁË£¡¼¤¶¯ÈËĞÄµÄÒ»¿Ì£¡£¡£¡
+	//å§æ§½ç»ˆäºè¿›å…¥mainå‡½æ•°äº†ï¼æ¿€åŠ¨äººå¿ƒçš„ä¸€åˆ»ï¼ï¼ï¼
 	
 #ifndef NEWORLD_USE_WINAPI
 	setlocale(LC_ALL, "zh_CN.UTF-8");
@@ -140,7 +140,7 @@ main_menu:
 	MutexLock(Mutex);
 	updateThread = ThreadCreate(&updateThreadFunc, NULL);
 	
-	//³õÊ¼»¯ÓÎÏ·×´Ì¬
+	//åˆå§‹åŒ–æ¸¸æˆçŠ¶æ€
 	printf("[Console][Game]");
 	printf("Init player...\n");
 	player::InitHitbox();
@@ -163,7 +163,7 @@ main_menu:
 	printf("[Console][Game]");
 	printf("Game start!\n");
 	
-	//Õâ²ÅÊÇÓÎÏ·¿ªÊ¼!
+	//è¿™æ‰æ˜¯æ¸¸æˆå¼€å§‹!
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	mxl = mx; myl = my;
@@ -173,7 +173,7 @@ main_menu:
 	fctime = uctime = lastupdate = timer();
 
 	do{
-		//Ö÷Ñ­»·£¬±»¼ò»¯³ÉÕâÑù£¬²Ò²»ÈÌ¶Ã°¡£¡
+		//ä¸»å¾ªç¯ï¼Œè¢«ç®€åŒ–æˆè¿™æ ·ï¼Œæƒ¨ä¸å¿ç¹å•Šï¼
 
 		MutexUnlock(Mutex);
 		MutexLock(Mutex);
@@ -219,16 +219,16 @@ main_menu:
 	ThreadDestroy(updateThread);
 	MutexDestroy(Mutex);
 
-	//½áÊø³ÌĞò£¬É¾ÁËÒ²Ã»¹ØÏµ ¡û_¡û£¨ÍÂ²ÛFBºÍglfwÖĞ£©
-	//²»¶Ô°¡Õâ²»ÊÇFB£¡£¡£¡ÕâÊÇÕı×ÚµÄVC++£¡£¡£¡£¡£¡£¡
-	//Â¥ÉÏµÄÂ¥ÉÏÔÚÏ¹Ëµ£¡£¡£¡±ğĞÅËûµÄ£¡£¡£¡
+	//ç»“æŸç¨‹åºï¼Œåˆ äº†ä¹Ÿæ²¡å…³ç³» â†_â†ï¼ˆåæ§½FBå’Œglfwä¸­ï¼‰
+	//ä¸å¯¹å•Šè¿™ä¸æ˜¯FBï¼ï¼ï¼è¿™æ˜¯æ­£å®—çš„VC++ï¼ï¼ï¼ï¼ï¼ï¼
+	//æ¥¼ä¸Šçš„æ¥¼ä¸Šåœ¨çè¯´ï¼ï¼ï¼åˆ«ä¿¡ä»–çš„ï¼ï¼ï¼
 	glfwTerminate();
 	return 0;
 	//This is the END of the program!
 }
 
 ThreadFunc updateThreadFunc(void*){
-	//ÓÎÏ·¸üĞÂÏß³Ìº¯Êı
+	//æ¸¸æˆæ›´æ–°çº¿ç¨‹å‡½æ•°
 
 	//Wait until start...
 	MutexLock(Mutex);
@@ -245,7 +245,6 @@ ThreadFunc updateThreadFunc(void*){
 	while (updateThreadRun){
 
 		MutexUnlock(Mutex);
-		Sleep(1);
 		MutexLock(Mutex);
 
 		while (updateThreadPaused){
@@ -357,7 +356,7 @@ void splashscreen(){
 
 void setupscreen() {
 
-	//OpenGL²ÎÊıÉèÖÃ
+	//OpenGLå‚æ•°è®¾ç½®
 	glViewport(0, 0, windowwidth, windowheight);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -374,7 +373,7 @@ void setupscreen() {
 	glEnable(GL_BLEND);
 	glEnable(GL_LINE_SMOOTH);
 	glDepthFunc(GL_LEQUAL);
-	glAlphaFunc(GL_GREATER, 0.0); //<--Õâ¼Ò»ïÔÚÂôÃÈ£¿(ÍùºóÃæ¿´¿´£¬ÂôÃÈµÄ¶à×ÅÄØ)
+	glAlphaFunc(GL_GREATER, 0.0); //<--è¿™å®¶ä¼™åœ¨å–èŒï¼Ÿ(å¾€åé¢çœ‹çœ‹ï¼Œå–èŒçš„å¤šç€å‘¢)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
@@ -390,7 +389,7 @@ void setupscreen() {
 }
 
 void InitGL() {
-	//»ñÈ¡OpenGL°æ±¾
+	//è·å–OpenGLç‰ˆæœ¬
 	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
 	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
 	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
@@ -428,7 +427,7 @@ void setupNormalFog() {
 }
 
 void LoadTextures(){
-	//ÔØÈëÎÆÀí
+	//è½½å…¥çº¹ç†
 	Textures::Init();
 	
 	guiImage[1] = Textures::LoadRGBATexture("Textures\\gui\\MainMenu.bmp", "");
@@ -472,13 +471,13 @@ void updategame(){
 
 	static double Wprstm;
 	static bool WP;
-	//static double mxl, myl;
+	static double mxl, myl;
 	glfwGetCursorPos(MainWindow, &mx, &my);
 	player::BlockInHand = player::inventorybox[3][player::itemInHand];
 	
 	//world::unloadedChunks=0
-	//world::rebuiltChunksCount = 0;
-	//world::updatedChunksCount = 0;
+	world::rebuiltChunks = 0;
+	world::updatedChunks = 0;
 
 	//ciArray move
 	if (world::cpArrayAval){
@@ -494,22 +493,20 @@ void updategame(){
 	if (FirstUpdateThisFrame){
 		world::sortChunkLoadUnloadList(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos));
 
-		//Ğ¶ÔØÇø¿é(Unload chunks)
+		//å¸è½½åŒºå—(Unload chunks)
 		int sumUnload;
 		sumUnload = world::chunkUnloads > 4 ? 4 : world::chunkUnloads;
 		for (int i = 0; i < sumUnload; i++) {
-			int cx = world::chunkUnloadList[i][1];
-			int cy = world::chunkUnloadList[i][2];
-			int cz = world::chunkUnloadList[i][3];
-			world::chunk* cp = world::getChunkPtr(cx, cy, cz);
+			world::chunk* cp = world::chunkUnloadList[i].first;
 #ifdef NEWORLD_DEBUG
 			if (cp == nullptr)DebugError("Unload error!");
 #endif
+			int cx = cp->cx, cy = cp->cy, cz = cp->cz;
 			cp->Unload();
 			world::DeleteChunk(cx, cy, cz);
 		}
 
-		//¼ÓÔØÇø¿é(Load chunks)
+		//åŠ è½½åŒºå—(Load chunks)
 		int sumLoad;
 		sumLoad = world::chunkLoads > 4 ? 4 : world::chunkLoads;
 		for (int i = 0; i < sumLoad; i++){
@@ -521,7 +518,7 @@ void updategame(){
 		
 	}
 	
-	//¼ÓÔØ¶¯»­
+	//åŠ è½½åŠ¨ç”»
 	for (int i = 0; i < world::loadedChunks; i++){
 		world::chunk* cp = world::chunks[i];
 		if (cp->loadAnim <= 0.3f)
@@ -530,7 +527,7 @@ void updategame(){
 			cp->loadAnim *= 0.6f;
 	}
 
-	//Ëæ»ú×´Ì¬¸üĞÂ
+	//éšæœºçŠ¶æ€æ›´æ–°
 	/*
 	for (int i = 0; i < world::loadedChunks; i++){
 		int x, y, z;
@@ -561,7 +558,7 @@ void updategame(){
 	}
 	*/
 	
-	//ÅĞ¶ÏÑ¡ÖĞµÄ·½¿é
+	//åˆ¤æ–­é€‰ä¸­çš„æ–¹å—
 	double lx, ly, lz, sidedist[7];
 	int sidedistmin;
 	lx = player::xpos; ly = player::ypos + player::height + player::heightExt; lz = player::zpos;
@@ -577,17 +574,17 @@ void updategame(){
 	selcz = 0;
 	selb = 0;
 	selbr = 0;
-	bool puted = false;     //±ê×¼µÄchinglish°É¡£¡£¡£Ö÷ÒªÊÇputÒÑ¾­±»FB×÷Îª¹Ø¼ü×ÖÁË¡£¡£           --µÈµÈ²»¶Ô°¡£¡ÕâÒÑ¾­ÊÇc++ÁË£¡£¡£¡
+	bool puted = false;     //æ ‡å‡†çš„chinglishå§ã€‚ã€‚ã€‚ä¸»è¦æ˜¯putå·²ç»è¢«FBä½œä¸ºå…³é”®å­—äº†ã€‚ã€‚           --ç­‰ç­‰ä¸å¯¹å•Šï¼è¿™å·²ç»æ˜¯c++äº†ï¼ï¼ï¼
 	
 	if (!bagOpened) {
-		//´ÓÍæ¼ÒÎ»ÖÃ·¢ÉäÒ»ÌõÏß¶Î
+		//ä»ç©å®¶ä½ç½®å‘å°„ä¸€æ¡çº¿æ®µ
 		for (int i = 0; i < selectPrecision*selectDistance; i++) {
-			//Ïß¶ÎÑÓÉì
+			//çº¿æ®µå»¶ä¼¸
 			lx += sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) / (double)selectPrecision;
 			ly += cos(M_PI / 180 * (player::lookupdown + 90)) / (double)selectPrecision;
 			lz += cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) / (double)selectPrecision;
 
-			//Åöµ½·½¿é
+			//ç¢°åˆ°æ–¹å—
 			if (BlockInfo(world::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
 				int x, y, z;
 				x = RoundInt(lx);
@@ -596,7 +593,7 @@ void updategame(){
 
 				selx = x; sely = y; selz = z;
 
-				//ÕÒ·½¿éËùÔÚÇø¿é¼°Î»ÖÃ
+				//æ‰¾æ–¹å—æ‰€åœ¨åŒºå—åŠä½ç½®
 				selcx = getchunkpos(x);
 				selbx = getblockpos(x);
 				selcy = getchunkpos(y);
@@ -604,13 +601,13 @@ void updategame(){
 				selcz = getchunkpos(z);
 				selbz = getblockpos(z);
 
-				sidedist[1] = abs(y + 0.5 - ly);          //¶¥Ãæ
-				sidedist[2] = abs(y - 0.5 - ly);		  //µ×Ãæ
-				sidedist[3] = abs(x + 0.5 - lx);		  //×óÃæ
-				sidedist[4] = abs(x - 0.5 - lx);	   	  //ÓÒÃæ
-				sidedist[5] = abs(z + 0.5 - lz);		  //Ç°Ãæ
-				sidedist[6] = abs(z - 0.5 - lz);		  //ºóÃæ
-				sidedistmin = 1;						  //ÀëÄÄ¸öÃæ×î½ü
+				sidedist[1] = abs(y + 0.5 - ly);          //é¡¶é¢
+				sidedist[2] = abs(y - 0.5 - ly);		  //åº•é¢
+				sidedist[3] = abs(x + 0.5 - lx);		  //å·¦é¢
+				sidedist[4] = abs(x - 0.5 - lx);	   	  //å³é¢
+				sidedist[5] = abs(z + 0.5 - lz);		  //å‰é¢
+				sidedist[6] = abs(z - 0.5 - lz);		  //åé¢
+				sidedistmin = 1;						  //ç¦»å“ªä¸ªé¢æœ€è¿‘
 				for (int j = 2; j <= 6; j++) {
 					if (sidedist[j] < sidedist[sidedistmin]) sidedistmin = j;
 				}
@@ -667,7 +664,7 @@ void updategame(){
 						world::pickblock(x, y, z);
 					}
 				}
-				//·ÅÖÃ·½¿é
+				//æ”¾ç½®æ–¹å—
 				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB)) && player::inventorypcs[3][player::itemInHand] > 0) {
 					puted = true;
 					switch (sidedistmin) {
@@ -708,7 +705,7 @@ void updategame(){
 		player::intypos = RoundInt(player::ypos);
 		player::intzpos = RoundInt(player::zpos);
 
-		//×ªÍ·£¡ÄãÖÎºÃÁËÎÒ¶àÄêµÄ¾±×µ²¡£¡
+		//è½¬å¤´ï¼ä½ æ²»å¥½äº†æˆ‘å¤šå¹´çš„é¢ˆæ¤ç—…ï¼
 		player::xlookspeed = player::ylookspeed = 0.0;
 		if (mx != mxl)player::xlookspeed -= (mx - mxl)*mousemove;
 		if (my != myl)player::ylookspeed += (my - myl)*mousemove;
@@ -727,7 +724,7 @@ void updategame(){
 		player::heading += player::xlookspeed;
 		player::lookupdown += player::ylookspeed;
 
-		//ÏŞÖÆ½Ç¶È£¬±ğ°ÑÍ·×ªµôÏÂÀ´ÁË ¡û_¡û
+		//é™åˆ¶è§’åº¦ï¼Œåˆ«æŠŠå¤´è½¬æ‰ä¸‹æ¥äº† â†_â†
 		if (player::lookupdown < -90){
 			player::lookupdown = -90;
 			player::ylookspeed = 0.0;
@@ -738,14 +735,14 @@ void updategame(){
 		}
 		mxl = mx; myl = my;
 
-		//ÒÆ¶¯£¡(ÉúÃüÔÚÓÚÔË¶¯)
-		if (glfwGetKey(MainWindow, GLFW_KEY_W)) {
+		//ç§»åŠ¨ï¼(ç”Ÿå‘½åœ¨äºè¿åŠ¨)
+		if (glfwGetKey(MainWindow, GLFW_KEY_W) || player::gliding()) {
 			if (!WP) {
 				if (Wprstm == 0.0) {
 					Wprstm = timer();
 				}
 				else {
-					if (timer() - Wprstm <= 0.5 && !player::gliding()) { player::Running = true; Wprstm = 0.0; }
+					if (timer() - Wprstm <= 0.5) { player::Running = true; Wprstm = 0.0; }
 					else Wprstm = timer();
 				}
 			}
@@ -755,9 +752,11 @@ void updategame(){
 				player::xa = -sin(player::heading*M_PI / 180.0) * player::speed;
 				player::za = -cos(player::heading*M_PI / 180.0) * player::speed;
 			}
-			else{
-				player::wingsAngle += 1.0;
-				if (player::wingsAngle > 90.0)player::wingsAngle = 90.0;
+			else {
+				player::xa = sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+				player::ya = cos(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+				player::za = cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+				if (player::ya < 0) player::ya *= 2;
 			}
 		}
 		else {
@@ -767,16 +766,10 @@ void updategame(){
 		if (player::Running)player::speed = runspeed;
 		else player::speed = walkspeed;
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS) {
-			if (!player::gliding()) {
-				player::xa = sin(player::heading*M_PI / 180.0) * player::speed;
-				player::za = cos(player::heading*M_PI / 180.0) * player::speed;
-				Wprstm = 0.0;
-			}
-			else{
-				player::wingsAngle -= 1.0;
-				if (player::wingsAngle < -90.0)player::wingsAngle = -90.0;
-			}
+		if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!player::gliding()) {
+			player::xa = sin(player::heading*M_PI / 180.0) * player::speed;
+			player::za = cos(player::heading*M_PI / 180.0) * player::speed;
+			Wprstm = 0.0;
 		}
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!player::gliding()) {
@@ -815,12 +808,12 @@ void updategame(){
 			}
 		}
 
-		//ÇĞ»»·½¿é
+		//åˆ‡æ¢æ–¹å—
 		if (isPressed(GLFW_KEY_Z) && player::itemInHand > 0) player::itemInHand--;
 		if (isPressed(GLFW_KEY_X) && player::itemInHand < 9) player::itemInHand++;
 		mwl = mw;
 
-		//ÆğÌø£¡
+		//èµ·è·³ï¼
 		if (isPressed(GLFW_KEY_SPACE)){
 			if (!player::inWater) {
 				if ((player::OnGround || player::AirJumps < MaxAirJumps) && FLY == false && CROSS == false){
@@ -836,10 +829,6 @@ void updategame(){
 			}
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_SPACE) == GLFW_PRESS && player::gliding()){
-			player::glidingSpeed += 0.03;
-		}
-
 		if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !player::gliding()) {
 			if (CROSS || FLY) {
 				player::ya -= walkspeed;
@@ -850,7 +839,14 @@ void updategame(){
 			Wprstm = 0.0;
 		}
 
-		//¸÷ÖÖÉèÖÃÇĞ»»
+		if (glfwGetKey(MainWindow, GLFW_KEY_K)&&canGliding&&!player::OnGround&&!player::gliding()) {
+			double h = player::ypos + player::height + player::heightExt;
+			player::glidingEnergy = g*h;
+			player::glidingSpeed = 0;
+			player::glidingNow = true;
+		}
+
+		//å„ç§è®¾ç½®åˆ‡æ¢
 
 		if (isPressed(GLFW_KEY_F1)){
 			FLY = !FLY;
@@ -865,7 +861,7 @@ void updategame(){
 		}
 		if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
 		if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
-		if (isPressed(GLFW_KEY_F6) == GLFW_PRESS && player::OnGround) canGliding = !canGliding;
+		if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) canGliding = !canGliding;
 	}
 	
 	if (glfwGetKey(MainWindow, GLFW_KEY_E) == GLFW_PRESS && ep == false){
@@ -885,7 +881,7 @@ void updategame(){
 		if (isPressed(GLFW_KEY_L)) world::saveAllChunks();
 	}
 
-	//ÌøÔ¾
+	//è·³è·ƒ
 	if (!player::gliding()) {
 		if (!player::inWater) {
 			if (!FLY && !CROSS && !player::gliding() && !glfwGetKey(MainWindow, GLFW_KEY_R) && !glfwGetKey(MainWindow, GLFW_KEY_F)) {
@@ -896,7 +892,7 @@ void updategame(){
 					isPressed(GLFW_KEY_SPACE, true);
 				}
 				else {
-					//×ÔÓÉÂäÌå¼ÆËã
+					//è‡ªç”±è½ä½“è®¡ç®—
 					player::ya = player::jump + 0.5 * 0.6 * 1 / 900;
 					player::jump -= 0.025;
 				}
@@ -917,28 +913,22 @@ void updategame(){
 		}
 	}
 
-	//ÅÀÇ½
+	//çˆ¬å¢™
 	//if (player::NearWall && FLY == false && CROSS == false){
 	//	player::ya += walkspeed
 	//	player::jump = 0.0
 	//}
 	
-	//¿ÓµùµÄ»¬Ïè
-	if (player::gliding() && !player::OnGround) {
-
-		double ma = 50.0; //Íæ¼ÒÖØÁ¿
-		double speed = sqrt(player::xd*player::xd + player::yd*player::yd + player::zd*player::zd); //Íæ¼ÒËÙ¶È
-		double qs = 1.2*speed*speed/2.0*1.0; //¶¯Ñ¹*²Î¿¼Ãæ»ı
-		double lc = player::getLiftCoefficient(); //ÉıÁ¦ÏµÊı
-		//double ld = player::getDragCoefficient(); //×èÁ¦ÏµÊı
-		player::glidingSpeed *= 0.98;
-		player::ya *= 0.98;
-		player::ya += lc*qs / ma;
-		player::ya -= 0.025 / ma;
-		player::xa = sin(M_PI / 180 * (player::heading - 180)) * player::glidingSpeed;
-		player::za = cos(M_PI / 180 * (player::heading - 180)) * player::glidingSpeed;
-		//player::wingsAngle *= 0.99;
-
+	if (player::gliding()) {
+		double& E = player::glidingEnergy;
+		double oldh = player::ypos + player::height + player::heightExt + player::ya;
+		double h = oldh;
+		if (E - glidingMinimumSpeed < h*g) {  //å°äºæœ€å°é€Ÿåº¦
+			h = (E - glidingMinimumSpeed) / g;
+		}
+		player::glidingSpeed = sqrt(2 * (E - g*h));
+		E -= EDrop;
+		player::ya += h - oldh;
 	}
 
 	mbp = mb;
@@ -972,14 +962,14 @@ void debugText(string s, bool init) {
 }
 
 void drawMain() {
-	//»­³¡¾°
+	//ç”»åœºæ™¯
 	//	Time_renderscene_ = timer();
-	
+
 	double curtime = timer();
 	double TimeDelta;
 	double xpos, ypos, zpos;
 	int renderedChunk = 0;
-	
+
 	if (player::Running){
 		if (FOVyExt < 9.8){
 			TimeDelta = curtime - SpeedupAnimTimer;
@@ -999,7 +989,7 @@ void drawMain() {
 	SpeedupAnimTimer = curtime;
 
 	if (player::OnGround){
-		//°ë¶×ÌØĞ§
+		//åŠè¹²ç‰¹æ•ˆ
 		if (player::jump < -0.005){
 			if (player::jump <= -(player::height - 0.5f))
 				player::heightExt = -(player::height - 0.5f);
@@ -1037,30 +1027,15 @@ void drawMain() {
 	player::cyt = getchunkpos((int)player::ypos);
 	player::czt = getchunkpos((int)player::zpos);
 
-	//¸üĞÂÇø¿éÏÔÊ¾ÁĞ±í
-	world::chunkBuildRenders = world::updatedChunks.size();
-	std::sort(world::updatedChunks.begin(), world::updatedChunks.end());
-	int brl = world::chunkBuildRenders > 4 ? 4 : world::chunkBuildRenders;
-	for (int i = world::chunkBuildRenders - 1; i >= world::chunkBuildRenders - brl; i--) {
-		world::chunk* cp = world::updatedChunks[i].ptr;
-		if (cp->buildRender()){
-			for (int j = i + 1; j < world::chunkBuildRenders; j++) {
-				world::updatedChunks[j - 1] = world::updatedChunks[j];
-			}
-			world::updatedChunks.pop_back();
-			world::chunkBuildRenders--;
-		}
-	}
-	/*
+	//æ›´æ–°åŒºå—æ˜¾ç¤ºåˆ—è¡¨
 	world::sortChunkBuildRenderList(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos));
 	int brl = world::chunkBuildRenders > 4 ? 4 : world::chunkBuildRenders;
 	for (int i = 0; i < brl; i++) {
 		int ci = world::chunkBuildRenderList[i][1];
 		world::chunks[ci]->buildRender();
 	}
-	*/
 
-	//É¾³ıÒÑĞ¶ÔØÇø¿éµÄVBO
+	//åˆ é™¤å·²å¸è½½åŒºå—çš„VBO
 	if (world::vbuffersShouldDelete.size() > 0){
 		glDeleteBuffersARB(world::vbuffersShouldDelete.size(), world::vbuffersShouldDelete.data());
 		world::vbuffersShouldDelete.clear();
@@ -1097,8 +1072,7 @@ void drawMain() {
 		if (cr.vtxs[0] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		//renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], true, true);
-		renderer::renderbuffer_opt(cr.vbuffers[0], cr.vtxs[0]);
+		renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], true, true);
 		glPopMatrix();
 	}
 
@@ -1141,8 +1115,7 @@ void drawMain() {
 		if (cr.vtxs[1] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		//renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], true, true);
-		renderer::renderbuffer_opt(cr.vbuffers[1], cr.vtxs[1]);
+		renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], true, true);
 		glPopMatrix();
 	}
 	glDisable(GL_CULL_FACE);
@@ -1151,8 +1124,7 @@ void drawMain() {
 		if (cr.vtxs[2] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		//renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], true, true);
-		renderer::renderbuffer_opt(cr.vbuffers[2], cr.vtxs[2]);
+		renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], true, true);
 		glPopMatrix();
 	}
 
@@ -1202,7 +1174,7 @@ void drawMain() {
 #else
 		localtime_s(timeinfo, &t);
 #endif
-		strftime(tmp, sizeof(tmp), "%YÄê%mÔÂ%dÈÕ%HÊ±%M·Ö%SÃë", timeinfo);
+		strftime(tmp, sizeof(tmp), "%Yå¹´%mæœˆ%dæ—¥%Hæ—¶%Måˆ†%Sç§’", timeinfo);
 		std::stringstream ss;
 		ss << "\\screenshots\\" << tmp << ".bmp";
 		saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
@@ -1212,7 +1184,7 @@ void drawMain() {
 		createThumbnail();
 	}
 
-	//ÆÁÄ»Ë¢ĞÂ£¬Ç§Íò±ğÉ¾£¬ºó¹û×Ô¸º£¡£¡£¡
+	//å±å¹•åˆ·æ–°ï¼Œåƒä¸‡åˆ«åˆ ï¼Œåæœè‡ªè´Ÿï¼ï¼ï¼
 	//====refresh====//
 	MutexUnlock(Mutex);
 	glfwSwapBuffers(MainWindow);
@@ -1225,8 +1197,8 @@ void drawMain() {
 }
 
 void drawBorder(int x, int y, int z) {
-	//»æÖÆÑ¡Ôñ±ß¿ò£¬½¨ÒéÓÃGL_LINE_LOOP£¬±ğÑ§ÎÒQAQ
-	static float extrize = 0.002f; //Êµ¼ÊÉÏÕâ¸ö±ß¿òÓ¦¸Ã±È·½¿é´óÒ»Ğ©£¬·ñÔòºÜÄÑ¿´
+	//ç»˜åˆ¶é€‰æ‹©è¾¹æ¡†ï¼Œå»ºè®®ç”¨GL_LINE_LOOPï¼Œåˆ«å­¦æˆ‘QAQ
+	static float extrize = 0.002f; //å®é™…ä¸Šè¿™ä¸ªè¾¹æ¡†åº”è¯¥æ¯”æ–¹å—å¤§ä¸€äº›ï¼Œå¦åˆ™å¾ˆéš¾çœ‹
 	glEnable(GL_LINE_SMOOTH);
 	glLineWidth(1.0f);
 	glColor3f(0.2f, 0.2f, 0.2f);
@@ -1304,16 +1276,6 @@ void drawGUI(){
 	glDepthFunc(GL_ALWAYS);
 	glDisable(GL_TEXTURE_2D);
 	glEnable(GL_LINE_SMOOTH);
-
-	if (player::gliding()){
-		glLineWidth(1);
-		glBegin(GL_LINES);
-		glColor4f(gui::FgR, gui::FgG, gui::FgB, 0.8f);
-		glVertex2i(windowwidth / 2, windowheight / 2);
-		glVertex2i(windowwidth / 2 + int(cos(player::wingsAngle*M_PI / 180.0)*50.0), windowheight / 2 - int(sin(player::wingsAngle*M_PI / 180.0)*50.0));
-		glEnd();
-	}
-
 	int seldes_100 = int(seldes / 100);
 
 	if (DebugMode) {
@@ -1499,9 +1461,9 @@ void drawGUI(){
 
 		ss << world::loadedChunks << " / " << world::chunkArraySize << " chunks loaded";
 		debugText(ss.str()); ss.str("");
-		ss << world::unloadedChunksCount << " chunks unloaded";
+		ss << world::unloadedChunks << " chunks unloaded";
 		debugText(ss.str()); ss.str("");
-		ss << world::updatedChunksCount << " chunks updated";
+		ss << world::updatedChunks << " chunks updated";
 		debugText(ss.str()); ss.str("");
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
@@ -1530,12 +1492,10 @@ void drawGUI(){
 
 	}
 
-	//¼ì²âÖ¡ËÙÂÊ
+	//æ£€æµ‹å¸§é€Ÿç‡
 	if (timer() - fctime >= 1) {
 		fps = fpsc;
 		fpsc = 0;
-		world::updatedChunksCount = world::updatedChunksCounter;
-		world::updatedChunksCounter = 0;
 		fctime = timer();
 	}
 	fpsc++;
@@ -1651,7 +1611,7 @@ void renderDestroy(float level, int x, int y, int z) {
 }
 
 void drawBag() {
-	//±³°ü½çÃæ
+	//èƒŒåŒ…ç•Œé¢
 	static int si, sj, sf;
 	int leftp = (windowwidth - 392) / 2;
 	int upp = windowheight - 152 - 16;
@@ -1660,19 +1620,19 @@ void drawBag() {
 	static block pcsselected = 0;
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-	
+
 	mousew = mw;
 	mouseb = mb;
 	glDepthFunc(GL_ALWAYS);
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_TEXTURE_2D);
-	
+
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	
+
 	glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
 	glBegin(GL_QUADS);
 	glVertex2i(0, 0);
@@ -1680,7 +1640,7 @@ void drawBag() {
 	glVertex2i(windowwidth, windowheight);
 	glVertex2i(0, windowheight);
 	glEnd();
-	
+
 	glEnable(GL_TEXTURE_2D);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	sf = 0;
@@ -1794,4 +1754,3 @@ void createThumbnail(){
 	ss << "Worlds\\" << world::worldname << "\\Thumbnail.bmp";
 	saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
 }
-

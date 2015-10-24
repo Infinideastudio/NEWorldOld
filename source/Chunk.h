@@ -8,7 +8,7 @@ namespace world{
 	extern string worldname;
 	extern brightness BRIGHTNESSMIN;
 	extern brightness skylight;
-	
+
 	class chunk{
 
 	private:
@@ -46,7 +46,7 @@ namespace world{
 		}
 		void LoadFromFile();
 		void SaveToFile();
-		bool buildRender();
+		void buildRender();
 		void destroyRender();
 
 		inline block getblock(int x, int y, int z) {
