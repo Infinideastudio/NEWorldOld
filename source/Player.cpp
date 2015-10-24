@@ -4,7 +4,6 @@
 bool canGliding = false; //滑翔
 bool FLY;      //飞行
 bool CROSS;    //穿墙 ←_← (Superman!)
-double glidingMinimumSpeed = pow(1, 2) / 2;
 
 namespace player{
 	Hitbox::AABB playerbox;
@@ -15,7 +14,6 @@ namespace player{
 	bool Running = false;
 	bool NearWall = false;
 	bool inWater = false;
-	bool glidingNow = false;
 	double glidingEnergy, glidingSpeed;
 	double speed;
 	int AirJumps;
@@ -23,6 +21,7 @@ namespace player{
 	double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
 	double xlookspeed, ylookspeed;
 	int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
+	double wingsAngle;
 
 	block BlockInHand = blocks::AIR;
 	ubyte itemInHand = 0;
@@ -90,7 +89,6 @@ namespace player{
 				OnGround = true;
 				player::glidingEnergy = 0;
 				player::glidingSpeed = 0;
-				player::glidingNow = false;
 			}
 			else OnGround = false;
 			if (ya != yal && yal>0.0) jump = 0.0;
@@ -201,6 +199,24 @@ namespace player{
 				}
 			}
 		}
+	}
+
+	double getLiftCoefficient(){
+		//获取翅膀升力系数
+		double a = wingsAngle;
+		return sin(2.0*a*M_PI/180.0);
+	}
+
+	double getDragCoefficient(){
+		//获取翅膀阻力系数
+		double a = wingsAngle;
+		return 1.0-cos(2.0*a*M_PI/180.0);
+	}
+
+	double getDragCoefficientY(){
+		//获取垂直方向翅膀阻力系数
+		double a = abs(wingsAngle + 90.0);
+		return 1.0-cos(2.0*a*M_PI/180.0);
 	}
 
 }
