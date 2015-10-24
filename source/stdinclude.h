@@ -20,9 +20,8 @@
 #include <sstream>
 #include <vector>
 #include <memory>
-//#include <iomanip>
+#include <iomanip>
 #include <fstream>
-#include <algorithm>
 
 using std::string;
 using std::vector;
