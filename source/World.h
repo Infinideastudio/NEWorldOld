@@ -4,7 +4,10 @@
 #include "HeightMap.h"
 #include "Chunk.h"
 #include "Hitbox.h"
-#include "Player.h"
+
+namespace player {
+	extern double xpos, ypos, zpos;
+}
 
 namespace world{
 
@@ -45,7 +48,7 @@ namespace world{
 	//extern int chunkBuildRenderList[256][2];
 	extern vector<updatedChunksItem> updatedChunks; //更新了的区块
 	extern int chunkLoadList[256][4];
-	extern pair<chunk*, int> chunkUnloadList[256];
+	extern int chunkUnloadList[256][4];
 	extern vector<unsigned int> vbuffersShouldDelete;
 	extern int chunkBuildRenders, chunkLoads, chunkUnloads;
 	extern bool* loadedChunkArray;
