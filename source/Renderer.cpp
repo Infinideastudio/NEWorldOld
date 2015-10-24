@@ -30,8 +30,8 @@ namespace renderer {
 		TexCoord2f((float)x, (float)y);
 	}
 
-	void Color3d(double r, double g, double b){
-		Color3f((float)r, (float)g, (float)b);
+	void Color3d(double r_, double g_, double b_){
+		Color3f((float)r_, (float)g_, (float)b_);
 	}
 
 	void Vertex3f(float x, float y, float z) {
@@ -109,7 +109,7 @@ namespace renderer {
 
 	}
     
-	void renderbuffer(unsigned int buffer, int vtxs, bool ftex, bool fcol) {
+	void renderbuffer(unsigned int buffer, int vtxs, bool ftex, bool fcol){
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
 
@@ -139,7 +139,7 @@ namespace renderer {
 		//================================
 
 	}
-    
+
 	//GLhandleARB loadShader(string filename, uint mode){
         
 		//GLhandleARB shader;

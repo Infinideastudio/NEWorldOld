@@ -31,8 +31,8 @@ namespace world{
 		delete[] pbrightness;
 		pblocks = nullptr;
 		pbrightness = nullptr;
-		updated = false;
-		unloadedChunks++;
+		//updated = false;
+		unloadedChunksCounter++;
 	}
 
 	void chunk::build(){
@@ -104,7 +104,8 @@ namespace world{
 		build();
 #endif
 		if (Empty)destroy();
-		else updated = true;
+		//else updated = true;
+		else world::setChunkUpdated(cx, cy, cz);
 	}
 
 	void chunk::Unload(){
@@ -132,8 +133,8 @@ namespace world{
 		file.close();
 	}
 
-	void chunk::buildRender(){
-		if (Empty) return;
+	bool chunk::buildRender(){
+		if (Empty) return false;
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr || pbrightness == nullptr){
 			DebugWarning("Empty pointer when building vertex buffers!");
@@ -146,14 +147,14 @@ namespace world{
 			for (y = -1; y <= 1; y++) {
 				for (z = -1; z <= 1; z++) {
 					if (x == 0 && y == 0 && z == 0) continue;
-					if (chunkOutOfBound(cx + x, cy + y, cz + z))  continue;
-					if (!chunkLoaded(cx + x, cy + y, cz + z)) return;
+					if (chunkOutOfBound(cx + x, cy + y, cz + z)) continue;
+					if (!chunkLoaded(cx + x, cy + y, cz + z)) return false;
 				}
 			}
 		}
 		
-		rebuiltChunks++;
-		updatedChunks++;
+		//rebuiltChunksCounter++;
+		updatedChunksCounter++;
 
 		if (renderBuilt == false){
 			renderBuilt = true;
@@ -195,8 +196,9 @@ namespace world{
 			}
 		}
 		renderer::Flush(vbuffer[2], vertexes[2]);
-		updated = false;
+		//updated = false;
 
+		return true;
 	}
 
 	void chunk::destroyRender(){
