@@ -22,11 +22,13 @@
 #include <memory>
 #include <iomanip>
 #include <fstream>
+#include <map>
 
 using std::string;
 using std::vector;
 using std::pair;
 using std::unique_ptr;
+using std::map;
 using std::cout;
 using std::endl;
 
