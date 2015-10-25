@@ -92,6 +92,9 @@
     <ClInclude Include="source\GUI.h" />
     <ClInclude Include="source\Hitbox.h" />
     <ClInclude Include="source\Menus.h" />
+    <ClInclude Include="source\Mob.h" />
+    <ClInclude Include="source\Object.h" />
+    <ClInclude Include="source\OnlinePlayer.h" />
     <ClInclude Include="source\Particles.h" />
     <ClInclude Include="source\Player.h" />
     <ClInclude Include="source\Renderer.h" />
@@ -111,6 +114,7 @@
     <ClCompile Include="source\Hitbox.cpp" />
     <ClCompile Include="source\Menus.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
+    <ClCompile Include="source\OnlinePlayer.cpp" />
     <ClCompile Include="source\Particles.cpp" />
     <ClCompile Include="source\Player.cpp" />
     <ClCompile Include="source\Renderer.cpp" />

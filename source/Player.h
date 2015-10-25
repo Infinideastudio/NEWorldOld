@@ -1,6 +1,7 @@
 #pragma once
 #include "Definitions.h"
 #include "Hitbox.h"
+#include "OnlinePlayer.h"
 
 const double g = 9.8;
 const double EDrop = 0.1;
@@ -23,6 +24,9 @@ namespace player{
 	void save(string worldn);
 	void load(string worldn);
 	void additem(block itemname);
+
+	PlayerPacket convertToPlayerPacket();
+
 
 	extern Hitbox::AABB playerbox;
 

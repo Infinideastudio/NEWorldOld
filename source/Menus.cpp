@@ -409,8 +409,7 @@ void worldmenu(){
 		mwlast = mw;
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
-		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS&&!escp || glfwWindowShouldClose(MainWindow)) exit(0);
-		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == GLFW_RELEASE)escp = false;
+		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS|| glfwWindowShouldClose(MainWindow)) exit(0);
 	} while (!gamebegin);
 	MainForm.cleanup();
 }

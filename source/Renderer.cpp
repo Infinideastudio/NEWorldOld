@@ -30,8 +30,8 @@ namespace renderer {
 		TexCoord2f((float)x, (float)y);
 	}
 
-	void Color3d(double r, double g, double b){
-		Color3f((float)r, (float)g, (float)b);
+	void Color3d(double _r, double _g, double _b){
+		Color3f((float)_r, (float)_g, (float)_b);
 	}
 
 	void Vertex3f(float x, float y, float z) {
@@ -66,7 +66,7 @@ namespace renderer {
 		Colored = true;
 	}
 
-	void Flush(unsigned int& buffer, int& vtxs) {
+	void Flush(VBOID& buffer, vtxCount& vtxs) {
 
 		//上次才知道原来Flush还有冲厕所的意思QAQ
 		//OpenGL有个函数glFlush()，翻译过来就是GL冲厕所() ←_←
@@ -109,7 +109,7 @@ namespace renderer {
 
 	}
     
-	void renderbuffer(unsigned int buffer, int vtxs, bool ftex, bool fcol) {
+	void renderbuffer(VBOID buffer, vtxCount vtxs, bool ftex, bool fcol) {
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
 

@@ -10,6 +10,6 @@ namespace renderer{
 	void Vertex3f(float x, float y, float z);
 	void TexCoord2f(float x, float y);
 	void Color3f(float r, float g, float b);
-	void Flush(unsigned int& buffer, int& vtxs);
-	void renderbuffer(unsigned int buffer, int vtxs, bool ftex, bool fcol);
+	void Flush(VBOID& buffer, vtxCount& vtxs);
+	void renderbuffer(VBOID buffer, vtxCount vtxs, bool ftex, bool fcol);
 }
