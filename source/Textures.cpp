@@ -191,36 +191,15 @@ namespace Textures {
 	void SaveRGBImage(string filename, TEXTURE_RGB& image) {
 		BITMAPFILEHEADER bitmapfileheader;
 		BITMAPINFOHEADER bitmapinfoheader;
-		bitmapfileheader.bfType = BITMAP_ID;
 		bitmapfileheader.bfSize = image.sizeX*image.sizeY * 3 + 54;
-		bitmapfileheader.bfReserved1 = 0;
-		bitmapfileheader.bfReserved2 = 0;
-		bitmapfileheader.bfOffBits = 54;
-		bitmapinfoheader.biSize = 40;
 		bitmapinfoheader.biWidth = image.sizeX;
 		bitmapinfoheader.biHeight = image.sizeY;
-		bitmapinfoheader.biPlanes = 1;
-		bitmapinfoheader.biBitCount = 24;
-		bitmapinfoheader.biCompression = 0;
 		bitmapinfoheader.biSizeImage = image.sizeX*image.sizeY * 3;
-		bitmapinfoheader.biXPelsPerMeter = 0;
-		bitmapinfoheader.biYPelsPerMeter = 0;
-		bitmapinfoheader.biClrUsed = 0;
-		bitmapinfoheader.biClrImportant = 0;
-		ubyte* p;
-		ubyte r, g, b;
+
 		std::ofstream ofs(filename, std::ios::out | std::ios::binary);
 		ofs.write((char*)&bitmapfileheader, sizeof(bitmapfileheader));
 		ofs.write((char*)&bitmapinfoheader, sizeof(bitmapinfoheader));
-		p = image.buffer.get();
-		for (unsigned int index = 0; index != image.sizeX*image.sizeY; index++) {
-			r = *p; p += 1;
-			g = *p; p += 1;
-			b = *p; p += 1;
-			ofs.write((char*)&b, sizeof(ubyte));
-			ofs.write((char*)&g, sizeof(ubyte));
-			ofs.write((char*)&r, sizeof(ubyte));
-		}
+		ofs.write((char*)image.buffer.get(), sizeof(ubyte)*image.sizeX*image.sizeY * 3);
 		ofs.close();
 	}
 

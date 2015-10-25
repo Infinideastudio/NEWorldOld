@@ -22,16 +22,16 @@ namespace Textures{
 	};
 
 	struct BITMAPINFOHEADER {
-		int biSize, biWidth, biHeight;
-		short biPlanes, biBitCount;
-		int biCompression, biSizeImage, biXPelsPerMeter, biYPelsPerMeter, biClrUsed, biClrImportant;
+		int biSize = 40, biWidth, biHeight;
+		short biPlanes = 1, biBitCount = 24;
+		int biCompression = 0, biSizeImage, biXPelsPerMeter = 0, biYPelsPerMeter = 0, biClrUsed = 0, biClrImportant = 0;
 	};
 
 	struct BITMAPFILEHEADER {
-		short bfType;
+		short bfType = BITMAP_ID;
 		int bfSize;
-		short bfReserved1, bfReserved2;
-		int bfOffBits;
+		short bfReserved1 = 0, bfReserved2 = 0;
+		int bfOffBits = 54;
 	};
 #pragma pack(pop)
 
