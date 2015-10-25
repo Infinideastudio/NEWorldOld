@@ -887,7 +887,6 @@ namespace world{
 		unloadedChunks = 0; unloadedChunksCount = 0;
 		memset(chunkBuildRenderList, 0, 256 * 2 * sizeof(int));
 		memset(chunkLoadList, 0, 256 * 4 * sizeof(int));
-		memset(chunkUnloadList, 0, 256 * 4 * sizeof(int));
 		chunkBuildRenders = 0; chunkLoads = 0; chunkUnloads = 0;
 		
 		delete[] loadedChunkArray;

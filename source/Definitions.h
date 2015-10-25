@@ -11,7 +11,7 @@
 #endif
 */
 
-#define NEWORLD_DEBUG
+//#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG
 #define NEWORLD_DEBUG_CONSOLE_OUTPUT
 #define NEWORLD_DEBUG_NO_FILEIO
@@ -32,6 +32,9 @@ typedef unsigned char blockprop;
 typedef unsigned char brightness;
 typedef GLuint TextureID;
 typedef unsigned short block;
+typedef unsigned int VBOID;
+typedef int vtxCount;
+typedef int SkinID;
 #ifdef NEWORLD_USE_WINAPI
 typedef HANDLE Mutex_t;
 typedef HANDLE Thread_t;
@@ -79,6 +82,7 @@ extern TextureID BlockTexture[20];
 extern TextureID BlockTextures;
 extern TextureID guiImage[6];
 extern TextureID DestroyImage[11];
+extern TextureID DefaultSkin;
 
 extern Mutex_t Mutex;
 extern Thread_t updateThread;
@@ -100,7 +104,6 @@ extern GLFWcursor* MouseCursor;
 extern double mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
 extern string inputstr;
-extern bool ep, escp;
 extern PFNGLGENBUFFERSARBPROC glGenBuffersARB;
 extern PFNGLBINDBUFFERARBPROC glBindBufferARB;
 extern PFNGLBUFFERDATAARBPROC glBufferDataARB;

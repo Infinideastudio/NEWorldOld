@@ -35,6 +35,7 @@ TextureID BlockTexture[20];
 TextureID BlockTextures;
 TextureID guiImage[6];
 TextureID DestroyImage[11];
+TextureID DefaultSkin;
 
 //线程
 Mutex_t Mutex;
@@ -62,7 +63,6 @@ double mx, my, mxl, myl;
 int mw, mb, mbp, mbl, mwl;
 //键盘输入数据
 string inputstr;
-bool ep, escp;
 //OpenGL Procedure
 PFNGLGENBUFFERSARBPROC glGenBuffersARB;
 PFNGLBINDBUFFERARBPROC glBindBufferARB;

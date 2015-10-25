@@ -203,4 +203,15 @@ namespace player{
 		}
 	}
 
+	PlayerPacket convertToPlayerPacket()
+	{
+		PlayerPacket p;
+		p.x = xpos;
+		p.y = ypos;
+		p.z = zpos;
+		p.onlineID = -1; //TODO: 联网获得onlineID
+		strcpy_s(p.name, ""); //TODO: 获得玩家名称
+		return p;
+	}
+
 }

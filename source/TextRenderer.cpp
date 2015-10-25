@@ -9,7 +9,7 @@ namespace TextRenderer{
 	float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
 	unsigned int unicodeTex[256];
 	bool unicodeTexAval[256];
-	bool useUnicodeASCIIFont;
+	bool useUnicodeASCIIFont = true;
 
 	void BuildFont(int w, int h){
 		ww = w;
