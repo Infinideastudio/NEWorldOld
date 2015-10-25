@@ -22,8 +22,8 @@ namespace world{
 		bool updated = false;
 		bool renderBuilt = false;
 		unsigned long long id;
-		unsigned int vbuffer[3];
-		int vertexes[3];
+		vtxCount vertexes[3];
+		VBOID vbuffer[3];
 		double loadAnim = 0.0;
 
 		void Init(int cxi, int cyi, int czi, uint64 idi);
