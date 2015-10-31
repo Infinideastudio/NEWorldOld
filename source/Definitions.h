@@ -30,11 +30,12 @@ typedef unsigned long uint32;
 typedef unsigned long long uint64;
 typedef unsigned char blockprop;
 typedef unsigned char brightness;
-typedef GLuint TextureID;
+typedef unsigned int TextureID;
 typedef unsigned short block;
 typedef unsigned int VBOID;
 typedef int vtxCount;
 typedef int SkinID;
+#ifndef NEWORLD_SERVER
 #ifdef NEWORLD_USE_WINAPI
 typedef HANDLE Mutex_t;
 typedef HANDLE Thread_t;
@@ -176,3 +177,4 @@ inline string itos(int i){
 
 void DebugWarning(string msg);
 void DebugError(string msg);
+#endif
