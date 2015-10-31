@@ -2,14 +2,17 @@
 #include "Renderer.h"
 
 map<SkinID, pair<VBOID, vtxCount>> playerSkins;
+vector<OnlinePlayer> players;
 
 void OnlinePlayer::GenVAOVBO(int skinID) {
-	if (skinID == 0) { //默认皮肤
+	if (skinID != -1) { //默认皮肤
 		using renderer::TexCoord2d;
 		using renderer::Vertex3f;
+		using renderer::Color3f;
 		renderer::Init();
 		//===Head===
 		//Left
+		Color3f(1, 1, 1);
 		TexCoord2d(1.0 / 8 * 1, 1.0 / 8 * 8); Vertex3f(-0.125f, 0.125f, 0.125f);
 		TexCoord2d(1.0 / 8 * 0, 1.0 / 8 * 8); Vertex3f(-0.125f, 0.125f, -0.125f);
 		TexCoord2d(1.0 / 8 * 0, 1.0 / 8 * 7); Vertex3f(-0.125f, -0.125f, -0.125f);
@@ -267,11 +270,27 @@ void OnlinePlayer::GenVAOVBO(int skinID) {
 	}
 }
 
-void OnlinePlayer::render() {
+void OnlinePlayer::buildRenderIfNeed() {
+	if (VBO == 0 || vtxs == 0) {
+		auto iter = playerSkins.find(_skinID);
+		if (iter != playerSkins.end()) {
+			VBO = iter->second.first;
+			vtxs = iter->second.second;
+		}
+		else {
+			VBO = 0;
+			vtxs = 0;
+			GenVAOVBO(_skinID); //生成玩家的VAO/VBO
+			playerSkins[_skinID] = std::make_pair(VBO, vtxs);
+		}
+	}
+}
+
+void OnlinePlayer::render() const {
 	glDisable(GL_CULL_FACE);
 	glNormal3f(0, 0, 0);
 	glColor4f(1.0, 1.0, 1.0, 0.5);
 	glBindTexture(GL_TEXTURE_2D, _skinID == 0 ? DefaultSkin : _skinID);
-	renderer::renderbuffer(VBO, vtxs, true, false);
+	renderer::renderbuffer(VBO, vtxs, true, true);
 	glEnable(GL_CULL_FACE);
 }
