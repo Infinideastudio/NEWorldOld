@@ -83,7 +83,7 @@ namespace renderer {
 
 		if (Vertexes > 0) {
 
-			if (buffer == 0)glGenBuffersARB(1, &buffer);
+			if (buffer == 0) glGenBuffersARB(1, &buffer);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
 
 			if (Textured) {

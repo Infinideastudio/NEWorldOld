@@ -11,6 +11,8 @@ namespace player{
 	float height = 1.2f;     //玩家的高度
 	float heightExt = 0.0f;
 	double xa, ya, za, xd, yd, zd;
+	unsigned int onlineID;
+	string name;
 	bool OnGround = false;
 	bool Running = false;
 	bool NearWall = false;
@@ -207,10 +209,13 @@ namespace player{
 	{
 		PlayerPacket p;
 		p.x = xpos;
-		p.y = ypos;
+		p.y = ypos + height + heightExt;
 		p.z = zpos;
-		p.onlineID = -1; //TODO: 联网获得onlineID
-		strcpy_s(p.name, ""); //TODO: 获得玩家名称
+		p.heading = heading;
+		p.lookupdown = lookupdown;
+		p.onlineID = onlineID;
+		p.skinID = 0;
+		strcpy_s(p.name, name.c_str());
 		return p;
 	}
 
