@@ -1,47 +1,33 @@
 #pragma once
 #include "Object.h"
 #include "stdinclude.h"
+#include "PlayerPacket.h"
 
 extern map<SkinID, pair<VBOID, vtxCount>> playerSkins;
 
-struct PlayerPacket {
-	double x, y, z;
-	char name[64];
-	int onlineID;
-	int skinID;
-};
-
 class OnlinePlayer : public Object {
 public:
-	OnlinePlayer(double x, double y, double z, string name, int onlineID, SkinID skinID) :
-		Object(x, y, z), _name(name), _onlineID(onlineID), _skinID(skinID)
-	{
-		auto iter = playerSkins.find(_skinID);
-		if (iter != playerSkins.end()) {
-			VBO = iter->second.first;
-			vtxs = iter->second.second;
-		}
-		else {
-			VBO = 0;
-			vtxs = 0;
-			GenVAOVBO(_skinID); //生成玩家的VAO/VBO
-			playerSkins[_skinID] = std::make_pair(VBO, vtxs);
-		}
-	};
+	OnlinePlayer(double x, double y, double z, string name, int onlineID, SkinID skinID, double lookupdown, double heading) :
+		Object(x, y, z), _name(name), _onlineID(onlineID), _skinID(skinID), _lookupdown(lookupdown), _heading(heading) {}
+	
+	OnlinePlayer(PlayerPacket& p) :
+		OnlinePlayer(p.x, p.y, p.z, p.name, p.onlineID, p.skinID, p.lookupdown, p.heading) {}
 
 	const string& getName() const { return _name; }
 
-	static OnlinePlayer convertFromPlayerPacket(PlayerPacket p) {
-		return OnlinePlayer(p.x, p.y, p.z, p.name, p.onlineID, p.skinID);
-	}
+	const int getOnlineID() const { return _onlineID; }
 
 	void GenVAOVBO(int skinID);
 
-	void render();
+	void buildRenderIfNeed();
+
+	void render() const;
 
 private:
-	const string _name;
+	string _name;
 	int _onlineID;
 	SkinID _skinID;
-
+	double _lookupdown, _heading;
 };
+
+extern vector<OnlinePlayer> players;
