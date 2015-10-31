@@ -21,14 +21,14 @@
     <Filter Include="源代码\Render">
       <UniqueIdentifier>{a448efda-cf30-4017-8d62-e5feed0408dd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\GUI">
-      <UniqueIdentifier>{92f24a42-2d77-4317-9cd7-04a69e43c2fa}</UniqueIdentifier>
-    </Filter>
     <Filter Include="源代码\Player">
       <UniqueIdentifier>{40ea1808-71f0-4c4c-a9ee-d3c04da07f95}</UniqueIdentifier>
     </Filter>
     <Filter Include="源代码\Network">
       <UniqueIdentifier>{b6623145-3e33-48a1-be11-1cf4ad2065bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源代码\GUI">
+      <UniqueIdentifier>{92f24a42-2d77-4317-9cd7-04a69e43c2fa}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -92,6 +92,12 @@
     <ClInclude Include="source\OnlinePlayer.h">
       <Filter>源代码\Objects</Filter>
     </ClInclude>
+    <ClInclude Include="source\Network.h">
+      <Filter>源代码\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="source\PlayerPacket.h">
+      <Filter>源代码\Network</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -144,6 +150,9 @@
     </ClCompile>
     <ClCompile Include="source\OnlinePlayer.cpp">
       <Filter>源代码\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Network.cpp">
+      <Filter>源代码\Network</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

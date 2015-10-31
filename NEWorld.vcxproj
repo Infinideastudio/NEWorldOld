@@ -79,7 +79,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glfw3dll.lib</AdditionalDependencies>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -93,10 +93,12 @@
     <ClInclude Include="source\Hitbox.h" />
     <ClInclude Include="source\Menus.h" />
     <ClInclude Include="source\Mob.h" />
+    <ClInclude Include="source\Network.h" />
     <ClInclude Include="source\Object.h" />
     <ClInclude Include="source\OnlinePlayer.h" />
     <ClInclude Include="source\Particles.h" />
     <ClInclude Include="source\Player.h" />
+    <ClInclude Include="source\PlayerPacket.h" />
     <ClInclude Include="source\Renderer.h" />
     <ClInclude Include="source\stdinclude.h" />
     <ClInclude Include="source\TextRenderer.h" />
@@ -113,6 +115,7 @@
     <ClCompile Include="source\GUI.cpp" />
     <ClCompile Include="source\Hitbox.cpp" />
     <ClCompile Include="source\Menus.cpp" />
+    <ClCompile Include="source\Network.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
     <ClCompile Include="source\OnlinePlayer.cpp" />
     <ClCompile Include="source\Particles.cpp" />

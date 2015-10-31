@@ -46,6 +46,7 @@ void createThumbnail();
 #endif
 #include "Menus.h"
 #include "Frustum.h"
+#include "Network.h"
 
 struct RenderChunk{
 	RenderChunk(world::chunk* c, double TimeDelta){
@@ -139,7 +140,10 @@ main_menu:
 	Mutex = MutexCreate();
 	MutexLock(Mutex);
 	updateThread = ThreadCreate(&updateThreadFunc, NULL);
-	
+	std::ifstream is("Config.txt", std::ios::in);
+	string ip;
+	is >> ip  >> player::onlineID >> player::name;
+	Network::init(ip);
 	//初始化游戏状态
 	printf("[Console][Game]");
 	printf("Init player...\n");
@@ -206,6 +210,7 @@ main_menu:
 			printf("Threads terminated\n");
 			printf("[Console][Game]");
 			printf("Returned to main menu\n");
+			Network::cleanUp();
 			goto main_menu;
 		}
 		
@@ -469,7 +474,6 @@ bool isPressed(int key, bool setFalse = false) {
 
 void updategame(){
 	//Time_updategame_ = timer();
-
 	static double Wprstm;
 	static bool WP;
 	//static double mxl, myl;
@@ -947,9 +951,41 @@ void updategame(){
 	player::intyposold = RoundInt(player::ypos);
 	player::intzposold = RoundInt(player::zpos);
 	particles::updateall();
+	//Network
+	static bool firstCall = true;
+	static int timei = 0;
+	static int lastx=player::intxpos, lasty = player::intypos, lastz = player::intzpos;
+	if (timei++==3) {
+		if (player::intxpos != lastx || player::intypos != lasty || player::intzpos != lastz || firstCall) {
+			PlayerPacket p = player::convertToPlayerPacket();
+			Network::Request req = Network::Request((const char*)&p, sizeof(PlayerPacket), Network::PLAYER_PACKET_SEND);
+			MutexLock(Network::mutex);
+			Network::pushRequest(req);
+			MutexUnlock(Network::mutex);
+			lastx = player::intxpos;
+			lasty = player::intypos;
+			lastz = player::intzpos;
+			firstCall = false;
+		}
+		Network::Request req = Network::Request(nullptr, 0, Network::PLAYER_PACKET_REQ, [](void* data, int len) {
+			int playersCount = len / sizeof(PlayerPacket);
+			PlayerPacket* pp = (PlayerPacket*)data;
+			MutexLock(Mutex);
+			players.clear();
+			for (int i = 0; i < playersCount; i++) {
+				players.push_back(OnlinePlayer(*pp));
+				++pp;
+			}
+			MutexUnlock(Mutex);
+		});
+		MutexLock(Network::mutex);
+		Network::pushRequest(req);
+		MutexUnlock(Network::mutex);
+		timei = 0;
+	}
 	//cout << lastupdate << "," << std::setprecision(20) << timer() << endl;
 
-//	Time_updategame += timer() - Time_updategame;
+	//	Time_updategame += timer() - Time_updategame;
 
 }
 
@@ -1110,11 +1146,15 @@ void RenderAll() {
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
 
-	//OnlinePlayer op(0, 50.0, 0, "", 0, 0);
-	//glPushMatrix();
-	//glTranslated(op.getXPos() - xpos, op.getYPos() - ypos, op.getZPos() - zpos);
-	//op.render();
-	//glPopMatrix();
+	for (int i = 0; i < players.size(); i++) {
+		OnlinePlayer& p = players[i];
+		if (p.getOnlineID() == player::onlineID) continue;
+		glPushMatrix();
+		glTranslated(p.getXPos() - xpos, p.getYPos() - ypos, p.getZPos() - zpos);
+		p.buildRenderIfNeed();
+		p.render();
+		glPopMatrix();
+	}
 	
 	glBindTexture(GL_TEXTURE_2D, BlockTextures);
 	for (int i = 0; i < renderedChunk; i++) {
@@ -1465,7 +1505,7 @@ void drawGUI(){
 		debugText(ss.str()); ss.str("");
 		ss << "In water:" << boolstr(player::inWater);
 		debugText(ss.str()); ss.str("");
-
+		
 		ss << world::loadedChunks << " chunks loaded";
 		debugText(ss.str()); ss.str("");
 		ss << displayChunks.size() << " chunks rendered";
@@ -1474,7 +1514,10 @@ void drawGUI(){
 		debugText(ss.str()); ss.str("");
 		ss << world::updatedChunks << " chunks updated";
 		debugText(ss.str()); ss.str("");
-
+		MutexLock(Network::mutex);
+		ss << Network::getRequestCount() << " network request in the queue";
+		debugText(ss.str()); ss.str("");
+		MutexUnlock(Network::mutex);
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		ss << c_getChunkPtrFromCPA << " CPA requests";
 		debugText(ss.str()); ss.str("");
