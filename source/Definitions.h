@@ -49,12 +49,14 @@ typedef unsigned int(*ThreadFunc_t)(void* param);
 #endif
 
 //Global Vars
-extern const unsigned int VERSION;
-extern const string MAJOR_VERSION;
-extern const string MINOR_VERSION;
-extern const string EXT_VERSION;
-extern const int defaultwindowwidth;
-extern const int defaultwindowheight;
+const unsigned int VERSION = 37;
+const string MAJOR_VERSION = "Alpha 0.";
+const string MINOR_VERSION = "4.10";
+const string EXT_VERSION = " [Preview Not Released]";
+const int defaultwindowwidth = 852; //默认窗口宽度
+const int defaultwindowheight = 480; //默认窗口高度
+const int networkRequestFrequency = 2; //请求频率
+const int networkRequestMax = 20; //理想最大请求队列长度
 extern float FOVyNormal;
 extern float mousemove;
 extern int viewdistance;

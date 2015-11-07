@@ -1,6 +1,5 @@
 #include "Network.h"
 #include <queue>
-
 namespace Network {
 
 	SOCKET sockClient;
@@ -19,8 +18,9 @@ namespace Network {
 		addrSrv.sin_port = htons(port);
 		connect(sockClient, (SOCKADDR*)&addrSrv, sizeof(SOCKADDR));
 
-		t = ThreadCreate(networkThread, NULL);
+		threadRun = true;
 		mutex = MutexCreate();
+		t = ThreadCreate(networkThread, NULL);
 	}
 
 	int getRequestCount() { return reqs.size(); }
@@ -41,6 +41,8 @@ namespace Network {
 				continue;
 			}
 			Request& r = reqs.front();
+			//if (r._signal == PLAYER_PACKET_SEND && ((PlayerPacket*)r._dataSend)->onlineID != player::onlineID)
+			//	cout << "[ERROR]WTF!!!" << endl;
 			if (r._dataSend != nullptr && r._dataLen != 0) {
 				char* data = new char[r._dataLen + sizeof(int)];
 				int* signal = (int*)data;
@@ -53,10 +55,11 @@ namespace Network {
 				send(getClientSocket(), (const char*)&r._signal, sizeof(int), 0);
 			}
 			if (r._callback) { //判断有无回调函数
+				auto callback = r._callback;
 				MutexUnlock(mutex);
 				char recvBuf[1024]; //接收缓存区
 				int len = recv(sockClient, recvBuf, 1024, 0); //获得数据长度
-				r._callback(recvBuf, len); //调用回调函数
+				if (len > 0) callback(recvBuf, len); //调用回调函数
 				MutexLock(mutex);
 			}
 			reqs.pop();
@@ -66,6 +69,17 @@ namespace Network {
 	}
 
 	void pushRequest(Request& r) {
+		if (reqs.size() + 1 > networkRequestMax) {  //超过请求队列长度，试图精简队列
+			if (!reqs.front().isImportant()) reqs.pop();
+		}
+		if (reqs.size() + 1 > networkRequestMax * 2) {  //大量超过请求队列长度，只保留重要请求
+			std::queue<Request> q;
+			while (reqs.size() != 0) {
+				if (reqs.front().isImportant()) q.push(reqs.front());
+				reqs.pop();
+			}
+			reqs = q;
+		}
 		reqs.push(r);
 	}
 	
