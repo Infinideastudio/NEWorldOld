@@ -955,13 +955,12 @@ void updategame(){
 	static bool firstCall = true;
 	static int timei = 0;
 	static int lastx=player::intxpos, lasty = player::intypos, lastz = player::intzpos;
-	if (timei++==3) {
+	if (timei++ == networkRequestFrequency) {
+		MutexLock(Network::mutex);
 		if (player::intxpos != lastx || player::intypos != lasty || player::intzpos != lastz || firstCall) {
 			PlayerPacket p = player::convertToPlayerPacket();
 			Network::Request req = Network::Request((const char*)&p, sizeof(PlayerPacket), Network::PLAYER_PACKET_SEND);
-			MutexLock(Network::mutex);
 			Network::pushRequest(req);
-			MutexUnlock(Network::mutex);
 			lastx = player::intxpos;
 			lasty = player::intypos;
 			lastz = player::intzpos;
@@ -978,7 +977,6 @@ void updategame(){
 			}
 			MutexUnlock(Mutex);
 		});
-		MutexLock(Network::mutex);
 		Network::pushRequest(req);
 		MutexUnlock(Network::mutex);
 		timei = 0;
@@ -1515,7 +1513,7 @@ void drawGUI(){
 		ss << world::updatedChunks << " chunks updated";
 		debugText(ss.str()); ss.str("");
 		MutexLock(Network::mutex);
-		ss << Network::getRequestCount() << " network request in the queue";
+		ss << Network::getRequestCount() << "/" << networkRequestMax << " network request in the queue";
 		debugText(ss.str()); ss.str("");
 		MutexUnlock(Network::mutex);
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC

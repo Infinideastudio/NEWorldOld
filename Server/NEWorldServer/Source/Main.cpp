@@ -18,8 +18,9 @@ void handle(SOCKET sockConn) {
 	char receiveBuf[128]; //接收缓存区
 	unsigned int onlineID = 0;
 	bool IDSet = false;
-	enum { PLAYER_PACKET_SEND, PLAYER_PACKET_REQ };
-	Print("New connection.");
+	m.lock();
+	Print("New connection. Online players:" + toString(players.size()+1));
+	m.unlock();
 	while (true) {
 		int recvbyte = recv(sockConn, receiveBuf, sizeof(receiveBuf), 0);
 		if (recvbyte == 0 || recvbyte == -1) {
@@ -33,18 +34,31 @@ void handle(SOCKET sockConn) {
 		int signal = *receiveBuf; //强制截断，提取signal
 		char* data = receiveBuf + sizeof(int);
 		m.lock();
+		Print("Online players:" + toString(players.size()));
 		switch (signal) {
 		case PLAYER_PACKET_SEND:
 		{
 			//客户端玩家数据更新
 			PlayerPacket* pp = (PlayerPacket*)data;
+			if (IDSet&&pp->onlineID != onlineID) {
+				Print("The packet is trying to change other player's data. May cheat? (Packet from" + toString(onlineID) + ")", MESSAGE_WARNING);
+				break;
+			}
 			map<int, PlayerPacket>::iterator iter = players.find(pp->onlineID);
 			if (iter == players.end()) {
+				if (IDSet) {
+					Print("Can't find player data, may change the online id in game. (" + toString(onlineID) + " to " + toString(pp->onlineID) + ")", MESSAGE_WARNING);
+					break;
+				}
 				players[pp->onlineID] = *pp;  //第一次上传数据
 				IDSet = true;
 				onlineID = pp->onlineID;
 			}
 			else {
+				if (!IDSet) {
+					Print("May repeat login?", MESSAGE_WARNING);
+					break;
+				}
 				iter->second = *pp;  //更新数据
 			}
 			break;
@@ -55,7 +69,10 @@ void handle(SOCKET sockConn) {
 			if (players.size() == 0) break;
 			PlayerPacket* playersData = new PlayerPacket[players.size()];
 			int i = 0;
-			for (auto iter = players.begin(); iter != players.end(); ++iter, ++i) playersData[i] = iter->second;
+			for (auto iter = players.begin(); iter != players.end(); ++iter) {
+				playersData[i] = iter->second;
+				i++;
+			}
 			send(sockConn, (const char*)playersData, players.size()*sizeof(PlayerPacket), 0);
 			break;
 		}
@@ -65,7 +82,10 @@ void handle(SOCKET sockConn) {
 }
 
 int main() {
+	Print("NEWorld Server 0.2.1(Dev.) for NEWorld Alpha 0.5.0(Dev.). Using the developing version to play is not recommended.");
 	Print("The server is starting...");
+	Network::init();
+	Print("The server is running.");
 	vector<thread> clients;
 	while (true) {
 		clients.push_back(thread(handle, Network::waitForClient()));
