@@ -87,6 +87,11 @@ extern TextureID guiImage[6];
 extern TextureID DestroyImage[11];
 extern TextureID DefaultSkin;
 
+extern bool multiplayer;
+extern string serverip;
+extern unsigned short port;
+extern int onlineID;
+
 extern Mutex_t Mutex;
 extern Thread_t updateThread;
 extern double lastupdate, updateTimer;
