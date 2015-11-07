@@ -1,12 +1,6 @@
 #include "Definitions.h"
 
 //Global Vars
-const unsigned int VERSION = 37;
-const string MAJOR_VERSION = "Alpha 0.";
-const string MINOR_VERSION = "4.10";
-const string EXT_VERSION = " [Preview Not Released]";
-const int defaultwindowwidth  = 852; //默认窗口宽度
-const int defaultwindowheight = 480; //默认窗口高度
 float FOVyNormal = 60.0f;       //视野角度
 float mousemove = 0.2f;         //鼠标灵敏度
 int viewdistance = 8;           //视野距离

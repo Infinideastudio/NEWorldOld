@@ -5,9 +5,11 @@
 namespace Network{
 	const unsigned short port = 30001;
 
-	SOCKET getServerSocket();
+	inline SOCKET getServerSocket();
 
 	SOCKET waitForClient();
 
 	void cleanUp();
+
+	void init();
 }
