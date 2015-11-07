@@ -5,18 +5,19 @@
 #include "Definitions.h"
 
 namespace Network{
-	enum { PLAYER_PACKET_SEND, PLAYER_PACKET_REQ };
 	class Request {
 	public:
-		Request(const char* dataSend, int dataLen, int signal) :
-			_dataSend(dataSend), _dataLen(dataLen), _signal(signal) {};
-		Request(const char* dataSend, int dataLen, int signal, std::function<void(void*, int)> callback) :
-			_dataSend(dataSend), _dataLen(dataLen), _signal(signal), _callback(callback) {};
+		Request(const char* dataSend, int dataLen, int signal, bool important = false) :
+			_dataSend(dataSend), _dataLen(dataLen), _signal(signal), _important(important) {}
+		Request(const char* dataSend, int dataLen, int signal, std::function<void(void*, int)> callback, bool important = false) :
+			_dataSend(dataSend), _dataLen(dataLen), _signal(signal), _callback(callback), _important(important) {}
 		friend ThreadFunc networkThread(void*);
+		bool isImportant() { return _important; }
 	private:
 		int _signal;
 		const char* _dataSend;
 		int _dataLen;
+		bool _important;
 		std::function<void(void*, int)> _callback;
 	};
 
