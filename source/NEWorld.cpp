@@ -140,10 +140,13 @@ main_menu:
 	Mutex = MutexCreate();
 	MutexLock(Mutex);
 	updateThread = ThreadCreate(&updateThreadFunc, NULL);
-	std::ifstream is("Config.txt", std::ios::in);
-	string ip;
-	is >> ip  >> player::onlineID >> player::name;
-	Network::init(ip);
+	if (multiplayer) {
+		cout << time(NULL);
+		srand(time(NULL));
+		player::name = "";
+		player::onlineID = rand();
+		Network::init(serverip, port);
+	}
 	//初始化游戏状态
 	printf("[Console][Game]");
 	printf("Init player...\n");
@@ -955,31 +958,33 @@ void updategame(){
 	static bool firstCall = true;
 	static int timei = 0;
 	static int lastx=player::intxpos, lasty = player::intypos, lastz = player::intzpos;
-	if (timei++ == networkRequestFrequency) {
-		MutexLock(Network::mutex);
-		if (player::intxpos != lastx || player::intypos != lasty || player::intzpos != lastz || firstCall) {
-			PlayerPacket p = player::convertToPlayerPacket();
-			Network::Request req = Network::Request((const char*)&p, sizeof(PlayerPacket), Network::PLAYER_PACKET_SEND);
-			Network::pushRequest(req);
-			lastx = player::intxpos;
-			lasty = player::intypos;
-			lastz = player::intzpos;
-			firstCall = false;
-		}
-		Network::Request req = Network::Request(nullptr, 0, Network::PLAYER_PACKET_REQ, [](void* data, int len) {
-			int playersCount = len / sizeof(PlayerPacket);
-			PlayerPacket* pp = (PlayerPacket*)data;
-			MutexLock(Mutex);
-			players.clear();
-			for (int i = 0; i < playersCount; i++) {
-				players.push_back(OnlinePlayer(*pp));
-				++pp;
+	if (multiplayer) {
+		if (timei++ == networkRequestFrequency) {
+			MutexLock(Network::mutex);
+			if (player::intxpos != lastx || player::intypos != lasty || player::intzpos != lastz || firstCall) {
+				PlayerPacket p = player::convertToPlayerPacket();
+				Network::Request req = Network::Request((const char*)&p, sizeof(PlayerPacket), PLAYER_PACKET_SEND);
+				Network::pushRequest(req);
+				lastx = player::intxpos;
+				lasty = player::intypos;
+				lastz = player::intzpos;
+				firstCall = false;
 			}
-			MutexUnlock(Mutex);
-		});
-		Network::pushRequest(req);
-		MutexUnlock(Network::mutex);
-		timei = 0;
+			Network::Request req = Network::Request(nullptr, 0, PLAYER_PACKET_REQ, [](void* data, int len) {
+				int playersCount = len / sizeof(PlayerPacket);
+				PlayerPacket* pp = (PlayerPacket*)data;
+				MutexLock(Mutex);
+				players.clear();
+				for (int i = 0; i < playersCount; i++) {
+					players.push_back(OnlinePlayer(*pp));
+					++pp;
+				}
+				MutexUnlock(Mutex);
+			});
+			Network::pushRequest(req);
+			MutexUnlock(Network::mutex);
+			timei = 0;
+		}
 	}
 	//cout << lastupdate << "," << std::setprecision(20) << timer() << endl;
 
