@@ -8,7 +8,7 @@ namespace Network {
 	std::queue<Request> reqs;
 	bool threadRun = true;
 
-	void init(string ip) {
+	void init(string ip, unsigned short port) {
 		WSADATA wsaData;
 		WSAStartup(MAKEWORD(1, 1), &wsaData);
 		sockClient = socket(AF_INET, SOCK_STREAM, 0);

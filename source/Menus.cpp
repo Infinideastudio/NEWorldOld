@@ -2,6 +2,7 @@
 #include "World.h"
 #include "Textures.h"
 #include "TextRenderer.h"
+#include <shellapi.h>
 
 extern bool gamebegin;
 
@@ -10,6 +11,65 @@ string strWithVar(string str, T var){
 	std::stringstream ss;
 	ss << str << var;
 	return ss.str();
+}
+int getDotCount(string s) {
+	int ret = 0;
+	for (int i = 0; i != s.size(); i++)
+		if (s[i] == '.') ret++;
+	return ret;
+}
+void MultiplayerGameMenu() {
+	gui::Form MainForm;
+	int leftp = windowwidth / 2 - 250;
+	int rightp = windowwidth / 2 + 250;
+	int midp = windowwidth / 2;
+	int downp = windowheight - 20;
+
+	bool serveripChanged = false;
+	bool f = false;
+	MainForm.Init();
+	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
+	inputstr = "";
+	gui::label* title = MainForm.createlabel("==============<  多 人 游 戏  >==============");
+	gui::textbox* serveriptb = MainForm.createtextbox("输入服务器IP");
+	gui::button* runbtn = MainForm.createbutton("运行服务器（开服）");
+	gui::button* okbtn = MainForm.createbutton("确定");
+	gui::button* backbtn = MainForm.createbutton("<< 返回");
+	okbtn->enabled = false;
+	do {
+		leftp = windowwidth / 2 - 250;
+		rightp = windowwidth / 2 + 250;
+		midp = windowwidth / 2;
+		downp = windowheight - 20;
+		title->resize(midp - 225, midp + 225, 20, 36);
+		serveriptb->resize(midp - 250, midp + 250, 48, 72);
+		runbtn->resize(leftp, rightp, downp - 24 - 50, downp - 50);
+		okbtn->resize(midp - 250, midp + 250, 84, 120);
+		backbtn->resize(leftp, rightp, downp - 24, downp);
+		//更新GUI
+		glfwGetCursorPos(MainWindow, &mx, &my);
+		MainForm.mousedata((int)mx, (int)my, mw, mb);
+		MainForm.update();
+		if (serveriptb->pressed && !serveripChanged) {
+			serveriptb->text = "";
+			serveripChanged = true;
+		}
+
+		if (serveriptb->text == "" || !serveripChanged || getDotCount(serveriptb->text) != 3) okbtn->enabled = false; else okbtn->enabled = true;
+		if (okbtn->clicked || backbtn->clicked)f = true;
+		if (runbtn->clicked) WinExec("NEWorldServer.exe", SW_SHOWDEFAULT);
+		inputstr = "";
+		MainForm.render();
+		glfwSwapBuffers(MainWindow);
+		glfwPollEvents();
+		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(MainWindow)) exit(0);
+	} while (!f);
+	if (serveripChanged) {
+		serverip = serveriptb->text;
+		gamebegin = true;
+		multiplayer = true;
+	}
+	MainForm.cleanup();
 }
 
 void mainmenu(){
@@ -25,7 +85,8 @@ void mainmenu(){
 	bool f = false;
 	MainForm.Init();
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-	gui::button* startbtn = MainForm.createbutton("开始游戏");
+	gui::button* startbtn = MainForm.createbutton("单人游戏");
+	gui::button* multiplayerbtn = MainForm.createbutton("多人游戏");
 	gui::button* optionsbtn = MainForm.createbutton(">> 选项...");
 	gui::button* quitbtn = MainForm.createbutton("退出");
 	do{
@@ -33,13 +94,15 @@ void mainmenu(){
 		midp = windowwidth / 2;
 		rightp = windowwidth / 2 + 200;
 		startbtn->resize(leftp, rightp, upp, upp + 32);
-		optionsbtn->resize(leftp, midp - 3, upp + 38, upp + 72);
-		quitbtn->resize(midp + 3, rightp, upp + 38, upp + 72);
+		multiplayerbtn->resize(leftp, rightp, upp + 38, upp + 32 + 38);
+		optionsbtn->resize(leftp, midp - 3, upp + 38 * 2, upp + 72 + 38);
+		quitbtn->resize(midp + 3, rightp, upp + 38 * 2, upp + 72 + 38);
 		mb = glfwGetMouseButton(MainWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS ? 1 : 0;
 		glfwGetCursorPos(MainWindow, &mx, &my);
 		MainForm.mousedata((int)mx, (int)my, mw, mb);
 		MainForm.update();
 		if (startbtn->clicked) worldmenu();
+		if (multiplayerbtn->clicked) MultiplayerGameMenu();
 		if (gamebegin) f = true;
 		if (optionsbtn->clicked) options();
 		if (quitbtn->clicked) exit(0);
@@ -462,6 +525,7 @@ void createworldmenu(){
 	if (worldnametbChanged){
 		world::worldname = worldnametb->text;
 		gamebegin = true;
+		multiplayer = false;
 	}
 	MainForm.cleanup();
 }
