@@ -98,6 +98,9 @@
     <ClInclude Include="source\PlayerPacket.h">
       <Filter>源代码\Network</Filter>
     </ClInclude>
+    <ClInclude Include="source\ChunkPacket.h">
+      <Filter>源代码\Network</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">

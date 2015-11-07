@@ -23,9 +23,7 @@ namespace Network{
 
 	extern Mutex_t mutex;
 
-	const unsigned short port = 30001;
-
-	void init(string ip);
+	void init(string ip, unsigned short port);
 
 	int getRequestCount();
 

@@ -31,13 +31,18 @@ TextureID guiImage[6];
 TextureID DestroyImage[11];
 TextureID DefaultSkin;
 
+//多人游戏
+bool multiplayer = false;
+string serverip;
+unsigned short port = 30001;
+int onlineID;
+
 //线程
 Mutex_t Mutex;
 Thread_t updateThread;
 double lastupdate, updateTimer;
 bool updateThreadRun, updateThreadPaused;
 
-bool mpclient, mpserver;
 bool shouldGetScreenshot;
 bool shouldGetThumbnail;
 bool FirstUpdateThisFrame;
