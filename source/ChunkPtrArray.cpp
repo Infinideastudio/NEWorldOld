@@ -10,9 +10,9 @@ namespace world{
 
 	bool chunkPtrArray::create(){
 		array = new chunk*[size3];
-		if (array == nullptr) return true;
+		if (array == nullptr) return false;
 		memset(array, (int)nullptr, size3*sizeof(int));
-		return false;
+		return true;
 	}
 
 	void chunkPtrArray::destroy(){

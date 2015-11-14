@@ -4,13 +4,6 @@
 #endif
 #include "stdinclude.h"
 
-/*
-#define NEWORLD_COMPILE_DISABLE_SECURE
-#ifndef nullptr
-#define nullptr NULL
-#endif
-*/
-
 //#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG
 #define NEWORLD_DEBUG_CONSOLE_OUTPUT
@@ -28,6 +21,7 @@ typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned long uint32;
 typedef unsigned long long uint64;
+
 typedef unsigned char blockprop;
 typedef unsigned char brightness;
 typedef unsigned int TextureID;
@@ -35,6 +29,8 @@ typedef unsigned short block;
 typedef unsigned int VBOID;
 typedef int vtxCount;
 typedef int SkinID;
+typedef uint64 chunkid;
+typedef unsigned int onlineid;
 #ifndef NEWORLD_SERVER
 #ifdef NEWORLD_USE_WINAPI
 typedef HANDLE Mutex_t;
@@ -90,7 +86,6 @@ extern TextureID DefaultSkin;
 extern bool multiplayer;
 extern string serverip;
 extern unsigned short port;
-extern int onlineID;
 
 extern Mutex_t Mutex;
 extern Thread_t updateThread;

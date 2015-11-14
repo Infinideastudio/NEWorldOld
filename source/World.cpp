@@ -13,13 +13,12 @@ namespace world{
 	brightness BRIGHTNESSMAX = 15;    //Maximum brightness
 	brightness BRIGHTNESSMIN = 2;     //Mimimum brightness
 	brightness BRIGHTNESSDEC = 1;     //Brightness decrease
-	chunk EmptyChunk = chunk();
 	unsigned int EmptyBuffer;
 
 	chunk** chunks;
 	int loadedChunks, chunkArraySize;
 	chunk* cpCachePtr = nullptr;
-	unsigned long long cpCacheID = 0;
+	chunkid cpCacheID = 0;
 	bool cpArrayAval;
 	chunkPtrArray cpArray;
 	HeightMap HMap;
@@ -50,8 +49,7 @@ namespace world{
 
 		if (UseCPArray){
 			cpArray.setSize((viewdistance + 2) * 2);
-			cpArrayAval = !cpArray.create();
-			if (!cpArrayAval)DebugWarning("Chunk Pointer Array not avaliable because it couldn't be created.");
+			if (!cpArray.create()) DebugWarning("Chunk Pointer Array not avaliable because it couldn't be created.");
 		}
 		else cpArrayAval = false;
 		HMap.setSize((viewdistance + 2) * 2 * 16);
@@ -60,37 +58,37 @@ namespace world{
 		loadedChunkArray = new bool[lcasize*lcasize*lcasize];
 
 	}
-
-	chunk* AddChunk(int x, int y, int z){
-		int first, last, middle, i;
-		unsigned long long cid;
-		cid = getChunkID(x, y, z);                                                   //Chunk ID
+	pair<int,int> binary_search_chunks(chunk** target, int len, chunkid cid) {
 		//二分查找,GO!
-		first = 0;
-		last = loadedChunks - 1;
+		int first = 0, last = len - 1, middle;
 		middle = (first + last) / 2;
-		if (loadedChunks > 0){
-			while (first <= last && chunks[middle]->id != cid){
-				if (chunks[middle]->id > cid) last = middle - 1;
-				if (chunks[middle]->id < cid) first = middle + 1;
-				middle = (first + last) / 2;
-			}
-			if (chunks[middle]->id == cid){
-				printf("[Console][Error]");
-				printf("Chunk(%d,%d,%d)has been loaded,when adding chunk.\n", x, y, z);
-				return chunks[middle];
-			}
+		while (first <= last && target[middle]->id != cid) {
+			if (target[middle]->id > cid) last = middle - 1;
+			if (target[middle]->id < cid) first = middle + 1;
+			middle = (first + last) / 2;
 		}
+		return std::make_pair(first, middle);
+	}
+	chunk* AddChunk(int x, int y, int z){
+		
+		chunkid cid;
+		cid = getChunkID(x, y, z);                                                   //Chunk ID
+		pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
+		if (loadedChunks > 0 && chunks[pos.second]->id == cid) {
+			printf("[Console][Error]");
+			printf("Chunk(%d,%d,%d)has been loaded,when adding chunk.\n", x, y, z);
+			return chunks[pos.second];
+		}
+
 		ExpandChunkArray(1);
-		for (i = loadedChunks - 1; i >= first + 1; i--){
+		for (int i = loadedChunks - 1; i >= pos.first + 1; i--){
 			chunks[i] = chunks[i - 1];
 		}
-		chunks[first] = new chunk();
-		chunks[first]->Init(x, y, z, cid);
+		chunks[pos.first] = new chunk(x, y, z, cid);
 		cpCacheID = cid;
-		cpCachePtr = chunks[first];
-		if(cpArrayAval)cpArray.AddChunk(chunks[first],x,y,z);
-		return chunks[first];
+		cpCachePtr = chunks[pos.first];
+		if(cpArrayAval)cpArray.AddChunk(chunks[pos.first],x,y,z);
+		return chunks[pos.first];
 	}
 
 	void DeleteChunk(int x, int y, int z){
@@ -108,7 +106,7 @@ namespace world{
 		ReduceChunkArray(1);
 	}
 
-	uint64 getChunkID(int x, int y, int z){
+	chunkid getChunkID(int x, int y, int z){
 		//x = -134217728 ~ 134217727      (28 bits)
 		//y = -128       ~ 127            (8 bits)
 		//z = -134217728 ~ 134217727      (28 bits)
@@ -118,7 +116,7 @@ namespace world{
 		if (y <= 0) y = abs(y) + (1LL << 7);
 		if (x <= 0) x = abs(x) + (1LL << 27);
 		if (z <= 0) z = abs(z) + (1LL << 27);
-		return (uint64(y) << 56) + (uint64(x) << 28) + z;
+		return (chunkid(y) << 56) + (chunkid(x) << 28) + z;
 	}
 
 	bool chunkLoaded(int x, int y, int z){
@@ -128,20 +126,12 @@ namespace world{
 	}
 
 	int getChunkPtrIndex(int x, int y, int z){
-		unsigned long long cid = getChunkID(x, y, z);
-		int first, last, middle;
-		//二分查找,GO!
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		c_getChunkPtrFromSearch++;
 #endif
-		first = 0;
-		last = loadedChunks - 1;
-		middle = (first + last) / 2;
-		while (first <= last && chunks[middle]->id != cid){
-			if (chunks[middle]->id > cid) last = middle - 1; else first = middle + 1;
-			middle = (first + last) / 2;
-		}
-		if (chunks[middle]->id == cid) return middle;
+		chunkid cid = getChunkID(x, y, z);
+		pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
+		if (chunks[pos.second]->id == cid) return pos.second;
 #ifdef NEWORLD_DEBUG
 		DebugError("getChunkPtrIndex Error!");
 #endif
@@ -149,7 +139,7 @@ namespace world{
 	}
 
 	chunk* getChunkPtr(int x, int y, int z){
-		unsigned long long cid = getChunkID(x, y, z);
+		chunkid cid = getChunkID(x, y, z);
 		if (cpCacheID == cid && cpCachePtr != nullptr){
 			return cpCachePtr;
 		}
@@ -164,31 +154,22 @@ namespace world{
 				}
 			}
 			if (loadedChunks > 0){
-				int first, last, middle;
-				//二分查找,GO!
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 				c_getChunkPtrFromSearch++;
 #endif
-				first = 0;
-				last = loadedChunks - 1;
-				middle = (first + last) / 2;
-				while (first <= last && chunks[middle]->id != cid){
-					if (chunks[middle]->id > cid) last = middle - 1; else first = middle + 1;
-					middle = (first + last) / 2;
-				}
-				if (chunks[middle]->id == cid){
-					ret = chunks[middle];
+				pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
+				if (chunks[pos.second]->id == cid){
+					ret = chunks[pos.second];
 					cpCacheID = cid;
 					cpCachePtr = ret;
 					if (cpArrayAval && cpArray.elementExists(x - cpArray.originX, y - cpArray.originY, z - cpArray.originZ)){
-						cpArray.array[(x - cpArray.originX)*cpArray.size2 + (y - cpArray.originY)*cpArray.size + (z - cpArray.originZ)] = chunks[middle];
+						cpArray.array[(x - cpArray.originX)*cpArray.size2 + (y - cpArray.originY)*cpArray.size + (z - cpArray.originZ)] = chunks[pos.second];
 					}
 					return ret;
 				}
 			}
 		}
 		return nullptr;
-		//return &EmptyChunk;
 	}
 
 	void ExpandChunkArray(int cc){

@@ -8,7 +8,7 @@ namespace world{
 	extern string worldname;
 	extern brightness BRIGHTNESSMIN;
 	extern brightness skylight;
-
+	chunkid getChunkID(int x, int y, int z);
 	class chunk{
 
 	private:
@@ -17,16 +17,24 @@ namespace world{
 		brightness* pbrightness;
 
 	public:
+		//竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻
+		chunk(int cxi, int cyi, int czi, chunkid idi) {
+			cx = cxi;
+			cy = cyi;
+			cz = czi;
+			id = idi;
+			Modified = false;
+		}
+		chunk(int cxi, int cyi, int czi) : chunk(cxi, cyi, czi, getChunkID(cxi, cyi, czi)) {}
 		int cx, cy, cz;
 		bool Empty = false;
 		bool updated = false;
 		bool renderBuilt = false;
-		unsigned long long id;
+		chunkid id;
 		vtxCount vertexes[3];
 		VBOID vbuffer[3];
 		double loadAnim = 0.0;
 
-		void Init(int cxi, int cyi, int czi, uint64 idi);
 		void create();
 		void destroy();
 		void Load();
