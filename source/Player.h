@@ -31,7 +31,7 @@ namespace player{
 	extern Hitbox::AABB playerbox;
 
 	extern double xa, ya, za, xd, yd, zd;
-	extern unsigned int onlineID;
+	extern onlineid onlineID;
 	extern string name;
 	extern bool OnGround;
 	extern bool Running;

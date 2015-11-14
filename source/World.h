@@ -21,7 +21,7 @@ namespace world{
 	extern int loadedChunks;
 	extern int chunkArraySize;
 	extern chunk* cpCachePtr;
-	extern unsigned long long cpCacheID;
+	extern chunkid cpCacheID;
 	extern HeightMap HMap;
 	extern chunkPtrArray cpArray;
 	extern bool cpArrayAval;
@@ -41,7 +41,7 @@ namespace world{
 
 	chunk* AddChunk(int x, int y, int z);
 	void DeleteChunk(int x, int y, int z);
-	uint64 getChunkID(int x, int y, int z);
+	chunkid getChunkID(int x, int y, int z);
 	bool chunkLoaded(int x, int y, int z);
 	int getChunkPtrIndex(int x, int y, int z);
 	chunk* getChunkPtr(int x, int y, int z);

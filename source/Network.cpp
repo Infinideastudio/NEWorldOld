@@ -8,14 +8,14 @@ namespace Network {
 	std::queue<Request> reqs;
 	bool threadRun = true;
 
-	void init(string ip, unsigned short port) {
+	void init(string ip, unsigned short _port) {
 		WSADATA wsaData;
 		WSAStartup(MAKEWORD(1, 1), &wsaData);
 		sockClient = socket(AF_INET, SOCK_STREAM, 0);
 		SOCKADDR_IN addrSrv;
 		addrSrv.sin_addr.S_un.S_addr = inet_addr(ip.c_str());
 		addrSrv.sin_family = AF_INET;
-		addrSrv.sin_port = htons(port);
+		addrSrv.sin_port = htons(_port);
 		connect(sockClient, (SOCKADDR*)&addrSrv, sizeof(SOCKADDR));
 
 		threadRun = true;

@@ -5,15 +5,6 @@
 
 namespace world{
 
-	void chunk::Init(int cxi, int cyi, int czi, uint64 idi){
-		*this = EmptyChunk;
-		cx = cxi;
-		cy = cyi;
-		cz = czi;
-		id = idi;
-		Modified = false;
-	}
-
 	void chunk::create(){
 		pblocks = new block[4096];
 		pbrightness = new brightness[4096];

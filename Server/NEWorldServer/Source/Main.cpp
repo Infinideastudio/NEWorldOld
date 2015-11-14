@@ -41,7 +41,7 @@ void handle(SOCKET sockConn) {
 			//客户端玩家数据更新
 			PlayerPacket* pp = (PlayerPacket*)data;
 			if (IDSet&&pp->onlineID != onlineID) {
-				Print("The packet is trying to change other player's data. May cheat? (Packet from" + toString(onlineID) + ")", MESSAGE_WARNING);
+				Print("The packet is trying to change other player's data. May cheat? (Packet from " + toString(onlineID) + ")", MESSAGE_WARNING);
 				break;
 			}
 			map<int, PlayerPacket>::iterator iter = players.find(pp->onlineID);
