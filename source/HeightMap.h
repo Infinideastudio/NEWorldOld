@@ -2,7 +2,7 @@
 #include "Definitions.h"
 
 namespace world{
-	uint64 getChunkID(int x, int y, int z);
+	chunkid getChunkID(int x, int y, int z);
 	struct HeightMap {
 		int* array = nullptr;
 		int size, size2;

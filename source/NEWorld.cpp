@@ -53,8 +53,8 @@ struct RenderChunk{
 		cx = c->cx;
 		cy = c->cy;
 		cz = c->cz;
-		memcpy(vbuffers, c->vbuffer, 3 * sizeof(unsigned int));
-		memcpy(vtxs, c->vertexes, 3 * sizeof(int));
+		memcpy(vbuffers, c->vbuffer, 3 * sizeof(VBOID));
+		memcpy(vtxs, c->vertexes, 3 * sizeof(vtxCount));
 		loadAnim = c->loadAnim * pow(0.6, TimeDelta);
 	}
 	int cx, cy, cz;
@@ -141,8 +141,7 @@ main_menu:
 	MutexLock(Mutex);
 	updateThread = ThreadCreate(&updateThreadFunc, NULL);
 	if (multiplayer) {
-		cout << time(NULL);
-		srand(time(NULL));
+		srand((unsigned int)time(NULL));
 		player::name = "";
 		player::onlineID = rand();
 		Network::init(serverip, port);
@@ -1149,7 +1148,7 @@ void RenderAll() {
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
 
-	for (int i = 0; i < players.size(); i++) {
+	for (unsigned int i = 0; i < players.size(); i++) {
 		OnlinePlayer& p = players[i];
 		if (p.getOnlineID() == player::onlineID) continue;
 		glPushMatrix();

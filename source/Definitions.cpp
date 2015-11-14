@@ -35,7 +35,6 @@ TextureID DefaultSkin;
 bool multiplayer = false;
 string serverip;
 unsigned short port = 30001;
-int onlineID;
 
 //Ïß³Ì
 Mutex_t Mutex;

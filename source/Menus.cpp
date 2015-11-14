@@ -14,7 +14,7 @@ string strWithVar(string str, T var){
 }
 int getDotCount(string s) {
 	int ret = 0;
-	for (int i = 0; i != s.size(); i++)
+	for (unsigned int i = 0; i != s.size(); i++)
 		if (s[i] == '.') ret++;
 	return ret;
 }
