@@ -7,7 +7,7 @@ extern map<SkinID, pair<VBOID, vtxCount>> playerSkins;
 
 class OnlinePlayer : public Object {
 public:
-	OnlinePlayer(double x, double y, double z, string name, int onlineID, SkinID skinID, double lookupdown, double heading) :
+	OnlinePlayer(double x, double y, double z, string name, onlineid onlineID, SkinID skinID, double lookupdown, double heading) :
 		Object(x, y, z), _name(name), _onlineID(onlineID), _skinID(skinID), _lookupdown(lookupdown), _heading(heading) {}
 	
 	OnlinePlayer(PlayerPacket& p) :
@@ -15,7 +15,7 @@ public:
 
 	const string& getName() const { return _name; }
 
-	const int getOnlineID() const { return _onlineID; }
+	const onlineid getOnlineID() const { return _onlineID; }
 
 	void GenVAOVBO(int skinID);
 
@@ -25,7 +25,7 @@ public:
 
 private:
 	string _name;
-	int _onlineID;
+	onlineid _onlineID;
 	SkinID _skinID;
 	double _lookupdown, _heading;
 };
