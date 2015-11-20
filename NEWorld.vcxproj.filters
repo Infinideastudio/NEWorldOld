@@ -157,5 +157,8 @@
     <ClCompile Include="source\Network.cpp">
       <Filter>源代码\Network</Filter>
     </ClCompile>
+    <ClCompile Include="source\KeyselectionMenu.cpp">
+      <Filter>源代码\GUI</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

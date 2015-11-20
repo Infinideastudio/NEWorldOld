@@ -115,6 +115,7 @@
     <ClCompile Include="source\Frustum.cpp" />
     <ClCompile Include="source\GUI.cpp" />
     <ClCompile Include="source\Hitbox.cpp" />
+    <ClCompile Include="source\KeyselectionMenu.cpp" />
     <ClCompile Include="source\Menus.cpp" />
     <ClCompile Include="source\Network.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
