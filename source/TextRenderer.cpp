@@ -9,7 +9,7 @@ namespace TextRenderer{
 	float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
 	unsigned int unicodeTex[256];
 	bool unicodeTexAval[256];
-	bool useUnicodeASCIIFont = true;
+	bool useUnicodeASCIIFont;
 
 	void BuildFont(int w, int h){
 		ww = w;
@@ -17,7 +17,6 @@ namespace TextRenderer{
 		Font = Textures::LoadFontTexture("Textures\\Fonts\\ASCII.bmp");
 
 		float cx, cy;
-
 		gbe = glGenLists(256);
 		glBindTexture(GL_TEXTURE_2D, Font);
 		for (gloop = 0; gloop < 256; gloop++){

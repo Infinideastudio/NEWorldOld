@@ -1,7 +1,5 @@
 #pragma once
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
-#pragma comment(lib, "ws2_32.lib")
-#include <functional>
 #include "Definitions.h"
 
 namespace Network{
@@ -20,18 +18,11 @@ namespace Network{
 		bool _important;
 		std::function<void(void*, int)> _callback;
 	};
-
 	extern Mutex_t mutex;
-
 	void init(string ip, unsigned short port);
-
 	int getRequestCount();
-
 	SOCKET getClientSocket();
-
 	ThreadFunc networkThread(void*);
-
 	void pushRequest(Request& r);
-
 	void cleanUp();
 }
