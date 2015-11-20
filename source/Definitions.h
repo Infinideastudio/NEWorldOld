@@ -47,6 +47,8 @@ typedef std::thread* Thread_t;
 typedef unsigned int(*ThreadFunc_t)(void* param);
 #define ThreadFunc unsigned int
 #endif
+typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
+typedef int(*PFNWGLEXTGETSWAPINTERVALPROC) (void);
 
 //Global Vars
 const unsigned int VERSION = 37;
@@ -127,6 +129,8 @@ extern PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB;
 extern PFNGLGETINFOLOGARBPROC glGetInfoLogARB;
 extern PFNGLDETACHOBJECTARBPROC glDetachObjectARB;
 extern PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
+extern PFNWGLEXTSWAPCONTROLPROC wglSwapIntervalEXT;
+extern PFNWGLEXTGETSWAPINTERVALPROC wglGetSwapIntervalEXT;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 extern int c_getChunkPtrFromCPA;
@@ -184,4 +188,13 @@ inline string itos(int i){
 
 void DebugWarning(string msg);
 void DebugError(string msg);
+
+//初始化垂直同步功能是否可用并初始化
+void InitVSync();
+// 判断当前状态是否为垂直同步
+bool IsVSyncEnabled();
+// 开启和关闭垂直同步
+void SetVSyncState(bool enable);
+
+bool GetVSyncAvaiablity();
 #endif

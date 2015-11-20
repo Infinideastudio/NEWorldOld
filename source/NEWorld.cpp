@@ -48,6 +48,7 @@ void createThumbnail();
 #include "Frustum.h"
 #include "Network.h"
 
+
 struct RenderChunk{
 	RenderChunk(world::chunk* c, double TimeDelta){
 		cx = c->cx;
@@ -108,6 +109,12 @@ int main(){
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwMakeContextCurrent(MainWindow);
 	InitGL();
+
+	InitVSync();
+	if (GetVSyncAvaiablity()) {
+		SetVSyncState(true);
+	}
+
 	glfwSetCursor(MainWindow, MouseCursor);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwSetWindowSizeCallback(MainWindow, &WindowSizeFunc);
