@@ -39,12 +39,12 @@ namespace world{
 		Empty = true;
 		for (x = 0; x < 16; x++){
 			for (z = 0; z < 16; z++){
-				if (cy <= 4 && cy >= 0) {
+				if (cy <= 8 && cy >= 0) {
 					h = HMap.getHeight(cx * 16 + x, cz * 16 + z);
 					sh = WorldGen::WaterLevel + 2;
 				}
 				for (y = 0; y < 16; y++){
-					if (cy > 4) {
+					if (cy > 8) {
 						pblocks[x*256 + y*16 + z]= blocks::AIR;
 						pbrightness[x*256 + y*16 + z] = skylight;
 					}

@@ -1,5 +1,4 @@
 #include "Network.h"
-#include <queue>
 namespace Network {
 
 	SOCKET sockClient;
@@ -17,20 +16,16 @@ namespace Network {
 		addrSrv.sin_family = AF_INET;
 		addrSrv.sin_port = htons(_port);
 		connect(sockClient, (SOCKADDR*)&addrSrv, sizeof(SOCKADDR));
-
 		threadRun = true;
 		mutex = MutexCreate();
 		t = ThreadCreate(networkThread, NULL);
 	}
 
 	int getRequestCount() { return reqs.size(); }
-
-	SOCKET getClientSocket() {
-		return sockClient;
-	}
+	SOCKET getClientSocket() { return sockClient; }
 
 	ThreadFunc networkThread(void *) {
-		while (true) {
+		while (updateThreadRun) {
 			MutexLock(mutex);
 			if (!threadRun) {
 				MutexUnlock(mutex);

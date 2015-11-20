@@ -12,15 +12,6 @@
     <Filter Include="源代码\Objects">
       <UniqueIdentifier>{fd42ef38-5e12-4c31-bc56-4f954b4953d2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\Worlds">
-      <UniqueIdentifier>{0873facd-4fad-448a-a88b-afa8accfd800}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Basic">
-      <UniqueIdentifier>{2942a024-6889-447e-9918-2cd547c7a601}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Render">
-      <UniqueIdentifier>{a448efda-cf30-4017-8d62-e5feed0408dd}</UniqueIdentifier>
-    </Filter>
     <Filter Include="源代码\Player">
       <UniqueIdentifier>{40ea1808-71f0-4c4c-a9ee-d3c04da07f95}</UniqueIdentifier>
     </Filter>
@@ -30,52 +21,58 @@
     <Filter Include="源代码\GUI">
       <UniqueIdentifier>{92f24a42-2d77-4317-9cd7-04a69e43c2fa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="源代码\World">
+      <UniqueIdentifier>{0873facd-4fad-448a-a88b-afa8accfd800}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源代码\Renderer">
+      <UniqueIdentifier>{a448efda-cf30-4017-8d62-e5feed0408dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源代码\Common">
+      <UniqueIdentifier>{2942a024-6889-447e-9918-2cd547c7a601}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Object.h">
       <Filter>源代码\Objects</Filter>
     </ClInclude>
     <ClInclude Include="source\Blocks.h">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClInclude>
     <ClInclude Include="source\Chunk.h">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClInclude>
     <ClInclude Include="source\ChunkPtrArray.h">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClInclude>
     <ClInclude Include="source\World.h">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClInclude>
     <ClInclude Include="source\WorldGen.h">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClInclude>
     <ClInclude Include="source\HeightMap.h">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClInclude>
     <ClInclude Include="source\Definitions.h">
-      <Filter>源代码\Basic</Filter>
+      <Filter>源代码\Common</Filter>
     </ClInclude>
     <ClInclude Include="source\Hitbox.h">
-      <Filter>源代码\Basic</Filter>
+      <Filter>源代码\Common</Filter>
     </ClInclude>
     <ClInclude Include="source\Textures.h">
-      <Filter>源代码\Basic</Filter>
+      <Filter>源代码\Common</Filter>
     </ClInclude>
     <ClInclude Include="source\Frustum.h">
-      <Filter>源代码\Render</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Particles.h">
-      <Filter>源代码\Render</Filter>
+      <Filter>源代码\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\Renderer.h">
-      <Filter>源代码\Render</Filter>
+      <Filter>源代码\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\TextRenderer.h">
-      <Filter>源代码\Render</Filter>
+      <Filter>源代码\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\stdinclude.h">
-      <Filter>源代码\Basic</Filter>
+      <Filter>源代码\Common</Filter>
     </ClInclude>
     <ClInclude Include="source\GUI.h">
       <Filter>源代码\GUI</Filter>
@@ -101,46 +98,46 @@
     <ClInclude Include="source\ChunkPacket.h">
       <Filter>源代码\Network</Filter>
     </ClInclude>
+    <ClInclude Include="source\Particles.h">
+      <Filter>源代码\Objects</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
       <Filter>源代码</Filter>
     </ClCompile>
     <ClCompile Include="source\Chunk.cpp">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClCompile>
     <ClCompile Include="source\ChunkPtrArray.cpp">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClCompile>
     <ClCompile Include="source\World.cpp">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClCompile>
     <ClCompile Include="source\WorldGen.cpp">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClCompile>
     <ClCompile Include="source\HeightMap.cpp">
-      <Filter>源代码\Worlds</Filter>
+      <Filter>源代码\World</Filter>
     </ClCompile>
     <ClCompile Include="source\Definitions.cpp">
-      <Filter>源代码\Basic</Filter>
+      <Filter>源代码\Common</Filter>
     </ClCompile>
     <ClCompile Include="source\Hitbox.cpp">
-      <Filter>源代码\Basic</Filter>
+      <Filter>源代码\Common</Filter>
     </ClCompile>
     <ClCompile Include="source\Textures.cpp">
-      <Filter>源代码\Basic</Filter>
+      <Filter>源代码\Common</Filter>
     </ClCompile>
     <ClCompile Include="source\Frustum.cpp">
-      <Filter>源代码\Render</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Particles.cpp">
-      <Filter>源代码\Render</Filter>
+      <Filter>源代码\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\Renderer.cpp">
-      <Filter>源代码\Render</Filter>
+      <Filter>源代码\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\TextRenderer.cpp">
-      <Filter>源代码\Render</Filter>
+      <Filter>源代码\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\GUI.cpp">
       <Filter>源代码\GUI</Filter>
@@ -156,6 +153,9 @@
     </ClCompile>
     <ClCompile Include="source\Network.cpp">
       <Filter>源代码\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Particles.cpp">
+      <Filter>源代码\Objects</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

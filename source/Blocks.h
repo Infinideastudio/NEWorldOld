@@ -7,6 +7,7 @@ namespace blocks{  //·½¿éID
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
 		EOE
 	};
+	const block NONEMPTY = 1;
 
 	class SingleBlock{
 	private:
