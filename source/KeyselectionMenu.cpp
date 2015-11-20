@@ -44,7 +44,7 @@ void Keyselection(){
 			for (int i = 0; i < Keyslbtns.size();){
 				Keyslbtns[i]->resize(leftp, midp - 10, upp + lspc * j, upp + lspc * j + 24);
 				i++;
-				Keyslbtns[i]->resize(midp + 10, rightp, upp + lspc * j, upp + lspc * j + 24);
+				if (i<Keyslbtns.size()) Keyslbtns[i]->resize(midp + 10, rightp, upp + lspc * j, upp + lspc * j + 24);
 				i++; j++;
 			}
 		}
