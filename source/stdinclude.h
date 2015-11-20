@@ -13,7 +13,6 @@
 	#endif
 	#include <WinSock2.h>
 	#include <Windows.h>
-	//#include <WinSock2.h>
 #else
 	#include <thread>
 	#include <mutex>
@@ -30,6 +29,8 @@
 #include <iomanip>
 #include <fstream>
 #include <map>
+#include <queue>
+#include <functional>
 
 using std::string;
 using std::vector;

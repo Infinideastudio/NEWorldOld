@@ -20,7 +20,7 @@ ThreadFunc updateThreadFunc(void*);
 void drawCloud(double px, double pz);
 void updategame();
 void debugText(string s, bool init=false);
-void RenderAll();
+void Render();
 void drawBorder(int x,int y,int z);
 void renderDestroy(float level,int x,int y,int z);
 void drawGUI();
@@ -38,12 +38,6 @@ void createThumbnail();
 #include "Particles.h"
 #include "Hitbox.h"
 #include "GUI.h"
-#ifdef NEWORLD_USE_WINAPI
-	//#include "sockets.h"
-	//#include "client.h"
-	//#include "server.h"
-	//#include "Multiplayer.h"
-#endif
 #include "Menus.h"
 #include "Frustum.h"
 #include "Network.h"
@@ -128,10 +122,6 @@ main_menu:
 	glDisable(GL_LINE_SMOOTH);
 	mainmenu();
 	glEnable(GL_LINE_SMOOTH);
-	#ifdef _WIN32
-		//if(world::worldname.substr(0,6)=="client")mpclient=true;
-		//if(world::worldname.substr(0,6)=="server")mpserver=true;
-	#endif
 	glEnable(GL_TEXTURE_2D);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glfwSwapBuffers(MainWindow);
@@ -190,7 +180,7 @@ main_menu:
 			upsc = 0;
 		}
 
-		RenderAll();
+		Render();
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1){
 			createThumbnail();
@@ -240,6 +230,7 @@ ThreadFunc updateThreadFunc(void*){
 	MutexLock(Mutex);
 	while (!updateThreadRun){
 		MutexUnlock(Mutex);
+		Sleep(1);
 		MutexLock(Mutex);
 	}
 	MutexUnlock(Mutex);
@@ -251,6 +242,7 @@ ThreadFunc updateThreadFunc(void*){
 	while (updateThreadRun){
 
 		MutexUnlock(Mutex);
+		Sleep(1); //Optimize
 		MutexLock(Mutex);
 
 		while (updateThreadPaused){
@@ -417,30 +409,23 @@ void InitGL() {
 }
 
 void setupNormalFog() {
-
-	glEnable(GL_FOG);
-	int fogMode[3] = { GL_EXP, GL_EXP2, GL_LINEAR };
 	float fogColor[4] = { skycolorR, skycolorG, skycolorB, 1.0 };
-	int fogfilter = 2;
-
-	glFogi(GL_FOG_MODE, fogMode[fogfilter]);
+	glEnable(GL_FOG);
+	glFogi(GL_FOG_MODE, GL_LINEAR);
 	glFogfv(GL_FOG_COLOR, fogColor);
-	//glFogf GL_FOG_DENSITY, 1.0
 	glFogf(GL_FOG_START, viewdistance * 16.0f - 32.0f);
 	glFogf(GL_FOG_END, viewdistance * 16.0f);
-
-
 }
 
 void LoadTextures(){
 	//载入纹理
 	Textures::Init();
 	
-	guiImage[1] = Textures::LoadRGBATexture("Textures\\gui\\MainMenu.bmp", "");
-	guiImage[2] = Textures::LoadRGBATexture("Textures\\gui\\select.bmp", "");
-	guiImage[3] = Textures::LoadRGBATexture("Textures\\gui\\unselect.bmp", "");
-	guiImage[4] = Textures::LoadRGBATexture("Textures\\gui\\title.bmp", "Textures\\gui\\titlemask.bmp");
-	guiImage[5] = Textures::LoadRGBATexture("Textures\\gui\\lives.bmp", "");
+	guiImage[1] = Textures::LoadRGBATexture("Textures\\GUI\\MainMenu.bmp", "");
+	guiImage[2] = Textures::LoadRGBATexture("Textures\\GUI\\select.bmp", "");
+	guiImage[3] = Textures::LoadRGBATexture("Textures\\GUI\\unselect.bmp", "");
+	guiImage[4] = Textures::LoadRGBATexture("Textures\\GUI\\title.bmp", "Textures\\GUI\\titlemask.bmp");
+	guiImage[5] = Textures::LoadRGBATexture("Textures\\GUI\\lives.bmp", "");
 	
 	DefaultSkin = Textures::LoadRGBATexture("Textures\\Player\\skin_xiaoqiao.bmp", "Textures\\Player\\skinmask_xiaoqiao.bmp");
 
@@ -535,35 +520,39 @@ void updategame(){
 	}
 
 	//随机状态更新
-	/*
 	for (int i = 0; i < world::loadedChunks; i++){
-		int x, y, z;
+		int x, y, z, gx, gy, gz;
 		int cx = world::chunks[i]->cx;
 		int cy = world::chunks[i]->cy;
 		int cz = world::chunks[i]->cz;
-		x = int(rnd() * 16);
-		y = int(rnd() * 16);
-		z = int(rnd() * 16);
+		x = int(rnd() * 16); gx = x + cx * 16;
+		y = int(rnd() * 16); gy = y + cy * 16;
+		z = int(rnd() * 16); gz = z + cz * 16;
 		if (world::chunks[i]->getblock(x, y, z) == blocks::DIRT &&
-			world::getblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16) == blocks::AIR &&
-			(world::getblock(x + cx * 16 + 1, y + cy * 16, z + cz * 16) == blocks::GRASS ||
-			world::getblock(x + cx * 16 - 1, y + cy * 16, z + cz * 16) == blocks::GRASS ||
-			world::getblock(x + cx * 16, y + cy * 16, z + cz * 16 + 1) == blocks::GRASS ||
-			world::getblock(x + cx * 16, y + cy * 16, z + cz * 16 - 1) == blocks::GRASS ||
-			world::getblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16 - 1) == blocks::GRASS ||
-			world::getblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16 - 1) == blocks::GRASS ||
-			world::getblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16 - 1) == blocks::GRASS ||
-			world::getblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16 - 1) == blocks::GRASS ||
-			world::getblock(x + cx * 16, y + cy * 16 - 1, z + cz * 16 - 1) == blocks::GRASS ||
-			world::getblock(x + cx * 16, y + cy * 16 - 1, z + cz * 16 - 1) == blocks::GRASS ||
-			world::getblock(x + cx * 16, y + cy * 16 - 1, z + cz * 16 - 1) == blocks::GRASS ||
-			world::getblock(x + cx * 16, y + cy * 16 - 1, z + cz * 16 - 1) == blocks::GRASS)){
+			world::getblock(gx, gy + 1, gz, blocks::NONEMPTY) == blocks::AIR && (
+			world::getblock(gx + 1, gy, gz, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx - 1, gy, gz, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx, gy, gz + 1, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx, gy, gz - 1, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx + 1, gy + 1, gz, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx - 1, gy + 1, gz, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx, gy + 1, gz + 1, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx, gy + 1, gz - 1, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx + 1, gy - 1, gz, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx - 1, gy - 1, gz, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx, gy - 1, gz + 1, blocks::AIR) == blocks::GRASS ||
+			world::getblock(gx, gy - 1, gz - 1, blocks::AIR) == blocks::GRASS)){
+			//长草
 			world::chunks[i]->setblock(x, y, z, blocks::GRASS);
 			world::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
 			world::setChunkUpdated(cx, cy, cz, true);
 		}
+		if (world::chunks[i]->getblock(x, y, z) == blocks::GRASS && world::getblock(gx, gy + 1, gz) != blocks::AIR) {
+			//草被覆盖
+			world::chunks[i]->setblock(x, y, z, blocks::DIRT);
+			world::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
+		}
 	}
-	*/
 	
 	//判断选中的方块
 	double lx, ly, lz, sidedist[7];
@@ -792,7 +781,7 @@ void updategame(){
 		}
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!player::gliding()) {
-			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 				player::xa = -sin(player::heading*M_PI / 180.0) * runspeed * 10;
 				player::za = -cos(player::heading*M_PI / 180.0) * runspeed * 10;
 			}
@@ -804,7 +793,7 @@ void updategame(){
 		}
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS&&!player::gliding()) {
-			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 				player::xa = sin(player::heading*M_PI / 180.0) * runspeed * 10;
 				player::za = cos(player::heading*M_PI / 180.0) * runspeed * 10;
 			}
@@ -1001,7 +990,7 @@ void debugText(string s, bool init) {
 	pos++;
 }
 
-void RenderAll() {
+void Render() {
 	//画场景
 	double curtime = timer();
 	double TimeDelta;
@@ -1547,7 +1536,7 @@ void drawGUI(){
 	}
 
 	//检测帧速率
-	if (timer() - fctime >= 1) {
+	if (timer() - fctime >= 1.0) {
 		fps = fpsc;
 		fpsc = 0;
 		fctime = timer();
