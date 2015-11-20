@@ -751,7 +751,7 @@ void updategame(){
 		mxl = mx; myl = my;
 
 		//移动！(生命在于运动)
-		if (glfwGetKey(MainWindow, GLFW_KEY_W) || player::gliding()) {
+		if (glfwGetKey(MainWindow, keys[0]) || player::gliding()) {
 			if (!WP) {
 				if (Wprstm == 0.0) {
 					Wprstm = timer();
