@@ -44,4 +44,5 @@ void Keyselection(){
 		glfwPollEvents();
 		if (glfwWindowShouldClose(MainWindow)) exit(0);
 	} while (!f);
-	MainForm.cleanu
+	MainForm.cleanup();
+}
