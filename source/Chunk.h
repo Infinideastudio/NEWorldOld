@@ -18,14 +18,9 @@ namespace world{
 
 	public:
 		//竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻
-		chunk(int cxi, int cyi, int czi, chunkid idi) {
-			cx = cxi;
-			cy = cyi;
-			cz = czi;
-			id = idi;
-			Modified = false;
-		}
-		chunk(int cxi, int cyi, int czi) : chunk(cxi, cyi, czi, getChunkID(cxi, cyi, czi)) {}
+		//2333 --qiaozhanrong
+		chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi), Modified(false) {}
+		chunk(int cxi, int cyi, int czi) : cx(cxi), cy(cyi), cz(czi), id(getChunkID(cxi, cyi, czi)), Modified(false) {}
 		int cx, cy, cz;
 		bool Empty = false;
 		bool updated = false;
