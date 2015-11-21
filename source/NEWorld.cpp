@@ -547,7 +547,7 @@ void updategame(){
 			world::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
 			world::setChunkUpdated(cx, cy, cz, true);
 		}
-		if (world::chunks[i]->getblock(x, y, z) == blocks::GRASS && world::getblock(gx, gy + 1, gz) != blocks::AIR) {
+		if (world::chunks[i]->getblock(x, y, z) == blocks::GRASS && world::getblock(gx, gy + 1, gz, blocks::AIR) != blocks::AIR) {
 			//草被覆盖
 			world::chunks[i]->setblock(x, y, z, blocks::DIRT);
 			world::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
