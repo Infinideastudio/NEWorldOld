@@ -42,6 +42,7 @@ void createThumbnail();
 #include "Frustum.h"
 #include "Network.h"
 
+
 struct RenderChunk{
 	RenderChunk(world::chunk* c, double TimeDelta){
 		cx = c->cx;
@@ -102,6 +103,12 @@ int main(){
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwMakeContextCurrent(MainWindow);
 	InitGL();
+
+	InitVSync();
+	if (GetVSyncAvaiablity()) {
+		SetVSyncState(true);
+	}
+
 	glfwSetCursor(MainWindow, MouseCursor);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwSetWindowSizeCallback(MainWindow, &WindowSizeFunc);
@@ -732,7 +739,7 @@ void updategame(){
 		mxl = mx; myl = my;
 
 		//移动！(生命在于运动)
-		if (glfwGetKey(MainWindow, GLFW_KEY_W) || player::gliding()) {
+		if (glfwGetKey(MainWindow, keys[0]) || player::gliding()) {
 			if (!WP) {
 				if (Wprstm == 0.0) {
 					Wprstm = timer();

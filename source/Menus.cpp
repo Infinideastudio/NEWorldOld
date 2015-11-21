@@ -140,6 +140,7 @@ void options(){
 	//gui::button*	ciArrayBtn = MainForm.createbutton("使用区块索引数组：" + boolstr(UseCIArray))
 	gui::button*	rdstbtn = MainForm.createbutton(">> 渲染选项...");
 	gui::button*	gistbtn = MainForm.createbutton(">> 图形界面选项...");
+	gui::button*	keyslbtn= MainForm.createbutton(">> 按键选择...");
 	gui::button*	backbtn = MainForm.createbutton("<< 返回主菜单");
 	//gui::button*	savebtn = MainForm.createbutton("保存设置")
 	//ciArrayBtn->enabled = false
@@ -154,6 +155,7 @@ void options(){
 		mmsBar->resize(midp + 10, rightp, upp + lspc * 0, upp + lspc * 0 + 24);
 		viewdistBar->resize(leftp, midp - 10, upp + lspc * 1, upp + lspc * 1 + 24);
 		//ciArrayBtn->resize(midp + 10, rightp, upp + lspc * 1, upp + lspc * 1 + 24)
+		keyslbtn->resize(leftp, midp - 10, upp + lspc * 3, upp + lspc * 3 + 24);
 		rdstbtn->resize(leftp, midp - 10, upp + lspc * 4, upp + lspc * 4 + 24);
 		gistbtn->resize(midp + 10, rightp, upp + lspc * 4, upp + lspc * 4 + 24);
 		backbtn->resize(leftp, midp - 10, downp - 24, downp);
@@ -173,6 +175,7 @@ void options(){
 		//if (ciArrayBtn->clicked) UseCIArray = !UseCIArray
 		if (rdstbtn->clicked) Renderoptions();
 		if (gistbtn->clicked) GUIoptions();
+		if (keyslbtn->clicked) Keyselection();
 		if (backbtn->clicked) f = true;
 		MainForm.render();
 		glfwSwapBuffers(MainWindow);
@@ -185,6 +188,8 @@ void options(){
 void Renderoptions(){
     //渲染设置菜单
 	gui::Form MainForm;
+	int upp = 60;
+	int lspc = 36;
 	int leftp = windowwidth / 2 - 250;
 	int rightp = windowwidth / 2 + 250;
 	int midp = windowwidth / 2;
@@ -193,6 +198,7 @@ void Renderoptions(){
 	MainForm.Init();
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 	gui::label*  title = MainForm.createlabel("==============<  渲 染 选 项  >==============");
+	gui::button*  VSync = MainForm.createbutton("使用垂直同步");
 	gui::button*  backbtn = MainForm.createbutton("<< 返回选项菜单");
 	do{
 		leftp = windowwidth / 2 - 250;
@@ -201,10 +207,19 @@ void Renderoptions(){
 		downp = windowheight - 20;
 		title->resize(midp - 225, midp + 225, 20, 36);
 		backbtn->resize(leftp, rightp, downp - 24, downp);
+		VSync->resize(leftp, midp - 10, upp + lspc * 0, upp + lspc * 0 + 24);
 		//更新GUI
 		glfwGetCursorPos(MainWindow, &mx, &my);
 		MainForm.mousedata((int)mx, (int)my, mw, mb);
 		MainForm.update();
+		if (!GetVSyncAvaiablity()) {
+			VSync->text = "垂直同步不可用";
+			VSync->enabled = false;
+		} else 
+		if (IsVSyncEnabled()) VSync->text = "垂直同步已启用"; else VSync->text = "垂直同步未启用";
+		if (VSync->clicked){
+			if (IsVSyncEnabled()) SetVSyncState(false); else SetVSyncState(true);
+		}
 		if (backbtn->clicked) f = true;
 		MainForm.render();
 		glfwSwapBuffers(MainWindow);

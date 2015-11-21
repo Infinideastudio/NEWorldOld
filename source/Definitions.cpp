@@ -77,6 +77,8 @@ PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB;
 PFNGLGETINFOLOGARBPROC glGetInfoLogARB;
 PFNGLDETACHOBJECTARBPROC glDetachObjectARB;
 PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
+PFNWGLEXTSWAPCONTROLPROC wglSwapIntervalEXT;
+PFNWGLEXTGETSWAPINTERVALPROC wglGetSwapIntervalEXT;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 int c_getChunkPtrFromCPA;
@@ -113,4 +115,38 @@ void DebugError(string msg){
 	printf("[Debug][Error]");
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
 	printf("%s\n",msg.c_str());
+}
+
+bool VSyncAvaiable = false;
+
+void InitVSync()
+{
+	char* extensions = (char*)glGetString(GL_EXTENSIONS);
+	if (strstr(extensions, "WGL_EXT_swap_control")) {
+		wglSwapIntervalEXT = (PFNWGLEXTSWAPCONTROLPROC)wglGetProcAddress("wglSwapIntervalEXT");
+		wglGetSwapIntervalEXT = (PFNWGLEXTGETSWAPINTERVALPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+		VSyncAvaiable = true;
+		return;
+	}
+	VSyncAvaiable = false;
+	return;
+}
+
+// 判断当前状态是否为垂直同步
+bool IsVSyncEnabled()
+{
+	return (wglGetSwapIntervalEXT() > 0);
+}
+
+// 开启和关闭垂直同步
+void SetVSyncState(bool enable)
+{
+	if (enable)
+		wglSwapIntervalEXT(1);
+	else
+		wglSwapIntervalEXT(0);
+}
+
+bool GetVSyncAvaiablity(){
+	return VSyncAvaiable;
 }

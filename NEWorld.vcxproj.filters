@@ -154,8 +154,13 @@
     <ClCompile Include="source\Network.cpp">
       <Filter>源代码\Network</Filter>
     </ClCompile>
+<<<<<<< HEAD
     <ClCompile Include="source\Particles.cpp">
       <Filter>源代码\Objects</Filter>
+=======
+    <ClCompile Include="source\KeyselectionMenu.cpp">
+      <Filter>源代码\GUI</Filter>
+>>>>>>> refs/remotes/origin/master
     </ClCompile>
   </ItemGroup>
 </Project>

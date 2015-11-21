@@ -1,3 +1,4 @@
+
 //#pragma warning(disable:4710) //忽略STL高发警告：函数未内联
 //#pragma warning(disable:4514) //忽略STL高发警告：未使用的内联函数已移除
 //#pragma warning(disable:4350) //忽略STL高发警告：行为更改
