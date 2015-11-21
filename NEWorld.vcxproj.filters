@@ -1,166 +1,141 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="资源文件">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="源代码">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="源代码\Objects">
-      <UniqueIdentifier>{fd42ef38-5e12-4c31-bc56-4f954b4953d2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Player">
-      <UniqueIdentifier>{40ea1808-71f0-4c4c-a9ee-d3c04da07f95}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Network">
-      <UniqueIdentifier>{b6623145-3e33-48a1-be11-1cf4ad2065bc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\GUI">
-      <UniqueIdentifier>{92f24a42-2d77-4317-9cd7-04a69e43c2fa}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\World">
-      <UniqueIdentifier>{0873facd-4fad-448a-a88b-afa8accfd800}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Renderer">
-      <UniqueIdentifier>{a448efda-cf30-4017-8d62-e5feed0408dd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Common">
-      <UniqueIdentifier>{2942a024-6889-447e-9918-2cd547c7a601}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="source\Object.h">
-      <Filter>源代码\Objects</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Blocks.h">
-      <Filter>源代码\World</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Chunk.h">
-      <Filter>源代码\World</Filter>
-    </ClInclude>
-    <ClInclude Include="source\ChunkPtrArray.h">
-      <Filter>源代码\World</Filter>
-    </ClInclude>
-    <ClInclude Include="source\World.h">
-      <Filter>源代码\World</Filter>
-    </ClInclude>
-    <ClInclude Include="source\WorldGen.h">
-      <Filter>源代码\World</Filter>
-    </ClInclude>
-    <ClInclude Include="source\HeightMap.h">
-      <Filter>源代码\World</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Definitions.h">
-      <Filter>源代码\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Hitbox.h">
-      <Filter>源代码\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Textures.h">
-      <Filter>源代码\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Frustum.h">
-      <Filter>源代码\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Renderer.h">
-      <Filter>源代码\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="source\TextRenderer.h">
-      <Filter>源代码\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="source\stdinclude.h">
-      <Filter>源代码\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="source\GUI.h">
-      <Filter>源代码\GUI</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Menus.h">
-      <Filter>源代码\GUI</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Player.h">
-      <Filter>源代码\Player</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Mob.h">
-      <Filter>源代码\Objects</Filter>
-    </ClInclude>
-    <ClInclude Include="source\OnlinePlayer.h">
-      <Filter>源代码\Objects</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Network.h">
-      <Filter>源代码\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="source\PlayerPacket.h">
-      <Filter>源代码\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="source\ChunkPacket.h">
-      <Filter>源代码\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Particles.h">
-      <Filter>源代码\Objects</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="source\NEWorld.cpp">
-      <Filter>源代码</Filter>
-    </ClCompile>
     <ClCompile Include="source\Chunk.cpp">
-      <Filter>源代码\World</Filter>
+      <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="source\ChunkPtrArray.cpp">
-      <Filter>源代码\World</Filter>
-    </ClCompile>
-    <ClCompile Include="source\World.cpp">
-      <Filter>源代码\World</Filter>
-    </ClCompile>
-    <ClCompile Include="source\WorldGen.cpp">
-      <Filter>源代码\World</Filter>
-    </ClCompile>
-    <ClCompile Include="source\HeightMap.cpp">
-      <Filter>源代码\World</Filter>
+      <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="source\Definitions.cpp">
-      <Filter>源代码\Common</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Hitbox.cpp">
-      <Filter>源代码\Common</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Textures.cpp">
-      <Filter>源代码\Common</Filter>
+      <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="source\Frustum.cpp">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="source\Renderer.cpp">
-      <Filter>源代码\Renderer</Filter>
+    <ClCompile Include="source\HeightMap.cpp">
+      <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="source\TextRenderer.cpp">
-      <Filter>源代码\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="source\GUI.cpp">
-      <Filter>源代码\GUI</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Menus.cpp">
-      <Filter>源代码\GUI</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Player.cpp">
-      <Filter>源代码\Player</Filter>
-    </ClCompile>
-    <ClCompile Include="source\OnlinePlayer.cpp">
-      <Filter>源代码\Objects</Filter>
+    <ClCompile Include="source\Hitbox.cpp">
+      <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="source\Network.cpp">
-      <Filter>源代码\Network</Filter>
+      <Filter>源文件</Filter>
     </ClCompile>
-<<<<<<< HEAD
+    <ClCompile Include="source\NEWorld.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="source\OnlinePlayer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
     <ClCompile Include="source\Particles.cpp">
-      <Filter>源代码\Objects</Filter>
-=======
-    <ClCompile Include="source\KeyselectionMenu.cpp">
-      <Filter>源代码\GUI</Filter>
->>>>>>> refs/remotes/origin/master
+      <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="source\Player.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Renderer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="source\TextRenderer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Textures.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="source\World.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="source\WorldGen.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GUI.cpp">
+      <Filter>源文件\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Menus.cpp">
+      <Filter>源文件\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\KeyselectionMenu.cpp">
+      <Filter>源文件\GUI</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="source\Blocks.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Chunk.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ChunkPacket.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ChunkPtrArray.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Definitions.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Frustum.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\HeightMap.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Hitbox.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Mob.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Network.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Object.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\OnlinePlayer.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Particles.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Player.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\PlayerPacket.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\stdinclude.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\TextRenderer.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Textures.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\World.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\WorldGen.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="source\GUI.h">
+      <Filter>源文件\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Menus.h">
+      <Filter>源文件\GUI</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{e2477302-af8b-4c73-b5e9-d8cec6e97816}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\GUI">
+      <UniqueIdentifier>{e0838cd3-ddec-441c-a1bb-156a62605f4d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

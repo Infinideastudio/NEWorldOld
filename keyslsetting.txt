@@ -1,4 +1,8 @@
-87 前进
-83 后退
-65 向左
-68 向右
+87 Forward
+83 Backward
+65 Left
+68 Right
+82 Run_Forward
+70 Fall_Backward
+90 Switch_Pervious_Block
+88 Switch_Next_Block

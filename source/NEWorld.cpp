@@ -6,7 +6,6 @@
 //Functions/Subs define
 void WindowSizeFunc(GLFWwindow* win, int width, int height);
 void MouseButtonFunc(GLFWwindow*, int button, int action, int);
-void CharInputFunc(GLFWwindow*, unsigned int c);
 void MouseScrollFunc(GLFWwindow*, double, double yoffset);
 void splashscreen();
 void setupscreen();
@@ -94,6 +93,8 @@ int main(){
 	setlocale(LC_ALL, "zh_CN.UTF-8");
 #endif
 
+	Loadkeys();
+	cout << "[Console][Event]KeysLoaded" << endl;
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
@@ -108,6 +109,7 @@ int main(){
 	if (GetVSyncAvaiablity()) {
 		SetVSyncState(true);
 	}
+
 
 	glfwSetCursor(MainWindow, MouseCursor);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -769,25 +771,25 @@ void updategame(){
 		if (player::Running)player::speed = runspeed;
 		else player::speed = walkspeed;
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!player::gliding()) {
+		if (glfwGetKey(MainWindow, keys[1]) == GLFW_PRESS&&!player::gliding()) {
 			player::xa = sin(player::heading*M_PI / 180.0) * player::speed;
 			player::za = cos(player::heading*M_PI / 180.0) * player::speed;
 			Wprstm = 0.0;
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!player::gliding()) {
+		if (glfwGetKey(MainWindow, keys[2]) == GLFW_PRESS&&!player::gliding()) {
 			player::xa = sin((player::heading - 90)*M_PI / 180.0) * player::speed;
 			player::za = cos((player::heading - 90)*M_PI / 180.0) * player::speed;
 			Wprstm = 0.0;
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS&&!player::gliding()) {
+		if (glfwGetKey(MainWindow, keys[3]) == GLFW_PRESS&&!player::gliding()) {
 			player::xa = -sin((player::heading - 90)*M_PI / 180.0) * player::speed;
 			player::za = -cos((player::heading - 90)*M_PI / 180.0) * player::speed;
 			Wprstm = 0.0;
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!player::gliding()) {
+		if (glfwGetKey(MainWindow, keys[4]) == GLFW_PRESS&&!player::gliding()) {
 			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 				player::xa = -sin(player::heading*M_PI / 180.0) * runspeed * 10;
 				player::za = -cos(player::heading*M_PI / 180.0) * runspeed * 10;
@@ -799,7 +801,7 @@ void updategame(){
 			}
 		}
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS&&!player::gliding()) {
+		if (glfwGetKey(MainWindow, keys[5]) == GLFW_PRESS&&!player::gliding()) {
 			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 				player::xa = sin(player::heading*M_PI / 180.0) * runspeed * 10;
 				player::za = cos(player::heading*M_PI / 180.0) * runspeed * 10;
@@ -812,8 +814,8 @@ void updategame(){
 		}
 
 		//切换方块
-		if (isPressed(GLFW_KEY_Z) && player::itemInHand > 0) player::itemInHand--;
-		if (isPressed(GLFW_KEY_X) && player::itemInHand < 9) player::itemInHand++;
+		if (isPressed(keys[6]) && player::itemInHand > 0) player::itemInHand--;
+		if (isPressed(keys[7]) && player::itemInHand < 9) player::itemInHand++;
 		mwl = mw;
 
 		//起跳！

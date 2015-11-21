@@ -192,4 +192,8 @@ bool IsVSyncEnabled();
 void SetVSyncState(bool enable);
 
 bool GetVSyncAvaiablity();
+
+//This func is moved to here because it will be used in KeyselectionMenu.cpp to restore to normal key handle
+
+void CharInputFunc(GLFWwindow*, unsigned int c);
 #endif

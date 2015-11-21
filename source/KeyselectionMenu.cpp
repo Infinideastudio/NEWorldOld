@@ -5,6 +5,48 @@
 using namespace std;
 //看默认按键不太爽，做一个按键选择<^-^>
 vector<int>keys;//按键
+map<int, string>Keynames;//按键名
+void Loadkeys(){
+	ifstream kslf("keyslsetting.txt");
+	if (kslf.good()){
+		while (!kslf.eof()){
+			int t;
+			kslf >> t;
+			keys.push_back(t);
+			kslf >> Keynames[keys.size() - 1];
+		}
+	}
+	kslf.close();
+}
+
+string keyname(int key){
+	switch (key)
+	{
+	case GLFW_KEY_RIGHT:
+		break;
+	case GLFW_KEY_LEFT:
+		break;
+	case GLFW_KEY_DOWN:
+		break;
+	case GLFW_KEY_UP:
+		break;
+	default:
+		return " "+(char)key;
+		break;
+	}
+}
+
+int OnEdit = -1;
+bool EditEnd = false;
+void CharInputFunc2(GLFWwindow*, unsigned int c) {
+	if (c < 128) {
+		keys[OnEdit] = (int)c;
+	}
+	glfwSetCharCallback(MainWindow, &CharInputFunc);
+	EditEnd = true;
+}
+
+
 void Keyselection(){
 	//渲染设置菜单
 	gui::Form MainForm;
@@ -20,18 +62,9 @@ void Keyselection(){
 	gui::label*  title = MainForm.createlabel("==============<  渲 染 选 项  >==============");
 	gui::button*  backbtn = MainForm.createbutton("<< 返回选项菜单");
 	map<int, gui::button*>Keyslbtns;
-	map<int, string>Keynames;
-	ifstream kslf("keyslsetting.txt");
-	if (kslf.good()){
-		while (!kslf.eof()){
-			int t;
-			kslf >> t;
-			keys.push_back(t);
-			kslf >> Keynames[keys.size() - 1];
-			Keyslbtns[keys.size() - 1] = MainForm.createbutton(Keynames[keys.size() - 1] + ":" + (char)keys[keys.size() - 1]);
-		}
+	for (int i = 0; i < keys.size(); i++){
+		Keyslbtns[i] = MainForm.createbutton(Keynames[i] + ":" + (char)keys[i]);
 	}
-	kslf.close();
 	do{
 		leftp = windowwidth / 2 - 250;
 		rightp = windowwidth / 2 + 250;
@@ -48,12 +81,28 @@ void Keyselection(){
 				i++; j++;
 			}
 		}
-		//VSync->resize(leftp, midp - 10, upp + lspc * 0, upp + lspc * 0 + 24);
 		//更新GUI
 		glfwGetCursorPos(MainWindow, &mx, &my);
 		MainForm.mousedata((int)mx, (int)my, mw, mb);
 		MainForm.update();
-		
+
+		if (EditEnd){
+			Keyslbtns[OnEdit]->text = Keynames[OnEdit] + ":" + (char)keys[OnEdit];
+			OnEdit = -1;
+			EditEnd = false;
+		}
+
+		if (Keyslbtns.size() > 0){
+			int j = 0;
+			for (int i = 0; i < Keyslbtns.size(); i++){
+				if (Keyslbtns[i]->clicked) {
+					if (OnEdit != -1) Keyslbtns[OnEdit]->text = Keynames[OnEdit] + ":" + (char)keys[OnEdit];
+					OnEdit = i;
+					Keyslbtns[OnEdit]->text = Keynames[OnEdit] + ":??";
+					glfwSetCharCallback(MainWindow, &CharInputFunc2);
+				}
+			}
+		}
 		if (backbtn->clicked) f = true;
 		MainForm.render();
 		glfwSwapBuffers(MainWindow);
