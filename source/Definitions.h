@@ -131,7 +131,7 @@ extern int c_getHeightFromWorldGen;
 #endif
 
 inline string boolstr(bool b){ return b ? "True" : "False"; }
-inline double rnd(){ return (double)rand() / RAND_MAX; }
+inline double rnd() { return (double)rand() / (RAND_MAX + 1); }
 inline double timer(){
 	static LARGE_INTEGER counterFreq;
 	if (counterFreq.QuadPart == 0)QueryPerformanceFrequency(&counterFreq);
