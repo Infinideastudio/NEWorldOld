@@ -16,6 +16,7 @@ namespace gui{
 	class controls{
 	public:
 		//控件基类，只要是控件都得继承这个
+		bool Visiable = true;
 		virtual ~controls() {};
 		int id;
 		Form* parent;

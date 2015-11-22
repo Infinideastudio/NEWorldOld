@@ -649,7 +649,7 @@ namespace gui{
 		glDisable(GL_TEXTURE_2D);
 		glDisable(GL_LINE_SMOOTH);
 		for (int i = 0; i != childrenCount; i++){
-			children[i]->render();
+			if (children[i]->Visiable) children[i]->render();
 		}
 	}
 
