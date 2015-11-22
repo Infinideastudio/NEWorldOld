@@ -51,7 +51,8 @@ string keyname(int key){
 	case GLFW_KEY_UP:
 		break;
 	default:
-		return " "+(char)key;
+		string ret(""+(char)key);
+		return ret;
 		break;
 	}
 }
@@ -104,6 +105,7 @@ void Keyselection(){
 		godefault->resize(leftp, rightp, downp -60, downp - 36 );
 		bar->resize(midp + 275, midp + 295, 36, downp);
 		int linsperpage = (downp - upp - 60) / 36;
+
 		if (((1 + Defaultkeys.size()) / 2)<linsperpage) bar->Visiable = false; else {
 			bar->Visiable = true;
 			bar->barheight = ((1 + Defaultkeys.size()) / 2) - linsperpage;
