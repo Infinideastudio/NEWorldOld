@@ -85,8 +85,8 @@ void mainmenu(){
 	bool f = false;
 	MainForm.Init();
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-	gui::button* startbtn = MainForm.createbutton("单人游戏");
-	gui::button* multiplayerbtn = MainForm.createbutton("多人游戏");
+	gui::button* startbtn = MainForm.createbutton("开始游戏");
+	//gui::button* multiplayerbtn = MainForm.createbutton("多人游戏");
 	gui::button* optionsbtn = MainForm.createbutton(">> 选项...");
 	gui::button* quitbtn = MainForm.createbutton("退出");
 	do{
@@ -94,15 +94,17 @@ void mainmenu(){
 		midp = windowwidth / 2;
 		rightp = windowwidth / 2 + 200;
 		startbtn->resize(leftp, rightp, upp, upp + 32);
-		multiplayerbtn->resize(leftp, rightp, upp + 38, upp + 32 + 38);
-		optionsbtn->resize(leftp, midp - 3, upp + 38 * 2, upp + 72 + 38);
-		quitbtn->resize(midp + 3, rightp, upp + 38 * 2, upp + 72 + 38);
+		//multiplayerbtn->resize(leftp, rightp, upp + 38, upp + 32 + 38);
+		//optionsbtn->resize(leftp, midp - 3, upp + 38 * 2, upp + 72 + 38);
+		//quitbtn->resize(midp + 3, rightp, upp + 38 * 2, upp + 72 + 38);
+		optionsbtn->resize(leftp, midp - 3, upp + 38, upp + 72);
+		quitbtn->resize(midp + 3, rightp, upp + 38, upp + 72);
 		mb = glfwGetMouseButton(MainWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS ? 1 : 0;
 		glfwGetCursorPos(MainWindow, &mx, &my);
 		MainForm.mousedata((int)mx, (int)my, mw, mb);
 		MainForm.update();
 		if (startbtn->clicked) worldmenu();
-		if (multiplayerbtn->clicked) MultiplayerGameMenu();
+		//if (multiplayerbtn->clicked) MultiplayerGameMenu();
 		if (gamebegin) f = true;
 		if (optionsbtn->clicked) options();
 		if (quitbtn->clicked) exit(0);

@@ -49,6 +49,7 @@ bool FirstFrameThisUpdate;
 double SpeedupAnimTimer;
 double TouchdownAnimTimer;
 double screenshotAnimTimer;
+double bagAnimTimer;
 
 //OpenGL
 int GLVersionMajor, GLVersionMinor, GLVersionRev;
