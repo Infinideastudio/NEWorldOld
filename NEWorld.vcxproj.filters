@@ -58,6 +58,9 @@
     <ClCompile Include="source\KeyselectionMenu.cpp">
       <Filter>源文件\GUI</Filter>
     </ClCompile>
+    <ClCompile Include="MultiPlayerGameMenu.cpp">
+      <Filter>源文件\GUI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Blocks.h">
@@ -127,6 +130,9 @@
       <Filter>源文件\GUI</Filter>
     </ClInclude>
     <ClInclude Include="source\Menus.h">
+      <Filter>源文件\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="MultiPlayerGameMenu.h">
       <Filter>源文件\GUI</Filter>
     </ClInclude>
   </ItemGroup>

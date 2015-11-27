@@ -12,6 +12,9 @@ namespace gui{
 	extern float BgG;
 	extern float BgB;
 	extern float BgA;
+
+	typedef void(UIEvent)(controls*);
+
 	class Form;
 	class controls{
 	public:
@@ -20,6 +23,9 @@ namespace gui{
 		virtual ~controls() {};
 		int id;
 		Form* parent;
+		UIEvent* onclick = nullptr;
+		UIEvent* onupdate = nullptr;
+		UIEvent* onrender = nullptr;
 		virtual void update() {};  //莫非这个就是传说中的虚函数？
 		virtual void render() {};  //貌似是的！
 		virtual void destroy() {};

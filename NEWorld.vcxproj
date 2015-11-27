@@ -134,6 +134,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="MultiPlayerGameMenu.h" />
     <ClInclude Include="source\Blocks.h" />
     <ClInclude Include="source\Chunk.h" />
     <ClInclude Include="source\ChunkPacket.h" />
@@ -159,6 +160,7 @@
     <ClInclude Include="source\WorldGen.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="MultiPlayerGameMenu.cpp" />
     <ClCompile Include="source\Chunk.cpp" />
     <ClCompile Include="source\ChunkPtrArray.cpp" />
     <ClCompile Include="source\HeightMap.cpp" />
