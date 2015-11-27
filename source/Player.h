@@ -21,8 +21,8 @@ namespace player{
 	void MoveHitbox(double x, double y, double z);
 	void MoveHitboxToPosition();
 	void Move();
-	void save(string worldn);
-	void load(string worldn);
+	bool save(string worldn);
+	bool load(string worldn);
 	void additem(block itemname);
 
 	PlayerPacket convertToPlayerPacket();
