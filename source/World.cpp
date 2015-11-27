@@ -36,10 +36,11 @@ namespace world{
 	void Init(){
 		
 		std::stringstream ss;
-		ss << "md Worlds\\" << worldname;
+		system("mkdir Worlds");
+		ss << "mkdir Worlds\\" << worldname;
 		system(ss.str().c_str());
 		ss.clear(); ss.str("");
-		ss << "md Worlds\\" << worldname << "\\chunks";
+		ss << "mkdir Worlds\\" << worldname << "\\chunks";
 		system(ss.str().c_str());
 
 		WorldGen::perlinNoiseInit(3404);
