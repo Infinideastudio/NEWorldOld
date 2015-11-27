@@ -9,7 +9,7 @@ namespace world{
 
 	extern string worldname;
 	const int worldsize = 134217728;
-	const int worldheight = 128;
+	const int worldheight = 8;
 	extern brightness skylight;         //Sky light level
 	extern brightness BRIGHTNESSMAX;    //Maximum brightness
 	extern brightness BRIGHTNESSMIN;    //Mimimum brightness
