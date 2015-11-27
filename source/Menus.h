@@ -7,3 +7,7 @@ void Renderoptions();
 void GUIoptions();
 void worldmenu();
 void createworldmenu();
+void Keyselection();
+void Loadkeys();
+//按键选择变量
+extern vector<int>keys;//按键

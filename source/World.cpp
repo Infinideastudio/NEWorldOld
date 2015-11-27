@@ -705,12 +705,8 @@ namespace world{
 	//原来是因为这里的set/put/pickblock三个Sub是世界范围的，而之前的是区块范围的。。。
 
 	bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist){
-
 		//检测给出的chunk坐标是否在渲染范围内
-		if (x<px - dist || x>px + dist - 1 || y<py - dist || y>py + dist - 1 || z<pz - dist || z>pz + dist - 1){
-			return false;
-		}
-		return true;
+		return !(x<px - dist || x>px + dist - 1 || y<py - dist || y>py + dist - 1 || z<pz - dist || z>pz + dist - 1);
 
 	}
 
