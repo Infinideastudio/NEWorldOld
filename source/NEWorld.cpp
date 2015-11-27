@@ -93,6 +93,9 @@ int main(){
 	setlocale(LC_ALL, "zh_CN.UTF-8");
 #endif
 
+	system("mkdir Worlds");
+	system("mkdir Screenshots");
+
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
@@ -374,8 +377,8 @@ void setupscreen() {
 	glAlphaFunc(GL_GREATER, 0.0); //<--这家伙在卖萌？(往后面看看，卖萌的多着呢)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
-	glHint(GL_FOG_HINT, GL_NICEST);
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
+	glHint(GL_FOG_HINT, GL_FASTEST);
 	glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -440,11 +443,19 @@ void LoadTextures(){
 
 void saveGame(){
 	world::saveAllChunks();
-	player::save(world::worldname);
+	if (!player::save(world::worldname)) {
+#ifdef NEWORLD_CONSOLE_OUTPUT
+		DebugWarning("Failed saving player info!");
+#endif
+	}
 }
 
 void loadGame(){
-	player::load(world::worldname);
+	if (!player::load(world::worldname)) {
+#ifdef NEWORLD_CONSOLE_OUTPUT
+		DebugWarning("Failed loading player info!");
+#endif
+	}
 }
 
 bool isPressed(int key, bool setFalse = false) {
@@ -807,6 +818,9 @@ void updategame(){
 		//切换方块
 		if (isPressed(GLFW_KEY_Z) && player::itemInHand > 0) player::itemInHand--;
 		if (isPressed(GLFW_KEY_X) && player::itemInHand < 9) player::itemInHand++;
+		if ((int)player::itemInHand + (mwl - mw) < 0)player::itemInHand = 0;
+		else if ((int)player::itemInHand + (mwl - mw) > 9)player::itemInHand = 9;
+		else player::itemInHand += (byte)(mwl - mw);
 		mwl = mw;
 
 		//起跳！
@@ -857,25 +871,18 @@ void updategame(){
 		}
 		if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
 		if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
-		if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) canGliding = !canGliding;
+		//if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) canGliding = !canGliding;
 	}
-	//static int openMX, openMY;
+
 	if (isPressed(GLFW_KEY_E)){
 		bagOpened = !bagOpened;
-		if (!bagOpened){
-			glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-			//mx = mxl = openMX;
-			//my = mxl = openMY;
-		}
-		else{
-			//openMX = mxl = mx;
-			//openMY = myl = my;
-			shouldGetThumbnail = true;
-		}
+		bagAnimTimer = timer();
+		if (!bagOpened)glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		else shouldGetThumbnail = true;
 	}
 
 	if (!bagOpened){
-		if (isPressed(GLFW_KEY_L)) world::saveAllChunks();
+		if (isPressed(GLFW_KEY_L))world::saveAllChunks();
 	}
 
 	//跳跃
@@ -903,9 +910,9 @@ void updategame(){
 			player::jump = 0.0;
 			player::AirJumps = 0;
 			isPressed(GLFW_KEY_SPACE, true);
-			if (player::ya <= 0.001) {
-				player::ya = -0.001;
-				if (!player::OnGround) player::ya = -0.1;
+			if (player::ya <= 0.001 && !FLY && !CROSS) {
+				player::ya =- 0.001;
+				if (!player::OnGround) player::ya -= 0.1;
 			}
 		}
 	}
@@ -1200,10 +1207,27 @@ void Render() {
 		glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0); glVertex2i(windowwidth, 0);
 		glEnd();
 	}
-	if (GUIrenderswitch)drawGUI();
-	if (bagOpened) drawBag();
+	if (GUIrenderswitch) {
+		drawGUI();
+		drawBag();
+	}
+
+	glDisable(GL_TEXTURE_2D);
+	if (curtime - screenshotAnimTimer <= 1.0 && !shouldGetScreenshot) {
+		float col = 1.0f - (float)(curtime - screenshotAnimTimer);
+		glColor4f(1.0f, 1.0f, 1.0f, col);
+		glBegin(GL_QUADS);
+		glVertex2i(0, 0);
+		glVertex2i(0, windowheight);
+		glVertex2i(windowwidth, windowheight);
+		glVertex2i(windowwidth, 0);
+		glEnd();
+	}
+	glEnable(GL_TEXTURE_2D);
+	
 	if (shouldGetScreenshot) {
 		shouldGetScreenshot = false;
+		screenshotAnimTimer = curtime;
 		time_t t = time(0);
 		char tmp[64];
 		tm* timeinfo = new tm;
@@ -1214,7 +1238,7 @@ void Render() {
 #endif
 		strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", timeinfo);
 		std::stringstream ss;
-		ss << "\\screenshots\\" << tmp << ".bmp";
+		ss << "Screenshots\\" << tmp << ".bmp";
 		saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
 	}
 	if (shouldGetThumbnail) {
@@ -1408,48 +1432,6 @@ void drawGUI(){
 
 		glEnd();
 
-	}
-
-	glEnable(GL_TEXTURE_2D);
-	glDisable(GL_CULL_FACE);
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	for (int i = 0; i < 10; i++) {
-		if (i == player::itemInHand)
-			glBindTexture(GL_TEXTURE_2D, guiImage[2]);
-		else
-			glBindTexture(GL_TEXTURE_2D, guiImage[3]);
-
-		glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
-		glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
-		glBegin(GL_QUADS);
-		glTexCoord2f(0.0, 1.0);
-		glVertex2d(i * 32, windowheight - 32);
-		glTexCoord2f(0.0, 0.0);
-		glVertex2d(i * 32 + 32, windowheight - 32);
-		glTexCoord2f(1.0, 0.0);
-		glVertex2d(i * 32 + 32, windowheight);
-		glTexCoord2f(1.0, 1.0);
-		glVertex2d(i * 32, windowheight);
-		glEnd();
-		if (player::inventorybox[3][i] != blocks::AIR) {
-			glColor4f(1.0, 1.0, 1.0, 1.0);
-			glBindTexture(GL_TEXTURE_2D, BlockTextures);
-			double tcX = Textures::getTexcoordX(player::inventorybox[3][i], 1);
-			double tcY = Textures::getTexcoordY(player::inventorybox[3][i], 1);
-			glBegin(GL_QUADS);
-			glTexCoord2d(tcX, tcY + 1 / 8.0);
-			glVertex2d(i * 32 + 2, windowheight - 32 + 2);
-			glTexCoord2d(tcX, tcY);
-			glVertex2d(i * 32 + 30, windowheight - 32 + 2);
-			glTexCoord2d(tcX + 1 / 8.0, tcY);
-			glVertex2d(i * 32 + 30, windowheight - 32 + 30);
-			glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8);
-			glVertex2d(i * 32 + 2, windowheight - 32 + 30);
-			glEnd();
-			std::stringstream ss;
-			ss << (int)player::inventorypcs[3][i];
-			TextRenderer::renderString(i * 32, windowheight - 32, ss.str());
-		}
 	}
 
 	if (DebugMode) {
@@ -1661,124 +1643,231 @@ void drawBag() {
 	static int mousew, mouseb, mousebl;
 	static block itemselected = blocks::AIR;
 	static block pcsselected = 0;
-	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
-	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	
+	if (bagOpened) {
+		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-	mousew = mw;
-	mouseb = mb;
-	glDepthFunc(GL_ALWAYS);
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_TEXTURE_2D);
+		mousew = mw;
+		mouseb = mb;
+		glDepthFunc(GL_ALWAYS);
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_TEXTURE_2D);
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
 
-	glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
-	glBegin(GL_QUADS);
-	glVertex2i(0, 0);
-	glVertex2i(windowwidth, 0);
-	glVertex2i(windowwidth, windowheight);
-	glVertex2i(0, windowheight);
-	glEnd();
+		glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
+		glBegin(GL_QUADS);
+		glVertex2i(0, 0);
+		glVertex2i(windowwidth, 0);
+		glVertex2i(windowwidth, windowheight);
+		glVertex2i(0, windowheight);
+		glEnd();
 
-	glEnable(GL_TEXTURE_2D);
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	sf = 0;
-	for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 10; j++) {
-			if (mx >= j*(32 + 8) + leftp && mx <= j*(32 + 8) + 32 + leftp &&
-				my >= i*(32 + 8) + upp && my <= i*(32 + 8) + 32 + upp) {
-				si = i; sj = j; sf = 1;
-				glBindTexture(GL_TEXTURE_2D, guiImage[2]);
-				if (mousebl == 0 && mouseb == 1 && itemselected == player::inventorybox[i][j]) {
-					if (player::inventorypcs[i][j] + pcsselected <= 255) {
-						player::inventorypcs[i][j] += pcsselected;
-						pcsselected = 0;
+		glEnable(GL_TEXTURE_2D);
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		sf = 0;
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 10; j++) {
+				if (mx >= j*(32 + 8) + leftp && mx <= j*(32 + 8) + 32 + leftp &&
+					my >= i*(32 + 8) + upp && my <= i*(32 + 8) + 32 + upp) {
+					si = i; sj = j; sf = 1;
+					glBindTexture(GL_TEXTURE_2D, guiImage[2]);
+					if (mousebl == 0 && mouseb == 1 && itemselected == player::inventorybox[i][j]) {
+						if (player::inventorypcs[i][j] + pcsselected <= 255) {
+							player::inventorypcs[i][j] += pcsselected;
+							pcsselected = 0;
+						}
+						else
+						{
+							pcsselected = player::inventorypcs[i][j] + pcsselected - 255;
+							player::inventorypcs[i][j] = 255;
+						}
 					}
-					else
-					{
-						pcsselected = player::inventorypcs[i][j] + pcsselected - 255;
-						player::inventorypcs[i][j] = 255;
+					if (mousebl == 0 && mouseb == 1 && itemselected != player::inventorybox[i][j]) {
+						std::swap(pcsselected, player::inventorypcs[i][j]);
+						std::swap(itemselected, player::inventorybox[i][j]);
 					}
-				}
-				if (mousebl == 0 && mouseb == 1 && itemselected != player::inventorybox[i][j]) {
-					std::swap(pcsselected, player::inventorypcs[i][j]);
-					std::swap(itemselected, player::inventorybox[i][j]);
-				}
-				if (mousebl == 0 && mouseb == 2 && itemselected == player::inventorybox[i][j] && player::inventorypcs[i][j] < 255) {
-					pcsselected--;
-					player::inventorypcs[i][j]++;
-				}
-				if (mousebl == 0 && mouseb == 2 && player::inventorybox[i][j] == blocks::AIR) {
-					pcsselected--;
-					player::inventorypcs[i][j] = 1;
-					player::inventorybox[i][j] = itemselected;
-				}
+					if (mousebl == 0 && mouseb == 2 && itemselected == player::inventorybox[i][j] && player::inventorypcs[i][j] < 255) {
+						pcsselected--;
+						player::inventorypcs[i][j]++;
+					}
+					if (mousebl == 0 && mouseb == 2 && player::inventorybox[i][j] == blocks::AIR) {
+						pcsselected--;
+						player::inventorypcs[i][j] = 1;
+						player::inventorybox[i][j] = itemselected;
+					}
 
-				if (pcsselected == 0) itemselected = blocks::AIR;
-				if (itemselected == blocks::AIR) pcsselected = 0;
-				if (player::inventorypcs[i][j] == 0) player::inventorybox[i][j] = blocks::AIR;
-				if (player::inventorybox[i][j] == blocks::AIR) player::inventorypcs[i][j] = 0;
+					if (pcsselected == 0) itemselected = blocks::AIR;
+					if (itemselected == blocks::AIR) pcsselected = 0;
+					if (player::inventorypcs[i][j] == 0) player::inventorybox[i][j] = blocks::AIR;
+					if (player::inventorybox[i][j] == blocks::AIR) player::inventorypcs[i][j] = 0;
+				}
+				else {
+					glBindTexture(GL_TEXTURE_2D, guiImage[3]);
+				}
+				glBegin(GL_QUADS);
+				glTexCoord2f(0.0, 1.0);
+				glVertex2d(j*(32 + 8) + leftp, i*(32 + 8) + upp);
+				glTexCoord2f(0.0, 0.0);
+				glVertex2d(j*(32 + 8) + 32 + leftp, i*(32 + 8) + upp);
+				glTexCoord2f(1.0, 0.0);
+				glVertex2d(j*(32 + 8) + 32 + leftp, i*(32 + 8) + 32 + upp);
+				glTexCoord2f(1.0, 1.0);
+				glVertex2d(j*(32 + 8) + leftp, i*(32 + 8) + 32 + upp);
+				glEnd();
+				if (player::inventorybox[i][j] != blocks::AIR) {
+					glBindTexture(GL_TEXTURE_2D, BlockTextures);
+					double tcX = Textures::getTexcoordX(player::inventorybox[i][j], 1);
+					double tcY = Textures::getTexcoordY(player::inventorybox[i][j], 1);
+					glBegin(GL_QUADS);
+					glTexCoord2d(tcX, tcY + 1 / 8.0);
+					glVertex2d(j*(32 + 8) + 2 + leftp, i*(32 + 8) + 2 + upp);
+					glTexCoord2d(tcX, tcY);
+					glVertex2d(j*(32 + 8) + 30 + leftp, i*(32 + 8) + 2 + upp);
+					glTexCoord2d(tcX + 1 / 8.0, tcY);
+					glVertex2d(j*(32 + 8) + 30 + leftp, i*(32 + 8) + 30 + upp);
+					glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
+					glVertex2d(j*(32 + 8) + 2 + leftp, i*(32 + 8) + 30 + upp);
+					glEnd();
+					std::stringstream ss;
+					ss << (int)player::inventorypcs[i][j];
+					TextRenderer::renderString(j*(32 + 8) + leftp, (i*(32 + 8) + upp), ss.str());
+				}
+			}
+		}
+		if (itemselected != blocks::AIR) {
+			glBindTexture(GL_TEXTURE_2D, BlockTextures);
+			double tcX = Textures::getTexcoordX(itemselected, 1);
+			double tcY = Textures::getTexcoordY(itemselected, 1);
+			glBegin(GL_QUADS);
+			glTexCoord2d(tcX, tcY + 1 / 8.0);
+			glVertex2d(mx - 16, my - 16);
+			glTexCoord2d(tcX, tcY);
+			glVertex2d(mx + 16, my - 16);
+			glTexCoord2d(tcX + 1 / 8.0, tcY);
+			glVertex2d(mx + 16, my + 16);
+			glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
+			glVertex2d(mx - 16, my + 16);
+			glEnd();
+			std::stringstream ss;
+			ss << pcsselected;
+			TextRenderer::renderString((int)mx - 16, (int)my - 16, ss.str());
+		}
+		if (player::inventorybox[si][sj] != 0 && sf == 1) {
+			glColor4f(1.0, 1.0, 0.0, 1.0);
+			TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(player::inventorybox[si][sj]).getBlockName());
+		}
+
+		mousebl = mouseb;
+	}
+	else {
+		double curtime = timer();
+		glEnable(GL_TEXTURE_2D);
+		glDisable(GL_CULL_FACE);
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		double xbase = 0.0, ybase = 0.0, spac = 0.0;
+		if (curtime - bagAnimTimer <= 0.5) {
+			if (bagOpened) {
+				xbase = ((windowwidth - 392) / 2) / 0.5*(curtime - bagAnimTimer);
+				ybase = (windowheight - 152 - 16 + 120 - (windowheight - 32)) / 0.5*(curtime - bagAnimTimer);
+				spac = 8 / 0.5*(curtime - bagAnimTimer);
 			}
 			else {
-				glBindTexture(GL_TEXTURE_2D, guiImage[3]);
+				xbase = ((windowwidth - 392) / 2) - ((windowwidth - 392) / 2) / 0.5*(curtime - bagAnimTimer);
+				ybase = (windowheight - 152 - 16 + 120 - (windowheight - 32)) - (windowheight - 152 - 16 + 120 - (windowheight - 32)) / 0.5*(curtime - bagAnimTimer);
+				spac = 8 - 8 / 0.5*(curtime - bagAnimTimer);
 			}
+		}
+		else if (bagOpened) {
+			xbase = (windowwidth - 392) / 2;
+			ybase = windowheight - 152 - 16 + 120 - (windowheight - 32);
+			spac = 8.0;
+		}
+
+		for (int i = 0; i < 10; i++) {
+			if (i == player::itemInHand)
+				glBindTexture(GL_TEXTURE_2D, guiImage[2]);
+			else
+				glBindTexture(GL_TEXTURE_2D, guiImage[3]);
+
+			glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
+			glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
 			glBegin(GL_QUADS);
 			glTexCoord2f(0.0, 1.0);
-			glVertex2d(j*(32 + 8) + leftp, i*(32 + 8) + upp);
+			glVertex2d(xbase + i * (32 + spac), ybase + windowheight - 32);
 			glTexCoord2f(0.0, 0.0);
-			glVertex2d(j*(32 + 8) + 32 + leftp, i*(32 + 8) + upp);
+			glVertex2d(xbase + i * (32 + spac) + 32, ybase + windowheight - 32);
 			glTexCoord2f(1.0, 0.0);
-			glVertex2d(j*(32 + 8) + 32 + leftp, i*(32 + 8) + 32 + upp);
+			glVertex2d(xbase + i * (32 + spac) + 32, ybase + windowheight);
 			glTexCoord2f(1.0, 1.0);
-			glVertex2d(j*(32 + 8) + leftp, i*(32 + 8) + 32 + upp);
+			glVertex2d(xbase + i * (32 + spac), ybase + windowheight);
 			glEnd();
-			if (player::inventorybox[i][j] != blocks::AIR) {
+			if (player::inventorybox[3][i] != blocks::AIR) {
+				glColor4f(1.0, 1.0, 1.0, 1.0);
 				glBindTexture(GL_TEXTURE_2D, BlockTextures);
-				double tcX = Textures::getTexcoordX(player::inventorybox[i][j], 1);
-				double tcY = Textures::getTexcoordY(player::inventorybox[i][j], 1);
+				double tcX = Textures::getTexcoordX(player::inventorybox[3][i], 1);
+				double tcY = Textures::getTexcoordY(player::inventorybox[3][i], 1);
 				glBegin(GL_QUADS);
 				glTexCoord2d(tcX, tcY + 1 / 8.0);
-				glVertex2d(j*(32 + 8) + 2 + leftp, i*(32 + 8) + 2 + upp);
+				glVertex2d(xbase + i * (32 + spac) + 2, ybase + windowheight - 32 + 2);
 				glTexCoord2d(tcX, tcY);
-				glVertex2d(j*(32 + 8) + 30 + leftp, i*(32 + 8) + 2 + upp);
+				glVertex2d(xbase + i * (32 + spac) + 30, ybase + windowheight - 32 + 2);
 				glTexCoord2d(tcX + 1 / 8.0, tcY);
-				glVertex2d(j*(32 + 8) + 30 + leftp, i*(32 + 8) + 30 + upp);
+				glVertex2d(xbase + i * (32 + spac) + 30, ybase + windowheight - 32 + 30);
 				glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-				glVertex2d(j*(32 + 8) + 2 + leftp, i*(32 + 8) + 30 + upp);
+				glVertex2d(xbase + i * (32 + spac) + 2, ybase + windowheight - 32 + 30);
 				glEnd();
 				std::stringstream ss;
-				ss << (int)player::inventorypcs[i][j];
-				TextRenderer::renderString(j*(32 + 8) + 8 + leftp, (i*(32 + 16) + 8 + upp), ss.str());
+				ss << (int)player::inventorypcs[3][i];
+				TextRenderer::renderString(xbase + i * (32 + spac), ybase + windowheight - 32, ss.str());
+			}
+		}glEnable(GL_TEXTURE_2D);
+		glDisable(GL_CULL_FACE);
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+		for (int i = 0; i < 10; i++) {
+			if (i == player::itemInHand)
+				glBindTexture(GL_TEXTURE_2D, guiImage[2]);
+			else
+				glBindTexture(GL_TEXTURE_2D, guiImage[3]);
+
+			glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
+			glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
+			glBegin(GL_QUADS);
+			glTexCoord2f(0.0, 1.0);
+			glVertex2d(xbase + i * (32 + spac), ybase + windowheight - 32);
+			glTexCoord2f(0.0, 0.0);
+			glVertex2d(xbase + i * (32 + spac) + 32, ybase + windowheight - 32);
+			glTexCoord2f(1.0, 0.0);
+			glVertex2d(xbase + i * (32 + spac) + 32, ybase + windowheight);
+			glTexCoord2f(1.0, 1.0);
+			glVertex2d(xbase + i * (32 + spac), ybase + windowheight);
+			glEnd();
+			if (player::inventorybox[3][i] != blocks::AIR) {
+				glColor4f(1.0, 1.0, 1.0, 1.0);
+				glBindTexture(GL_TEXTURE_2D, BlockTextures);
+				double tcX = Textures::getTexcoordX(player::inventorybox[3][i], 1);
+				double tcY = Textures::getTexcoordY(player::inventorybox[3][i], 1);
+				glBegin(GL_QUADS);
+				glTexCoord2d(tcX, tcY + 1 / 8.0);
+				glVertex2d(xbase + i * (32 + spac) + 2, ybase + windowheight - 32 + 2);
+				glTexCoord2d(tcX, tcY);
+				glVertex2d(xbase + i * (32 + spac) + 30, ybase + windowheight - 32 + 2);
+				glTexCoord2d(tcX + 1 / 8.0, tcY);
+				glVertex2d(xbase + i * (32 + spac) + 30, ybase + windowheight - 32 + 30);
+				glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
+				glVertex2d(xbase + i * (32 + spac) + 2, ybase + windowheight - 32 + 30);
+				glEnd();
+				std::stringstream ss;
+				ss << (int)player::inventorypcs[3][i];
+				TextRenderer::renderString(xbase + i * (32 + spac), ybase + windowheight - 32, ss.str());
 			}
 		}
 	}
-	if (itemselected != blocks::AIR) {
-		glBindTexture(GL_TEXTURE_2D, BlockTextures);
-		double tcX = Textures::getTexcoordX(itemselected, 1);
-		double tcY = Textures::getTexcoordY(itemselected, 1);
-		glBegin(GL_QUADS);
-		glTexCoord2d(tcX, tcY + 1 / 8.0);
-		glVertex2d(mx - 16, my - 16);
-		glTexCoord2d(tcX, tcY);
-		glVertex2d(mx + 16, my - 16);
-		glTexCoord2d(tcX + 1 / 8.0, tcY);
-		glVertex2d(mx + 16, my + 16);
-		glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-		glVertex2d(mx - 16, my + 16);
-		glEnd();
-		std::stringstream ss;
-		ss << pcsselected;
-		TextRenderer::renderString((int)mx + 4, (int)my + 16, ss.str());
-	}
-	if (player::inventorybox[si][sj] != 0 && sf == 1) {
-		glColor4f(1.0, 1.0, 0.0, 1.0);
-		TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(player::inventorybox[si][sj]).getBlockName());
-	}
-	mousebl = mouseb;
 }
 
 void saveScreenshot(int x, int y, int w, int h, string filename){
