@@ -134,6 +134,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\Netycat\include\Netycat\Core\Buffer.h" />
+    <ClInclude Include="include\Netycat\include\Netycat\Core\BufferCondition.h" />
+    <ClInclude Include="include\Netycat\include\Netycat\Core\Core.h" />
+    <ClInclude Include="include\Netycat\include\Netycat\Core\Exception.h" />
+    <ClInclude Include="include\Netycat\include\Netycat\Core\InetAddress.h" />
+    <ClInclude Include="include\Netycat\include\Netycat\Core\Socket.h" />
+    <ClInclude Include="include\Netycat\include\Netycat\Netycat.h" />
     <ClInclude Include="source\Blocks.h" />
     <ClInclude Include="source\Chunk.h" />
     <ClInclude Include="source\ChunkPacket.h" />
@@ -159,6 +166,12 @@
     <ClInclude Include="source\WorldGen.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="include\Netycat\src\Netycat\Core\Buffer.cpp" />
+    <ClCompile Include="include\Netycat\src\Netycat\Core\BufferCondition.cpp" />
+    <ClCompile Include="include\Netycat\src\Netycat\Core\Core.cpp" />
+    <ClCompile Include="include\Netycat\src\Netycat\Core\Exception.cpp" />
+    <ClCompile Include="include\Netycat\src\Netycat\Core\InetAddress.cpp" />
+    <ClCompile Include="include\Netycat\src\Netycat\Core\Socket.cpp" />
     <ClCompile Include="source\Chunk.cpp" />
     <ClCompile Include="source\ChunkPtrArray.cpp" />
     <ClCompile Include="source\HeightMap.cpp" />

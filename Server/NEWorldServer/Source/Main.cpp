@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <vector>
 #include <map>
+#include <list>
 #include "Network.h"
 #include "Console.h"
 #include "..\..\..\source\PlayerPacket.h"
@@ -14,25 +15,32 @@ using std::thread;
 map<int, PlayerPacket> players;
 std::mutex m;
 
-void handle(SOCKET sockConn) {
-	char receiveBuf[128]; //接收缓存区
+void handle(Net::Socket&& socket) {
 	unsigned int onlineID = 0;
 	bool IDSet = false;
 	m.lock();
 	Print("New connection. Online players:" + toString(players.size()+1));
 	m.unlock();
 	while (true) {
-		int recvbyte = recv(sockConn, receiveBuf, sizeof(receiveBuf), 0);
-		if (recvbyte == 0 || recvbyte == -1) {
+		
+		int len;
+		try {
+			len = socket.recvInt();	//获得数据长度
+		}
+		catch (...) {
 			Print("A connection closed.");
-			closesocket(sockConn);
+			socket.close();
 			m.lock();
 			players.erase(onlineID);
 			m.unlock();
 			return;
 		}
-		int signal = *receiveBuf; //强制截断，提取signal
-		char* data = receiveBuf + sizeof(int);
+
+		Net::Buffer buffer(len);
+		socket.recv(buffer, Net::BufferConditionExactLength(len));
+
+		int signal = socket.recvInt();
+		char* data = (char*)buffer.getData() + sizeof(int);
 		m.lock();
 		Print("Online players:" + toString(players.size()));
 		switch (signal) {
@@ -73,7 +81,9 @@ void handle(SOCKET sockConn) {
 				playersData[i] = iter->second;
 				i++;
 			}
-			send(sockConn, (const char*)playersData, players.size()*sizeof(PlayerPacket), 0);
+			Net::Buffer bufferSend(players.size()*sizeof(PlayerPacket));
+			bufferSend.write((void*)playersData, players.size()*sizeof(PlayerPacket));
+			socket.send(bufferSend);
 			break;
 		}
 		}
@@ -86,9 +96,11 @@ int main() {
 	Print("The server is starting...");
 	Network::init();
 	Print("The server is running.");
-	vector<thread> clients;
+	std::list<thread> clients;
 	while (true) {
-		clients.push_back(thread(handle, Network::waitForClient()));
+		Net::Socket socketAccept;
+		Network::getServerSocket().accept(socketAccept);
+		clients.push_back(thread(handle, std::move(socketAccept)));
 	}
 	Print("The server is stopping...");
 	std::for_each(clients.begin(), clients.end(), [](thread& t) {t.join(); });
