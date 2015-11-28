@@ -90,7 +90,7 @@ namespace Netycat {
                     uint32_t addr = ntohl(saddr->sin_addr.s_addr);
                     
                     uint8_t d1 = (addr & 0xFF000000) >> 24;
-                    uint8_t d2 = (addr & 0x00FF0000) >> 16;
+                    uint8_t d2 = (uint8_t)((addr & 0x00FF0000) >> 16);
                     uint8_t d3 = (addr & 0x0000FF00) >> 8;
                     uint8_t d4 = (addr & 0x000000FF);
                     

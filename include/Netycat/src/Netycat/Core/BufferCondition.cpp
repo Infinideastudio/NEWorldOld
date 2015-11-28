@@ -34,7 +34,7 @@ namespace Netycat {
             
         }
         
-        BufferCondition::BufferCondition(const BufferCondition& src) {
+        BufferCondition::BufferCondition(const BufferCondition&) {
             
         }
         

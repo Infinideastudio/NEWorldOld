@@ -311,8 +311,8 @@ namespace Netycat {
                 
                 uint32_t d = dat[i];
                 uint8_t b1 = (d & 0x000000FF);
-                uint8_t b2 = (d & 0x0000FF00) >> 8;
-                uint8_t b3 = (d & 0x00FF0000) >> 16;
+                uint8_t b2 = (uint8_t)((d & 0x0000FF00) >> 8);
+                uint8_t b3 = (uint8_t)((d & 0x00FF0000) >> 16);
                 uint8_t b4 = (d & 0xFF000000) >> 24;
                 
                 data[writepos] = b1;
