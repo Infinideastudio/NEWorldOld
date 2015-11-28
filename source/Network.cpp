@@ -10,7 +10,13 @@ namespace Network {
 	void init(string ip, unsigned short _port) {
 		Net::startup();
 
-		socketClient.connectIPv4(ip, _port);
+		try {
+			socketClient.connectIPv4(ip, _port);
+		}
+		catch (...) {
+			DebugError("Cannot connect to the server!");
+			return;
+		}
 
 		threadRun = true;
 		mutex = MutexCreate();
@@ -21,7 +27,7 @@ namespace Network {
 	Net::Socket& getClientSocket() { return socketClient; }
 
 	ThreadFunc networkThread(void *) {
-		while (updateThreadRun) {
+		while (true) {
 			MutexLock(mutex);
 			if (!threadRun) {
 				MutexUnlock(mutex);
@@ -35,13 +41,17 @@ namespace Network {
 			//if (r._signal == PLAYER_PACKET_SEND && ((PlayerPacket*)r._dataSend)->onlineID != player::onlineID)
 			//	cout << "[ERROR]WTF!!!" << endl;
 			if (r._dataSend != nullptr && r._dataLen != 0) {
-				Net::Buffer buffer(r._dataLen + sizeof(int));
-				buffer.write((void*)r._signal, sizeof(int));
+				Net::Buffer buffer(r._dataLen + sizeof(int) * 2);
+				int len = r._dataLen + sizeof(int);
+				buffer.write((void*)&len, sizeof(int));
+				buffer.write((void*)&r._signal, sizeof(int));
 				buffer.write((void*)r._dataSend, r._dataLen);
 				getClientSocket().send(buffer);
 			}
 			else {
-				Net::Buffer buffer(sizeof(int));
+				Net::Buffer buffer(sizeof(int) * 2);
+				int len = sizeof(int);
+				buffer.write((void*)&len, sizeof(int));
 				buffer.write((void*)&r._signal, sizeof(int));
 				getClientSocket().send(buffer);
 			}
@@ -50,7 +60,7 @@ namespace Network {
 				MutexUnlock(mutex);
 				int len = getClientSocket().recvInt();   //获得数据长度
 				Net::Buffer buffer(len);
-				getClientSocket().recv(buffer,Net::BufferConditionExactLength(len));
+				getClientSocket().recv(buffer, Net::BufferConditionExactLength(len));
 				if (len > 0) callback(buffer.getData(), len); //调用回调函数
 				MutexLock(mutex);
 			}
