@@ -1,28 +1,24 @@
 #include "Network.h"
 namespace Network {
 
-	SOCKET sockClient;
+	Net::Socket socketClient;
 	Thread_t t;
 	Mutex_t mutex;
 	std::queue<Request> reqs;
 	bool threadRun = true;
 
 	void init(string ip, unsigned short _port) {
-		WSADATA wsaData;
-		WSAStartup(MAKEWORD(1, 1), &wsaData);
-		sockClient = socket(AF_INET, SOCK_STREAM, 0);
-		SOCKADDR_IN addrSrv;
-		addrSrv.sin_addr.S_un.S_addr = inet_addr(ip.c_str());
-		addrSrv.sin_family = AF_INET;
-		addrSrv.sin_port = htons(_port);
-		connect(sockClient, (SOCKADDR*)&addrSrv, sizeof(SOCKADDR));
+		Net::startup();
+
+		socketClient.connectIPv4(ip, _port);
+
 		threadRun = true;
 		mutex = MutexCreate();
 		t = ThreadCreate(networkThread, NULL);
 	}
 
 	int getRequestCount() { return reqs.size(); }
-	SOCKET getClientSocket() { return sockClient; }
+	Net::Socket& getClientSocket() { return socketClient; }
 
 	ThreadFunc networkThread(void *) {
 		while (updateThreadRun) {
@@ -39,22 +35,23 @@ namespace Network {
 			//if (r._signal == PLAYER_PACKET_SEND && ((PlayerPacket*)r._dataSend)->onlineID != player::onlineID)
 			//	cout << "[ERROR]WTF!!!" << endl;
 			if (r._dataSend != nullptr && r._dataLen != 0) {
-				char* data = new char[r._dataLen + sizeof(int)];
-				int* signal = (int*)data;
-				*signal = r._signal;
-				memcpy_s(data + sizeof(int), r._dataLen, r._dataSend, r._dataLen);
-				send(getClientSocket(), data, r._dataLen + sizeof(int), 0);
-				delete[] data;
+				Net::Buffer buffer(r._dataLen + sizeof(int));
+				buffer.write((void*)r._signal, sizeof(int));
+				buffer.write((void*)r._dataSend, r._dataLen);
+				getClientSocket().send(buffer);
 			}
 			else {
-				send(getClientSocket(), (const char*)&r._signal, sizeof(int), 0);
+				Net::Buffer buffer(sizeof(int));
+				buffer.write((void*)&r._signal, sizeof(int));
+				getClientSocket().send(buffer);
 			}
 			if (r._callback) { //判断有无回调函数
 				auto callback = r._callback;
 				MutexUnlock(mutex);
-				char recvBuf[1024]; //接收缓存区
-				int len = recv(sockClient, recvBuf, 1024, 0); //获得数据长度
-				if (len > 0) callback(recvBuf, len); //调用回调函数
+				int len = getClientSocket().recvInt();   //获得数据长度
+				Net::Buffer buffer(len);
+				getClientSocket().recv(buffer,Net::BufferConditionExactLength(len));
+				if (len > 0) callback(buffer.getData(), len); //调用回调函数
 				MutexLock(mutex);
 			}
 			reqs.pop();
@@ -83,7 +80,7 @@ namespace Network {
 		ThreadWait(t);
 		ThreadDestroy(t);
 		MutexDestroy(mutex);
-		closesocket(getClientSocket());
-		WSACleanup();
+		getClientSocket().close();
+		Net::cleanup();
 	}
 }
