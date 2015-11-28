@@ -39,7 +39,8 @@ void handle(Net::Socket&& socket) {
 		Net::Buffer buffer(len);
 		socket.recv(buffer, Net::BufferConditionExactLength(len));
 
-		int signal = socket.recvInt();
+		int signal = 0;
+		buffer.read((void*)&signal, sizeof(int));
 		char* data = (char*)buffer.getData() + sizeof(int);
 		m.lock();
 		Print("Online players:" + toString(players.size()));
@@ -81,7 +82,9 @@ void handle(Net::Socket&& socket) {
 				playersData[i] = iter->second;
 				i++;
 			}
-			Net::Buffer bufferSend(players.size()*sizeof(PlayerPacket));
+			Net::Buffer bufferSend(players.size()*sizeof(PlayerPacket) + sizeof(int));
+			int len = players.size()*sizeof(PlayerPacket);
+			bufferSend.write((void*)&len, sizeof(int));
 			bufferSend.write((void*)playersData, players.size()*sizeof(PlayerPacket));
 			socket.send(bufferSend);
 			break;
