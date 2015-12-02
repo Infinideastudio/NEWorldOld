@@ -752,6 +752,7 @@ namespace gui {
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 		do {
 			View->UISetRect(0,windowwidth,0,windowheight);
+			mb = glfwGetMouseButton(MainWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS ? 1 : 0;
 			glfwGetCursorPos(MainWindow, &mx, &my);
 			View->mousedata((int)mx, (int)my, mw, mb);
 			View->update();
