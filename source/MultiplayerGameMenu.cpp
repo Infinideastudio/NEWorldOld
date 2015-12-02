@@ -1,18 +1,18 @@
-#include "MultiplayerGameMenu.h"
+#include "Menus.h"
 
-MultiplayerGameMenu::MultiplayerGameMenu() {
+NEMultiplayerGameMenu::NEMultiplayerGameMenu() {
 	Init();
 	RegisterUI(&title);
 	RegisterUI(&serveriptb);
 	RegisterUI(&runbtn);
 	RegisterUI(&okbtn);
-	RegisterUI(&btn);
+	RegisterUI(&backbtn);
 
 	inputstr = "";
 	okbtn.enabled = false;
 }
 
-MultiplayerGameMenu::~MultiplayerGameMenu() {
+NEMultiplayerGameMenu::~NEMultiplayerGameMenu() {
 	if (serveripChanged) {
 		serverip = serveriptb.text;
 		gamebegin = true;
@@ -20,7 +20,7 @@ MultiplayerGameMenu::~MultiplayerGameMenu() {
 	}
 }
 
-void MultiplayerGameMenu::OnResize() {
+void NEMultiplayerGameMenu::OnResize() {
 	int leftp = windowwidth / 2 - 250;
 	int rightp = windowwidth / 2 + 250;
 	int midp = windowwidth / 2;
@@ -33,7 +33,7 @@ void MultiplayerGameMenu::OnResize() {
 	backbtn.UISetRect(leftp, rightp, downp - 24, downp);
 }
 
-void MultiplayerGameMenu::OnUpdate() {
+void NEMultiplayerGameMenu::OnUpdate() {
 	if (serveriptb.pressed && !serveripChanged) {
 		serveriptb.text = "";
 		serveripChanged = true;
@@ -46,6 +46,6 @@ void MultiplayerGameMenu::OnUpdate() {
 	inputstr = "";
 }
 
-void MultiplayerGameMenu::OnRender() {
+void NEMultiplayerGameMenu::OnRender() {
 
 }
