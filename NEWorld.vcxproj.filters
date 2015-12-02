@@ -125,13 +125,7 @@
     <ClInclude Include="include\Netycat\include\Netycat\Netycat.h">
       <Filter>Netycat</Filter>
     </ClInclude>
-    <ClInclude Include="source\MainMenu.h">
-      <Filter>源代码\GUI\Menus</Filter>
-    </ClInclude>
     <ClInclude Include="source\Menus.h">
-      <Filter>源代码\GUI\Menus</Filter>
-    </ClInclude>
-    <ClInclude Include="source\MultiplayerGameMenu.h">
       <Filter>源代码\GUI\Menus</Filter>
     </ClInclude>
   </ItemGroup>
@@ -212,6 +206,12 @@
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
     <ClCompile Include="source\MultiplayerGameMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\OptionsMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\RenderOptions.cpp">
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
   </ItemGroup>
