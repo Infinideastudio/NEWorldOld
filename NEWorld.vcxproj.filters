@@ -126,9 +126,12 @@
       <Filter>Netycat</Filter>
     </ClInclude>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <ClInclude Include="source\Menus.h">
       <Filter>源代码\GUI\Menus</Filter>
     </ClInclude>
+=======
+>>>>>>> parent of 7e2d023... GUI Improve Persave 1
 =======
 >>>>>>> parent of 7e2d023... GUI Improve Persave 1
   </ItemGroup>
@@ -206,6 +209,7 @@
       <Filter>Netycat</Filter>
     </ClCompile>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <ClCompile Include="source\MainMenu.cpp">
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
@@ -232,5 +236,7 @@
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
 >>>>>>> origin/master
+=======
+>>>>>>> parent of 7e2d023... GUI Improve Persave 1
   </ItemGroup>
 </Project>
