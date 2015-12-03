@@ -782,7 +782,7 @@ namespace gui{
 			View->render();
 			glfwSwapBuffers(MainWindow);
 			glfwPollEvents();
-			if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(MainWindow)) exit(0);
+			if (glfwWindowShouldClose(MainWindow)) exit(0);
 		} while (!UIsigExit);
 		UIsigExit=false;
 	}
