@@ -77,9 +77,6 @@
     <ClInclude Include="source\stdinclude.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
-    <ClInclude Include="source\GUI.h">
-      <Filter>源代码\GUI</Filter>
-    </ClInclude>
     <ClInclude Include="source\Player.h">
       <Filter>源代码\Player</Filter>
     </ClInclude>
@@ -125,8 +122,11 @@
     <ClInclude Include="include\Netycat\include\Netycat\Netycat.h">
       <Filter>Netycat</Filter>
     </ClInclude>
+    <ClInclude Include="source\GUI.h">
+      <Filter>源代码\GUI</Filter>
+    </ClInclude>
     <ClInclude Include="source\Menus.h">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>源代码\GUI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -163,9 +163,6 @@
     <ClCompile Include="source\TextRenderer.cpp">
       <Filter>源代码\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="source\GUI.cpp">
-      <Filter>源代码\GUI</Filter>
-    </ClCompile>
     <ClCompile Include="source\Player.cpp">
       <Filter>源代码\Player</Filter>
     </ClCompile>
@@ -199,7 +196,28 @@
     <ClCompile Include="include\Netycat\src\Netycat\Core\Socket.cpp">
       <Filter>Netycat</Filter>
     </ClCompile>
-    <ClCompile Include="source\Menus.cpp">
+    <ClCompile Include="source\GUI.cpp">
+      <Filter>源代码\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\RenderOptionsMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\WorldMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\CreateWorldMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GUIOptionsMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\MainMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\MultiplayerGame.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\OptionsMenu.cpp">
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
   </ItemGroup>
