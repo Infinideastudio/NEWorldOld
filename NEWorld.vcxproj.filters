@@ -221,7 +221,16 @@
     <ClCompile Include="source\RenderOptions.cpp">
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
+<<<<<<< HEAD
 =======
 >>>>>>> parent of 7e2d023... GUI Improve Persave 1
+=======
+    <ClCompile Include="source\GUIOptions.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\CreateWorldMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+>>>>>>> origin/master
   </ItemGroup>
 </Project>
