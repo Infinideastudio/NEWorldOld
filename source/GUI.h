@@ -12,54 +12,56 @@ namespace gui{
 	extern float BgG;
 	extern float BgB;
 	extern float BgA;
-	class UIView;
-	class UIControl{
+	class Form;
+	class controls{
 	public:
 		//控件基类，只要是控件都得继承这个
-		virtual ~UIControl() {};
-		int id, Left, Bottom, Height, Width;
-		UIView* parent;
+		virtual ~controls() {};
+		int id;
+		Form* parent;
 		virtual void update() {};  //莫非这个就是传说中的虚函数？
 		virtual void render() {};  //貌似是的！
 		virtual void destroy() {};
-		
-		virtual void UISetRect(int xi, int xa, int yi, int ya){
-			Left = xi;
-			Width = xa - Left;
-			Bottom = yi;
-			Height = ya - Bottom;
-		}
 
 	};
 
-	class UILabel:public UIControl{
+	class label:public controls{
 	public:
 		//标签
+		//int id
+		//Form* parent
 		string  text;
+		int xmin, xmax, ymin, ymax;
 		bool mouseon = false;
 		bool focused = false;
 
 		void update();
 		void render();
 		//void settext(string s)
-		UILabel(string t);
+		void resize(int xi, int xa, int yi, int ya);
 	};
 
-	class UIButton :public UIControl{
+	class button :public controls{
 	public:
 		//按钮
+		//int id
+		//Form* parent
 		string text;
+		int xmin, xmax, ymin, ymax;
 		bool mouseon = false, focused = false, pressed = false, clicked = false, enabled = false;
 		void update();
 		void render();
 		//void settext(string s)
-		UIButton(string t);
+		void resize(int xi, int xa, int yi, int ya);
 	};
 
-	class UITrackBar :public UIControl{
+	class trackbar :public controls{
 	public:
 		//该控件的中文名我不造
+		//int id
+		//Form* parent
 		string text;
+		int xmin, xmax, ymin, ymax;
 		int barwidth;
 		int barpos;
 		bool mouseon = false, focused = false, pressed = false, enabled = false;
@@ -67,59 +69,58 @@ namespace gui{
 		void update();
 		void render();
 		void settext(string s);
-		UITrackBar(string t, int w, int p);
+		void resize(int xi, int xa, int yi, int ya);
+
 	};
 
-	class UITextBox :public UIControl{
+	class textbox :public controls{
 	public:
 		//文本框
+		//int id
+		//Form* parent
 		string text;
+		int xmin, xmax, ymin, ymax;
 		bool mouseon = false, focused = false, pressed = false, enabled = false;
 
 		void update();
 		void render();
-		UITextBox(string t);
+		void resize(int xi, int xa, int yi, int ya);
 	};
-	class UIVerticalScroll :public UIControl{
+	class vscroll :public controls{
 	public:
 		//垂直滚动条
+		//int id
+		//Form* parent
+		int xmin, xmax, ymin, ymax;
 		int barheight, barpos;
 		bool mouseon = false, focused = false, pressed = false, enabled = false;
 		bool defaultv, msup, msdown, psup, psdown;
 
 		void update();
 		void render();
-		UIVerticalScroll(int h, int p);
+		void resize(int xi, int xa, int yi, int ya);
 	};
 
 	// 窗体 / 容器
-	class UIView :public UIControl{
+	class Form{
 	public:
-		vector<UIControl*> children;
+		vector<controls*> children;
 		bool tabp, shiftp, enterp, enterpl;
 		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, backspacep, backspacepl, updated;
 
 		int maxid, currentid, focusid, childrenCount, mx, my, mw, mb, mxl, myl, mwl, mbl;
-		
+
 		void Init();
-		virtual void OnResize(){};
-		virtual void OnUpdate(){};
-		virtual void OnRender(){};
-		void UISetRect(int xi, int xa, int yi, int ya);
 		void update();
 		void render();
 		void mousedata(int x, int y, int w, int b);
-		UILabel* createlabel(string t);
-		UIButton* createbutton(string t);
-		UITrackBar* createtrackbar(string t, int w, int p);
-		UITextBox* createtextbox(string t);
-		UIVerticalScroll* createvscroll(int h, int p);
-		UIControl* getControlByID(int cid);
+		label* createlabel(string t);
+		button* createbutton(string t);
+		trackbar* createtrackbar(string t, int w, int p);
+		textbox* createtextbox(string t);
+		vscroll* createvscroll(int h, int p);
+		controls* getControlByID(int cid);
 		void cleanup();
-		void RegisterUI(UIControl* Control);
 	};
-	
-	void UIEnter(UIView* View);
-	void UIExit();
 
 }
