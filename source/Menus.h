@@ -1,6 +1,7 @@
 #pragma once
 #include "Definitions.h"
 #include "GUI.h"
+<<<<<<< HEAD
 #include "Menus.h"
 #include "World.h"
 #include "Textures.h"
@@ -21,6 +22,8 @@ int getDotCount(string s) {
 }
 
 
+=======
+>>>>>>> parent of 7e2d023... GUI Improve Persave 1
 void mainmenu();
 void options();
 void Renderoptions();
