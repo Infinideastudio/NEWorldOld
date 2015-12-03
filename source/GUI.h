@@ -49,7 +49,7 @@ namespace gui{
 	public:
 		//按钮
 		string text;
-		bool mouseon = false, focused = false, pressed = false, clicked = false, enabled = false;
+		bool mouseon = false, focused = false, pressed = false, clicked = false, enabled = true;
 		void update();
 		void render();
 		//void settext(string s)
@@ -62,7 +62,7 @@ namespace gui{
 		string text;
 		int barwidth;
 		int barpos;
-		bool mouseon = false, focused = false, pressed = false, enabled = false;
+		bool mouseon = false, focused = false, pressed = false, enabled = true;
 
 		void update();
 		void render();
@@ -74,7 +74,7 @@ namespace gui{
 	public:
 		//文本框
 		string text;
-		bool mouseon = false, focused = false, pressed = false, enabled = false;
+		bool mouseon = false, focused = false, pressed = false, enabled = true;
 
 		void update();
 		void render();
@@ -84,7 +84,7 @@ namespace gui{
 	public:
 		//垂直滚动条
 		int barheight, barpos;
-		bool mouseon = false, focused = false, pressed = false, enabled = false;
+		bool mouseon = false, focused = false, pressed = false, enabled = true;
 		bool defaultv, msup, msdown, psup, psdown;
 
 		void update();
