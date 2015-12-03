@@ -199,19 +199,7 @@
     <ClCompile Include="include\Netycat\src\Netycat\Core\Socket.cpp">
       <Filter>Netycat</Filter>
     </ClCompile>
-    <ClCompile Include="source\MainMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
-    </ClCompile>
     <ClCompile Include="source\Menus.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
-    </ClCompile>
-    <ClCompile Include="source\MultiplayerGameMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
-    </ClCompile>
-    <ClCompile Include="source\OptionsMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
-    </ClCompile>
-    <ClCompile Include="source\RenderOptions.cpp">
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
   </ItemGroup>
