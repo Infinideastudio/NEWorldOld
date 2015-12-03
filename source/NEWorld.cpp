@@ -182,7 +182,7 @@ main_menu:
 			ups = upsc;
 			upsc = 0;
 		}
-
+		Sleep(1); //Optimize
 		Render();
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1){
@@ -205,7 +205,7 @@ main_menu:
 			printf("Threads terminated\n");
 			printf("[Console][Game]");
 			printf("Returned to main menu\n");
-			Network::cleanUp();
+			if (multiplayer) Network::cleanUp();
 			goto main_menu;
 		}
 		
@@ -1132,8 +1132,6 @@ void Render() {
 		glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
 	}
 
-	MutexUnlock(Mutex);
-
 	glLoadIdentity();
 	glRotated(plookupdown, 1, 0, 0);
 	glRotated(360.0 - pheading, 0, 1, 0);
@@ -1153,7 +1151,8 @@ void Render() {
 		p.render();
 		glPopMatrix();
 	}
-	
+	MutexUnlock(Mutex);
+
 	glBindTexture(GL_TEXTURE_2D, BlockTextures);
 	for (int i = 0; i < renderedChunk; i++) {
 		RenderChunk cr = displayChunks[i];
