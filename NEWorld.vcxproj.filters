@@ -214,5 +214,8 @@
     <ClCompile Include="source\RenderOptions.cpp">
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
+    <ClCompile Include="source\GUIOptions.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
