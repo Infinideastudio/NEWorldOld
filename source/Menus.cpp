@@ -20,72 +20,14 @@ void options(){
 
 void Renderoptions(){
     //渲染设置菜单
-	gui::UIView MainForm;
-	int leftp = windowwidth / 2 - 250;
-	int rightp = windowwidth / 2 + 250;
-	int midp = windowwidth / 2;
-	int downp = windowheight - 20;
-	bool f = false;
-	MainForm.Init();
-	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-	gui::UILabel  title = gui::UILabel("==============<  渲 染 选 项  >==============");
-	gui::UIButton  backbtn = gui::UIButton("<< 返回选项菜单");
-	do{
-		leftp = windowwidth / 2 - 250;
-		rightp = windowwidth / 2 + 250;
-		midp = windowwidth / 2;
-		downp = windowheight - 20;
-		title.UISetRect(midp - 225, midp + 225, 20, 36);
-		backbtn.UISetRect(leftp, rightp, downp - 24, downp);
-		//更新GUI
-		glfwGetCursorPos(MainWindow, &mx, &my);
-		MainForm.mousedata((int)mx, (int)my, mw, mb);
-		MainForm.update();
-		if (backbtn.clicked) f = true;
-		MainForm.render();
-		glfwSwapBuffers(MainWindow);
-		glfwPollEvents();
-		if (glfwWindowShouldClose(MainWindow)) exit(0);
-	} while (!f);
-    MainForm.cleanup();
+	RenderOptions Menu = RenderOptions();
+	gui::UIEnter((gui::UIView*)&Menu);
 }
 
 void GUIoptions(){
     //GUI设置菜单
-	gui::UIView MainForm;
-	int leftp = windowwidth / 2 - 250;
-	int rightp = windowwidth / 2 + 250;
-	int midp = windowwidth / 2;
-	int upp = 60;
-	int downp = windowheight - 20;
-	int lspc = 36;
-	bool f = false;
-	MainForm.Init();
-	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-	gui::UILabel title = gui::UILabel("===============< 图形界面选项 >==============");
-	gui::UIButton fontbtn = gui::UIButton("全部使用Unicode字体：" + boolstr(TextRenderer::useUnicodeASCIIFont));
-	gui::UIButton backbtn = gui::UIButton("<< 返回选项菜单");
-	do{
-        leftp=windowwidth/2-250;
-        rightp=windowwidth/2+250;
-        midp=windowwidth/2;
-        downp=windowheight-20;
-        title.UISetRect(midp-225,midp+225,20,36);
-        fontbtn.UISetRect(leftp,midp-10,upp+lspc*0,upp+lspc*0+24);
-        backbtn.UISetRect(leftp,rightp,downp-24,downp);
-        //更新GUI
-		glfwGetCursorPos(MainWindow, &mx, &my);
-		MainForm.mousedata((int)mx, (int)my, mw, mb);
-        MainForm.update();
-        if(fontbtn.clicked) TextRenderer::useUnicodeASCIIFont=!TextRenderer::useUnicodeASCIIFont;
-        if(backbtn.clicked) f=true;
-        fontbtn.text="全部使用Unicode字体：" + boolstr(TextRenderer::useUnicodeASCIIFont);
-		MainForm.render();
-		glfwSwapBuffers(MainWindow);
-		glfwPollEvents();
-		if (glfwWindowShouldClose(MainWindow)) exit(0);
-	} while (!f);
-    MainForm.cleanup();
+	GUIOptions Menu = GUIOptions();
+	gui::UIEnter((gui::UIView*)&Menu);
 }
 
 void worldmenu(){
@@ -109,7 +51,7 @@ void worldmenu(){
 	MainForm.Init();
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 	gui::UILabel title = gui::UILabel("==============<  选 择 世 界  >==============");
-	gui::UIVerticalScroll UIVerticalScroll = UIVerticalScroll(100, 0);
+	gui::UIVerticalScroll UIVerticalScroll = gui::UIVerticalScroll(100, 0);
 	gui::UIButton enterbtn = gui::UIButton("进入选定的世界");
 	gui::UIButton deletebtn = gui::UIButton("删除选定的世界");
 	gui::UIButton backbtn = gui::UIButton("<< 返回主菜单");
