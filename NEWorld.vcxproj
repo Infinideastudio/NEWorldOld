@@ -174,14 +174,14 @@
     <ClCompile Include="include\Netycat\src\Netycat\Core\Socket.cpp" />
     <ClCompile Include="source\Chunk.cpp" />
     <ClCompile Include="source\ChunkPtrArray.cpp" />
-    <ClCompile Include="source\CreateWorldMenu.cpp" />
-    <ClCompile Include="source\GUIOptions.cpp" />
     <ClCompile Include="source\HeightMap.cpp" />
     <ClCompile Include="source\Definitions.cpp" />
     <ClCompile Include="source\Frustum.cpp" />
     <ClCompile Include="source\GUI.cpp" />
     <ClCompile Include="source\Hitbox.cpp" />
+    <ClCompile Include="source\MainMenu.cpp" />
     <ClCompile Include="source\Menus.cpp" />
+    <ClCompile Include="source\MultiplayerGameMenu.cpp" />
     <ClCompile Include="source\Network.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
     <ClCompile Include="source\OnlinePlayer.cpp" />
