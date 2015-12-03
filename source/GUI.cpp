@@ -714,7 +714,6 @@ namespace gui{
     
 	textbox* Form::createtextbox(string t){
 <<<<<<< HEAD
-<<<<<<< HEAD
 
 		textbox* ret = new textbox;                                   //创建文本框
 
@@ -728,20 +727,12 @@ namespace gui{
 
 		textbox* ret = new textbox;                                   //创建文本框
 
-=======
-
-		textbox* ret = new textbox;                                   //创建文本框
-
->>>>>>> parent of 7e2d023... GUI Improve Persave 1
 		//初始化文本框
 		ret->id = currentid;                                                  //当前ID
 		ret->text = t;                                                  //文本
 		ret->enabled = true;
 		ret->parent = this;
 
-<<<<<<< HEAD
->>>>>>> parent of 7e2d023... GUI Improve Persave 1
-=======
 >>>>>>> parent of 7e2d023... GUI Improve Persave 1
 		children.push_back(ret);
 
@@ -755,9 +746,6 @@ namespace gui{
     
 	vscroll* Form::createvscroll(int h, int p){
 <<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 7e2d023... GUI Improve Persave 1
 
 		vscroll* ret = new vscroll;                                   //创建滚动条
 
@@ -768,7 +756,6 @@ namespace gui{
 		ret->enabled = true;
 		ret->parent = this;
 
-<<<<<<< HEAD
 =======
 
 		vscroll* ret = new vscroll;                                   //创建滚动条
@@ -780,8 +767,6 @@ namespace gui{
 		ret->enabled = true;
 		ret->parent = this;
 
->>>>>>> parent of 7e2d023... GUI Improve Persave 1
-=======
 >>>>>>> parent of 7e2d023... GUI Improve Persave 1
 		children.push_back(ret);
 
@@ -810,7 +795,6 @@ namespace gui{
 
 <<<<<<< HEAD
 <<<<<<< HEAD
-<<<<<<< HEAD
 	bool UIsigExit=false;
 	
 	void UIEnter(UIView* View) {
@@ -834,8 +818,6 @@ namespace gui{
 	}
 
 
-=======
->>>>>>> parent of 7e2d023... GUI Improve Persave 1
 =======
 >>>>>>> parent of 7e2d023... GUI Improve Persave 1
 =======
