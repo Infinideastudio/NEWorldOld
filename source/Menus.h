@@ -115,4 +115,20 @@ public:
 	void OnRender();
 };
 
+class CreateWorldMenu : public gui::UIView
+{
+private:
+	gui::UILabel  title = gui::UILabel("===============< 图形界面选项 >==============");
+	gui::UIButton fontbtn = gui::UIButton("全部使用Unicode字体：" + boolstr(TextRenderer::useUnicodeASCIIFont));
+	gui::UIButton backbtn = gui::UIButton("<< 返回选项菜单");
+
+public:
+	CreateWorldMenu();
+	~CreateWorldMenu();
+
+	void OnResize();
+	void OnUpdate();
+	void OnRender();
+};
+
 
