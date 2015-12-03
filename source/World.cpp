@@ -36,6 +36,7 @@ namespace world{
 	void Init(){
 		
 		std::stringstream ss;
+		system("mkdir Worlds");
 		ss << "mkdir Worlds\\" << worldname;
 		system(ss.str().c_str());
 		ss.clear(); ss.str("");

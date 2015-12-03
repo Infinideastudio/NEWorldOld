@@ -18,10 +18,10 @@ MainMenu::~MainMenu()
 }
 
 void MainMenu::OnResize(){
-	leftp = windowwidth / 2 - 200;
-	midp = windowwidth / 2;
-	rightp = windowwidth / 2 + 200;
-	upp = 280;
+	int leftp = windowwidth / 2 - 200;
+	int midp = windowwidth / 2;
+	int rightp = windowwidth / 2 + 200;
+	int upp = 280;
 	startbtn.UISetRect(leftp, rightp, upp, upp + 32);
 	multiplayerbtn.UISetRect(leftp, rightp, upp + 38, upp + 32 + 38);
 	optionsbtn.UISetRect(leftp, midp - 3, upp + 38 * 2, upp + 72 + 38);
@@ -32,7 +32,7 @@ void MainMenu::OnResize(){
 void MainMenu::OnUpdate(){
 	if (startbtn.clicked) worldmenu();
 	if (multiplayerbtn.clicked) MultiplayerGameMenu();
-	if (gamebegin) gui::UIExit();
+	if (gamebegin) UIExit();
 	if (optionsbtn.clicked) options();
 	if (quitbtn.clicked) exit(0);
 }

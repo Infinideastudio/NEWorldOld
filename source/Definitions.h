@@ -100,7 +100,6 @@ extern bool FirstFrameThisUpdate;
 extern double SpeedupAnimTimer;
 extern double TouchdownAnimTimer;
 extern double screenshotAnimTimer;
-extern double bagAnimTimer;
 
 extern int GLVersionMajor, GLVersionMinor, GLVersionRev;
 extern GLFWwindow* MainWindow;
