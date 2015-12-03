@@ -713,6 +713,7 @@ namespace gui{
 	}
     
 	textbox* Form::createtextbox(string t){
+<<<<<<< HEAD
 
 		textbox* ret = new textbox;                                   //创建文本框
 
@@ -722,6 +723,17 @@ namespace gui{
 		ret->enabled = true;
 		ret->parent = this;
 
+=======
+
+		textbox* ret = new textbox;                                   //创建文本框
+
+		//初始化文本框
+		ret->id = currentid;                                                  //当前ID
+		ret->text = t;                                                  //文本
+		ret->enabled = true;
+		ret->parent = this;
+
+>>>>>>> parent of 7e2d023... GUI Improve Persave 1
 		children.push_back(ret);
 
 		currentid++;
@@ -733,6 +745,7 @@ namespace gui{
 	}
     
 	vscroll* Form::createvscroll(int h, int p){
+<<<<<<< HEAD
 
 		vscroll* ret = new vscroll;                                   //创建滚动条
 
@@ -743,6 +756,18 @@ namespace gui{
 		ret->enabled = true;
 		ret->parent = this;
 
+=======
+
+		vscroll* ret = new vscroll;                                   //创建滚动条
+
+		//初始化
+		ret->id = currentid;                                                     //当前ID
+		ret->barheight = h;                                                     //滑动条高度
+		ret->barpos = p;                                                     //滑动条位置
+		ret->enabled = true;
+		ret->parent = this;
+
+>>>>>>> parent of 7e2d023... GUI Improve Persave 1
 		children.push_back(ret);
 
 		currentid++;
@@ -769,6 +794,7 @@ namespace gui{
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	bool UIsigExit=false;
 	
 	void UIEnter(UIView* View) {
@@ -792,6 +818,8 @@ namespace gui{
 	}
 
 
+=======
+>>>>>>> parent of 7e2d023... GUI Improve Persave 1
 =======
 >>>>>>> parent of 7e2d023... GUI Improve Persave 1
 }
