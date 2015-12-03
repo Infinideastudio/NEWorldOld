@@ -87,18 +87,28 @@ public:
 class RenderOptions : public gui::UIView
 {
 private:
-	gui::UILabel	 title = gui::UILabel("=================<  选 项  >=================");
-	gui::UITrackBar  FOVyBar = gui::UITrackBar(strWithVar("视野角度：", FOVyNormal), 120, (int)(FOVyNormal - 1));
-	gui::UITrackBar  mmsBar = gui::UITrackBar(strWithVar("鼠标灵敏度：", mousemove), 120, (int)(mousemove * 40 * 2 - 1));
-	gui::UITrackBar  viewdistBar = gui::UITrackBar(strWithVar("渲染距离：", viewdistance), 120, (viewdistance - 1) * 8 - 1);
-	//gui::UIButton*	ciArrayBtn = UIButton("使用区块索引数组：" + boolstr(UseCIArray))
-	gui::UIButton	rdstbtn = gui::UIButton(">> 渲染选项...");
-	gui::UIButton	gistbtn = gui::UIButton(">> 图形界面选项...");
-	gui::UIButton	backbtn = gui::UIButton("<< 返回主菜单");
-	//gui::UIButton*	savebtn = UIButton("保存设置")
+	gui::UILabel   title   = gui::UILabel("==============<  渲 染 选 项  >==============");
+	gui::UIButton  backbtn = gui::UIButton("<< 返回选项菜单");
+
 public:
 	RenderOptions();
 	~RenderOptions();
+
+	void OnResize();
+	void OnUpdate();
+	void OnRender();
+};
+
+class GUIOptions : public gui::UIView
+{
+private:
+	gui::UILabel  title   = gui::UILabel("===============< 图形界面选项 >==============");
+	gui::UIButton fontbtn = gui::UIButton("全部使用Unicode字体：" + boolstr(TextRenderer::useUnicodeASCIIFont));
+	gui::UIButton backbtn = gui::UIButton("<< 返回选项菜单");
+
+public:
+	GUIOptions();
+	~GUIOptions();
 
 	void OnResize();
 	void OnUpdate();
