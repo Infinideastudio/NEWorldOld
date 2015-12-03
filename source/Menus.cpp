@@ -158,7 +158,6 @@ public:
 
 void MultiplayerGameMenu() {
 <<<<<<< HEAD
-<<<<<<< HEAD
 	NEMultiplayerGameMenu Menu = NEMultiplayerGameMenu();
 	gui::UIEnter((gui::UIView*)&Menu);
 }
@@ -167,8 +166,6 @@ void mainmenu(){
 	MainMenu Menu = MainMenu();
 	gui::UIEnter((gui::UIView*)&Menu);
 =======
-=======
->>>>>>> parent of 7e2d023... GUI Improve Persave 1
 	gui::Form MainForm;
 	int leftp = windowwidth / 2 - 250;
 	int rightp = windowwidth / 2 + 250;
@@ -275,7 +272,6 @@ void mainmenu(){
 void options(){
 	//设置菜单
 <<<<<<< HEAD
-<<<<<<< HEAD
 	Options Menu = Options();
 	gui::UIEnter((gui::UIView*)&Menu);
 }
@@ -325,9 +321,6 @@ NEMultiplayerGameMenu::~NEMultiplayerGameMenu() {
 }
 
 void NEMultiplayerGameMenu::OnResize() {
-=======
-	gui::Form MainForm;
->>>>>>> parent of 7e2d023... GUI Improve Persave 1
 =======
 	gui::Form MainForm;
 >>>>>>> parent of 7e2d023... GUI Improve Persave 1
@@ -440,9 +433,6 @@ void Options::OnResize(){
 void Renderoptions(){
     //渲染设置菜单
 	gui::Form MainForm;
-<<<<<<< HEAD
->>>>>>> parent of 7e2d023... GUI Improve Persave 1
-=======
 >>>>>>> parent of 7e2d023... GUI Improve Persave 1
 	int leftp = windowwidth / 2 - 250;
 	int rightp = windowwidth / 2 + 250;
@@ -523,9 +513,6 @@ void RenderOptions::OnResize(){
 void GUIoptions(){
     //GUI设置菜单
 	gui::Form MainForm;
-<<<<<<< HEAD
->>>>>>> parent of 7e2d023... GUI Improve Persave 1
-=======
 >>>>>>> parent of 7e2d023... GUI Improve Persave 1
 	int leftp = windowwidth / 2 - 250;
 	int rightp = windowwidth / 2 + 250;
