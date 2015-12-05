@@ -13,11 +13,13 @@ namespace world{
 
 	private:
 		bool Modified = false;
-		block* pblocks;
-		brightness* pbrightness;
+		block pblocks[4096];
+		brightness pbrightness[4096];
+		//block* pblocks;
+		//brightness* pbrightness;
 
 	public:
-		//¾¹È»Ò»Ö±¶¼Ã»ÓĞ¹¹Ôìº¯Êı/Îö¹¹º¯Êı »¹ÒªÊÖ¶¯µ÷ÓÃInit...ÎÒÊÜ²»ÁËÀ²(¨s¨F¡õ¡ä)¨s¦à©ß©¥©ß
+		//ç«Ÿç„¶ä¸€ç›´éƒ½æ²¡æœ‰æ„é€ å‡½æ•°/ææ„å‡½æ•° è¿˜è¦æ‰‹åŠ¨è°ƒç”¨Init...æˆ‘å—ä¸äº†å•¦(â•¯â€µâ–¡â€²)â•¯ï¸µâ”»â”â”»
 		//2333 --qiaozhanrong
 		chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi), Modified(false) {}
 		chunk(int cxi, int cyi, int czi) : cx(cxi), cy(cyi), cz(czi), id(getChunkID(cxi, cyi, czi)), Modified(false) {}
@@ -53,17 +55,17 @@ namespace world{
 		void destroyRender();
 
 		inline block getblock(int x, int y, int z) {
-			//»ñÈ¡Çø¿éÄÚµÄ·½¿é
+			//è·å–åŒºå—å†…çš„æ–¹å—
 			if (Empty) return blocks::AIR;
 			return pblocks[x * 256 + y * 16 + z];
 		}
 		inline brightness getbrightness(int x, int y, int z){
-			//»ñÈ¡Çø¿éÄÚµÄÁÁ¶È
+			//è·å–åŒºå—å†…çš„äº®åº¦
 			if (Empty)if (cy < 0)return BRIGHTNESSMIN; else return skylight;
 			return pbrightness[x * 256 + y * 16 + z];
 		}
 		inline void setblock(int x, int y, int z, block iblock) {
-			//ÉèÖÃ·½¿é
+			//è®¾ç½®æ–¹å—
 			if (Empty){
 				create();
 				build();
@@ -73,7 +75,7 @@ namespace world{
 			Modified = true;
 		}
 		inline void setbrightness(int x, int y, int z, brightness ibrightness){
-			//ÉèÖÃÁÁ¶È
+			//è®¾ç½®äº®åº¦
 			if (Empty){
 				create();
 				build();
