@@ -13,10 +13,10 @@ namespace world{
 
 	private:
 		bool Modified = false;
-		block pblocks[4096];
-		brightness pbrightness[4096];
-		//block* pblocks;
-		//brightness* pbrightness;
+		//block pblocks[4096];
+		//brightness pbrightness[4096];
+		block* pblocks;
+		brightness* pbrightness;
 
 	public:
 		//竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻
