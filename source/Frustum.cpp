@@ -1,13 +1,62 @@
 #include "Frustum.h"
 
 namespace Frustum {
-	double frus[24];
-	double proj[16], modl[16];
-	double clip[16];
+	double frus[24], clip[16];
+	float proj[16], modl[16];
+
+	void LoadIdentity() {
+		memset(proj, 0, sizeof(proj));
+		memset(modl, 0, sizeof(modl));
+		modl[0] = modl[5] = modl[10] = modl[15] = 1.0f;
+	}
+
+	void MultMatrix(float* m) {
+		float sum[16];
+		memset(sum, 0, sizeof(sum));
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				for (int k = 0; k < 4; k++) {
+					sum[j * 4 + i] += modl[k * 4 + i] * m[j * 4 + k];
+				}
+			}
+		}
+		memcpy(modl, sum, sizeof(sum));
+	}
+
+	void setPerspective(float FOV, float aspect, float Znear, float Zfar) {
+		float ViewAngleH = FOV * (float)M_PI / 180.0f;
+		float ViewAngleV = atan(tan(ViewAngleH / 2.0f) * aspect) * 2.0f;
+		proj[0] = 1.0f / tan(ViewAngleV / 2);
+		proj[5] = proj[0] * aspect;
+		proj[10] = -(Zfar + Znear) / (Zfar - Znear);
+		proj[11] = -1;
+		proj[14] = -2 * Zfar * Znear / (Zfar - Znear);
+	}
+
+	void multRotate(float angle, float x, float y, float z) {
+		float m[16];
+		memset(m, 0, sizeof(m));
+		float length = sqrt(x * x + y * y + z * z);
+		x /= length; y /= length; z /= length;
+		float alpha = angle * (float)M_PI / 180.0f;
+		float s = sin(alpha);
+		float c = cos(alpha);
+		float t = 1.0f - c;
+		m[0] = t * x * x + c;
+		m[1] = t * x * y + s * z;
+		m[2] = t * x * z - s * y;
+		m[4] = t * x * y - s * z;
+		m[5] = t * y * y + c;
+		m[6] = t * y * z + s * x;
+		m[8] = t * x * z + s * y;
+		m[9] = t * y * z - s * x;
+		m[10] = t * z * z + c;
+		m[15] = 1.0f;
+		MultMatrix(m);
+	}
 
 	void normalize(int side) {
 		double magnitude = sqrt(frus[side + 0] * frus[side + 0] + frus[side + 1] * frus[side + 1] + frus[side + 2] * frus[side + 2]);
-
 		frus[side + 0] /= magnitude;
 		frus[side + 1] /= magnitude;
 		frus[side + 2] /= magnitude;
@@ -16,8 +65,8 @@ namespace Frustum {
 
 	void calc() {
 
-		glGetDoublev(GL_PROJECTION_MATRIX, proj);
-		glGetDoublev(GL_MODELVIEW_MATRIX, modl);
+		//glGetFloatv(GL_PROJECTION_MATRIX, proj);
+		//glGetFloatv(GL_MODELVIEW_MATRIX, modl);
 
 		clip[0] = modl[0] * proj[0] + modl[1] * proj[4] + modl[2] * proj[8] + modl[3] * proj[12];
 		clip[1] = modl[0] * proj[1] + modl[1] * proj[5] + modl[2] * proj[9] + modl[3] * proj[13];

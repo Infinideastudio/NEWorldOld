@@ -106,7 +106,6 @@ namespace renderer {
 		}
 
 		//if (EnableShaders) glUseProgramObjectARB(0);
-
 	}
     
 	void renderbuffer(VBOID buffer, vtxCount vtxs, bool ftex, bool fcol) {
