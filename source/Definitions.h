@@ -47,11 +47,11 @@ typedef unsigned int(*ThreadFunc_t)(void* param);
 //Global Vars
 const unsigned int VERSION = 37;
 const string MAJOR_VERSION = "Alpha 0.";
-const string MINOR_VERSION = "5.0";
-const string EXT_VERSION = " [Preview]";
-const int defaultwindowwidth = 852; //默认窗口宽度
+const string MINOR_VERSION = "4.10";
+const string EXT_VERSION = " [Preview Not Released]";
+const int defaultwindowwidth = 850; //默认窗口宽度
 const int defaultwindowheight = 480; //默认窗口高度
-const int networkRequestFrequency = 3; //请求频率
+const int networkRequestFrequency = 2; //请求频率
 const int networkRequestMax = 20; //理想最大请求队列长度
 extern float FOVyNormal;
 extern float mousemove;
@@ -77,9 +77,8 @@ extern int windowwidth;
 extern int windowheight;
 extern bool gamebegin, bagOpened;
 
-extern TextureID BlockTexture[20];
 extern TextureID BlockTextures;
-extern TextureID guiImage[6];
+extern TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
 extern TextureID DestroyImage[11];
 extern TextureID DefaultSkin;
 
@@ -90,6 +89,7 @@ extern unsigned short port;
 extern Mutex_t Mutex;
 extern Thread_t updateThread;
 extern double lastupdate, updateTimer;
+extern double lastframe;
 extern bool updateThreadRun, updateThreadPaused;
 
 extern bool mpclient, mpserver;
@@ -100,12 +100,15 @@ extern bool FirstFrameThisUpdate;
 extern double SpeedupAnimTimer;
 extern double TouchdownAnimTimer;
 extern double screenshotAnimTimer;
+extern double bagAnimTimer;
+extern double bagAnimDuration;
 
 extern int GLVersionMajor, GLVersionMinor, GLVersionRev;
 extern GLFWwindow* MainWindow;
 extern GLFWcursor* MouseCursor;
 extern double mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
+extern double mxdelta, mydelta;
 extern string inputstr;
 extern PFNGLGENBUFFERSARBPROC glGenBuffersARB;
 extern PFNGLBINDBUFFERARBPROC glBindBufferARB;

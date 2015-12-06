@@ -6,8 +6,8 @@
 namespace world{
 
 	void chunk::create(){
-		//pblocks = new block[4096];
-		//pbrightness = new brightness[4096];
+		pblocks = new block[4096];
+		pbrightness = new brightness[4096];
 		//memset(pblocks, 0, sizeof(pblocks));
 		//memset(pbrightness, 0, sizeof(pbrightness));
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
@@ -18,16 +18,16 @@ namespace world{
 	}
 
 	void chunk::destroy(){
-		//delete[] pblocks;
-		//delete[] pbrightness;
-		//pblocks = nullptr;
-		//pbrightness = nullptr;
+		delete[] pblocks;
+		delete[] pbrightness;
+		pblocks = nullptr;
+		pbrightness = nullptr;
 		updated = false;
 		unloadedChunks++;
 	}
 
 	void chunk::build(){
-		//脡煤鲁脡碌脴脨脦
+		//生成地形
 
 		int x, y, z, height, h=0, sh=0;
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
@@ -131,7 +131,7 @@ namespace world{
 			return;
 		}
 #endif
-		//陆篓脕垄chunk脧脭脢戮脕脨卤铆
+		//建立chunk显示列表
 		int x, y, z;
 		for (x = -1; x <= 1; x++) {
 			for (y = -1; y <= 1; y++) {
