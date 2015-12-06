@@ -36,11 +36,10 @@ namespace world{
 	void Init(){
 		
 		std::stringstream ss;
-		system("mkdir Worlds");
-		ss << "mkdir Worlds\\" << worldname;
+		ss << "md Worlds/" << worldname;
 		system(ss.str().c_str());
 		ss.clear(); ss.str("");
-		ss << "mkdir Worlds\\" << worldname << "\\chunks";
+		ss << "md Worlds/" << worldname << "/chunks";
 		system(ss.str().c_str());
 
 		WorldGen::perlinNoiseInit(3404);
@@ -58,7 +57,8 @@ namespace world{
 		loadedChunkArray = new bool[lcasize*lcasize*lcasize];
 
 	}
-	pair<int,int> binary_search_chunks(chunk** target, int len, chunkid cid) {
+
+	inline pair<int,int> binary_search_chunks(chunk** target, int len, chunkid cid) {
 		//¶ş·Ö²éÕÒ,GO!
 		int first = 0, last = len - 1, middle;
 		middle = (first + last) / 2;
@@ -69,6 +69,7 @@ namespace world{
 		}
 		return std::make_pair(first, middle);
 	}
+
 	chunk* AddChunk(int x, int y, int z){
 		
 		chunkid cid;
@@ -119,7 +120,7 @@ namespace world{
 		return (chunkid(y) << 56) + (chunkid(x) << 28) + z;
 	}
 
-	bool chunkLoaded(int x, int y, int z){
+	inline bool chunkLoaded(int x, int y, int z){
 		if (chunkOutOfBound(x, y, z))return false;
 		if (getChunkPtr(x, y, z) != nullptr)return true;
 		return false;
@@ -192,7 +193,7 @@ namespace world{
 
 	}
 
-	void ReduceChunkArray(int cc){
+	inline void ReduceChunkArray(int cc){
 		loadedChunks -= cc;
 	}
 

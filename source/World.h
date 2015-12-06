@@ -9,7 +9,7 @@ namespace world{
 
 	extern string worldname;
 	const int worldsize = 134217728;
-	const int worldheight = 8;
+	const int worldheight = 128;
 	extern brightness skylight;         //Sky light level
 	extern brightness BRIGHTNESSMAX;    //Maximum brightness
 	extern brightness BRIGHTNESSMIN;    //Mimimum brightness
@@ -50,7 +50,10 @@ namespace world{
 
 	#define getchunkpos(n) ((n)>>4)
 	#define getblockpos(n) ((n)&15)
-	#define chunkOutOfBound(x,y,z) ((y)<-world::worldheight || (y)>world::worldheight-1 || (x)<-134217728 || (x)>134217727 || (z)<-134217728 || (z)>134217727)
+	inline bool chunkOutOfBound(int x, int y, int z) {
+		return y < -world::worldheight || y > world::worldheight - 1 ||
+			x < -134217728 || x > 134217727 || z < -134217728 || z > 134217727;
+	}
 
 	vector<Hitbox::AABB> getHitboxes(Hitbox::AABB box);
 	bool inWater(Hitbox::AABB box);
