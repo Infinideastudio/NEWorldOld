@@ -13,13 +13,11 @@ namespace world{
 
 	private:
 		bool Modified = false;
-		block pblocks[4096];
-		brightness pbrightness[4096];
-		//block* pblocks;
-		//brightness* pbrightness;
+		block* pblocks;
+		brightness* pbrightness;
 
 	public:
-		//ç«Ÿç„¶ä¸€ç›´éƒ½æ²¡æœ‰æ„é€ å‡½æ•°/ææ„å‡½æ•° è¿˜è¦æ‰‹åŠ¨è°ƒç”¨Init...æˆ‘å—ä¸äº†å•¦(â•¯â€µâ–¡â€²)â•¯ï¸µâ”»â”â”»
+		//¾¹È»Ò»Ö±¶¼Ã»ÓĞ¹¹Ôìº¯Êı/Îö¹¹º¯Êı »¹ÒªÊÖ¶¯µ÷ÓÃInit...ÎÒÊÜ²»ÁËÀ²(¨s¨F¡õ¡ä)¨s¦à©ß©¥©ß
 		//2333 --qiaozhanrong
 		chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi), Modified(false) {}
 		chunk(int cxi, int cyi, int czi) : cx(cxi), cy(cyi), cz(czi), id(getChunkID(cxi, cyi, czi)), Modified(false) {}
@@ -39,7 +37,7 @@ namespace world{
 		void build();
 		inline string getFileName(){
 			std::stringstream ss;
-			ss << "Worlds\\" << worldname << "\\chunks\\chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldChunk";
+			ss << "Worlds/" << worldname << "/chunks/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldChunk";
 			return ss.str();
 		}
 		inline bool fileExist(){
@@ -55,33 +53,33 @@ namespace world{
 		void destroyRender();
 
 		inline block getblock(int x, int y, int z) {
-			//è·å–åŒºå—å†…çš„æ–¹å—
+			//»ñÈ¡Çø¿éÄÚµÄ·½¿é
 			if (Empty) return blocks::AIR;
-			return pblocks[x * 256 + y * 16 + z];
+			return pblocks[(x << 8) + (y << 4) + z];
 		}
 		inline brightness getbrightness(int x, int y, int z){
-			//è·å–åŒºå—å†…çš„äº®åº¦
-			if (Empty)if (cy < 0)return BRIGHTNESSMIN; else return skylight;
-			return pbrightness[x * 256 + y * 16 + z];
+			//»ñÈ¡Çø¿éÄÚµÄÁÁ¶È
+			if (Empty) if (cy < 0) return BRIGHTNESSMIN; else return skylight;
+			return pbrightness[(x << 8) + (y << 4) + z];
 		}
 		inline void setblock(int x, int y, int z, block iblock) {
-			//è®¾ç½®æ–¹å—
+			//ÉèÖÃ·½¿é
 			if (Empty){
 				create();
 				build();
 				Empty = false;
 			}
-			pblocks[x * 256 + y * 16 + z] = iblock;
+			pblocks[(x << 8) + (y << 4) + z] = iblock;
 			Modified = true;
 		}
 		inline void setbrightness(int x, int y, int z, brightness ibrightness){
-			//è®¾ç½®äº®åº¦
+			//ÉèÖÃÁÁ¶È
 			if (Empty){
 				create();
 				build();
 				Empty = false;
 			}
-			pbrightness[x * 256 + y * 16 + z] = ibrightness;
+			pbrightness[(x << 8) + (y << 4) + z] = ibrightness;
 		}
 
 		Hitbox::AABB getChunkAABB();

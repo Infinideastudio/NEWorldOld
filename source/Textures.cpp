@@ -69,24 +69,21 @@ namespace Textures {
 	}
 
 	double getTexcoordX(block iblock, ubyte side) {
-		//return ((getTextureIndex(iblock, side) - 1) % (BLOCKTEXTURE_SIZE / BLOCKTEXTURE_UNITSIZE))*(BLOCKTEXTURE_UNITSIZE / (double)BLOCKTEXTURE_SIZE);
 		return ((getTextureIndex(iblock, side) - 1) & 7) / 8.0;
 	}
 
 	double getTexcoordY(block iblock, ubyte side) {
-		//return (int((getTextureIndex(iblock, side) - 1) / (BLOCKTEXTURE_SIZE / (double)BLOCKTEXTURE_UNITSIZE)))*(BLOCKTEXTURE_UNITSIZE / (double)BLOCKTEXTURE_SIZE);
 		return ((getTextureIndex(iblock, side) - 1) >> 3) / 8.0;
 	}
 
 	void LoadRGBImage(TEXTURE_RGB& tex, string Filename) {
-		unsigned char col[3];
 		unsigned int ind = 0;
 		TEXTURE_RGB& bitmap = tex; //返回位图
 		bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
 		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //位图文件（二进制）
 		if (!bmpfile.is_open()) {
-			printf("[console][Warning] Cannot load %s\n", Filename.c_str());
-			return;
+			std::stringstream ss; ss << "Cannot load bitmap " << Filename;
+			DebugWarning(ss.str()); return;
 		}
 		BITMAPINFOHEADER bih; //各种关于位图的参数
 		BITMAPFILEHEADER bfh; //各种关于文件的参数
@@ -96,55 +93,68 @@ namespace Textures {
 		bitmap.sizeX = bih.biWidth;
 		bitmap.sizeY = bih.biHeight;
 		bitmap.buffer = unique_ptr<ubyte[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 3]);
+		//读取数据
+		bmpfile.read((char*)bitmap.buffer.get(), bitmap.sizeX*bitmap.sizeY * 3);
+		bmpfile.close();
+		//合并与转换
 		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
 			//把BGR格式转换为RGB格式
-			bmpfile.read((char*)col, 3);
-			bitmap.buffer[ind++] = col[2]; //R
-			bitmap.buffer[ind++] = col[1]; //G
-			bitmap.buffer[ind++] = col[0]; //B
+			unsigned char t = bitmap.buffer[ind];
+			bitmap.buffer[ind] = bitmap.buffer[ind + 2];
+			bitmap.buffer[ind + 2] = t;
+			ind += 3;
 		}
-		bmpfile.close();
 	}
 
 	void LoadRGBAImage(TEXTURE_RGBA& tex, string Filename, string MkFilename) {
-		unsigned char col[3];
+		unsigned char *rgb = nullptr, *a = nullptr;
 		unsigned int ind = 0;
+		bool noMaskFile = (MkFilename == "");
 		TEXTURE_RGBA& bitmap = tex; //返回位图
 		bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
 		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //位图文件（二进制）
-		std::ifstream maskfile(MkFilename, std::ios::binary | std::ios::in); //遮罩位图文件（二进制）
+		std::ifstream maskfile;
+		if (!noMaskFile)maskfile.open(MkFilename, std::ios::binary | std::ios::in); //遮罩位图文件（二进制）
 		if (!bmpfile.is_open()) {
-			printf("[console][Warning] Cannot load %s\n", Filename.c_str());
-			return;
+			std::stringstream ss; ss << "Cannot load bitmap " << Filename;
+			DebugWarning(ss.str()); return;
+		}
+		if (!noMaskFile && !maskfile.is_open()) {
+			std::stringstream ss; ss << "Cannot load bitmap " << MkFilename;
+			DebugWarning(ss.str()); return;
 		}
 		BITMAPFILEHEADER bfh; //各种关于文件的参数
 		BITMAPINFOHEADER bih; //各种关于位图的参数
 							  //开始读取
-		maskfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //这两个是占位mask文件的
-		maskfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //到了后面mask可以直接从颜色部分开始读取
+		if (!noMaskFile) {
+			maskfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //这两个是占位mask文件的
+			maskfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //到了后面mask可以直接从颜色部分开始读取
+		}
 		bmpfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //真正的info以这个bmp文件为准
 		bmpfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //它将覆盖之前从mask文件读出来的info数据
 		bitmap.sizeX = bih.biWidth;
 		bitmap.sizeY = bih.biHeight;
 		bitmap.buffer = unique_ptr<ubyte[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 4]);
-		bool noMaskFile = MkFilename == "";
+		//读取数据
+		rgb = new unsigned char[bitmap.sizeX * bitmap.sizeY * 3];
+		bmpfile.read((char*)rgb, bitmap.sizeX*bitmap.sizeY * 3);
+		bmpfile.close();
+		if (!noMaskFile) {
+			a = new unsigned char[bitmap.sizeX*bitmap.sizeY * 3];
+			maskfile.read((char*)a, bitmap.sizeX*bitmap.sizeY * 3);
+			maskfile.close();
+		}
+		//合并与转换
 		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
 			//把BGR格式转换为RGB格式
-			bmpfile.read((char*)col, 3);
-			bitmap.buffer[ind++] = col[2]; //R
-			bitmap.buffer[ind++] = col[1]; //G
-			bitmap.buffer[ind++] = col[0]; //B
-			if (noMaskFile) {
-				bitmap.buffer[ind++] = 255;
-			}
-			else {
-				//将遮罩图的红色通道反相作为Alpha通道
-				maskfile.read((char*)col, 3);
-				bitmap.buffer[ind++] = 255 - col[2]; //A
-			}
+			bitmap.buffer[ind] = rgb[i * 3 + 2];
+			bitmap.buffer[ind + 1] = rgb[i * 3 + 1];
+			bitmap.buffer[ind + 2] = rgb[i * 3];
+			//Alpha
+			if (noMaskFile) bitmap.buffer[ind + 3] = 255;
+			else bitmap.buffer[ind + 3] = 255 - a[i * 3];
+			ind += 4;
 		}
-		bmpfile.close();
-		maskfile.close();
 	}
 
 	TextureID LoadRGBTexture(string Filename) {
@@ -195,7 +205,6 @@ namespace Textures {
 		bitmapinfoheader.biWidth = image.sizeX;
 		bitmapinfoheader.biHeight = image.sizeY;
 		bitmapinfoheader.biSizeImage = image.sizeX*image.sizeY * 3;
-
 		std::ofstream ofs(filename, std::ios::out | std::ios::binary);
 		ofs.write((char*)&bitmapfileheader, sizeof(bitmapfileheader));
 		ofs.write((char*)&bitmapinfoheader, sizeof(bitmapinfoheader));
