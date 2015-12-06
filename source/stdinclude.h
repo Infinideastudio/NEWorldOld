@@ -11,6 +11,7 @@
 	using std::thread;
 	using std::mutex;
 	#endif
+	#include <WinSock2.h>
 	#include <Windows.h>
 #else
 	#include <thread>
@@ -47,7 +48,6 @@ using std::endl;
 //GLEXT
 #include <GL/glext.h>
 #endif
-
 //#pragma warning(pop)
 //#pragma warning(disable:4820) //忽略不必要的警告：数据结构对齐
 //#pragma warning(disable:4365) //忽略不必要的警告：有符号/无符号不匹配
