@@ -25,9 +25,8 @@ int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度
 bool gamebegin, bagOpened;
 
-TextureID BlockTexture[20];
 TextureID BlockTextures;
-TextureID guiImage[6];
+TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
 TextureID DestroyImage[11];
 TextureID DefaultSkin;
 
@@ -40,6 +39,7 @@ unsigned short port = 30001;
 Mutex_t Mutex;
 Thread_t updateThread;
 double lastupdate, updateTimer;
+double lastframe;
 bool updateThreadRun, updateThreadPaused;
 
 bool shouldGetScreenshot;
@@ -49,6 +49,8 @@ bool FirstFrameThisUpdate;
 double SpeedupAnimTimer;
 double TouchdownAnimTimer;
 double screenshotAnimTimer;
+double bagAnimTimer;
+double bagAnimDuration = 0.5;
 
 //OpenGL
 int GLVersionMajor, GLVersionMinor, GLVersionRev;
@@ -59,6 +61,7 @@ GLFWcursor* MouseCursor;
 //鼠标输入数据
 double mx, my, mxl, myl;
 int mw, mb, mbp, mbl, mwl;
+double mxdelta, mydelta;
 //键盘输入数据
 string inputstr;
 //OpenGL Procedure

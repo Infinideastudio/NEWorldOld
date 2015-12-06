@@ -16,7 +16,7 @@ namespace particles{
 	void update(particle &ptc);
 	void updateall();
 	void render(particle &ptc);
-	void renderall();
+	void renderall(double xpos, double ypos, double zpos);
 	void throwParticle(block pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last);
 
 }
