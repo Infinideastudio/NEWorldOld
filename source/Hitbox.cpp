@@ -5,32 +5,32 @@ namespace Hitbox{
 	bool stuck = false;
 	AABB Emptybox;
 
-	bool inXclip(AABB& boxA, AABB& boxB){
+	bool inXclip(const AABB& boxA, const AABB& boxB){
 		bool ret = false;
 		if (boxA.xmin > boxB.xmin && boxA.xmin<boxB.xmax || boxA.xmax>boxB.xmin && boxA.xmax<boxB.xmax) ret = true;
 		if (boxB.xmin > boxA.xmin && boxB.xmin<boxA.xmax || boxB.xmax>boxA.xmin && boxB.xmax < boxA.xmax) ret = true;
 		return ret;
 	}
 
-	bool inYclip(AABB& boxA, AABB& boxB){
+	bool inYclip(const AABB& boxA, const AABB& boxB){
 		bool ret = false;
 		if (boxA.ymin>boxB.ymin && boxA.ymin<boxB.ymax || boxA.ymax>boxB.ymin && boxA.ymax<boxB.ymax) ret = true;
 		if (boxB.ymin>boxA.ymin && boxB.ymin<boxA.ymax || boxB.ymax>boxA.ymin && boxB.ymax < boxA.ymax) ret = true;
 		return ret;
 	}
 
-	bool inZclip(AABB& boxA, AABB& boxB){
+	bool inZclip(const AABB& boxA, const AABB& boxB){
 		bool ret = false;
 		if (boxA.zmin>boxB.zmin && boxA.zmin<boxB.zmax || boxA.zmax>boxB.zmin && boxA.zmax<boxB.zmax) ret = true;
 		if (boxB.zmin>boxA.zmin && boxB.zmin<boxA.zmax || boxB.zmax>boxA.zmin && boxB.zmax < boxA.zmax) ret = true;
 		return ret;
 	}
 
-	bool Hit(AABB& boxA, AABB& boxB){
+	bool Hit(const AABB& boxA, const AABB& boxB){
 		return inXclip(boxA, boxB) && inYclip(boxA, boxB) && inZclip(boxA, boxB);
 	}
 
-	double MaxMoveOnXclip(AABB& boxA, AABB& boxB, double movedist){
+	double MaxMoveOnXclip(const AABB& boxA, const AABB& boxB, double movedist){
 		//用boxA去撞boxB，别搞反了
 		double ret = 0.0;
 		if (!(inYclip(boxA, boxB) && inZclip(boxA, boxB))){
@@ -51,7 +51,7 @@ namespace Hitbox{
 		return ret;
 	}
 
-	double MaxMoveOnYclip(AABB& boxA, AABB& boxB, double movedist){
+	double MaxMoveOnYclip(const AABB& boxA, const AABB& boxB, double movedist){
 		//用boxA去撞boxB，别搞反了 （这好像是句废话）
 		double ret = 0.0;
 		if (!(inXclip(boxA, boxB) && inZclip(boxA, boxB))){
@@ -72,7 +72,7 @@ namespace Hitbox{
 		return ret;
 	}
 
-	double MaxMoveOnZclip(AABB& boxA, AABB& boxB, double movedist){
+	double MaxMoveOnZclip(const AABB& boxA, const AABB& boxB, double movedist){
 		//用boxA去撞boxB，别搞反了 （这好像还是句废话）
 		double ret = 0.0;
 		if (!(inXclip(boxA, boxB) && inYclip(boxA, boxB))){
@@ -93,7 +93,7 @@ namespace Hitbox{
 		return ret;
 	}
 
-	AABB Expand(AABB& box, double xe, double ye, double ze){
+	AABB Expand(const AABB& box, double xe, double ye, double ze){
 		AABB ret = box;
 		if (xe > 0.0)
 			ret.xmax += xe;
@@ -135,7 +135,7 @@ namespace Hitbox{
 		box.zmin = z - h;
 		box.zmax = z + h;
 	}
-	void renderAABB(AABB& box, float colR, float colG, float colB, int mode){
+	void renderAABB(const AABB& box, float colR, float colG, float colB, int mode){
 		//Debug only!
 		//碰撞箱渲染出来很瞎狗眼的QAQ而且又没用QAQ
 		glLineWidth(2.0);
