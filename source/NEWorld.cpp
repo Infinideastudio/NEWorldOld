@@ -139,13 +139,8 @@ main_menu:
 	//初始化游戏状态
 	printf("[Console][Game]");
 	printf("Init player...\n");
-	player::InitHitbox();
-	player::xpos = 0.0;
-	player::ypos = 60.0;
-	player::zpos = 0.0;
 	loadGame();
-	player::MoveHitboxToPosition();
-	player::InitPosition();
+	player::init(0, 60.0, 0);
 	printf("[Console][Game]");
 	printf("Init world...\n");
 	world::Init();
@@ -650,7 +645,7 @@ void updategame(){
 					else
 						seldes += 5.0;
 					if (seldes >= 100.0) {
-						player::additem(world::getblock(x, y, z));
+						player::addItem(world::getblock(x, y, z));
 						for (int j = 1; j <= 25; j++) {
 							particles::throwParticle(world::getblock(x, y, z),
 								float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
@@ -665,22 +660,22 @@ void updategame(){
 					put = true;
 					switch (sidedistmin) {
 					case 1:
-						if (player::putblock(x, y + 1, z, player::BlockInHand) == false) put = false;
+						if (player::putBlock(x, y + 1, z, player::BlockInHand) == false) put = false;
 						break;
 					case 2:
-						if (player::putblock(x, y - 1, z, player::BlockInHand) == false) put = false;
+						if (player::putBlock(x, y - 1, z, player::BlockInHand) == false) put = false;
 						break;
 					case 3:
-						if (player::putblock(x + 1, y, z, player::BlockInHand) == false) put = false;
+						if (player::putBlock(x + 1, y, z, player::BlockInHand) == false) put = false;
 						break;
 					case 4:
-						if (player::putblock(x - 1, y, z, player::BlockInHand) == false) put = false;
+						if (player::putBlock(x - 1, y, z, player::BlockInHand) == false) put = false;
 						break;
 					case 5:
-						if (player::putblock(x, y, z + 1, player::BlockInHand) == false) put = false;
+						if (player::putBlock(x, y, z + 1, player::BlockInHand) == false) put = false;
 						break;
 					case 6:
-						if (player::putblock(x, y, z - 1, player::BlockInHand) == false) put = false;
+						if (player::putBlock(x, y, z - 1, player::BlockInHand) == false) put = false;
 						break;
 					}
 					if (put) {
@@ -934,7 +929,7 @@ void updategame(){
 	player::intxpos = RoundInt(player::xpos);
 	player::intypos = RoundInt(player::ypos);
 	player::intzpos = RoundInt(player::zpos);
-	player::Move();
+	player::updatePosition();
 	player::xposold = player::xpos;
 	player::yposold = player::ypos;
 	player::zposold = player::zpos;
