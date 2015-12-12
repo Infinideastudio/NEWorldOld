@@ -5,16 +5,7 @@
 
 #define NEWORLD_USE_WINAPI
 #ifdef NEWORLD_USE_WINAPI
-	#ifdef NEWORLD_SERVER
-	#include <thread>
-	#include <mutex>
-	using std::thread;
-	using std::mutex;
-	#endif
 	#include <Windows.h>
-#else
-	#include <thread>
-	#include <mutex>
 #endif
 #define _USE_MATH_DEFINES
 #include <assert.h>
@@ -54,4 +45,4 @@ using std::endl;
 //#pragma warning(disable:4365) //忽略不必要的警告：有符号/无符号不匹配
 
 //pthread
-#include "../include/pthread/pthread.h"
+#include <pthread/pthread.h>
