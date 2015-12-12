@@ -32,18 +32,10 @@ typedef int SkinID;
 typedef uint64 chunkid;
 typedef unsigned int onlineid;
 #ifndef NEWORLD_SERVER
-#ifdef NEWORLD_USE_WINAPI
-typedef HANDLE Mutex_t;
-typedef HANDLE Thread_t;
-typedef PTHREAD_START_ROUTINE ThreadFunc_t;
-#define ThreadFunc DWORD WINAPI
-#else
-typedef std::mutex* Mutex_t;
-typedef std::thread* Thread_t;
-typedef unsigned int(*ThreadFunc_t)(void* param);
-#define ThreadFunc unsigned int
-#endif
-
+typedef pthread_mutex_t Mutex_t;
+typedef pthread_t Thread_t;
+typedef void *(PTW32_CDECL *ThreadFunc_t)(void *);
+#define ThreadFunc void* PTW32_CDECL
 //Global Vars
 const unsigned int VERSION = 37;
 const string MAJOR_VERSION = "Alpha 0.";
@@ -141,30 +133,17 @@ inline double timer(){
 	//return (float)clock() / CLOCKS_PER_SEC;
 }
 
-#ifdef NEWORLD_USE_WINAPI
-inline Mutex_t MutexCreate(){return CreateMutex(NULL, FALSE, "");}
-inline void MutexDestroy(Mutex_t _hMutex){CloseHandle(_hMutex);}
-inline void MutexLock(Mutex_t _hMutex){WaitForSingleObject(_hMutex, INFINITE);}
-inline void MutexUnlock(Mutex_t _hMutex){ReleaseMutex(_hMutex);}
-inline Thread_t ThreadCreate(ThreadFunc_t func, void* param){return CreateThread(NULL, 0, func, param, 0, NULL);}
-inline void ThreadWait(Thread_t _hThread){WaitForSingleObject(_hThread, INFINITE);}
-inline void ThreadDestroy(Thread_t _hThread){CloseHandle(_hThread);}
+
+inline Mutex_t MutexCreate() { pthread_mutex_t ret; assert(pthread_mutex_init(&ret, nullptr) == 0); return ret; }
+inline void MutexDestroy(Mutex_t _hMutex) { pthread_mutex_destroy(&_hMutex); }
+inline void MutexLock(Mutex_t _hMutex) { pthread_mutex_lock(&_hMutex); }
+inline void MutexUnlock(Mutex_t _hMutex) { pthread_mutex_unlock(&_hMutex); }
+inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { pthread_t ret; pthread_create(&ret, nullptr, func, param); return ret; }
+inline void ThreadWait(Thread_t _hThread) { pthread_join(_hThread, nullptr); }
+inline void ThreadDestroy(Thread_t& _hThread) { _hThread.p = nullptr; _hThread.x = 0; }
 unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n);
 unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n);
 inline unsigned int wstrlen(const wchar_t* wstr){ return lstrlenW(wstr); }
-#else
-inline Mutex_t MutexCreate(){return new std::mutex;}
-inline void MutexDestroy(Mutex_t _hMutex){delete _hMutex;}
-inline void MutexLock(Mutex_t _hMutex){_hMutex->lock();}
-inline void MutexUnlock(Mutex_t _hMutex){_hMutex->unlock();}
-inline Thread_t ThreadCreate(ThreadFunc_t func, void* param){return new std::thread(func, param);}
-inline void ThreadWait(Thread_t _hThread){_hThread->join();}
-inline void ThreadDestroy(Thread_t _hThread){delete _hThread;}
-inline unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n){ size_t res; mbstowcs_s(&res, dst, n, src, _TRUNCATE); return res; }
-inline unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n){ size_t res; wcstombs_s(&res, dst, n, src, _TRUNCATE); return res; }
-inline unsigned int wstrlen(const wchar_t* wstr){ return wcslen(wstr); }
-void Sleep(unsigned int ms);
-#endif
 
 inline int RoundInt(double d){ return int(floor(d + 0.5)); }
 inline string itos(int i){

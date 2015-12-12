@@ -202,7 +202,8 @@ main_menu:
 			printf("Threads terminated\n");
 			printf("[Console][Game]");
 			printf("Returned to main menu\n");
-			Network::cleanUp();
+			if (multiplayer)
+				Network::cleanUp();
 			goto main_menu;
 		}
 		

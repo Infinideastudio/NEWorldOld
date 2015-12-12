@@ -17,6 +17,7 @@
 	#include <mutex>
 #endif
 #define _USE_MATH_DEFINES
+#include <assert.h>
 #include <math.h>
 #include <time.h>
 #include <io.h>
@@ -51,3 +52,6 @@ using std::endl;
 //#pragma warning(pop)
 //#pragma warning(disable:4820) //忽略不必要的警告：数据结构对齐
 //#pragma warning(disable:4365) //忽略不必要的警告：有符号/无符号不匹配
+
+//pthread
+#include "../include/pthread/pthread.h"
