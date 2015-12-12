@@ -461,7 +461,15 @@ void updategame(){
 	//static double mxl, myl;
 	glfwGetCursorPos(MainWindow, &mx, &my);
 	player::BlockInHand = player::inventorybox[3][player::itemInHand];
-	
+	//生命值相关
+	if (player::health > 0) {
+		if (player::health < player::healthMax) player::health += player::healSpeed;
+		if (player::health > player::healthMax) player::health = player::healthMax;
+	}
+	else {
+		player::health = 1;
+	}
+
 	//world::unloadedChunks=0
 	world::rebuiltChunks = 0;
 	world::updatedChunks = 0;
@@ -1404,8 +1412,26 @@ void drawGUI(){
 
 	}
 
-	glEnable(GL_TEXTURE_2D);
 	glDisable(GL_CULL_FACE);
+
+	glColor4d(0.8, 0.0, 0.0, 0.3);
+	glBegin(GL_QUADS);
+	glVertex2d(10, 10);
+	glVertex2d(200, 10);
+	glVertex2d(200, 30);
+	glVertex2d(10, 30);
+	glEnd();
+
+	double healthPercent = (double)player::health / player::healthMax;
+	glColor4d(1.0, 0.0, 0.0, 0.5);
+	glBegin(GL_QUADS);
+	glVertex2d(20, 15);
+	glVertex2d(20 + healthPercent * 170, 15);
+	glVertex2d(20 + healthPercent * 170, 25);
+	glVertex2d(20, 25);
+	glEnd();
+
+	glEnable(GL_TEXTURE_2D);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	for (int i = 0; i < 10; i++) {
 		if (i == player::itemInHand)
@@ -1413,7 +1439,6 @@ void drawGUI(){
 		else
 			glBindTexture(GL_TEXTURE_2D, guiImage[3]);
 
-		glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
 		glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
 		glBegin(GL_QUADS);
 		glTexCoord2f(0.0, 1.0);

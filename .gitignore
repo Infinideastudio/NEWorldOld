@@ -196,5 +196,4 @@ FakesAssemblies/
 *.opt
 
 # NEWorld saved world
-*.NEWorldPlayer
-*.NEWorldChunk
+Worlds/
