@@ -13,48 +13,47 @@ extern bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
 
 extern double glidingMinimumSpeed;
 
-namespace player{
+class player {
+public:
+	static void init(double x, double y, double z);
 
-	void InitHitbox();
-	void InitPosition();
-	bool putblock(int x, int y, int z, block blockname);
-	void MoveHitbox(double x, double y, double z);
-	void MoveHitboxToPosition();
-	void Move();
-	void save(string worldn);
-	void load(string worldn);
-	void additem(block itemname);
+	static void updatePosition();
 
-	PlayerPacket convertToPlayerPacket();
+	static void save(string worldn);
+	static void load(string worldn);
 
+	static void addItem(block itemname);
+	static bool putBlock(int x, int y, int z, block blockname);
 
-	extern Hitbox::AABB playerbox;
+	static PlayerPacket convertToPlayerPacket();
 
-	extern double xa, ya, za, xd, yd, zd;
-	extern onlineid onlineID;
-	extern string name;
-	extern bool OnGround;
-	extern bool Running;
-	extern bool NearWall;
-	extern bool inWater;
-	extern bool glidingNow;
+	static Hitbox::AABB playerbox;
 
-	extern double speed;
-	extern int AirJumps;
-	extern int cxt, cyt, czt, cxtl, cytl, cztl;
-	extern double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
-	extern double xlookspeed, ylookspeed;
-	extern int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
+	static double xa, ya, za, xd, yd, zd;
+	static onlineid onlineID;
+	static string name;
+	static bool OnGround;
+	static bool Running;
+	static bool NearWall;
+	static bool inWater;
+	static bool glidingNow;
 
-	extern float height;
-	extern float heightExt;
+	static double speed;
+	static int AirJumps;
+	static int cxt, cyt, czt, cxtl, cytl, cztl;
+	static double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
+	static double xlookspeed, ylookspeed;
+	static int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
 
-	extern block BlockInHand;
-	extern ubyte itemInHand;
-	extern block inventorybox[4][10];
-	extern block inventorypcs[4][10];
+	static float height;
+	static float heightExt;
 
-	extern double glidingEnergy, glidingSpeed;
-	inline bool gliding() { return glidingNow; }
+	static block BlockInHand;
+	static ubyte itemInHand;
+	static block inventorybox[4][10];
+	static block inventorypcs[4][10];
 
-}
+	static double glidingEnergy, glidingSpeed;
+	static inline bool gliding() { return glidingNow; }
+
+};
