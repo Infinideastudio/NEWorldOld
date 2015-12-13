@@ -1214,9 +1214,7 @@ void Render() {
 		localtime_s(timeinfo, &t);
 #endif
 		strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", timeinfo);
-		std::stringstream ss;
-		ss << "\\screenshots\\" << tmp << ".bmp";
-		saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
+		saveScreenshot(0, 0, windowwidth, windowheight, "\\screenshots\\" + (string)tmp + ".bmp");
 	}
 	if (shouldGetThumbnail) {
 		shouldGetThumbnail = false;
@@ -1506,10 +1504,13 @@ void drawGUI(){
 		debugText(ss.str()); ss.str("");
 		ss << world::updatedChunks << " chunks updated";
 		debugText(ss.str()); ss.str("");
-		MutexLock(Network::mutex);
-		ss << Network::getRequestCount() << "/" << networkRequestMax << " network request in the queue";
-		debugText(ss.str()); ss.str("");
-		MutexUnlock(Network::mutex);
+		if (multiplayer)
+		{
+			MutexLock(Network::mutex);
+			ss << Network::getRequestCount() << "/" << networkRequestMax << " network request in the queue";
+			debugText(ss.str()); ss.str("");
+			MutexUnlock(Network::mutex);
+		}
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		ss << c_getChunkPtrFromCPA << " CPA requests";
 		debugText(ss.str()); ss.str("");
@@ -1794,7 +1795,5 @@ void saveScreenshot(int x, int y, int w, int h, string filename){
 }
 
 void createThumbnail(){
-	std::stringstream ss;
-	ss << "Worlds\\" << world::worldname << "\\Thumbnail.bmp";
-	saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
+	saveScreenshot(0, 0, windowwidth, windowheight, "Worlds\\" + world::worldname + "\\Thumbnail.bmp");
 }
