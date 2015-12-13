@@ -24,6 +24,7 @@ namespace world{
 		chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi), Modified(false) {}
 		chunk(int cxi, int cyi, int czi) : cx(cxi), cy(cyi), cz(czi), id(getChunkID(cxi, cyi, czi)), Modified(false) {}
 		int cx, cy, cz;
+		Hitbox::AABB aabb;
 		bool Empty = false;
 		bool updated = false;
 		bool renderBuilt = false;
@@ -31,6 +32,7 @@ namespace world{
 		vtxCount vertexes[3];
 		VBOID vbuffer[3];
 		double loadAnim = 0.0;
+		bool visible;
 
 		void create();
 		void destroy();
@@ -84,8 +86,9 @@ namespace world{
 			pbrightness[x * 256 + y * 16 + z] = ibrightness;
 		}
 
-		Hitbox::AABB getChunkAABB();
-		Hitbox::AABB getRelativeAABB(double& x, double& y, double& z);
+		Hitbox::AABB getBaseAABB();
+		Hitbox::AABB getRelativeAABB(const double& x, const double& y, const double& z);
+		void calcVisible(const double& xpos, const double& ypos, const double& zpos);
 
 	};
 }
