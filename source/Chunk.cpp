@@ -2,10 +2,12 @@
 #include "WorldGen.h"
 #include "World.h"
 #include "Renderer.h"
+#include "Frustum.h"
 
 namespace world{
 
 	void chunk::create(){
+		aabb = getBaseAABB();
 		pblocks = new block[4096];
 		pbrightness = new brightness[4096];
 		//memset(pblocks, 0, sizeof(pblocks));
@@ -37,53 +39,75 @@ namespace world{
 		}
 #endif
 		Empty = true;
-		for (x = 0; x < 16; x++){
-			for (z = 0; z < 16; z++){
-				if (cy <= 8 && cy >= 0) {
-					h = HMap.getHeight(cx * 16 + x, cz * 16 + z);
-					sh = WorldGen::WaterLevel + 2;
+
+		if (cy > 8) {
+
+			for (int index = 0; index < 256; index++) {
+
+				pblocks[index] = blocks::AIR;
+				pbrightness[index] = skylight;
+
+			}
+
+		} else if (cy < 0) {
+
+			for (int index = 0; index < 256; index++) {
+
+				pblocks[index] = blocks::AIR;
+				pbrightness[index] = BRIGHTNESSMIN;
+
+			}
+
+		} else {
+
+			int hm[16][16];
+			for (x = 0; x < 16; x++) {
+				for (z = 0; z < 16; z++) {
+					hm[x][z] = HMap.getHeight(cx * 16 + x, cz * 16 + z);
 				}
-				for (y = 0; y < 16; y++){
-					if (cy > 8) {
-						pblocks[x*256 + y*16 + z]= blocks::AIR;
-						pbrightness[x*256 + y*16 + z] = skylight;
-					}
-					else if (cy >= 0){
+			}
+			sh = WorldGen::WaterLevel + 2;
+
+			int index = 0;
+			for (x = 0; x < 16; x++) {
+				for (y = 0; y < 16; y++) {
+					for (z = 0; z < 16; z++) {
+
+						h = hm[x][z];
 						height = cy * 16 + y;
-						pbrightness[x*256 + y*16 + z] = 0;
+						pbrightness[index] = 0;
 						if (height == 0)
-							pblocks[x*256 + y*16 + z] = blocks::BEDROCK;
+							pblocks[index] = blocks::BEDROCK;
 						else if (height == h && height > sh && height > WorldGen::WaterLevel + 1)
-							pblocks[x*256 + y*16 + z] = blocks::GRASS;
+							pblocks[index] = blocks::GRASS;
 						else if (height<h && height>sh && height > WorldGen::WaterLevel + 1)
-							pblocks[x*256 + y*16 + z] = blocks::DIRT;
+							pblocks[index] = blocks::DIRT;
 						else if ((height >= sh - 5 || height >= h - 5) && height <= h && (height <= sh || height <= WorldGen::WaterLevel + 1))
-							pblocks[x*256 + y*16 + z] = blocks::SAND;
+							pblocks[index] = blocks::SAND;
 						else if ((height < sh - 5 && height < h - 5) && height >= 1 && height <= h)
-							pblocks[x*256 + y*16 + z] = blocks::ROCK;
+							pblocks[index] = blocks::ROCK;
 						else {
 							if (height <= WorldGen::WaterLevel) {
-								pblocks[x*256 + y*16 + z] = blocks::WATER;
+								pblocks[index] = blocks::WATER;
 								if (skylight - (WorldGen::WaterLevel - height) * 2 < BRIGHTNESSMIN)
-									pbrightness[x*256 + y*16 + z] = BRIGHTNESSMIN;
+									pbrightness[index] = BRIGHTNESSMIN;
 								else
-									pbrightness[x*256 + y*16 + z] = skylight - (brightness)((WorldGen::WaterLevel - height) * 2);
+									pbrightness[index] = skylight - (brightness)((WorldGen::WaterLevel - height) * 2);
 							}
 							else
 							{
-								pblocks[x*256 + y*16 + z] = blocks::AIR;
-								pbrightness[x*256 + y*16 + z] = skylight;
+								pblocks[index] = blocks::AIR;
+								pbrightness[index] = skylight;
 							}
 						}
+						if (pblocks[index] != blocks::AIR) Empty = false;
+						index++;
+
 					}
-					else{
-						pblocks[x * 256 + y * 16 + z] = blocks::AIR;
-						pbrightness[x * 256 + y * 16 + z] = BRIGHTNESSMIN;
-					}
-					if (pblocks[x*256 + y*16 + z] != blocks::AIR) Empty = false;
 				}
 			}
 		}
+
 	}
 
 	void chunk::Load(){
@@ -151,37 +175,62 @@ namespace world{
 			loadAnim = cy * 16.0f + 16.0f;
 		}
 
+		int index;
+
+		index = 0;
 		renderer::Init();
 		for (x = 0; x < 16; x++) {
 			for (y = 0; y < 16; y++) {
 				for (z = 0; z < 16; z++) {
-					if (pblocks[x*256 + y*16 + z] == blocks::AIR) continue;
-					if (!BlockInfo(pblocks[x*256 + y*16 + z]).isTranslucent())
-						renderblock(x, y, z, this);
+					if (pblocks[index] != blocks::AIR) {
+
+						if (!BlockInfo(pblocks[index]).isTranslucent()) {
+
+							renderblock(x, y, z, this);
+
+						}
+					}
+					index++;
 				}
 			}
 		}
 		renderer::Flush(vbuffer[0], vertexes[0]);
-		
+
+		index = 0;
 		renderer::Init();
 		for (x = 0; x < 16; x++){
 			for (y = 0; y < 16; y++){
 				for (z = 0; z < 16; z++){
-					if (pblocks[x*256 + y*16 + z] == blocks::AIR) continue;
-					if (BlockInfo(pblocks[x*256 + y*16 + z]).isTranslucent() && BlockInfo(pblocks[x*256 + y*16 + z]).isSolid())
-						renderblock(x, y, z, this);
+					if (pblocks[index] != blocks::AIR) {
+						if (BlockInfo(pblocks[index]).isTranslucent()
+							&& BlockInfo(pblocks[index]).isSolid()) {
+
+							renderblock(x, y, z, this);
+
+						}
+
+					}
+					index++;
 				}
 			}
 		}
 		renderer::Flush(vbuffer[1], vertexes[1]);
 
+		index = 0;
 		renderer::Init();
 		for (x = 0; x < 16; x++){
 			for (y = 0; y < 16; y++){
 				for (z = 0; z < 16; z++){
-					if (pblocks[x*256 + y*16 + z] == blocks::AIR) continue;
-					if (!BlockInfo(pblocks[x*256 + y*16 + z]).isSolid())
-						renderblock(x, y, z, this);
+					if (pblocks[index] != blocks::AIR) {
+
+						if (!BlockInfo(pblocks[index]).isSolid()) {
+
+							renderblock(x, y, z, this);
+
+						}
+
+					}
+					index++;
 				}
 			}
 		}
@@ -199,26 +248,32 @@ namespace world{
 		renderBuilt = false;
 	}
 
-	Hitbox::AABB chunk::getChunkAABB(){
+	Hitbox::AABB chunk::getBaseAABB(){
 		Hitbox::AABB ret;
 		ret.xmin = cx * 16 - 0.5;
-		ret.ymin = cy * 16 - loadAnim - 0.5;
+		ret.ymin = cy * 16 - 0.5;
 		ret.zmin = cz * 16 - 0.5;
 		ret.xmax = cx * 16 + 16 - 0.5;
-		ret.ymax = cy * 16 - loadAnim + 16 - 0.5;
+		ret.ymax = cy * 16 + 16 - 0.5;
 		ret.zmax = cz * 16 + 16 - 0.5;
 		return ret;
 	}
 
-	Hitbox::AABB chunk::getRelativeAABB(double& x, double& y, double& z) {
+	Hitbox::AABB chunk::getRelativeAABB(const double& x, const double& y, const double& z) {
 		Hitbox::AABB ret;
-		ret.xmin = cx * 16 - 0.5 - x;
-		ret.xmax = cx * 16 + 16 - 0.5 - x;
-		ret.ymin = cy * 16 - 0.5 - loadAnim - y;
-		ret.ymax = cy * 16 + 16 - 0.5 - loadAnim - y;
-		ret.zmin = cz * 16 - 0.5 - z;
-		ret.zmax = cz * 16 + 16 - 0.5 - z;
+		ret.xmin = aabb.xmin - x;
+		ret.xmax = aabb.xmax - x;
+		ret.ymin = aabb.ymin - loadAnim - y;
+		ret.ymax = aabb.ymax - loadAnim - y;
+		ret.zmin = aabb.zmin - z;
+		ret.zmax = aabb.zmax - z;
 		return ret;
+	}
+
+	void chunk::calcVisible(const double& xpos, const double& ypos, const double& zpos) {
+
+		visible = Frustum::AABBInFrustum(getRelativeAABB(xpos, ypos, zpos));
+
 	}
 	
 }
