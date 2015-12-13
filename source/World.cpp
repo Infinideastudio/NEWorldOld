@@ -42,6 +42,9 @@ namespace world{
 		ss.clear(); ss.str("");
 		ss << "mkdir Worlds\\" << worldname << "\\chunks";
 		system(ss.str().c_str());
+		ss.clear(); ss.str("");
+		ss << "mkdir Worlds\\" << worldname << "\\objects";
+		system(ss.str().c_str());
 
 		WorldGen::perlinNoiseInit(3404);
 		cpCachePtr = nullptr;
