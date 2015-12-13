@@ -41,9 +41,6 @@
     <ClInclude Include="source\Object.h">
       <Filter>源代码\Objects</Filter>
     </ClInclude>
-    <ClInclude Include="source\Blocks.h">
-      <Filter>源代码\World</Filter>
-    </ClInclude>
     <ClInclude Include="source\Chunk.h">
       <Filter>源代码\World</Filter>
     </ClInclude>
@@ -127,6 +124,12 @@
     </ClInclude>
     <ClInclude Include="source\Menus.h">
       <Filter>源代码\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Blocks.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Items.h">
+      <Filter>源代码\Common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

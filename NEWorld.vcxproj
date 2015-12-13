@@ -150,6 +150,7 @@
     <ClInclude Include="source\Frustum.h" />
     <ClInclude Include="source\GUI.h" />
     <ClInclude Include="source\Hitbox.h" />
+    <ClInclude Include="source\Items.h" />
     <ClInclude Include="source\Menus.h" />
     <ClInclude Include="source\Mob.h" />
     <ClInclude Include="source\Network.h" />

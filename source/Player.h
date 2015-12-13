@@ -49,10 +49,10 @@ public:
 	static float height;
 	static float heightExt;
 
-	static block BlockInHand;
-	static ubyte itemInHand;
-	static block inventorybox[4][10];
-	static block inventorypcs[4][10];
+	static item BlockInHand;
+	static ubyte indexInHand;
+	static item inventorybox[4][10];
+	static item inventorypcs[4][10];
 
 	static double glidingEnergy, glidingSpeed;
 	static inline bool gliding() { return glidingNow; }
