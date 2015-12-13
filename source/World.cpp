@@ -458,7 +458,7 @@ namespace world{
 		}
 	}
 
-	vector<Hitbox::AABB> getHitboxes(Hitbox::AABB box){
+	vector<Hitbox::AABB> getHitboxes(Hitbox::AABB& box){
 		//返回与box相交的所有方块AABB
 
 		Hitbox::AABB blockbox;
@@ -484,7 +484,7 @@ namespace world{
 		return hitBoxes;
 	}
 
-	bool inWater(Hitbox::AABB box){
+	bool inWater(Hitbox::AABB& box){
 		Hitbox::AABB blockbox;
 		int a, b, c;
 		for (a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5); a++){
@@ -879,7 +879,7 @@ namespace world{
 		block trblock = getblock(x, y, z), tublock = getblock(x, y - 1, z);
 		ubyte xt, yt, zt;
 		ubyte th = ubyte(rnd() * 3) + 4;
-		if (trblock != blocks::AIR || tublock != blocks::GRASS || tublock == blocks::AIR) return;
+		if (trblock != blocks::AIR || tublock != blocks::GRASS) return;
 
 		for (yt = 0; yt != th; yt++){
 			setblock(x, y + yt, z, blocks::WOOD);
