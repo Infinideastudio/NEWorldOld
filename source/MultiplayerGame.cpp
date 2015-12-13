@@ -59,7 +59,7 @@ public:
 
 		if (serveriptb.text == "" || !serveripChanged || getDotCount(serveriptb.text) != 3) okbtn.enabled = false;
 		else okbtn.enabled = true;
-		if (okbtn.clicked || backbtn.clicked)  gui::UIExit;
+		if (okbtn.clicked || backbtn.clicked) gui::UIExit();
 		if (runbtn.clicked) WinExec("NEWorldServer.exe", SW_SHOWDEFAULT);
 		inputstr = "";
 	}
