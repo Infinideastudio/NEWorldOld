@@ -6,8 +6,8 @@
 namespace world{
 
 	void chunk::create(){
-		//pblocks = new block[4096];
-		//pbrightness = new brightness[4096];
+		pblocks = new block[4096];
+		pbrightness = new brightness[4096];
 		//memset(pblocks, 0, sizeof(pblocks));
 		//memset(pbrightness, 0, sizeof(pbrightness));
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
