@@ -460,7 +460,7 @@ void updategame(){
 	static bool WP;
 	//static double mxl, myl;
 	glfwGetCursorPos(MainWindow, &mx, &my);
-	player::BlockInHand = player::inventorybox[3][player::itemInHand];
+	player::BlockInHand = player::inventorybox[3][player::indexInHand];
 	//生命值相关
 	if (player::health > 0) {
 		if (player::health < player::healthMax) player::health += player::healSpeed;
@@ -664,7 +664,7 @@ void updategame(){
 					}
 				}
 				//放置方块
-				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB)) && player::inventorypcs[3][player::itemInHand] > 0) {
+				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB)) && player::inventorypcs[3][player::indexInHand] > 0) {
 					put = true;
 					switch (sidedistmin) {
 					case 1:
@@ -687,8 +687,8 @@ void updategame(){
 						break;
 					}
 					if (put) {
-						player::inventorypcs[3][player::itemInHand]--;
-						if (player::inventorypcs[3][player::itemInHand] == 0) player::inventorybox[3][player::itemInHand] = blocks::AIR;
+						player::inventorypcs[3][player::indexInHand]--;
+						if (player::inventorypcs[3][player::indexInHand] == 0) player::inventorybox[3][player::indexInHand] = blocks::AIR;
 					}
 				}
 				break;
@@ -808,8 +808,8 @@ void updategame(){
 		}
 
 		//切换方块
-		if (isPressed(GLFW_KEY_Z) && player::itemInHand > 0) player::itemInHand--;
-		if (isPressed(GLFW_KEY_X) && player::itemInHand < 9) player::itemInHand++;
+		if (isPressed(GLFW_KEY_Z) && player::indexInHand > 0) player::indexInHand--;
+		if (isPressed(GLFW_KEY_X) && player::indexInHand < 9) player::indexInHand++;
 		mwl = mw;
 
 		//起跳！
@@ -1435,7 +1435,7 @@ void drawGUI(){
 	glEnable(GL_TEXTURE_2D);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	for (int i = 0; i < 10; i++) {
-		if (i == player::itemInHand)
+		if (i == player::indexInHand)
 			glBindTexture(GL_TEXTURE_2D, guiImage[2]);
 		else
 			glBindTexture(GL_TEXTURE_2D, guiImage[3]);
