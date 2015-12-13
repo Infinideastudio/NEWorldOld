@@ -113,8 +113,7 @@ namespace world{
 	void chunk::Load(){
 		create();
 #ifndef NEWORLD_DEBUG_NO_FILEIO
-		if (fileExist())LoadFromFile();
-		else build();
+		if (!LoadFromFile()) build();
 #else
 		build();
 #endif
@@ -124,7 +123,6 @@ namespace world{
 
 	void chunk::Unload(){
 		unloadedChunksCount++;
-		if (Empty)return;
 #ifndef NEWORLD_DEBUG_NO_FILEIO
 		SaveToFile();
 #endif
@@ -132,19 +130,28 @@ namespace world{
 		destroy();
 	}
 
-	void chunk::LoadFromFile(){
-		std::ifstream file(getFileName().c_str(), std::ios::in | std::ios::binary);
+	bool chunk::LoadFromFile() {
+		std::ifstream file(getChunkPath(), std::ios::in | std::ios::binary);
+		bool openChunkFile = file.is_open();
 		file.read((char*)pblocks, 4096 * sizeof(block));
 		file.read((char*)pbrightness, 4096 * sizeof(brightness));
 		file.close();
+
+		file.open(getObjectsPath(), std::ios::in | std::ios::binary);
+		file.close();
+		return openChunkFile;
 	}
 
 	void chunk::SaveToFile(){
-		if (!Modified)return;
-		std::ofstream file(getFileName().c_str(), std::ios::out | std::ios::binary);
-		file.write((char*)pblocks, 4096 * sizeof(block));
-		file.write((char*)pbrightness, 4096 * sizeof(brightness));
-		file.close();
+		if (!Empty&&Modified) {
+			std::ofstream file(getChunkPath(), std::ios::out | std::ios::binary);
+			file.write((char*)pblocks, 4096 * sizeof(block));
+			file.write((char*)pbrightness, 4096 * sizeof(brightness));
+			file.close();
+		}
+		if (objects.size() != 0) {
+
+		}
 	}
 
 	void chunk::buildRender(){
