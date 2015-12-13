@@ -26,6 +26,7 @@ typedef unsigned char blockprop;
 typedef unsigned char brightness;
 typedef unsigned int TextureID;
 typedef unsigned short block;
+typedef unsigned short item;
 typedef unsigned int VBOID;
 typedef int vtxCount;
 typedef int SkinID;
