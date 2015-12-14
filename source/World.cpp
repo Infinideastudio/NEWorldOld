@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include "World.h"
 #include "Textures.h"
 #include "Renderer.h"
@@ -731,10 +733,15 @@ namespace world{
 				cy = chunks[ci]->cy;
 				cz = chunks[ci]->cz;
 				if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance)) continue;
-				xd = cx * 16 + 7 - xpos;
-				yd = cy * 16 + 7 - ypos;
-				zd = cz * 16 + 7 - zpos;
-				distsqr = xd*xd + yd*yd + zd*zd;
+				xd = cx - cxp;
+				yd = cy - cyp;
+				zd = cz - czp;
+				distsqr = labs(xd) + labs(yd) + labs(zd);
+				if (distsqr > viewdistance) {
+
+					continue;
+
+				}
 				for (int i = 0; i < 4; i++) {
 					if (distsqr < chunkBuildRenderList[i][0] || p <= i) {
 						for (int j = 3; j >= i + 1; j--) {
