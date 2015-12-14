@@ -76,26 +76,46 @@ namespace world{
 						h = hm[x][z];
 						height = cy * 16 + y;
 						pbrightness[index] = 0;
-						if (height == 0)
+						if (height == 0) {
+
 							pblocks[index] = blocks::BEDROCK;
-						else if (height == h && height > sh && height > WorldGen::WaterLevel + 1)
+
+						}
+						else if (height == h && height > sh && height > WorldGen::WaterLevel + 1) {
+
 							pblocks[index] = blocks::GRASS;
-						else if (height<h && height>sh && height > WorldGen::WaterLevel + 1)
+
+						}
+						else if (height<h && height>sh && height > WorldGen::WaterLevel + 1) {
+
 							pblocks[index] = blocks::DIRT;
-						else if ((height >= sh - 5 || height >= h - 5) && height <= h && (height <= sh || height <= WorldGen::WaterLevel + 1))
+
+						} else if((height >= sh - 5 || height >= h - 5)
+							&& height <= h && (height <= sh
+							|| height <= WorldGen::WaterLevel + 1)) {
+
 							pblocks[index] = blocks::SAND;
-						else if ((height < sh - 5 && height < h - 5) && height >= 1 && height <= h)
+
+						} else if((height < sh - 5 && height < h - 5)
+							&& height >= 1 && height <= h) {
+
 							pblocks[index] = blocks::ROCK;
-						else {
-							if (height <= WorldGen::WaterLevel) {
+
+						} else {
+
+							if(height <= WorldGen::WaterLevel) {
+
 								pblocks[index] = blocks::WATER;
-								if (skylight - (WorldGen::WaterLevel - height) * 2 < BRIGHTNESSMIN)
+								if(skylight - (WorldGen::WaterLevel - height) * 2 < BRIGHTNESSMIN) {
+
 									pbrightness[index] = BRIGHTNESSMIN;
-								else
+
+								} else {
+
 									pbrightness[index] = skylight - (brightness)((WorldGen::WaterLevel - height) * 2);
-							}
-							else
-							{
+
+								}
+							} else {
 								pblocks[index] = blocks::AIR;
 								pbrightness[index] = skylight;
 							}
