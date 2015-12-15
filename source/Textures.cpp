@@ -107,7 +107,6 @@ namespace Textures {
 	}
 
 	void LoadRGBAImage(TEXTURE_RGBA& tex, string Filename, string MkFilename) {
-		unsigned char col[3];
 		unsigned int ind = 0;
 		TEXTURE_RGBA& bitmap = tex; //返回位图
 		bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
@@ -128,23 +127,32 @@ namespace Textures {
 		bitmap.sizeY = bih.biHeight;
 		bitmap.buffer = unique_ptr<ubyte[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 4]);
 		bool noMaskFile = MkFilename == "";
+		unsigned char* bmpdata = new unsigned char[3 * bitmap.sizeX*bitmap.sizeY];
+		unsigned char* maskdata = nullptr;
+		bmpfile.read((char*)bmpdata, 3 * bitmap.sizeX*bitmap.sizeY);
+		if (!noMaskFile)
+		{
+			maskdata = new unsigned char[3 * bitmap.sizeX*bitmap.sizeY];
+			maskfile.read((char*)maskdata, 3 * bitmap.sizeX*bitmap.sizeY);
+		}
+		bmpfile.close();
+		maskfile.close();
 		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
 			//把BGR格式转换为RGB格式
-			bmpfile.read((char*)col, 3);
-			bitmap.buffer[ind++] = col[2]; //R
-			bitmap.buffer[ind++] = col[1]; //G
-			bitmap.buffer[ind++] = col[0]; //B
+			bitmap.buffer[ind++] = bmpdata[i * 3 + 2]; //R
+			bitmap.buffer[ind++] = bmpdata[i * 3 + 1]; //G
+			bitmap.buffer[ind++] = bmpdata[i * 3]; //B
 			if (noMaskFile) {
 				bitmap.buffer[ind++] = 255;
 			}
 			else {
 				//将遮罩图的红色通道反相作为Alpha通道
-				maskfile.read((char*)col, 3);
-				bitmap.buffer[ind++] = 255 - col[2]; //A
+				bitmap.buffer[ind++] = 255 - maskdata[i * 3 + 2]; //A
 			}
 		}
-		bmpfile.close();
-		maskfile.close();
+		delete[] bmpdata;
+		if (!noMaskFile)
+			delete[] maskdata;
 	}
 
 	TextureID LoadRGBTexture(string Filename) {

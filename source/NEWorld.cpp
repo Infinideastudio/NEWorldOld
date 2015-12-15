@@ -8,7 +8,6 @@ void WindowSizeFunc(GLFWwindow* win, int width, int height);
 void MouseButtonFunc(GLFWwindow*, int button, int action, int);
 void CharInputFunc(GLFWwindow*, unsigned int c);
 void MouseScrollFunc(GLFWwindow*, double, double yoffset);
-void splashscreen();
 void setupscreen();
 void InitGL();
 //void glPrintInfoLog(GLhandleARB obj);
@@ -110,7 +109,6 @@ int main(){
 	glfwSetCharCallback(MainWindow, &CharInputFunc);
 	setupscreen();
 	glDisable(GL_CULL_FACE);
-	splashscreen();
 	LoadTextures();
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -312,45 +310,6 @@ void CharInputFunc(GLFWwindow*, unsigned int c) {
 
 void MouseScrollFunc(GLFWwindow*, double, double yoffset) {
 	mw += (int)yoffset;
-}
-
-void splashscreen(){
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0.0, windowwidth, windowheight, 0.0, -1.0, 1.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	TextureID splTex = Textures::LoadRGBTexture("Textures\\GUI\\SplashScreen.bmp");
-
-	glClearColor(0.0, 0.0, 0.0, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_TEXTURE_2D);
-	for (int i = 0; i < 256; i += 8){
-		glfwSwapBuffers(MainWindow);
-		glfwPollEvents();
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glLoadIdentity();
-		glBindTexture(GL_TEXTURE_2D, splTex);
-
-		glColor4f((float)i / 256, (float)i / 256, (float)i / 256, 1.0);
-		glBegin(GL_QUADS);
-		glTexCoord2f(0.0, 1.0); glVertex2i(0, 0);
-		glTexCoord2f(850.0f / 1024.0f, 1.0); glVertex2i(windowwidth, 0);
-		glTexCoord2f(850.0f / 1024.0f, 1.0 - 480.0f / 1024.0f); glVertex2i(windowwidth, windowheight);
-		glTexCoord2f(0.0, 1.0 - 480.0f / 1024.0f); glVertex2i(0, windowheight);
-		glEnd();
-		TextRenderer::setFontColor(0.0, 0.0, 0.0, 1.0);
-		std::stringstream ss;
-		ss << MAJOR_VERSION << MINOR_VERSION << " [v" << VERSION << "]";
-		TextRenderer::renderString(400, 200, ss.str().c_str());
-		TextRenderer::renderString(10, 10, "Loading Textures...");
-		TextRenderer::renderString(10, 26, "Please Wait...");
-		Sleep(10);
-	}
-	glfwSwapBuffers(MainWindow);
-	glfwPollEvents();
 }
 
 void setupscreen() {
