@@ -13,6 +13,7 @@
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
+[Pp]rofile/
 [Rr]elease/
 [Rr]eleases/
 x64/
