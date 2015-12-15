@@ -92,6 +92,16 @@ int main(){
 	setlocale(LC_ALL, "zh_CN.UTF-8");
 #endif
 
+#ifdef WIN32
+	wchar_t* lpdir=new wchar_t[MAX_PATH];
+	GetModuleFileNameW(NULL,lpdir,MAX_PATH);
+	wchar_t* last=lpdir+MAX_PATH-1;
+	while (*last!='\\')
+		last--;
+	*last='\0';
+	SetCurrentDirectoryW(lpdir);
+	delete[] lpdir;
+#endif
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
