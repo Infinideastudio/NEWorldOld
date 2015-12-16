@@ -41,6 +41,7 @@ void createThumbnail();
 #include "Menus.h"
 #include "Frustum.h"
 #include "Network.h"
+#include "Effect.h"
 
 struct RenderChunk{
 	RenderChunk(world::chunk* c, double TimeDelta){
@@ -1174,14 +1175,25 @@ void Render() {
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
 
-	glLoadIdentity();
-	glRotated(player::lookupdown, 1, 0, 0);
-	glRotated(360.0 - player::heading, 0, 1, 0);
-	glTranslated(-xpos, -ypos, -zpos);
-	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_CULL_FACE);
-
 	MutexLock(Mutex);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	/*
+	uint8_t* screenData1 = new uint8_t[windowwidth * windowheight * 3];
+	uint8_t* screenData2 = new uint8_t[windowwidth * windowheight * 3];
+	Effect::readScreen(0, 0, windowwidth, windowheight, screenData1);
+	Effect::gray(windowwidth, windowheight, screenData1, screenData2);
+	std::swap(screenData1, screenData2);
+	Effect::blurGaussian(windowwidth, windowheight, screenData1, screenData2, 3);
+	Effect::writeScreen(0, 0, windowwidth, windowheight, screenData2);
+	delete[] screenData1;
+	delete[] screenData2;
+	*/
 
 	//Time_renderscene = timer() - Time_renderscene;
 	//Time_renderGUI_ = timer();
