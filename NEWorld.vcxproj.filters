@@ -131,6 +131,9 @@
     <ClInclude Include="source\Items.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
+    <ClInclude Include="source\Effect.h">
+      <Filter>源代码\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -222,6 +225,9 @@
     </ClCompile>
     <ClCompile Include="source\OptionsMenu.cpp">
       <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Effect.cpp">
+      <Filter>源代码\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
