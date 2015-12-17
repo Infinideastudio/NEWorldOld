@@ -7,6 +7,7 @@ namespace Effect {
 	void writeScreen(int x, int y, int w, int h, uint8_t* data);
 
 	void gray(int w, int h, uint8_t* src, uint8_t* dst);
-	void blurGaussian(int w, int h, uint8_t* src, uint8_t* dst, int r);
+	void blurGaussianX(int w, int h, uint8_t* src, uint8_t* dst, int rx);
+	void blurGaussianY(int w, int h, uint8_t* src, uint8_t* dst, int ry);
 
 }
