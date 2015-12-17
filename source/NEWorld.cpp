@@ -1175,8 +1175,6 @@ void Render() {
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
 
-	MutexLock(Mutex);
-
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
@@ -1189,7 +1187,9 @@ void Render() {
 	Effect::readScreen(0, 0, windowwidth, windowheight, screenData1);
 	Effect::gray(windowwidth, windowheight, screenData1, screenData2);
 	std::swap(screenData1, screenData2);
-	Effect::blurGaussian(windowwidth, windowheight, screenData1, screenData2, 3);
+	Effect::blurGaussianX(windowwidth, windowheight, screenData1, screenData2, 16);
+	std::swap(screenData1, screenData2);
+	Effect::blurGaussianY(windowwidth, windowheight, screenData1, screenData2, 16);
 	Effect::writeScreen(0, 0, windowwidth, windowheight, screenData2);
 	delete[] screenData1;
 	delete[] screenData2;
@@ -1197,6 +1197,8 @@ void Render() {
 
 	//Time_renderscene = timer() - Time_renderscene;
 	//Time_renderGUI_ = timer();
+
+	MutexLock(Mutex);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
