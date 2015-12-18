@@ -23,6 +23,9 @@ namespace gui{
 	extern double transitionTimer;
 	extern bool transitionForward;
 	
+	void clearTransition();
+	void drawBackground();
+
 	class Form;
 	class controls{
 	public:
@@ -131,11 +134,12 @@ namespace gui{
 		void render();
 		controls* getControlByID(int cid);
 		void cleanup();
-		virtual void onLoad() {};
-		virtual void onUpdate() {};
-		virtual void onRender() {};
-		virtual void onLeaving() {};
-		virtual void onLeave() {};
+		virtual void onLoad() {}
+		virtual void onUpdate() {}
+		virtual void Background() { drawBackground(); }
+		virtual void onRender() {}
+		virtual void onLeaving() {}
+		virtual void onLeave() {}
 		Form();
 		void start();
 		~Form();
