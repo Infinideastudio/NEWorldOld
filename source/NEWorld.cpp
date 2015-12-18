@@ -178,7 +178,7 @@ main_menu:
 
 	do{
 		//主循环，被简化成这样，惨不忍睹啊！
-
+		double xpos = player::xpos, ypos = player::ypos, zpos = player::zpos, heading = player::heading;
 		MutexUnlock(Mutex);
 		MutexLock(Mutex);
 
@@ -214,7 +214,10 @@ main_menu:
 				Network::cleanUp();
 			goto main_menu;
 		}
-		
+#ifdef WIN32
+		if (!multiplayer&&player::xpos == xpos&&player::ypos == ypos&&player::zpos == zpos&&player::heading == heading)
+			Sleep(15);
+#endif
 	} while (!glfwWindowShouldClose(MainWindow));
 	saveGame();
 

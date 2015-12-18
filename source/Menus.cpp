@@ -117,6 +117,7 @@ void mainmenu(){
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
 		if (glfwWindowShouldClose(MainWindow)) exit(0);
+		Sleep(10);
 	} while (!f);
 	MainForm.cleanup();
 }
@@ -178,6 +179,7 @@ void options(){
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
 		if (glfwWindowShouldClose(MainWindow)) exit(0);
+		Sleep(10);
 	} while (!f);
 	MainForm.cleanup();
 }
@@ -210,6 +212,7 @@ void Renderoptions(){
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
 		if (glfwWindowShouldClose(MainWindow)) exit(0);
+		Sleep(10);
 	} while (!f);
     MainForm.cleanup();
 }
@@ -248,6 +251,7 @@ void GUIoptions(){
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
 		if (glfwWindowShouldClose(MainWindow)) exit(0);
+		Sleep(10);
 	} while (!f);
     MainForm.cleanup();
 }
@@ -473,6 +477,7 @@ void worldmenu(){
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS|| glfwWindowShouldClose(MainWindow)) exit(0);
+		Sleep(10);
 	} while (!gamebegin);
 	MainForm.cleanup();
 }
@@ -521,6 +526,7 @@ void createworldmenu(){
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(MainWindow)) exit(0);
+		Sleep(10);
 	} while (!f);
 	if (worldnametbChanged){
 		world::worldname = worldnametb->text;
