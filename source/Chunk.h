@@ -9,10 +9,9 @@ namespace world{
 	extern brightness BRIGHTNESSMIN;
 	extern brightness skylight;
 	chunkid getChunkID(int x, int y, int z);
-	class chunk{
 
+	class chunk{
 	private:
-		bool Modified = false;
 		block* pblocks;
 		brightness* pbrightness;
 
@@ -25,6 +24,7 @@ namespace world{
 		bool Empty = false;
 		bool updated = false;
 		bool renderBuilt = false;
+		bool Modified = false;
 		chunkid id;
 		vtxCount vertexes[3];
 		VBOID vbuffer[3];
@@ -51,14 +51,21 @@ namespace world{
 		void SaveToFile();
 		void buildRender();
 		void destroyRender();
-
 		inline block getblock(int x, int y, int z) {
 			//获取区块内的方块
+#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
+			if (pblocks == nullptr) { DebugWarning("chunk.getblock() error: Empty pointer"); return; }
+			if (x>15 || x<0 || y>15 || y<0 || z>15 || z<0) { DebugWarning("chunk.getblock() error: Out of range"); return; }
+#endif
 			if (Empty) return blocks::AIR;
 			return pblocks[(x << 8) + (y << 4) + z];
 		}
 		inline brightness getbrightness(int x, int y, int z){
 			//获取区块内的亮度
+#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
+			if (pbrightness == nullptr) { DebugWarning("chunk.getbrightness() error: Empty pointer"); return; }
+			if (x>15 || x<0 || y>15 || y<0 || z>15 || z<0) { DebugWarning("chunk.getbrightness() error: Out of range"); return; }
+#endif
 			if (Empty) if (cy < 0) return BRIGHTNESSMIN; else return skylight;
 			return pbrightness[(x << 8) + (y << 4) + z];
 		}
