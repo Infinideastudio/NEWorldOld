@@ -184,6 +184,7 @@
     <ClCompile Include="source\Frustum.cpp" />
     <ClCompile Include="source\GUI.cpp" />
     <ClCompile Include="source\Hitbox.cpp" />
+    <ClCompile Include="source\Items.cpp" />
     <ClCompile Include="source\MainMenu.cpp" />
     <ClCompile Include="source\MultiplayerGame.cpp" />
     <ClCompile Include="source\Network.cpp" />
