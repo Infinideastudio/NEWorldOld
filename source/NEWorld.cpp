@@ -42,6 +42,7 @@ void createThumbnail();
 #include "Frustum.h"
 #include "Network.h"
 #include "Effect.h"
+#include "Items.h"
 
 struct RenderChunk{
 	RenderChunk(world::chunk* c, double TimeDelta){
@@ -142,6 +143,8 @@ main_menu:
 	printf("Init player...\n");
 	loadGame();
 	player::init(0, 60.0, 0);
+	player::addItem(builtInItems::APPLE);
+	player::addItem(builtInItems::STICK);
 	printf("[Console][Game]");
 	printf("Init world...\n");
 	world::Init();
@@ -306,7 +309,12 @@ void CharInputFunc(GLFWwindow*, unsigned int c) {
 }
 
 void MouseScrollFunc(GLFWwindow*, double, double yoffset) {
-	mw += (int)yoffset;
+	int yc = (int)yoffset;
+	mw += yc;
+	if (yc > 0)
+		if (player::indexInHand == 0) player::indexInHand = 9; else player::indexInHand--;
+	else
+		if (player::indexInHand == 9) player::indexInHand = 0; else player::indexInHand++;
 }
 
 void splashscreen(){
@@ -431,7 +439,7 @@ void LoadTextures(){
 	}
 
 	BlockTextures = Textures::LoadRGBATexture("Textures\\blocks\\Terrain.bmp", "Textures\\blocks\\Terrainmask.bmp");
-	
+	loadItemsTextures();
 }
 
 void saveGame(){
@@ -574,7 +582,7 @@ void updategame(){
 	selcz = 0;
 	selb = 0;
 	selbr = 0;
-	bool put = false;     //标准的chinglish吧。。。主要是put已经被FB作为关键字了。。   --等等不对啊！这已经是c++了！！！   --所以我就改回来了
+	bool put = false;     //(puted)标准的chinglish吧。。。主要是put已经被FB作为关键字了。。   --等等不对啊！这已经是c++了！！！   --所以我就改回来了
 	
 	if (!bagOpened) {
 		//从玩家位置发射一条线段
@@ -665,7 +673,7 @@ void updategame(){
 					}
 				}
 				//放置方块
-				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB)) && player::inventorypcs[3][player::indexInHand] > 0) {
+				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB)) && player::inventorypcs[3][player::indexInHand] > 0 && isBlock(player::inventorypcs[3][player::indexInHand])) {
 					put = true;
 					switch (sidedistmin) {
 					case 1:
@@ -1449,7 +1457,8 @@ void drawGUI(){
 	glEnable(GL_TEXTURE_2D);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	for (int i = 0; i < 10; i++) {
-		if (i == player::indexInHand)
+		//绘制物品栏
+		if (i == player::indexInHand) //判断是否为选中的格子
 			glBindTexture(GL_TEXTURE_2D, guiImage[2]);
 		else
 			glBindTexture(GL_TEXTURE_2D, guiImage[3]);
@@ -1465,21 +1474,25 @@ void drawGUI(){
 		glTexCoord2f(1.0, 1.0);
 		glVertex2d(i * 32, windowheight);
 		glEnd();
+
+		//绘制物品栏上的物品
 		if (player::inventorybox[3][i] != blocks::AIR) {
 			glColor4f(1.0, 1.0, 1.0, 1.0);
-			glBindTexture(GL_TEXTURE_2D, BlockTextures);
+			glBindTexture(GL_TEXTURE_2D, getItemTexture(player::inventorybox[3][i]));
 			double tcX = Textures::getTexcoordX(player::inventorybox[3][i], 1);
 			double tcY = Textures::getTexcoordY(player::inventorybox[3][i], 1);
+			double tcD = isBlock(player::inventorybox[3][i]) ? 8.0 : 1.0;
 			glBegin(GL_QUADS);
-			glTexCoord2d(tcX, tcY + 1 / 8.0);
+			glTexCoord2d(tcX, tcY + 1 / tcD);
 			glVertex2d(i * 32 + 2, windowheight - 32 + 2);
-			glTexCoord2d(tcX, tcY);
+			glTexCoord2d(tcX + 1 / tcD, tcY + 1 / tcD);
 			glVertex2d(i * 32 + 30, windowheight - 32 + 2);
-			glTexCoord2d(tcX + 1 / 8.0, tcY);
+			glTexCoord2d(tcX + 1 / tcD, tcY);
 			glVertex2d(i * 32 + 30, windowheight - 32 + 30);
-			glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8);
+			glTexCoord2d(tcX, tcY);
 			glVertex2d(i * 32 + 2, windowheight - 32 + 30);
 			glEnd();
+			//绘制物品的数量
 			std::stringstream ss;
 			ss << (int)player::inventorypcs[3][i];
 			TextRenderer::renderString(i * 32, windowheight - 32, ss.str());
