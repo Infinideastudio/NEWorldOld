@@ -229,5 +229,8 @@
     <ClCompile Include="source\Effect.cpp">
       <Filter>源代码\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="source\Items.cpp">
+      <Filter>源代码\Common</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
