@@ -22,7 +22,7 @@ public:
 	static void save(string worldn);
 	static void load(string worldn);
 
-	static void addItem(block itemname);
+	static void addItem(item itemname);
 	static bool putBlock(int x, int y, int z, block blockname);
 
 	static PlayerPacket convertToPlayerPacket();
