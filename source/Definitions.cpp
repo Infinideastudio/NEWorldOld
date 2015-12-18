@@ -23,7 +23,7 @@ float FOVyExt;
 
 int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度
-bool gamebegin, bagOpened;
+bool gamebegin, gameexit, bagOpened;
 
 TextureID BlockTextures;
 TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];

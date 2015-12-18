@@ -5,6 +5,7 @@
 #include "stdinclude.h"
 
 //#define NEWORLD_DEBUG
+#define NEWORLD_DEBUG_PERFORMANCE_REC
 #ifdef NEWORLD_DEBUG
 #define NEWORLD_DEBUG_CONSOLE_OUTPUT
 #define NEWORLD_DEBUG_NO_FILEIO
@@ -75,7 +76,7 @@ extern float FOVyExt;
 
 extern int windowwidth;
 extern int windowheight;
-extern bool gamebegin, bagOpened;
+extern bool gamebegin, gameexit, bagOpened;
 
 extern TextureID BlockTextures;
 extern TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
@@ -135,14 +136,17 @@ extern int c_getHeightFromWorldGen;
 
 inline string boolstr(bool b){ return b ? "True" : "False"; }
 inline double rnd() { return (double)rand() / (RAND_MAX + 1); }
+#ifdef NEWORLD_USE_WINAPI
 inline double timer(){
 	static LARGE_INTEGER counterFreq;
-	if (counterFreq.QuadPart == 0)QueryPerformanceFrequency(&counterFreq);
+	if (counterFreq.QuadPart == 0) QueryPerformanceFrequency(&counterFreq);
 	LARGE_INTEGER now;
 	QueryPerformanceCounter(&now);
 	return (double)now.QuadPart / counterFreq.QuadPart;
-	//return (float)clock() / CLOCKS_PER_SEC;
 }
+#else
+inline double timer() { return (double)clock() / CLOCKS_PER_SEC; }
+#endif
 
 #ifdef NEWORLD_USE_WINAPI
 inline Mutex_t MutexCreate(){return CreateMutex(NULL, FALSE, "");}

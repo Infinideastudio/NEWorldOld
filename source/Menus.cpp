@@ -6,6 +6,7 @@
 
 extern bool gamebegin;
 extern void saveoptions();
+//extern void Render();
 
 template<typename T>
 string strWithVar(string str, T var){
@@ -63,10 +64,7 @@ private:
 		if (rdstbtn.clicked) Renderoptions();
 		if (gistbtn.clicked) GUIoptions();
 		if (backbtn.clicked) ExitSignal = true;
-		if (savebtn.clicked) {
-			saveoptions();
-			savebtn.clicked = false;
-		}
+		if (savebtn.clicked) saveoptions();
 		FOVyBar.text = strWithVar("视野角度：", FOVyNormal);
 		mmsBar.text = strWithVar("鼠标灵敏度：", mousemove);
 		viewdistBar.text = strWithVar("渲染距离：", viewdistance);
@@ -77,13 +75,21 @@ void options() { OptionsMenu Menu; Menu.start(); }
 class RenderOptionsMenu :public gui::Form {
 private:
 	gui::label title;
-	gui::button backbtn;
+	gui::button smoothlightingbtn, fancygrassbtn, backbtn;
 	void onLoad() {
 		title = gui::label("==============<  渲 染 选 项  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		smoothlightingbtn = gui::button("开启平滑光照：" + boolstr(SmoothLighting), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+		fancygrassbtn = gui::button("草方块材质连接：" + boolstr(NiceGrass), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
 		backbtn = gui::button("<< 返回选项菜单", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-		registerControls(2, &title, &backbtn);
+		registerControls(4, &title, &smoothlightingbtn, &fancygrassbtn, &backbtn);
 	}
-	void onUpdate() { if (backbtn.clicked) ExitSignal = true; }
+	void onUpdate() {
+		if (smoothlightingbtn.clicked) SmoothLighting = !SmoothLighting;
+		if (fancygrassbtn.clicked) NiceGrass = !NiceGrass;
+		if (backbtn.clicked) ExitSignal = true;
+		smoothlightingbtn.text = "开启平滑光照：" + boolstr(SmoothLighting);
+		fancygrassbtn.text = "草方块材质连接：" + boolstr(NiceGrass);
+	}
 };
 void Renderoptions() { RenderOptionsMenu Menu; Menu.start(); }
 
@@ -331,7 +337,7 @@ private:
 		okbtn.enabled = false;
 		worldnametbChanged = false;
 	}
-	void onRender() {
+	void onUpdate() {
 		if (worldnametb.pressed && !worldnametbChanged) {
 			worldnametb.text = "";
 			worldnametbChanged = true;
@@ -352,3 +358,42 @@ private:
 	}
 };
 void createworldmenu() { CreateWorldMenu Menu; Menu.start(); }
+
+class GameMenu :public gui::Form {
+private:
+	gui::label title;
+	gui::button resumebtn, exitbtn;
+	void onLoad() {
+		title = gui::label("==============<  游 戏 菜 单  >==============", -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
+		resumebtn = gui::button("继续游戏", -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
+		exitbtn = gui::button("<< 返回主菜单", -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
+		registerControls(3, &title, &resumebtn, &exitbtn);
+	}
+	void onUpdate() {
+		MutexUnlock(Mutex);
+		//Make update thread realize that it should pause
+		MutexLock(Mutex);
+		if (resumebtn.clicked) ExitSignal = true;
+		if (exitbtn.clicked) gameexit = ExitSignal = true;
+	}
+	/*
+	void Background() {
+		Render();
+		glDisable(GL_TEXTURE_2D);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
+		glMatrixMode(GL_MODELVIEW);
+		glDepthFunc(GL_ALWAYS);
+		glLoadIdentity();
+		glColor4f(0.0f, 0.0f, 0.0f, 0.5f);
+		glBegin(GL_QUADS);
+			glVertex2i(0, 0);
+			glVertex2i(windowwidth, 0);
+			glVertex2i(windowwidth, windowheight);
+			glVertex2i(0, windowheight);
+		glEnd();
+	}
+	*/
+};
+void gamemenu() { GameMenu Menu; Menu.start(); }

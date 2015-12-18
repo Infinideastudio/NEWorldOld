@@ -133,7 +133,7 @@ namespace Frustum {
 	}
 
 	bool AABBInFrustum(const Hitbox::AABB& aabb) {
-		for (int i = 0; i < 24; i += 4){
+		for (int i = 0; i < 24; i += 4) {
 			if (frus[i + 0] * aabb.xmin + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0 &&
 				frus[i + 0] * aabb.xmax + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0 &&
 				frus[i + 0] * aabb.xmin + frus[i + 1] * aabb.ymax + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0 &&
