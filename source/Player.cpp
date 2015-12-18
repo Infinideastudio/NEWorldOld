@@ -140,34 +140,55 @@ namespace player{
 		}
 		return success;
 	}
-
+#define writestream(a,b) (a.write((char*)&b,sizeof(b)))
 	void save(string worldn){
 		uint32 curversion = VERSION;
-		std::stringstream ss;
-		ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
-		std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
+		std::ofstream isave("Worlds\\" + worldn + "\\player.NEWorldPlayer", std::ios::binary | std::ios::out);
 		if (!isave.is_open()) return;
-		isave << curversion << OnGround << Running << AirJumps << lookupdown << heading << xpos << ypos << zpos
-			<< jump << xlookspeed << ylookspeed << FLY << CROSS << canGliding;
+		writestream(isave, curversion);
+		writestream(isave, OnGround);
+		writestream(isave, Running);
+		writestream(isave, AirJumps);
+		writestream(isave, lookupdown);
+		writestream(isave, heading);
+		writestream(isave, xpos);
+		writestream(isave, ypos);
+		writestream(isave, zpos);
+		writestream(isave, jump);
+		writestream(isave, xlookspeed);
+		writestream(isave, ylookspeed);
+		writestream(isave, FLY);
+		writestream(isave, CROSS);
+		writestream(isave, canGliding);
 		isave.write((char*)inventorybox, sizeof(inventorybox));
 		isave.write((char*)inventorypcs, sizeof(inventorypcs));
-		isave << itemInHand;
+		writestream(isave, itemInHand);
 		isave.close();
 	}
-
+#define readstream(a,b) (a.read((char*)&b,sizeof(b)))
 	void load(string worldn){
 		uint32 targetVersion;
-		std::stringstream ss;
-		ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
-		std::ifstream iload(ss.str().c_str(), std::ios::binary | std::ios::in);
+		std::ifstream iload("Worlds\\" + worldn + "\\player.NEWorldPlayer", std::ios::binary | std::ios::in);
 		if (!iload.is_open()) return;
-		iload >> targetVersion;
+		readstream(iload, targetVersion);
 		if (targetVersion != VERSION) return;
-		iload >> OnGround >> Running >> AirJumps >> lookupdown >> heading
-			>> xpos >> ypos >> zpos >> jump >> xlookspeed >> ylookspeed >> FLY >> CROSS >> canGliding;
+		readstream(iload, OnGround);
+		readstream(iload, Running);
+		readstream(iload, AirJumps);
+		readstream(iload, lookupdown);
+		readstream(iload, heading);
+		readstream(iload, xpos);
+		readstream(iload, ypos);
+		readstream(iload, zpos);
+		readstream(iload, jump);
+		readstream(iload, xlookspeed);
+		readstream(iload, ylookspeed);
+		readstream(iload, FLY);
+		readstream(iload, CROSS);
+		readstream(iload, canGliding);
 		iload.read((char*)inventorybox, sizeof(inventorybox));
 		iload.read((char*)inventorypcs, sizeof(inventorypcs));
-		iload >> itemInHand;
+		readstream(iload, itemInHand);
 		iload.close();
 	}
 
