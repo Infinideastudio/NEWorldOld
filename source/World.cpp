@@ -6,7 +6,7 @@
 extern bool UseCPArray;
 extern int viewdistance;
 
-namespace world{
+namespace world {
 	
 	string worldname;
 	brightness skylight = 15;         //Sky light level
@@ -14,6 +14,9 @@ namespace world{
 	brightness BRIGHTNESSMIN = 2;     //Mimimum brightness
 	brightness BRIGHTNESSDEC = 1;     //Brightness decrease
 	unsigned int EmptyBuffer;
+	int MaxChunkLoads = 4;
+	int MaxChunkUnloads = 4;
+	int MaxChunkRenders = 4;
 
 	chunk** chunks;
 	int loadedChunks, chunkArraySize;
@@ -31,15 +34,15 @@ namespace world{
 	pair<chunk*, int> chunkUnloadList[256];
 	vector<unsigned int> vbuffersShouldDelete;
 	int chunkBuildRenders, chunkLoads, chunkUnloads;
-	bool* loadedChunkArray = nullptr; //Accelerate sort
+	bool* loadedChunkArray = nullptr; //Accelerate sortings
 
 	void Init(){
 		
 		std::stringstream ss;
-		ss << "md Worlds/" << worldname;
+		ss << "md \"Worlds/" << worldname << "\"";
 		system(ss.str().c_str());
 		ss.clear(); ss.str("");
-		ss << "md Worlds/" << worldname << "/chunks";
+		ss << "md \"Worlds/" << worldname << "/chunks\"";
 		system(ss.str().c_str());
 
 		WorldGen::perlinNoiseInit(3404);
@@ -47,10 +50,15 @@ namespace world{
 		cpCacheID = 0;
 
 		if (UseCPArray){
+			cpArrayAval = true;
 			cpArray.setSize((viewdistance + 2) * 2);
-			if (!cpArray.create()) DebugWarning("Chunk Pointer Array not avaliable because it couldn't be created.");
+			if (!cpArray.create()) {
+				DebugWarning("Chunk Pointer Array not avaliable because it couldn't be created.");
+				cpArrayAval = false;
+			}
 		}
 		else cpArrayAval = false;
+
 		HMap.setSize((viewdistance + 2) * 2 * 16);
 		HMap.create();
 		int lcasize = (viewdistance + 1) * 2;
@@ -220,7 +228,7 @@ namespace world{
 
 		size = 1 / 8.0f - EPS;
 		
-		if (blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz + 1, blocks::ROCK, chunkptr) == blocks::GRASS) {
+		if (NiceGrass && blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz + 1, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -264,7 +272,7 @@ namespace world{
 
 		}
 
-		if (blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz - 1, blocks::ROCK, chunkptr) == blocks::GRASS) {
+		if (NiceGrass && blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz - 1, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -308,7 +316,7 @@ namespace world{
 
 		}
 
-		if (blk[0] == blocks::GRASS && getblock(gx + 1, gy - 1, gz, blocks::ROCK, chunkptr) == blocks::GRASS) {
+		if (NiceGrass && blk[0] == blocks::GRASS && getblock(gx + 1, gy - 1, gz, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -316,6 +324,7 @@ namespace world{
 			tcx = Textures::getTexcoordX(blk[0], 2) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 2) + EPS;
 		}
+
 		// Right face
 		if (!(BlockInfo(blk[3]).isOpaque() || (blk[3] == blk[0] && !BlockInfo(blk[0]).isOpaque())) || blk[0] == blocks::LEAF) {
 
@@ -351,7 +360,7 @@ namespace world{
 
 		}
 
-		if (blk[0] == blocks::GRASS && getblock(gx - 1, gy - 1, gz, blocks::ROCK, chunkptr) == blocks::GRASS) {
+		if (NiceGrass && blk[0] == blocks::GRASS && getblock(gx - 1, gy - 1, gz, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -359,6 +368,7 @@ namespace world{
 			tcx = Textures::getTexcoordX(blk[0], 2) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 2) + EPS;
 		}
+
 		// Left Face
 		if (!(BlockInfo(blk[4]).isOpaque() || (blk[4] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) || blk[0] == blocks::LEAF) {
 
@@ -491,7 +501,7 @@ namespace world{
 		for (a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5); a++){
 			for (b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5); b++){
 				for (c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5); c++){
-					if (getblock(a, b, c) == blocks::WATER) {
+					if (getblock(a, b, c) == blocks::WATER || getblock(a, b, c) == blocks::LAVA) {
 						blockbox.xmin = a - 0.5;
 						blockbox.xmax = a + 0.5;
 						blockbox.ymin = b - 0.5;
@@ -733,9 +743,9 @@ namespace world{
 				yd = cy * 16 + 7 - ypos;
 				zd = cz * 16 + 7 - zpos;
 				distsqr = xd*xd + yd*yd + zd*zd;
-				for (int i = 0; i < 4; i++) {
+				for (int i = 0; i < MaxChunkRenders; i++) {
 					if (distsqr < chunkBuildRenderList[i][0] || p <= i) {
-						for (int j = 3; j >= i + 1; j--) {
+						for (int j = MaxChunkRenders - 1; j >= i + 1; j--) {
 							chunkBuildRenderList[j][0] = chunkBuildRenderList[j - 1][0];
 							chunkBuildRenderList[j][1] = chunkBuildRenderList[j - 1][1];
 						}
@@ -744,7 +754,7 @@ namespace world{
 						break;
 					}
 				}
-				if (p < 4) p++;
+				if (p < MaxChunkRenders) p++;
 			}
 		}
 		chunkBuildRenders = p;
@@ -778,17 +788,17 @@ namespace world{
 					if (distsqr > chunkUnloadList[middle].second)last = middle - 1;
 					else first = middle + 1;
 				}
-				if (first > pl || first >= 4) continue;
+				if (first > pl || first >= MaxChunkUnloads) continue;
 				i = first;
 
-				for (int j = 3; j > i; j--) {
+				for (int j = MaxChunkUnloads - 1; j > i; j--) {
 					chunkUnloadList[j].first = chunkUnloadList[j - 1].first;
 					chunkUnloadList[j].second = chunkUnloadList[j - 1].second;
 				}
 				chunkUnloadList[i].first = chunks[ci];
 				chunkUnloadList[i].second = distsqr;
 
-				if (pl < 4) pl++;
+				if (pl < MaxChunkUnloads) pl++;
 			}
 			else {
 				cxt = cx - cxp + lcadelta;
@@ -805,34 +815,33 @@ namespace world{
 					cxt = cx - cxp + lcadelta;
 					cyt = cy - cyp + lcadelta;
 					czt = cz - czp + lcadelta;
-					if (!chunkOutOfBound(cx, cy, cz)) {
-						if (!loadedChunkArray[cxt*lcasize*lcasize + cyt*lcasize + czt]) {
-							xd = cx * 16 + 7 - xpos;
-							yd = cy * 16 + 7 - ypos;
-							zd = cz * 16 + 7 - zpos;
-							distsqr = xd *xd + yd *yd + zd *zd;
+					if (chunkOutOfBound(cx, cy, cz)) continue;
+					if (!loadedChunkArray[cxt*lcasize*lcasize + cyt*lcasize + czt]) {
+						xd = cx * 16 + 7 - xpos;
+						yd = cy * 16 + 7 - ypos;
+						zd = cz * 16 + 7 - zpos;
+						distsqr = xd *xd + yd *yd + zd *zd;
 
-							first = 0; last = pu - 1;
-							while (first <= last) {
-								middle = (first + last) / 2;
-								if (distsqr < chunkLoadList[middle][0])last = middle - 1;
-								else first = middle + 1;
-							}
-							if (first > pu || first >= 4)  continue;
-							i = first;
-
-							for (int j = 3; j > i; j--) {
-								chunkLoadList[j][0] = chunkLoadList[j - 1][0];
-								chunkLoadList[j][1] = chunkLoadList[j - 1][1];
-								chunkLoadList[j][2] = chunkLoadList[j - 1][2];
-								chunkLoadList[j][3] = chunkLoadList[j - 1][3];
-							}
-							chunkLoadList[i][0] = distsqr;
-							chunkLoadList[i][1] = cx;
-							chunkLoadList[i][2] = cy;
-							chunkLoadList[i][3] = cz;
-							if (pu < 4) pu++;
+						first = 0; last = pu - 1;
+						while (first <= last) {
+							middle = (first + last) / 2;
+							if (distsqr < chunkLoadList[middle][0])last = middle - 1;
+							else first = middle + 1;
 						}
+						if (first > pu || first >= MaxChunkLoads)  continue;
+						i = first;
+
+						for (int j = MaxChunkLoads - 1; j > i; j--) {
+							chunkLoadList[j][0] = chunkLoadList[j - 1][0];
+							chunkLoadList[j][1] = chunkLoadList[j - 1][1];
+							chunkLoadList[j][2] = chunkLoadList[j - 1][2];
+							chunkLoadList[j][3] = chunkLoadList[j - 1][3];
+						}
+						chunkLoadList[i][0] = distsqr;
+						chunkLoadList[i][1] = cx;
+						chunkLoadList[i][2] = cy;
+						chunkLoadList[i][3] = cz;
+						if (pu < MaxChunkLoads) pu++;
 					}
 				}
 			}

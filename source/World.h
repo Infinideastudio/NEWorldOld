@@ -16,6 +16,9 @@ namespace world{
 	extern brightness BRIGHTNESSDEC;    //Brightness decree
 	extern chunk EmptyChunk;
 	extern unsigned int EmptyBuffer;
+	extern int MaxChunkLoads;
+	extern int MaxChunkUnloads;
+	extern int MaxChunkRenders;
 
 	extern chunk** chunks;
 	extern int loadedChunks;

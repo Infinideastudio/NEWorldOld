@@ -21,6 +21,76 @@ namespace gui{
 	double transitionTimer;
 	bool transitionForward;
 
+	void clearTransition() {
+		if (transitionList != 0) {
+			glDeleteLists(transitionList, 1);
+			transitionList = 0;
+		}
+		if (lastdisplaylist != 0) {
+			glDeleteLists(lastdisplaylist, 1);
+			lastdisplaylist = 0;
+		}
+	}
+
+	void drawBackground() {
+		static double startTimer = timer();
+		double elapsed = timer() - startTimer;
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluPerspective(90.0, (double)windowwidth / windowheight, 0.1, 10.0);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glDepthFunc(GL_LEQUAL);
+		glDisable(GL_CULL_FACE);
+		glEnable(GL_TEXTURE_2D);
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		//Begin to draw a cube
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[0]);
+		glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[1]);
+		glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[2]);
+		glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[3]);
+		glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[4]);
+		glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[5]);
+		glBegin(GL_QUADS);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
+		glEnd();
+	}
+
 	void controls::updatepos() {
 		xmin = (int)(windowwidth*_xmin_b) + _xmin_r;
 		ymin = (int)(windowheight*_ymin_b) + _ymin_r;
@@ -658,70 +728,10 @@ namespace gui{
 	}
 
 	void Form::render(){
+		Background();
+
 		double TimeDelta = timer() - transitionTimer;
-		static double startTimer = timer();
-		double elapsed = timer() - startTimer;
-
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		gluPerspective(90.0, (double)windowwidth / windowheight, 0.1, 10.0);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glRotated(elapsed * 4.0, 0.1, 1.0, 0.0);
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glDepthFunc(GL_LEQUAL);
-		glDisable(GL_CULL_FACE);
-		glEnable(GL_TEXTURE_2D);
-		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-
-		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[0]);
-		glBegin(GL_QUADS);
-			glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
-			glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
-			glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
-			glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-		glEnd();
-
-		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[1]);
-		glBegin(GL_QUADS);
-			glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
-			glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
-			glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
-			glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
-		glEnd();
-
-		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[2]);
-		glBegin(GL_QUADS);
-			glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
-			glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
-			glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
-			glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
-		glEnd();
-		
-		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[3]);
-		glBegin(GL_QUADS);
-			glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
-			glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
-			glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-			glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
-		glEnd();
-
-		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[4]);
-		glBegin(GL_QUADS);
-			glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
-			glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-			glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
-			glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
-		glEnd();
-		
-		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[5]);
-		glBegin(GL_QUADS);
-			glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
-			glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
-			glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
-			glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
-		glEnd();
+		float transitionAnim = 1.0f - (float)pow(0.8, TimeDelta*120.0);
 
 		glDisable(GL_TEXTURE_2D);
 		glDisable(GL_LINE_SMOOTH);
@@ -733,12 +743,12 @@ namespace gui{
 		glLoadIdentity();
 
 		if (TimeDelta <= 0.3 && transitionList != 0) {
-			if (transitionForward) glTranslatef(-(float)TimeDelta / 0.3f * windowwidth, 0.0f, 0.0f);
-			else glTranslatef((float)TimeDelta / 0.3f * windowwidth, 0.0f, 0.0f);
+			if (transitionForward) glTranslatef(-transitionAnim * windowwidth, 0.0f, 0.0f);
+			else glTranslatef(transitionAnim * windowwidth, 0.0f, 0.0f);
 			glCallList(transitionList);
 			glLoadIdentity();
-			if (transitionForward) glTranslatef(windowwidth - (float)TimeDelta / 0.3f * windowwidth, 0.0f, 0.0f);
-			else glTranslatef((float)TimeDelta / 0.3f * windowwidth - windowwidth, 0.0f, 0.0f);
+			if (transitionForward) glTranslatef(windowwidth - transitionAnim * windowwidth, 0.0f, 0.0f);
+			else glTranslatef(transitionAnim * windowwidth - windowwidth, 0.0f, 0.0f);
 		}
 		else if (transitionList != 0) {
 			glDeleteLists(transitionList, 1);
@@ -750,9 +760,9 @@ namespace gui{
 		for (int i = 0; i != childrenCount; i++) {
 			children[i]->render();
 		}
+		onRender();
 		glEndList();
 		lastdisplaylist = displaylist;
-		onRender();
 
 	}
 
