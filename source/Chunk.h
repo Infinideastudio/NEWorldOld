@@ -2,7 +2,7 @@
 #include "Definitions.h"
 #include "Blocks.h"
 #include "Hitbox.h"
-
+#include <wx/file.h>
 namespace world{
 
 	extern string worldname;
@@ -41,11 +41,7 @@ namespace world{
 			return ss.str();
 		}
 		inline bool fileExist(){
-			std::fstream file;
-			file.open(getFileName().c_str(), std::ios::in);
-			bool ret = file.is_open();
-			file.close();
-			return ret;
+			return wxFile::Exists(getFileName());
 		}
 		void LoadFromFile();
 		void SaveToFile();

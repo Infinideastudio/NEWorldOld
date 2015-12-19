@@ -34,8 +34,6 @@ namespace world{
 	bool* loadedChunkArray = nullptr; //Accelerate sort
 
 	void Init(){
-		
-		std::stringstream ss;
 		wxLogNull log;
 		wxMkdir(L"Worlds");
 		wxMkdir(L"Worlds\\" + worldname);
