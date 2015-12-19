@@ -36,12 +36,9 @@ namespace world{
 	void Init(){
 		
 		std::stringstream ss;
-		system("mkdir Worlds");
-		ss << "mkdir Worlds\\" << worldname;
-		system(ss.str().c_str());
-		ss.clear(); ss.str("");
-		ss << "mkdir Worlds\\" << worldname << "\\chunks";
-		system(ss.str().c_str());
+		wxMkdir(L"Worlds");
+		wxMkdir(L"Worlds\\" + worldname);
+		wxMkdir(L"Worlds\\" + worldname + L"\\chunks");
 
 		WorldGen::perlinNoiseInit(3404);
 		cpCachePtr = nullptr;
