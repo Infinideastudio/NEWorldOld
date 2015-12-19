@@ -22,7 +22,7 @@ public:
 	static void save(string worldn);
 	static void load(string worldn);
 
-	static void addItem(item itemname);
+	static void addItem(item itemname, int amount = 1);
 	static bool putBlock(int x, int y, int z, block blockname);
 
 	static PlayerPacket convertToPlayerPacket();
@@ -51,8 +51,8 @@ public:
 
 	static item BlockInHand;
 	static ubyte indexInHand;
-	static item inventorybox[4][10];
-	static item inventorypcs[4][10];
+	static item inventory[4][10];
+	static item inventoryAmount[4][10];
 
 	static double glidingEnergy, glidingSpeed;
 	static inline bool gliding() { return glidingNow; }
