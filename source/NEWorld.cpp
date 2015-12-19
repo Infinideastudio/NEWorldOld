@@ -10,8 +10,6 @@ void InitGL();
 //void glPrintInfoLog(GLhandleARB obj);
 void setupNormalFog();
 void LoadTextures();
-void loadGame();
-void saveGame();
 ThreadFunc updateThreadFunc(void*);
 void drawCloud(double px, double pz);
 void updategame();
@@ -133,7 +131,7 @@ main_menu:
 	player::xpos = 0.0;
 	player::ypos = 60.0;
 	player::zpos = 0.0;
-	loadGame();
+	player::load(world::worldname);
 	player::MoveHitboxToPosition();
 	player::InitPosition();
 	printf("[Console][Game]");
@@ -185,7 +183,8 @@ main_menu:
 			ThreadWait(updateThread);
 			ThreadDestroy(updateThread);
 			MutexDestroy(Mutex);
-			saveGame();
+			world::saveAllChunks();
+			player::save(world::worldname);
 			world::destroyAllChunks();
 			printf("[Console][Game]");
 			printf("Threads terminated\n");
@@ -200,7 +199,8 @@ main_menu:
 			Sleep(15);
 #endif
 	} while (!glfwWindowShouldClose(MainWindow));
-	saveGame();
+	world::saveAllChunks();
+	player::save(world::worldname);
 
 	updateThreadRun = false;
 	MutexUnlock(Mutex);
@@ -385,15 +385,6 @@ void LoadTextures(){
 
 	BlockTextures = Textures::LoadRGBATexture("Textures\\blocks\\Terrain.bmp", "Textures\\blocks\\Terrainmask.bmp");
 	
-}
-
-void saveGame(){
-	world::saveAllChunks();
-	player::save(world::worldname);
-}
-
-void loadGame(){
-	player::load(world::worldname);
 }
 
 bool isPressed(int key, bool setFalse = false) {
