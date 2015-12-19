@@ -11,7 +11,7 @@ namespace world{
 	bool chunkPtrArray::create(){
 		array = new chunk*[size3];
 		if (array == nullptr) return false;
-		memset(array, (int)nullptr, size3*sizeof(chunk*));
+		memset(array, (int)nullptr, size3*sizeof(int));
 		return true;
 	}
 
@@ -40,7 +40,7 @@ namespace world{
 	}
 
 	void chunkPtrArray::AddChunk(chunk* cptr, int cx, int cy, int cz) {
-		cx -= originX; cy -= originY; cz -= originZ;
+		cx -= originX;cy -= originY;cz -= originZ;
 		if (elementExists(cx, cy, cz)) array[cx*size2 + cy*size + cz] = cptr;
 	}
 
@@ -56,11 +56,5 @@ namespace world{
 		c_getChunkPtrFromCPA++;
 #endif
 		return array[x*size2 + y*size + z];
-	}
-
-	void chunkPtrArray::setChunkPtr(int x, int y, int z, chunk* c) {
-		x -= originX; y -= originY; z -= originZ;
-		if (!elementExists(x, y, z)) return;
-		array[x*size2 + y*size + z] = c;
 	}
 }

@@ -32,15 +32,6 @@ namespace gui{
 		}
 	}
 
-	void screenBlur() {
-		int w = windowwidth, h = windowheight, r = 15;
-		ubyte *scr, *cps, *rps;
-		scr = new ubyte[w*h * 3];
-		cps = new ubyte[(w + 2 * r)*(h + 2 * r) * 3];
-		rps = new ubyte[(w + 2 * r)*(h + 2 * r) * 3];
-
-	}
-
 	void drawBackground() {
 		static double startTimer = timer();
 		double elapsed = timer() - startTimer;
@@ -740,7 +731,7 @@ namespace gui{
 		Background();
 
 		double TimeDelta = timer() - transitionTimer;
-		float transitionAnim = (float)(1.0 - pow(0.8, TimeDelta*60.0) + pow(0.8, 0.3*60.0) / 0.3 * TimeDelta);
+		float transitionAnim = 1.0f - (float)pow(0.8, TimeDelta*120.0);
 
 		glDisable(GL_TEXTURE_2D);
 		glDisable(GL_LINE_SMOOTH);
