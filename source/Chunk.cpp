@@ -6,8 +6,6 @@
 namespace world{
 
 	void chunk::create(){
-		//assert(Empty == false);
-
 		pblocks = new block[4096];
 		pbrightness = new brightness[4096];
 		//memset(pblocks, 0, sizeof(pblocks));
@@ -30,8 +28,7 @@ namespace world{
 
 	void chunk::build() {
 		//生成地形
-		//assert(Empty == false);
-		
+
 		int x, y, z, height, h = 0, sh = 0;
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr || pbrightness == nullptr) {
@@ -101,24 +98,23 @@ namespace world{
 				}
 			}
 		}
-		
 	}
 
 	void chunk::Load() {
-		////assert(Empty == false);
-
 		create();
 #ifndef NEWORLD_DEBUG_NO_FILEIO
-		if (fileExist()) LoadFromFile();
+		if (fileExist())LoadFromFile();
 		else build();
 #else
 		build();
 #endif
-		if (!Empty) updated = true;
+		if (Empty)destroy();
+		else updated = true;
 	}
 
-	void chunk::Unload() {
+	void chunk::Unload(){
 		unloadedChunksCount++;
+		if (Empty)return;
 #ifndef NEWORLD_DEBUG_NO_FILEIO
 		SaveToFile();
 #endif
@@ -126,26 +122,23 @@ namespace world{
 		destroy();
 	}
 
-	void chunk::LoadFromFile() {
-		////assert(Empty == false);
-
+	void chunk::LoadFromFile(){
 		std::ifstream file(getFileName().c_str(), std::ios::in | std::ios::binary);
 		file.read((char*)pblocks, 4096 * sizeof(block));
 		file.read((char*)pbrightness, 4096 * sizeof(brightness));
 		file.close();
 	}
 
-	void chunk::SaveToFile() {
-		if (!Modified) return;
+	void chunk::SaveToFile(){
+		if (!Modified)return;
 		std::ofstream file(getFileName().c_str(), std::ios::out | std::ios::binary);
 		file.write((char*)pblocks, 4096 * sizeof(block));
 		file.write((char*)pbrightness, 4096 * sizeof(brightness));
 		file.close();
 	}
 
-	void chunk::buildRender() {
-		////assert(Empty == false);
-
+	void chunk::buildRender(){
+		if (Empty) return;
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr || pbrightness == nullptr){
 			DebugWarning("Empty pointer when building vertex buffers!");
@@ -211,8 +204,8 @@ namespace world{
 
 	}
 
-	void chunk::destroyRender() {
-		if (!renderBuilt) return;
+	void chunk::destroyRender(){
+		if (!renderBuilt)return;
 		if (vbuffer[0] != 0) vbuffersShouldDelete.push_back(vbuffer[0]);
 		if (vbuffer[1] != 0) vbuffersShouldDelete.push_back(vbuffer[1]);
 		if (vbuffer[2] != 0) vbuffersShouldDelete.push_back(vbuffer[2]);
@@ -220,9 +213,7 @@ namespace world{
 		renderBuilt = false;
 	}
 
-	Hitbox::AABB chunk::getChunkAABB() {
-		//assert(Empty == false);
-
+	Hitbox::AABB chunk::getChunkAABB(){
 		Hitbox::AABB ret;
 		ret.xmin = cx * 16 - 0.5;
 		ret.ymin = cy * 16 - loadAnim - 0.5;
@@ -234,8 +225,6 @@ namespace world{
 	}
 
 	Hitbox::AABB chunk::getRelativeAABB(double& x, double& y, double& z) {
-		//assert(Empty == false);
-
 		Hitbox::AABB ret;
 		ret.xmin = cx * 16 - 0.5 - x;
 		ret.xmax = cx * 16 + 16 - 0.5 - x;
