@@ -5,6 +5,7 @@
 #include "stdinclude.h"
 
 //#define NEWORLD_DEBUG
+#define NEWORLD_DEBUG_PERFORMANCE_REC
 #ifdef NEWORLD_DEBUG
 #define NEWORLD_DEBUG_CONSOLE_OUTPUT
 #define NEWORLD_DEBUG_NO_FILEIO
@@ -49,7 +50,7 @@ const unsigned int VERSION = 37;
 const string MAJOR_VERSION = "Alpha 0.";
 const string MINOR_VERSION = "4.10";
 const string EXT_VERSION = " [Preview Not Released]";
-const int defaultwindowwidth = 852; //默认窗口宽度
+const int defaultwindowwidth = 850; //默认窗口宽度
 const int defaultwindowheight = 480; //默认窗口高度
 const int networkRequestFrequency = 2; //请求频率
 const int networkRequestMax = 20; //理想最大请求队列长度
@@ -62,6 +63,7 @@ extern int selectDistance;
 extern float walkspeed;
 extern float runspeed;
 extern int MaxAirJumps;
+extern bool UseCPArray;
 extern bool SmoothLighting;
 extern bool NiceGrass;
 extern int linelength;

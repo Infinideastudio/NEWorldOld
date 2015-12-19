@@ -17,6 +17,5 @@ namespace world{
 			return x >= 0 && x < size && z >= 0 && z < size && y >= 0 && y < size;
 		}
 		chunk* getChunkPtr(int x, int y, int z);
-		void setChunkPtr(int x, int y, int z, chunk* c);
 	};
 }
