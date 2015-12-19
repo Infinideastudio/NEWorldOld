@@ -10,7 +10,6 @@ int selectDistance = 5;         //选择方块的距离
 float walkspeed = 0.15f;        //玩家前进速度
 float runspeed = 0.3f;          //玩家跑步速度
 int MaxAirJumps = 3 - 1;        //空中N段连跳
-bool UseCPArray = true;         //使用CIA
 bool SmoothLighting = true;     //平滑光照
 bool NiceGrass = true;          //草地材质连接
 int linelength = 10;            //跟F3的准星有关。。。

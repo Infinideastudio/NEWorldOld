@@ -205,6 +205,12 @@ namespace Textures {
 		bitmapinfoheader.biWidth = image.sizeX;
 		bitmapinfoheader.biHeight = image.sizeY;
 		bitmapinfoheader.biSizeImage = image.sizeX*image.sizeY * 3;
+		for (unsigned int i = 0; i != image.sizeX*image.sizeY * 3; i += 3) {
+			//把RGB格式转换为BGR格式
+			ubyte t = image.buffer.get()[i];
+			image.buffer.get()[i] = image.buffer.get()[i + 2];
+			image.buffer.get()[i + 2] = t;
+		}
 		std::ofstream ofs(filename, std::ios::out | std::ios::binary);
 		ofs.write((char*)&bitmapfileheader, sizeof(bitmapfileheader));
 		ofs.write((char*)&bitmapinfoheader, sizeof(bitmapinfoheader));
