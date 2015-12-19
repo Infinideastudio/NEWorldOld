@@ -1,7 +1,4 @@
-﻿//==============================   Initialize   ================================//
-//==============================初始化(包括闪屏)================================//
-
-#include "Definitions.h"
+﻿#include "Definitions.h"
 
 //Functions/Subs define
 void WindowSizeFunc(GLFWwindow* win, int width, int height);
@@ -72,22 +69,7 @@ block selb;
 brightness selbr;
 bool selce;
 int selbx, selby, selbz, selcx, selcy, selcz;
-
-#if 0
-	woca, 这样注释都行？！
-	(这儿编译不过去的童鞋，你的FB编译器版本貌似
-	和我的不一样，把这几行注释掉吧。。。)
-	=======================================
-	等等不对啊！！！明明都改成c++了。。。还说是FB。。。
-	C++编译器应该不会在这儿报错吧23333333
-#endif
-
-//==============================  Main Program  ================================//
-//==============================     主程序     ================================//
-
 int main(){
-	//卧槽终于进入main函数了！激动人心的一刻！！！
-	
 #ifndef NEWORLD_USE_WINAPI
 	setlocale(LC_ALL, "zh_CN.UTF-8");
 #endif
@@ -177,7 +159,6 @@ main_menu:
 	fctime = uctime = lastupdate = timer();
 
 	do{
-		//主循环，被简化成这样，惨不忍睹啊！
 		double xpos = player::xpos, ypos = player::ypos, zpos = player::zpos, heading = player::heading;
 		MutexUnlock(Mutex);
 		MutexLock(Mutex);
@@ -226,13 +207,8 @@ main_menu:
 	ThreadWait(updateThread);
 	ThreadDestroy(updateThread);
 	MutexDestroy(Mutex);
-
-	//结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
-	//不对啊这不是FB！！！这是正宗的VC++！！！！！！
-	//楼上的楼上在瞎说！！！别信他的！！！
 	glfwTerminate();
 	return 0;
-	//This is the END of the program!
 }
 
 ThreadFunc updateThreadFunc(void*){
