@@ -31,6 +31,7 @@
 #include <map>
 #include <queue>
 #include <functional>
+#include <cassert>
 
 using std::string;
 using std::vector;
