@@ -36,6 +36,7 @@ namespace world{
 	void Init(){
 		
 		std::stringstream ss;
+		wxLogNull log;
 		wxMkdir(L"Worlds");
 		wxMkdir(L"Worlds\\" + worldname);
 		wxMkdir(L"Worlds\\" + worldname + L"\\chunks");
