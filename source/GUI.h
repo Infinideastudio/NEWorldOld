@@ -24,6 +24,7 @@ namespace gui{
 	extern bool transitionForward;
 	
 	void clearTransition();
+	void screenBlur();
 	void drawBackground();
 
 	class Form;

@@ -403,6 +403,8 @@ void setupscreen() {
 	glHint(GL_FOG_HINT, GL_FASTEST);
 	glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glPixelStorei(GL_PACK_ALIGNMENT, 4);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 	glColor4f(0.0, 0.0, 0.0, 1.0);
 	TextRenderer::BuildFont(windowwidth, windowheight);
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
@@ -434,7 +436,7 @@ void InitGL() {
 }
 
 void setupNormalFog() {
-	float fogColor[4] = { skycolorR, skycolorG, skycolorB, 1.0 };
+	float fogColor[4] = { skycolorR, skycolorG, skycolorB, 1.0f };
 	glEnable(GL_FOG);
 	glFogi(GL_FOG_MODE, GL_LINEAR);
 	glFogfv(GL_FOG_COLOR, fogColor);
@@ -508,10 +510,8 @@ void updategame(){
 	world::updatedChunks = 0;
 
 	//ciArray move
-	if (world::cpArrayAval){
-		if (world::cpArray.originX != player::cxt - viewdistance - 2 || world::cpArray.originY != player::cyt - viewdistance - 2 || world::cpArray.originZ != player::czt - viewdistance - 2){
-			world::cpArray.moveTo(player::cxt - viewdistance - 2, player::cyt - viewdistance - 2, player::czt - viewdistance - 2);
-		}
+	if (world::cpArray.originX != player::cxt - viewdistance - 2 || world::cpArray.originY != player::cyt - viewdistance - 2 || world::cpArray.originZ != player::czt - viewdistance - 2){
+		world::cpArray.moveTo(player::cxt - viewdistance - 2, player::cyt - viewdistance - 2, player::czt - viewdistance - 2);
 	}
 	//HeightMap move
 	if (world::HMap.originX != (player::cxt - viewdistance - 2) * 16 || world::HMap.originZ != (player::czt - viewdistance - 2) * 16){
@@ -541,7 +541,12 @@ void updategame(){
 			int cx = world::chunkLoadList[i][1];
 			int cy = world::chunkLoadList[i][2];
 			int cz = world::chunkLoadList[i][3];
-			world::AddChunk(cx, cy, cz)->Load();
+			world::chunk* c = world::AddChunk(cx, cy, cz);
+			c->Load();
+			if (c->Empty) {
+				c->Unload(); world::DeleteChunk(cx, cy, cz);
+				world::cpArray.setChunkPtr(cx, cy, cz, world::EmptyChunkPtr);
+			}
 		}
 		
 	}
@@ -635,7 +640,9 @@ void updategame(){
 				}
 
 				if (world::chunkOutOfBound(selcx, selcy, selcz) == false) {
-					selb = world::getChunkPtr(selcx, selcy, selcz)->getblock(selbx, selby, selbz);
+					world::chunk* cp = world::getChunkPtr(selcx, selcy, selcz);
+					if (cp == nullptr || cp == world::EmptyChunkPtr) break;
+					selb = cp->getblock(selbx, selby, selbz);
 				}
 
 				switch (sidedistmin) {
@@ -1061,7 +1068,7 @@ void Render() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluPerspective(FOVyNormal + FOVyExt, windowwidth / (double)windowheight, 0.05, viewdistance * 16 * 2.0);
+	gluPerspective(FOVyNormal + FOVyExt, windowwidth / (double)windowheight, 0.05, viewdistance * 16.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
@@ -1097,7 +1104,7 @@ void Render() {
 	glRotated(plookupdown, 1, 0, 0);
 	glRotated(360.0 - pheading, 0, 1, 0);
 	Frustum::LoadIdentity();
-	Frustum::setPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16 * 2.0f);
+	Frustum::setPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
 	Frustum::multRotate((float)plookupdown, 1, 0, 0);
 	Frustum::multRotate(360.0f - (float)pheading, 0, 1, 0);
 	Frustum::calc();
@@ -1839,12 +1846,13 @@ void drawBag() {
 
 void saveScreenshot(int x, int y, int w, int h, string filename){
 	Textures::TEXTURE_RGB scrBuffer;
-	while (w % 4 != 0){ w -= 1; }
-	while (h % 4 != 0){ h -= 1; }
-	scrBuffer.sizeX = w;
-	scrBuffer.sizeY = h;
-	scrBuffer.buffer = unique_ptr<ubyte[]>(new byte[w*h * 3]);
-	glReadPixels(x, y, w, h, GL_BGR , GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
+	int bufw = w, bufh = h;
+	while (bufw % 4 != 0){ bufw += 1; }
+	while (bufh % 4 != 0){ bufh += 1; }
+	scrBuffer.sizeX = bufw;
+	scrBuffer.sizeY = bufh;
+	scrBuffer.buffer = unique_ptr<ubyte[]>(new byte[bufw*bufh * 3]);
+	glReadPixels(x, y, bufw, bufh, GL_RGB , GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
 	Textures::SaveRGBImage(filename, scrBuffer);
 }
 
@@ -1875,7 +1883,6 @@ void loadoptions() {
 	loadoption(options, "RenderDistance", viewdistance);
 	loadoption(options, "Sensitivity", mousemove);
 	loadoption(options, "CloudWidth", cloudwidth);
-	loadoption(options, "EnableChunkPointerArray", UseCPArray);
 	loadoption(options, "SmoothLighting", SmoothLighting);
 	loadoption(options, "FancyGrass", NiceGrass);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
@@ -1894,7 +1901,6 @@ void saveoptions() {
 	saveoption(fileout, "RenderDistance", viewdistance);
 	saveoption(fileout, "Sensitivity", mousemove);
 	saveoption(fileout, "CloudWidth", cloudwidth);
-	saveoption(fileout, "EnableChunkPointerArray", UseCPArray);
 	saveoption(fileout, "SmoothLighting", SmoothLighting);
 	saveoption(fileout, "FancyGrass", NiceGrass);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
