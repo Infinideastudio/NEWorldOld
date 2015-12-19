@@ -645,7 +645,7 @@ namespace world{
 		return skylight;
 	}
 
-	void setblock(int x, int y, int z, block Blockname){
+	void setblock(int x, int y, int z, block Blockname, chunk* cptr){
 
 		//设置方块
 		int cx, cy, cz, bx, by, bz;
@@ -657,7 +657,9 @@ namespace world{
 		bx = getblockpos(x);
 		by = getblockpos(y);
 		bz = getblockpos(z);
-
+		if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
+			cptr->setblock(bx, by, bz, Blockname);
+		}
 		if (!chunkOutOfBound(cx, cy, cz)){
 			chunk* i = getChunkPtr(cx, cy, cz);
 			if (i != nullptr){
@@ -694,6 +696,7 @@ namespace world{
 
 		//这个void和上面那个是一样的，只是本人的完美主义（说白了就是强迫症）驱使我再写一遍= =
 		//是不是感觉这句话有些眼熟。。。
+
 		setblock(x, y, z, Blockname);
 
 	}
@@ -927,4 +930,14 @@ namespace world{
 
 	}
 
+	void explode(int x, int y, int z, int r, chunk* c)
+	{
+		double maxdistsqr = r*r;
+		for (int fx = x - r - 1; fx < x + r + 1; fx++)
+			for (int fy = y - r - 1; fy < y + r + 1; fy++)
+ 				for (int fz = z - r - 1; fz < z + r + 1; fz++)
+					if ((fx - x)*(fx - x) + (fy - y)*(fy - y) + (fz - z)*(fz - z) <= maxdistsqr)
+					//if(rnd()*maxdistsqr>((fx - x)*(fx - x) + (fy - y)*(fy - y) + (fz - z)*(fz - z)))
+						setblock(fx, fy, fz, blocks::AIR, c);
+	}
 }
