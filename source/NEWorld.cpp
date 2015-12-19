@@ -145,6 +145,7 @@ main_menu:
 	player::init(0, 60.0, 0);
 	player::addItem(builtInItems::APPLE);
 	player::addItem(builtInItems::STICK);
+	player::addItem(blocks::TNT, 1024);
 	printf("[Console][Game]");
 	printf("Init world...\n");
 	world::Init();
@@ -469,7 +470,7 @@ void updategame(){
 	static bool WP;
 	//static double mxl, myl;
 	glfwGetCursorPos(MainWindow, &mx, &my);
-	player::BlockInHand = player::inventorybox[3][player::indexInHand];
+	player::BlockInHand = player::inventory[3][player::indexInHand];
 	//生命值相关
 	if (player::health > 0) {
 		if (player::health < player::healthMax) player::health += player::healSpeed;
@@ -672,32 +673,38 @@ void updategame(){
 						world::pickblock(x, y, z);
 					}
 				}
-				//放置方块
-				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB)) && player::inventorypcs[3][player::indexInHand] > 0 && isBlock(player::inventorypcs[3][player::indexInHand])) {
-					put = true;
-					switch (sidedistmin) {
-					case 1:
-						if (player::putBlock(x, y + 1, z, player::BlockInHand) == false) put = false;
-						break;
-					case 2:
-						if (player::putBlock(x, y - 1, z, player::BlockInHand) == false) put = false;
-						break;
-					case 3:
-						if (player::putBlock(x + 1, y, z, player::BlockInHand) == false) put = false;
-						break;
-					case 4:
-						if (player::putBlock(x - 1, y, z, player::BlockInHand) == false) put = false;
-						break;
-					case 5:
-						if (player::putBlock(x, y, z + 1, player::BlockInHand) == false) put = false;
-						break;
-					case 6:
-						if (player::putBlock(x, y, z - 1, player::BlockInHand) == false) put = false;
-						break;
+				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB))) { //鼠标右键
+					if (player::inventoryAmount[3][player::indexInHand] > 0 && isBlock(player::inventory[3][player::indexInHand])) {
+						//放置方块
+						put = true;
+						switch (sidedistmin) {
+						case 1:
+							if (player::putBlock(x, y + 1, z, player::BlockInHand) == false) put = false;
+							break;
+						case 2:
+							if (player::putBlock(x, y - 1, z, player::BlockInHand) == false) put = false;
+							break;
+						case 3:
+							if (player::putBlock(x + 1, y, z, player::BlockInHand) == false) put = false;
+							break;
+						case 4:
+							if (player::putBlock(x - 1, y, z, player::BlockInHand) == false) put = false;
+							break;
+						case 5:
+							if (player::putBlock(x, y, z + 1, player::BlockInHand) == false) put = false;
+							break;
+						case 6:
+							if (player::putBlock(x, y, z - 1, player::BlockInHand) == false) put = false;
+							break;
+						}
+						if (put) {
+							player::inventoryAmount[3][player::indexInHand]--;
+							if (player::inventoryAmount[3][player::indexInHand] == 0) player::inventory[3][player::indexInHand] = blocks::AIR;
+						}
 					}
-					if (put) {
-						player::inventorypcs[3][player::indexInHand]--;
-						if (player::inventorypcs[3][player::indexInHand] == 0) player::inventorybox[3][player::indexInHand] = blocks::AIR;
+					else {
+						//使用物品
+
 					}
 				}
 				break;
@@ -1476,12 +1483,12 @@ void drawGUI(){
 		glEnd();
 
 		//绘制物品栏上的物品
-		if (player::inventorybox[3][i] != blocks::AIR) {
+		if (player::inventory[3][i] != blocks::AIR) {
 			glColor4f(1.0, 1.0, 1.0, 1.0);
-			glBindTexture(GL_TEXTURE_2D, getItemTexture(player::inventorybox[3][i]));
-			double tcX = Textures::getTexcoordX(player::inventorybox[3][i], 1);
-			double tcY = Textures::getTexcoordY(player::inventorybox[3][i], 1);
-			double tcD = isBlock(player::inventorybox[3][i]) ? 8.0 : 1.0;
+			glBindTexture(GL_TEXTURE_2D, getItemTexture(player::inventory[3][i]));
+			double tcX = Textures::getTexcoordX(player::inventory[3][i], 1);
+			double tcY = Textures::getTexcoordY(player::inventory[3][i], 1);
+			double tcD = isBlock(player::inventory[3][i]) ? 8.0 : 1.0;
 			glBegin(GL_QUADS);
 			glTexCoord2d(tcX, tcY + 1 / tcD);
 			glVertex2d(i * 32 + 2, windowheight - 32 + 2);
@@ -1494,7 +1501,7 @@ void drawGUI(){
 			glEnd();
 			//绘制物品的数量
 			std::stringstream ss;
-			ss << (int)player::inventorypcs[3][i];
+			ss << (int)player::inventoryAmount[3][i];
 			TextRenderer::renderString(i * 32, windowheight - 32, ss.str());
 		}
 	}
@@ -1518,7 +1525,7 @@ void drawGUI(){
 		debugText(ss.str()); ss.str("");
 		ss << "Crosswall:" << boolstr(CROSS);
 		debugText(ss.str()); ss.str("");
-		ss << "Block:" << BlockInfo(player::BlockInHand).getBlockName() << " (ID" << (int)player::BlockInHand << ")";
+		ss << "Block:" << (isBlock(player::BlockInHand) ? BlockInfo(player::BlockInHand).getBlockName() : "-") << " (ID" << (int)player::BlockInHand << ")";
 		debugText(ss.str()); ss.str("");
 		ss << "Fps:" << fps;
 		debugText(ss.str()); ss.str("");
@@ -1740,35 +1747,35 @@ void drawBag() {
 				my >= i*(32 + 8) + upp && my <= i*(32 + 8) + 32 + upp) {
 				si = i; sj = j; sf = 1;
 				glBindTexture(GL_TEXTURE_2D, guiImage[2]);
-				if (mousebl == 0 && mouseb == 1 && itemselected == player::inventorybox[i][j]) {
-					if (player::inventorypcs[i][j] + pcsselected <= 255) {
-						player::inventorypcs[i][j] += pcsselected;
+				if (mousebl == 0 && mouseb == 1 && itemselected == player::inventory[i][j]) {
+					if (player::inventoryAmount[i][j] + pcsselected <= 255) {
+						player::inventoryAmount[i][j] += pcsselected;
 						pcsselected = 0;
 					}
 					else
 					{
-						pcsselected = player::inventorypcs[i][j] + pcsselected - 255;
-						player::inventorypcs[i][j] = 255;
+						pcsselected = player::inventoryAmount[i][j] + pcsselected - 255;
+						player::inventoryAmount[i][j] = 255;
 					}
 				}
-				if (mousebl == 0 && mouseb == 1 && itemselected != player::inventorybox[i][j]) {
-					std::swap(pcsselected, player::inventorypcs[i][j]);
-					std::swap(itemselected, player::inventorybox[i][j]);
+				if (mousebl == 0 && mouseb == 1 && itemselected != player::inventory[i][j]) {
+					std::swap(pcsselected, player::inventoryAmount[i][j]);
+					std::swap(itemselected, player::inventory[i][j]);
 				}
-				if (mousebl == 0 && mouseb == 2 && itemselected == player::inventorybox[i][j] && player::inventorypcs[i][j] < 255) {
+				if (mousebl == 0 && mouseb == 2 && itemselected == player::inventory[i][j] && player::inventoryAmount[i][j] < 255) {
 					pcsselected--;
-					player::inventorypcs[i][j]++;
+					player::inventoryAmount[i][j]++;
 				}
-				if (mousebl == 0 && mouseb == 2 && player::inventorybox[i][j] == blocks::AIR) {
+				if (mousebl == 0 && mouseb == 2 && player::inventory[i][j] == blocks::AIR) {
 					pcsselected--;
-					player::inventorypcs[i][j] = 1;
-					player::inventorybox[i][j] = itemselected;
+					player::inventoryAmount[i][j] = 1;
+					player::inventory[i][j] = itemselected;
 				}
 
 				if (pcsselected == 0) itemselected = blocks::AIR;
 				if (itemselected == blocks::AIR) pcsselected = 0;
-				if (player::inventorypcs[i][j] == 0) player::inventorybox[i][j] = blocks::AIR;
-				if (player::inventorybox[i][j] == blocks::AIR) player::inventorypcs[i][j] = 0;
+				if (player::inventoryAmount[i][j] == 0) player::inventory[i][j] = blocks::AIR;
+				if (player::inventory[i][j] == blocks::AIR) player::inventoryAmount[i][j] = 0;
 			}
 			else {
 				glBindTexture(GL_TEXTURE_2D, guiImage[3]);
@@ -1783,10 +1790,10 @@ void drawBag() {
 			glTexCoord2f(1.0, 1.0);
 			glVertex2d(j*(32 + 8) + leftp, i*(32 + 8) + 32 + upp);
 			glEnd();
-			if (player::inventorybox[i][j] != blocks::AIR) {
+			if (player::inventory[i][j] != blocks::AIR) {
 				glBindTexture(GL_TEXTURE_2D, BlockTextures);
-				double tcX = Textures::getTexcoordX(player::inventorybox[i][j], 1);
-				double tcY = Textures::getTexcoordY(player::inventorybox[i][j], 1);
+				double tcX = Textures::getTexcoordX(player::inventory[i][j], 1);
+				double tcY = Textures::getTexcoordY(player::inventory[i][j], 1);
 				glBegin(GL_QUADS);
 				glTexCoord2d(tcX, tcY + 1 / 8.0);
 				glVertex2d(j*(32 + 8) + 2 + leftp, i*(32 + 8) + 2 + upp);
@@ -1798,7 +1805,7 @@ void drawBag() {
 				glVertex2d(j*(32 + 8) + 2 + leftp, i*(32 + 8) + 30 + upp);
 				glEnd();
 				std::stringstream ss;
-				ss << (int)player::inventorypcs[i][j];
+				ss << (int)player::inventoryAmount[i][j];
 				TextRenderer::renderString(j*(32 + 8) + 8 + leftp, (i*(32 + 16) + 8 + upp), ss.str());
 			}
 		}
@@ -1821,9 +1828,9 @@ void drawBag() {
 		ss << pcsselected;
 		TextRenderer::renderString((int)mx + 4, (int)my + 16, ss.str());
 	}
-	if (player::inventorybox[si][sj] != 0 && sf == 1) {
+	if (player::inventory[si][sj] != 0 && sf == 1) {
 		glColor4f(1.0, 1.0, 0.0, 1.0);
-		TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(player::inventorybox[si][sj]).getBlockName());
+		TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(player::inventory[si][sj]).getBlockName());
 	}
 	mousebl = mouseb;
 }

@@ -59,7 +59,7 @@ namespace world{
 	void updateblock(int x, int y, int z, bool blockchanged);
 	block getblock(int x, int y, int z, block mask = blocks::AIR, chunk* cptr = nullptr);
 	brightness getbrightness(int x, int y, int z, chunk* cptr = nullptr);
-	void setblock(int x, int y, int z, block Block);
+	void setblock(int x, int y, int z, block Block, chunk* cptr = nullptr);
 	void setbrightness(int x, int y, int z, brightness Brightness);
 	void putblock(int x, int y, int z, block Block);
 	void pickblock(int x, int y, int z);
@@ -81,4 +81,5 @@ namespace world{
 	void destroyAllChunks();
 
 	void buildtree(int x, int y, int z);
+	void explode(int x, int y, int z, int r, chunk* c = nullptr);
 }
