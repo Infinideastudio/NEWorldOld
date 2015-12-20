@@ -42,16 +42,12 @@ namespace world{
 		Empty = true;
 
 		if (cy > 8) {
-			for (int index = 0; index < 256; index++) {
-				pblocks[index] = blocks::AIR;
-				pbrightness[index] = skylight;
-			}
+			memset(pblocks, 0, sizeof(pblocks));
+			for (int index = 0; index < 4096; index++) pbrightness[index] = skylight;
 		}
 		else if (cy < 0) {
-			for (int index = 0; index < 256; index++) {
-				pblocks[index] = blocks::AIR;
-				pbrightness[index] = BRIGHTNESSMIN;
-			}
+			memset(pblocks, 0, sizeof(pblocks));
+			for (int index = 0; index < 4096; index++) pbrightness[index] = BRIGHTNESSMIN;
 		}
 		else {
 
@@ -105,7 +101,7 @@ namespace world{
 	}
 
 	void chunk::Load() {
-		////assert(Empty == false);
+		//assert(Empty == false);
 
 		create();
 #ifndef NEWORLD_DEBUG_NO_FILEIO
@@ -127,7 +123,7 @@ namespace world{
 	}
 
 	void chunk::LoadFromFile() {
-		////assert(Empty == false);
+		//assert(Empty == false);
 
 		std::ifstream file(getFileName().c_str(), std::ios::in | std::ios::binary);
 		file.read((char*)pblocks, 4096 * sizeof(block));
@@ -144,7 +140,7 @@ namespace world{
 	}
 
 	void chunk::buildRender() {
-		////assert(Empty == false);
+		//assert(Empty == false);
 
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr || pbrightness == nullptr){
