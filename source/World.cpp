@@ -515,7 +515,6 @@ namespace world{
 
 		int cx, cy, cz, bx, by, bz;
 		bool updated = blockchanged;
-
 		cx = getchunkpos(x);
 		cy = getchunkpos(y);
 		cz = getchunkpos(z);
@@ -937,7 +936,6 @@ namespace world{
 			for (int fy = y - r - 1; fy < y + r + 1; fy++)
  				for (int fz = z - r - 1; fz < z + r + 1; fz++)
 					if ((fx - x)*(fx - x) + (fy - y)*(fy - y) + (fz - z)*(fz - z) <= maxdistsqr)
-					//if(rnd()*maxdistsqr>((fx - x)*(fx - x) + (fy - y)*(fy - y) + (fz - z)*(fz - z)))
 						setblock(fx, fy, fz, blocks::AIR, c);
 	}
 }

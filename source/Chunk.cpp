@@ -42,7 +42,7 @@ namespace world{
 
 		if (cy > 8) {
 
-			for (int index = 0; index < 256; index++) {
+			for (int index = 0; index < 16 * 16 * 16; index++) {
 
 				pblocks[index] = blocks::AIR;
 				pbrightness[index] = skylight;
@@ -51,7 +51,7 @@ namespace world{
 
 		} else if (cy < 0) {
 
-			for (int index = 0; index < 256; index++) {
+			for (int index = 0; index < 16 * 16 * 16; index++) {
 
 				pblocks[index] = blocks::AIR;
 				pbrightness[index] = BRIGHTNESSMIN;
