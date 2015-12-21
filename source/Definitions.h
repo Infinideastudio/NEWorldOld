@@ -143,7 +143,7 @@ inline void ThreadWait(Thread_t _hThread) { pthread_join(_hThread, nullptr); }
 inline void ThreadDestroy(Thread_t& _hThread) { _hThread.p = nullptr; _hThread.x = 0; }
 unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n);
 unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n);
-inline unsigned int wstrlen(const wchar_t* wstr){ return lstrlenW(wstr); }
+inline unsigned int wstrlen(const wchar_t* wstr) { return wcslen(wstr); }
 
 inline int RoundInt(double d){ return int(floor(d + 0.5)); }
 inline string itos(int i){

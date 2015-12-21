@@ -50,3 +50,4 @@ using std::endl;
 #include <wx/wx.h>
 #include <wx/file.h>
 #include <wx/thread.h>
+#include <wx/dir.h>

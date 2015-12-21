@@ -272,7 +272,7 @@ void worldmenu(){
 	ubyte mblast = 1;
 	int  mwlast = 0;
 	string chosenWorldName;
-	vector<string> worldnames;
+	vector<wxString> worldnames;
 	vector<TextureID> thumbnails, texSizeX, texSizeY;
 	int trs = 0;
 	MainForm.Init();
@@ -345,38 +345,28 @@ void worldmenu(){
 			chosenWorldName = "";
 			//查找所有世界存档
 			Textures::TEXTURE_RGB tmb;
-			long hFile = 0;
-			_finddata_t fileinfo;
-			if ((hFile = _findfirst(string("Worlds\\*").c_str(), &fileinfo)) != -1)
+			wxDir dir(L"Worlds/");
+			wxString filename;
+			bool hasnext = dir.GetFirst(&filename, L"*", wxDIR_DIRS);
+			while (hasnext)
 			{
-				do
+				worldnames.push_back(filename);
+				thumbnails.push_back(0);
+				texSizeX.push_back(0);
+				texSizeY.push_back(0);
+				if (wxFile::Exists(L"Worlds/" + filename + L"/Thumbnail.bmp"))
 				{
-					if ((fileinfo.attrib &  _A_SUBDIR))
-					{
-						if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0){
-							worldnames.push_back(fileinfo.name);
-							std::fstream file;
-							file.open(("Worlds\\" + string(fileinfo.name) + "\\Thumbnail.bmp").c_str(), std::ios::in);
-							thumbnails.push_back(0);
-							texSizeX.push_back(0);
-							texSizeY.push_back(0);
-							if (file.is_open()){
-								Textures::LoadRGBImage(tmb, "Worlds\\" + string(fileinfo.name) + "\\Thumbnail.bmp");
-								glGenTextures(1, &thumbnails[thumbnails.size() - 1]);
-								glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size() - 1]);
-								glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-								glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-								glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb.sizeX, tmb.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, tmb.buffer.get());
-								texSizeX[texSizeX.size() - 1] = tmb.sizeX;
-								texSizeY[texSizeY.size() - 1] = tmb.sizeY;
-							}
-							file.close();
-						}
-					}
-				} while (_findnext(hFile, &fileinfo) == 0);
-				_findclose(hFile);
+					Textures::LoadRGBImage(tmb, "Worlds/" + filename.ToStdString() + "/Thumbnail.bmp");
+					glGenTextures(1, &thumbnails[thumbnails.size() - 1]);
+					glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size() - 1]);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb.sizeX, tmb.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, tmb.buffer.get());
+					texSizeX[texSizeX.size() - 1] = tmb.sizeX;
+					texSizeY[texSizeY.size() - 1] = tmb.sizeY;
+				}
+				hasnext = dir.GetNext(&filename);
 			}
-
 			refresh = false;
 		}
 
@@ -450,7 +440,7 @@ void worldmenu(){
 				glVertex2i(midp - 250, 48 + i * 64 + 60);
 				glEnd();
 			}
-			TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(worldnames[i])) / 2, (140 + i * 128) / 2 - trs, worldnames[i]);
+			TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(worldnames[i].ToStdString())) / 2, (140 + i * 128) / 2 - trs, worldnames[i].ToStdString());
 		}
 		int i = worldcount;
 		glDisable(GL_TEXTURE_2D);
