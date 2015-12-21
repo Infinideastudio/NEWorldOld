@@ -3,6 +3,11 @@
 #include "World.h"
 #include "Renderer.h"
 
+namespace ChunkRenderer {
+	void renderChunk(world::chunk* c);
+	void mergeFaceRender(world::chunk* c);
+}
+
 namespace world{
 
 	void chunk::create(){
@@ -167,42 +172,10 @@ namespace world{
 			renderBuilt = true;
 			loadAnim = cy * 16.0f + 16.0f;
 		}
-
-		renderer::Init();
-		for (x = 0; x < 16; x++) {
-			for (y = 0; y < 16; y++) {
-				for (z = 0; z < 16; z++) {
-					block curr = pblocks[(x << 8) + (y << 4) + z];
-					if (curr == blocks::AIR) continue;
-					if (!BlockInfo(curr).isTranslucent()) renderblock(x, y, z, this);
-				}
-			}
-		}
-		renderer::Flush(vbuffer[0], vertexes[0]);
 		
-		renderer::Init();
-		for (x = 0; x < 16; x++){
-			for (y = 0; y < 16; y++){
-				for (z = 0; z < 16; z++){
-					block curr = pblocks[(x << 8) + (y << 4) + z];
-					if (curr == blocks::AIR) continue;
-					if (BlockInfo(curr).isTranslucent() && BlockInfo(curr).isSolid()) renderblock(x, y, z, this);
-				}
-			}
-		}
-		renderer::Flush(vbuffer[1], vertexes[1]);
+		//ChunkRenderer::renderChunk(this);
+		ChunkRenderer::mergeFaceRender(this);
 
-		renderer::Init();
-		for (x = 0; x < 16; x++){
-			for (y = 0; y < 16; y++){
-				for (z = 0; z < 16; z++){
-					block curr = pblocks[(x << 8) + (y << 4) + z];
-					if (curr == blocks::AIR) continue;
-					if (!BlockInfo(curr).isSolid()) renderblock(x, y, z, this);
-				}
-			}
-		}
-		renderer::Flush(vbuffer[2], vertexes[2]);
 		updated = false;
 
 	}

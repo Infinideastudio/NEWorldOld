@@ -9,7 +9,7 @@ void OnlinePlayer::GenVAOVBO(int skinID) {
 		using renderer::TexCoord2d;
 		using renderer::Vertex3f;
 		using renderer::Color3f;
-		renderer::Init();
+		renderer::Init(2, 3);
 		//===Head===
 		//Left
 		Color3f(1, 1, 1);
