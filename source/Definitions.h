@@ -76,7 +76,7 @@ extern int windowwidth;
 extern int windowheight;
 extern bool gamebegin, gameexit, bagOpened;
 
-extern TextureID BlockTextures;
+extern TextureID BlockTextures, BlockTextures3D;
 extern TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
 extern TextureID DestroyImage[11];
 extern TextureID DefaultSkin;
@@ -124,6 +124,7 @@ extern PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB;
 extern PFNGLGETINFOLOGARBPROC glGetInfoLogARB;
 extern PFNGLDETACHOBJECTARBPROC glDetachObjectARB;
 extern PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
+extern PFNGLTEXIMAGE3DPROC glTexImage3D;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 extern int c_getChunkPtrFromCPA;
