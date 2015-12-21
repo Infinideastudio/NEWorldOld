@@ -14,9 +14,9 @@ namespace world {
 	brightness BRIGHTNESSDEC = 1;     //Brightness decrease
 	chunk* EmptyChunkPtr;
 	unsigned int EmptyBuffer;
-	int MaxChunkLoads = 16;
-	int MaxChunkUnloads = 16;
-	int MaxChunkRenders = 16;
+	int MaxChunkLoads = 64;
+	int MaxChunkUnloads = 64;
+	int MaxChunkRenders = 64;
 
 	chunk** chunks;
 	int loadedChunks, chunkArraySize;
@@ -179,7 +179,7 @@ namespace world {
 	}
 
 	void renderblock(int x, int y, int z, chunk* chunkptr) {
-		
+
 		double colors, color1, color2, color3, color4, tcx, tcy, size, EPS = 0.0;
 		int cx = chunkptr->cx, cy = chunkptr->cy, cz = chunkptr->cz;
 		int gx = cx * 16 + x, gy = cy * 16 + y, gz = cz * 16 + z;

@@ -24,7 +24,7 @@ int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度
 bool gamebegin, gameexit, bagOpened;
 
-TextureID BlockTextures;
+TextureID BlockTextures, BlockTextures3D;
 TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
 TextureID DestroyImage[11];
 TextureID DefaultSkin;
@@ -79,6 +79,7 @@ PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB;
 PFNGLGETINFOLOGARBPROC glGetInfoLogARB;
 PFNGLDETACHOBJECTARBPROC glDetachObjectARB;
 PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
+PFNGLTEXIMAGE3DPROC glTexImage3D;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 int c_getChunkPtrFromCPA;
