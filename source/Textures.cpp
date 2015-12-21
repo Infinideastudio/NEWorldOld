@@ -1,5 +1,4 @@
 #include "Textures.h"
-#include <fstream>
 
 int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, BLOCKTEXTURE_UNITS;
 
@@ -198,6 +197,39 @@ namespace Textures {
 		return ret;
 	}
 
+	TextureID LoadRGBATexture(string Filename, string MkFilename) {
+		TextureID ret;
+		TEXTURE_RGBA image;
+		LoadRGBAImage(image, Filename, MkFilename);
+		glGenTextures(1, &ret);
+		glBindTexture(GL_TEXTURE_2D, ret);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (int)log(image.sizeX));
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		gluBuild2DMipmaps(GL_TEXTURE_2D, 4, image.sizeX, image.sizeY, GL_RGBA, GL_UNSIGNED_BYTE, image.buffer.get());
+		return ret;
+	}
+
+	TextureID LoadBlock3DTexture(string Filename, string MkFilename) {
+		int sz = BLOCKTEXTURE_UNITSIZE, cnt = BLOCKTEXTURE_UNITS*BLOCKTEXTURE_UNITS;
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_3D);
+		TextureID ret;
+		TEXTURE_RGBA image;
+		LoadRGBAImage(image, Filename, MkFilename);
+		glGenTextures(1, &ret);
+		glBindTexture(GL_TEXTURE_3D, ret);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, sz, sz, cnt, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.buffer.get());
+		glDisable(GL_TEXTURE_3D);
+		glEnable(GL_TEXTURE_2D);
+		return ret;
+	}
+
 	void SaveRGBImage(string filename, TEXTURE_RGB& image) {
 		BITMAPFILEHEADER bitmapfileheader;
 		BITMAPINFOHEADER bitmapinfoheader;
@@ -216,20 +248,6 @@ namespace Textures {
 		ofs.write((char*)&bitmapinfoheader, sizeof(bitmapinfoheader));
 		ofs.write((char*)image.buffer.get(), sizeof(ubyte)*image.sizeX*image.sizeY * 3);
 		ofs.close();
-	}
-
-	TextureID LoadRGBATexture(string Filename, string MkFilename) {
-		TextureID ret;
-		TEXTURE_RGBA image;
-		LoadRGBAImage(image, Filename, MkFilename);
-		glGenTextures(1, &ret);
-		glBindTexture(GL_TEXTURE_2D, ret);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (int)log(BLOCKTEXTURE_UNITSIZE));
-		gluBuild2DMipmaps(GL_TEXTURE_2D, 4, image.sizeX, image.sizeY, GL_RGBA, GL_UNSIGNED_BYTE, image.buffer.get());
-		return ret;
 	}
 
 }
