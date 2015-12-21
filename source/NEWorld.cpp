@@ -402,7 +402,6 @@ void setupscreen() {
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
 	glHint(GL_FOG_HINT, GL_FASTEST);
 	glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 	glColor4f(0.0, 0.0, 0.0, 1.0);
@@ -433,6 +432,7 @@ void InitGL() {
 	glGetInfoLogARB = (PFNGLGETINFOLOGARBPROC)glfwGetProcAddress("glGetInfoLogARB");
 	glDetachObjectARB = (PFNGLDETACHOBJECTARBPROC)glfwGetProcAddress("glDetachObjectARB");
 	glDeleteObjectARB = (PFNGLDELETEOBJECTARBPROC)glfwGetProcAddress("glDeleteObjectARB");
+	glTexImage3D = (PFNGLTEXIMAGE3DPROC)glfwGetProcAddress("glTexImage3D");
 }
 
 void setupNormalFog() {
@@ -465,7 +465,8 @@ void LoadTextures(){
 	}
 
 	BlockTextures = Textures::LoadRGBATexture("Textures/blocks/Terrain.bmp", "Textures/blocks/Terrainmask.bmp");
-	
+	BlockTextures3D = Textures::LoadBlock3DTexture("Textures/blocks/Terrain3D.bmp", "Textures/blocks/Terrain3Dmask.bmp");
+
 }
 
 void saveGame(){
@@ -1122,8 +1123,17 @@ void Render() {
 
 	MutexUnlock(Mutex);
 	renderedChunk = displayChunks.size();
-	glBindTexture(GL_TEXTURE_2D, BlockTextures);
+
+	//glBindTexture(GL_TEXTURE_2D, BlockTextures);
 	glDisable(GL_BLEND);
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_TEXTURE_3D);
+	glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
+	//glDisable(GL_CULL_FACE);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	//glColor3f(0.0f, 0.0f, 0.0f);
+	//glLineWidth(1.0);
+	//glDisable(GL_LINE_SMOOTH);
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -1133,7 +1143,7 @@ void Render() {
 		if (cr.vtxs[0] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], true, true);
+		renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], 3, 3);
 		glPopMatrix();
 	}
 
@@ -1142,6 +1152,12 @@ void Render() {
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glEnable(GL_BLEND);
+	glDisable(GL_TEXTURE_3D);
+	glEnable(GL_TEXTURE_2D);
+	//glEnable(GL_CULL_FACE);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	//glColor3f(1.0f, 1.0f, 1.0f);
+	//glEnable(GL_LINE_SMOOTH);
 
 	MutexLock(Mutex);
 
@@ -1188,7 +1204,7 @@ void Render() {
 		if (cr.vtxs[1] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], true, true);
+		renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], 2, 3);
 		glPopMatrix();
 	}
 	glDisable(GL_CULL_FACE);
@@ -1197,7 +1213,7 @@ void Render() {
 		if (cr.vtxs[2] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], true, true);
+		renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], 2, 3);
 		glPopMatrix();
 	}
 
@@ -1583,7 +1599,7 @@ void drawCloud(double px, double pz) {
 		}
 		glGenBuffersARB(128, cloudvb);
 		for (int i = 0; i != 128; i++) {
-			renderer::Init();
+			renderer::Init(0, 0);
 			for (int j = 0; j != 128; j++) {
 				if (world::cloud[i][j]!=0) {
 					renderer::Vertex3d(j*cloudwidth, 128.0, 0.0);
@@ -1602,7 +1618,7 @@ void drawCloud(double px, double pz) {
 	for (int i = 0; i < 128; i++) {
 		glPushMatrix();
 		glTranslated(-64.0 * cloudwidth - px, 0.0, cloudwidth*((l + i) % 128 + f) - 64.0 * cloudwidth - pz);
-		renderer::renderbuffer(cloudvb[i], vtxs[i], false, false);
+		renderer::renderbuffer(cloudvb[i], vtxs[i], 0, 0);
 		glPopMatrix();
 	}
 	//setupNormalFog();
