@@ -1,3 +1,4 @@
+#include "Definitions.h"
 #include "Chunk.h"
 #include "WorldGen.h"
 #include "World.h"

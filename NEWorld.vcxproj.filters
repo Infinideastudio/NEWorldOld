@@ -181,23 +181,5 @@
     <ClCompile Include="source\Hitbox.cpp">
       <Filter>源代码\World</Filter>
     </ClCompile>
-    <ClCompile Include="include\Netycat\src\Netycat\Core\Buffer.cpp">
-      <Filter>Netycat</Filter>
-    </ClCompile>
-    <ClCompile Include="include\Netycat\src\Netycat\Core\BufferCondition.cpp">
-      <Filter>Netycat</Filter>
-    </ClCompile>
-    <ClCompile Include="include\Netycat\src\Netycat\Core\Core.cpp">
-      <Filter>Netycat</Filter>
-    </ClCompile>
-    <ClCompile Include="include\Netycat\src\Netycat\Core\Exception.cpp">
-      <Filter>Netycat</Filter>
-    </ClCompile>
-    <ClCompile Include="include\Netycat\src\Netycat\Core\InetAddress.cpp">
-      <Filter>Netycat</Filter>
-    </ClCompile>
-    <ClCompile Include="include\Netycat\src\Netycat\Core\Socket.cpp">
-      <Filter>Netycat</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>

@@ -1,3 +1,4 @@
+#include "Definitions.h"
 #include "HeightMap.h"
 #include "WorldGen.h"
 

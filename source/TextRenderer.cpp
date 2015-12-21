@@ -1,3 +1,4 @@
+#include "Definitions.h"
 #include "TextRenderer.h"
 #include "Textures.h"
 

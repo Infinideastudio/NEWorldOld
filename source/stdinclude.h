@@ -48,3 +48,5 @@ using std::endl;
 #include <pthread/pthread.h>
 //wxWidgets
 #include <wx/wx.h>
+#include <wx/file.h>
+#include <wx/thread.h>

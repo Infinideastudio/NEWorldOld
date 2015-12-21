@@ -1,3 +1,4 @@
+#include "Definitions.h"
 #include "OnlinePlayer.h"
 #include "Renderer.h"
 

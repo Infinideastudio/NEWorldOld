@@ -1,3 +1,4 @@
+#include "Definitions.h"
 #include "Network.h"
 namespace Network {
 
@@ -20,7 +21,7 @@ namespace Network {
 	int getRequestCount() { return reqs.size(); }
 	Net::Socket& getClientSocket() { return socketClient; }
 
-	ThreadFunc networkThread(void *) {
+	ThreadFunc networkThread(void*) {
 		while (updateThreadRun) {
 			MutexLock(mutex);
 			if (!threadRun) {
