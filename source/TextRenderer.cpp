@@ -15,7 +15,7 @@ namespace TextRenderer{
 	void BuildFont(int w, int h){
 		ww = w;
 		wh = h;
-		Font = Textures::LoadFontTexture("Textures\\Fonts\\ASCII.bmp");
+		Font = Textures::LoadFontTexture("Textures/Fonts/ASCII.bmp");
 
 		float cx, cy;
 		gbe = glGenLists(256);
@@ -49,19 +49,18 @@ namespace TextRenderer{
 		a = a_;
 	}
 
-	void MBToWC(const char* lpcszStr, wchar_t*& lpwszStr, int dwSize){
-		lpwszStr = (wchar_t*)malloc(dwSize);
-		memset(lpwszStr, 0, dwSize);
-		int iSize = (MByteToWChar(lpwszStr, lpcszStr, strlen(lpcszStr)) + 1)*sizeof(wchar_t);
-		lpwszStr = (wchar_t*)realloc(lpwszStr, iSize);
+	void MBToWC(const char* lpcszStr, wchar_t*& lpwszStr){
+		wxString tmp = lpcszStr;
+		lpwszStr = new wchar_t[tmp.size() + 2];
+		wcscpy(lpwszStr, tmp.wc_str());
 	}
 
 	int getStrWidth(string s){
 		int ret = 0;
 		unsigned int i = 0;
 		wchar_t* wstr = nullptr;
-		MBToWC(s.c_str(), wstr, 128);
-		for (unsigned int k = 0; k < wstrlen(wstr); k++){
+		MBToWC(s.c_str(), wstr);
+		for (unsigned int k = 0, im = wstrlen(wstr); k < im; k++) {
 			if (s[i] >= 0 && s[i] <= 127){
 				i += 1;
 				ret += 10;
@@ -71,7 +70,7 @@ namespace TextRenderer{
 				ret += 16;
 			}
 		}
-		free(wstr);
+		delete[] wstr;
 		return ret;
 	}
 
@@ -117,7 +116,7 @@ namespace TextRenderer{
 		TextureID ftex;
 
 		wchar_t* wstr = nullptr;
-		MBToWC(glstring.c_str(), wstr, 128);
+		MBToWC(glstring.c_str(), wstr);
 
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
@@ -126,7 +125,7 @@ namespace TextRenderer{
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
 		glEnable(GL_TEXTURE_2D);
-		for (unsigned int k = 0; k < wstrlen(wstr); k++){
+		for (unsigned int k = 0, im = wstrlen(wstr); k < im; k++) {
 			glLoadIdentity();
 			glColor4f(r, g, b, a);
 			glTranslated(x + 1 + span, y + 1, 0);
@@ -138,9 +137,7 @@ namespace TextRenderer{
 				if (!unicodeTexAval[uc / 256]) {
 					//printf("[Console][Event]");
 					//printf("Loading unicode font texture #%d\n", uc / 256);
-					std::stringstream ss;
-					ss << "Textures\\Fonts\\unicode\\unicode_glyph_" << uc / 256 << ".bmp";
-					ftex = Textures::LoadFontTexture(ss.str());
+					ftex = Textures::LoadFontTexture("Textures/Fonts/unicode/unicode_glyph_" + itos(uc / 256) + ".bmp");
 					unicodeTex[uc / 256] = ftex;
 					unicodeTexAval[uc / 256] = true;
 				}

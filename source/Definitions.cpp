@@ -87,17 +87,10 @@ int c_getHeightFromWorldGen;
 
 #ifdef NEWORLD_USE_WINAPI
 unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n){
-	int res = MultiByteToWideChar(CP_ACP, 0, src, n, dst, n);
-	return res;
+	return MultiByteToWideChar(CP_ACP, 0, src, n, dst, n);
 }
 unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n){
 	return WideCharToMultiByte(CP_ACP, 0, src, n, dst, n * 2, NULL, NULL);
-}
-#else
-void Sleep(unsigned int ms){
-	unsigned int fr = clock();
-	while (clock() - fr <= ms);
-	return;
 }
 #endif
 

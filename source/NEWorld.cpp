@@ -85,9 +85,7 @@ int main(){
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
-	std::stringstream title;
-	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
-	MainWindow = glfwCreateWindow(windowwidth, windowheight, title.str().c_str(), NULL, NULL);
+	MainWindow = glfwCreateWindow(windowwidth, windowheight, ("NEWorld " + MAJOR_VERSION + MINOR_VERSION + EXT_VERSION).c_str(), NULL, NULL);
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwMakeContextCurrent(MainWindow);
 	InitGL();
@@ -1269,9 +1267,7 @@ void drawGUI(){
 			TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
 			glEnable(GL_TEXTURE_2D);
 			glDisable(GL_CULL_FACE);
-			std::stringstream ss;
-			ss << BlockInfo(selb).getBlockName() << " (ID " << (int)selb << ")";
-			TextRenderer::renderString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, ss.str());
+			TextRenderer::renderString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, BlockInfo(selb).getBlockName() + " (ID " + itos(selb) + ")");
 			glDisable(GL_TEXTURE_2D);
 			glEnable(GL_CULL_FACE);
 			glColor4f(0.0f, 0.0f, 0.0f, 0.9f);
@@ -1384,21 +1380,16 @@ void drawGUI(){
 			glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8);
 			glVertex2d(i * 32 + 2, windowheight - 32 + 30);
 			glEnd();
-			std::stringstream ss;
-			ss << (int)player::inventorypcs[3][i];
-			TextRenderer::renderString(i * 32, windowheight - 32, ss.str());
+			TextRenderer::renderString(i * 32, windowheight - 32, itos((int)player::inventorypcs[3][i]));
 		}
 	}
 
 	if (DebugMode) {
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 		std::stringstream ss;
-		ss << "NEWorld v" << VERSION << " [OpenGL " << GLVersionMajor << "." << GLVersionMinor << "|" << GLVersionRev << "]";
-		debugText(ss.str()); ss.str("");
-		ss << "Flying:" << boolstr(FLY);
-		debugText(ss.str()); ss.str("");
-		ss << "Can Gliding:" << boolstr(canGliding);
-		debugText(ss.str()); ss.str("");
+		debugText("NEWorld v" + itos(VERSION) + " [OpenGL " + itos(GLVersionMajor) + "." + itos(GLVersionMinor) + "|" + itos(GLVersionRev) + "]"); ss.str("");
+		debugText("Flying: "+boolstr(FLY)); ss.str("");
+		debugText("Can Gliding:" + boolstr(canGliding)); ss.str("");
 		ss << "Gliding:" << boolstr(player::gliding());
 		debugText(ss.str()); ss.str("");
 		ss << "Energy:" << player::glidingEnergy;

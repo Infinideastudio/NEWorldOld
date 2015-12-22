@@ -36,9 +36,7 @@ namespace world{
 		void Unload();
 		void build();
 		inline string getFileName(){
-			std::stringstream ss;
-			ss << "Worlds\\" << worldname << "\\chunks\\chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldChunk";
-			return ss.str();
+			return "Worlds/" + worldname + "/chunks/chunk_" + itos(cx) + "_" + itos(cy) + "_" + itos(cz) + ".NEWorldChunk";
 		}
 		inline bool fileExist(){
 			return wxFile::Exists(getFileName());

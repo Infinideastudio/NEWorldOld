@@ -143,17 +143,14 @@ inline void ThreadWait(Thread_t _hThread) { pthread_join(_hThread, nullptr); }
 inline void ThreadDestroy(Thread_t& _hThread) { _hThread.p = nullptr; _hThread.x = 0; }
 unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n);
 unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n);
-inline unsigned int wstrlen(const wchar_t* wstr) { return wcslen(wstr); }
+#define Sleep wxMilliSleep
+#define wstrlen wcslen
 
 inline int RoundInt(double d){ return int(floor(d + 0.5)); }
 inline string itos(int i){
-	char a[12];
-#ifdef NEWORLD_COMPILE_DISABLE_SECURE
-	_itoa(i, a, 10);
-#else
-	_itoa_s(i, a, 12, 10);
-#endif
-	return string(a);
+	char tmp[12];
+	sprintf_s(tmp, 12, "%d", i);
+	return tmp;
 }
 
 void DebugWarning(string msg);

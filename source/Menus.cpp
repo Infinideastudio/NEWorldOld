@@ -9,9 +9,7 @@ extern bool gamebegin;
 
 template<typename T>
 string strWithVar(string str, T var){
-	std::stringstream ss;
-	ss << str << var;
-	return ss.str();
+	return str + itos(var);
 }
 int getDotCount(string s) {
 	int ret = 0;
