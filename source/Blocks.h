@@ -1,7 +1,7 @@
 #pragma once
 #include "Definitions.h"
 
-namespace blocks{  //·½¿éID
+namespace blocks{  //æ–¹å—ID
 	enum{
 		AIR, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
@@ -23,20 +23,20 @@ namespace blocks{  //·½¿éID
 		SingleBlock(string blockName, bool solid, bool opaque, bool translucent, bool _canexplode) :
 			name(blockName), Solid(solid), Opaque(opaque), Translucent(translucent), canexplode(_canexplode) {};
 
-		//»ñµÃ·½¿éÃû³Æ
+		//è·å¾—æ–¹å—åç§°
 		inline string getBlockName()const{ return name; }
-		//ÊÇ·ñÊÇ¹ÌÌå
+		//æ˜¯å¦æ˜¯å›ºä½“
 		inline bool isSolid()const{ return Solid; }
-		//ÊÇ·ñ²»Í¸Ã÷
+		//æ˜¯å¦ä¸é€æ˜
 		inline bool isOpaque()const{ return Opaque; }
-		//ÊÇ·ñ°ëÍ¸Ã÷
+		//æ˜¯å¦åŠé€æ˜
 		inline bool isTranslucent()const{ return Translucent; }
-		//ÊÇ·ñ¿ÉÒÔ±¬Õ¨
+		//æ˜¯å¦å¯ä»¥çˆ†ç‚¸
 		inline bool canExplode()const { return canexplode; }
 	};
 
 	const SingleBlock blockData[BLOCK_DEF_END] = {
-		//		    ·½¿éÃû³Æ		  ¹ÌÌå	 ²»Í¸Ã÷	  °ëÍ¸Ã÷  ¿ÉÒÔ±¬Õ¨
+		//		    æ–¹å—åç§°		  å›ºä½“	 ä¸é€æ˜	  åŠé€æ˜  å¯ä»¥çˆ†ç‚¸
 		SingleBlock("Air"		, false	, false	, false , false),
 		SingleBlock("Rock"		, true	, true	, false , false),
 		SingleBlock("Grass"		, true	, true	, false , false),
@@ -56,6 +56,7 @@ namespace blocks{  //·½¿éID
 		SingleBlock("Coal Block", true	, true	, false , false),
 		SingleBlock("Iron Block", true	, true	, false , false),
 		SingleBlock("TNT"		, true	, true	, false , true)
+		//å¼ºçƒˆåæ§½åœ¨githubä¸Šçœ‹æ ¹æœ¬ä¸å¯¹é½	â€”â€”åœ°é¼ 
 	};
 }
 #define BlockInfo(blockID) blocks::blockData[blockID]
