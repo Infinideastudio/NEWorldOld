@@ -19,6 +19,7 @@ namespace renderer {
 	}
 
 	void Vertex3f(float x, float y, float z) {
+		if ((Vertexes + 1)*(Texcoordc + Colorc + 3) > ArrayUNITSIZE) return;
 		if (Texcoordc != 0) for (int i = 0; i < Texcoordc; i++) VertexArray[index++] = tc[i];
 		if (Colorc != 0) for (int i = 0; i < Colorc; i++) VertexArray[index++] = col[i];
 		VertexArray[index++] = x;
