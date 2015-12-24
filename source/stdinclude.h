@@ -51,3 +51,4 @@ using std::endl;
 #include <wx/file.h>
 #include <wx/thread.h>
 #include <wx/dir.h>
+#include <wx/stdpaths.h>

@@ -1,13 +1,12 @@
 ﻿#include "Definitions.h"
 
-//Functions/Subs define
+//Functions Definitions
 void WindowSizeFunc(GLFWwindow* win, int width, int height);
 void MouseButtonFunc(GLFWwindow*, int button, int action, int);
 void CharInputFunc(GLFWwindow*, unsigned int c);
 void MouseScrollFunc(GLFWwindow*, double, double yoffset);
 void setupscreen();
 void InitGL();
-//void glPrintInfoLog(GLhandleARB obj);
 void setupNormalFog();
 void LoadTextures();
 ThreadFunc updateThreadFunc(void*);
@@ -68,20 +67,10 @@ brightness selbr;
 bool selce;
 int selbx, selby, selbz, selcx, selcy, selcz;
 int main(){
-#ifndef NEWORLD_USE_WINAPI
+	wxInitialize();
 	setlocale(LC_ALL, "zh_CN.UTF-8");
-#endif
-
-#ifdef WIN32
-	wchar_t* lpdir=new wchar_t[MAX_PATH];
-	GetModuleFileNameW(NULL,lpdir,MAX_PATH);
-	wchar_t* last=lpdir+MAX_PATH-1;
-	while (*last!='\\')
-		last--;
-	*last='\0';
-	SetCurrentDirectoryW(lpdir);
-	delete[] lpdir;
-#endif
+	wxString curdir = wxStandardPaths::Get().GetExecutablePath();
+	wxSetWorkingDirectory(curdir.substr(0, curdir.find_last_of('\\')));
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
@@ -192,10 +181,8 @@ main_menu:
 				Network::cleanUp();
 			goto main_menu;
 		}
-#ifdef WIN32
 		if (!multiplayer&&player::xpos == xpos&&player::ypos == ypos&&player::zpos == zpos&&player::heading == heading)
 			Sleep(15);
-#endif
 	} while (!glfwWindowShouldClose(MainWindow));
 	world::saveAllChunks();
 	player::save(world::worldname);
@@ -206,6 +193,7 @@ main_menu:
 	ThreadDestroy(updateThread);
 	MutexDestroy(Mutex);
 	glfwTerminate();
+	wxUninitialize();
 	return 0;
 }
 
