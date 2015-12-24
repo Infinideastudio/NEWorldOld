@@ -101,6 +101,9 @@
     <ClInclude Include="source\Particles.h">
       <Filter>源代码\Objects</Filter>
     </ClInclude>
+    <ClInclude Include="source\ChunkRenderer.h">
+      <Filter>源代码\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -156,6 +159,9 @@
     </ClCompile>
     <ClCompile Include="source\Particles.cpp">
       <Filter>源代码\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ChunkRenderer.cpp">
+      <Filter>源代码\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

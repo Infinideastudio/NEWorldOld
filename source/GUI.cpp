@@ -33,12 +33,29 @@ namespace gui{
 	}
 
 	void screenBlur() {
-		int w = windowwidth, h = windowheight, r = 15;
-		ubyte *scr, *cps, *rps;
+		int w = windowwidth; //Width
+		int h = windowheight; //Height
+		int r = 15; //范围
+		ubyte *scr; //屏幕像素缓存
+		ubyte *cps; //列前缀和
+		ubyte *rps; //行前缀和
 		scr = new ubyte[w*h * 3];
 		cps = new ubyte[(w + 2 * r)*(h + 2 * r) * 3];
 		rps = new ubyte[(w + 2 * r)*(h + 2 * r) * 3];
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
+		
+		for (int x = 0; x < w + 2 * r; x++) {
+			for (int y = 0; y < h + 2 * r; y++) {
+				cps[y*(w + 2 * r) + x] = rps[y*(w + 2 * r) + x] = scr[(y - r)*w + (x - r)];
+			}
+		}
+		//NFY!!!
 
+		glDrawPixels(w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
+		glPixelStorei(GL_PACK_ALIGNMENT, 4);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 	}
 
 	void drawBackground() {

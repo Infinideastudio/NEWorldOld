@@ -3,7 +3,6 @@
 
 #include "Definitions.h"
 
-//Functions/Subs define
 void WindowSizeFunc(GLFWwindow* win, int width, int height);
 void MouseButtonFunc(GLFWwindow*, int button, int action, int);
 void CharInputFunc(GLFWwindow*, unsigned int c);
@@ -91,7 +90,7 @@ int selbx, selby, selbz, selcx, selcy, selcz;
 //==============================     主程序     ================================//
 
 int main(){
-	//卧槽终于进入main函数了！激动人心的一刻！！！
+	//终于进入main函数了！激动人心的一刻！！！
 	
 #ifndef NEWORLD_USE_WINAPI
 	setlocale(LC_ALL, "zh_CN.UTF-8");
@@ -102,7 +101,7 @@ int main(){
 	system("md Configs");
 	system("md Worlds");
 	system("md Screenshots");
-
+	
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
@@ -147,6 +146,7 @@ main_menu:
 		player::onlineID = rand();
 		Network::init(serverip, port);
 	}
+
 	//初始化游戏状态
 	printf("[Console][Game]");
 	printf("Init player...\n");
@@ -154,6 +154,8 @@ main_menu:
 	player::xpos = 0.0;
 	player::ypos = 60.0;
 	player::zpos = 0.0;
+	memset(player::inventorybox, 0, sizeof(player::inventorybox));
+	memset(player::inventorypcs, 0, sizeof(player::inventorypcs));
 	player::inventorybox[0][0] = 1; player::inventorypcs[0][0] = 255;
 	player::inventorybox[0][1] = 2; player::inventorypcs[0][1] = 255;
 	player::inventorybox[0][2] = 3; player::inventorypcs[0][2] = 255;
@@ -268,7 +270,6 @@ main_menu:
 }
 
 ThreadFunc updateThreadFunc(void*){
-	//游戏更新线程函数
 
 	//Wait until start...
 	MutexLock(Mutex);
@@ -315,13 +316,13 @@ ThreadFunc updateThreadFunc(void*){
 
 	}
 	MutexUnlock(Mutex);
-
+	
 	return 0;
 }
 
 void WindowSizeFunc(GLFWwindow* win, int width, int height) {
-	if (width<650)width = 650;
-	if (height<400)height = 400;
+	if (width<650) width = 650;
+	if (height<400) height = 400;
 	windowwidth = width;
 	windowheight = height > 0 ? height : 1;
 	glfwSetWindowSize(win, width, height);
@@ -628,7 +629,7 @@ void updategame(){
 				selby = getblockpos(y);
 				selcz = getchunkpos(z);
 				selbz = getblockpos(z);
-
+				
 				sidedist[1] = abs(y + 0.5 - ly);          //顶面
 				sidedist[2] = abs(y - 0.5 - ly);		  //底面
 				sidedist[3] = abs(x + 0.5 - lx);		  //左面
@@ -642,7 +643,7 @@ void updategame(){
 
 				if (world::chunkOutOfBound(selcx, selcy, selcz) == false) {
 					world::chunk* cp = world::getChunkPtr(selcx, selcy, selcz);
-					if (cp == nullptr || cp == world::EmptyChunkPtr) break;
+					if (cp == nullptr || cp == world::EmptyChunkPtr) continue;
 					selb = cp->getblock(selbx, selby, selbz);
 				}
 
@@ -1011,6 +1012,16 @@ void Render() {
 	double TimeDelta;
 	double xpos, ypos, zpos;
 	int renderedChunk = 0;
+	int TexcoordCount = MergeFace ? 3 : 2;
+	/*
+	static vector<GLint> multiDrawArrays[3];
+	static vector<GLsizei> multiDrawCounts[3];
+	for (int i = 0; i < 3; i++) {
+		multiDrawArrays[i].clear();
+		multiDrawCounts[i].clear();
+	}
+	*/
+
 	mxl = mx; myl = my;
 	glfwGetCursorPos(MainWindow, &mx, &my);
 	
@@ -1117,23 +1128,29 @@ void Render() {
 			player::cxt, player::cyt, player::czt, viewdistance)) {
 			if (Frustum::AABBInFrustum(world::chunks[i]->getRelativeAABB(xpos, ypos, zpos))) {
 				displayChunks.push_back(RenderChunk(world::chunks[i], (curtime - lastupdate) * 30.0));
+				/*
+				multiDrawArrays[0].push_back(world::chunks[i]->vbuffer[0]);
+				multiDrawCounts[0].push_back(world::chunks[i]->vertexes[0]);
+				multiDrawArrays[1].push_back(world::chunks[i]->vbuffer[1]);
+				multiDrawCounts[1].push_back(world::chunks[i]->vertexes[1]);
+				multiDrawArrays[2].push_back(world::chunks[i]->vbuffer[2]);
+				multiDrawCounts[2].push_back(world::chunks[i]->vertexes[2]);
+				*/
 			}
 		}
 	}
 
 	MutexUnlock(Mutex);
 	renderedChunk = displayChunks.size();
+	
+	if (MergeFace) {
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_3D);
+		glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
+	}
+	else glBindTexture(GL_TEXTURE_2D, BlockTextures);
 
-	//glBindTexture(GL_TEXTURE_2D, BlockTextures);
 	glDisable(GL_BLEND);
-	glDisable(GL_TEXTURE_2D);
-	glEnable(GL_TEXTURE_3D);
-	glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
-	//glDisable(GL_CULL_FACE);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	//glColor3f(0.0f, 0.0f, 0.0f);
-	//glLineWidth(1.0);
-	//glDisable(GL_LINE_SMOOTH);
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -1143,7 +1160,7 @@ void Render() {
 		if (cr.vtxs[0] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], 3, 3);
+		renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
 		glPopMatrix();
 	}
 
@@ -1151,13 +1168,11 @@ void Render() {
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
+	if (MergeFace) {
+		glDisable(GL_TEXTURE_3D);
+		glEnable(GL_TEXTURE_2D);
+	}
 	glEnable(GL_BLEND);
-	glDisable(GL_TEXTURE_3D);
-	glEnable(GL_TEXTURE_2D);
-	//glEnable(GL_CULL_FACE);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	//glColor3f(1.0f, 1.0f, 1.0f);
-	//glEnable(GL_LINE_SMOOTH);
 
 	MutexLock(Mutex);
 
@@ -1198,13 +1213,19 @@ void Render() {
 		glPopMatrix();
 	}
 	
-	glBindTexture(GL_TEXTURE_2D, BlockTextures);
+	if (MergeFace) {
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_3D);
+		glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
+	}
+	else glBindTexture(GL_TEXTURE_2D, BlockTextures);
+
 	for (int i = 0; i < renderedChunk; i++) {
 		RenderChunk cr = displayChunks[i];
 		if (cr.vtxs[1] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], 2, 3);
+		renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3);
 		glPopMatrix();
 	}
 	glDisable(GL_CULL_FACE);
@@ -1213,7 +1234,7 @@ void Render() {
 		if (cr.vtxs[2] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], 2, 3);
+		renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3);
 		glPopMatrix();
 	}
 
@@ -1221,6 +1242,10 @@ void Render() {
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
+	if (MergeFace) {
+		glDisable(GL_TEXTURE_3D);
+		glEnable(GL_TEXTURE_2D);
+	}
 
 	glLoadIdentity();
 	glRotated(plookupdown, 1, 0, 0);
@@ -1901,6 +1926,7 @@ void loadoptions() {
 	loadoption(options, "CloudWidth", cloudwidth);
 	loadoption(options, "SmoothLighting", SmoothLighting);
 	loadoption(options, "FancyGrass", NiceGrass);
+	loadoption(options, "MergeFaceRendering", MergeFace);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 }
 
@@ -1919,6 +1945,7 @@ void saveoptions() {
 	saveoption(fileout, "CloudWidth", cloudwidth);
 	saveoption(fileout, "SmoothLighting", SmoothLighting);
 	saveoption(fileout, "FancyGrass", NiceGrass);
+	saveoption(fileout, "MergeFaceRendering", MergeFace);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 	fileout.close();
 }

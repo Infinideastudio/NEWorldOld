@@ -160,7 +160,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <OmitFramePointers>true</OmitFramePointers>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
@@ -259,6 +259,7 @@
     <ClInclude Include="source\Chunk.h" />
     <ClInclude Include="source\ChunkPacket.h" />
     <ClInclude Include="source\ChunkPtrArray.h" />
+    <ClInclude Include="source\ChunkRenderer.h" />
     <ClInclude Include="source\HeightMap.h" />
     <ClInclude Include="source\Definitions.h" />
     <ClInclude Include="source\Frustum.h" />
@@ -282,6 +283,7 @@
   <ItemGroup>
     <ClCompile Include="source\Chunk.cpp" />
     <ClCompile Include="source\ChunkPtrArray.cpp" />
+    <ClCompile Include="source\ChunkRenderer.cpp" />
     <ClCompile Include="source\HeightMap.cpp" />
     <ClCompile Include="source\Definitions.cpp" />
     <ClCompile Include="source\Frustum.cpp" />
