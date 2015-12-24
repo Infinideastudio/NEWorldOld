@@ -14,9 +14,9 @@ namespace world {
 	brightness BRIGHTNESSDEC = 1;     //Brightness decrease
 	chunk* EmptyChunkPtr;
 	unsigned int EmptyBuffer;
-	int MaxChunkLoads = 64;
-	int MaxChunkUnloads = 64;
-	int MaxChunkRenders = 64;
+	int MaxChunkLoads = 16;
+	int MaxChunkUnloads = 16;
+	int MaxChunkRenders = 16;
 
 	chunk** chunks;
 	int loadedChunks, chunkArraySize;
@@ -125,12 +125,10 @@ namespace world {
 
 	chunk* getChunkPtr(int x, int y, int z){
 		chunkid cid = getChunkID(x, y, z);
-		if (cpCacheID == cid && cpCachePtr != nullptr){
-			return cpCachePtr;
-		}
-		else{
+		if (cpCacheID == cid && cpCachePtr != nullptr) return cpCachePtr;
+		else {
 			chunk* ret = cpArray.getChunkPtr(x, y, z);
-			if (ret != nullptr){
+			if (ret != nullptr) {
 				cpCacheID = cid;
 				cpCachePtr = ret;
 				return ret;
@@ -140,7 +138,7 @@ namespace world {
 				c_getChunkPtrFromSearch++;
 #endif
 				pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
-				if (chunks[pos.second]->id == cid){
+				if (chunks[pos.second]->id == cid) {
 					ret = chunks[pos.second];
 					cpCacheID = cid;
 					cpCachePtr = ret;
@@ -155,26 +153,24 @@ namespace world {
 	}
 
 	void ExpandChunkArray(int cc){
-		
 		loadedChunks += cc;
 		if (loadedChunks > chunkArraySize) {
 			if (chunkArraySize < 1024) chunkArraySize = 1024;
 			else chunkArraySize *= 2;
 			while (chunkArraySize < loadedChunks) chunkArraySize *= 2;
-			chunks = (chunk**)realloc(chunks, chunkArraySize * sizeof(chunk*));
-			if (chunks == nullptr && loadedChunks != 0) {
-				printf("[Console][Error]");
-				printf("Chunk Array expanding error.\n");
+			chunk** cp = (chunk**)realloc(chunks, chunkArraySize * sizeof(chunk*));
+			if (cp == nullptr && loadedChunks != 0) {
+				DebugError("Allocate memory failed!");
 				saveAllChunks();
 				destroyAllChunks();
 				glfwTerminate();
 				exit(0);
 			}
+			chunks = cp;
 		}
-
 	}
 
-	inline void ReduceChunkArray(int cc){
+	void ReduceChunkArray(int cc){
 		loadedChunks -= cc;
 	}
 
@@ -506,7 +502,11 @@ namespace world {
 		if (chunkOutOfBound(cx, cy, cz) == false){
 
 			chunk* cptr = getChunkPtr(cx, cy, cz);
-			if (cptr != nullptr){
+			if (cptr != nullptr) {
+				if (cptr == EmptyChunkPtr) {
+					cptr = world::AddChunk(cx, cy, cz);
+					cptr->Load(); cptr->Empty = false;
+				}
 				brightness oldbrightness = cptr->getbrightness(bx, by, bz);
 				bool skylighted = true;
 				int yi, cyi;
@@ -541,18 +541,18 @@ namespace world {
 						getbrightness(x, y + 1, z),    //Top face
 						getbrightness(x, y - 1, z) };     //Bottom face
 					maxbrightness = 1;
-					for (int i = 2; i != 6; i++){
+					for (int i = 2; i != 6; i++) {
 						if (brts[maxbrightness] < brts[i]) maxbrightness = i;
 					}
 					br = brts[maxbrightness];
-					if (blks[maxbrightness] == blocks::WATER){
+					if (blks[maxbrightness] == blocks::WATER) {
 						if (br - 2 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br -= 2;
 					}
-					else{
+					else {
 						if (br - 1 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br--;
 					}
 
-					if (skylighted){
+					if (skylighted) {
 						if (br < skylight) br = skylight;
 					}
 					if (br < BRIGHTNESSMIN) br = BRIGHTNESSMIN;
@@ -560,7 +560,7 @@ namespace world {
 					cptr->setbrightness(bx, by, bz, br);
 
 				}
-				else{
+				else {
 
 					//Opaque block
 					cptr->setbrightness(bx, by, bz, 0);
@@ -569,7 +569,6 @@ namespace world {
 					}
 
 				}
-
 
 				if (oldbrightness != cptr->getbrightness(bx, by, bz)) updated = true;
 
@@ -589,7 +588,6 @@ namespace world {
 				if (by == 0 && cy>-worldheight) setChunkUpdated(cx, cy - 1, cz, true);
 				if (bz == 15 && cz<worldsize - 1) setChunkUpdated(cx, cy, cz + 1, true);
 				if (bz == 0 && cz>-worldsize) setChunkUpdated(cx, cy, cz - 1, true);
-
 			}
 		}
 	}
@@ -685,12 +683,7 @@ namespace world {
 	
 	bool chunkUpdated(int x, int y, int z) {
 		chunk* i = getChunkPtr(x, y, z);
-		if (i == EmptyChunkPtr) {
-			chunk* cp = AddChunk(x, y, z);
-			cp->Load();
-			cp->Empty = false;
-			i = cp;
-		}
+		if (i == EmptyChunkPtr) return false;
 		return i->updated;
 	}
 
