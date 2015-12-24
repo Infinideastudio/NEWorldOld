@@ -2,50 +2,57 @@
 
 namespace ChunkRenderer {
 
-	void renderPrimitive(int x, int y, int z, int length, int direction, block bl, brightness br){
-		double color = (double)br / world::BRIGHTNESSMAX;
-		int face = 0;
-		if (direction == 2) face = 1;
-		else if (direction == 3) face = 3;
+	void renderPrimitive(QuadPrimitive& p){
+		double color = (double)p.brightness / world::BRIGHTNESSMAX;
+		ubyte face = 0;
+		int x = p.x, y = p.y, z = p.z, length = p.length;
+
+		if (p.direction == 2) face = 1;
+		else if (p.direction == 3) face = 3;
 		else face = 2;
-		renderer::TexCoord3d(0.0, 0.0, (Textures::getTextureIndex(bl, face) - 0.9) / 64.0);
-		if (direction == 0) {
-			renderer::Color3d(0.7*color, 0.7*color, 0.7*color);
+		renderer::TexCoord3d(0.0, 0.0, (Textures::getTextureIndex(p.block, face) - 0.5) / 64.0);
+
+		if (p.direction == 0) {
+			if (p.block != blocks::GLOWSTONE) color*=0.7;
+			renderer::Color3d(color, color, color);
 			renderer::TexCoord2d(0.0, 0.0); renderer::Vertex3d(x + 0.5, y - 0.5, z - 0.5);
 			renderer::TexCoord2d(0.0, 1.0); renderer::Vertex3d(x + 0.5, y + 0.5, z - 0.5);
 			renderer::TexCoord2d(length + 1.0, 1.0); renderer::Vertex3d(x + 0.5, y + 0.5, z + length + 0.5);
 			renderer::TexCoord2d(length + 1.0, 0.0); renderer::Vertex3d(x + 0.5, y - 0.5, z + length + 0.5);
 		}
-		if (direction == 1) {
-			renderer::Color3d(0.7*color, 0.7*color, 0.7*color);
+		else if (p.direction == 1) {
+			if (p.block != blocks::GLOWSTONE) color *= 0.7;
+			renderer::Color3d(color, color, color);
 			renderer::TexCoord2d(0.0, 1.0); renderer::Vertex3d(x - 0.5, y + 0.5, z - 0.5);
 			renderer::TexCoord2d(0.0, 0.0); renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
 			renderer::TexCoord2d(length + 1.0, 0.0); renderer::Vertex3d(x - 0.5, y - 0.5, z + length + 0.5);
 			renderer::TexCoord2d(length + 1.0, 1.0); renderer::Vertex3d(x - 0.5, y + 0.5, z + length + 0.5);
 		}
-		if (direction == 2) {
-			renderer::Color3d(1.0*color, 1.0*color, 1.0*color);
+		else if (p.direction == 2) {
+			renderer::Color3d(color, color, color);
 			renderer::TexCoord2d(0.0, 0.0); renderer::Vertex3d(x + 0.5, y + 0.5, z - 0.5);
 			renderer::TexCoord2d(0.0, 1.0); renderer::Vertex3d(x - 0.5, y + 0.5, z - 0.5);
 			renderer::TexCoord2d(length + 1.0, 1.0); renderer::Vertex3d(x - 0.5, y + 0.5, z + length + 0.5);
 			renderer::TexCoord2d(length + 1.0, 0.0); renderer::Vertex3d(x + 0.5, y + 0.5, z + length + 0.5);
 		}
-		if (direction == 3) {
-			renderer::Color3d(1.0*color, 1.0*color, 1.0*color);
+		else if (p.direction == 3) {
+			renderer::Color3d(color, color, color);
 			renderer::TexCoord2d(0.0, 0.0); renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
 			renderer::TexCoord2d(0.0, 1.0); renderer::Vertex3d(x + 0.5, y - 0.5, z - 0.5);
 			renderer::TexCoord2d(length + 1.0, 1.0); renderer::Vertex3d(x + 0.5, y - 0.5, z + length + 0.5);
 			renderer::TexCoord2d(length + 1.0, 0.0); renderer::Vertex3d(x - 0.5, y - 0.5, z + length + 0.5);
 		}
-		if (direction == 4) {
-			renderer::Color3d(0.5*color, 0.5*color, 0.5*color);
+		else if (p.direction == 4) {
+			if (p.block != blocks::GLOWSTONE) color *= 0.5;
+			renderer::Color3d(color, color, color);
 			renderer::TexCoord2d(0.0, 1.0); renderer::Vertex3d(x - 0.5, y + 0.5, z + 0.5);
 			renderer::TexCoord2d(0.0, 0.0); renderer::Vertex3d(x - 0.5, y - 0.5, z + 0.5);
 			renderer::TexCoord2d(length + 1.0, 0.0); renderer::Vertex3d(x + length + 0.5, y - 0.5, z + 0.5);
 			renderer::TexCoord2d(length + 1.0, 1.0); renderer::Vertex3d(x + length + 0.5, y + 0.5, z + 0.5);
 		}
-		if (direction == 5) {
-			renderer::Color3d(0.5*color, 0.5*color, 0.5*color);
+		else if (p.direction == 5) {
+			if (p.block != blocks::GLOWSTONE) color *= 0.5;
+			renderer::Color3d(color, color, color);
 			renderer::TexCoord2d(0.0, 0.0); renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
 			renderer::TexCoord2d(0.0, 1.0); renderer::Vertex3d(x - 0.5, y + 0.5, z - 0.5);
 			renderer::TexCoord2d(length + 1.0, 1.0); renderer::Vertex3d(x + length + 0.5, y + 0.5, z - 0.5);
@@ -93,19 +100,23 @@ namespace ChunkRenderer {
 	void mergeFaceRender(world::chunk* c) {
 		int cx = c->cx, cy = c->cy, cz = c->cz;
 		int x = 0, y = 0, z = 0;
-		int cur_x = 0, cur_y = 0, cur_z = 0, cur_l = 0;
-		block bl = 0, cur_block = 0, neighbour = 0;
-		brightness br = 0, cur_brightness = 0;
+		QuadPrimitive cur;
+		int cur_l_mx;
+		block bl, neighbour;
+		brightness br;
 		bool valid = false;
-		//Linear merge
-		renderer::Init(3, 3);
-		for (int d = 0; d<6; d++) {
-			for (int i = 0; i<16; i++) {
-				for (int j = 0; j<16; j++) {
-					for (int k = 0; k<16; k++) {
+		for (int steps = 0; steps < 3; steps++) {
+			cur = QuadPrimitive();
+			cur_l_mx = bl = neighbour = br = 0;
+			//Linear merge
+			renderer::Init(3, 3);
+			for (int d = 0; d < 6; d++){
+				cur.direction = d;
+				for (int i = 0; i < 16; i++) for (int j = 0; j < 16; j++) {
+					for (int k = 0; k < 16; k++) {
 						//Get position
-						if (d<2) x = i, y = j, z = k;
-						else if (d<4) x = i, y = j, z = k;
+						if (d < 2) x = i, y = j, z = k;
+						else if (d < 4) x = i, y = j, z = k;
 						else x = k, y = i, z = j;
 						//Get properties
 						bl = c->getblock(x, y, z);
@@ -121,58 +132,48 @@ namespace ChunkRenderer {
 							br = c->getbrightness(xx, yy, zz);
 						}
 						//Render
-						if (bl == blocks::AIR || BlockInfo(bl).isTranslucent() || BlockInfo(neighbour).isOpaque()) {
+						if (bl == blocks::AIR || bl == neighbour && bl != blocks::LEAF || BlockInfo(neighbour).isOpaque() ||
+							steps == 0 && BlockInfo(bl).isTranslucent() ||
+							steps == 1 && (!BlockInfo(bl).isTranslucent() || !BlockInfo(bl).isSolid()) ||
+							steps == 2 && (!BlockInfo(bl).isTranslucent() || BlockInfo(bl).isSolid())) {
 							//Not valid block
 							if (valid) {
-								renderPrimitive(cur_x, cur_y, cur_z, cur_l, d, cur_block, cur_brightness);
-								valid = false;
+								if (BlockInfo(neighbour).isOpaque()) {
+									if (cur_l_mx < cur.length) cur_l_mx = cur.length;
+									cur_l_mx++;
+								}
+								else {
+									renderPrimitive(cur);
+									valid = false;
+								}
 							}
 							continue;
 						}
 						if (valid) {
-							if (bl != cur_block || br != cur_brightness) {
-								renderPrimitive(cur_x, cur_y, cur_z, cur_l, d, cur_block, cur_brightness);
-								cur_x = x; cur_y = y; cur_z = z; cur_l = 0;
-								cur_block = bl; cur_brightness = br;
+							if (bl != cur.block || br != cur.brightness) {
+								renderPrimitive(cur);
+								cur.x = x; cur.y = y; cur.z = z; cur.length = cur_l_mx = 0;
+								cur.block = bl; cur.brightness = br;
 							}
-							else cur_l++;
+							else {
+								if (cur_l_mx > cur.length) cur.length = cur_l_mx;
+								cur.length++;
+							}
 						}
 						else {
 							valid = true;
-							cur_x = x; cur_y = y; cur_z = z; cur_l = 0;
-							cur_block = bl; cur_brightness = br;
+							cur.x = x; cur.y = y; cur.z = z; cur.length = cur_l_mx = 0;
+							cur.block = bl; cur.brightness = br;
 						}
 					}
 					if (valid) {
-						renderPrimitive(cur_x, cur_y, cur_z, cur_l, d, cur_block, cur_brightness);
+						renderPrimitive(cur);
 						valid = false;
 					}
 				}
 			}
+			renderer::Flush(c->vbuffer[steps], c->vertexes[steps]);
 		}
-		renderer::Flush(c->vbuffer[0], c->vertexes[0]);
-		renderer::Init(2, 3);
-		for (x = 0; x < 16; x++) {
-			for (y = 0; y < 16; y++) {
-				for (z = 0; z < 16; z++) {
-					block curr = c->getblock(x, y, z);
-					if (curr == blocks::AIR) continue;
-					if (BlockInfo(curr).isTranslucent() && BlockInfo(curr).isSolid()) renderblock(x, y, z, c);
-				}
-			}
-		}
-		renderer::Flush(c->vbuffer[1], c->vertexes[1]);
-		renderer::Init(2, 3);
-		for (x = 0; x < 16; x++) {
-			for (y = 0; y < 16; y++) {
-				for (z = 0; z < 16; z++) {
-					block curr = c->getblock(x, y, z);
-					if (curr == blocks::AIR) continue;
-					if (!BlockInfo(curr).isSolid()) renderblock(x, y, z, c);
-				}
-			}
-		}
-		renderer::Flush(c->vbuffer[2], c->vertexes[2]);
 	}
 
 }
