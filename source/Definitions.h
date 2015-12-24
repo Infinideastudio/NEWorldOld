@@ -64,6 +64,7 @@ extern float runspeed;
 extern int MaxAirJumps;
 extern bool SmoothLighting;
 extern bool NiceGrass;
+extern bool MergeFace;
 extern int linelength;
 extern int linedist;
 extern float skycolorR;

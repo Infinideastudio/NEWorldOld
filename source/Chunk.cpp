@@ -47,11 +47,11 @@ namespace world{
 		Empty = true;
 
 		if (cy > 8) {
-			memset(pblocks, 0, sizeof(pblocks));
+			memset(pblocks, 0, 4096 * sizeof(block));
 			for (int index = 0; index < 4096; index++) pbrightness[index] = skylight;
 		}
 		else if (cy < 0) {
-			memset(pblocks, 0, sizeof(pblocks));
+			memset(pblocks, 0, 4096 * sizeof(block));
 			for (int index = 0; index < 4096; index++) pbrightness[index] = BRIGHTNESSMIN;
 		}
 		else {
@@ -173,8 +173,8 @@ namespace world{
 			loadAnim = cy * 16.0f + 16.0f;
 		}
 		
-		//ChunkRenderer::renderChunk(this);
-		ChunkRenderer::mergeFaceRender(this);
+		if (MergeFace) ChunkRenderer::mergeFaceRender(this);
+		else ChunkRenderer::renderChunk(this);
 
 		updated = false;
 
