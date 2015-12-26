@@ -1,6 +1,5 @@
 #include "Definitions.h"
 #include "Textures.h"
-#include <fstream>
 
 int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, BLOCKTEXTURE_UNITS;
 

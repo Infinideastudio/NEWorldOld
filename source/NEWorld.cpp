@@ -70,7 +70,8 @@ int main(){
 	wxInitialize();
 	setlocale(LC_ALL, "zh_CN.UTF-8");
 	wxString curdir = wxStandardPaths::Get().GetExecutablePath();
-	wxSetWorkingDirectory(curdir.substr(0, curdir.find_last_of('\\')));
+	curdir.Replace(L"\\", L"/");
+	wxSetWorkingDirectory(curdir.substr(0, curdir.find_last_of('/')));
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	printf("[Console][Event]Initialize GLFW%s\n",glfwInit() == 1 ? "" : " - Failed!");
@@ -352,20 +353,20 @@ void LoadTextures(){
 	//载入纹理
 	Textures::Init();
 	
-	guiImage[1] = Textures::LoadRGBATexture("Textures\\GUI\\MainMenu.bmp", "");
-	guiImage[2] = Textures::LoadRGBATexture("Textures\\GUI\\select.bmp", "");
-	guiImage[3] = Textures::LoadRGBATexture("Textures\\GUI\\unselect.bmp", "");
-	guiImage[4] = Textures::LoadRGBATexture("Textures\\GUI\\title.bmp", "Textures\\GUI\\titlemask.bmp");
-	guiImage[5] = Textures::LoadRGBATexture("Textures\\GUI\\lives.bmp", "");
+	guiImage[1] = Textures::LoadRGBATexture("Textures/GUI/MainMenu.bmp", "");
+	guiImage[2] = Textures::LoadRGBATexture("Textures/GUI/select.bmp", "");
+	guiImage[3] = Textures::LoadRGBATexture("Textures/GUI/unselect.bmp", "");
+	guiImage[4] = Textures::LoadRGBATexture("Textures/GUI/title.bmp", "Textures/GUI/titlemask.bmp");
+	guiImage[5] = Textures::LoadRGBATexture("Textures/GUI/lives.bmp", "");
 	
-	DefaultSkin = Textures::LoadRGBATexture("Textures\\Player\\skin_xiaoqiao.bmp", "Textures\\Player\\skinmask_xiaoqiao.bmp");
+	DefaultSkin = Textures::LoadRGBATexture("Textures/Player/skin_xiaoqiao.bmp", "Textures/Player/skinmask_xiaoqiao.bmp");
 
 	for (int gloop = 1; gloop <= 10; gloop++){
-		string path = "Textures\\blocks\\destroy_" + itos(gloop) + ".bmp";
+		string path = "Textures/blocks/destroy_" + itos(gloop) + ".bmp";
 		DestroyImage[gloop] = Textures::LoadRGBATexture(path, path);
 	}
 
-	BlockTextures = Textures::LoadRGBATexture("Textures\\blocks\\Terrain.bmp", "Textures\\blocks\\Terrainmask.bmp");
+	BlockTextures = Textures::LoadRGBATexture("Textures/blocks/Terrain.bmp", "Textures/blocks/Terrainmask.bmp");
 	
 }
 
@@ -1135,7 +1136,7 @@ void Render() {
 		localtime_s(timeinfo, &t);
 #endif
 		strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", timeinfo);
-		saveScreenshot(0, 0, windowwidth, windowheight, "\\screenshots\\" + (string)tmp + ".bmp");
+		saveScreenshot(0, 0, windowwidth, windowheight, "/screenshots/" + (string)tmp + ".bmp");
 	}
 	if (shouldGetThumbnail) {
 		shouldGetThumbnail = false;
@@ -1709,5 +1710,5 @@ void saveScreenshot(int x, int y, int w, int h, string filename){
 }
 
 void createThumbnail(){
-	saveScreenshot(0, 0, windowwidth, windowheight, "Worlds\\" + world::worldname + "\\Thumbnail.bmp");
+	saveScreenshot(0, 0, windowwidth, windowheight, "Worlds/" + world::worldname + "/Thumbnail.bmp");
 }

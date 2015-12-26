@@ -255,6 +255,24 @@ void GUIoptions(){
     MainForm.cleanup();
 }
 
+void DeleteDir(wxString dir)
+{
+	wxDir curdir(dir);
+	wxString filename;
+	bool hasnext = curdir.GetFirst(&filename, L"*", wxDIR_DIRS);
+	while (hasnext)
+	{
+		DeleteDir(dir + L"/" + filename);
+		hasnext = curdir.GetNext(&filename);
+	}
+	hasnext = curdir.GetFirst(&filename, L"*", wxDIR_FILES);
+	while (hasnext)
+	{
+		wxRemoveFile(dir + L"/" + filename);
+		hasnext = curdir.GetNext(&filename);
+	}
+	wxRmdir(dir);
+}
 void worldmenu(){
 	//世界选择菜单
 	gui::Form MainForm;
@@ -327,7 +345,7 @@ void worldmenu(){
 		}
 		if (deletebtn->clicked){
 			//删除世界文件
-			system((string("rd /s/q Worlds\\") + chosenWorldName + "\\").c_str());
+			DeleteDir(L"Worlds/" + chosenWorldName);
 			deletebtn->clicked = false;
 			refresh = true;
 		}
@@ -343,7 +361,9 @@ void worldmenu(){
 			chosenWorldName = "";
 			//查找所有世界存档
 			Textures::TEXTURE_RGB tmb;
-			wxDir dir(L"Worlds/");
+			if (!wxDir::Exists(L"Worlds"))
+				wxDir::Make(L"Worlds");
+			wxDir dir(L"Worlds");
 			wxString filename;
 			bool hasnext = dir.GetFirst(&filename, L"*", wxDIR_DIRS);
 			while (hasnext)

@@ -144,7 +144,7 @@ namespace player{
 #define writestream(a,b) (a.write((char*)&b,sizeof(b)))
 	void save(string worldn){
 		uint32 curversion = VERSION;
-		std::ofstream isave("Worlds\\" + worldn + "\\player.NEWorldPlayer", std::ios::binary | std::ios::out);
+		std::ofstream isave("Worlds/" + worldn + "/layer.NEWorldPlayer", std::ios::binary | std::ios::out);
 		if (!isave.is_open()) return;
 		writestream(isave, curversion);
 		writestream(isave, OnGround);
@@ -169,7 +169,7 @@ namespace player{
 #define readstream(a,b) (a.read((char*)&b,sizeof(b)))
 	void load(string worldn){
 		uint32 targetVersion;
-		std::ifstream iload("Worlds\\" + worldn + "\\player.NEWorldPlayer", std::ios::binary | std::ios::in);
+		std::ifstream iload("Worlds/" + worldn + "/player.NEWorldPlayer", std::ios::binary | std::ios::in);
 		if (!iload.is_open()) return;
 		readstream(iload, targetVersion);
 		if (targetVersion != VERSION) return;

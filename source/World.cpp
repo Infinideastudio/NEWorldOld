@@ -37,8 +37,8 @@ namespace world{
 	void Init(){
 		wxLogNull log;
 		wxMkdir(L"Worlds");
-		wxMkdir(L"Worlds\\" + worldname);
-		wxMkdir(L"Worlds\\" + worldname + L"\\chunks");
+		wxMkdir(L"Worlds/" + worldname);
+		wxMkdir(L"Worlds/" + worldname + L"/chunks");
 
 		WorldGen::perlinNoiseInit(3404);
 		cpCachePtr = nullptr;
