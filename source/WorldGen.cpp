@@ -1,6 +1,5 @@
 #include "Definitions.h"
 #include "WorldGen.h"
-#include "Definitions.h"
 
 //Perlin Noise 2D
 namespace WorldGen{

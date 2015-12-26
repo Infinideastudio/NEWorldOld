@@ -2,7 +2,50 @@
 #ifndef _DEBUG
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
-#include "stdinclude.h"
+//#pragma warning(disable:4710) //忽略STL高发警告：函数未内联
+//#pragma warning(disable:4514) //忽略STL高发警告：未使用的内联函数已移除
+//#pragma warning(disable:4350) //忽略STL高发警告：行为更改
+//#pragma warning(push,0) //忽略头文件的警告
+
+#define _USE_MATH_DEFINES
+#include <math.h>
+#include <time.h>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <memory>
+#include <fstream>
+#include <map>
+#include <queue>
+#include <functional>
+
+using std::string;
+using std::vector;
+using std::pair;
+using std::unique_ptr;
+using std::map;
+
+#ifndef NEWORLD_SERVER
+//GLFW
+#define GLFW_DLL
+#define GLFW_INCLUDE_GLU
+#include <GLFW/glfw3.h>
+//GLEXT
+#include <GL/glext.h>
+#endif
+
+//#pragma warning(pop)
+//#pragma warning(disable:4820) //忽略不必要的警告：数据结构对齐
+//#pragma warning(disable:4365) //忽略不必要的警告：有符号/无符号不匹配
+
+//pthread
+#include <pthread/pthread.h>
+//wxWidgets
+#include <wx/wx.h>
+#include <wx/file.h>
+#include <wx/thread.h>
+#include <wx/dir.h>
+#include <wx/stdpaths.h>
 
 //#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG
@@ -122,27 +165,17 @@ extern int c_getHeightFromHMap;
 extern int c_getHeightFromWorldGen;
 #endif
 
-inline string boolstr(bool b){ return b ? "True" : "False"; }
-inline double rnd() { return (double)rand() / (RAND_MAX + 1); }
-inline double timer(){
-	static LARGE_INTEGER counterFreq;
-	if (counterFreq.QuadPart == 0)QueryPerformanceFrequency(&counterFreq);
-	LARGE_INTEGER now;
-	QueryPerformanceCounter(&now);
-	return (double)now.QuadPart / counterFreq.QuadPart;
-	//return (float)clock() / CLOCKS_PER_SEC;
-}
+#define boolstr(b) ((string)(b ? "True" : "False"))
+#define rnd() ((double)rand() / (RAND_MAX + 1))
+#define timer() ((float)clock() / CLOCKS_PER_SEC)
 
-
-inline Mutex_t MutexCreate() { pthread_mutex_t ret; assert(pthread_mutex_init(&ret, nullptr) == 0); return ret; }
+inline Mutex_t MutexCreate() { pthread_mutex_t ret; pthread_mutex_init(&ret, nullptr); return ret; }
 inline void MutexDestroy(Mutex_t _hMutex) { pthread_mutex_destroy(&_hMutex); }
 inline void MutexLock(Mutex_t _hMutex) { pthread_mutex_lock(&_hMutex); }
 inline void MutexUnlock(Mutex_t _hMutex) { pthread_mutex_unlock(&_hMutex); }
 inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { pthread_t ret; pthread_create(&ret, nullptr, func, param); return ret; }
 inline void ThreadWait(Thread_t _hThread) { pthread_join(_hThread, nullptr); }
 inline void ThreadDestroy(Thread_t& _hThread) { _hThread.p = nullptr; _hThread.x = 0; }
-unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n);
-unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n);
 #define Sleep wxMilliSleep
 #define wstrlen wcslen
 

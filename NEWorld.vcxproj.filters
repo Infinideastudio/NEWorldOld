@@ -71,9 +71,6 @@
     <ClInclude Include="source\TextRenderer.h">
       <Filter>源代码\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="source\stdinclude.h">
-      <Filter>源代码\Common</Filter>
-    </ClInclude>
     <ClInclude Include="source\GUI.h">
       <Filter>源代码\GUI</Filter>
     </ClInclude>

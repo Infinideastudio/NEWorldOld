@@ -1,6 +1,5 @@
 #pragma once
 #include "Object.h"
-#include "stdinclude.h"
 #include "PlayerPacket.h"
 
 extern map<SkinID, pair<VBOID, vtxCount>> playerSkins;

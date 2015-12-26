@@ -73,7 +73,7 @@ int main(){
 	wxSetWorkingDirectory(curdir.substr(0, curdir.find_last_of('\\')));
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
-	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
+	printf("[Console][Event]Initialize GLFW%s\n",glfwInit() == 1 ? "" : " - Failed!");
 	MainWindow = glfwCreateWindow(windowwidth, windowheight, ("NEWorld " + MAJOR_VERSION + MINOR_VERSION + EXT_VERSION).c_str(), NULL, NULL);
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwMakeContextCurrent(MainWindow);
@@ -270,15 +270,11 @@ void MouseButtonFunc(GLFWwindow*, int button, int action, int){
 
 void CharInputFunc(GLFWwindow*, unsigned int c) {
 	if (c >= 128) {
-		wchar_t* pwszUnicode = new wchar_t[2];
-		pwszUnicode[0] = (wchar_t)c;
-		pwszUnicode[1] = '\0';
-		char* pszMultiByte;
-		pszMultiByte = (char*)malloc((unsigned int)4);
-		pszMultiByte = (char*)realloc(pszMultiByte, WCharToMByte(pszMultiByte, pwszUnicode, 4));
-		inputstr += pszMultiByte;
-		free(pszMultiByte);
-		delete[] pwszUnicode;
+		wchar_t unistr[2];
+		unistr[0] = (wchar_t)c;
+		unistr[1] = '\0';
+		wxString tmp(unistr);
+		inputstr += tmp.ToStdString();
 	}
 	else inputstr += (char)c;
 }

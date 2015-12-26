@@ -2,7 +2,6 @@
 #include "Definitions.h"
 #include "Blocks.h"
 #include "Hitbox.h"
-#include <wx/file.h>
 namespace world{
 
 	extern string worldname;

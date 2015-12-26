@@ -85,25 +85,10 @@ int c_getHeightFromHMap;
 int c_getHeightFromWorldGen;
 #endif
 
-#ifdef NEWORLD_USE_WINAPI
-unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n){
-	return MultiByteToWideChar(CP_ACP, 0, src, n, dst, n);
-}
-unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n){
-	return WideCharToMultiByte(CP_ACP, 0, src, n, dst, n * 2, NULL, NULL);
-}
-#endif
-
 void DebugWarning(string msg){
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
-	printf("[Debug][Warning]");
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-	printf("%s\n", msg.c_str());
+	printf("[Debug][Warning]%s\n", msg.c_str());
 }
 
 void DebugError(string msg){
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
-	printf("[Debug][Error]");
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-	printf("%s\n",msg.c_str());
+	printf("[Debug][Error]%s\n",msg.c_str());
 }

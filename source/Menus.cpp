@@ -3,7 +3,6 @@
 #include "World.h"
 #include "Textures.h"
 #include "TextRenderer.h"
-#include <shellapi.h>
 
 extern bool gamebegin;
 
@@ -56,12 +55,13 @@ void MultiplayerGameMenu() {
 
 		if (serveriptb->text == "" || !serveripChanged || getDotCount(serveriptb->text) != 3) okbtn->enabled = false; else okbtn->enabled = true;
 		if (okbtn->clicked || backbtn->clicked)f = true;
-		if (runbtn->clicked) WinExec("NEWorldServer.exe", SW_SHOWDEFAULT);
+		if (runbtn->clicked) wxExecute(L"NEWorldServer.exe");
 		inputstr = "";
 		MainForm.render();
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(MainWindow)) exit(0);
+		Sleep(10);
 	} while (!f);
 	if (serveripChanged) {
 		serverip = serveriptb->text;
