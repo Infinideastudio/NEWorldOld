@@ -2,16 +2,18 @@
 #include "Network.h"
 namespace Network {
 
-	Net::Socket socketClient;
+	wxSocketClient* socketClient;
 	Thread_t t;
 	Mutex_t mutex;
 	std::queue<Request> reqs;
 	bool threadRun = true;
 
 	void init(string ip, unsigned short _port) {
-		Net::startup();
-
-		socketClient.connectIPv4(ip, _port);
+		socketClient = new wxSocketClient;
+		wxIPV4address addr;
+		addr.Hostname(ip);
+		addr.Service(_port);
+		socketClient->Connect(addr);
 
 		threadRun = true;
 		mutex = MutexCreate();
@@ -19,7 +21,7 @@ namespace Network {
 	}
 
 	int getRequestCount() { return reqs.size(); }
-	Net::Socket& getClientSocket() { return socketClient; }
+	wxSocketClient* getClientSocket() { return socketClient; }
 
 	ThreadFunc networkThread(void*) {
 		while (updateThreadRun) {
@@ -36,23 +38,21 @@ namespace Network {
 			//if (r._signal == PLAYER_PACKET_SEND && ((PlayerPacket*)r._dataSend)->onlineID != player::onlineID)
 			//	cout << "[ERROR]WTF!!!" << endl;
 			if (r._dataSend != nullptr && r._dataLen != 0) {
-				Net::Buffer buffer(r._dataLen + sizeof(int));
-				buffer.write((void*)r._signal, sizeof(int));
-				buffer.write((void*)r._dataSend, r._dataLen);
-				getClientSocket().send(buffer);
+				getClientSocket()->Write((const void*)&r._signal, sizeof(int));
+				getClientSocket()->Write((const void*)r._dataSend, r._dataLen);
 			}
 			else {
-				Net::Buffer buffer(sizeof(int));
-				buffer.write((void*)&r._signal, sizeof(int));
-				getClientSocket().send(buffer);
+				getClientSocket()->Write((const void*)&r._signal, sizeof(int));
 			}
 			if (r._callback) { //判断有无回调函数
 				auto callback = r._callback;
 				MutexUnlock(mutex);
-				int len = getClientSocket().recvInt();   //获得数据长度
-				Net::Buffer buffer(len);
-				getClientSocket().recv(buffer,Net::BufferConditionExactLength(len));
-				if (len > 0) callback(buffer.getData(), len); //调用回调函数
+				int len;
+				getClientSocket()->Read(&len, sizeof(int));   //获得数据长度
+				char* buffer = new char[len];
+				getClientSocket()->Read(buffer,len);
+				if (len > 0) callback(buffer, len); //调用回调函数
+				delete[] buffer;
 				MutexLock(mutex);
 			}
 			reqs.pop();
@@ -81,7 +81,6 @@ namespace Network {
 		ThreadWait(t);
 		ThreadDestroy(t);
 		MutexDestroy(mutex);
-		getClientSocket().close();
-		Net::cleanup();
+		socketClient->Destroy();
 	}
 }

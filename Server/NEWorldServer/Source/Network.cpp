@@ -1,12 +1,16 @@
 #include "Network.h"
 
 namespace Network {
-	Net::Socket serverSocket;
-	void cleanUp() {
-		Net::cleanup();
-	}
+	wxSocketServer* serverSocket;
 	void init() {
-		Net::startup();
-		serverSocket.listenIPv4(30001);
+		wxIPV4address addr;
+		addr.Service(port);
+		serverSocket = new wxSocketServer(addr);
+		if (!serverSocket->Ok())
+		{
+			delete serverSocket;
+			serverSocket = nullptr;
+			return;
+		}
 	}
 }

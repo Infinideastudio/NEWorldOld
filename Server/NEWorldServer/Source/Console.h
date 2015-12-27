@@ -1,10 +1,7 @@
 #pragma once
 #include <string>
-#include <iostream>
 
 using std::string;
-using std::cout;
-using std::endl;
 
 enum { MESSAGE_INFO, MESSAGE_WARNING, MESSAGE_ERROR };
 

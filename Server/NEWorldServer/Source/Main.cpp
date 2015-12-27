@@ -1,47 +1,44 @@
 #define NEWORLD_SERVER
-#include <thread>
-#include <mutex>
-#include <algorithm>
 #include <vector>
 #include <map>
-#include <list>
 #include "Network.h"
 #include "Console.h"
 #include "..\..\..\source\PlayerPacket.h"
+#include <pthread/pthread.h>
+#include <wx/init.h>
 using std::map;
 using std::vector;
-using std::thread;
 
 map<int, PlayerPacket> players;
-std::mutex m;
+pthread_mutex_t* m;
 
-void handle(Net::Socket&& socket) {
+void* __cdecl handle(void* _) {
+	wxSocketBase* socket = (wxSocketBase*)_;
 	unsigned int onlineID = 0;
 	bool IDSet = false;
-	m.lock();
+	pthread_mutex_lock(m);
 	Print("New connection. Online players:" + toString(players.size()+1));
-	m.unlock();
+	pthread_mutex_unlock(m);
 	while (true) {
 		
-		int len;
-		try {
-			len = socket.recvInt();	//获得数据长度
-		}
-		catch (...) {
+		int len = -1;
+		socket->Read(&len, 4);	//获得数据长度
+		if (len == -1) {
 			Print("A connection closed.");
-			socket.close();
-			m.lock();
+			socket->Destroy();
+			pthread_mutex_lock(m);
 			players.erase(onlineID);
-			m.unlock();
-			return;
+			pthread_mutex_unlock(m);
+			return nullptr;
 		}
 
-		Net::Buffer buffer(len);
-		socket.recv(buffer, Net::BufferConditionExactLength(len));
+		unsigned char* buffer = new unsigned char[len];
+		socket->Read(buffer, len);
 
-		int signal = socket.recvInt();
-		char* data = (char*)buffer.getData() + sizeof(int);
-		m.lock();
+		int signal;
+		socket->Read(&signal, 4);
+		char* data = (char*)buffer + sizeof(int);
+		pthread_mutex_lock(m);
 		Print("Online players:" + toString(players.size()));
 		switch (signal) {
 		case PLAYER_PACKET_SEND:
@@ -81,30 +78,37 @@ void handle(Net::Socket&& socket) {
 				playersData[i] = iter->second;
 				i++;
 			}
-			Net::Buffer bufferSend(players.size()*sizeof(PlayerPacket));
-			bufferSend.write((void*)playersData, players.size()*sizeof(PlayerPacket));
-			socket.send(bufferSend);
+			socket->Write(playersData, players.size()*sizeof(PlayerPacket));
 			break;
 		}
 		}
-		m.unlock();
+		pthread_mutex_unlock(m);
+		delete[] buffer;
 	}
+	return nullptr;
 }
 
 int main() {
+	wxInitialize();
 	Print("NEWorld Server 0.2.1(Dev.) for NEWorld Alpha 0.5.0(Dev.). Using the developing version to play is not recommended.");
 	Print("The server is starting...");
 	Network::init();
 	Print("The server is running.");
-	std::list<thread> clients;
+	std::vector<pthread_t> clients;
+	m = new pthread_mutex_t;
+	pthread_mutex_init(m, nullptr);
 	while (true) {
-		Net::Socket socketAccept;
-		Network::getServerSocket().accept(socketAccept);
-		clients.push_back(thread(handle, std::move(socketAccept)));
+		wxSocketBase* socketAccept;
+		socketAccept = Network::getServerSocket().Accept();
+		pthread_t thread;
+		pthread_create(&thread, nullptr, handle, socketAccept);
+		clients.push_back(thread);
 	}
 	Print("The server is stopping...");
-	std::for_each(clients.begin(), clients.end(), [](thread& t) {t.join(); });
-	Network::cleanUp();
+	for (std::vector<pthread_t>::iterator it = clients.begin(); it != clients.end(); it++)
+		pthread_join(*it, nullptr);
+	delete m;
 	system("pause");
+	wxUninitialize();
 	return 0;
 }

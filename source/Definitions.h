@@ -47,6 +47,7 @@ using std::map;
 #include <wx/thread.h>
 #include <wx/dir.h>
 #include <wx/stdpaths.h>
+#include <wx/socket.h>
 
 //#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG
@@ -186,7 +187,12 @@ inline string itos(int i){
 	sprintf_s(tmp, 12, "%d", i);
 	return tmp;
 }
-
+inline string ftos(double i)
+{
+	char tmp[64];
+	sprintf_s(tmp, 64, "%g", i);
+	return tmp;
+}
 void DebugWarning(string msg);
 void DebugError(string msg);
 #endif

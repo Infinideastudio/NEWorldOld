@@ -1,11 +1,5 @@
 #pragma once
 #include "Definitions.h"
-
-//Netycat
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-#include <Netycat\include\Netycat\Netycat.h>
-namespace Net = Netycat::Core;
-
 namespace Network{
 	class Request {
 	public:
@@ -25,7 +19,7 @@ namespace Network{
 	extern Mutex_t mutex;
 	void init(string ip, unsigned short port);
 	int getRequestCount();
-	Net::Socket& getClientSocket();
+	wxSocketClient* getClientSocket();
 	ThreadFunc networkThread(void*);
 	void pushRequest(Request& r);
 	void cleanUp();
