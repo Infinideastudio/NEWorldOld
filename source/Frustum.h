@@ -1,3 +1,5 @@
+#ifndef FRUSTUM_H
+#define FRUSTUM_H
 #include "Definitions.h"
 #include "Hitbox.h"
 
@@ -7,3 +9,4 @@ namespace Frustum{
 	bool AABBInFrustum(const Hitbox::AABB& aabb);
 }
 
+#endif

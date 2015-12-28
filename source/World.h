@@ -1,4 +1,5 @@
-#pragma once
+#ifndef WORLD_H
+#define WORLD_H
 #include "Definitions.h"
 #include "chunkPtrArray.h"
 #include "HeightMap.h"
@@ -80,3 +81,4 @@ namespace world{
 
 	void buildtree(int x, int y, int z);
 }
+#endif

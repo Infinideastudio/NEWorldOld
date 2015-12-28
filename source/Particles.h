@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PARTICLES_H
+#define PARTICLES_H
 #include "Definitions.h"
 #include "Hitbox.h"
 
@@ -20,3 +21,4 @@ namespace particles{
 	void throwParticle(block pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last);
 
 }
+#endif

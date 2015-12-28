@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CHUNKPACKET_H
+#define CHUNKPACKET_H
 #include "Definitions.h"
 enum { CHUNK_DATA = 2, CHUNK_COMMAND, CHUNK_EMPTY, CHUNK_NOTBEMODIFIED };
 struct ChunkPacket {
@@ -14,3 +15,4 @@ struct ChunkCommand {
 	int x, y, z;
 	int extraInfo;
 };
+#endif

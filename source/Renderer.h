@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_H
+#define RENDERER_H
 #include "Definitions.h"
 
 namespace renderer{
@@ -13,3 +14,4 @@ namespace renderer{
 	void Flush(VBOID& buffer, vtxCount& vtxs);
 	void renderbuffer(VBOID buffer, vtxCount vtxs, bool ftex, bool fcol);
 }
+#endif

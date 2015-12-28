@@ -1,4 +1,5 @@
-#pragma once
+#ifndef WORLDGEN_H
+#define WORLDGEN_H
 #include "Definitions.h"
 
 //Perlin Noise 2D
@@ -28,3 +29,4 @@ namespace WorldGen{
 	}
 
 }
+#endif

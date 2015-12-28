@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CHUNKPTRARRAY_H
+#define CHUNKPTRARRAY_H
 #include "Definitions.h"
 #include "Chunk.h"
 
@@ -19,3 +20,4 @@ namespace world{
 		chunk* getChunkPtr(int x, int y, int z);
 	};
 }
+#endif

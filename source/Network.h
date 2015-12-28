@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NETWORK_H
+#define NETWORK_H
 #include "Definitions.h"
 namespace Network{
 	class Request {
@@ -24,3 +25,4 @@ namespace Network{
 	void pushRequest(Request& r);
 	void cleanUp();
 }
+#endif

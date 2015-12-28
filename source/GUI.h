@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GUI_H
+#define GUI_H
 #include "Definitions.h"
 //图形界面系统。。。正宗OOP！！！
 namespace gui{
@@ -124,3 +125,4 @@ namespace gui{
 	};
 
 }
+#endif

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PLAYERPACKET_H
+#define PLAYERPACKET_H
 enum { PLAYER_PACKET_SEND, PLAYER_PACKET_REQ };
 struct PlayerPacket {
 	double x, y, z;
@@ -7,3 +8,4 @@ struct PlayerPacket {
 	int onlineID;
 	int skinID;
 };
+#endif

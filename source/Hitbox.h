@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HITBOX_H
+#define HITBOX_H
 #include "Definitions.h"
 
 namespace Hitbox
@@ -31,3 +32,4 @@ namespace Hitbox
 	void MoveTo(AABB &box, double x, double y, double z);
 	void renderAABB(AABB box, float colR, float colG, float colB, int mode);
 }
+#endif

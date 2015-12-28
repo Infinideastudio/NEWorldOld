@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TEXTURES_H
+#define TEXTURES_H
 #include "Definitions.h"
 #include "Blocks.h"
 
@@ -61,3 +62,4 @@ namespace Textures{
 	void SaveRGBImage(string filename, TEXTURE_RGB& image);
 
 }
+#endif

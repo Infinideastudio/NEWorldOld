@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MOB_H
+#define MOB_H
 #include "Object.h"
 
 class Mob : public Object {
@@ -10,3 +11,4 @@ protected:
 
 
 };
+#endif

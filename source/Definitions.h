@@ -1,4 +1,5 @@
-#pragma once
+#ifndef DEFINITIONS_H
+#define DEFINITIONS_H
 #ifndef _DEBUG
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
@@ -196,4 +197,5 @@ inline string ftos(double i)
 }
 #define DebugWarning(msg) printf("[Debug][Warning]%s\n",((string)msg).c_str())
 #define DebugError(msg) printf("[Debug][Error]%s\n",((string)msg).c_str())
+#endif
 #endif

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CHUNK_H
+#define CHUNK_H
 #include "Definitions.h"
 #include "Blocks.h"
 #include "Hitbox.h"
@@ -80,3 +81,4 @@ namespace world{
 
 	};
 }
+#endif

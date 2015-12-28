@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HEIGHTMAP_H
+#define HEIGHTMAP_H
 #include "Definitions.h"
 
 namespace world{
@@ -15,3 +16,4 @@ namespace world{
 		int getHeight(int x, int z);
 	};
 }
+#endif

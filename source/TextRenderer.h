@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TEXTRENDERER_H
+#define TEXTRENDERER_H
 #include "Definitions.h"
 
 namespace TextRenderer{
@@ -17,3 +18,4 @@ namespace TextRenderer{
 	int getStrWidth(string s);
 	void renderString(int x, int y, string glstring);
 }
+#endif

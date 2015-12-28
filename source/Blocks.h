@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BLOCKS_H
+#define BLOCKS_H
 #include "Definitions.h"
 
 namespace blocks{  //·½¿éID
@@ -57,3 +58,4 @@ namespace blocks{  //·½¿éID
 	};
 }
 #define BlockInfo(blockID) blocks::blockData[blockID]
+#endif

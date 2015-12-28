@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PLAYER_H
+#define PLAYER_H
 #include "Definitions.h"
 #include "Hitbox.h"
 #include "OnlinePlayer.h"
@@ -58,3 +59,4 @@ namespace player{
 	inline bool gliding() { return glidingNow; }
 
 }
+#endif

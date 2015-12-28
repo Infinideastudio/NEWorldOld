@@ -1,4 +1,5 @@
-#pragma once
+#ifndef OBJECT_H
+#define OBJECT_H
 #include "Definitions.h"
 
 //Object 所有生物、可移动物体、非静态方块的基类
@@ -18,3 +19,4 @@ protected:
 	VBOID VBO;
 
 };
+#endif
