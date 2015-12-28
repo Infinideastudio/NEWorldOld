@@ -7,8 +7,6 @@ const short BITMAP_ID = 0x4D42;
 
 namespace Textures{
 
-#pragma pack(push)
-#pragma pack(1)
 	struct TEXTURE_RGB {
 		unsigned int sizeX;
 		unsigned int sizeY;
@@ -20,6 +18,8 @@ namespace Textures{
 		unsigned int sizeY;
 		unique_ptr<ubyte[]> buffer;
 	};
+#pragma pack(push)
+#pragma pack(1)
 
 	struct BITMAPINFOHEADER {
 		int biSize = 40, biWidth, biHeight;

@@ -11,7 +11,6 @@
 #include <math.h>
 #include <time.h>
 #include <string>
-#include <sstream>
 #include <vector>
 #include <memory>
 #include <fstream>
@@ -27,7 +26,9 @@ using std::map;
 
 #ifndef NEWORLD_SERVER
 //GLFW
+#ifdef _WIN32
 #define GLFW_DLL
+#endif
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
 //GLEXT
@@ -193,6 +194,6 @@ inline string ftos(double i)
 	sprintf_s(tmp, 64, "%g", i);
 	return tmp;
 }
-void DebugWarning(string msg);
-void DebugError(string msg);
+#define DebugWarning(msg) printf("[Debug][Warning]%s\n",((string)msg).c_str())
+#define DebugError(msg) printf("[Debug][Error]%s\n",((string)msg).c_str())
 #endif

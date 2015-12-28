@@ -19,7 +19,7 @@ void renderDestroy(float level,int x,int y,int z);
 void drawGUI();
 void drawBag();
 void saveScreenshot(int x, int y, int w, int h, string filename);
-void createThumbnail();
+#define createThumbnail() saveScreenshot(0, 0, windowwidth, windowheight, "Worlds/" + world::worldname + "/Thumbnail.bmp")
 
 #include "Blocks.h"
 #include "Textures.h"
@@ -1371,7 +1371,6 @@ void drawGUI(){
 
 	if (DebugMode) {
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
-		std::stringstream ss;
 		debugText("NEWorld v" + itos(VERSION) + " [OpenGL " + itos(GLVersionMajor) + "." + itos(GLVersionMinor) + "|" + itos(GLVersionRev) + "]");
 		debugText("Flying: " + boolstr(FLY));
 		debugText("Can Gliding:" + boolstr(canGliding));
@@ -1400,19 +1399,14 @@ void drawGUI(){
 		if (multiplayer)
 		{
 			MutexLock(Network::mutex);
-			ss << Network::getRequestCount() << "/" << networkRequestMax << " network request in the queue";
-			debugText(ss.str()); ss.str("");
+			debugText(itos(Network::getRequestCount()) + "/" + itos(networkRequestMax) + " network request in the queue");
 			MutexUnlock(Network::mutex);
 		}
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-		ss << c_getChunkPtrFromCPA << " CPA requests";
-		debugText(ss.str()); ss.str("");
-		ss << c_getChunkPtrFromSearch << " search requests";
-		debugText(ss.str()); ss.str("");
-		ss << c_getHeightFromHMap << " heightmap requests";
-		debugText(ss.str()); ss.str("");
-		ss << c_getHeightFromWorldGen << " worldgen requests";
-		debugText(ss.str()); ss.str("");
+		debugText(itos(c_getChunkPtrFromCPA) + " CPA requests");
+		debugText(itos(c_getChunkPtrFromSearch) + " search requests");
+		debugText(itos(c_getHeightFromHMap) + " heightmap requests");
+		debugText(itos(c_getHeightFromWorldGen) + " worldgen requests");
 #endif
 		
 		debugText("", true);
@@ -1420,13 +1414,8 @@ void drawGUI(){
 	else {
 
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
-		std::stringstream ss;
-		ss << "v" << VERSION;
-		TextRenderer::renderString(0, 0, ss.str());
-		ss.clear();
-		ss.str("");
-		ss << "Fps:" << fps;
-		TextRenderer::renderString(0, 16, ss.str());
+		TextRenderer::renderString(0, 0, "v" + itos(VERSION));
+		TextRenderer::renderString(0, 16, "Fps:" + itos(fps));
 
 	}
 
@@ -1645,9 +1634,7 @@ void drawBag() {
 				glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
 				glVertex2d(j*(32 + 8) + 2 + leftp, i*(32 + 8) + 30 + upp);
 				glEnd();
-				std::stringstream ss;
-				ss << (int)player::inventorypcs[i][j];
-				TextRenderer::renderString(j*(32 + 8) + 8 + leftp, (i*(32 + 16) + 8 + upp), ss.str());
+				TextRenderer::renderString(j*(32 + 8) + 8 + leftp, (i*(32 + 16) + 8 + upp), itos(player::inventorypcs[i][j]));
 			}
 		}
 	}
@@ -1665,9 +1652,7 @@ void drawBag() {
 		glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
 		glVertex2d(mx - 16, my + 16);
 		glEnd();
-		std::stringstream ss;
-		ss << pcsselected;
-		TextRenderer::renderString((int)mx + 4, (int)my + 16, ss.str());
+		TextRenderer::renderString((int)mx + 4, (int)my + 16, itos(pcsselected));
 	}
 	if (player::inventorybox[si][sj] != 0 && sf == 1) {
 		glColor4f(1.0, 1.0, 0.0, 1.0);
@@ -1685,8 +1670,4 @@ void saveScreenshot(int x, int y, int w, int h, string filename){
 	scrBuffer.buffer = unique_ptr<ubyte[]>(new byte[w*h * 3]);
 	glReadPixels(x, y, w, h, GL_BGR , GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
 	Textures::SaveRGBImage(filename, scrBuffer);
-}
-
-void createThumbnail(){
-	saveScreenshot(0, 0, windowwidth, windowheight, "Worlds/" + world::worldname + "/Thumbnail.bmp");
 }

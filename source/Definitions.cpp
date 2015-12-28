@@ -84,11 +84,3 @@ int c_getChunkPtrFromSearch;
 int c_getHeightFromHMap;
 int c_getHeightFromWorldGen;
 #endif
-
-void DebugWarning(string msg){
-	printf("[Debug][Warning]%s\n", msg.c_str());
-}
-
-void DebugError(string msg){
-	printf("[Debug][Error]%s\n",msg.c_str());
-}
