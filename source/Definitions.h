@@ -41,7 +41,11 @@ using std::map;
 //#pragma warning(disable:4365) //忽略不必要的警告：有符号/无符号不匹配
 
 //pthread
+#ifdef _WIN32
 #include <pthread/pthread.h>
+#else
+#include <pthread.h>
+#endif
 //wxWidgets
 #include <wx/wx.h>
 #include <wx/file.h>

@@ -1,7 +1,7 @@
 #ifndef WORLD_H
 #define WORLD_H
 #include "Definitions.h"
-#include "chunkPtrArray.h"
+#include "ChunkPtrArray.h"
 #include "HeightMap.h"
 #include "Chunk.h"
 #include "Hitbox.h"
