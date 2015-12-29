@@ -10,11 +10,31 @@ template<typename T>
 string strWithVar(string str, T var){
 	return str + itos(var);
 }
-int getDotCount(string s) {
-	int ret = 0;
-	for (unsigned int i = 0; i != s.size(); i++)
-		if (s[i] == '.') ret++;
+int stringToInteger(string s)
+{
+	int ret = -1;
+	sscanf(s.c_str(), "%d", &ret);
 	return ret;
+}
+bool isValidIPv4Address(string s)
+{
+	string tmp = s;
+	for (int i = 1; i <= 3; i++)
+	{
+		if (tmp.find('.') == string::npos)
+			return false;
+		int num = stringToInteger(tmp);
+		if (num < 0 || num>255)
+			return false;
+		tmp = tmp.substr(tmp.find('.') + 1);
+	}
+	int num = stringToInteger(tmp);
+	if (num < 0 || num>255)
+		return false;
+	for (int i = 0; i < (int)tmp.size(); i++)
+		if (tmp[i]<'0' || tmp[i]>'9')
+			return false;
+	return true;
 }
 void MultiplayerGameMenu() {
 	gui::Form MainForm;
@@ -53,7 +73,7 @@ void MultiplayerGameMenu() {
 			serveripChanged = true;
 		}
 
-		if (serveriptb->text == "" || !serveripChanged || getDotCount(serveriptb->text) != 3) okbtn->enabled = false; else okbtn->enabled = true;
+		if (!isValidIPv4Address(serveriptb->text)) okbtn->enabled = false; else okbtn->enabled = true;
 		if (okbtn->clicked || backbtn->clicked)f = true;
 		if (runbtn->clicked) wxExecute(L"NEWorldServer.exe");
 		inputstr = "";
@@ -63,10 +83,11 @@ void MultiplayerGameMenu() {
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(MainWindow)) exit(0);
 		Sleep(10);
 	} while (!f);
-	if (serveripChanged) {
+	if (okbtn->clicked) {
 		serverip = serveriptb->text;
 		gamebegin = true;
 		multiplayer = true;
+		world::worldname = "Multiplayer";
 	}
 	MainForm.cleanup();
 }
