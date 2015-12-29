@@ -13,7 +13,11 @@ namespace Network {
 		wxIPV4address addr;
 		addr.Hostname(ip);
 		addr.Service(_port);
-		socketClient->Connect(addr);
+		if (!socketClient->Connect(addr))
+		{
+			DebugError("Cannot connect to the server!");
+			return;
+		}
 
 		threadRun = true;
 		mutex = MutexCreate();
@@ -21,7 +25,6 @@ namespace Network {
 	}
 
 	int getRequestCount() { return reqs.size(); }
-	wxSocketClient* getClientSocket() { return socketClient; }
 
 	ThreadFunc networkThread(void*) {
 		while (updateThreadRun) {
@@ -38,19 +41,19 @@ namespace Network {
 			//if (r._signal == PLAYER_PACKET_SEND && ((PlayerPacket*)r._dataSend)->onlineID != player::onlineID)
 			//	cout << "[ERROR]WTF!!!" << endl;
 			if (r._dataSend != nullptr && r._dataLen != 0) {
-				getClientSocket()->Write((const void*)&r._signal, sizeof(int));
-				getClientSocket()->Write((const void*)r._dataSend, r._dataLen);
+				socketClient->Write((const void*)&r._signal, sizeof(int));
+				socketClient->Write((const void*)r._dataSend, r._dataLen);
 			}
 			else {
-				getClientSocket()->Write((const void*)&r._signal, sizeof(int));
+				socketClient->Write((const void*)&r._signal, sizeof(int));
 			}
 			if (r._callback) { //判断有无回调函数
 				auto callback = r._callback;
 				MutexUnlock(mutex);
 				int len;
-				getClientSocket()->Read(&len, sizeof(int));   //获得数据长度
+				socketClient->Read(&len, sizeof(int));   //获得数据长度
 				char* buffer = new char[len];
-				getClientSocket()->Read(buffer,len);
+				socketClient->Read(buffer,len);
 				if (len > 0) callback(buffer, len); //调用回调函数
 				delete[] buffer;
 				MutexLock(mutex);

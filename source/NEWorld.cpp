@@ -145,7 +145,6 @@ main_menu:
 	fctime = uctime = lastupdate = timer();
 
 	do{
-		double xpos = player::xpos, ypos = player::ypos, zpos = player::zpos, heading = player::heading;
 		MutexUnlock(Mutex);
 		MutexLock(Mutex);
 
@@ -154,7 +153,7 @@ main_menu:
 			ups = upsc;
 			upsc = 0;
 		}
-
+		Sleep(1);
 		Render();
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1){
@@ -182,8 +181,6 @@ main_menu:
 				Network::cleanUp();
 			goto main_menu;
 		}
-		if (!multiplayer&&player::xpos == xpos&&player::ypos == ypos&&player::zpos == zpos&&player::heading == heading)
-			Sleep(15);
 	} while (!glfwWindowShouldClose(MainWindow));
 	world::saveAllChunks();
 	player::save(world::worldname);
@@ -1048,9 +1045,7 @@ void Render() {
 		glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
 	}
 
-	MutexUnlock(Mutex);
-
-	glLoadIdentity();
+		glLoadIdentity();
 	glRotated(plookupdown, 1, 0, 0);
 	glRotated(360.0 - pheading, 0, 1, 0);
 	glEnable(GL_TEXTURE_2D);
@@ -1069,7 +1064,9 @@ void Render() {
 		p.render();
 		glPopMatrix();
 	}
-	
+
+	MutexUnlock(Mutex);
+
 	glBindTexture(GL_TEXTURE_2D, BlockTextures);
 	for (int i = 0; i < renderedChunk; i++) {
 		RenderChunk cr = displayChunks[i];
