@@ -54,6 +54,8 @@ using std::map;
 #include <wx/dir.h>
 #include <wx/stdpaths.h>
 #include <wx/socket.h>
+#include <wx/dynlib.h>
+#include <wx/textfile.h>
 
 //#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG

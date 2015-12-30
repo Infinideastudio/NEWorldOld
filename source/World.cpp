@@ -40,7 +40,7 @@ namespace world{
 		wxMkdir(L"Worlds/" + worldname);
 		wxMkdir(L"Worlds/" + worldname + L"/chunks");
 
-		WorldGen::perlinNoiseInit(3404);
+		WorldGen::Init(3404);
 		cpCachePtr = nullptr;
 		cpCacheID = 0;
 
