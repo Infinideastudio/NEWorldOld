@@ -2,7 +2,7 @@
 #ifndef _DEBUG
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
-#include "stdinclude.h"
+#include "StdInclude.h"
 
 //#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG
@@ -65,6 +65,7 @@ extern int MaxAirJumps;
 extern bool SmoothLighting;
 extern bool NiceGrass;
 extern bool MergeFace;
+extern bool GUIScreenBlur;
 extern int linelength;
 extern int linedist;
 extern float skycolorR;

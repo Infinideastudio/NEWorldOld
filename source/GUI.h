@@ -1,6 +1,7 @@
 #pragma once
 #include "Definitions.h"
 #include "TextRenderer.h"
+#include "Textures.h"
 
 extern int getMouseButton();
 extern int getMouseScroll();

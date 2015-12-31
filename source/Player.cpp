@@ -226,18 +226,4 @@ namespace player{
 		}
 	}
 
-	PlayerPacket convertToPlayerPacket()
-	{
-		PlayerPacket p;
-		p.x = xpos;
-		p.y = ypos + height + heightExt;
-		p.z = zpos;
-		p.heading = heading;
-		p.lookupdown = lookupdown;
-		p.onlineID = onlineID;
-		p.skinID = 0;
-		strcpy_s(p.name, name.c_str());
-		return p;
-	}
-
 }
