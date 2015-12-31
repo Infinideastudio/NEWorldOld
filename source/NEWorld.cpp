@@ -1,4 +1,4 @@
-//==============================   Initialize   ================================//
+﻿//==============================   Initialize   ================================//
 //==============================初始化(包括闪屏)================================//
 
 #include "Definitions.h"
@@ -732,9 +732,6 @@ void updategame(){
 		mxl = mx; myl = my;
 
 		//移动！(生命在于运动)
-		player::xa = 0.0;
-		player::ya = 0.0;
-		player::za = 0.0;
 		if (glfwGetKey(MainWindow, GLFW_KEY_W) || player::gliding()) {
 			if (!WP) {
 				if (Wprstm == 0.0) {
@@ -766,30 +763,23 @@ void updategame(){
 		else player::speed = walkspeed;
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!player::gliding()) {
-			player::xa += sin(player::heading*M_PI / 180.0) * player::speed;
-			player::za += cos(player::heading*M_PI / 180.0) * player::speed;
+			player::xa = sin(player::heading*M_PI / 180.0) * player::speed;
+			player::za = cos(player::heading*M_PI / 180.0) * player::speed;
 			Wprstm = 0.0;
 		}
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!player::gliding()) {
-			player::xa += sin((player::heading - 90)*M_PI / 180.0) * player::speed;
-			player::za += cos((player::heading - 90)*M_PI / 180.0) * player::speed;
+			player::xa = sin((player::heading - 90)*M_PI / 180.0) * player::speed;
+			player::za = cos((player::heading - 90)*M_PI / 180.0) * player::speed;
 			Wprstm = 0.0;
 		}
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS&&!player::gliding()) {
-			player::xa += -sin((player::heading - 90)*M_PI / 180.0) * player::speed;
-			player::za += -cos((player::heading - 90)*M_PI / 180.0) * player::speed;
+			player::xa = -sin((player::heading - 90)*M_PI / 180.0) * player::speed;
+			player::za = -cos((player::heading - 90)*M_PI / 180.0) * player::speed;
 			Wprstm = 0.0;
 		}
 
-		if (player::xa&&!player::gliding()) {
-			player::xa = player::speed*player::xa / sqrt(player::xa*player::xa + player::za*player::za);
-		}
-		if (player::za&&!player::gliding()) {
-			player::za = player::speed*player::za / sqrt(player::xa*player::xa + player::za*player::za);
-		}
-		
 		if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!player::gliding()) {
 			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 				player::xa = -sin(player::heading*M_PI / 180.0) * runspeed * 10;
