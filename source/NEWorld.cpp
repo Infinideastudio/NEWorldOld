@@ -23,7 +23,7 @@ void Render();
 void drawBorder(int x,int y,int z);
 void renderDestroy(float level,int x,int y,int z);
 void drawGUI();
-void drawBagRow(int row, int itemid, int xbase, int ybase, int spac);
+void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha);
 void drawBag();
 void saveScreenshot(int x, int y, int w, int h, string filename);
 void createThumbnail();
@@ -44,7 +44,6 @@ int getMouseButton() { return mb; }
 #include "GUI.h"
 #include "Menus.h"
 #include "Frustum.h"
-#include "Network.h"
 
 struct RenderChunk{
 	RenderChunk(world::chunk* c, double TimeDelta){
@@ -140,12 +139,6 @@ main_menu:
 	Mutex = MutexCreate();
 	MutexLock(Mutex);
 	updateThread = ThreadCreate(&updateThreadFunc, NULL);
-	if (multiplayer) {
-		srand((unsigned int)time(NULL));
-		player::name = "";
-		player::onlineID = rand();
-		Network::init(serverip, port);
-	}
 
 	//初始化游戏状态
 	printf("[Console][Game]");
@@ -191,7 +184,6 @@ main_menu:
 	printf("Game start!\n");
 	
 	//这才是游戏开始!
-	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	mxl = mx; myl = my;
 	printf("[Console][Game]");
@@ -219,7 +211,6 @@ main_menu:
 			gui::clearTransition();
 			gamemenu();
 			if (!gameexit) {
-				glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 				glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 				glDepthFunc(GL_LEQUAL);
 				glEnable(GL_CULL_FACE);
@@ -248,7 +239,6 @@ main_menu:
 			printf("Threads terminated\n");
 			printf("[Console][Game]");
 			printf("Returned to main menu\n");
-			Network::cleanUp();
 			goto main_menu;
 		}
 		
@@ -389,8 +379,6 @@ void setupscreen() {
 	glLoadIdentity();
 	glShadeModel(GL_SMOOTH);
 	glDisable(GL_DITHER);
-	glClearColor(1.0, 1.0, 1.0, 1.0);
-	glClearDepth(1.0);
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_DEPTH_TEST);
@@ -408,7 +396,8 @@ void setupscreen() {
 	glColor4f(0.0, 0.0, 0.0, 1.0);
 	TextRenderer::BuildFont(windowwidth, windowheight);
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
+	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClearDepth(1.0);
 	glGenBuffersARB(1, &world::EmptyBuffer);
 
 }
@@ -958,39 +947,6 @@ void updategame(){
 	player::intyposold = RoundInt(player::ypos);
 	player::intzposold = RoundInt(player::zpos);
 	particles::updateall();
-	//Network
-	static bool firstCall = true;
-	static int timei = 0;
-	static int lastx = player::intxpos, lasty = player::intypos, lastz = player::intzpos;
-	if (multiplayer) {
-		if (timei++ == networkRequestFrequency) {
-			MutexLock(Network::mutex);
-			if (player::intxpos != lastx || player::intypos != lasty || player::intzpos != lastz || firstCall) {
-				PlayerPacket p = player::convertToPlayerPacket();
-				Network::Request req = Network::Request((const char*)&p, sizeof(PlayerPacket), PLAYER_PACKET_SEND);
-				Network::pushRequest(req);
-				lastx = player::intxpos;
-				lasty = player::intypos;
-				lastz = player::intzpos;
-				firstCall = false;
-			}
-			Network::Request req = Network::Request(nullptr, 0, PLAYER_PACKET_REQ, [](void* data, int len) {
-				int playersCount = len / sizeof(PlayerPacket);
-				PlayerPacket* pp = (PlayerPacket*)data;
-				MutexLock(Mutex);
-				players.clear();
-				for (int i = 0; i < playersCount; i++) {
-					players.push_back(OnlinePlayer(*pp));
-					++pp;
-				}
-				MutexUnlock(Mutex);
-			});
-			Network::pushRequest(req);
-			MutexUnlock(Network::mutex);
-			timei = 0;
-		}
-	}
-	//cout << lastupdate << "," << std::setprecision(20) << timer() << endl;
 
 	//	Time_updategame += timer() - Time_updategame;
 
@@ -1077,6 +1033,7 @@ void Render() {
 		if (player::lookupdown + player::ylookspeed > 90.0) player::ylookspeed = 90.0 - player::lookupdown;
 	}
 
+	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -1202,16 +1159,6 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
-
-	for (unsigned int i = 0; i < players.size(); i++) {
-		OnlinePlayer& p = players[i];
-		if (p.getOnlineID() == player::onlineID) continue;
-		glPushMatrix();
-		glTranslated(p.getXPos() - xpos, p.getYPos() - ypos, p.getZPos() - zpos);
-		p.buildRenderIfNeed();
-		p.render();
-		glPopMatrix();
-	}
 	
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
@@ -1264,8 +1211,9 @@ void Render() {
 	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+
 	if (world::getblock(RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)) == blocks::WATER) {
-		glColor4f(1.0, 1.0, 1.0, 1.0);
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		glBindTexture(GL_TEXTURE_2D, BlockTextures);
 		double tcX = Textures::getTexcoordX(blocks::WATER, 1);
 		double tcY = Textures::getTexcoordY(blocks::WATER, 1);
@@ -1555,13 +1503,6 @@ void drawGUI(){
 		ss << world::updatedChunks << " chunks updated";
 		debugText(ss.str()); ss.str("");
 
-		if (multiplayer) {
-			MutexLock(Network::mutex);
-			ss << Network::getRequestCount() << "/" << networkRequestMax << " network requests";
-			debugText(ss.str()); ss.str("");
-			MutexUnlock(Network::mutex);
-		}
-
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		ss << c_getChunkPtrFromCPA << " CPA requests";
 		debugText(ss.str()); ss.str("");
@@ -1706,17 +1647,19 @@ void renderDestroy(float level, int x, int y, int z) {
 	glEnd();
 }
 
-void drawBagRow(int row, int itemid, int xbase, int ybase, int spac) {
+void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha) {
 	//画出背包的一行
 	for (int i = 0; i < 10; i++) {
 		if (i == itemid) glBindTexture(GL_TEXTURE_2D, tex_select);
 		else glBindTexture(GL_TEXTURE_2D, tex_unselect);
+		glColor4f(1.0f, 1.0f, 1.0f, alpha);
 		glBegin(GL_QUADS);
 			glTexCoord2f(0.0, 1.0);glVertex2d(xbase + i * (32 + spac), ybase);
 			glTexCoord2f(0.0, 0.0);glVertex2d(xbase + i * (32 + spac) + 32, ybase);
 			glTexCoord2f(1.0, 0.0);glVertex2d(xbase + i * (32 + spac) + 32, ybase + 32);
 			glTexCoord2f(1.0, 1.0);glVertex2d(xbase + i * (32 + spac), ybase + 32);
 		glEnd();
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		if (player::inventorybox[row][i] != blocks::AIR) {
 			glBindTexture(GL_TEXTURE_2D, BlockTextures);
 			double tcX = Textures::getTexcoordX(player::inventorybox[row][i], 1);
@@ -1748,8 +1691,9 @@ void drawBag() {
 	static block itemselected = blocks::AIR;
 	static block pcsselected = 0;
 	double curtime = timer();
-	float bagAnim = (float)((curtime - bagAnimTimer) / bagAnimDuration);
-	
+	double TimeDelta = curtime - bagAnimTimer;
+	float bagAnim = (float)(1.0 - pow(0.9, TimeDelta*60.0) + pow(0.9, bagAnimDuration*60.0) / bagAnimDuration * TimeDelta);
+
 	if (bagOpened) {
 
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -1772,6 +1716,7 @@ void drawBag() {
 		glDisable(GL_CULL_FACE);
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		sf = 0;
+
 		if (curtime - bagAnimTimer > bagAnimDuration) {
 			for (int i = 0; i < 4; i++) {
 				for (int j = 0; j < 10; j++) {
@@ -1809,7 +1754,7 @@ void drawBag() {
 						if (player::inventorybox[i][j] == blocks::AIR) player::inventorypcs[i][j] = 0;
 					}
 				}
-				drawBagRow(i, (csi == i ? csj : -1), (windowwidth - 392) / 2, windowheight - 152 - 16 + i * 40, 8);
+				drawBagRow(i, (csi == i ? csj : -1), (windowwidth - 392) / 2, windowheight - 152 - 16 + i * 40, 8, 1.0f);
 			}
 		}
 		if (itemselected != blocks::AIR) {
@@ -1836,16 +1781,17 @@ void drawBag() {
 		}
 
 		int xbase = 0, ybase = 0, spac = 0;
+		float alpha = 0.5f + 0.5f*bagAnim;
 		if (curtime - bagAnimTimer <= bagAnimDuration) {
-			xbase = (int)(((windowwidth - 392) / 2)*bagAnim);
-			ybase = (int)((windowheight - 152 - 16 + 120 - (windowheight - 32))*bagAnim + (windowheight - 32));
-			spac = (int)(8.0*bagAnim);
-			drawBagRow(3, -1, xbase, ybase, spac);
-			xbase = (int)(((windowwidth - 392) / 2 - windowwidth)*bagAnim + windowwidth);
-			ybase = (int)((windowheight - 152 - 16 - (windowheight - 32))*bagAnim + (windowheight - 32));
+			xbase = (int)round(((windowwidth - 392) / 2)*bagAnim);
+			ybase = (int)round((windowheight - 152 - 16 + 120 - (windowheight - 32))*bagAnim + (windowheight - 32));
+			spac = (int)round(8 * bagAnim);
+			drawBagRow(3, -1, xbase, ybase, spac, alpha);
+			xbase = (int)round(((windowwidth - 392) / 2 - windowwidth)*bagAnim + windowwidth);
+			ybase = (int)round((windowheight - 152 - 16 - (windowheight - 32))*bagAnim + (windowheight - 32));
 			for (int i = 0; i < 3; i++) {
 				glColor4f(1.0f, 1.0f, 1.0f, bagAnim);
-				drawBagRow(i, -1, xbase, ybase + i*40, spac);
+				drawBagRow(i, -1, xbase, ybase + i*40, spac, alpha);
 			}
 		}
 
@@ -1856,6 +1802,7 @@ void drawBag() {
 		mousebl = mouseb;
 	}
 	else {
+
 		glEnable(GL_TEXTURE_2D);
 		glDisable(GL_CULL_FACE);
 		if (curtime - bagAnimTimer <= bagAnimDuration) {
@@ -1869,19 +1816,20 @@ void drawBag() {
 			glEnd();
 			glEnable(GL_TEXTURE_2D);
 			int xbase = 0, ybase = 0, spac = 0;
-			xbase = (int)(((windowwidth - 392) / 2) - ((windowwidth - 392) / 2)*bagAnim);
-			ybase = (int)((windowheight - 152 - 16 + 120 - (windowheight - 32)) - (windowheight - 152 - 16 + 120 - (windowheight - 32))*bagAnim + (windowheight - 32));
-			spac = (int)(8 - 8 * bagAnim);
+			float alpha = 1.0f - 0.5f*bagAnim;
+			xbase = (int)round(((windowwidth - 392) / 2) - ((windowwidth - 392) / 2)*bagAnim);
+			ybase = (int)round((windowheight - 152 - 16 + 120 - (windowheight - 32)) - (windowheight - 152 - 16 + 120 - (windowheight - 32))*bagAnim + (windowheight - 32));
+			spac = (int)round(8 - 8 * bagAnim);
 			glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-			drawBagRow(3, player::itemInHand, xbase, ybase, spac);
-			xbase = (int)(((windowwidth - 392) / 2 - windowwidth) - ((windowwidth - 392) / 2 - windowwidth)*bagAnim + windowwidth);
-			ybase = (int)((windowheight - 152 - 16 - (windowheight - 32)) - (windowheight - 152 - 16 - (windowheight - 32))*bagAnim + (windowheight - 32));
+			drawBagRow(3, player::itemInHand, xbase, ybase, spac, alpha);
+			xbase = (int)round(((windowwidth - 392) / 2 - windowwidth) - ((windowwidth - 392) / 2 - windowwidth)*bagAnim + windowwidth);
+			ybase = (int)round((windowheight - 152 - 16 - (windowheight - 32)) - (windowheight - 152 - 16 - (windowheight - 32))*bagAnim + (windowheight - 32));
 			for (int i = 0; i < 3; i++) {
 				glColor4f(1.0f, 1.0f, 1.0f, 1.0f - bagAnim);
-				drawBagRow(i, -1, xbase, ybase + i * 40, spac);
+				drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
 			}
 		}
-		else drawBagRow(3, player::itemInHand, 0, windowheight - 32, 0);
+		else drawBagRow(3, player::itemInHand, 0, windowheight - 32, 0, 0.5f);
 	}
 }
 
@@ -1927,6 +1875,7 @@ void loadoptions() {
 	loadoption(options, "SmoothLighting", SmoothLighting);
 	loadoption(options, "FancyGrass", NiceGrass);
 	loadoption(options, "MergeFaceRendering", MergeFace);
+	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 }
 
@@ -1946,6 +1895,7 @@ void saveoptions() {
 	saveoption(fileout, "SmoothLighting", SmoothLighting);
 	saveoption(fileout, "FancyGrass", NiceGrass);
 	saveoption(fileout, "MergeFaceRendering", MergeFace);
+	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 	fileout.close();
 }

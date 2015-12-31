@@ -13,6 +13,7 @@ int MaxAirJumps = 3 - 1;        //空中N段连跳
 bool SmoothLighting = true;     //平滑光照
 bool NiceGrass = true;          //草地材质连接
 bool MergeFace = false;         //合并面渲染
+bool GUIScreenBlur = false;     //GUI背景模糊
 int linelength = 10;            //跟F3的准星有关。。。
 int linedist = 30;              //跟F3的准星有关。。。
 float skycolorR = 0.7f;         //天空颜色Red

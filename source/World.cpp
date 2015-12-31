@@ -44,8 +44,9 @@ namespace world {
 		ss << "md \"Worlds/" << worldname << "/chunks\"";
 		system(ss.str().c_str());
 
-		EmptyChunkPtr = new chunk(0, 0, 0, getChunkID(0, 0, 0));//(chunk*)~0;
-		EmptyChunkPtr->Empty = true;
+		//EmptyChunkPtr = new chunk(0, 0, 0, getChunkID(0, 0, 0));
+		//EmptyChunkPtr->Empty = true;
+		EmptyChunkPtr = (chunk*)~0;
 
 		WorldGen::perlinNoiseInit(3404);
 		cpCachePtr = nullptr;
@@ -58,7 +59,6 @@ namespace world {
 
 		HMap.setSize((viewdistance + 2) * 2 * 16);
 		HMap.create();
-		int lcasize = (viewdistance + 1) * 2;
 		
 	}
 
@@ -541,7 +541,7 @@ namespace world {
 						getbrightness(x, y + 1, z),    //Top face
 						getbrightness(x, y - 1, z) };     //Bottom face
 					maxbrightness = 1;
-					for (int i = 2; i != 6; i++) {
+					for (int i = 2; i <= 6; i++) {
 						if (brts[maxbrightness] < brts[i]) maxbrightness = i;
 					}
 					br = brts[maxbrightness];
@@ -735,10 +735,8 @@ namespace world {
 
 	void sortChunkLoadUnloadList(int xpos, int ypos, int zpos) {
 
-		int cxp, cyp, czp, cx, cy, cz, pl = 0, pu = 0, i, cxt, cyt, czt;
+		int cxp, cyp, czp, cx, cy, cz, pl = 0, pu = 0, i;
 		int xd, yd, zd, distsqr, first, middle, last;
-		int lcasize = (viewdistance + 1) * 2;
-		int lcadelta = viewdistance + 1;
 		//memset(loadedChunkArray, false, lcasize*lcasize*lcasize*sizeof(bool));
 
 		cxp = getchunkpos(xpos);
@@ -779,9 +777,6 @@ namespace world {
 		for (cx = cxp - viewdistance - 1; cx <= cxp + viewdistance; cx++) {
 			for (cy = cyp - viewdistance - 1; cy <= cyp + viewdistance; cy++) {
 				for (cz = czp - viewdistance - 1; cz <= czp + viewdistance; cz++) {
-					cxt = cx - cxp + lcadelta;
-					cyt = cy - cyp + lcadelta;
-					czt = cz - czp + lcadelta;
 					if (chunkOutOfBound(cx, cy, cz)) continue;
 					if (cpArray.getChunkPtr(cx, cy, cz) == nullptr) {
 						xd = cx * 16 + 7 - xpos;
