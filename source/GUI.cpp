@@ -33,29 +33,140 @@ namespace gui{
 	}
 
 	void screenBlur() {
+		/*
 		int w = windowwidth; //Width
 		int h = windowheight; //Height
-		int r = 15; //范围
+		int r = 8; //范围
+		int psw = w + 2 * r, psh = h + 2 * r;
 		ubyte *scr; //屏幕像素缓存
-		ubyte *cps; //列前缀和
-		ubyte *rps; //行前缀和
+		int *cps; //列前缀和
+		int *rps; //行前缀和
+		int* sum;
 		scr = new ubyte[w*h * 3];
-		cps = new ubyte[(w + 2 * r)*(h + 2 * r) * 3];
-		rps = new ubyte[(w + 2 * r)*(h + 2 * r) * 3];
+		cps = new int[psw*psh * 3];
+		rps = new int[psw*psh * 3];
+		sum = new int[w*h * 3];
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
-		
-		for (int x = 0; x < w + 2 * r; x++) {
-			for (int y = 0; y < h + 2 * r; y++) {
-				cps[y*(w + 2 * r) + x] = rps[y*(w + 2 * r) + x] = scr[(y - r)*w + (x - r)];
+		//处理前缀和
+		for (int col = 0; col < 3; col++) {
+			for (int x = 0; x < psw; x++) {
+				for (int y = 0; y < psh; y++) {
+					int scrx = x - r, scry = y - r;
+					if (scrx < 0) scrx = 0; if (scrx >= w) scrx = w - 1;
+					if (scry < 0) scry = 0; if (scry >= h) scry = h - 1;
+					rps[(y*psw + x) * 3 + col] = cps[(y*psw + x) * 3 + col] = scr[(scry*w + scrx) * 3 + col];
+					if (x != 0) rps[(y*psw + x) * 3 + col] += rps[(y*psw + (x - 1)) * 3 + col];
+					if (y != 0) cps[(y*psw + x) * 3 + col] += cps[((y - 1)*psw + x) * 3 + col];
+				}
 			}
 		}
-		//NFY!!!
-
+		//模糊计算
+		int cursum; //当前颜色之和
+		for (int col = 0; col < 3; col++) {
+			cursum = 0;
+			for (int y = 0; y <= 2 * r; y++) cursum += rps[(y*psw + 2 * r) * 3 + col];
+			for (int x = 0; x < w; x++) {
+				int psx = x + r;
+				if (x != 0) {
+					cursum = sum[(x - 1) * 3 + col];
+					cursum -= cps[(2 * r*psw + psx - r - 1) * 3 + col];
+					cursum += cps[(2 * r*psw + psx + r) * 3 + col];
+				}
+				for (int y = 0; y < h; y++) {
+					int psy = y + r;
+					if (y != 0) {
+						cursum -= rps[((psy - r - 1)*psw + psx + r) * 3 + col];
+						if (x != 0) cursum += rps[((psy - r - 1)*psw + psx - r - 1) * 3 + col];
+						cursum += rps[((psy + r)*psw + psx + r) * 3 + col];
+						if (x != 0) cursum -= rps[((psy + r)*psw + psx - r - 1) * 3 + col];
+					}
+					sum[(y*w + x) * 3 + col] = cursum;
+					scr[(y*w + x) * 3 + col] = (ubyte)(cursum / ((2 * r + 1)*(2 * r + 1)));
+				}
+			}
+		}
 		glDrawPixels(w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
+		delete[] scr;
+		delete[] cps;
+		delete[] rps;
+		delete[] sum;
 		glPixelStorei(GL_PACK_ALIGNMENT, 4);
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+		*/
+		static int szl = 0, rl = 0;
+		static float* mat = nullptr;
+		static ubyte *scr; //屏幕像素缓存
+
+		int w = windowwidth; //Width
+		int h = windowheight; //Height
+		int r = 2; //范围
+		int sz = 1;
+		float scale = 2;
+		TextureID bgTex;
+
+		while (sz < w || sz < h) sz *= 2;
+		if (sz != szl) {
+			szl = sz;
+			delete[] scr;
+			scr = new ubyte[sz * sz * 3];
+		}
+
+		if (rl != r) {
+			if (mat != nullptr) delete[] mat;
+			int size = r * 2 + 1;
+			int size2 = size * size;
+			float sum = 0.0f;
+			int index = 0;
+			mat = new float[size2];
+			for (int x = -r; x <= r; x++) {
+				for (int y = -r; y <= r; y++) {
+					float val = 1.0f / (float)(abs(x) + abs(y) + 1);
+					mat[index++] = val;
+					sum += val;
+				}
+			}
+			sum = 1.0f / sum;
+			for (int i = 0; i < size2; i++) mat[i] *= sum;
+		}
+		
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glReadPixels(0, 0, sz, sz, GL_RGB, GL_UNSIGNED_BYTE, scr);
+		//glColorMask(true, true, true, false);
+		
+		glGenTextures(1, &bgTex);
+		glBindTexture(GL_TEXTURE_2D, bgTex);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sz, sz, 0, GL_RGB, GL_UNSIGNED_BYTE, scr);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
+		for (int x = -r; x <= r; x++) {
+			for (int y = -r; y <= r; y++) {
+				float d = mat[(x + r)*(r * 2 + 1) + y + r];
+				glColor4f(1.0f, 1.0f, 1.0f, d);
+				glBegin(GL_QUADS);
+				glTexCoord2f(0.0f, (float)h / sz);
+				glVertex2f(x * scale, y * scale);
+				glTexCoord2f((float)w / sz, (float)h / sz);
+				glVertex2f(w + x * scale, y * scale);
+				glTexCoord2f((float)w / sz, 0.0f);
+				glVertex2f(w + x * scale, h + y * scale);
+				glTexCoord2f(0.0f, 0.0f);
+				glVertex2f(x * scale, h + y * scale);
+				glEnd();
+			}
+		}
+		
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glDeleteTextures(1, &bgTex);
+		glPixelStorei(GL_PACK_ALIGNMENT, 4);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+		//glColorMask(true, true, true, true);
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	}
 
 	void drawBackground() {
@@ -67,6 +178,7 @@ namespace gui{
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);
+		glClearColor(0.0, 0.0, 0.0, 0.0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDepthFunc(GL_LEQUAL);
 		glDisable(GL_CULL_FACE);
@@ -758,15 +870,16 @@ namespace gui{
 
 		double TimeDelta = timer() - transitionTimer;
 		float transitionAnim = (float)(1.0 - pow(0.8, TimeDelta*60.0) + pow(0.8, 0.3*60.0) / 0.3 * TimeDelta);
-
-		glDisable(GL_TEXTURE_2D);
-		glDisable(GL_LINE_SMOOTH);
+		
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
 		glMatrixMode(GL_MODELVIEW);
 		glDepthFunc(GL_ALWAYS);
 		glLoadIdentity();
+		if (GUIScreenBlur) screenBlur();
+		glDisable(GL_TEXTURE_2D);
+		glDisable(GL_LINE_SMOOTH);
 
 		if (TimeDelta <= 0.3 && transitionList != 0) {
 			if (transitionForward) glTranslatef(-transitionAnim * windowwidth, 0.0f, 0.0f);
