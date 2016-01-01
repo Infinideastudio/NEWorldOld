@@ -2,7 +2,7 @@
 #ifndef _DEBUG
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
-#include "stdinclude.h"
+#include "StdInclude.h"
 
 //#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG
@@ -47,12 +47,10 @@ typedef unsigned int(*ThreadFunc_t)(void* param);
 //Global Vars
 const unsigned int VERSION = 37;
 const string MAJOR_VERSION = "Alpha 0.";
-const string MINOR_VERSION = "5.0";
-const string EXT_VERSION = " [Preview]";
+const string MINOR_VERSION = "4.10";
+const string EXT_VERSION = "";
 const int defaultwindowwidth = 852; //默认窗口宽度
 const int defaultwindowheight = 480; //默认窗口高度
-const int networkRequestFrequency = 3; //请求频率
-const int networkRequestMax = 20; //理想最大请求队列长度
 extern float FOVyNormal;
 extern float mousemove;
 extern int viewdistance;
@@ -62,9 +60,10 @@ extern int selectDistance;
 extern float walkspeed;
 extern float runspeed;
 extern int MaxAirJumps;
-extern bool UseCPArray;
 extern bool SmoothLighting;
 extern bool NiceGrass;
+extern bool MergeFace;
+extern bool GUIScreenBlur;
 extern int linelength;
 extern int linedist;
 extern float skycolorR;
@@ -75,21 +74,17 @@ extern float FOVyExt;
 
 extern int windowwidth;
 extern int windowheight;
-extern bool gamebegin, bagOpened;
+extern bool gamebegin, gameexit, bagOpened;
 
-extern TextureID BlockTexture[20];
-extern TextureID BlockTextures;
-extern TextureID guiImage[6];
+extern TextureID BlockTextures, BlockTextures3D;
+extern TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
 extern TextureID DestroyImage[11];
 extern TextureID DefaultSkin;
-
-extern bool multiplayer;
-extern string serverip;
-extern unsigned short port;
 
 extern Mutex_t Mutex;
 extern Thread_t updateThread;
 extern double lastupdate, updateTimer;
+extern double lastframe;
 extern bool updateThreadRun, updateThreadPaused;
 
 extern bool mpclient, mpserver;
@@ -100,12 +95,15 @@ extern bool FirstFrameThisUpdate;
 extern double SpeedupAnimTimer;
 extern double TouchdownAnimTimer;
 extern double screenshotAnimTimer;
+extern double bagAnimTimer;
+extern double bagAnimDuration;
 
 extern int GLVersionMajor, GLVersionMinor, GLVersionRev;
 extern GLFWwindow* MainWindow;
 extern GLFWcursor* MouseCursor;
 extern double mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
+extern double mxdelta, mydelta;
 extern string inputstr;
 extern PFNGLGENBUFFERSARBPROC glGenBuffersARB;
 extern PFNGLBINDBUFFERARBPROC glBindBufferARB;
@@ -122,6 +120,7 @@ extern PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB;
 extern PFNGLGETINFOLOGARBPROC glGetInfoLogARB;
 extern PFNGLDETACHOBJECTARBPROC glDetachObjectARB;
 extern PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
+extern PFNGLTEXIMAGE3DPROC glTexImage3D;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 extern int c_getChunkPtrFromCPA;
@@ -132,14 +131,17 @@ extern int c_getHeightFromWorldGen;
 
 inline string boolstr(bool b){ return b ? "True" : "False"; }
 inline double rnd() { return (double)rand() / (RAND_MAX + 1); }
+#ifdef NEWORLD_USE_WINAPI
 inline double timer(){
 	static LARGE_INTEGER counterFreq;
-	if (counterFreq.QuadPart == 0)QueryPerformanceFrequency(&counterFreq);
+	if (counterFreq.QuadPart == 0) QueryPerformanceFrequency(&counterFreq);
 	LARGE_INTEGER now;
 	QueryPerformanceCounter(&now);
 	return (double)now.QuadPart / counterFreq.QuadPart;
-	//return (float)clock() / CLOCKS_PER_SEC;
 }
+#else
+inline double timer() { return (double)clock() / CLOCKS_PER_SEC; }
+#endif
 
 #ifdef NEWORLD_USE_WINAPI
 inline Mutex_t MutexCreate(){return CreateMutex(NULL, FALSE, "");}
