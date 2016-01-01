@@ -1,7 +1,6 @@
 #pragma once
 #include "Definitions.h"
 #include "Hitbox.h"
-#include "OnlinePlayer.h"
 
 const double g = 9.8;
 const double EDrop = 0.1;
@@ -21,15 +20,11 @@ namespace player{
 	void MoveHitbox(double x, double y, double z);
 	void MoveHitboxToPosition();
 	void Move();
-	void save(string worldn);
-	void load(string worldn);
+	bool save(string worldn);
+	bool load(string worldn);
 	void additem(block itemname);
 
-	PlayerPacket convertToPlayerPacket();
-
-
 	extern Hitbox::AABB playerbox;
-
 	extern double xa, ya, za, xd, yd, zd;
 	extern onlineid onlineID;
 	extern string name;
