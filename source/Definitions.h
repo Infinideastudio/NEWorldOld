@@ -48,11 +48,9 @@ typedef unsigned int(*ThreadFunc_t)(void* param);
 const unsigned int VERSION = 37;
 const string MAJOR_VERSION = "Alpha 0.";
 const string MINOR_VERSION = "4.10";
-const string EXT_VERSION = " [Preview Not Released]";
+const string EXT_VERSION = "";
 const int defaultwindowwidth = 852; //默认窗口宽度
 const int defaultwindowheight = 480; //默认窗口高度
-const int networkRequestFrequency = 2; //请求频率
-const int networkRequestMax = 20; //理想最大请求队列长度
 extern float FOVyNormal;
 extern float mousemove;
 extern int viewdistance;
@@ -82,10 +80,6 @@ extern TextureID BlockTextures, BlockTextures3D;
 extern TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
 extern TextureID DestroyImage[11];
 extern TextureID DefaultSkin;
-
-extern bool multiplayer;
-extern string serverip;
-extern unsigned short port;
 
 extern Mutex_t Mutex;
 extern Thread_t updateThread;

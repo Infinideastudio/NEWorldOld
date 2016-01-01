@@ -363,7 +363,6 @@ private:
 			if (worldnametb.text != "") {
 				world::worldname = worldnametb.text;
 				gamebegin = true;
-				multiplayer = false;
 			}
 			ExitSignal = true;
 		}
