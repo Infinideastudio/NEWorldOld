@@ -76,10 +76,6 @@ namespace player{
 			int num = Hitboxes.size();
 			if (num > 0){
 				for (int i = 0; i < num; i++){
-					ya = Hitbox::MaxMoveOnYclip(playerbox, Hitboxes[i], ya);
-				}
-				Hitbox::Move(playerbox, 0.0, ya, 0.0);
-				for (int i = 0; i < num; i++){
 					xa = Hitbox::MaxMoveOnXclip(playerbox, Hitboxes[i], xa);
 				}
 				Hitbox::Move(playerbox, xa, 0.0, 0.0);
@@ -87,6 +83,10 @@ namespace player{
 					za = Hitbox::MaxMoveOnZclip(playerbox, Hitboxes[i], za);
 				}
 				Hitbox::Move(playerbox, 0.0, 0.0, za);
+				for (int i = 0; i < num; i++) {
+					ya = Hitbox::MaxMoveOnYclip(playerbox, Hitboxes[i], ya);
+				}
+				Hitbox::Move(playerbox, 0.0, ya, 0.0);
 			}
 			if (ya != yal && yal < 0.0) {
 				OnGround = true;
@@ -141,34 +141,55 @@ namespace player{
 		return success;
 	}
 
-	void save(string worldn){
+	bool save(string worldn){
 		uint32 curversion = VERSION;
 		std::stringstream ss;
 		ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
 		std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
-		if (!isave.is_open()) return;
-		isave << curversion << OnGround << Running << AirJumps << lookupdown << heading << xpos << ypos << zpos
-			<< jump << xlookspeed << ylookspeed << FLY << CROSS << canGliding;
+		if (!isave.is_open()) return false;
+		isave.write((char*)&curversion, sizeof(curversion));
+		isave.write((char*)&xpos, sizeof(xpos));
+		isave.write((char*)&ypos, sizeof(ypos));
+		isave.write((char*)&zpos, sizeof(zpos));
+		isave.write((char*)&lookupdown, sizeof(lookupdown));
+		isave.write((char*)&heading, sizeof(heading));
+		isave.write((char*)&jump, sizeof(jump));
+		isave.write((char*)&OnGround, sizeof(OnGround));
+		isave.write((char*)&Running, sizeof(Running));
+		isave.write((char*)&AirJumps, sizeof(AirJumps));
+		isave.write((char*)&FLY, sizeof(FLY));
+		isave.write((char*)&CROSS, sizeof(CROSS));
+		isave.write((char*)&itemInHand, sizeof(itemInHand));
 		isave.write((char*)inventorybox, sizeof(inventorybox));
 		isave.write((char*)inventorypcs, sizeof(inventorypcs));
-		isave << itemInHand;
 		isave.close();
+		return true;
 	}
 
-	void load(string worldn){
+	bool load(string worldn){
 		uint32 targetVersion;
 		std::stringstream ss;
 		ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
 		std::ifstream iload(ss.str().c_str(), std::ios::binary | std::ios::in);
-		if (!iload.is_open()) return;
-		iload >> targetVersion;
-		if (targetVersion != VERSION) return;
-		iload >> OnGround >> Running >> AirJumps >> lookupdown >> heading
-			>> xpos >> ypos >> zpos >> jump >> xlookspeed >> ylookspeed >> FLY >> CROSS >> canGliding;
+		if (!iload.is_open()) return false;
+		iload.read((char*)&targetVersion, sizeof(targetVersion));
+		if (targetVersion != VERSION) return false;
+		iload.read((char*)&xpos, sizeof(xpos));
+		iload.read((char*)&ypos, sizeof(ypos));
+		iload.read((char*)&zpos, sizeof(zpos));
+		iload.read((char*)&lookupdown, sizeof(lookupdown));
+		iload.read((char*)&heading, sizeof(heading));
+		iload.read((char*)&jump, sizeof(jump));
+		iload.read((char*)&OnGround, sizeof(OnGround));
+		iload.read((char*)&Running, sizeof(Running));
+		iload.read((char*)&AirJumps, sizeof(AirJumps));
+		iload.read((char*)&FLY, sizeof(FLY));
+		iload.read((char*)&CROSS, sizeof(CROSS));
+		iload.read((char*)&itemInHand, sizeof(itemInHand));
 		iload.read((char*)inventorybox, sizeof(inventorybox));
 		iload.read((char*)inventorypcs, sizeof(inventorypcs));
-		iload >> itemInHand;
 		iload.close();
+		return true;
 	}
 
 	void additem(block itemname){
@@ -203,20 +224,6 @@ namespace player{
 				}
 			}
 		}
-	}
-
-	PlayerPacket convertToPlayerPacket()
-	{
-		PlayerPacket p;
-		p.x = xpos;
-		p.y = ypos + height + heightExt;
-		p.z = zpos;
-		p.heading = heading;
-		p.lookupdown = lookupdown;
-		p.onlineID = onlineID;
-		p.skinID = 0;
-		strcpy_s(p.name, name.c_str());
-		return p;
 	}
 
 }

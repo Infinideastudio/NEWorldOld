@@ -9,28 +9,35 @@ namespace world{
 	extern brightness BRIGHTNESSMIN;
 	extern brightness skylight;
 	chunkid getChunkID(int x, int y, int z);
+	
 	class chunk{
-
 	private:
+<<<<<<< HEAD
 		bool Modified = false;
 		//block pblocks[4096];
 		//brightness pbrightness[4096];
+=======
+>>>>>>> refs/remotes/origin/0.4.10
 		block* pblocks;
 		brightness* pbrightness;
 
 	public:
-		//ç«Ÿç„¶ä¸€ç›´éƒ½æ²¡æœ‰æ„é€ å‡½æ•°/ææ„å‡½æ•° è¿˜è¦æ‰‹åŠ¨è°ƒç”¨Init...æˆ‘å—ä¸äº†å•¦(â•¯â€µâ–¡â€²)â•¯ï¸µâ”»â”â”»
+		//¾¹È»Ò»Ö±¶¼Ã»ÓĞ¹¹Ôìº¯Êı/Îö¹¹º¯Êı »¹ÒªÊÖ¶¯µ÷ÓÃInit...ÎÒÊÜ²»ÁËÀ²(¨s¨F¡õ¡ä)¨s¦à©ß©¥©ß
 		//2333 --qiaozhanrong
-		chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi), Modified(false) {}
-		chunk(int cxi, int cyi, int czi) : cx(cxi), cy(cyi), cz(czi), id(getChunkID(cxi, cyi, czi)), Modified(false) {}
+		chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi),
+			Modified(false), Empty(false), updated(false), renderBuilt(false), loadAnim(0.0) {
+			memset(vertexes, 0, sizeof(vertexes));
+			memset(vbuffer, 0, sizeof(vbuffer));
+		}
 		int cx, cy, cz;
 		bool Empty = false;
 		bool updated = false;
 		bool renderBuilt = false;
+		bool Modified = false;
 		chunkid id;
 		vtxCount vertexes[3];
 		VBOID vbuffer[3];
-		double loadAnim = 0.0;
+		double loadAnim;
 
 		void create();
 		void destroy();
@@ -38,11 +45,13 @@ namespace world{
 		void Unload();
 		void build();
 		inline string getFileName(){
+			//assert(Empty == false);
 			std::stringstream ss;
-			ss << "Worlds\\" << worldname << "\\chunks\\chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldChunk";
+			ss << "Worlds/" << worldname << "/chunks/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldChunk";
 			return ss.str();
 		}
 		inline bool fileExist(){
+			//assert(Empty == false);
 			std::fstream file;
 			file.open(getFileName().c_str(), std::ios::in);
 			bool ret = file.is_open();
@@ -53,35 +62,35 @@ namespace world{
 		void SaveToFile();
 		void buildRender();
 		void destroyRender();
-
 		inline block getblock(int x, int y, int z) {
-			//è·å–åŒºå—å†…çš„æ–¹å—
-			if (Empty) return blocks::AIR;
-			return pblocks[x * 256 + y * 16 + z];
+			//»ñÈ¡Çø¿éÄÚµÄ·½¿é
+			//assert(Empty == false);
+#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
+			if (pblocks == nullptr) { DebugWarning("chunk.getblock() error: Empty pointer"); return; }
+			if (x>15 || x<0 || y>15 || y<0 || z>15 || z<0) { DebugWarning("chunk.getblock() error: Out of range"); return; }
+#endif
+			return pblocks[(x << 8) + (y << 4) + z];
 		}
 		inline brightness getbrightness(int x, int y, int z){
-			//è·å–åŒºå—å†…çš„äº®åº¦
-			if (Empty)if (cy < 0)return BRIGHTNESSMIN; else return skylight;
-			return pbrightness[x * 256 + y * 16 + z];
+			//»ñÈ¡Çø¿éÄÚµÄÁÁ¶È
+			//assert(Empty == false);
+#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
+			if (pbrightness == nullptr) { DebugWarning("chunk.getbrightness() error: Empty pointer"); return; }
+			if (x>15 || x<0 || y>15 || y<0 || z>15 || z<0) { DebugWarning("chunk.getbrightness() error: Out of range"); return; }
+#endif
+			return pbrightness[(x << 8) + (y << 4) + z];
 		}
 		inline void setblock(int x, int y, int z, block iblock) {
-			//è®¾ç½®æ–¹å—
-			if (Empty){
-				create();
-				build();
-				Empty = false;
-			}
-			pblocks[x * 256 + y * 16 + z] = iblock;
+			//ÉèÖÃ·½¿é
+			//assert(Empty == false);
+			pblocks[(x << 8) + (y << 4) + z] = iblock;
 			Modified = true;
 		}
 		inline void setbrightness(int x, int y, int z, brightness ibrightness){
-			//è®¾ç½®äº®åº¦
-			if (Empty){
-				create();
-				build();
-				Empty = false;
-			}
-			pbrightness[x * 256 + y * 16 + z] = ibrightness;
+			//ÉèÖÃÁÁ¶È
+			//assert(Empty == false);
+			pbrightness[(x << 8) + (y << 4) + z] = ibrightness;
+			Modified = true;
 		}
 
 		Hitbox::AABB getChunkAABB();
