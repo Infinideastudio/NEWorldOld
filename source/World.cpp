@@ -3,23 +3,25 @@
 #include "Renderer.h"
 #include "WorldGen.h"
 
-extern bool UseCPArray;
 extern int viewdistance;
 
-namespace world{
+namespace world {
 	
 	string worldname;
 	brightness skylight = 15;         //Sky light level
 	brightness BRIGHTNESSMAX = 15;    //Maximum brightness
 	brightness BRIGHTNESSMIN = 2;     //Mimimum brightness
 	brightness BRIGHTNESSDEC = 1;     //Brightness decrease
+	chunk* EmptyChunkPtr;
 	unsigned int EmptyBuffer;
+	int MaxChunkLoads = 16;
+	int MaxChunkUnloads = 16;
+	int MaxChunkRenders = 16;
 
 	chunk** chunks;
 	int loadedChunks, chunkArraySize;
 	chunk* cpCachePtr = nullptr;
 	chunkid cpCacheID = 0;
-	bool cpArrayAval;
 	chunkPtrArray cpArray;
 	HeightMap HMap;
 	int cloud[128][128];
@@ -31,34 +33,36 @@ namespace world{
 	pair<chunk*, int> chunkUnloadList[256];
 	vector<unsigned int> vbuffersShouldDelete;
 	int chunkBuildRenders, chunkLoads, chunkUnloads;
-	bool* loadedChunkArray = nullptr; //Accelerate sort
+	//bool* loadedChunkArray = nullptr; //Accelerate sortings
 
 	void Init(){
 		
 		std::stringstream ss;
-		system("mkdir Worlds");
-		ss << "mkdir Worlds\\" << worldname;
+		ss << "md \"Worlds/" << worldname << "\"";
 		system(ss.str().c_str());
 		ss.clear(); ss.str("");
-		ss << "mkdir Worlds\\" << worldname << "\\chunks";
+		ss << "md \"Worlds/" << worldname << "/chunks\"";
 		system(ss.str().c_str());
+
+		//EmptyChunkPtr = new chunk(0, 0, 0, getChunkID(0, 0, 0));
+		//EmptyChunkPtr->Empty = true;
+		EmptyChunkPtr = (chunk*)~0;
 
 		WorldGen::perlinNoiseInit(3404);
 		cpCachePtr = nullptr;
 		cpCacheID = 0;
 
-		if (UseCPArray){
-			cpArray.setSize((viewdistance + 2) * 2);
-			if (!cpArray.create()) DebugWarning("Chunk Pointer Array not avaliable because it couldn't be created.");
+		cpArray.setSize((viewdistance + 2) * 2);
+		if (!cpArray.create()) {
+			DebugError("Chunk Pointer Array not avaliable because it couldn't be created.");
 		}
-		else cpArrayAval = false;
+
 		HMap.setSize((viewdistance + 2) * 2 * 16);
 		HMap.create();
-		int lcasize = (viewdistance + 1) * 2;
-		loadedChunkArray = new bool[lcasize*lcasize*lcasize];
-
+		
 	}
-	pair<int,int> binary_search_chunks(chunk** target, int len, chunkid cid) {
+
+	inline pair<int,int> binary_search_chunks(chunk** target, int len, chunkid cid) {
 		//二分查找,GO!
 		int first = 0, last = len - 1, middle;
 		middle = (first + last) / 2;
@@ -69,8 +73,8 @@ namespace world{
 		}
 		return std::make_pair(first, middle);
 	}
+
 	chunk* AddChunk(int x, int y, int z){
-		
 		chunkid cid;
 		cid = getChunkID(x, y, z);                                                   //Chunk ID
 		pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
@@ -87,7 +91,7 @@ namespace world{
 		chunks[pos.first] = new chunk(x, y, z, cid);
 		cpCacheID = cid;
 		cpCachePtr = chunks[pos.first];
-		if(cpArrayAval)cpArray.AddChunk(chunks[pos.first],x,y,z);
+		cpArray.AddChunk(chunks[pos.first],x,y,z);
 		return chunks[pos.first];
 	}
 
@@ -101,28 +105,9 @@ namespace world{
 			cpCacheID = 0;
 			cpCachePtr = nullptr;
 		}
-		if (cpArrayAval)cpArray.DeleteChunk(x, y, z);
+		cpArray.DeleteChunk(x, y, z);
 		chunks[loadedChunks - 1] = nullptr;
 		ReduceChunkArray(1);
-	}
-
-	chunkid getChunkID(int x, int y, int z){
-		//x = -134217728 ~ 134217727      (28 bits)
-		//y = -128       ~ 127            (8 bits)
-		//z = -134217728 ~ 134217727      (28 bits)
-		if (y == -128) y = 0;
-		if (x == -134217728) x = 0;
-		if (z == -134217728) z = 0;
-		if (y <= 0) y = abs(y) + (1LL << 7);
-		if (x <= 0) x = abs(x) + (1LL << 27);
-		if (z <= 0) z = abs(z) + (1LL << 27);
-		return (chunkid(y) << 56) + (chunkid(x) << 28) + z;
-	}
-
-	bool chunkLoaded(int x, int y, int z){
-		if (chunkOutOfBound(x, y, z))return false;
-		if (getChunkPtr(x, y, z) != nullptr)return true;
-		return false;
 	}
 
 	int getChunkPtrIndex(int x, int y, int z){
@@ -140,29 +125,24 @@ namespace world{
 
 	chunk* getChunkPtr(int x, int y, int z){
 		chunkid cid = getChunkID(x, y, z);
-		if (cpCacheID == cid && cpCachePtr != nullptr){
-			return cpCachePtr;
-		}
-		else{
-			chunk* ret = nullptr;
-			if (cpArrayAval){
-				ret = cpArray.getChunkPtr(x, y, z);
-				if (ret != nullptr){
-					cpCacheID = cid;
-					cpCachePtr = ret;
-					return ret;
-				}
+		if (cpCacheID == cid && cpCachePtr != nullptr) return cpCachePtr;
+		else {
+			chunk* ret = cpArray.getChunkPtr(x, y, z);
+			if (ret != nullptr) {
+				cpCacheID = cid;
+				cpCachePtr = ret;
+				return ret;
 			}
 			if (loadedChunks > 0){
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 				c_getChunkPtrFromSearch++;
 #endif
 				pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
-				if (chunks[pos.second]->id == cid){
+				if (chunks[pos.second]->id == cid) {
 					ret = chunks[pos.second];
 					cpCacheID = cid;
 					cpCachePtr = ret;
-					if (cpArrayAval && cpArray.elementExists(x - cpArray.originX, y - cpArray.originY, z - cpArray.originZ)){
+					if (cpArray.elementExists(x - cpArray.originX, y - cpArray.originY, z - cpArray.originZ)){
 						cpArray.array[(x - cpArray.originX)*cpArray.size2 + (y - cpArray.originY)*cpArray.size + (z - cpArray.originZ)] = chunks[pos.second];
 					}
 					return ret;
@@ -173,23 +153,21 @@ namespace world{
 	}
 
 	void ExpandChunkArray(int cc){
-
 		loadedChunks += cc;
 		if (loadedChunks > chunkArraySize) {
 			if (chunkArraySize < 1024) chunkArraySize = 1024;
 			else chunkArraySize *= 2;
 			while (chunkArraySize < loadedChunks) chunkArraySize *= 2;
-			chunks = (chunk**)realloc(chunks, chunkArraySize * sizeof(chunk*));
-			if (chunks == nullptr && loadedChunks != 0) {
-				printf("[Console][Error]");
-				printf("Chunk Array expanding error.\n");
+			chunk** cp = (chunk**)realloc(chunks, chunkArraySize * sizeof(chunk*));
+			if (cp == nullptr && loadedChunks != 0) {
+				DebugError("Allocate memory failed!");
 				saveAllChunks();
 				destroyAllChunks();
 				glfwTerminate();
 				exit(0);
 			}
+			chunks = cp;
 		}
-
 	}
 
 	void ReduceChunkArray(int cc){
@@ -197,7 +175,7 @@ namespace world{
 	}
 
 	void renderblock(int x, int y, int z, chunk* chunkptr) {
-		
+
 		double colors, color1, color2, color3, color4, tcx, tcy, size, EPS = 0.0;
 		int cx = chunkptr->cx, cy = chunkptr->cy, cz = chunkptr->cz;
 		int gx = cx * 16 + x, gy = cy * 16 + y, gz = cz * 16 + z;
@@ -219,7 +197,7 @@ namespace world{
 
 		size = 1 / 8.0f - EPS;
 		
-		if (blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz + 1, blocks::ROCK, chunkptr) == blocks::GRASS) {
+		if (NiceGrass && blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz + 1, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -263,7 +241,7 @@ namespace world{
 
 		}
 
-		if (blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz - 1, blocks::ROCK, chunkptr) == blocks::GRASS) {
+		if (NiceGrass && blk[0] == blocks::GRASS && getblock(gx, gy - 1, gz - 1, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -307,7 +285,7 @@ namespace world{
 
 		}
 
-		if (blk[0] == blocks::GRASS && getblock(gx + 1, gy - 1, gz, blocks::ROCK, chunkptr) == blocks::GRASS) {
+		if (NiceGrass && blk[0] == blocks::GRASS && getblock(gx + 1, gy - 1, gz, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -315,6 +293,7 @@ namespace world{
 			tcx = Textures::getTexcoordX(blk[0], 2) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 2) + EPS;
 		}
+
 		// Right face
 		if (!(BlockInfo(blk[3]).isOpaque() || (blk[3] == blk[0] && !BlockInfo(blk[0]).isOpaque())) || blk[0] == blocks::LEAF) {
 
@@ -350,7 +329,7 @@ namespace world{
 
 		}
 
-		if (blk[0] == blocks::GRASS && getblock(gx - 1, gy - 1, gz, blocks::ROCK, chunkptr) == blocks::GRASS) {
+		if (NiceGrass && blk[0] == blocks::GRASS && getblock(gx - 1, gy - 1, gz, blocks::ROCK, chunkptr) == blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
 		}
@@ -358,6 +337,7 @@ namespace world{
 			tcx = Textures::getTexcoordX(blk[0], 2) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 2) + EPS;
 		}
+
 		// Left Face
 		if (!(BlockInfo(blk[4]).isOpaque() || (blk[4] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) || blk[0] == blocks::LEAF) {
 
@@ -490,7 +470,7 @@ namespace world{
 		for (a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5); a++){
 			for (b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5); b++){
 				for (c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5); c++){
-					if (getblock(a, b, c) == blocks::WATER) {
+					if (getblock(a, b, c) == blocks::WATER || getblock(a, b, c) == blocks::LAVA) {
 						blockbox.xmin = a - 0.5;
 						blockbox.xmax = a + 0.5;
 						blockbox.ymin = b - 0.5;
@@ -522,7 +502,11 @@ namespace world{
 		if (chunkOutOfBound(cx, cy, cz) == false){
 
 			chunk* cptr = getChunkPtr(cx, cy, cz);
-			if (cptr!=nullptr){
+			if (cptr != nullptr) {
+				if (cptr == EmptyChunkPtr) {
+					cptr = world::AddChunk(cx, cy, cz);
+					cptr->Load(); cptr->Empty = false;
+				}
 				brightness oldbrightness = cptr->getbrightness(bx, by, bz);
 				bool skylighted = true;
 				int yi, cyi;
@@ -557,18 +541,18 @@ namespace world{
 						getbrightness(x, y + 1, z),    //Top face
 						getbrightness(x, y - 1, z) };     //Bottom face
 					maxbrightness = 1;
-					for (int i = 2; i != 6; i++){
+					for (int i = 2; i <= 6; i++) {
 						if (brts[maxbrightness] < brts[i]) maxbrightness = i;
 					}
 					br = brts[maxbrightness];
-					if (blks[maxbrightness] == blocks::WATER){
+					if (blks[maxbrightness] == blocks::WATER) {
 						if (br - 2 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br -= 2;
 					}
-					else{
+					else {
 						if (br - 1 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br--;
 					}
 
-					if (skylighted){
+					if (skylighted) {
 						if (br < skylight) br = skylight;
 					}
 					if (br < BRIGHTNESSMIN) br = BRIGHTNESSMIN;
@@ -576,7 +560,7 @@ namespace world{
 					cptr->setbrightness(bx, by, bz, br);
 
 				}
-				else{
+				else {
 
 					//Opaque block
 					cptr->setbrightness(bx, by, bz, 0);
@@ -585,7 +569,6 @@ namespace world{
 					}
 
 				}
-
 
 				if (oldbrightness != cptr->getbrightness(bx, by, bz)) updated = true;
 
@@ -605,7 +588,6 @@ namespace world{
 				if (by == 0 && cy>-worldheight) setChunkUpdated(cx, cy - 1, cz, true);
 				if (bz == 15 && cz<worldsize - 1) setChunkUpdated(cx, cy, cz + 1, true);
 				if (bz == 0 && cz>-worldsize) setChunkUpdated(cx, cy, cz - 1, true);
-
 			}
 		}
 	}
@@ -621,6 +603,7 @@ namespace world{
 			return cptr->getblock(bx, by, bz);
 		}
 		chunk* ci = getChunkPtr(cx, cy, cz);
+		if (ci == EmptyChunkPtr) return blocks::AIR;
 		if (ci != nullptr) return ci->getblock(bx, by, bz);
 		return mask;
 	}
@@ -636,6 +619,7 @@ namespace world{
 			return cptr->getbrightness(bx, by, bz);
 		}
 		chunk* ci = getChunkPtr(cx, cy, cz);
+		if (ci == EmptyChunkPtr) if (cy < 0) return BRIGHTNESSMIN; else return skylight;
 		if (ci != nullptr)return ci->getbrightness(bx, by, bz);
 		return skylight;
 	}
@@ -655,6 +639,12 @@ namespace world{
 
 		if (!chunkOutOfBound(cx, cy, cz)){
 			chunk* i = getChunkPtr(cx, cy, cz);
+			if (i == EmptyChunkPtr) {
+				chunk* cp = AddChunk(cx, cy, cz);
+				cp->Load();
+				cp->Empty = false;
+				i = cp;
+			}
 			if (i != nullptr){
 				i->setblock(bx, by, bz, Blockname);
 				updateblock(x, y, z, true);
@@ -678,40 +668,34 @@ namespace world{
 
 		if (!chunkOutOfBound(cx, cy, cz)){
 			chunk* i = getChunkPtr(cx, cy, cz);
+			if (i == EmptyChunkPtr) {
+				chunk* cp = AddChunk(cx, cy, cz);
+				cp->Load();
+				cp->Empty = false;
+				i = cp;
+			}
 			if (i != nullptr){
 				i->setbrightness(bx, by, bz, Brightness);
 			}
 		}
 
 	}
-
-	void putblock(int x, int y, int z, block Blockname){
-
-		//这个void和上面那个是一样的，只是本人的完美主义（说白了就是强迫症）驱使我再写一遍= =
-		//是不是感觉这句话有些眼熟。。。
-		setblock(x, y, z, Blockname);
-
+	
+	bool chunkUpdated(int x, int y, int z) {
+		chunk* i = getChunkPtr(x, y, z);
+		if (i == EmptyChunkPtr) return false;
+		return i->updated;
 	}
 
-	void pickblock(int x, int y, int z){
-
-		//这个void根本没有存在的必要，其功能等于setblock(x,y,z,0)或putblock(x,y,z,0),但是本人的完...
-		//是不是感觉这句话还是有些眼熟。。。
-		setblock(x, y, z, blocks::AIR);
-
-	}
-
-	//为什么之前那些话都有些眼熟呢？？？
-	//原来是因为这里的set/put/pickblock三个Sub是世界范围的，而之前的是区块范围的。。。
-
-	bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist){
-
-		//检测给出的chunk坐标是否在渲染范围内
-		if (x<px - dist || x>px + dist - 1 || y<py - dist || y>py + dist - 1 || z<pz - dist || z>pz + dist - 1){
-			return false;
+	void setChunkUpdated(int x, int y, int z, bool value) {
+		chunk* i = getChunkPtr(x, y, z);
+		if (i == EmptyChunkPtr) {
+			chunk* cp = AddChunk(x, y, z);
+			cp->Load();
+			cp->Empty = false;
+			i = cp;
 		}
-		return true;
-
+		if (i != nullptr) i->updated = value;
 	}
 
 	void sortChunkBuildRenderList(int xpos, int ypos, int zpos) {
@@ -732,9 +716,9 @@ namespace world{
 				yd = cy * 16 + 7 - ypos;
 				zd = cz * 16 + 7 - zpos;
 				distsqr = xd*xd + yd*yd + zd*zd;
-				for (int i = 0; i < 4; i++) {
+				for (int i = 0; i < MaxChunkRenders; i++) {
 					if (distsqr < chunkBuildRenderList[i][0] || p <= i) {
-						for (int j = 3; j >= i + 1; j--) {
+						for (int j = MaxChunkRenders - 1; j >= i + 1; j--) {
 							chunkBuildRenderList[j][0] = chunkBuildRenderList[j - 1][0];
 							chunkBuildRenderList[j][1] = chunkBuildRenderList[j - 1][1];
 						}
@@ -743,7 +727,7 @@ namespace world{
 						break;
 					}
 				}
-				if (p < 4) p++;
+				if (p < MaxChunkRenders) p++;
 			}
 		}
 		chunkBuildRenders = p;
@@ -751,11 +735,9 @@ namespace world{
 
 	void sortChunkLoadUnloadList(int xpos, int ypos, int zpos) {
 
-		int cxp, cyp, czp, cx, cy, cz, pl = 0, pu = 0, i, cxt, cyt, czt;
+		int cxp, cyp, czp, cx, cy, cz, pl = 0, pu = 0, i;
 		int xd, yd, zd, distsqr, first, middle, last;
-		int lcasize = (viewdistance + 1) * 2;
-		int lcadelta = viewdistance + 1;
-		memset(loadedChunkArray, false, lcasize*lcasize*lcasize*sizeof(bool));
+		//memset(loadedChunkArray, false, lcasize*lcasize*lcasize*sizeof(bool));
 
 		cxp = getchunkpos(xpos);
 		cyp = getchunkpos(ypos);
@@ -777,23 +759,17 @@ namespace world{
 					if (distsqr > chunkUnloadList[middle].second)last = middle - 1;
 					else first = middle + 1;
 				}
-				if (first > pl || first >= 4) continue;
+				if (first > pl || first >= MaxChunkUnloads) continue;
 				i = first;
 
-				for (int j = 3; j > i; j--) {
+				for (int j = MaxChunkUnloads - 1; j > i; j--) {
 					chunkUnloadList[j].first = chunkUnloadList[j - 1].first;
 					chunkUnloadList[j].second = chunkUnloadList[j - 1].second;
 				}
 				chunkUnloadList[i].first = chunks[ci];
 				chunkUnloadList[i].second = distsqr;
 
-				if (pl < 4) pl++;
-			}
-			else {
-				cxt = cx - cxp + lcadelta;
-				cyt = cy - cyp + lcadelta;
-				czt = cz - czp + lcadelta;
-				loadedChunkArray[cxt*lcasize*lcasize + cyt*lcasize + czt] = true;
+				if (pl < MaxChunkUnloads) pl++;
 			}
 		}
 		chunkUnloads = pl;
@@ -801,37 +777,33 @@ namespace world{
 		for (cx = cxp - viewdistance - 1; cx <= cxp + viewdistance; cx++) {
 			for (cy = cyp - viewdistance - 1; cy <= cyp + viewdistance; cy++) {
 				for (cz = czp - viewdistance - 1; cz <= czp + viewdistance; cz++) {
-					cxt = cx - cxp + lcadelta;
-					cyt = cy - cyp + lcadelta;
-					czt = cz - czp + lcadelta;
-					if (!chunkOutOfBound(cx, cy, cz)) {
-						if (!loadedChunkArray[cxt*lcasize*lcasize + cyt*lcasize + czt]) {
-							xd = cx * 16 + 7 - xpos;
-							yd = cy * 16 + 7 - ypos;
-							zd = cz * 16 + 7 - zpos;
-							distsqr = xd *xd + yd *yd + zd *zd;
+					if (chunkOutOfBound(cx, cy, cz)) continue;
+					if (cpArray.getChunkPtr(cx, cy, cz) == nullptr) {
+						xd = cx * 16 + 7 - xpos;
+						yd = cy * 16 + 7 - ypos;
+						zd = cz * 16 + 7 - zpos;
+						distsqr = xd *xd + yd *yd + zd *zd;
 
-							first = 0; last = pu - 1;
-							while (first <= last) {
-								middle = (first + last) / 2;
-								if (distsqr < chunkLoadList[middle][0])last = middle - 1;
-								else first = middle + 1;
-							}
-							if (first > pu || first >= 4)  continue;
-							i = first;
-
-							for (int j = 3; j > i; j--) {
-								chunkLoadList[j][0] = chunkLoadList[j - 1][0];
-								chunkLoadList[j][1] = chunkLoadList[j - 1][1];
-								chunkLoadList[j][2] = chunkLoadList[j - 1][2];
-								chunkLoadList[j][3] = chunkLoadList[j - 1][3];
-							}
-							chunkLoadList[i][0] = distsqr;
-							chunkLoadList[i][1] = cx;
-							chunkLoadList[i][2] = cy;
-							chunkLoadList[i][3] = cz;
-							if (pu < 4) pu++;
+						first = 0; last = pu - 1;
+						while (first <= last) {
+							middle = (first + last) / 2;
+							if (distsqr < chunkLoadList[middle][0])last = middle - 1;
+							else first = middle + 1;
 						}
+						if (first > pu || first >= MaxChunkLoads)  continue;
+						i = first;
+
+						for (int j = MaxChunkLoads - 1; j > i; j--) {
+							chunkLoadList[j][0] = chunkLoadList[j - 1][0];
+							chunkLoadList[j][1] = chunkLoadList[j - 1][1];
+							chunkLoadList[j][2] = chunkLoadList[j - 1][2];
+							chunkLoadList[j][3] = chunkLoadList[j - 1][3];
+						}
+						chunkLoadList[i][0] = distsqr;
+						chunkLoadList[i][1] = cx;
+						chunkLoadList[i][2] = cy;
+						chunkLoadList[i][3] = cz;
+						if (pu < MaxChunkLoads) pu++;
 					}
 				}
 			}
@@ -860,7 +832,7 @@ namespace world{
 		chunks = nullptr;
 		loadedChunks = 0;
 		chunkArraySize = 0;
-		if(cpArrayAval)cpArray.destroy();
+		cpArray.destroy();
 		HMap.destroy();
 
 		rebuiltChunks = 0; rebuiltChunksCount = 0;
@@ -869,9 +841,7 @@ namespace world{
 		memset(chunkBuildRenderList, 0, 256 * 2 * sizeof(int));
 		memset(chunkLoadList, 0, 256 * 4 * sizeof(int));
 		chunkBuildRenders = 0; chunkLoads = 0; chunkUnloads = 0;
-		
-		delete[] loadedChunkArray;
-		loadedChunkArray = nullptr;
+
 	}
 
 	void buildtree(int x, int y, int z){

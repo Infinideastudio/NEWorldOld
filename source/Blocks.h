@@ -5,7 +5,7 @@ namespace blocks{  //方块ID
 	enum{
 		AIR, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
-		EOE
+		NULLBLOCK
 	};
 	const block NONEMPTY = 1;
 
@@ -21,7 +21,6 @@ namespace blocks{  //方块ID
 	public:
 		SingleBlock(string blockName, bool solid, bool opaque, bool translucent, bool _canexplode) :
 			name(blockName), Solid(solid), Opaque(opaque), Translucent(translucent), canexplode(_canexplode) {};
-
 		//获得方块名称
 		inline string getBlockName()const{ return name; }
 		//是否是固体
@@ -31,29 +30,30 @@ namespace blocks{  //方块ID
 		//是否半透明
 		inline bool isTranslucent()const{ return Translucent; }
 		//是否可以爆炸
-		inline bool canExplode()const { return canexplode; }
+		inline bool canExplode()const{ return canexplode; }
 	};
 
-	const SingleBlock blockData[EOE] = {
-		//		    方块名称		  固体	 不透明	  半透明  可以爆炸
-		SingleBlock("Air"		, false	, false	, false , false),
-		SingleBlock("Rock"		, true	, true	, false , false),
-		SingleBlock("Grass"		, true	, true	, false , false),
-		SingleBlock("Dirt"		, true	, true	, false , false),
-		SingleBlock("Stone"		, true	, true	, false , false),
-		SingleBlock("Plank"		, true	, true	, false , false),
-		SingleBlock("Wood"		, true	, true	, false , false),
-		SingleBlock("Bedrock"	, true	, true	, false , false),
-		SingleBlock("Leaf"		, true	, false	, false	, false),
-		SingleBlock("Glass"		, true	, false	, false	, false),
-		SingleBlock("Water"		, false	, false	, true	, false),
-		SingleBlock("Lava"		, false	, false	, true	, false),
-		SingleBlock("GlowStone"	, true	, true	, false	, false),
-		SingleBlock("Sand"		, true	, true	, false	, false),
-		SingleBlock("Ice"		, true	, false	, true	, false),
-		SingleBlock("cement"	, true	, true	, false , false),
-		SingleBlock("Coal Block", true	, true	, false , false),
-		SingleBlock("Iron Block", true	, true	, false , false)
+	const SingleBlock blockData[NULLBLOCK + 1] = {
+		//		    方块名称 			 固体	 不透明	  半透明  可以爆炸
+		SingleBlock("Air"			, false	, false	, false , false),
+		SingleBlock("Rock"			, true	, true	, false , false),
+		SingleBlock("Grass"			, true	, true	, false , false),
+		SingleBlock("Dirt"			, true	, true	, false , false),
+		SingleBlock("Stone"			, true	, true	, false , false),
+		SingleBlock("Plank"			, true	, true	, false , false),
+		SingleBlock("Wood"			, true	, true	, false , false),
+		SingleBlock("Bedrock"		, true	, true	, false , false),
+		SingleBlock("Leaf"			, true	, false	, false	, false),
+		SingleBlock("Glass"			, true	, false	, false	, false),
+		SingleBlock("Water"			, false	, false	, true	, false),
+		SingleBlock("Lava"			, false	, false	, true	, false),
+		SingleBlock("GlowStone"		, true	, true	, false	, false),
+		SingleBlock("Sand"			, true	, true	, false	, false),
+		SingleBlock("Cement"	    , true	, true	, false , false),
+		SingleBlock("Ice"		    , true	, false	, true	, false),
+		SingleBlock("Coal Block"    , true	, true	, false , false),
+		SingleBlock("Iron Block"    , true	, true	, false , false),
+		SingleBlock("Null Block"	, true  , true  , false , false)
 	};
 }
-#define BlockInfo(blockID) blocks::blockData[blockID]
+#define BlockInfo(blockID) blocks::blockData[blockID>=blocks::NULLBLOCK?blocks::NULLBLOCK:blockID]
