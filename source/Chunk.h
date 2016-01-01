@@ -12,12 +12,6 @@ namespace world{
 	
 	class chunk{
 	private:
-<<<<<<< HEAD
-		bool Modified = false;
-		//block pblocks[4096];
-		//brightness pbrightness[4096];
-=======
->>>>>>> refs/remotes/origin/0.4.10
 		block* pblocks;
 		brightness* pbrightness;
 
