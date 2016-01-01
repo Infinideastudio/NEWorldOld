@@ -11,11 +11,8 @@ namespace ChunkRenderer {
 namespace world{
 
 	void chunk::create(){
-<<<<<<< HEAD
-=======
 		//assert(Empty == false);
 
->>>>>>> refs/remotes/origin/0.4.10
 		pblocks = new block[4096];
 		pbrightness = new brightness[4096];
 		//memset(pblocks, 0, sizeof(pblocks));
