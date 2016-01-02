@@ -1,5 +1,11 @@
 #pragma once
 #include "Definitions.h"
+#include "TextRenderer.h"
+#include "Textures.h"
+
+extern int getMouseButton();
+extern int getMouseScroll();
+
 //图形界面系统。。。正宗OOP！！！
 namespace gui{
 	extern float linewidth;
@@ -12,114 +18,132 @@ namespace gui{
 	extern float BgG;
 	extern float BgB;
 	extern float BgA;
-	class UIView;
-	class UIControl{
+
+	extern unsigned int transitionList;
+	extern unsigned int lastdisplaylist;
+	extern double transitionTimer;
+	extern bool transitionForward;
+	
+	void clearTransition();
+	void screenBlur();
+	void drawBackground();
+
+	class Form;
+	class controls{
 	public:
 		//控件基类，只要是控件都得继承这个
-		virtual ~UIControl() {};
-		int id, Left, Bottom, Height, Width;
-		UIView* parent;
-		virtual void update() {};  //莫非这个就是传说中的虚函数？
-		virtual void render() {};  //貌似是的！
-		virtual void destroy() {};
-		
-		virtual void UISetRect(int xi, int xa, int yi, int ya){
-			Left = xi;
-			Width = xa - Left;
-			Bottom = yi;
-			Height = ya - Bottom;
-		}
-
+		virtual ~controls() {}
+		int id, xmin, ymin, xmax, ymax;
+		Form* parent;
+		virtual void update() {} //莫非这个就是传说中的虚函数？
+		virtual void render() {} //貌似是的！
+		virtual void destroy() {}
+		void updatepos();
+		void resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
+	private:
+		int _xmin_r, _ymin_r, _xmax_r, _ymax_r;
+		double _xmin_b, _ymin_b, _xmax_b, _ymax_b;
 	};
 
-	class UILabel:public UIControl{
+	class label:public controls {
 	public:
 		//标签
-		string  text;
-		bool mouseon = false;
-		bool focused = false;
-
+		string text;
+		bool mouseon = false, focused = false;
+		label() {};
+		label(string t,
+			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
 		void render();
-		//void settext(string s)
-		UILabel(string t);
 	};
 
-	class UIButton :public UIControl{
+	class button :public controls {
 	public:
 		//按钮
 		string text;
-		bool mouseon = false, focused = false, pressed = false, clicked = false, enabled = true;
+		bool mouseon = false, focused = false, pressed = false, clicked = false, enabled = false;
+		button() {};
+		button(string t,
+			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
 		void render();
-		//void settext(string s)
-		UIButton(string t);
 	};
 
-	class UITrackBar :public UIControl{
+	class trackbar :public controls {
 	public:
 		//该控件的中文名我不造
 		string text;
 		int barwidth;
 		int barpos;
-		bool mouseon = false, focused = false, pressed = false, enabled = true;
-
+		bool mouseon = false, focused = false, pressed = false, enabled = false;
+		trackbar() {};
+		trackbar(string t, int w, int s,
+			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
 		void render();
-		void settext(string s);
-		UITrackBar(string t, int w, int p);
 	};
 
-	class UITextBox :public UIControl{
+	class textbox :public controls {
 	public:
 		//文本框
 		string text;
-		bool mouseon = false, focused = false, pressed = false, enabled = true;
-
+		bool mouseon = false, focused = false, pressed = false, enabled = false;
+		textbox() {};
+		textbox(string t,
+			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
 		void render();
-		UITextBox(string t);
 	};
-	class UIVerticalScroll :public UIControl{
+
+	class vscroll :public controls {
 	public:
 		//垂直滚动条
 		int barheight, barpos;
-		bool mouseon = false, focused = false, pressed = false, enabled = true;
+		bool mouseon = false, focused = false, pressed = false, enabled = false;
 		bool defaultv, msup, msdown, psup, psdown;
-
+		vscroll() {};
+		vscroll(int h, int s,
+			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
 		void render();
-		UIVerticalScroll(int h, int p);
+	};
+
+	class imagebox :public controls {
+	public:
+		//图片框
+		float txmin, txmax, tymin, tymax;
+		TextureID imageid;
+		imagebox() {};
+		imagebox(float _txmin, float _txmax, float _tymin, float _tymax, TextureID iid,
+			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
+		void update();
+		void render();
 	};
 
 	// 窗体 / 容器
-	class UIView :public UIControl{
+	class Form{
 	public:
-		vector<UIControl*> children;
+		vector<controls*> children;
 		bool tabp, shiftp, enterp, enterpl;
 		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, backspacep, backspacepl, updated;
-
 		int maxid, currentid, focusid, childrenCount, mx, my, mw, mb, mxl, myl, mwl, mbl;
-		
+		unsigned int displaylist;
+		bool ExitSignal, MouseOnTextbox;
 		void Init();
-		virtual void OnResize(){};
-		virtual void OnUpdate(){};
-		virtual void OnRender(){};
-		void UISetRect(int xi, int xa, int yi, int ya);
+		void registerControl(controls* c);
+		void registerControls(int count, controls* c, ...);
 		void update();
 		void render();
-		void mousedata(int x, int y, int w, int b);
-		UILabel* createlabel(string t);
-		UIButton* createbutton(string t);
-		UITrackBar* createtrackbar(string t, int w, int p);
-		UITextBox* createtextbox(string t);
-		UIVerticalScroll* createvscroll(int h, int p);
-		UIControl* getControlByID(int cid);
+		controls* getControlByID(int cid);
 		void cleanup();
-		void RegisterUI(UIControl* Control);
+		virtual void onLoad() {}
+		virtual void onUpdate() {}
+		virtual void Background() { drawBackground(); }
+		virtual void onRender() {}
+		virtual void onLeaving() {}
+		virtual void onLeave() {}
+		Form();
+		void start();
+		~Form();
 	};
-	
-	void UIEnter(UIView* View);
-	void UIExit();
-
 }

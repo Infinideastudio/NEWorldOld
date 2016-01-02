@@ -70,88 +70,98 @@ namespace Textures {
 	}
 
 	double getTexcoordX(item item, ubyte side) {
-		//return ((getTextureIndex(iblock, side) - 1) % (BLOCKTEXTURE_SIZE / BLOCKTEXTURE_UNITSIZE))*(BLOCKTEXTURE_UNITSIZE / (double)BLOCKTEXTURE_SIZE);
-		if (isBlock(item)) //Èç¹ûÎª·½¿é
+		if (isBlock(item)) //å¦‚æœä¸ºæ–¹å—
 			return ((getTextureIndex(item, side) - 1) & 7) / 8.0;
 		else
 			return 0;
 	}
 
 	double getTexcoordY(item item, ubyte side) {
-		//return (int((getTextureIndex(iblock, side) - 1) / (BLOCKTEXTURE_SIZE / (double)BLOCKTEXTURE_UNITSIZE)))*(BLOCKTEXTURE_UNITSIZE / (double)BLOCKTEXTURE_SIZE);
-		if (isBlock(item)) //Èç¹ûÎª·½¿é
+		if (isBlock(item)) //å¦‚æœä¸ºæ–¹å—
 			return ((getTextureIndex(item, side) - 1) >> 3) / 8.0;
 		else
 			return 0;
 	}
 
 	void LoadRGBImage(TEXTURE_RGB& tex, string Filename) {
-		unsigned char col[3];
 		unsigned int ind = 0;
-		TEXTURE_RGB& bitmap = tex; //·µ»ØÎ»Í¼
+		TEXTURE_RGB& bitmap = tex; //è¿”å›ä½å›¾
 		bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
-		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //Î»Í¼ÎÄ¼ş£¨¶ş½øÖÆ£©
+		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //ä½å›¾æ–‡ä»¶ï¼ˆäºŒè¿›åˆ¶ï¼‰
 		if (!bmpfile.is_open()) {
 			printf("[console][Warning] Cannot load %s\n", Filename.c_str());
 			return;
 		}
-		BITMAPINFOHEADER bih; //¸÷ÖÖ¹ØÓÚÎ»Í¼µÄ²ÎÊı
-		BITMAPFILEHEADER bfh; //¸÷ÖÖ¹ØÓÚÎÄ¼şµÄ²ÎÊı
-							  //¿ªÊ¼¶ÁÈ¡
+		BITMAPINFOHEADER bih; //å„ç§å…³äºä½å›¾çš„å‚æ•°
+		BITMAPFILEHEADER bfh; //å„ç§å…³äºæ–‡ä»¶çš„å‚æ•°
+							  //å¼€å§‹è¯»å–
 		bmpfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER));
 		bmpfile.read((char*)&bih, sizeof(BITMAPINFOHEADER));
 		bitmap.sizeX = bih.biWidth;
 		bitmap.sizeY = bih.biHeight;
 		bitmap.buffer = unique_ptr<ubyte[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 3]);
-		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
-			//°ÑBGR¸ñÊ½×ª»»ÎªRGB¸ñÊ½
-			bmpfile.read((char*)col, 3);
-			bitmap.buffer[ind++] = col[2]; //R
-			bitmap.buffer[ind++] = col[1]; //G
-			bitmap.buffer[ind++] = col[0]; //B
-		}
+		//Â¶ÃÃˆÂ¡ÃŠÃ½Â¾Ã
+		bmpfile.read((char*)bitmap.buffer.get(), bitmap.sizeX*bitmap.sizeY * 3);
 		bmpfile.close();
+		//ÂºÃÂ²Â¢Ã“Ã«Ã—ÂªÂ»Â»
+		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
+			//Â°Ã‘BGRÂ¸Ã±ÃŠÂ½Ã—ÂªÂ»Â»ÃÂªRGBÂ¸Ã±ÃŠÂ½
+			unsigned char t = bitmap.buffer[ind];
+			bitmap.buffer[ind] = bitmap.buffer[ind + 2];
+			bitmap.buffer[ind + 2] = t;
+			ind += 3;
+		}
 	}
 
 	void LoadRGBAImage(TEXTURE_RGBA& tex, string Filename, string MkFilename) {
-		unsigned char col[3];
+		unsigned char *rgb = nullptr, *a = nullptr;
 		unsigned int ind = 0;
-		TEXTURE_RGBA& bitmap = tex; //·µ»ØÎ»Í¼
+		bool noMaskFile = (MkFilename == "");
+		TEXTURE_RGBA& bitmap = tex; //Â·ÂµÂ»Ã˜ÃÂ»ÃÂ¼
 		bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
-		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //Î»Í¼ÎÄ¼ş£¨¶ş½øÖÆ£©
-		std::ifstream maskfile(MkFilename, std::ios::binary | std::ios::in); //ÕÚÕÖÎ»Í¼ÎÄ¼ş£¨¶ş½øÖÆ£©
+		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //ÃÂ»ÃÂ¼ÃÃ„Â¼Ã¾Â£Â¨Â¶Ã¾Â½Ã¸Ã–Ã†Â£Â©
+		std::ifstream maskfile;
+		if (!noMaskFile)maskfile.open(MkFilename, std::ios::binary | std::ios::in); //Ã•ÃšÃ•Ã–ÃÂ»ÃÂ¼ÃÃ„Â¼Ã¾Â£Â¨Â¶Ã¾Â½Ã¸Ã–Ã†Â£Â©
 		if (!bmpfile.is_open()) {
-			printf("[console][Warning] Cannot load %s\n", Filename.c_str());
-			return;
+			std::stringstream ss; ss << "Cannot load bitmap " << Filename;
+			DebugWarning(ss.str()); return;
 		}
-		BITMAPFILEHEADER bfh; //¸÷ÖÖ¹ØÓÚÎÄ¼şµÄ²ÎÊı
-		BITMAPINFOHEADER bih; //¸÷ÖÖ¹ØÓÚÎ»Í¼µÄ²ÎÊı
-							  //¿ªÊ¼¶ÁÈ¡
-		maskfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //ÕâÁ½¸öÊÇÕ¼Î»maskÎÄ¼şµÄ
-		maskfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //µ½ÁËºóÃæmask¿ÉÒÔÖ±½Ó´ÓÑÕÉ«²¿·Ö¿ªÊ¼¶ÁÈ¡
-		bmpfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //ÕæÕıµÄinfoÒÔÕâ¸öbmpÎÄ¼şÎª×¼
-		bmpfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //Ëü½«¸²¸ÇÖ®Ç°´ÓmaskÎÄ¼ş¶Á³öÀ´µÄinfoÊı¾İ
+		if (!noMaskFile && !maskfile.is_open()) {
+			std::stringstream ss; ss << "Cannot load bitmap " << MkFilename;
+			DebugWarning(ss.str()); return;
+		}
+		BITMAPFILEHEADER bfh; //Â¸Ã·Ã–Ã–Â¹Ã˜Ã“ÃšÃÃ„Â¼Ã¾ÂµÃ„Â²ÃÃŠÃ½
+		BITMAPINFOHEADER bih; //Â¸Ã·Ã–Ã–Â¹Ã˜Ã“ÃšÃÂ»ÃÂ¼ÂµÃ„Â²ÃÃŠÃ½
+							  //Â¿ÂªÃŠÂ¼Â¶ÃÃˆÂ¡
+		if (!noMaskFile) {
+			maskfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //Ã•Ã¢ÃÂ½Â¸Ã¶ÃŠÃ‡Ã•Â¼ÃÂ»maskÃÃ„Â¼Ã¾ÂµÃ„
+			maskfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //ÂµÂ½ÃÃ‹ÂºÃ³ÃƒÃ¦maskÂ¿Ã‰Ã’Ã”Ã–Â±Â½Ã“Â´Ã“Ã‘Ã•Ã‰Â«Â²Â¿Â·Ã–Â¿ÂªÃŠÂ¼Â¶ÃÃˆÂ¡
+		}
+		bmpfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //Ã•Ã¦Ã•Ã½ÂµÃ„infoÃ’Ã”Ã•Ã¢Â¸Ã¶bmpÃÃ„Â¼Ã¾ÃÂªÃ—Â¼
+		bmpfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //Ã‹Ã¼Â½Â«Â¸Â²Â¸Ã‡Ã–Â®Ã‡Â°Â´Ã“maskÃÃ„Â¼Ã¾Â¶ÃÂ³Ã¶Ã€Â´ÂµÃ„infoÃŠÃ½Â¾Ã
 		bitmap.sizeX = bih.biWidth;
 		bitmap.sizeY = bih.biHeight;
 		bitmap.buffer = unique_ptr<ubyte[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 4]);
-		bool noMaskFile = MkFilename == "";
-		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
-			//°ÑBGR¸ñÊ½×ª»»ÎªRGB¸ñÊ½
-			bmpfile.read((char*)col, 3);
-			bitmap.buffer[ind++] = col[2]; //R
-			bitmap.buffer[ind++] = col[1]; //G
-			bitmap.buffer[ind++] = col[0]; //B
-			if (noMaskFile) {
-				bitmap.buffer[ind++] = 255;
-			}
-			else {
-				//½«ÕÚÕÖÍ¼µÄºìÉ«Í¨µÀ·´Ïà×÷ÎªAlphaÍ¨µÀ
-				maskfile.read((char*)col, 3);
-				bitmap.buffer[ind++] = 255 - col[2]; //A
-			}
-		}
+		//Â¶ÃÃˆÂ¡ÃŠÃ½Â¾Ã
+		rgb = new unsigned char[bitmap.sizeX * bitmap.sizeY * 3];
+		bmpfile.read((char*)rgb, bitmap.sizeX*bitmap.sizeY * 3);
 		bmpfile.close();
-		maskfile.close();
+		if (!noMaskFile) {
+			a = new unsigned char[bitmap.sizeX*bitmap.sizeY * 3];
+			maskfile.read((char*)a, bitmap.sizeX*bitmap.sizeY * 3);
+			maskfile.close();
+		}
+		//ÂºÃÂ²Â¢Ã“Ã«Ã—ÂªÂ»Â»
+		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
+			//Â°Ã‘BGRÂ¸Ã±ÃŠÂ½Ã—ÂªÂ»Â»ÃÂªRGBÂ¸Ã±ÃŠÂ½
+			bitmap.buffer[ind] = rgb[i * 3 + 2];
+			bitmap.buffer[ind + 1] = rgb[i * 3 + 1];
+			bitmap.buffer[ind + 2] = rgb[i * 3];
+			//Alpha
+			if (noMaskFile) bitmap.buffer[ind + 3] = 255;
+			else bitmap.buffer[ind + 3] = 255 - a[i * 3];
+			ind += 4;
+		}
 	}
 
 	TextureID LoadRGBTexture(string Filename) {
@@ -161,8 +171,10 @@ namespace Textures {
 		glGenTextures(1, &ret);
 		glBindTexture(GL_TEXTURE_2D, ret);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.sizeX, image.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, image.buffer.get());
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (int)log(image.sizeX));
+		gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGB, image.sizeX, image.sizeY, GL_RGB, GL_UNSIGNED_BYTE, image.buffer.get());
 		return ret;
 	}
 	
@@ -219,9 +231,77 @@ namespace Textures {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (int)log(BLOCKTEXTURE_UNITSIZE));
-		gluBuild2DMipmaps(GL_TEXTURE_2D, 4, image.sizeX, image.sizeY, GL_RGBA, GL_UNSIGNED_BYTE, image.buffer.get());
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (int)log(image.sizeX));
+		gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, image.sizeX, image.sizeY, GL_RGBA, GL_UNSIGNED_BYTE, image.buffer.get());
 		return ret;
+	}
+
+	TextureID LoadBlock3DTexture(string Filename, string MkFilename) {
+		int sz = BLOCKTEXTURE_UNITSIZE, cnt = BLOCKTEXTURE_UNITS*BLOCKTEXTURE_UNITS;
+		//int mipmapLevel = (int)log(BLOCKTEXTURE_UNITSIZE), sum = 0, cursize = 0, scale = 1;
+		//ubyte *src, *cur;
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_3D);
+		TextureID ret;
+		TEXTURE_RGBA image;
+		LoadRGBAImage(image, Filename, MkFilename);
+		//src = image.buffer.get();
+		//cur = new ubyte[sz*sz*cnt * 4];
+		glGenTextures(1, &ret);
+		glBindTexture(GL_TEXTURE_3D, ret);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		/*
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_BASE_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, mipmapLevel);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_LOD, 0);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LOD, mipmapLevel);
+		for (int i = 0; i <= mipmapLevel; i++) {
+			if (i != 0) {
+				scale *= 2; cursize = sz / scale;
+				for (int z = 0; z < cnt; z++) {
+					for (int x = 0; x < cursize; x++) for (int y = 0; y < cursize; y++) {
+						for (int col = 0; col < 4; col++) {
+							sum = 0;
+							for (int xx = 0; xx < scale; xx++) for (int yy = 0; yy < scale; yy++) {
+								sum += src[(z*sz*sz + (x * scale + xx) * sz + y * scale + yy) * 4 + col];
+							}
+							cur[(z*cursize*cursize + x*cursize + y) * 4 + col] = sum / (scale*scale);
+						}
+					}
+				}
+			}
+			glTexImage3D(GL_TEXTURE_3D, i, GL_RGBA, cursize, cursize, cnt, 0, GL_RGBA, GL_UNSIGNED_BYTE, cur);
+		}
+		*/
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, sz, sz, cnt, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.buffer.get());
+		glDisable(GL_TEXTURE_3D);
+		glEnable(GL_TEXTURE_2D);
+		//delete[] cur;
+		return ret;
+	}
+
+	void SaveRGBImage(string filename, TEXTURE_RGB& image) {
+		BITMAPFILEHEADER bitmapfileheader;
+		BITMAPINFOHEADER bitmapinfoheader;
+		bitmapfileheader.bfSize = image.sizeX*image.sizeY * 3 + 54;
+		bitmapinfoheader.biWidth = image.sizeX;
+		bitmapinfoheader.biHeight = image.sizeY;
+		bitmapinfoheader.biSizeImage = image.sizeX*image.sizeY * 3;
+		for (unsigned int i = 0; i != image.sizeX*image.sizeY * 3; i += 3) {
+			//Â°Ã‘RGBÂ¸Ã±ÃŠÂ½Ã—ÂªÂ»Â»ÃÂªBGRÂ¸Ã±ÃŠÂ½
+			ubyte t = image.buffer.get()[i];
+			image.buffer.get()[i] = image.buffer.get()[i + 2];
+			image.buffer.get()[i + 2] = t;
+		}
+		std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+		ofs.write((char*)&bitmapfileheader, sizeof(bitmapfileheader));
+		ofs.write((char*)&bitmapinfoheader, sizeof(bitmapinfoheader));
+		ofs.write((char*)image.buffer.get(), sizeof(ubyte)*image.sizeX*image.sizeY * 3);
+		ofs.close();
 	}
 
 }
