@@ -739,8 +739,12 @@ void updategame(){
 		player::heading += player::xlookspeed;
 		player::lookupdown += player::ylookspeed;
 		player::xlookspeed = player::ylookspeed = 0.0;
+	
 		if (!chatmode) {
 			//移动！(生命在于运动)
+			player::xa = 0.0;
+			player::ya = 0.0;
+			player::za = 0.0;
 			if (glfwGetKey(MainWindow, GLFW_KEY_W) || player::gliding()) {
 				if (!WP) {
 					if (Wprstm == 0.0) {
@@ -772,23 +776,29 @@ void updategame(){
 			else player::speed = walkspeed;
 
 			if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!player::gliding()) {
-				player::xa = sin(player::heading*M_PI / 180.0) * player::speed;
-				player::za = cos(player::heading*M_PI / 180.0) * player::speed;
+				player::xa += sin(player::heading*M_PI / 180.0) * player::speed;
+				player::za += cos(player::heading*M_PI / 180.0) * player::speed;
 				Wprstm = 0.0;
 			}
 
 			if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!player::gliding()) {
-				player::xa = sin((player::heading - 90)*M_PI / 180.0) * player::speed;
-				player::za = cos((player::heading - 90)*M_PI / 180.0) * player::speed;
+				player::xa += sin((player::heading - 90)*M_PI / 180.0) * player::speed;
+				player::za += cos((player::heading - 90)*M_PI / 180.0) * player::speed;
 				Wprstm = 0.0;
 			}
 
 			if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS&&!player::gliding()) {
-				player::xa = -sin((player::heading - 90)*M_PI / 180.0) * player::speed;
-				player::za = -cos((player::heading - 90)*M_PI / 180.0) * player::speed;
+				player::xa += -sin((player::heading - 90)*M_PI / 180.0) * player::speed;
+				player::za += -cos((player::heading - 90)*M_PI / 180.0) * player::speed;
 				Wprstm = 0.0;
 			}
-
+			if (player::xa&&!player::gliding()) {
+				player::xa = player::speed*player::xa / sqrt(player::xa*player::xa + player::za*player::za);
+			}
+			if (player::za&&!player::gliding()) {
+				player::za = player::speed*player::za / sqrt(player::xa*player::xa + player::za*player::za);
+			}
+ 
 			if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!player::gliding()) {
 				if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 					player::xa = -sin(player::heading*M_PI / 180.0) * runspeed * 10;
@@ -875,6 +885,7 @@ void updategame(){
 			if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) player::xpos = 2147483600;
 			if (isPressed(GLFW_KEY_SLASH) == GLFW_PRESS) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
 		}
+		
 		if (isPressed(GLFW_KEY_ENTER) == GLFW_PRESS) {
 			chatmode = !chatmode;
 			if (chatword != "") { //指令的执行，或发出聊天文本
