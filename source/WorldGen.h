@@ -24,7 +24,7 @@ namespace WorldGen{
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		c_getHeightFromWorldGen++;
 #endif
-		return (int)PerlinNoise2D(x / NoiseScaleX, y / NoiseScaleZ) >> 2;
+		return (int)PerlinNoise2D(x / NoiseScaleX + 0.125 , y / NoiseScaleZ + 0.125) >> 2;
 	}
 
 }

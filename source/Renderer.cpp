@@ -1,10 +1,9 @@
 #include "Renderer.h"
 namespace renderer {
-
-	bool Textured, Colored;
-	int Vertexes;
+	
+	int Vertexes, Texcoordc, Colorc;
 	float* VertexArray = nullptr;
-	float u, v, r, g, b;
+	float tc[3], col[4];
 	unsigned int Buffers[3];
 	bool ShaderAval, EnableShaders = false;
 	GLhandleARB shaders[16];
@@ -12,66 +11,32 @@ namespace renderer {
 	int shadercount = 0;
 	int index = 0;
 
-	void Init() {
-		if (VertexArray == nullptr){
-			VertexArray = new float[ArrayUNITSIZE];
-		}
+	void Init(int tcc, int cc) {
+		Texcoordc = tcc; Colorc = cc;
+		if (VertexArray == nullptr) VertexArray = new float[ArrayUNITSIZE];
 		index = 0;
 		Vertexes = 0;
-		Textured = false;
-		Colored = false;
-	}
-
-	void Vertex3d(double x, double y, double z){
-		Vertex3f((float)x, (float)y, (float)z);
-	}
-
-	void TexCoord2d(double x, double y){
-		TexCoord2f((float)x, (float)y);
-	}
-
-	void Color3d(double _r, double _g, double _b){
-		Color3f((float)_r, (float)_g, (float)_b);
 	}
 
 	void Vertex3f(float x, float y, float z) {
-		if (Textured) {
-			VertexArray[index++] = u;
-			VertexArray[index++] = v;
-		}
-
-		if (Colored) {
-			VertexArray[index++] = r;
-			VertexArray[index++] = g;
-			VertexArray[index++] = b;
-		}
-
+		if ((Vertexes + 1)*(Texcoordc + Colorc + 3) > ArrayUNITSIZE) return;
+		if (Texcoordc != 0) for (int i = 0; i < Texcoordc; i++) VertexArray[index++] = tc[i];
+		if (Colorc != 0) for (int i = 0; i < Colorc; i++) VertexArray[index++] = col[i];
 		VertexArray[index++] = x;
 		VertexArray[index++] = y;
 		VertexArray[index++] = z;
-
 		Vertexes++;
 	}
 
-	void TexCoord2f(float u_, float v_) {
-		u = u_;
-		v = v_;
-		Textured = true;
-	}
-
-	void Color3f(float r_, float g_, float b_) {
-		r = r_;
-		g = g_;
-		b = b_;
-		Colored = true;
-	}
+	void TexCoord2f(float x, float y) { tc[0] = x; tc[1] = y; }
+	void TexCoord3f(float x, float y, float z) { tc[0] = x; tc[1] = y; tc[2] = z; }
+	void Color3f(float r, float g, float b) { col[0] = r; col[1] = g; col[2] = b; }
+	void Color4f(float r, float g, float b, float a) { col[0] = r; col[1] = g; col[2] = b; col[3] = a; }
 
 	void Flush(VBOID& buffer, vtxCount& vtxs) {
 
 		//上次才知道原来Flush还有冲厕所的意思QAQ
 		//OpenGL有个函数glFlush()，翻译过来就是GL冲厕所() ←_←
-
-		vtxs = Vertexes;
 
 		/*
 		if (EnableShaders) {
@@ -81,61 +46,40 @@ namespace renderer {
 		}
 		*/
 
-		if (Vertexes > 0) {
-
+		vtxs = Vertexes;
+		if (Vertexes != 0) {
 			if (buffer == 0) glGenBuffersARB(1, &buffer);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
-
-			uintptr_t vertexSize = 3;
-
-			if(Textured) {
-
-				vertexSize += 2;
-
-			}
-			if(Colored) {
-
-				vertexSize += 3;
-
-			}
-
-			glBufferDataARB(GL_ARRAY_BUFFER_ARB,
-				Vertexes * vertexSize * sizeof(float),
-				VertexArray,
-				GL_STATIC_DRAW_ARB);
-
-			//重置
-			Init();
+			glBufferDataARB(GL_ARRAY_BUFFER_ARB, Vertexes * (Texcoordc + Colorc + 3) * sizeof(float), VertexArray, GL_STATIC_DRAW_ARB);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-
 		}
 
 		//if (EnableShaders) glUseProgramObjectARB(0);
-
 	}
     
-	void renderbuffer(VBOID buffer, vtxCount vtxs, bool ftex, bool fcol) {
+	void renderbuffer(VBOID buffer, vtxCount vtxs, int ctex, int ccol) {
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
+		int cnt = ctex + ccol + 3;
 
-		if (ftex) {
-			if (fcol) {
-				glTexCoordPointer(2, GL_FLOAT, 8 * sizeof(float), (float*)0);
-				glColorPointer(3, GL_FLOAT, 8 * sizeof(float), (float*)(2 * sizeof(float)));
-				glVertexPointer(3, GL_FLOAT, 8 * sizeof(float), (float*)(5 * sizeof(float)));
+		if (ctex != 0) {
+			if (ccol != 0) {
+				glTexCoordPointer(ctex, GL_FLOAT, cnt * sizeof(float), (float*)0);
+				glColorPointer(ccol, GL_FLOAT, cnt * sizeof(float), (float*)(ctex * sizeof(float)));
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((ctex + ccol) * sizeof(float)));
 			}
 			else {
-				glTexCoordPointer(2, GL_FLOAT, 5 * sizeof(float), (float*)0);
-				glVertexPointer(3, GL_FLOAT, 5 * sizeof(float), (float*)(2 * sizeof(float)));
+				glTexCoordPointer(ctex, GL_FLOAT, cnt * sizeof(float), (float*)0);
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(ctex * sizeof(float)));
 			}
 		}
 		else {
-			if (fcol) {
-				glColorPointer(3, GL_FLOAT, 6 * sizeof(float), (float*)0);
-				glVertexPointer(3, GL_FLOAT, 6 * sizeof(float), (float*)(3 * sizeof(float)));
+			if (ccol != 0) {
+				glColorPointer(ccol, GL_FLOAT, cnt * sizeof(float), (float*)0);
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(ccol * sizeof(float)));
 			}
 			else {
-				glVertexPointer(3, GL_FLOAT, 3 * sizeof(float), (float*)0);
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)0);
 			}
 		}
 

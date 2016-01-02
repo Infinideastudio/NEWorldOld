@@ -58,6 +58,8 @@ namespace Textures{
 
 	TextureID LoadRGBATexture(string Filename, string MkFilename);
 
+	TextureID LoadBlock3DTexture(string Filename, string MkFilename);
+
 	void SaveRGBImage(string filename, TEXTURE_RGB& image);
 
 }

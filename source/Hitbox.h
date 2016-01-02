@@ -1,8 +1,8 @@
 #pragma once
 #include "Definitions.h"
 
-namespace Hitbox
-{
+namespace Hitbox {
+
 	struct AABB{
 		//Axis Aligned Bounding Box
 		double xmin;
