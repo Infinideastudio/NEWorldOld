@@ -192,7 +192,7 @@ bool player::save(string worldn) {
 }
 
 bool player::load(string worldn) {
-	uint32 targetVersion = 0;
+	uint32 targetVersion;
 	std::stringstream ss;
 	ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
 	std::ifstream iload(ss.str().c_str(), std::ios::binary | std::ios::in);

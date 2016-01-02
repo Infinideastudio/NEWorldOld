@@ -881,7 +881,10 @@ void updategame(){
 		if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
 		if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
 		if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) player::xpos = 2147483600;
-		if (isPressed(GLFW_KEY_F7) == GLFW_PRESS) player::init(0, 60.0, 0);
+		if (isPressed(GLFW_KEY_F7) == GLFW_PRESS) {
+			player::init(0, 60.0, 0);
+			player::jump = 0;
+		}
 	}
 
 	if (isPressed(GLFW_KEY_E) && GUIrenderswitch){
