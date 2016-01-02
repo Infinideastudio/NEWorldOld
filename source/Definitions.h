@@ -1,8 +1,5 @@
 #ifndef DEFINITIONS_H
 #define DEFINITIONS_H
-#ifndef _DEBUG
-#pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
-#endif
 //#pragma warning(disable:4710) //忽略STL高发警告：函数未内联
 //#pragma warning(disable:4514) //忽略STL高发警告：未使用的内联函数已移除
 //#pragma warning(disable:4350) //忽略STL高发警告：行为更改
@@ -48,6 +45,7 @@ using std::map;
 #endif
 //wxWidgets
 #include <wx/wx.h>
+#include <wx/notebook.h>
 #include <wx/file.h>
 #include <wx/filefn.h>
 #include <wx/thread.h>
@@ -56,6 +54,7 @@ using std::map;
 #include <wx/socket.h>
 #include <wx/dynlib.h>
 #include <wx/textfile.h>
+#include <wx/slider.h>
 
 //#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG

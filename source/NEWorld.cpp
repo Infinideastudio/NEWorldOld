@@ -30,8 +30,6 @@ void saveScreenshot(int x, int y, int w, int h, string filename);
 #include "World.h"
 #include "Particles.h"
 #include "Hitbox.h"
-#include "GUI.h"
-#include "Menus.h"
 #include "Frustum.h"
 #include "Network.h"
 
@@ -66,12 +64,7 @@ block selb;
 brightness selbr;
 bool selce;
 int selbx, selby, selbz, selcx, selcy, selcz;
-int main(){
-	wxInitialize();
-	setlocale(LC_ALL, "zh_CN.UTF-8");
-	wxString curdir = wxStandardPaths::Get().GetExecutablePath();
-	curdir.Replace(L"\\", L"/");
-	wxSetWorkingDirectory(curdir.substr(0, curdir.find_last_of('/')));
+void MainLoop(){
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	printf("[Console][Event]Initialize GLFW%s\n",glfwInit() == 1 ? "" : " - Failed!");
@@ -93,11 +86,7 @@ int main(){
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	
-main_menu:
 	gamebegin = false;
-	glDisable(GL_LINE_SMOOTH);
-	mainmenu();
-	glEnable(GL_LINE_SMOOTH);
 	glEnable(GL_TEXTURE_2D);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glfwSwapBuffers(MainWindow);
@@ -179,7 +168,8 @@ main_menu:
 			printf("Returned to main menu\n");
 			if (multiplayer)
 				Network::cleanUp();
-			goto main_menu;
+			glfwTerminate();
+			return;
 		}
 	} while (!glfwWindowShouldClose(MainWindow));
 	world::saveAllChunks();
@@ -190,9 +180,7 @@ main_menu:
 	ThreadWait(updateThread);
 	ThreadDestroy(updateThread);
 	MutexDestroy(Mutex);
-	glfwTerminate();
-	wxUninitialize();
-	return 0;
+	return;
 }
 
 ThreadFunc updateThreadFunc(void*){
@@ -1240,7 +1228,7 @@ void drawGUI(){
 
 			glLineWidth(1);
 			glBegin(GL_LINES);
-			glColor4f(gui::FgR, gui::FgG, gui::FgB, 0.8f);
+			glColor4f(0.2f, 0.2f, 0.2f, 0.8f);
 			glVertex2i(windowwidth / 2, windowheight / 2);
 			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
 			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);

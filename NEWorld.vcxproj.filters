@@ -68,12 +68,6 @@
     <ClInclude Include="source\TextRenderer.h">
       <Filter>源代码\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="source\GUI.h">
-      <Filter>源代码\GUI</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Menus.h">
-      <Filter>源代码\GUI</Filter>
-    </ClInclude>
     <ClInclude Include="source\Player.h">
       <Filter>源代码\Player</Filter>
     </ClInclude>
@@ -97,6 +91,9 @@
     </ClInclude>
     <ClInclude Include="source\Hitbox.h">
       <Filter>源代码\World</Filter>
+    </ClInclude>
+    <ClInclude Include="source\GameManager.h">
+      <Filter>源代码\GUI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -133,12 +130,6 @@
     <ClCompile Include="source\TextRenderer.cpp">
       <Filter>源代码\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="source\GUI.cpp">
-      <Filter>源代码\GUI</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Menus.cpp">
-      <Filter>源代码\GUI</Filter>
-    </ClCompile>
     <ClCompile Include="source\Player.cpp">
       <Filter>源代码\Player</Filter>
     </ClCompile>
@@ -153,6 +144,9 @@
     </ClCompile>
     <ClCompile Include="source\Hitbox.cpp">
       <Filter>源代码\World</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GameManager.cpp">
+      <Filter>源代码\GUI</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
