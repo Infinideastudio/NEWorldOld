@@ -81,6 +81,9 @@ brightness selbr;
 bool selce;
 int selbx, selby, selbz, selcx, selcy, selcz;
 
+string chatword;
+bool chatmode = false;
+
 #if 0
 	woca, 这样注释都行？！
 	(这儿编译不过去的童鞋，你的FB编译器版本貌似和我的不一样，把这几行注释掉吧。。。)
@@ -594,6 +597,7 @@ void updategame(){
 	bool put = false;     //(puted)标准的chinglish吧。。。主要是put已经被FB作为关键字了。。   --等等不对啊！这已经是c++了！！！   --所以我就改回来了
 	
 	if (!bagOpened) {
+
 		//从玩家位置发射一条线段
 		for (int i = 0; i < selectPrecision*selectDistance; i++) {
 			//线段延伸
@@ -735,143 +739,165 @@ void updategame(){
 		player::heading += player::xlookspeed;
 		player::lookupdown += player::ylookspeed;
 		player::xlookspeed = player::ylookspeed = 0.0;
-
-		//移动！(生命在于运动)
-		if (glfwGetKey(MainWindow, GLFW_KEY_W) || player::gliding()) {
-			if (!WP) {
-				if (Wprstm == 0.0) {
-					Wprstm = timer();
-				}
-				else {
-					if (timer() - Wprstm <= 0.5) { player::Running = true; Wprstm = 0.0; }
-					else Wprstm = timer();
-				}
-			}
-			if (Wprstm != 0.0 && timer() - Wprstm > 0.5) Wprstm = 0.0;
-			WP = true;
-			if (!player::gliding()) {
-				player::xa = -sin(player::heading*M_PI / 180.0) * player::speed;
-				player::za = -cos(player::heading*M_PI / 180.0) * player::speed;
-			}
-			else {
-				player::xa = sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
-				player::ya = cos(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
-				player::za = cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
-				if (player::ya < 0) player::ya *= 2;
-			}
-		}
-		else {
-			player::Running = false;
-			WP = false;
-		}
-		if (player::Running)player::speed = runspeed;
-		else player::speed = walkspeed;
-
-		if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!player::gliding()) {
-			player::xa = sin(player::heading*M_PI / 180.0) * player::speed;
-			player::za = cos(player::heading*M_PI / 180.0) * player::speed;
-			Wprstm = 0.0;
-		}
-
-		if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!player::gliding()) {
-			player::xa = sin((player::heading - 90)*M_PI / 180.0) * player::speed;
-			player::za = cos((player::heading - 90)*M_PI / 180.0) * player::speed;
-			Wprstm = 0.0;
-		}
-
-		if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS&&!player::gliding()) {
-			player::xa = -sin((player::heading - 90)*M_PI / 180.0) * player::speed;
-			player::za = -cos((player::heading - 90)*M_PI / 180.0) * player::speed;
-			Wprstm = 0.0;
-		}
-
-		if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!player::gliding()) {
-			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-				player::xa = -sin(player::heading*M_PI / 180.0) * runspeed * 10;
-				player::za = -cos(player::heading*M_PI / 180.0) * runspeed * 10;
-			}
-			else {
-				player::xa = sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
-				player::ya = cos(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
-				player::za = cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
-			}
-		}
-
-		if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS&&!player::gliding()) {
-			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-				player::xa = sin(player::heading*M_PI / 180.0) * runspeed * 10;
-				player::za = cos(player::heading*M_PI / 180.0) * runspeed * 10;
-			}
-			else {
-				player::xa = -sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
-				player::ya = -cos(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
-				player::za = -cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
-			}
-		}
-
-		//切换方块
-		if (isPressed(GLFW_KEY_Z) && player::indexInHand > 0) player::indexInHand--;
-		if (isPressed(GLFW_KEY_X) && player::indexInHand < 9) player::indexInHand++;
-		if ((int)player::indexInHand + (mwl - mw) < 0)player::indexInHand = 0;
-		else if ((int)player::indexInHand + (mwl - mw) > 9)player::indexInHand = 9;
-		else player::indexInHand += (byte)(mwl - mw);
-		mwl = mw;
-
-		//起跳！
-		if (isPressed(GLFW_KEY_SPACE)) {
-			if (!player::inWater) {
-				if ((player::OnGround || player::AirJumps < MaxAirJumps) && FLY == false && CROSS == false) {
-					if (player::OnGround == false) {
-						player::jump = 0.3;
-						player::AirJumps++;
+		if (!chatmode) {
+			//移动！(生命在于运动)
+			if (glfwGetKey(MainWindow, GLFW_KEY_W) || player::gliding()) {
+				if (!WP) {
+					if (Wprstm == 0.0) {
+						Wprstm = timer();
 					}
 					else {
-						player::jump = 0.25;
-						player::OnGround = false;
+						if (timer() - Wprstm <= 0.5) { player::Running = true; Wprstm = 0.0; }
+						else Wprstm = timer();
 					}
 				}
-				if (FLY || CROSS) {
-					player::ya += walkspeed / 2;
-					isPressed(GLFW_KEY_SPACE, true);
+				if (Wprstm != 0.0 && timer() - Wprstm > 0.5) Wprstm = 0.0;
+				WP = true;
+				if (!player::gliding()) {
+					player::xa = -sin(player::heading*M_PI / 180.0) * player::speed;
+					player::za = -cos(player::heading*M_PI / 180.0) * player::speed;
 				}
-				Wprstm = 0.0;
+				else {
+					player::xa = sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+					player::ya = cos(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+					player::za = cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
+					if (player::ya < 0) player::ya *= 2;
+				}
 			}
 			else {
-				player::ya = walkspeed;
-				isPressed(GLFW_KEY_SPACE, true);
+				player::Running = false;
+				WP = false;
+			}
+			if (player::Running)player::speed = runspeed;
+			else player::speed = walkspeed;
+
+			if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!player::gliding()) {
+				player::xa = sin(player::heading*M_PI / 180.0) * player::speed;
+				player::za = cos(player::heading*M_PI / 180.0) * player::speed;
+				Wprstm = 0.0;
+			}
+
+			if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!player::gliding()) {
+				player::xa = sin((player::heading - 90)*M_PI / 180.0) * player::speed;
+				player::za = cos((player::heading - 90)*M_PI / 180.0) * player::speed;
+				Wprstm = 0.0;
+			}
+
+			if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS&&!player::gliding()) {
+				player::xa = -sin((player::heading - 90)*M_PI / 180.0) * player::speed;
+				player::za = -cos((player::heading - 90)*M_PI / 180.0) * player::speed;
+				Wprstm = 0.0;
+			}
+
+			if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!player::gliding()) {
+				if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+					player::xa = -sin(player::heading*M_PI / 180.0) * runspeed * 10;
+					player::za = -cos(player::heading*M_PI / 180.0) * runspeed * 10;
+				}
+				else {
+					player::xa = sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+					player::ya = cos(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+					player::za = cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+				}
+			}
+
+			if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS&&!player::gliding()) {
+				if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+					player::xa = sin(player::heading*M_PI / 180.0) * runspeed * 10;
+					player::za = cos(player::heading*M_PI / 180.0) * runspeed * 10;
+				}
+				else {
+					player::xa = -sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+					player::ya = -cos(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+					player::za = -cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+				}
+			}
+
+			//切换方块
+			if (isPressed(GLFW_KEY_Z) && player::indexInHand > 0) player::indexInHand--;
+			if (isPressed(GLFW_KEY_X) && player::indexInHand < 9) player::indexInHand++;
+			if ((int)player::indexInHand + (mwl - mw) < 0)player::indexInHand = 0;
+			else if ((int)player::indexInHand + (mwl - mw) > 9)player::indexInHand = 9;
+			else player::indexInHand += (byte)(mwl - mw);
+			mwl = mw;
+
+			//起跳！
+			if (isPressed(GLFW_KEY_SPACE)) {
+				if (!player::inWater) {
+					if ((player::OnGround || player::AirJumps < MaxAirJumps) && FLY == false && CROSS == false) {
+						if (player::OnGround == false) {
+							player::jump = 0.3;
+							player::AirJumps++;
+						}
+						else {
+							player::jump = 0.25;
+							player::OnGround = false;
+						}
+					}
+					if (FLY || CROSS) {
+						player::ya += walkspeed / 2;
+						isPressed(GLFW_KEY_SPACE, true);
+					}
+					Wprstm = 0.0;
+				}
+				else {
+					player::ya = walkspeed;
+					isPressed(GLFW_KEY_SPACE, true);
+				}
+			}
+
+			if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !player::gliding()) {
+				if (CROSS || FLY) player::ya -= walkspeed / 2;
+				Wprstm = 0.0;
+			}
+
+			if (glfwGetKey(MainWindow, GLFW_KEY_K) && canGliding&&!player::OnGround&&!player::gliding()) {
+				double h = player::ypos + player::height + player::heightExt;
+				player::glidingEnergy = g*h;
+				player::glidingSpeed = 0;
+				player::glidingNow = true;
+			}
+
+			//各种设置切换
+			if (isPressed(GLFW_KEY_F1)) {
+				FLY = !FLY;
+				player::jump = 0.0;
+			}
+
+			if (isPressed(GLFW_KEY_F2)) shouldGetScreenshot = true;
+			if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
+			if (isPressed(GLFW_KEY_F3) && glfwGetKey(MainWindow, GLFW_KEY_H) == GLFW_PRESS) {
+				DebugHitbox = !DebugHitbox;
+				DebugMode = true;
+			}
+			if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
+			if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
+			if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) player::xpos = 2147483600;
+			if (isPressed(GLFW_KEY_SLASH) == GLFW_PRESS) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
+		}
+		if (isPressed(GLFW_KEY_ENTER) == GLFW_PRESS) {
+			chatmode = !chatmode;
+			if (chatword != "") { //指令的执行，或发出聊天文本
+			}
+			chatword = "";
+		}
+		if (chatmode) {
+			if (isPressed(GLFW_KEY_BACKSPACE)&& chatword.length()>0) {
+				int n = chatword[chatword.length() - 1];
+				if (n > 0 && n <= 127)
+					chatword = chatword.substr(0, chatword.length() - 1);
+				else
+					chatword = chatword.substr(0, chatword.length() - 2);
+			}
+			else {
+				chatword += inputstr;
 			}
 		}
-
-		if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !player::gliding()) {
-			if (CROSS || FLY) player::ya -= walkspeed / 2;
-			Wprstm = 0.0;
-		}
-
-		if (glfwGetKey(MainWindow, GLFW_KEY_K)&&canGliding&&!player::OnGround&&!player::gliding()) {
-			double h = player::ypos + player::height + player::heightExt;
-			player::glidingEnergy = g*h;
-			player::glidingSpeed = 0;
-			player::glidingNow = true;
-		}
-
-		//各种设置切换
-		if (isPressed(GLFW_KEY_F1)){
-			FLY = !FLY;
-			player::jump = 0.0;
-		}
-
-		if (isPressed(GLFW_KEY_F2)) shouldGetScreenshot = true;
-		if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
-		if (isPressed(GLFW_KEY_F3) && glfwGetKey(MainWindow, GLFW_KEY_H) == GLFW_PRESS){
-			DebugHitbox = !DebugHitbox;
-			DebugMode = true;
-		}
-		if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
-		if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
-		if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) player::xpos = 2147483600;
 	}
 
-	if (isPressed(GLFW_KEY_E) && GUIrenderswitch){
+	inputstr = "";
+
+	if (isPressed(GLFW_KEY_E) && GUIrenderswitch && !chatmode){
 		bagOpened = !bagOpened;
 		bagAnimTimer = timer();
 		if (!bagOpened) {
@@ -885,7 +911,7 @@ void updategame(){
 		}
 	}
 
-	if (!bagOpened){
+	if (!bagOpened && !chatmode){
 		if (isPressed(GLFW_KEY_L))world::saveAllChunks();
 	}
 
@@ -1464,8 +1490,10 @@ void drawGUI(){
 	glVertex2d(20 + healthPercent * 170, 25);
 	glVertex2d(20, 25);
 	glEnd();
+	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
+	TextRenderer::renderString(0, windowheight - 50, chatword);
 	if (DebugMode) {
-		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
+		//TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 		std::stringstream ss;
 		ss << std::fixed << std::setprecision(4);
 		ss << "NEWorld v" << VERSION << " [OpenGL " << GLVersionMajor << "." << GLVersionMinor << "|" << GLVersionRev << "]";
