@@ -5,8 +5,7 @@ namespace blocks{  //方块ID
 	enum{
 		AIR, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
-		TNT,
-		BLOCK_DEF_END
+		TNT,BLOCK_DEF_END
 	};
 	const block NONEMPTY = 1;
 
@@ -55,8 +54,8 @@ namespace blocks{  //方块ID
 		SingleBlock("cement"	, true	, true	, false , false),
 		SingleBlock("Coal Block", true	, true	, false , false),
 		SingleBlock("Iron Block", true	, true	, false , false),
-		SingleBlock("TNT"		, true	, true	, false , true)
-		//强烈吐槽在github上看根本不对齐	——地鼠
+		SingleBlock("TNT"		, true	, true	, false , true),
+		SingleBlock("Null Block", true  , true  , false , false)
 	};
 }
-#define BlockInfo(blockID) blocks::blockData[blockID]
+#define BlockInfo(blockID) blocks::blockData[blockID>=blocks::BLOCK_DEF_END?blocks::NULLBLOCK:BLOCK_DEF_END]

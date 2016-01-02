@@ -10,9 +10,10 @@ int selectDistance = 5;         //选择方块的距离
 float walkspeed = 0.15f;        //玩家前进速度
 float runspeed = 0.3f;          //玩家跑步速度
 int MaxAirJumps = 3 - 1;        //空中N段连跳
-bool UseCPArray = true;         //使用CIA
 bool SmoothLighting = true;     //平滑光照
 bool NiceGrass = true;          //草地材质连接
+bool MergeFace = false;         //合并面渲染
+bool GUIScreenBlur = true;      //GUI背景模糊
 int linelength = 10;            //跟F3的准星有关。。。
 int linedist = 30;              //跟F3的准星有关。。。
 float skycolorR = 0.7f;         //天空颜色Red
@@ -23,23 +24,18 @@ float FOVyExt;
 
 int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度
-bool gamebegin, bagOpened;
+bool gamebegin, gameexit, bagOpened;
 
-TextureID BlockTexture[20];
-TextureID BlockTextures;
-TextureID guiImage[6];
+TextureID BlockTextures, BlockTextures3D;
+TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
 TextureID DestroyImage[11];
 TextureID DefaultSkin;
-
-//多人游戏
-bool multiplayer = false;
-string serverip;
-unsigned short port = 30001;
 
 //线程
 Mutex_t Mutex;
 Thread_t updateThread;
 double lastupdate, updateTimer;
+double lastframe;
 bool updateThreadRun, updateThreadPaused;
 
 bool shouldGetScreenshot;
@@ -49,6 +45,8 @@ bool FirstFrameThisUpdate;
 double SpeedupAnimTimer;
 double TouchdownAnimTimer;
 double screenshotAnimTimer;
+double bagAnimTimer;
+double bagAnimDuration = 0.5;
 
 //OpenGL
 int GLVersionMajor, GLVersionMinor, GLVersionRev;
@@ -59,6 +57,7 @@ GLFWcursor* MouseCursor;
 //鼠标输入数据
 double mx, my, mxl, myl;
 int mw, mb, mbp, mbl, mwl;
+double mxdelta, mydelta;
 //键盘输入数据
 string inputstr;
 //OpenGL Procedure
@@ -77,6 +76,7 @@ PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB;
 PFNGLGETINFOLOGARBPROC glGetInfoLogARB;
 PFNGLDETACHOBJECTARBPROC glDetachObjectARB;
 PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
+PFNGLTEXIMAGE3DPROC glTexImage3D;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 int c_getChunkPtrFromCPA;
