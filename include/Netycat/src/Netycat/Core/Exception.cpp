@@ -1,21 +1,21 @@
 #include <exception>
 
-#include <Netycat/Core/Exception.h>
+#include "..\..\..\include\Netycat\Core\Exception.h"
 
 
 namespace Netycat {
     
     namespace Core {
         
-        const char* ExceptionAddress::what() {
+        const char* InetAddressException::what() {
             
-            return "ExceptionAddress";
+            return "InetAddressException";
             
         }
         
-        const char* ExceptionSocket::what() {
+        const char* SocketException::what() {
             
-            return "ExceptionSocket";
+            return "SocketException";
             
         }
         

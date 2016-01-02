@@ -207,21 +207,6 @@ namespace Textures {
 		return ret;
 	}
 
-	void SaveRGBImage(string filename, TEXTURE_RGB& image) {
-		BITMAPFILEHEADER bitmapfileheader;
-		BITMAPINFOHEADER bitmapinfoheader;
-		bitmapfileheader.bfSize = image.sizeX*image.sizeY * 3 + 54;
-		bitmapinfoheader.biWidth = image.sizeX;
-		bitmapinfoheader.biHeight = image.sizeY;
-		bitmapinfoheader.biSizeImage = image.sizeX*image.sizeY * 3;
-
-		std::ofstream ofs(filename, std::ios::out | std::ios::binary);
-		ofs.write((char*)&bitmapfileheader, sizeof(bitmapfileheader));
-		ofs.write((char*)&bitmapinfoheader, sizeof(bitmapinfoheader));
-		ofs.write((char*)image.buffer.get(), sizeof(ubyte)*image.sizeX*image.sizeY * 3);
-		ofs.close();
-	}
-
 	TextureID LoadRGBATexture(string Filename, string MkFilename) {
 		TextureID ret;
 		TEXTURE_RGBA image;

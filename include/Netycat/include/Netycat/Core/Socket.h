@@ -19,115 +19,63 @@
 *******************************************************************************/
 
 
-#ifndef _NETYCAT_CORE_SOCKET_H_
-#define _NETYCAT_CORE_SOCKET_H_
+#ifndef _NETYCAT_SOCKET_H_
+#define _NETYCAT_SOCKET_H_
 
 
-#include <stdint.h>
+#include <cstdint>
+#include <memory>
+#include <string>
 
-#include <Netycat/Core/Address.h>
-#include <Netycat/Core/Buffer.h>
-#include <Netycat/Core/BufferCondition.h>
-#include <Netycat/Core/Endpoint.h>
+#include "Buffer.h"
+#include "BufferCondition.h"
+#include "InetAddress.h"
+
+
+#define SOCKET_BUFFER_SIZE 512
 
 
 namespace Netycat {
     
     namespace Core {
         
-        class SocketBase {
+        class Socket {
             
-            protected:
+            private:
             
             int sock;
-            Endpoint* endpoint;
+            InetAddress* address;
+            
+            Buffer recvBuffer;
+            uint8_t* recvBufferArray;
+            uint8_t* sendBufferArray;
             
             public:
             
-            SocketBase() noexcept;
-            SocketBase(const SocketBase& src) = delete;
-            SocketBase(SocketBase&& src) noexcept;
-            virtual ~SocketBase() noexcept;
+            Socket();
+            Socket(const Socket& src) = delete;
+            Socket(Socket&& src);
+            ~Socket();
             
-            const Endpoint* getEndpoint();
+            void connect(InetAddress* addr, uint16_t port);
+			void connectIPv4(std::string addr, uint16_t port);
+            void listen(InetAddress* addr, uint16_t port);
+			void listenIPv4(uint16_t port);
+            void accept(Socket& s);
             
-            protected:
+            InetAddress* getAddress();
             
-            bool nativeAccept(SocketBase& s);
-            bool nativeBind(const Endpoint* end);
-            bool nativeClose();
-            bool nativeConnect(const Endpoint* end);
-            bool nativeListen(int backlog);
-            intptr_t nativeRecv(void* buffer, uintptr_t length,
-                int flags);
-            intptr_t nativeRecvfrom(void* buffer, uintptr_t length,
-                int flags, Endpoint*& end);
-            intptr_t nativeSend(const void* buffer, uintptr_t length,
-                int flags);
-            intptr_t nativeSendto(void* buffer, uintptr_t length,
-                int flags, const Endpoint* end);
-            bool nativeSetsockopt(int level, int optname,
-                const void* optval, uintptr_t optlen);
-            bool nativeSocket(int domain, int type, int protocol);
+            uintptr_t getRecvBufferSize();
             
-            public:
+            uintptr_t getSendBufferSize();
             
-            void setBroadcast(bool val);
+            void recv(Buffer& buffer, BufferCondition& condition);
+			int recvInt();
+			void send(Buffer& buffer, uintptr_t len = 0);
+            
+            bool close();
             
         };
-        
-        class SocketStream : public SocketBase {
-            
-            public:
-            
-            SocketStream() noexcept;
-            SocketStream(const SocketStream& src) = delete;
-            SocketStream(SocketStream&& src) noexcept;
-            virtual ~SocketStream() noexcept;
-            
-        };
-        
-        class SocketTCP : public SocketStream {
-            
-            public:
-            
-            SocketTCP() noexcept;
-            SocketTCP(const SocketTCP& src) = delete;
-            SocketTCP(SocketTCP&& src) noexcept;
-            ~SocketTCP() noexcept;
-            
-            void connect(const Endpoint* end);
-            void listen(const Endpoint* end);
-            void accept(SocketTCP& s);
-            
-            uintptr_t recv(void* data, uintptr_t len);
-            
-            void send(const void* data, uintptr_t len);
-            
-            void close();
-            
-        };
-        
-        
-        class SocketDatagram : public SocketBase {
-            
-        };
-        
-        class SocketUDP : public SocketDatagram {
-            
-        };
-        
-        
-        class SocketRaw : public SocketBase {
-            
-        };
-        
-        class SocketICMP : public SocketRaw {
-            
-        };
-        
-        
-        using Socket = SocketTCP;
         
     }
     

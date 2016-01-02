@@ -143,6 +143,12 @@
     <ClInclude Include="source\Effect.h">
       <Filter>源代码\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="source\StdInclude.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ChunkRenderer.h">
+      <Filter>源代码\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -182,9 +188,6 @@
       <Filter>源代码\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\GUI.cpp">
-      <Filter>源代码\GUI</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Menus.cpp">
       <Filter>源代码\GUI</Filter>
     </ClCompile>
     <ClCompile Include="source\Player.cpp">
@@ -243,6 +246,18 @@
     </ClCompile>
     <ClCompile Include="source\Items.cpp">
       <Filter>源代码\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ChunkRenderer.cpp">
+      <Filter>源代码\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="source\OnlinePlayer.cpp">
+      <Filter>源代码\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Network.cpp">
+      <Filter>源代码\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GameMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

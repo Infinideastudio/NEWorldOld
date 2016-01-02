@@ -34,7 +34,7 @@ namespace blocks{  //方块ID
 		inline bool canExplode()const { return canexplode; }
 	};
 
-	const SingleBlock blockData[BLOCK_DEF_END] = {
+	const SingleBlock blockData[BLOCK_DEF_END + 1] = {
 		//		    方块名称		  固体	 不透明	  半透明  可以爆炸
 		SingleBlock("Air"		, false	, false	, false , false),
 		SingleBlock("Rock"		, true	, true	, false , false),
@@ -58,4 +58,4 @@ namespace blocks{  //方块ID
 		SingleBlock("Null Block", true  , true  , false , false)
 	};
 }
-#define BlockInfo(blockID) blocks::blockData[blockID>=blocks::BLOCK_DEF_END?blocks::NULLBLOCK:BLOCK_DEF_END]
+#define BlockInfo(blockID) blocks::blockData[blockID>=blocks::BLOCK_DEF_END?blocks::BLOCK_DEF_END:blockID]

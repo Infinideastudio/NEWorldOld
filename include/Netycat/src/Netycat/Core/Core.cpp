@@ -19,9 +19,9 @@
 *******************************************************************************/
 
 
-#include <Netycat/Core/Include.h>
+#include <winsock2.h>
 
-#include <Netycat/Core/Core.h>
+#include "..\..\..\include\Netycat\Core\Core.h"
 
 
 namespace Netycat {
@@ -29,21 +29,13 @@ namespace Netycat {
     namespace Core {
         
         bool startup() {
-
-            #if defined(NETYCAT_OS_WINDOWS)
-                WSADATA wsaData;
-                if(::WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-                    
-                    return false;
-                    
-                }
-                if(wsaData.wVersion != MAKEWORD(2, 2)) {
-                    
-                    ::WSACleanup();
-                    return false;
-                    
-                }
-            #endif
+            
+            WSADATA wsaData;
+            if(WSAStartup(WINSOCK_VERSION, &wsaData) != 0) {
+                
+                return false;
+                
+            }
             
             return true;
             
@@ -51,9 +43,7 @@ namespace Netycat {
         
         bool cleanup() {
             
-            #if defined(NETYCAT_OS_WINDOWS)
-                ::WSACleanup();
-            #endif
+            WSACleanup();
             
             return true;
             
