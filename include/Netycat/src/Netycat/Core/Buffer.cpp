@@ -19,10 +19,11 @@
 *******************************************************************************/
 
 
-#include <stdint.h>
-#include <string.h>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
 
-#include <Netycat/Core/Buffer.h>
+#include "..\..\..\include\Netycat\Core\Buffer.h"
 
 
 namespace Netycat {
@@ -505,6 +506,7 @@ namespace Netycat {
             return remaining;
             
         }
+        
         
     }
     

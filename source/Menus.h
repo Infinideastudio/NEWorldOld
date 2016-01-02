@@ -8,3 +8,4 @@ void GUIoptions();
 void worldmenu();
 void createworldmenu();
 void gamemenu();
+void multiplayermenu();
