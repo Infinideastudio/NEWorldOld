@@ -142,7 +142,6 @@ void MainLoop(){
 			ups = upsc;
 			upsc = 0;
 		}
-		Sleep(1);
 		Render();
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1){
@@ -190,7 +189,6 @@ ThreadFunc updateThreadFunc(void*){
 	MutexLock(Mutex);
 	while (!updateThreadRun){
 		MutexUnlock(Mutex);
-		Sleep(1);
 		MutexLock(Mutex);
 	}
 	MutexUnlock(Mutex);
@@ -202,7 +200,6 @@ ThreadFunc updateThreadFunc(void*){
 	while (updateThreadRun){
 
 		MutexUnlock(Mutex);
-		Sleep(1); //Optimize
 		MutexLock(Mutex);
 
 		while (updateThreadPaused){
