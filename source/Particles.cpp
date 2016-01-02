@@ -11,7 +11,7 @@ namespace particles{
 
 	void update(particle &ptc){
 
-		//if (ptc.lasts < 30) ptc.psize *= 0.9f;
+		if (ptc.lasts < 30) ptc.psize *= 0.9f;
 		
 		double dx, dy, dz;
 		float psz = ptc.psize;
