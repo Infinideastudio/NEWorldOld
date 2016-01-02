@@ -19,16 +19,14 @@ public:
 
 	static void updatePosition();
 
-	static void save(string worldn);
-	static void load(string worldn);
+	static bool save(string worldn);
+	static bool load(string worldn);
 
 	static void addItem(item itemname, int amount = 1);
 	static bool putBlock(int x, int y, int z, block blockname);
 
 	static PlayerPacket convertToPlayerPacket();
-
 	static Hitbox::AABB playerbox;
-
 	static double xa, ya, za, xd, yd, zd;
 	static double health, healthMax, healSpeed, dropDamagePerBlock;
 	static onlineid onlineID;
