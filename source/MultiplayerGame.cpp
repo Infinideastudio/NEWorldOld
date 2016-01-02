@@ -7,70 +7,38 @@ int getDotCount(string s) {
 	return ret;
 }
 
-class NEMultiplayerGameMenu : public gui::UIView
-{
+class MultiplayerMenu :public gui::Form {
 private:
-	gui::UILabel   title = gui::UILabel("==============<  多 人 游 戏  >==============");
-	gui::UITextBox serveriptb = gui::UITextBox("输入服务器IP");
-	gui::UIButton  runbtn = gui::UIButton("运行服务器（开服）");
-	gui::UIButton  okbtn = gui::UIButton("确定");
-	gui::UIButton  backbtn = gui::UIButton("<< 返回");
-
-	bool serveripChanged = false;
-public:
-	NEMultiplayerGameMenu() {
-		Init();
-		RegisterUI(&title);
-		RegisterUI(&serveriptb);
-		RegisterUI(&runbtn);
-		RegisterUI(&okbtn);
-		RegisterUI(&backbtn);
-
+	gui::label title;
+	gui::textbox serveriptb;
+	gui::button runbtn, okbtn, backbtn;
+	void onLoad() {
+		title = gui::label("==============<  多 人 游 戏  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		serveriptb = gui::textbox("输入服务器IP", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		runbtn = gui::button("运行服务器（开服）", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		okbtn = gui::button("确定", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		backbtn = gui::button("<< 返回", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 		inputstr = "";
 		okbtn.enabled = false;
+		registerControls(4, &title, &serveriptb, &runbtn, &okbtn, &backbtn);
 	}
-
-	~NEMultiplayerGameMenu() {
-		if (serveripChanged) {
+	void onUpdate() {
+		static bool serveripChanged = false;
+		if (runbtn.clicked) WinExec("NEWorldServer.exe", SW_SHOWDEFAULT);
+		if (okbtn.clicked) {
 			serverip = serveriptb.text;
 			gamebegin = true;
 			multiplayer = true;
 		}
-	}
-
-	void OnResize() {
-		int leftp = windowwidth / 2 - 250;
-		int rightp = windowwidth / 2 + 250;
-		int midp = windowwidth / 2;
-		int downp = windowheight - 20;
-
-		title.UISetRect(midp - 225, midp + 225, 20, 36);
-		serveriptb.UISetRect(midp - 250, midp + 250, 48, 72);
-		runbtn.UISetRect(leftp, rightp, downp - 24 - 50, downp - 50);
-		okbtn.UISetRect(midp - 250, midp + 250, 84, 120);
-		backbtn.UISetRect(leftp, rightp, downp - 24, downp);
-	}
-
-	void OnUpdate() {
+		if (backbtn.clicked) ExitSignal = true;
 		if (serveriptb.pressed && !serveripChanged) {
 			serveriptb.text = "";
 			serveripChanged = true;
 		}
-
 		if (serveriptb.text == "" || !serveripChanged || getDotCount(serveriptb.text) != 3) okbtn.enabled = false;
 		else okbtn.enabled = true;
-		if (okbtn.clicked || backbtn.clicked) gui::UIExit();
-		if (runbtn.clicked) WinExec("NEWorldServer.exe", SW_SHOWDEFAULT);
 		inputstr = "";
 	}
-
-	void OnRender() {
-
-	}
-
 };
 
-void MultiplayerGameMenu() {
-	NEMultiplayerGameMenu Menu = NEMultiplayerGameMenu();
-	gui::UIEnter((gui::UIView*)&Menu);
-}
+void multiplayermenu() { MultiplayerMenu Menu; Menu.start(); }

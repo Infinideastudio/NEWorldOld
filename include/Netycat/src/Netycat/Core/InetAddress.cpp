@@ -19,37 +19,38 @@
 *******************************************************************************/
 
 
-#include <stdint.h>
-#include <string.h>
+#include <cstdint>
+#include <cstdio>
 #include <string>
 
-#include <Netycat/Core/Include.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 
-#include <Netycat/Core/Address.h>
-#include <Netycat/Core/Exception.h>
+#include "..\..\..\include\Netycat\Core\Exception.h"
+#include "..\..\..\include\Netycat\Core\InetAddress.h"
 
 
 namespace Netycat {
     
     namespace Core {
         
-        Address::Address() noexcept {
+        InetAddress::InetAddress() {
             
         }
         
-        Address::Address(const Address& src) noexcept {
+        InetAddress::InetAddress(const InetAddress&) {
             
         }
         
-        Address::~Address() noexcept {
+        InetAddress::~InetAddress() {
             
         }
         
-        Address* Address::getByName(const char *host) {
+		std::shared_ptr<InetAddress> InetAddress::getByName(const char *host) {
             
             if(host == nullptr) {
                 
-                throw ExceptionAddress();
+                throw InetAddressException();
                 
             }
             
@@ -63,19 +64,19 @@ namespace Netycat {
             
             if((ret = ::getaddrinfo(host, nullptr, &hints, &result)) != 0) {
                 
-                throw ExceptionAddress();
+                throw InetAddressException();
                 
             }
             
             if(result == nullptr) {
                 
-                throw ExceptionAddress();
+                throw InetAddressException();
                 
             }
             
             if(result->ai_addr == nullptr) {
                 
-                throw ExceptionAddress();
+                throw InetAddressException();
                 
             }
             
@@ -93,9 +94,9 @@ namespace Netycat {
                     uint8_t d3 = (addr & 0x0000FF00) >> 8;
                     uint8_t d4 = (addr & 0x000000FF);
                     
-                    ::freeaddrinfo(result);
+                    freeaddrinfo(result);
                     
-                    return new AddressIPv4(d1, d2, d3, d4);
+					return std::shared_ptr<InetAddress>(new InetAddressIPv4(d1, d2, d3, d4));
                     
                 }
                 case AF_INET6: {
@@ -120,18 +121,18 @@ namespace Netycat {
                     uint8_t d15 = saddr->sin6_addr.s6_addr[14];
                     uint8_t d16 = saddr->sin6_addr.s6_addr[15];
                     
-                    ::freeaddrinfo(result);
+                    freeaddrinfo(result);
                     
-                    return new AddressIPv6(
-                        d1, d2, d3, d4, d5, d6, d7, d8,
-                        d9, d10, d11, d12, d13, d14, d15, d16);
+					return  std::shared_ptr<InetAddress>(new InetAddressIPv6(
+						d1, d2, d3, d4, d5, d6, d7, d8,
+						d9, d10, d11, d12, d13, d14, d15, d16));
                     
                 }
                 default: {
                     
-                    ::freeaddrinfo(result);
+                    freeaddrinfo(result);
                     
-                    throw ExceptionAddress();
+                    throw InetAddressException();
                     
                     
                 }
@@ -142,7 +143,7 @@ namespace Netycat {
             struct hostent* hostentData = ::gethostbyname(host);
             if(hostentData == nullptr) {
                 
-                throw ExceptionAddress();
+                throw InetAddressException();
                 
             }
                     
@@ -152,7 +153,7 @@ namespace Netycat {
                     
                     if(hostentData->h_addr_list[0] == nullptr) {
                 
-                        throw ExceptionAddress();
+                        throw InetAddressException();
                         
                     }
                     
@@ -161,12 +162,12 @@ namespace Netycat {
                     uint8_t d3 = hostentData->h_addr_list[0][2];
                     uint8_t d4 = hostentData->h_addr_list[0][3];
                     
-                    return new AddressIPv4(d1, d2, d3, d4);
+                    return new InetAddressIPv4(d1, d2, d3, d4);
                     
                 }
                 default: {
                 
-                    throw ExceptionAddress();
+                    throw InetAddressException();
                     
                 }
                 
@@ -176,7 +177,7 @@ namespace Netycat {
         }
         
         
-        AddressIPv4::AddressIPv4() noexcept {
+        InetAddressIPv4::InetAddressIPv4() {
             
             data[0] = 0;
             data[1] = 0;
@@ -185,8 +186,8 @@ namespace Netycat {
             
         }
         
-        AddressIPv4::AddressIPv4(uint8_t d1, uint8_t d2,
-            uint8_t d3, uint8_t d4) noexcept {
+        InetAddressIPv4::InetAddressIPv4(uint8_t d1, uint8_t d2,
+            uint8_t d3, uint8_t d4) {
             
             data[0] = d1;
             data[1] = d2;
@@ -195,7 +196,7 @@ namespace Netycat {
             
         }
         
-        AddressIPv4::AddressIPv4(const AddressIPv4& src) noexcept {
+        InetAddressIPv4::InetAddressIPv4(const InetAddressIPv4& src) {
             
             data[0] = src.data[0];
             data[1] = src.data[1];
@@ -204,19 +205,19 @@ namespace Netycat {
             
         }
         
-        AddressIPv4::~AddressIPv4() noexcept {
+        InetAddressIPv4::~InetAddressIPv4() {
             
         }
         
         
-        Address::AddressType AddressIPv4::getType() const noexcept {
+        InetAddress::InetAddressType InetAddressIPv4::getType() {
             
             return IPv4;
             
         }
         
         
-        std::string AddressIPv4::toString() const noexcept {
+        std::string InetAddressIPv4::toString() {
             
             std::string res;
             
@@ -254,50 +255,27 @@ namespace Netycat {
         }
         
         
-        uint8_t* AddressIPv4::getData() noexcept {
-            
-            return data;
-            
-        }
-        
-        const uint8_t* AddressIPv4::getData() const noexcept {
+        uint8_t* InetAddressIPv4::getData() {
             
             return data;
             
         }
         
         
-        void AddressIPv4::set(uint8_t d1, uint8_t d2,
-            uint8_t d3, uint8_t d4) noexcept {
+		std::shared_ptr<InetAddress> InetAddressIPv4::getAny() {
             
-            data[0] = d1;
-            data[1] = d2;
-            data[2] = d3;
-            data[3] = d4;
+            return std::shared_ptr<InetAddress>(new InetAddressIPv4(0, 0, 0, 0));
+            
+        }
+        
+        InetAddressIPv4* InetAddressIPv4::getLoopback() {
+            
+            return new InetAddressIPv4(127, 0, 0, 1);
             
         }
         
         
-        AddressIPv4* AddressIPv4::getAny() noexcept {
-            
-            return new AddressIPv4(0, 0, 0, 0);
-            
-        }
-        
-        AddressIPv4* AddressIPv4::getLoopback() noexcept {
-            
-            return new AddressIPv4(127, 0, 0, 1);
-            
-        }
-        
-        AddressIPv4* AddressIPv4::getBroadcast() noexcept {
-            
-            return new AddressIPv4(255, 255, 255, 255);
-            
-        }
-        
-        
-        AddressIPv6::AddressIPv6() noexcept {
+        InetAddressIPv6::InetAddressIPv6() {
             
             data[0] = 0;
             data[1] = 0;
@@ -318,11 +296,11 @@ namespace Netycat {
             
         }
         
-        AddressIPv6::AddressIPv6(uint8_t d1, uint8_t d2,
+        InetAddressIPv6::InetAddressIPv6(uint8_t d1, uint8_t d2,
             uint8_t d3, uint8_t d4, uint8_t d5, uint8_t d6,
             uint8_t d7, uint8_t d8, uint8_t d9, uint8_t d10,
             uint8_t d11, uint8_t d12, uint8_t d13, uint8_t d14,
-            uint8_t d15, uint8_t d16) noexcept {
+            uint8_t d15, uint8_t d16) {
             
             data[0] = d1;
             data[1] = d2;
@@ -343,7 +321,7 @@ namespace Netycat {
             
         }
         
-        AddressIPv6::AddressIPv6(const AddressIPv6& src) noexcept {
+        InetAddressIPv6::InetAddressIPv6(const InetAddressIPv6& src) {
             
             data[0] = src.data[0];
             data[1] = src.data[1];
@@ -364,19 +342,19 @@ namespace Netycat {
             
         }
         
-        AddressIPv6::~AddressIPv6() noexcept {
+        InetAddressIPv6::~InetAddressIPv6() {
             
         }
         
         
-        Address::AddressType AddressIPv6::getType() const noexcept {
+        InetAddress::InetAddressType InetAddressIPv6::getType() {
             
             return IPv6;
             
         }
         
         
-        std::string AddressIPv6::toString() const noexcept {
+        std::string InetAddressIPv6::toString() {
             
             const char hexTable[] = "0123456789abcdef";
             
@@ -424,55 +402,23 @@ namespace Netycat {
         }
         
         
-        uint8_t* AddressIPv6::getData() noexcept {
-            
-            return data;
-            
-        }
-        
-        const uint8_t* AddressIPv6::getData() const noexcept {
+        uint8_t* InetAddressIPv6::getData() {
             
             return data;
             
         }
         
         
-        void AddressIPv6::set(uint8_t d1, uint8_t d2,
-            uint8_t d3, uint8_t d4, uint8_t d5, uint8_t d6,
-            uint8_t d7, uint8_t d8, uint8_t d9, uint8_t d10,
-            uint8_t d11, uint8_t d12, uint8_t d13, uint8_t d14,
-            uint8_t d15, uint8_t d16) noexcept {
+		std::shared_ptr<InetAddress> InetAddressIPv6::getAny() {
             
-            data[0] = d1;
-            data[1] = d2;
-            data[2] = d3;
-            data[3] = d4;
-            data[4] = d5;
-            data[5] = d6;
-            data[6] = d7;
-            data[7] = d8;
-            data[8] = d9;
-            data[9] = d10;
-            data[10] = d11;
-            data[11] = d12;
-            data[12] = d13;
-            data[13] = d14;
-            data[14] = d15;
-            data[15] = d16;
+            return std::shared_ptr<InetAddress>(new InetAddressIPv6(0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0));
             
         }
         
-        
-        AddressIPv6* AddressIPv6::getAny() noexcept {
+        InetAddressIPv6* InetAddressIPv6::getLoopback() {
             
-            return new AddressIPv6(0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0);
-            
-        }
-        
-        AddressIPv6* AddressIPv6::getLoopback() noexcept {
-            
-            return new AddressIPv6(0, 0, 0, 0, 0, 0, 0, 0,
+            return new InetAddressIPv6(0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 1);
             
         }

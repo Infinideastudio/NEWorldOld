@@ -23,7 +23,7 @@
 #define _NETYCAT_H_
 
 
-#include <Netycat/Core/Core.h>
+#include "Core\Core.h"
 
 
 #endif

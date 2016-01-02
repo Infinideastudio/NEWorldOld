@@ -4,7 +4,7 @@
 extern string inputstr;
 
 //图形界面系统。。。正宗OOP！！！
-namespace gui{
+namespace gui {
 	float linewidth = 1.0f;
 	float linealpha = 0.9f;
 	float FgR = 0.2f;
@@ -51,41 +51,41 @@ namespace gui{
 		glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
 		//处理前缀和
 		for (int col = 0; col < 3; col++) {
-			for (int x = 0; x < psw; x++) {
-				for (int y = 0; y < psh; y++) {
-					int scrx = x - r, scry = y - r;
-					if (scrx < 0) scrx = 0; if (scrx >= w) scrx = w - 1;
-					if (scry < 0) scry = 0; if (scry >= h) scry = h - 1;
-					rps[(y*psw + x) * 3 + col] = cps[(y*psw + x) * 3 + col] = scr[(scry*w + scrx) * 3 + col];
-					if (x != 0) rps[(y*psw + x) * 3 + col] += rps[(y*psw + (x - 1)) * 3 + col];
-					if (y != 0) cps[(y*psw + x) * 3 + col] += cps[((y - 1)*psw + x) * 3 + col];
-				}
-			}
+		for (int x = 0; x < psw; x++) {
+		for (int y = 0; y < psh; y++) {
+		int scrx = x - r, scry = y - r;
+		if (scrx < 0) scrx = 0; if (scrx >= w) scrx = w - 1;
+		if (scry < 0) scry = 0; if (scry >= h) scry = h - 1;
+		rps[(y*psw + x) * 3 + col] = cps[(y*psw + x) * 3 + col] = scr[(scry*w + scrx) * 3 + col];
+		if (x != 0) rps[(y*psw + x) * 3 + col] += rps[(y*psw + (x - 1)) * 3 + col];
+		if (y != 0) cps[(y*psw + x) * 3 + col] += cps[((y - 1)*psw + x) * 3 + col];
+		}
+		}
 		}
 		//模糊计算
 		int cursum; //当前颜色之和
 		for (int col = 0; col < 3; col++) {
-			cursum = 0;
-			for (int y = 0; y <= 2 * r; y++) cursum += rps[(y*psw + 2 * r) * 3 + col];
-			for (int x = 0; x < w; x++) {
-				int psx = x + r;
-				if (x != 0) {
-					cursum = sum[(x - 1) * 3 + col];
-					cursum -= cps[(2 * r*psw + psx - r - 1) * 3 + col];
-					cursum += cps[(2 * r*psw + psx + r) * 3 + col];
-				}
-				for (int y = 0; y < h; y++) {
-					int psy = y + r;
-					if (y != 0) {
-						cursum -= rps[((psy - r - 1)*psw + psx + r) * 3 + col];
-						if (x != 0) cursum += rps[((psy - r - 1)*psw + psx - r - 1) * 3 + col];
-						cursum += rps[((psy + r)*psw + psx + r) * 3 + col];
-						if (x != 0) cursum -= rps[((psy + r)*psw + psx - r - 1) * 3 + col];
-					}
-					sum[(y*w + x) * 3 + col] = cursum;
-					scr[(y*w + x) * 3 + col] = (ubyte)(cursum / ((2 * r + 1)*(2 * r + 1)));
-				}
-			}
+		cursum = 0;
+		for (int y = 0; y <= 2 * r; y++) cursum += rps[(y*psw + 2 * r) * 3 + col];
+		for (int x = 0; x < w; x++) {
+		int psx = x + r;
+		if (x != 0) {
+		cursum = sum[(x - 1) * 3 + col];
+		cursum -= cps[(2 * r*psw + psx - r - 1) * 3 + col];
+		cursum += cps[(2 * r*psw + psx + r) * 3 + col];
+		}
+		for (int y = 0; y < h; y++) {
+		int psy = y + r;
+		if (y != 0) {
+		cursum -= rps[((psy - r - 1)*psw + psx + r) * 3 + col];
+		if (x != 0) cursum += rps[((psy - r - 1)*psw + psx - r - 1) * 3 + col];
+		cursum += rps[((psy + r)*psw + psx + r) * 3 + col];
+		if (x != 0) cursum -= rps[((psy + r)*psw + psx - r - 1) * 3 + col];
+		}
+		sum[(y*w + x) * 3 + col] = cursum;
+		scr[(y*w + x) * 3 + col] = (ubyte)(cursum / ((2 * r + 1)*(2 * r + 1)));
+		}
+		}
 		}
 		glDrawPixels(w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
 		delete[] scr;
@@ -130,12 +130,12 @@ namespace gui{
 			sum = 1.0f / sum;
 			for (int i = 0; i < size2; i++) mat[i] *= sum;
 		}
-		
+
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glReadPixels(0, 0, sz, sz, GL_RGB, GL_UNSIGNED_BYTE, scr);
 		//glColorMask(true, true, true, false);
-		
+
 		glGenTextures(1, &bgTex);
 		glBindTexture(GL_TEXTURE_2D, bgTex);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -143,7 +143,7 @@ namespace gui{
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sz, sz, 0, GL_RGB, GL_UNSIGNED_BYTE, scr);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		
+
 		for (int x = -r; x <= r; x++) {
 			for (int y = -r; y <= r; y++) {
 				float d = mat[(x + r)*(r * 2 + 1) + y + r];
@@ -160,7 +160,7 @@ namespace gui{
 				glEnd();
 			}
 		}
-		
+
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glDeleteTextures(1, &bgTex);
 		glPixelStorei(GL_PACK_ALIGNMENT, 4);
@@ -418,32 +418,32 @@ namespace gui{
 		glColor4f(bcR, bcG, bcB, bcA);
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
-			glVertex2i(xmin, ymin);
-			glVertex2i(xmax, ymin);
-			glVertex2i(xmax, ymax);
-			glVertex2i(xmin, ymax);
+		glVertex2i(xmin, ymin);
+		glVertex2i(xmax, ymin);
+		glVertex2i(xmax, ymax);
+		glVertex2i(xmin, ymax);
 		glEnd();
 		glDisable(GL_TEXTURE_2D);
 		glColor4f(fcR, fcG, fcB, fcA);
 		glBegin(GL_QUADS);
-			glVertex2i(xmin + barpos, ymin);
-			glVertex2i(xmin + barpos + barwidth, ymin);
-			glVertex2i(xmin + barpos + barwidth, ymax);
-			glVertex2i(xmin + barpos, ymax);
+		glVertex2i(xmin + barpos, ymin);
+		glVertex2i(xmin + barpos + barwidth, ymin);
+		glVertex2i(xmin + barpos + barwidth, ymax);
+		glVertex2i(xmin + barpos, ymax);
 		glEnd();
 		glColor4f(FgR*0.9f, FgG*0.9f, FgB*0.9f, linealpha);
 
 		if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 		glBegin(GL_LINE_LOOP);
-			glVertex2i(xmin, ymin);
-			glVertex2i(xmin, ymax);
-			glVertex2i(xmax, ymax);
-			glVertex2i(xmax, ymin);
+		glVertex2i(xmin, ymin);
+		glVertex2i(xmin, ymax);
+		glVertex2i(xmax, ymax);
+		glVertex2i(xmax, ymin);
 		glEnd();
 
 		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-		
+
 		glBegin(GL_LINE_LOOP);
 
 		if (focused)
@@ -523,20 +523,20 @@ namespace gui{
 
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
-			glVertex2i(xmin, ymin);
-			glVertex2i(xmin, ymax);
-			glVertex2i(xmax, ymax);
-			glVertex2i(xmax, ymin);
+		glVertex2i(xmin, ymin);
+		glVertex2i(xmin, ymax);
+		glVertex2i(xmax, ymax);
+		glVertex2i(xmax, ymin);
 		glEnd();
 		glColor4f(FgR*0.9f, FgG*0.9f, FgB*0.9f, linealpha);
 
 		if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 		glLineWidth(linewidth);
 		glBegin(GL_LINE_LOOP);
-			glVertex2i(xmin, ymin);
-			glVertex2i(xmin, ymax);
-			glVertex2i(xmax, ymax);
-			glVertex2i(xmax, ymin);
+		glVertex2i(xmin, ymin);
+		glVertex2i(xmin, ymax);
+		glVertex2i(xmax, ymax);
+		glVertex2i(xmax, ymin);
 		glEnd();
 
 		glBegin(GL_LINE_LOOP);
@@ -745,14 +745,14 @@ namespace gui{
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, imageid);
 		glBegin(GL_QUADS);
-			glTexCoord2f(txmin, tymax); glVertex2i(xmin, ymin);
-			glTexCoord2f(txmin, tymin); glVertex2i(xmin, ymax);
-			glTexCoord2f(txmax, tymin); glVertex2i(xmax, ymax);
-			glTexCoord2f(txmax, tymax); glVertex2i(xmax, ymin);
+		glTexCoord2f(txmin, tymax); glVertex2i(xmin, ymin);
+		glTexCoord2f(txmin, tymin); glVertex2i(xmin, ymax);
+		glTexCoord2f(txmax, tymin); glVertex2i(xmax, ymax);
+		glTexCoord2f(txmax, tymax); glVertex2i(xmax, ymin);
 		glEnd();
 	}
 
-	void Form::Init(){
+	void Form::Init() {
 		maxid = 0;
 		currentid = 0;
 		focusid = -1;
@@ -784,20 +784,20 @@ namespace gui{
 		va_end(arg_ptr);
 	}
 
-	void Form::update(){
+	void Form::update() {
 
 		int i;
 		updated = false;
 		bool lMouseOnTextbox = MouseOnTextbox;
 		MouseOnTextbox = false;
 
-		if (glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS){                             //TAB键切换焦点
-			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS){   //Shift+Tab
+		if (glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS) {                             //TAB键切换焦点
+			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {   //Shift+Tab
 				updated = true;
 				if (!tabp) focusid--;
 				if (focusid == -2) focusid = maxid - 1;                                //到了最前一个ID
 			}
-			else{
+			else {
 				updated = true;
 				if (!tabp) focusid++;
 				if (focusid == maxid + 1) focusid = -1;                              //到了最后一个ID
@@ -808,32 +808,32 @@ namespace gui{
 		if (!(glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)) shiftp = false;
 
 		enterpl = enterp;
-		if (glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS){
+		if (glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
 			updated = true;
 			enterp = true;
 		}
 		if (!(glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS)) enterp = false;
 
 		upkpl = upkp;                                                              //方向键上
-		if (glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS){
+		if (glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS) {
 			updated = true;
 			upkp = true;
 		}
 		if (!(glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS)) upkp = false;
 
 		downkpl = downkp;                                                          //方向键下
-		if (glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS){
+		if (glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS) {
 			downkp = true;
 		}
 		if (!(glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS)) downkp = false;
 
 		leftkpl = leftkp;                                                          //方向键左
-		if (glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS){
+		if (glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS) {
 			leftkp = true;
 		}
 		if (!(glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS)) leftkp = false;
 		rightkpl = rightkp;                                                        //方向键右
-		if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == GLFW_PRESS){
+		if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == GLFW_PRESS) {
 			rightkp = true;
 		}
 		if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) != GLFW_PRESS) rightkp = false;
@@ -846,7 +846,7 @@ namespace gui{
 
 		if (mb == 1 && mbl == 0) focusid = -1;                                   //空点击时使焦点清空
 
-		for (i = 0; i != childrenCount; i++){
+		for (i = 0; i != childrenCount; i++) {
 			children[i]->updatepos();
 			children[i]->update();                                               //更新子控件
 		}
@@ -865,12 +865,12 @@ namespace gui{
 
 	}
 
-	void Form::render(){
+	void Form::render() {
 		Background();
 
 		double TimeDelta = timer() - transitionTimer;
 		float transitionAnim = (float)(1.0 - pow(0.8, TimeDelta*60.0) + pow(0.8, 0.3*60.0) / 0.3 * TimeDelta);
-		
+
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
@@ -923,13 +923,13 @@ namespace gui{
 		barpos = s;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
-    
+
 	textbox::textbox(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
 		text = t;
 		enabled = true;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
-    
+
 	vscroll::vscroll(int h, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
 		enabled = true;
 		barheight = h;
@@ -943,21 +943,21 @@ namespace gui{
 		imageid = iid;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
-    
-	void Form::cleanup(){
+
+	void Form::cleanup() {
 		//Transition backward
 		if (transitionList != 0) glDeleteLists(transitionList, 1);
 		transitionList = displaylist;
 		transitionForward = false;
 		transitionTimer = timer();
-		for (int i = 0; i != childrenCount; i++){
+		for (int i = 0; i != childrenCount; i++) {
 			children[i]->destroy();
 		}
 		childrenCount = 0;
 	}
-    
-	controls* Form::getControlByID(int cid){
-		for (int i = 0; i != childrenCount; i++){
+
+	controls* Form::getControlByID(int cid) {
+		for (int i = 0; i != childrenCount; i++) {
 			if (children[i]->id == cid) return children[i];
 		}
 		return nullptr;

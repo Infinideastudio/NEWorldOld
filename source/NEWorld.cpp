@@ -152,32 +152,9 @@ main_menu:
 	//初始化游戏状态
 	printf("[Console][Game]");
 	printf("Init player...\n");
-	player::InitHitbox();
-	player::xpos = 0.0;
-	player::ypos = 60.0;
-	player::zpos = 0.0;
-	memset(player::inventorybox, 0, sizeof(player::inventorybox));
-	memset(player::inventorypcs, 0, sizeof(player::inventorypcs));
-	player::inventorybox[0][0] = 1; player::inventorypcs[0][0] = 255;
-	player::inventorybox[0][1] = 2; player::inventorypcs[0][1] = 255;
-	player::inventorybox[0][2] = 3; player::inventorypcs[0][2] = 255;
-	player::inventorybox[0][3] = 4; player::inventorypcs[0][3] = 255;
-	player::inventorybox[0][4] = 5; player::inventorypcs[0][4] = 255;
-	player::inventorybox[0][5] = 6; player::inventorypcs[0][5] = 255;
-	player::inventorybox[0][6] = 7; player::inventorypcs[0][6] = 255;
-	player::inventorybox[0][7] = 8; player::inventorypcs[0][7] = 255;
-	player::inventorybox[0][8] = 9; player::inventorypcs[0][8] = 255;
-	player::inventorybox[0][9] = 10; player::inventorypcs[0][9] = 255;
-	player::inventorybox[1][0] = 11; player::inventorypcs[1][0] = 255;
-	player::inventorybox[1][1] = 12; player::inventorypcs[1][1] = 255;
-	player::inventorybox[1][2] = 13; player::inventorypcs[1][2] = 255;
-	player::inventorybox[1][3] = 14; player::inventorypcs[1][3] = 255;
-	player::inventorybox[1][4] = 15; player::inventorypcs[1][4] = 255;
-	player::inventorybox[1][5] = 16; player::inventorypcs[1][5] = 255;
-	player::inventorybox[1][6] = 17; player::inventorypcs[1][6] = 255;
 	loadGame();
-	player::MoveHitboxToPosition();
-	player::InitPosition();
+	player::init(0, 60.0, 0);
+	player::inventory[0][0] = 1; player::inventoryAmount[0][0] = 255;
 	player::addItem(builtInItems::APPLE);
 	player::addItem(builtInItems::STICK);
 	player::addItem(blocks::TNT, 1024);
@@ -836,7 +813,7 @@ void updategame(){
 		if (isPressed(GLFW_KEY_Z) && player::indexInHand > 0) player::indexInHand--;
 		if (isPressed(GLFW_KEY_X) && player::indexInHand < 9) player::indexInHand++;
 		if ((int)player::indexInHand + (mwl - mw) < 0)player::indexInHand = 0;
-		else if ((int)player::iteindexInHandmInHand + (mwl - mw) > 9)player::indexInHand = 9;
+		else if ((int)player::indexInHand + (mwl - mw) > 9)player::indexInHand = 9;
 		else player::indexInHand += (byte)(mwl - mw);
 		mwl = mw;
 
@@ -1702,10 +1679,10 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 			glTexCoord2f(1.0, 1.0);glVertex2d(xbase + i * (32 + spac), ybase + 32);
 		glEnd();
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		if (player::inventorybox[row][i] != blocks::AIR) {
+		if (player::inventory[row][i] != blocks::AIR) {
 			glBindTexture(GL_TEXTURE_2D, BlockTextures);
-			double tcX = Textures::getTexcoordX(player::inventorybox[row][i], 1);
-			double tcY = Textures::getTexcoordY(player::inventorybox[row][i], 1);
+			double tcX = Textures::getTexcoordX(player::inventory[row][i], 1);
+			double tcY = Textures::getTexcoordY(player::inventory[row][i], 1);
 			glBegin(GL_QUADS);
 				glTexCoord2d(tcX, tcY + 1 / 8.0);
 				glVertex2d(xbase + i * (32 + spac) + 2, ybase + 2);
@@ -1717,7 +1694,7 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 				glVertex2d(xbase + i * (32 + spac) + 2, ybase + 30);
 			glEnd();
 			std::stringstream ss;
-			ss << (int)player::inventorypcs[row][i];
+			ss << (int)player::inventoryAmount[row][i];
 			TextRenderer::renderString(xbase + i * (32 + spac), ybase, ss.str());
 		}
 	}
@@ -1730,8 +1707,8 @@ void drawBag() {
 	int leftp = (windowwidth - 392) / 2;
 	int upp = windowheight - 152 - 16;
 	static int mousew, mouseb, mousebl;
-	static block itemselected = blocks::AIR;
-	static block pcsselected = 0;
+	static block indexselected = blocks::AIR;
+	static block Amountselected = 0;
 	double curtime = timer();
 	double TimeDelta = curtime - bagAnimTimer;
 	float bagAnim = (float)(1.0 - pow(0.9, TimeDelta*60.0) + pow(0.9, bagAnimDuration*60.0) / bagAnimDuration * TimeDelta);
@@ -1748,10 +1725,10 @@ void drawBag() {
 		if (curtime - bagAnimTimer > bagAnimDuration) glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
 		else glColor4f(0.2f, 0.2f, 0.2f, 0.6f*bagAnim);
 		glBegin(GL_QUADS);
-			glVertex2i(0, 0);
-			glVertex2i(windowwidth, 0);
-			glVertex2i(windowwidth, windowheight);
-			glVertex2i(0, windowheight);
+		glVertex2i(0, 0);
+		glVertex2i(windowwidth, 0);
+		glVertex2i(windowwidth, windowheight);
+		glVertex2i(0, windowheight);
 		glEnd();
 
 		glEnable(GL_TEXTURE_2D);
@@ -1765,65 +1742,61 @@ void drawBag() {
 					if (mx >= j*(32 + 8) + leftp && mx <= j*(32 + 8) + 32 + leftp &&
 						my >= i*(32 + 8) + upp && my <= i*(32 + 8) + 32 + upp) {
 						csi = si = i; csj = sj = j; sf = 1;
-				if (mousebl == 0 && mouseb == 1 && itemselected == player::inventory[i][j]) {
-					if (player::inventoryAmount[i][j] + pcsselected <= 255) {
-						player::inventoryAmount[i][j] += pcsselected;
-								pcsselected = 0;
+						if (mousebl == 0 && mouseb == 1 && indexselected == player::inventory[i][j]) {
+							if (player::inventoryAmount[i][j] + Amountselected <= 255) {
+								player::inventoryAmount[i][j] += Amountselected;
+								Amountselected = 0;
 							}
 							else
 							{
-						pcsselected = player::inventoryAmount[i][j] + pcsselected - 255;
-						player::inventoryAmount[i][j] = 255;
+								Amountselected = player::inventoryAmount[i][j] + Amountselected - 255;
+								player::inventoryAmount[i][j] = 255;
 							}
 						}
-				if (mousebl == 0 && mouseb == 1 && itemselected != player::inventory[i][j]) {
-					std::swap(pcsselected, player::inventoryAmount[i][j]);
-					std::swap(itemselected, player::inventory[i][j]);
+						if (mousebl == 0 && mouseb == 1 && indexselected != player::inventory[i][j]) {
+							std::swap(Amountselected, player::inventoryAmount[i][j]);
+							std::swap(indexselected, player::inventory[i][j]);
 						}
-				if (mousebl == 0 && mouseb == 2 && itemselected == player::inventory[i][j] && player::inventoryAmount[i][j] < 255) {
-							pcsselected--;
-					player::inventoryAmount[i][j]++;
+						if (mousebl == 0 && mouseb == 2 && indexselected == player::inventory[i][j] && player::inventoryAmount[i][j] < 255) {
+							Amountselected--;
+							player::inventoryAmount[i][j]++;
 						}
-				if (mousebl == 0 && mouseb == 2 && player::inventory[i][j] == blocks::AIR) {
-							pcsselected--;
-					player::inventoryAmount[i][j] = 1;
-					player::inventory[i][j] = itemselected;
+						if (mousebl == 0 && mouseb == 2 && player::inventory[i][j] == blocks::AIR) {
+							Amountselected--;
+							player::inventoryAmount[i][j] = 1;
+							player::inventory[i][j] = indexselected;
 						}
 
-						if (pcsselected == 0) itemselected = blocks::AIR;
-						if (itemselected == blocks::AIR) pcsselected = 0;
-				if (player::inventoryAmount[i][j] == 0) player::inventory[i][j] = blocks::AIR;
-				if (player::inventory[i][j] == blocks::AIR) player::inventoryAmount[i][j] = 0;
+						if (Amountselected == 0) indexselected = blocks::AIR;
+						if (indexselected == blocks::AIR) Amountselected = 0;
+						if (player::inventoryAmount[i][j] == 0) player::inventory[i][j] = blocks::AIR;
+						if (player::inventory[i][j] == blocks::AIR) player::inventoryAmount[i][j] = 0;
 					}
 				}
 				drawBagRow(i, (csi == i ? csj : -1), (windowwidth - 392) / 2, windowheight - 152 - 16 + i * 40, 8, 1.0f);
-			if (player::inventorybox[i][j] != blocks::AIR) {
-				double tcX = Textures::getTexcoordX(player::inventorybox[i][j], 1);
-				double tcY = Textures::getTexcoordY(player::inventorybox[i][j], 1);
-				ss << (int)player::inventorypcs[i][j];
 			}
 		}
-		if (itemselected != blocks::AIR) {
+		if (indexselected != blocks::AIR) {
 			glBindTexture(GL_TEXTURE_2D, BlockTextures);
-			double tcX = Textures::getTexcoordX(itemselected, 1);
-			double tcY = Textures::getTexcoordY(itemselected, 1);
+			double tcX = Textures::getTexcoordX(indexselected, 1);
+			double tcY = Textures::getTexcoordY(indexselected, 1);
 			glBegin(GL_QUADS);
-				glTexCoord2d(tcX, tcY + 1 / 8.0);
-				glVertex2d(mx - 16, my - 16);
-				glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-				glVertex2d(mx + 16, my - 16);
-				glTexCoord2d(tcX + 1 / 8.0, tcY);
-				glVertex2d(mx + 16, my + 16);
-				glTexCoord2d(tcX, tcY);
-				glVertex2d(mx - 16, my + 16);
+			glTexCoord2d(tcX, tcY + 1 / 8.0);
+			glVertex2d(mx - 16, my - 16);
+			glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
+			glVertex2d(mx + 16, my - 16);
+			glTexCoord2d(tcX + 1 / 8.0, tcY);
+			glVertex2d(mx + 16, my + 16);
+			glTexCoord2d(tcX, tcY);
+			glVertex2d(mx - 16, my + 16);
 			glEnd();
 			std::stringstream ss;
-			ss << pcsselected;
+			ss << Amountselected;
 			TextRenderer::renderString((int)mx - 16, (int)my - 16, ss.str());
 		}
-	if (player::inventory[si][sj] != 0 && sf == 1) {
+		if (player::inventory[si][sj] != 0 && sf == 1) {
 			glColor4f(1.0, 1.0, 0.0, 1.0);
-		TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(player::inventory[si][sj]).getBlockName());
+			TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(player::inventory[si][sj]).getBlockName());
 		}
 
 		int xbase = 0, ybase = 0, spac = 0;
@@ -1837,7 +1810,7 @@ void drawBag() {
 			ybase = (int)round((windowheight - 152 - 16 - (windowheight - 32))*bagAnim + (windowheight - 32));
 			for (int i = 0; i < 3; i++) {
 				glColor4f(1.0f, 1.0f, 1.0f, bagAnim);
-				drawBagRow(i, -1, xbase, ybase + i*40, spac, alpha);
+				drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
 			}
 		}
 
@@ -1855,10 +1828,10 @@ void drawBag() {
 			glDisable(GL_TEXTURE_2D);
 			glColor4f(0.2f, 0.2f, 0.2f, 0.6f - 0.6f*bagAnim);
 			glBegin(GL_QUADS);
-				glVertex2i(0, 0);
-				glVertex2i(windowwidth, 0);
-				glVertex2i(windowwidth, windowheight);
-				glVertex2i(0, windowheight);
+			glVertex2i(0, 0);
+			glVertex2i(windowwidth, 0);
+			glVertex2i(windowwidth, windowheight);
+			glVertex2i(0, windowheight);
 			glEnd();
 			glEnable(GL_TEXTURE_2D);
 			int xbase = 0, ybase = 0, spac = 0;
@@ -1867,7 +1840,7 @@ void drawBag() {
 			ybase = (int)round((windowheight - 152 - 16 + 120 - (windowheight - 32)) - (windowheight - 152 - 16 + 120 - (windowheight - 32))*bagAnim + (windowheight - 32));
 			spac = (int)round(8 - 8 * bagAnim);
 			glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-			drawBagRow(3, player::itemInHand, xbase, ybase, spac, alpha);
+			drawBagRow(3, player::indexInHand, xbase, ybase, spac, alpha);
 			xbase = (int)round(((windowwidth - 392) / 2 - windowwidth) - ((windowwidth - 392) / 2 - windowwidth)*bagAnim + windowwidth);
 			ybase = (int)round((windowheight - 152 - 16 - (windowheight - 32)) - (windowheight - 152 - 16 - (windowheight - 32))*bagAnim + (windowheight - 32));
 			for (int i = 0; i < 3; i++) {
@@ -1875,10 +1848,9 @@ void drawBag() {
 				drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
 			}
 		}
-		else drawBagRow(3, player::itemInHand, 0, windowheight - 32, 0, 0.5f);
+		else drawBagRow(3, player::indexInHand, 0, windowheight - 32, 0, 0.5f);
 	}
 }
-
 void saveScreenshot(int x, int y, int w, int h, string filename){
 	Textures::TEXTURE_RGB scrBuffer;
 	int bufw = w, bufh = h;
