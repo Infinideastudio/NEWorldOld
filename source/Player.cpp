@@ -169,8 +169,21 @@ bool player::save(string worldn) {
 	ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
 	std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
 	if (!isave.is_open()) return false;
-	isave << curversion << OnGround << Running << AirJumps << lookupdown << heading << xpos << ypos << zpos
-		<< jump << xlookspeed << ylookspeed << FLY << CROSS << canGliding;
+	isave << curversion << '\n';
+	isave << OnGround << '\n';
+	isave << Running << '\n';
+	isave << AirJumps << '\n';
+	isave << lookupdown << '\n';
+	isave << heading << '\n';
+	isave << xpos << '\n';
+	isave << ypos << '\n';
+	isave << zpos << '\n';
+	isave << jump << '\n';
+	isave << xlookspeed << '\n';
+	isave << ylookspeed << '\n';
+	isave << FLY << '\n';
+	isave << CROSS << '\n';
+	isave << canGliding;
 	isave.write((char*)inventory, sizeof(inventory));
 	isave.write((char*)inventoryAmount, sizeof(inventoryAmount));
 	isave << indexInHand;
