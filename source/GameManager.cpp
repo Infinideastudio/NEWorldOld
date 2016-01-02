@@ -50,7 +50,7 @@ GameManagerWindow::GameManagerWindow(const wxString & title)
 	new wxStaticText(optionspage, 10011, L"视野角度：", wxPoint(10, 15));
 	scFOVy = new wxSlider(optionspage, 10012, (int)FOVyNormal, 1, 120, wxPoint(70, 13), wxSize(300, -1), wxSL_HORIZONTAL | wxSL_LABELS);
 	new wxStaticText(optionspage, 10013, L"鼠标灵敏度：", wxPoint(380, 15));
-	scmousemove = new wxSlider(optionspage, 10014, (int)mousemove, 0, 1, wxPoint(450, 13), wxSize(300, -1), wxSL_HORIZONTAL | wxSL_LABELS);
+	scmousemove = new wxSlider(optionspage, 10014, (int)(mousemove * 1000), 25, 1000, wxPoint(450, 13), wxSize(300, -1), wxSL_HORIZONTAL | wxSL_LABELS);
 	new wxStaticText(optionspage, 10015, L"渲染距离：", wxPoint(10, 55));
 	scviewdistance = new wxSlider(optionspage, 10016, viewdistance, 2, 16, wxPoint(70, 53), wxSize(300, -1), wxSL_HORIZONTAL | wxSL_LABELS);
 	new wxStaticBox(optionspage, 10017, L"图形界面选项", wxPoint(5, 95), wxSize(800, 70));
@@ -136,7 +136,7 @@ void GameManagerWindow::OnModifyFOVy(wxCommandEvent &)
 
 void GameManagerWindow::OnModifyMouseMove(wxCommandEvent &)
 {
-	mousemove = scmousemove->GetValue();
+	mousemove = (float)scmousemove->GetValue() / 1000;;
 }
 
 void GameManagerWindow::OnModifyViewDistance(wxCommandEvent &)
