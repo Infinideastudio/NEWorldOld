@@ -19,11 +19,10 @@
 *******************************************************************************/
 
 
-#include <cstdint>
-#include <cstdio>
+#include <stdint.h>
 
-#include "..\..\..\include\Netycat\Core\Buffer.h"
-#include "..\..\..\include\Netycat\Core\BufferCondition.h"
+#include <Netycat/Core/Buffer.h>
+#include <Netycat/Core/BufferCondition.h>
 
 
 namespace Netycat {
@@ -34,7 +33,7 @@ namespace Netycat {
             
         }
         
-        BufferCondition::BufferCondition(const BufferCondition&) {
+        BufferCondition::BufferCondition(const BufferCondition& src) {
             
         }
         
