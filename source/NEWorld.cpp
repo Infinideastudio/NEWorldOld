@@ -13,7 +13,7 @@ void InitGL();
 //void glPrintInfoLog(GLhandleARB obj);
 void setupNormalFog();
 void LoadTextures();
-void loadGame();
+bool loadGame();
 void saveGame();
 ThreadFunc updateThreadFunc(void*);
 void drawCloud(double px, double pz);
@@ -155,8 +155,8 @@ main_menu:
 	//初始化游戏状态
 	printf("[Console][Game]");
 	printf("Init player...\n");
-	loadGame();
-	player::init(0, 60.0, 0);
+	if (loadGame()) player::init(player::xpos, player::ypos, player::zpos);
+	else player::init(0, 60.0, 0);
 	player::inventory[0][0] = 1; player::inventoryAmount[0][0] = 255;
 	player::addItem(builtInItems::APPLE);
 	player::addItem(builtInItems::STICK);
@@ -461,12 +461,14 @@ void saveGame(){
 	}
 }
 
-void loadGame(){
+bool loadGame(){
 	if (!player::load(world::worldname)) {
 #ifdef NEWORLD_CONSOLE_OUTPUT
 		DebugWarning("Failed loading player info!");
 #endif
+		return false;
 	}
+	return true;
 }
 
 bool isPressed(int key, bool setFalse = false) {
@@ -883,6 +885,10 @@ void updategame(){
 			if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
 			if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
 			if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) player::xpos = 2147483600;
+			if (isPressed(GLFW_KEY_F7) == GLFW_PRESS) {
+				player::init(0, 60.0, 0);
+				player::jump = 0;
+			}
 			if (isPressed(GLFW_KEY_SLASH) == GLFW_PRESS) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
 		}
 		
