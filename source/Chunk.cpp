@@ -2,6 +2,7 @@
 #include "WorldGen.h"
 #include "World.h"
 #include "Renderer.h"
+#include "Frustum.h"
 
 namespace ChunkRenderer {
 	void renderChunk(world::chunk* c);

@@ -26,6 +26,11 @@ int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度
 bool gamebegin, gameexit, bagOpened;
 
+//多人游戏
+bool multiplayer = false;
+string serverip;
+unsigned short port = 30001;
+
 TextureID BlockTextures, BlockTextures3D;
 TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
 TextureID DestroyImage[11];

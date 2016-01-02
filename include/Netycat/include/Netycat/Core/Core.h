@@ -23,13 +23,11 @@
 #define _NETYCAT_CORE_H_
 
 
-#include <Netycat/Core/Address.h>
-#include <Netycat/Core/Buffer.h>
-#include <Netycat/Core/BufferCondition.h>
-#include <Netycat/Core/Endpoint.h>
-#include <Netycat/Core/Exception.h>
-#include <Netycat/Core/OS.h>
-#include <Netycat/Core/Socket.h>
+#include "Buffer.h"
+#include "BufferCondition.h"
+#include "Exception.h"
+#include "InetAddress.h"
+#include "Socket.h"
 
 
 namespace Netycat {

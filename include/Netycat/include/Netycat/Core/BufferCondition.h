@@ -19,13 +19,13 @@
 *******************************************************************************/
 
 
-#ifndef _NETYCAT_CORE_BUFFERCONDiTION_H_
-#define _NETYCAT_CORE_BUFFERCONDiTION_H_
+#ifndef _NETYCAT_BUFFERCONDiTION_H_
+#define _NETYCAT_BUFFERCONDiTION_H_
 
 
-#include <stdint.h>
+#include <cstdint>
 
-#include <Netycat/Core/Buffer.h>
+#include "Buffer.h"
 
 
 namespace Netycat {

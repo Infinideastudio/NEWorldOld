@@ -5,9 +5,16 @@
 
 extern int getMouseButton();
 extern int getMouseScroll();
-
+inline string BoolYesNo(bool b) { return b ? "是" : "否"; }
+inline string BoolEnabled(bool b) { return b ? "开启" : "关闭"; }
+template<typename T>
+inline string strWithVar(string str, T var) {
+	std::stringstream ss;
+	ss << str << var;
+	return ss.str();
+}
 //图形界面系统。。。正宗OOP！！！
-namespace gui{
+namespace gui {
 	extern float linewidth;
 	extern float linealpha;
 	extern float FgR;
@@ -23,13 +30,13 @@ namespace gui{
 	extern unsigned int lastdisplaylist;
 	extern double transitionTimer;
 	extern bool transitionForward;
-	
+
 	void clearTransition();
 	void screenBlur();
 	void drawBackground();
 
 	class Form;
-	class controls{
+	class controls {
 	public:
 		//控件基类，只要是控件都得继承这个
 		virtual ~controls() {}
@@ -45,7 +52,7 @@ namespace gui{
 		double _xmin_b, _ymin_b, _xmax_b, _ymax_b;
 	};
 
-	class label:public controls {
+	class label :public controls {
 	public:
 		//标签
 		string text;
@@ -121,7 +128,7 @@ namespace gui{
 	};
 
 	// 窗体 / 容器
-	class Form{
+	class Form {
 	public:
 		vector<controls*> children;
 		bool tabp, shiftp, enterp, enterpl;

@@ -19,101 +19,337 @@
 *******************************************************************************/
 
 
-#include <stdint.h>
-#include <string.h>
-#include <utility>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
 
-#include <Netycat/Core/Include.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 
-#include <Netycat/Core/Address.h>
-#include <Netycat/Core/Buffer.h>
-#include <Netycat/Core/BufferCondition.h>
-#include <Netycat/Core/Endpoint.h>
-#include <Netycat/Core/Exception.h>
-#include <Netycat/Core/Socket.h>
+#include "..\..\..\include\Netycat\Core\Buffer.h"
+#include "..\..\..\include\Netycat\Core\BufferCondition.h"
+#include "..\..\..\include\Netycat\Core\Exception.h"
+#include "..\..\..\include\Netycat\Core\InetAddress.h"
+#include "..\..\..\include\Netycat\Core\Socket.h"
 
 
 namespace Netycat {
     
     namespace Core {
         
-        SocketBase::SocketBase() noexcept :
+        Socket::Socket() :
             sock(-1),
-            endpoint(nullptr) {
+            address(nullptr),
+            recvBuffer(SOCKET_BUFFER_SIZE),
+            recvBufferArray(new uint8_t[SOCKET_BUFFER_SIZE]),
+            sendBufferArray(new uint8_t[SOCKET_BUFFER_SIZE]) {
             
         }
         
-        SocketBase::SocketBase(SocketBase&& src) noexcept :
+        Socket::Socket(Socket&& src) :
             sock(src.sock),
-            endpoint(src.endpoint) {
+            address(src.address),
+            recvBuffer(src.recvBuffer),
+            recvBufferArray(new uint8_t[SOCKET_BUFFER_SIZE]),
+            sendBufferArray(new uint8_t[SOCKET_BUFFER_SIZE]) {
             
             src.sock = -1;
-            src.endpoint = nullptr;
+            src.address = nullptr;
             
         }
         
-        SocketBase::~SocketBase() noexcept {
+        Socket::~Socket() {
             
             if(sock != -1) {
                 
-                #if defined(NETYCAT_OS_WINDOWS)
-                    ::closesocket(sock);
-                #elif defined(NETYCAT_OS_LINUX)
-                    ::close(sock);
-                #endif
+                ::closesocket(sock);
                 
             }
             
-            if(endpoint != nullptr) {
+            if(address != nullptr) {
                 
-                delete endpoint;
+                delete address;
                 
             }
+            
+            delete []recvBufferArray;
+            delete []sendBufferArray;
             
         }
         
         
-        const Endpoint* SocketBase::getEndpoint() {
+        void Socket::connect(InetAddress* addr, uint16_t port) {
             
-            return endpoint;
+            if(sock != -1) {
+                
+                throw SocketException();
+                
+            }
+            
+            if(!addr) {
+                
+                throw SocketException();
+                
+            }
+            
+            switch(addr->getType()) {
+                
+                case InetAddress::IPv4: {
+                    
+                    InetAddressIPv4* addrIPv4 = (InetAddressIPv4*)addr;
+                    uint8_t* dataIPv4 = addrIPv4->getData();
+                    
+                    sock = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+                    if(sock == -1) {
+                        
+                        throw SocketException();
+                        
+                    }
+                    
+                    struct sockaddr_in saddr;
+                    ::memset(&saddr, 0, sizeof(saddr));
+                    saddr.sin_family = AF_INET;
+                    saddr.sin_port = htons(port);
+                    saddr.sin_addr.s_addr = htonl(
+                        (dataIPv4[0] << 24) | (dataIPv4[1] << 16) |
+                        (dataIPv4[2] << 8) | dataIPv4[3]);
+                    
+                    if(::connect(sock, (struct sockaddr*)&saddr, sizeof(saddr))
+                        != 0) {
+                        
+                        ::closesocket(sock);
+                        sock = -1;
+                        
+                        throw SocketException();
+                        
+                    }
+                    
+                    address = new InetAddressIPv4(*addrIPv4);
+                    
+                    break;
+                    
+                }
+                case InetAddress::IPv6: {
+                    
+                    InetAddressIPv6* addrIPv6 = (InetAddressIPv6*)addr;
+                    uint8_t* dataIPv6 = addrIPv6->getData();
+                    
+                    sock = ::socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
+                    if(sock == -1) {
+                        
+                        throw SocketException();
+                        
+                    }
+                    
+                    struct sockaddr_in6 saddr;
+                    ::memset(&saddr, 0, sizeof(saddr));
+                    saddr.sin6_family = AF_INET6;
+                    saddr.sin6_port = htons(port);
+                    saddr.sin6_addr.s6_addr[0] = dataIPv6[0];
+                    saddr.sin6_addr.s6_addr[1] = dataIPv6[1];
+                    saddr.sin6_addr.s6_addr[2] = dataIPv6[2];
+                    saddr.sin6_addr.s6_addr[3] = dataIPv6[3];
+                    saddr.sin6_addr.s6_addr[4] = dataIPv6[4];
+                    saddr.sin6_addr.s6_addr[5] = dataIPv6[5];
+                    saddr.sin6_addr.s6_addr[6] = dataIPv6[6];
+                    saddr.sin6_addr.s6_addr[7] = dataIPv6[7];
+                    saddr.sin6_addr.s6_addr[8] = dataIPv6[8];
+                    saddr.sin6_addr.s6_addr[9] = dataIPv6[9];
+                    saddr.sin6_addr.s6_addr[10] = dataIPv6[10];
+                    saddr.sin6_addr.s6_addr[11] = dataIPv6[11];
+                    saddr.sin6_addr.s6_addr[12] = dataIPv6[12];
+                    saddr.sin6_addr.s6_addr[13] = dataIPv6[13];
+                    saddr.sin6_addr.s6_addr[14] = dataIPv6[14];
+                    saddr.sin6_addr.s6_addr[15] = dataIPv6[15];
+                    
+                    if(::connect(sock, (struct sockaddr*)&saddr, sizeof(saddr))
+                        != 0) {
+                        
+                        ::closesocket(sock);
+                        sock = -1;
+                        
+                        throw SocketException();
+                        
+                    }
+                    
+                    address = new InetAddressIPv6(*addrIPv6);
+                    
+                    break;
+                    
+                }
+                default: {
+                    
+                    throw SocketException();
+                    
+                }
+                
+            }
             
         }
-        
-        
-        bool SocketBase::nativeAccept(SocketBase& s) {
+
+		void Socket::connectIPv4(std::string addr, uint16_t port) {
+			connect(InetAddress::getByName(addr.c_str()).get(), port);
+		}
+
+        void Socket::listen(InetAddress* addr, uint16_t port) {
+            
+            if(sock != -1) {
+                
+                throw SocketException();
+                
+            }
+            
+            if(!addr) {
+                
+                throw SocketException();
+                
+            }
+            
+            switch(addr->getType()) {
+                
+                case InetAddress::IPv4: {
+                    
+                    InetAddressIPv4* addrIPv4 = (InetAddressIPv4*)addr;
+                    uint8_t* dataIPv4 = addrIPv4->getData();
+                    
+                    sock = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+                    if(sock == -1) {
+                        
+                        throw SocketException();
+                        
+                    }
+                    
+                    struct sockaddr_in saddr;
+                    ::memset(&saddr, 0, sizeof(saddr));
+                    saddr.sin_family = AF_INET;
+                    saddr.sin_port = htons(port);
+                    saddr.sin_addr.s_addr = htonl(
+                        (dataIPv4[0] << 24) | (dataIPv4[1] << 16) |
+                        (dataIPv4[2] << 8) | dataIPv4[3]);
+                    
+                    if(::bind(sock, (struct sockaddr*)&saddr, sizeof(saddr))
+                        != 0) {
+                        
+                        ::closesocket(sock);
+                        sock = -1;
+                        
+                        throw SocketException();
+                        
+                    }
+                    
+                    if(::listen(sock, 8) != 0) {
+                        
+                        ::closesocket(sock);
+                        sock = -1;
+                        
+                        throw SocketException();
+                        
+                    }
+                    
+                    address = new InetAddressIPv4(*addrIPv4);
+                    
+                    break;
+                    
+                }
+                case InetAddress::IPv6: {
+                    
+                    InetAddressIPv6* addrIPv6 = (InetAddressIPv6*)addr;
+                    uint8_t* dataIPv6 = addrIPv6->getData();
+                    
+                    sock = ::socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
+                    if(sock == -1) {
+                        
+                        throw SocketException();
+                        
+                    }
+                    
+                    struct sockaddr_in6 saddr;
+                    ::memset(&saddr, 0, sizeof(saddr));
+                    saddr.sin6_family = AF_INET6;
+                    saddr.sin6_port = htons(port);
+                    saddr.sin6_addr.s6_addr[0] = dataIPv6[0];
+                    saddr.sin6_addr.s6_addr[1] = dataIPv6[1];
+                    saddr.sin6_addr.s6_addr[2] = dataIPv6[2];
+                    saddr.sin6_addr.s6_addr[3] = dataIPv6[3];
+                    saddr.sin6_addr.s6_addr[4] = dataIPv6[4];
+                    saddr.sin6_addr.s6_addr[5] = dataIPv6[5];
+                    saddr.sin6_addr.s6_addr[6] = dataIPv6[6];
+                    saddr.sin6_addr.s6_addr[7] = dataIPv6[7];
+                    saddr.sin6_addr.s6_addr[8] = dataIPv6[8];
+                    saddr.sin6_addr.s6_addr[9] = dataIPv6[9];
+                    saddr.sin6_addr.s6_addr[10] = dataIPv6[10];
+                    saddr.sin6_addr.s6_addr[11] = dataIPv6[11];
+                    saddr.sin6_addr.s6_addr[12] = dataIPv6[12];
+                    saddr.sin6_addr.s6_addr[13] = dataIPv6[13];
+                    saddr.sin6_addr.s6_addr[14] = dataIPv6[14];
+                    saddr.sin6_addr.s6_addr[15] = dataIPv6[15];
+                    
+                    if(::bind(sock, (struct sockaddr*)&saddr, sizeof(saddr))
+                        != 0) {
+                        
+                        ::closesocket(sock);
+                        sock = -1;
+                        
+                        throw SocketException();
+                        
+                    }
+                    
+                    if(::listen(sock, 8) != 0) {
+                        
+                        ::closesocket(sock);
+                        sock = -1;
+                        
+                        throw SocketException();
+                        
+                    }
+                    
+                    address = new InetAddressIPv6(*addrIPv6);
+                    
+                    break;
+                    
+                }
+                default: {
+                    
+                    throw SocketException();
+                    
+                }
+                
+            }
+            
+		}
+		
+		void Socket::listenIPv4(uint16_t port) {
+			listen(InetAddressIPv4::getAny().get(), port);
+		}
+
+        void Socket::accept(Socket& s) {
             
             if(sock == -1) {
                 
-                return false;
+                throw SocketException();
                 
             }
-            
             if(s.sock != -1) {
                 
-                return false;
+                throw SocketException();
                 
             }
             
-            struct sockaddr_storage saddr_;
             
-            #if defined(NETYCAT_OS_WINDOWS)
-                int slen = sizeof(saddr_);
-            #elif defined(NETYCAT_OS_LINUX)
-                unsigned int slen = sizeof(saddr_);
-            #endif
-            
-            if((s.sock = ::accept(sock, (struct sockaddr*)&saddr_, &slen))
-                == -1) {
+            switch(address->getType()) {
                 
-                return false;
-                
-            }
-            
-            switch(saddr_.ss_family) {
-                
-                case AF_INET: {
-                	
-                    struct sockaddr_in& saddr = (struct sockaddr_in&)saddr_;
+                case InetAddress::IPv4: {
+                    
+                    struct sockaddr_in saddr;
+                    int slen = sizeof(saddr);
+                    
+                    if((s.sock = ::accept(sock, (sockaddr*)&saddr, &slen))
+                        == -1) {
+                        
+                        printf("%d\n", WSAGetLastError());
+                        throw SocketException();
+                        
+                    }
                     
                     uint32_t addr = ntohl(saddr.sin_addr.s_addr);
                     
@@ -122,16 +358,23 @@ namespace Netycat {
                     uint8_t d3 = (addr & 0x0000FF00) >> 8;
                     uint8_t d4 = (addr & 0x000000FF);
                     
-                    AddressIPv4 address(d1, d2, d3, d4);
-                    s.endpoint = new EndpointIPv4(address,
-                        ntohs(saddr.sin_port));
+                    s.address = new InetAddressIPv4(d1, d2, d3, d4);
                     
-            		return true;
-            		
-            	}
-				case AF_INET6: {
-					
-                    struct sockaddr_in6& saddr = (struct sockaddr_in6&)saddr_;
+                    break;
+                    
+                }
+                case InetAddress::IPv6: {
+                    
+                    struct sockaddr_in6 saddr;
+                    int slen = sizeof(saddr);
+                    
+                    if((s.sock = ::accept(sock, (sockaddr*)&saddr, &slen))
+                        == -1) {
+                        
+                        printf("%d\n", WSAGetLastError());
+                        throw SocketException();
+                        
+                    }
                     
                     uint8_t d1 = saddr.sin6_addr.s6_addr[0];
                     uint8_t d2 = saddr.sin6_addr.s6_addr[1];
@@ -150,791 +393,154 @@ namespace Netycat {
                     uint8_t d15 = saddr.sin6_addr.s6_addr[14];
                     uint8_t d16 = saddr.sin6_addr.s6_addr[15];
                     
-                    AddressIPv6 address(
+                    s.address = new InetAddressIPv6(
                         d1, d2, d3, d4, d5, d6, d7, d8,
                         d9, d10, d11, d12, d13, d14, d15, d16);
-                    s.endpoint = new EndpointIPv6(address,
-                        ntohs(saddr.sin6_port));
-                    
-                    return true;
-					
-				}
-            	default: {
-            		
-                    return false;
-					
-				}
-            	
-            }
-            
-        }
-        
-        bool SocketBase::nativeBind(const Endpoint* end) {
-            
-            if(sock == -1) {
-                
-                return false;
-                
-            }
-            
-            if(end == nullptr) {
-                
-                return false;
-                
-            }
-            
-            switch(end->getType()) {
-                
-                case Endpoint::IPv4: {
-                    
-                    const EndpointIPv4* endIPv4 = (const EndpointIPv4*)end;
-                    const AddressIPv4* addrIPv4 = endIPv4->getAddress();
-                    const uint8_t* dataIPv4 = addrIPv4->getData();
-                    
-                    struct sockaddr_in saddr;
-                    ::memset(&saddr, 0, sizeof(saddr));
-                    saddr.sin_family = AF_INET;
-                    saddr.sin_port = ::htons(endIPv4->getPort());
-                    saddr.sin_addr.s_addr = htonl(
-                        (dataIPv4[0] << 24) | (dataIPv4[1] << 16) |
-                        (dataIPv4[2] << 8) | dataIPv4[3]);
-                    
-                    if(::bind(sock, (struct sockaddr*)&saddr, sizeof(saddr))
-                        != 0) {
-                        
-                        return false;
-                        
-                    }
-                    
-                    endpoint = new EndpointIPv4(*endIPv4);
-                    
-                    return true;
-                    
-                }
-                case Endpoint::IPv6: {
-                    
-                    const EndpointIPv6* endIPv6 = (const EndpointIPv6*)end;
-                    const AddressIPv6* addrIPv6 = endIPv6->getAddress();
-                    const uint8_t* dataIPv6 = addrIPv6->getData();
-                    
-                    struct sockaddr_in6 saddr;
-                    ::memset(&saddr, 0, sizeof(saddr));
-                    saddr.sin6_family = AF_INET6;
-                    saddr.sin6_port = ::htons(endIPv6->getPort());
-                    saddr.sin6_addr.s6_addr[0] = dataIPv6[0];
-                    saddr.sin6_addr.s6_addr[1] = dataIPv6[1];
-                    saddr.sin6_addr.s6_addr[2] = dataIPv6[2];
-                    saddr.sin6_addr.s6_addr[3] = dataIPv6[3];
-                    saddr.sin6_addr.s6_addr[4] = dataIPv6[4];
-                    saddr.sin6_addr.s6_addr[5] = dataIPv6[5];
-                    saddr.sin6_addr.s6_addr[6] = dataIPv6[6];
-                    saddr.sin6_addr.s6_addr[7] = dataIPv6[7];
-                    saddr.sin6_addr.s6_addr[8] = dataIPv6[8];
-                    saddr.sin6_addr.s6_addr[9] = dataIPv6[9];
-                    saddr.sin6_addr.s6_addr[10] = dataIPv6[10];
-                    saddr.sin6_addr.s6_addr[11] = dataIPv6[11];
-                    saddr.sin6_addr.s6_addr[12] = dataIPv6[12];
-                    saddr.sin6_addr.s6_addr[13] = dataIPv6[13];
-                    saddr.sin6_addr.s6_addr[14] = dataIPv6[14];
-                    saddr.sin6_addr.s6_addr[15] = dataIPv6[15];
-                    
-                    if(::bind(sock, (struct sockaddr*)&saddr, sizeof(saddr))
-                        != 0) {
-                        
-                        return false;
-                        
-                    }
-                    
-                    endpoint = new EndpointIPv6(*endIPv6);
-                    
-                    return true;
-                    
-                }
-                default: {
-                    
-                    return false;
-                    
-                }
-                
-            }
-            
-        }
-        
-        bool SocketBase::nativeClose() {
-            
-            if(sock != -1) {
-                
-                #if defined(NETYCAT_OS_WINDOWS)
-                    ::closesocket(sock);
-                #elif defined(NETYCAT_OS_LINUX)
-                    ::close(sock);
-                #endif
-                
-                sock = -1;
-                delete endpoint;
-                endpoint = nullptr;
-                
-                return true;
-                
-            } else {
-                
-                return false;
-                
-            }
-            
-        }
-        
-        bool SocketBase::nativeConnect(const Endpoint* end) {
-            
-            if(sock == -1) {
-                
-                return false;
-                
-            }
-            
-            if(end == nullptr) {
-                
-                return false;
-                
-            }
-            
-            switch(end->getType()) {
-                
-                case Endpoint::IPv4: {
-                    
-                    const EndpointIPv4* endIPv4 = (const EndpointIPv4*)end;
-                    const AddressIPv4* addrIPv4 = endIPv4->getAddress();
-                    const uint8_t* dataIPv4 = addrIPv4->getData();
-                    
-                    struct sockaddr_in saddr;
-                    ::memset(&saddr, 0, sizeof(saddr));
-                    saddr.sin_family = AF_INET;
-                    saddr.sin_port = ::htons(endIPv4->getPort());
-                    saddr.sin_addr.s_addr = htonl(
-                        (dataIPv4[0] << 24) | (dataIPv4[1] << 16) |
-                        (dataIPv4[2] << 8) | dataIPv4[3]);
-                    
-                    if(::connect(sock, (struct sockaddr*)&saddr, sizeof(saddr))
-                        != 0) {
-                        
-                        return false;
-                        
-                    }
-                    
-                    endpoint = new EndpointIPv4(*endIPv4);
-                    
-                    return true;
-                    
-                }
-                case Endpoint::IPv6: {
-                    
-                    const EndpointIPv6* endIPv6 = (const EndpointIPv6*)end;
-                    const AddressIPv6* addrIPv6 = endIPv6->getAddress();
-                    const uint8_t* dataIPv6 = addrIPv6->getData();
-                    
-                    struct sockaddr_in6 saddr;
-                    ::memset(&saddr, 0, sizeof(saddr));
-                    saddr.sin6_family = AF_INET6;
-                    saddr.sin6_port = ::htons(endIPv6->getPort());
-                    saddr.sin6_addr.s6_addr[0] = dataIPv6[0];
-                    saddr.sin6_addr.s6_addr[1] = dataIPv6[1];
-                    saddr.sin6_addr.s6_addr[2] = dataIPv6[2];
-                    saddr.sin6_addr.s6_addr[3] = dataIPv6[3];
-                    saddr.sin6_addr.s6_addr[4] = dataIPv6[4];
-                    saddr.sin6_addr.s6_addr[5] = dataIPv6[5];
-                    saddr.sin6_addr.s6_addr[6] = dataIPv6[6];
-                    saddr.sin6_addr.s6_addr[7] = dataIPv6[7];
-                    saddr.sin6_addr.s6_addr[8] = dataIPv6[8];
-                    saddr.sin6_addr.s6_addr[9] = dataIPv6[9];
-                    saddr.sin6_addr.s6_addr[10] = dataIPv6[10];
-                    saddr.sin6_addr.s6_addr[11] = dataIPv6[11];
-                    saddr.sin6_addr.s6_addr[12] = dataIPv6[12];
-                    saddr.sin6_addr.s6_addr[13] = dataIPv6[13];
-                    saddr.sin6_addr.s6_addr[14] = dataIPv6[14];
-                    saddr.sin6_addr.s6_addr[15] = dataIPv6[15];
-                    
-                    if(::connect(sock, (struct sockaddr*)&saddr, sizeof(saddr))
-                        != 0) {
-                        
-                        return false;
-                        
-                    }
-                    
-                    endpoint = new EndpointIPv6(*endIPv6);
-                    
-                    return true;
-                    
-                }
-                default: {
-                    
-                    return false;
-                    
-                }
-                
-            }
-            
-        }
-        
-        bool SocketBase::nativeListen(int backlog) {
-            
-            if(sock == -1) {
-                
-                return false;
-                
-            }
-            
-            if(::listen(sock, backlog) == 0) {
-                
-                return true;
-                
-            } else {
-                
-                return false;
-                
-            }
-            
-        }
-        
-        intptr_t SocketBase::nativeRecv(void* buffer, uintptr_t length,
-            int flags) {
-            
-            if(sock == -1) {
-                
-                return -1;
-                
-            }
-            
-            if(buffer == nullptr) {
-                
-                return -1;
-                
-            }
-            
-            #if defined(NETYCAT_OS_WINDOWS)
-                intptr_t ret = ::recv(sock, (char*)buffer, length, flags);
-            #elif defined(NETYCAT_OS_LINUX)
-                intptr_t ret = ::recv(sock, buffer, length, flags);
-            #endif
-            
-            if(ret < 0) {
-                
-                return -1;
-                
-            }
-            
-            if(ret == 0) {
-                
-                return 0;
-                
-            }
-            
-            return ret;
-            
-        }
-        
-        intptr_t SocketBase::nativeRecvfrom(void* buffer, uintptr_t length,
-            int flags, Endpoint*& end) {
-            
-            if(sock == -1) {
-                
-                return -1;
-                
-            }
-            
-            if(buffer == nullptr) {
-                
-                return -1;
-                
-            }
-            
-            struct sockaddr_storage saddr_;
-            
-            #if defined(NETYCAT_OS_WINDOWS)
-                int slen = sizeof(saddr_);
-                intptr_t ret = ::recvfrom(sock, (char*)buffer, length,
-                    flags, (sockaddr*)&saddr_, &slen);
-            #elif defined(NETYCAT_OS_LINUX)
-                unsigned int slen = sizeof(saddr_);
-                intptr_t ret = ::recvfrom(sock, buffer, length,
-                    flags, (sockaddr*)&saddr_, &slen);
-            #endif
-            
-            if(ret < 0) {
-                
-                return -1;
-                
-            }
-            
-            if(ret == 0) {
-                
-                return 0;
-                
-            }
-            
-            switch(saddr_.ss_family) {
-                
-                case AF_INET: {
-                	
-                    struct sockaddr_in& saddr = (struct sockaddr_in&)saddr_;
-                    
-                    uint32_t addr_ = ntohl(saddr.sin_addr.s_addr);
-                    
-                    uint8_t d1 = (addr_ & 0xFF000000) >> 24;
-                    uint8_t d2 = (addr_ & 0x00FF0000) >> 16;
-                    uint8_t d3 = (addr_ & 0x0000FF00) >> 8;
-                    uint8_t d4 = (addr_ & 0x000000FF);
-                    
-                    AddressIPv4 address(d1, d2, d3, d4);
-                    end = new EndpointIPv4(address,
-                        ntohs(saddr.sin_port));
-                    
-                    return ret;
-            		
-            	}
-				case AF_INET6: {
-					
-                    struct sockaddr_in6& saddr = (struct sockaddr_in6&)saddr_;
-                    
-                    uint8_t d1 = saddr.sin6_addr.s6_addr[0];
-                    uint8_t d2 = saddr.sin6_addr.s6_addr[1];
-                    uint8_t d3 = saddr.sin6_addr.s6_addr[2];
-                    uint8_t d4 = saddr.sin6_addr.s6_addr[3];
-                    uint8_t d5 = saddr.sin6_addr.s6_addr[4];
-                    uint8_t d6 = saddr.sin6_addr.s6_addr[5];
-                    uint8_t d7 = saddr.sin6_addr.s6_addr[6];
-                    uint8_t d8 = saddr.sin6_addr.s6_addr[7];
-                    uint8_t d9 = saddr.sin6_addr.s6_addr[8];
-                    uint8_t d10 = saddr.sin6_addr.s6_addr[9];
-                    uint8_t d11 = saddr.sin6_addr.s6_addr[10];
-                    uint8_t d12 = saddr.sin6_addr.s6_addr[11];
-                    uint8_t d13 = saddr.sin6_addr.s6_addr[12];
-                    uint8_t d14 = saddr.sin6_addr.s6_addr[13];
-                    uint8_t d15 = saddr.sin6_addr.s6_addr[14];
-                    uint8_t d16 = saddr.sin6_addr.s6_addr[15];
-                    
-                    AddressIPv6 address(
-                        d1, d2, d3, d4, d5, d6, d7, d8,
-                        d9, d10, d11, d12, d13, d14, d15, d16);
-                    end = new EndpointIPv6(address,
-                        ntohs(saddr.sin6_port));
-                    
-                    return ret;
-					
-				}
-            	default: {
-            		
-                    return -1;
-					
-				}
-            	
-            }
-            
-        }
-        
-        intptr_t SocketBase::nativeSend(const void* buffer, uintptr_t length,
-            int flags) {
-            
-            if(sock == -1) {
-                
-                return -1;
-                
-            }
-            
-            if(buffer == nullptr) {
-                
-                return -1;
-                
-            }
-            
-            #if defined(NETYCAT_OS_WINDOWS)
-                intptr_t ret = ::send(sock, (char*)buffer, length, flags);
-            #elif defined(NETYCAT_OS_LINUX)
-                intptr_t ret = ::send(sock, buffer, length, flags);
-            #endif
-            
-            if(ret < 0) {
-                
-                return -1;
-                
-            }
-            
-            return ret;
-            
-        }
-        
-        intptr_t SocketBase::nativeSendto(void* buffer, uintptr_t length,
-            int flags, const Endpoint* end) {
-            
-            if(sock == -1) {
-                
-                return -1;
-                
-            }
-            
-            if(buffer == nullptr) {
-                
-                return -1;
-                
-            }
-            
-            switch(end->getType()) {
-                
-                case Endpoint::IPv4: {
-                    
-                    const EndpointIPv4* endIPv4 = (const EndpointIPv4*)end;
-                    const AddressIPv4* addrIPv4 = endIPv4->getAddress();
-                    const uint8_t* dataIPv4 = addrIPv4->getData();
-                    
-                    struct sockaddr_in saddr;
-                    ::memset(&saddr, 0, sizeof(saddr));
-                    saddr.sin_family = AF_INET;
-                    saddr.sin_port = ::htons(endIPv4->getPort());
-                    saddr.sin_addr.s_addr = htonl(
-                        (dataIPv4[0] << 24) | (dataIPv4[1] << 16) |
-                        (dataIPv4[2] << 8) | dataIPv4[3]);
-                    
-                    intptr_t ret = ::sendto(sock, (char*)buffer, length,
-                        flags, (sockaddr*)&saddr, sizeof(saddr));
-                    
-                    if(ret < 0) {
-                        
-                        return -1;
-                        
-                    }
-                    
-                    if(ret == 0) {
-                        
-                        return 0;
-                        
-                    }
-                    
-                    return ret;
-                    
-                }
-                case Endpoint::IPv6: {
-                    
-                    const EndpointIPv6* endIPv6 = (const EndpointIPv6*)end;
-                    const AddressIPv6* addrIPv6 = endIPv6->getAddress();
-                    const uint8_t* dataIPv6 = addrIPv6->getData();
-                    
-                    struct sockaddr_in6 saddr;
-                    ::memset(&saddr, 0, sizeof(saddr));
-                    saddr.sin6_family = AF_INET6;
-                    saddr.sin6_port = ::htons(endIPv6->getPort());
-                    saddr.sin6_addr.s6_addr[0] = dataIPv6[0];
-                    saddr.sin6_addr.s6_addr[1] = dataIPv6[1];
-                    saddr.sin6_addr.s6_addr[2] = dataIPv6[2];
-                    saddr.sin6_addr.s6_addr[3] = dataIPv6[3];
-                    saddr.sin6_addr.s6_addr[4] = dataIPv6[4];
-                    saddr.sin6_addr.s6_addr[5] = dataIPv6[5];
-                    saddr.sin6_addr.s6_addr[6] = dataIPv6[6];
-                    saddr.sin6_addr.s6_addr[7] = dataIPv6[7];
-                    saddr.sin6_addr.s6_addr[8] = dataIPv6[8];
-                    saddr.sin6_addr.s6_addr[9] = dataIPv6[9];
-                    saddr.sin6_addr.s6_addr[10] = dataIPv6[10];
-                    saddr.sin6_addr.s6_addr[11] = dataIPv6[11];
-                    saddr.sin6_addr.s6_addr[12] = dataIPv6[12];
-                    saddr.sin6_addr.s6_addr[13] = dataIPv6[13];
-                    saddr.sin6_addr.s6_addr[14] = dataIPv6[14];
-                    saddr.sin6_addr.s6_addr[15] = dataIPv6[15];
-                    
-                    intptr_t ret = ::sendto(sock, (char*)buffer, length,
-                        flags, (sockaddr*)&saddr, sizeof(saddr));
-                    
-                    if(ret < 0) {
-                        
-                        return -1;
-                        
-                    }
-                    
-                    if(ret == 0) {
-                        
-                        return 0;
-                        
-                    }
-                    
-                    return ret;
-                    
-                }
-                default: {
-                    
-                    return -1;
-                    
-                }
-                
-            }
-            
-        }
-        
-        bool SocketBase::nativeSetsockopt(int level, int optname,
-            const void* optval, uintptr_t optlen) {
-            
-            if(sock != -1) {
-                
-                return false;
-                
-            }
-            
-            #if defined(NETYCAT_OS_WINDOWS)
-                int ret = ::setsockopt(sock, level, optname,
-                    (const char*)optval, optlen);
-            #elif defined(NETYCAT_OS_LINUX)
-                int ret = ::setsockopt(sock, level, optname,
-                    optval, optlen);
-            #endif
-            
-            if(ret != 0) {
-                
-                return false;
-                
-            }
-            
-            return true;
-            
-        }
-        
-        bool SocketBase::nativeSocket(int domain, int type, int protocol) {
-            
-            if(sock != -1) {
-                
-                return false;
-                
-            }
-            
-            sock = ::socket(domain, type, protocol);
-            if(sock != -1) {
-                
-                return true;
-                
-            } else {
-                
-                return false;
-                
-            }
-            
-        }
-        
-        
-        void SocketBase::setBroadcast(bool val) {
-            
-            int optval = val;
-            uintptr_t optlen = sizeof(optval);
-            
-            nativeSetsockopt(SOL_SOCKET, SO_BROADCAST, &optval, optlen);
-            
-        }
-        
-        
-        SocketStream::SocketStream() noexcept {
-            
-        }
-        
-        SocketStream::SocketStream(SocketStream&& src) noexcept :
-            SocketBase(std::move(src)) {
-            
-        }
-        
-        SocketStream::~SocketStream() noexcept {
-            
-        }
-        
-        
-        SocketTCP::SocketTCP() noexcept {
-            
-        }
-        
-        SocketTCP::SocketTCP(SocketTCP&& src) noexcept :
-            SocketStream(std::move(src)) {
-            
-        }
-        
-        SocketTCP::~SocketTCP() noexcept {
-            
-        }
-        
-        
-        void SocketTCP::connect(const Endpoint* end) {
-            
-            if(sock != -1) {
-                
-                throw ExceptionSocket();
-                
-            }
-            
-            if(end == nullptr) {
-                
-                throw ExceptionSocket();
-                
-            }
-            
-            switch(end->getType()) {
-                
-                case Endpoint::IPv4: {
-                    
-                    if(!nativeSocket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) {
-                        
-                        throw ExceptionSocket();
-                        
-                    }
-                    
-                    break;
-                    
-                }
-                case Endpoint::IPv6: {
-                    
-                    if(!nativeSocket(PF_INET6, SOCK_STREAM, IPPROTO_TCP)) {
-                        
-                        throw ExceptionSocket();
-                        
-                    }
                     
                     break;
                     
                 }
                 default: {
                     
-                    throw ExceptionSocket();
+                    throw SocketException();
                     
                 }
-                
-            }
-                    
-            if(!nativeConnect(end)) {
-                
-                nativeClose();
-                throw ExceptionSocket();
-                
-            }
-            
-        }
-        
-        void SocketTCP::listen(const Endpoint* end) {
-            
-            if(sock != -1) {
-                
-                throw ExceptionSocket();
-                
-            }
-            
-            if(end == nullptr) {
-                
-                throw ExceptionSocket();
-                
-            }
-            
-            switch(end->getType()) {
-                
-                case Endpoint::IPv4: {
-                    
-                    if(!nativeSocket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) {
-                        
-                        throw ExceptionSocket();
-                        
-                    }
-                    
-                    break;
-                    
-                }
-                case Endpoint::IPv6: {
-                    
-                    if(!nativeSocket(PF_INET6, SOCK_STREAM, IPPROTO_TCP)) {
-                        
-                        throw ExceptionSocket();
-                        
-                    }
-                    
-                    break;
-                    
-                }
-                default: {
-                    
-                    throw ExceptionSocket();
-                    
-                }
-                
-            }
-                    
-            if(!nativeBind(end)) {
-                
-                nativeClose();
-                throw ExceptionSocket();
-                
-            }
-            
-            if(!nativeListen(8)) {
-                
-                nativeClose();
-                throw ExceptionSocket();
-                
-            }
-            
-        }
-        
-        void SocketTCP::accept(SocketTCP& s) {
-            
-            if(!nativeAccept(s)) {
-                
-                throw ExceptionSocket();
                 
             }
             
         }
         
         
-        uintptr_t SocketTCP::recv(void* data, uintptr_t len) {
+        InetAddress* Socket::getAddress() {
             
-            uintptr_t recvlen = 0;
+            return address;
             
-            while(recvlen < len) {
+        }
+                
+        
+        uintptr_t Socket::getRecvBufferSize() {
+            
+            if(sock == -1) {
+                
+                throw SocketException();
+                
+            }
+            
+            int val;
+            int len = sizeof(val);
+            ::getsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&val, &len);
+            
+            return (uintptr_t)val;
+            
+        }
+        
+        
+        uintptr_t Socket::getSendBufferSize() {
+            
+            if(sock == -1) {
+                
+                throw SocketException();
+                
+            }
+            
+            int val;
+            int len = sizeof(val);
+            ::getsockopt(sock, SOL_SOCKET, SO_SNDBUF, (char*)&val, &len);
+            
+            return (uintptr_t)val;
+            
+        }
+        
+        
+        void Socket::recv(Buffer& buffer, BufferCondition& condition) {
+            
+            uintptr_t len;
+            
+            while(recvBuffer.getRemaining() < (len = condition.control(recvBuffer, SOCKET_BUFFER_SIZE))) {
                 
                 int ret;
-                ret = nativeRecv((uint8_t*)data + recvlen, len - recvlen, 0);
-                if(ret == -1) {
+                ret = ::recv(sock, (char*)recvBufferArray, len - recvBuffer.getRemaining(), 0);
+                if(ret == SOCKET_ERROR) {
                     
-                    throw ExceptionSocket();
+                    throw SocketException();
                     
                 }
                 if(ret == 0) {
                     
-                    throw ExceptionSocket();
+                    throw SocketException();
                     
                 }
                 
-                recvlen += ret;
+                recvBuffer.write(recvBufferArray, ret);
                 
             }
             
-            return recvlen;
+            buffer.writeBuffer(recvBuffer, len);
             
         }
-        
-        
-        void SocketTCP::send(const void* data, uintptr_t len) {
+
+		int Socket::recvInt() {
+			Buffer buffer(4);
+			recv(buffer, BufferConditionExactLength(sizeof(int)));
+			int ret;
+			buffer.read((void*)&ret, sizeof(int));
+			return ret;
+		}
+
+        void Socket::send(Buffer& buffer, uintptr_t len) {
             
-            uintptr_t sendlen = 0;
+			if (len == 0) len = buffer.getRemaining();
+
+            if(len > buffer.getRemaining()) {
+                
+                throw SocketException();
+                
+            }
             
-            while(sendlen < len) {
+            while(len >= SOCKET_BUFFER_SIZE) {
+                
+                buffer.read(sendBufferArray, SOCKET_BUFFER_SIZE);
                 
                 int ret;
-                ret = nativeSend((uint8_t*)data + sendlen, len - sendlen, 0);
-                if(ret == -1) {
+                ret = ::send(sock, (char*)sendBufferArray, SOCKET_BUFFER_SIZE, 0);
+                if(ret == SOCKET_ERROR) {
                     
-                    throw ExceptionSocket();
+                    throw SocketException();
                     
                 }
                 
-                sendlen += ret;
+                len -= SOCKET_BUFFER_SIZE;
                 
             }
             
+            if(len != 0) {
+                
+                buffer.read(sendBufferArray, buffer.getRemaining());
+                
+                int ret;
+                ret = ::send(sock, (char*)sendBufferArray, len, 0);
+                if(ret == SOCKET_ERROR) {
+                    
+                    throw SocketException();
+                    
+                }
+                
+            }
         }
         
         
-        void SocketTCP::close() {
+        bool Socket::close() {
             
-            if(!nativeClose()) {
+            if(sock != -1) {
                 
-                throw ExceptionSocket();
+                ::closesocket(sock);
+                sock = -1;
+                
+                return true;
+                
+            } else {
+                
+                throw SocketException();
                 
             }
             

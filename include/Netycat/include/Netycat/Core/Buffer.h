@@ -19,11 +19,11 @@
 *******************************************************************************/
 
 
-#ifndef _NETYCAT_CORE_BUFFER_H_
-#define _NETYCAT_CORE_BUFFER_H_
+#ifndef _NETYCAT_BUFFER_H_
+#define _NETYCAT_BUFFER_H_
 
 
-#include <stdint.h>
+#include <cstdint>
 
 
 namespace Netycat {
@@ -42,7 +42,7 @@ namespace Netycat {
             
             public:
             
-            Buffer(uintptr_t cap);
+            Buffer(uintptr_t len);
             Buffer(const Buffer& src);
             ~Buffer();
             
@@ -67,6 +67,7 @@ namespace Netycat {
             
             uintptr_t getRemaining();
             
+			uint8_t* getData() { return data; }
         };
         
     }

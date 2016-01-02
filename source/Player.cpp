@@ -163,34 +163,36 @@ bool player::putBlock(int x, int y, int z, block blockname) {
 	return success;
 }
 
-void player::save(string worldn) {
+bool player::save(string worldn) {
 	uint32 curversion = VERSION;
 	std::stringstream ss;
 	ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
 	std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
-	if (!isave.is_open()) return;
+	if (!isave.is_open()) return false;
 	isave << curversion << OnGround << Running << AirJumps << lookupdown << heading << xpos << ypos << zpos
 		<< jump << xlookspeed << ylookspeed << FLY << CROSS << canGliding;
 	isave.write((char*)inventory, sizeof(inventory));
 	isave.write((char*)inventoryAmount, sizeof(inventoryAmount));
 	isave << indexInHand;
 	isave.close();
+	return true;
 }
 
-void player::load(string worldn) {
+bool player::load(string worldn) {
 	uint32 targetVersion;
 	std::stringstream ss;
 	ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
 	std::ifstream iload(ss.str().c_str(), std::ios::binary | std::ios::in);
-	if (!iload.is_open()) return;
+	if (!iload.is_open()) return false;
 	iload >> targetVersion;
-	if (targetVersion != VERSION) return;
+	if (targetVersion != VERSION) return false;
 	iload >> OnGround >> Running >> AirJumps >> lookupdown >> heading
 		>> xpos >> ypos >> zpos >> jump >> xlookspeed >> ylookspeed >> FLY >> CROSS >> canGliding;
 	iload.read((char*)inventory, sizeof(inventory));
 	iload.read((char*)inventoryAmount, sizeof(inventoryAmount));
 	iload >> indexInHand;
 	iload.close();
+	return true;
 }
 
 void player::addItem(item itemname, int amount) {
