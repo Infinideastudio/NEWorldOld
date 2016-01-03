@@ -1,7 +1,7 @@
-#pragma once
+ï»¿#pragma once
 #include "Definitions.h"
 
-//Object ËùÓĞÉúÎï¡¢¿ÉÒÆ¶¯ÎïÌå¡¢·Ç¾²Ì¬·½¿éµÄ»ùÀà
+//Object æ‰€æœ‰ç”Ÿç‰©ã€å¯ç§»åŠ¨ç‰©ä½“ã€éé™æ€æ–¹å—çš„åŸºç±»
 class Object {
 public:
 	Object(double x, double y, double z) :_x(x), _y(y), _z(z), VBO(0), vtxs(0) {};
@@ -13,7 +13,7 @@ public:
 
 protected:
 	int _id;
-	double _x, _y, _z;  //Î»ÖÃ
+	double _x, _y, _z;  //ä½ç½®
 	vtxCount vtxs;
 	VBOID VBO;
 

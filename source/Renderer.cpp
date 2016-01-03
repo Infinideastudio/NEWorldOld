@@ -1,4 +1,4 @@
-#include "Renderer.h"
+ï»¿#include "Renderer.h"
 namespace renderer {
 	
 	int Vertexes, Texcoordc, Colorc;
@@ -35,8 +35,8 @@ namespace renderer {
 
 	void Flush(VBOID& buffer, vtxCount& vtxs) {
 
-		//ÉÏ´Î²ÅÖªµÀÔ­À´Flush»¹ÓĞ³å²ŞËùµÄÒâË¼QAQ
-		//OpenGLÓĞ¸öº¯ÊıglFlush()£¬·­Òë¹ıÀ´¾ÍÊÇGL³å²ŞËù() ¡û_¡û
+		//ä¸Šæ¬¡æ‰çŸ¥é“åŸæ¥Flushè¿˜æœ‰å†²å•æ‰€çš„æ„æ€QAQ
+		//OpenGLæœ‰ä¸ªå‡½æ•°glFlush()ï¼Œç¿»è¯‘è¿‡æ¥å°±æ˜¯GLå†²å•æ‰€() â†_â†
 
 		/*
 		if (EnableShaders) {
