@@ -4,7 +4,7 @@
 #include "Blocks.h"
 class Object;
 
-namespace world{
+namespace World {
 	
 	extern string worldname;
 	extern brightness BRIGHTNESSMIN;
@@ -86,8 +86,8 @@ namespace world{
 			return pbrightness[(x << 8) + (y << 4) + z];
 		}
 		inline void setblock(int x, int y, int z, block iblock) {
-			if (iblock == blocks::TNT) {
-				world::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 8, this);
+			if (iblock == Blocks::TNT) {
+				World::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 8, this);
 				return;
 			}
 			pblocks[(x << 8) + (y << 4) + z] = iblock;

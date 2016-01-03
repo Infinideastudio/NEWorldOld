@@ -1,7 +1,7 @@
 #include "HeightMap.h"
 #include "WorldGen.h"
 
-namespace world{
+namespace World {
 
 	void HeightMap::setSize(int s){
 		size = s;

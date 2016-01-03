@@ -6,7 +6,7 @@
 #include "Hitbox.h"
 #include "Blocks.h"
 
-namespace world{
+namespace World {
 
 	extern string worldname;
 	const int worldsize = 134217728;
@@ -56,7 +56,7 @@ namespace world{
 	#define getchunkpos(n) ((n)>>4)
 	#define getblockpos(n) ((n)&15)
 	inline bool chunkOutOfBound(int x, int y, int z) {
-		return y < -world::worldheight || y > world::worldheight - 1 ||
+		return y < -World::worldheight || y > World::worldheight - 1 ||
 			x < -134217728 || x > 134217727 || z < -134217728 || z > 134217727;
 	}
 	inline bool chunkLoaded(int x, int y, int z) {
@@ -70,12 +70,12 @@ namespace world{
 
 	void renderblock(int x, int y, int z, chunk* chunkptr);
 	void updateblock(int x, int y, int z, bool blockchanged);
-	block getblock(int x, int y, int z, block mask = blocks::AIR, chunk* cptr = nullptr);
+	block getblock(int x, int y, int z, block mask = Blocks::AIR, chunk* cptr = nullptr);
 	brightness getbrightness(int x, int y, int z, chunk* cptr = nullptr);
 	void setblock(int x, int y, int z, block Block, chunk* cptr = nullptr);
 	void setbrightness(int x, int y, int z, brightness Brightness);
 	inline void putblock(int x, int y, int z, block Block) { setblock(x, y, z, Block); }
-	inline void pickblock(int x, int y, int z) { setblock(x, y, z, blocks::AIR); }
+	inline void pickblock(int x, int y, int z) { setblock(x, y, z, Blocks::AIR); }
 
 	inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
 		//检测给出的chunk坐标是否在渲染范围内

@@ -4,7 +4,7 @@
 extern string inputstr;
 
 //图形界面系统。。。正宗OOP！！！
-namespace gui {
+namespace GUI {
 	float linewidth = 1.0f;
 	float linealpha = 0.9f;
 	float FgR = 0.2f;
