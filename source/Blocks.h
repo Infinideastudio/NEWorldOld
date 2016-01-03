@@ -1,5 +1,5 @@
 #pragma once
-#include "Definitions.h"
+#include "stdinclude.h"
 
 namespace blocks{  //方块ID
 	enum{

@@ -1,8 +1,8 @@
 #pragma once
 #include "Definitions.h"
-#include "Chunk.h"
 
 namespace world{
+	class chunk;
 	struct chunkPtrArray{
 		chunk** array = nullptr;
 		int originX, originY, originZ, size, size2, size3;

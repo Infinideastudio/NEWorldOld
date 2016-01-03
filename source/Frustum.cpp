@@ -1,4 +1,6 @@
 #include "Frustum.h"
+#include "stdinclude.h"
+#include "Hitbox.h"
 
 namespace Frustum {
 	double frus[24], clip[16];
@@ -64,10 +66,6 @@ namespace Frustum {
 	}
 
 	void calc() {
-
-		//glGetFloatv(GL_PROJECTION_MATRIX, proj);
-		//glGetFloatv(GL_MODELVIEW_MATRIX, modl);
-
 		clip[0] = modl[0] * proj[0] + modl[1] * proj[4] + modl[2] * proj[8] + modl[3] * proj[12];
 		clip[1] = modl[0] * proj[1] + modl[1] * proj[5] + modl[2] * proj[9] + modl[3] * proj[13];
 		clip[2] = modl[0] * proj[2] + modl[1] * proj[6] + modl[2] * proj[10] + modl[3] * proj[14];

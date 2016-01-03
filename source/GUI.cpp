@@ -33,68 +33,6 @@ namespace gui {
 	}
 
 	void screenBlur() {
-		/*
-		int w = windowwidth; //Width
-		int h = windowheight; //Height
-		int r = 8; //范围
-		int psw = w + 2 * r, psh = h + 2 * r;
-		ubyte *scr; //屏幕像素缓存
-		int *cps; //列前缀和
-		int *rps; //行前缀和
-		int* sum;
-		scr = new ubyte[w*h * 3];
-		cps = new int[psw*psh * 3];
-		rps = new int[psw*psh * 3];
-		sum = new int[w*h * 3];
-		glPixelStorei(GL_PACK_ALIGNMENT, 1);
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
-		//处理前缀和
-		for (int col = 0; col < 3; col++) {
-		for (int x = 0; x < psw; x++) {
-		for (int y = 0; y < psh; y++) {
-		int scrx = x - r, scry = y - r;
-		if (scrx < 0) scrx = 0; if (scrx >= w) scrx = w - 1;
-		if (scry < 0) scry = 0; if (scry >= h) scry = h - 1;
-		rps[(y*psw + x) * 3 + col] = cps[(y*psw + x) * 3 + col] = scr[(scry*w + scrx) * 3 + col];
-		if (x != 0) rps[(y*psw + x) * 3 + col] += rps[(y*psw + (x - 1)) * 3 + col];
-		if (y != 0) cps[(y*psw + x) * 3 + col] += cps[((y - 1)*psw + x) * 3 + col];
-		}
-		}
-		}
-		//模糊计算
-		int cursum; //当前颜色之和
-		for (int col = 0; col < 3; col++) {
-		cursum = 0;
-		for (int y = 0; y <= 2 * r; y++) cursum += rps[(y*psw + 2 * r) * 3 + col];
-		for (int x = 0; x < w; x++) {
-		int psx = x + r;
-		if (x != 0) {
-		cursum = sum[(x - 1) * 3 + col];
-		cursum -= cps[(2 * r*psw + psx - r - 1) * 3 + col];
-		cursum += cps[(2 * r*psw + psx + r) * 3 + col];
-		}
-		for (int y = 0; y < h; y++) {
-		int psy = y + r;
-		if (y != 0) {
-		cursum -= rps[((psy - r - 1)*psw + psx + r) * 3 + col];
-		if (x != 0) cursum += rps[((psy - r - 1)*psw + psx - r - 1) * 3 + col];
-		cursum += rps[((psy + r)*psw + psx + r) * 3 + col];
-		if (x != 0) cursum -= rps[((psy + r)*psw + psx - r - 1) * 3 + col];
-		}
-		sum[(y*w + x) * 3 + col] = cursum;
-		scr[(y*w + x) * 3 + col] = (ubyte)(cursum / ((2 * r + 1)*(2 * r + 1)));
-		}
-		}
-		}
-		glDrawPixels(w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
-		delete[] scr;
-		delete[] cps;
-		delete[] rps;
-		delete[] sum;
-		glPixelStorei(GL_PACK_ALIGNMENT, 4);
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-		*/
 		static int szl = 0, rl = 0;
 		static float* mat = nullptr;
 		static ubyte *scr; //屏幕像素缓存

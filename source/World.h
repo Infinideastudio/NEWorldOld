@@ -4,6 +4,7 @@
 #include "HeightMap.h"
 #include "Chunk.h"
 #include "Hitbox.h"
+#include "Blocks.h"
 
 namespace world{
 

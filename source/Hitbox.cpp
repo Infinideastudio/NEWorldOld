@@ -1,4 +1,5 @@
 #include "Hitbox.h"
+#include "Definitions.h"
 
 namespace Hitbox{
 

@@ -1,8 +1,10 @@
 #pragma once
 #include "Definitions.h"
-#include "World.h"
-#include "Renderer.h"
-#include "Textures.h"
+#include "Blocks.h"
+
+namespace world {
+	class chunk;
+}
 
 namespace ChunkRenderer {
 	

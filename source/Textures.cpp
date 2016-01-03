@@ -1,5 +1,6 @@
 #include "Textures.h"
 #include "Items.h"
+#include "Blocks.h"
 #include <fstream>
 
 int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, BLOCKTEXTURE_UNITS;

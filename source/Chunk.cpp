@@ -1,9 +1,8 @@
 #include "Chunk.h"
 #include "WorldGen.h"
 #include "World.h"
-#include "Renderer.h"
 #include "Frustum.h"
-
+#include "Blocks.h"
 namespace ChunkRenderer {
 	void renderChunk(world::chunk* c);
 	void mergeFaceRender(world::chunk* c);

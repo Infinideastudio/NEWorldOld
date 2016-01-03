@@ -1,5 +1,7 @@
 #include "Menus.h"
 #include "World.h"
+#include "Textures.h"
+#include "TextRenderer.h"
 
 class WorldMenu :public gui::Form {
 private:
