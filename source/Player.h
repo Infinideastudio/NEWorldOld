@@ -1,7 +1,5 @@
 #pragma once
 #include "Definitions.h"
-#include "Hitbox.h"
-#include "OnlinePlayer.h"
 
 const double g = 9.8;
 const double EDrop = 0.1;
@@ -12,17 +10,20 @@ extern bool FLY;      //·ÉÐÐ
 extern bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
 
 extern double glidingMinimumSpeed;
+struct PlayerPacket;
+namespace Hitbox { struct AABB; }
 
 class player {
 public:
 	static void init(double x, double y, double z);
+	static void spawn();
 
 	static void updatePosition();
 
 	static bool save(string worldn);
 	static bool load(string worldn);
 
-	static void addItem(item itemname, int amount = 1);
+	static void addItem(item itemname, short amount = 1);
 	static bool putBlock(int x, int y, int z, block blockname);
 
 	static PlayerPacket convertToPlayerPacket();
@@ -50,7 +51,7 @@ public:
 	static item BlockInHand;
 	static ubyte indexInHand;
 	static item inventory[4][10];
-	static item inventoryAmount[4][10];
+	static short inventoryAmount[4][10];
 
 	static double glidingEnergy, glidingSpeed;
 	static inline bool gliding() { return glidingNow; }

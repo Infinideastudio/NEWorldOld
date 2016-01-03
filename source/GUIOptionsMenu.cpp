@@ -1,4 +1,5 @@
 #include "Menus.h"
+#include "TextRenderer.h"
 
 class GUIOptionsMenu :public gui::Form {
 private:

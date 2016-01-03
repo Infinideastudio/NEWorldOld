@@ -1,5 +1,5 @@
 #pragma once
-#include "Definitions.h"
+#include "stdinclude.h"
 
 namespace TextRenderer{
 	extern unsigned int gbe;
