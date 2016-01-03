@@ -1,46 +1,42 @@
-ï»¿#include "Definitions.h"
+#include "Definitions.h"
 
-namespace InfinideaStudio
-{
-	namespace NEWorld
-	{
 //Global Vars
-float FOVyNormal = 60.0f;       //è§†é‡è§’åº¦
-float mousemove = 0.2f;         //é¼ æ ‡çµæ•åº¦
-int viewdistance = 8;           //è§†é‡è·ç¦»
-int cloudwidth = 10;            //äº‘çš„å®½åº¦
-int selectPrecision = 100;      //é€‰æ‹©æ–¹å—çš„ç²¾åº¦
-int selectDistance = 5;         //é€‰æ‹©æ–¹å—çš„è·ç¦»
-float walkspeed = 0.15f;        //ç©å®¶å‰è¿›é€Ÿåº¦
-float runspeed = 0.3f;          //ç©å®¶è·‘æ­¥é€Ÿåº¦
-int MaxAirJumps = 3 - 1;        //ç©ºä¸­Næ®µè¿è·³
-bool SmoothLighting = true;     //å¹³æ»‘å…‰ç…§
-bool NiceGrass = true;          //è‰åœ°æè´¨è¿æ¥
-bool MergeFace = false;         //åˆå¹¶é¢æ¸²æŸ“
-bool GUIScreenBlur = true;      //GUIèƒŒæ™¯æ¨¡ç³Š
-int linelength = 10;            //è·ŸF3çš„å‡†æ˜Ÿæœ‰å…³ã€‚ã€‚ã€‚
-int linedist = 30;              //è·ŸF3çš„å‡†æ˜Ÿæœ‰å…³ã€‚ã€‚ã€‚
-float skycolorR = 0.7f;         //å¤©ç©ºé¢œè‰²Red
-float skycolorG = 1.0f;         //å¤©ç©ºé¢œè‰²Green
-float skycolorB = 1.0f;         //å¤©ç©ºé¢œè‰²Blue
+float FOVyNormal = 60.0f;       //ÊÓÒ°½Ç¶È
+float mousemove = 0.2f;         //Êó±êÁéÃô¶È
+int viewdistance = 8;           //ÊÓÒ°¾àÀë
+int cloudwidth = 10;            //ÔÆµÄ¿í¶È
+int selectPrecision = 100;      //Ñ¡Ôñ·½¿éµÄ¾«¶È
+int selectDistance = 5;         //Ñ¡Ôñ·½¿éµÄ¾àÀë
+float walkspeed = 0.15f;        //Íæ¼ÒÇ°½øËÙ¶È
+float runspeed = 0.3f;          //Íæ¼ÒÅÜ²½ËÙ¶È
+int MaxAirJumps = 3 - 1;        //¿ÕÖĞN¶ÎÁ¬Ìø
+bool SmoothLighting = true;     //Æ½»¬¹âÕÕ
+bool NiceGrass = true;          //²İµØ²ÄÖÊÁ¬½Ó
+bool MergeFace = false;         //ºÏ²¢ÃæäÖÈ¾
+bool GUIScreenBlur = true;      //GUI±³¾°Ä£ºı
+int linelength = 10;            //¸úF3µÄ×¼ĞÇÓĞ¹Ø¡£¡£¡£
+int linedist = 30;              //¸úF3µÄ×¼ĞÇÓĞ¹Ø¡£¡£¡£
+float skycolorR = 0.7f;         //Ìì¿ÕÑÕÉ«Red
+float skycolorG = 1.0f;         //Ìì¿ÕÑÕÉ«Green
+float skycolorB = 1.0f;         //Ìì¿ÕÑÕÉ«Blue
 float FOVyRunning = 8.0f;
 float FOVyExt;
 
-int windowwidth;     //çª—å£å®½åº¦
-int windowheight;    //çª—å£å®½åº¦
+int windowwidth;     //´°¿Ú¿í¶È
+int windowheight;    //´°¿Ú¿í¶È
 bool gamebegin, gameexit, bagOpened;
 
-//å¤šäººæ¸¸æˆ
+//¶àÈËÓÎÏ·
 bool multiplayer = false;
 string serverip;
 unsigned short port = 30001;
 
 TextureID BlockTextures, BlockTextures3D;
-		TextureID tex_select, tex_unselect, tex_title, tex_mainmenu [6];
-		TextureID DestroyImage [11];
+TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
+TextureID DestroyImage[11];
 TextureID DefaultSkin;
 
-//çº¿ç¨‹
+//Ïß³Ì
 Mutex_t Mutex;
 Thread_t updateThread;
 double lastupdate, updateTimer;
@@ -63,11 +59,11 @@ int GLVersionMajor, GLVersionMinor, GLVersionRev;
 GLFWwindow* MainWindow;
 GLFWcursor* MouseCursor;
 
-//é¼ æ ‡è¾“å…¥æ•°æ®
+//Êó±êÊäÈëÊı¾İ
 double mx, my, mxl, myl;
 int mw, mb, mbp, mbl, mwl;
 double mxdelta, mydelta;
-//é”®ç›˜è¾“å…¥æ•°æ®
+//¼üÅÌÊäÈëÊı¾İ
 string inputstr;
 //OpenGL Procedure
 PFNGLGENBUFFERSARBPROC glGenBuffersARB;
@@ -95,56 +91,31 @@ int c_getHeightFromWorldGen;
 #endif
 
 #ifdef NEWORLD_USE_WINAPI
-		unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n)
-		{
+unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n){
 	int res = MultiByteToWideChar(CP_ACP, 0, src, n, dst, n);
 	return res;
 }
-		unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n)
-		{
+unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n){
 	return WideCharToMultiByte(CP_ACP, 0, src, n, dst, n * 2, NULL, NULL);
 }
 #else
-		void Sleep(unsigned int ms)
-		{
+void Sleep(unsigned int ms){
 	unsigned int fr = clock();
-			while(clock() - fr <= ms);
+	while (clock() - fr <= ms);
 	return;
 }
 #endif
 
-		void DebugWarning(string msg)
-		{
+void DebugWarning(string msg){
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
 	printf("[Debug][Warning]");
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
 	printf("%s\n", msg.c_str());
 }
 
-		void DebugError(string msg)
-		{
+void DebugError(string msg){
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
 	printf("[Debug][Error]");
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-			printf("%s\n", msg.c_str());
-		}
-	}
-}
-
-//å¸¸ç”¨å‡½æ•°
-vector<string> split(string str, string pattern)
-{
-	vector<string> ret;
-	if (pattern.empty()) return ret;
-	size_t start = 0, index = str.find_first_of(pattern, 0);
-	while (index != str.npos)
-	{
-		if (start != index)
-			ret.push_back(str.substr(start, index - start));
-		start = index + 1;
-		index = str.find_first_of(pattern, start);
-	}
-	if (!str.substr(start).empty())
-		ret.push_back(str.substr(start));
-	return ret;
+	printf("%s\n",msg.c_str());
 }

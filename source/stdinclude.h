@@ -1,7 +1,7 @@
-ï»¿//#pragma warning(disable:4710) //å¿½ç•¥STLé«˜å‘è­¦å‘Šï¼šå‡½æ•°æœªå†…è”
-//#pragma warning(disable:4514) //å¿½ç•¥STLé«˜å‘è­¦å‘Šï¼šæœªä½¿ç”¨çš„å†…è”å‡½æ•°å·²ç§»é™¤
-//#pragma warning(disable:4350) //å¿½ç•¥STLé«˜å‘è­¦å‘Šï¼šè¡Œä¸ºæ›´æ”¹
-//#pragma warning(push,0) //å¿½ç•¥å¤´æ–‡ä»¶çš„è­¦å‘Š
+//#pragma warning(disable:4710) //ºöÂÔSTL¸ß·¢¾¯¸æ£ºº¯ÊıÎ´ÄÚÁª
+//#pragma warning(disable:4514) //ºöÂÔSTL¸ß·¢¾¯¸æ£ºÎ´Ê¹ÓÃµÄÄÚÁªº¯ÊıÒÑÒÆ³ı
+//#pragma warning(disable:4350) //ºöÂÔSTL¸ß·¢¾¯¸æ£ºĞĞÎª¸ü¸Ä
+//#pragma warning(push,0) //ºöÂÔÍ·ÎÄ¼şµÄ¾¯¸æ
 
 #define NEWORLD_USE_WINAPI
 #ifdef NEWORLD_USE_WINAPI
@@ -50,5 +50,5 @@ using std::endl;
 #include <GL/glext.h>
 #endif
 //#pragma warning(pop)
-//#pragma warning(disable:4820) //å¿½ç•¥ä¸å¿…è¦çš„è­¦å‘Šï¼šæ•°æ®ç»“æ„å¯¹é½
-//#pragma warning(disable:4365) //å¿½ç•¥ä¸å¿…è¦çš„è­¦å‘Šï¼šæœ‰ç¬¦å·/æ— ç¬¦å·ä¸åŒ¹é…
+//#pragma warning(disable:4820) //ºöÂÔ²»±ØÒªµÄ¾¯¸æ£ºÊı¾İ½á¹¹¶ÔÆë
+//#pragma warning(disable:4365) //ºöÂÔ²»±ØÒªµÄ¾¯¸æ£ºÓĞ·ûºÅ/ÎŞ·ûºÅ²»Æ¥Åä

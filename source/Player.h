@@ -1,26 +1,19 @@
-ï»¿#pragma once
+#pragma once
 #include "Definitions.h"
-
-namespace InfinideaStudio
-{
-	namespace NEWorld
-	{
-
 
 const double g = 9.8;
 const double EDrop = 0.1;
 const double speedCast = 1 / 20.0;
 
-extern bool canGliding;  //æ»‘ç¿”
-extern bool FLY;      //é£è¡Œ
-extern bool CROSS;    //ç©¿å¢™ â†_â† (Superman!)
+extern bool canGliding;  //»¬Ïè
+extern bool FLY;      //·ÉĞĞ
+extern bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
 
 extern double glidingMinimumSpeed;
 struct PlayerPacket;
 namespace Hitbox { struct AABB; }
 
-		class player
-		{
+class player {
 public:
 	static void init(double x, double y, double z);
 	static void spawn();
@@ -64,5 +57,3 @@ public:
 	static inline bool gliding() { return glidingNow; }
 
 };
-	}
-}

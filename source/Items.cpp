@@ -1,19 +1,13 @@
-﻿#include "Items.h"
+#include "Items.h"
 #include "Textures.h"
-namespace InfinideaStudio
+
+itemInfo itemsinfo[] = { STICK, APPLE };
+
+void loadItemsTextures()
 {
-	namespace NEWorld
-	{
+	itemsinfo[builtInItems::STICK - theFirstItem].texture =
+		Textures::LoadRGBTexture("Textures\\items\\stick.bmp");
+	itemsinfo[builtInItems::APPLE - theFirstItem].texture =
+		Textures::LoadRGBTexture("Textures\\items\\apple.bmp");
 
-		itemInfo itemsinfo [] = {STICK, APPLE};
-
-		void loadItemsTextures()
-		{
-			itemsinfo [builtInItems::STICK - theFirstItem].texture =
-				Textures::LoadRGBTexture("Textures\\items\\stick.bmp");
-			itemsinfo [builtInItems::APPLE - theFirstItem].texture =
-				Textures::LoadRGBTexture("Textures\\items\\apple.bmp");
-
-		}
-	}
 }
