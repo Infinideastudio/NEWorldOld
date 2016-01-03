@@ -133,7 +133,7 @@
    could be already defined by configure but it must be included after defining
    the compiler macros above as msvc/wx/setup.h relies on them under Windows.
  */
-#include "msvc/wx/setup.h"
+#include "wx/setup.h"
 
 /*
    Convenience for any optional classes that use the wxAnyButton base class.
