@@ -267,6 +267,7 @@
     <ClInclude Include="source\Chunk.h" />
     <ClInclude Include="source\ChunkPacket.h" />
     <ClInclude Include="source\ChunkPtrArray.h" />
+    <ClInclude Include="source\Command.h" />
     <ClInclude Include="source\Effect.h" />
     <ClInclude Include="source\ChunkRenderer.h" />
     <ClInclude Include="source\HeightMap.h" />

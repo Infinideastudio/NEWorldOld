@@ -135,7 +135,8 @@ extern int c_getChunkPtrFromSearch;
 extern int c_getHeightFromHMap;
 extern int c_getHeightFromWorldGen;
 #endif
-
+//常用函数
+vector<string> split(string str, string pattern);
 inline string boolstr(bool b){ return b ? "True" : "False"; }
 inline double rnd() { return (double)rand() / (RAND_MAX + 1); }
 #ifdef NEWORLD_USE_WINAPI
@@ -186,6 +187,19 @@ inline string itos(int i){
 	return string(a);
 }
 
+inline bool beginWith(string str, string begin) {
+	if (str.size() < begin.size()) return false;
+	for (size_t i = 0; i != begin.size(); i++) {
+		if (str[i] != begin[i]) return false;
+	}
+	return true;
+}
+
+template<class T>
+inline void conv(string str, T& ret) {
+	std::stringstream s(str);
+	s >> ret;
+}
 void DebugWarning(string msg);
 void DebugError(string msg);
 #endif
