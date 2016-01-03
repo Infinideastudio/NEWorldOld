@@ -1,4 +1,4 @@
-namespace Hitbox {
+﻿namespace Hitbox {
 	struct AABB;
 }
 

@@ -1,4 +1,4 @@
-#include "Menus.h"
+ï»¿#include "Menus.h"
 
 void saveoptions();
 
@@ -8,14 +8,14 @@ private:
 	gui::trackbar FOVyBar, mmsBar, viewdistBar;
 	gui::button rdstbtn, gistbtn, backbtn, savebtn;
 	void onLoad() {
-		title = gui::label("=================<  Ñ¡ Ïî  >=================", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-		FOVyBar = gui::trackbar(strWithVar("ÊÓÒ°½Ç¶È£º", FOVyNormal), 120, (int)(FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-		mmsBar = gui::trackbar(strWithVar("Êó±êÁéÃô¶È£º", mousemove), 120, (int)(mousemove * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-		viewdistBar = gui::trackbar(strWithVar("äÖÈ¾¾àÀë£º", viewdistance), 120, (viewdistance - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
-		rdstbtn = gui::button(">> äÖÈ¾Ñ¡Ïî...", -250, -10, 204, 228, 0.5, 0.5, 0.0, 0.0);
-		gistbtn = gui::button(">> Í¼ĞÎ½çÃæÑ¡Ïî...", 10, 250, 204, 228, 0.5, 0.5, 0.0, 0.0);
-		backbtn = gui::button("<< ·µ»ØÖ÷²Ëµ¥", -250, -10, -44, -20, 0.5, 0.5, 1.0, 1.0);
-		savebtn = gui::button("±£´æÉèÖÃ", 10, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+		title = gui::label("=================<  é€‰ é¡¹  >=================", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		FOVyBar = gui::trackbar(strWithVar("è§†é‡è§’åº¦ï¼š", FOVyNormal), 120, (int)(FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+		mmsBar = gui::trackbar(strWithVar("é¼ æ ‡çµæ•åº¦ï¼š", mousemove), 120, (int)(mousemove * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+		viewdistBar = gui::trackbar(strWithVar("æ¸²æŸ“è·ç¦»ï¼š", viewdistance), 120, (viewdistance - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
+		rdstbtn = gui::button(">> æ¸²æŸ“é€‰é¡¹...", -250, -10, 204, 228, 0.5, 0.5, 0.0, 0.0);
+		gistbtn = gui::button(">> å›¾å½¢ç•Œé¢é€‰é¡¹...", 10, 250, 204, 228, 0.5, 0.5, 0.0, 0.0);
+		backbtn = gui::button("<< è¿”å›ä¸»èœå•", -250, -10, -44, -20, 0.5, 0.5, 1.0, 1.0);
+		savebtn = gui::button("ä¿å­˜è®¾ç½®", 10, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 		registerControls(8, &title, &FOVyBar, &mmsBar, &viewdistBar, &rdstbtn, &gistbtn, &backbtn, &savebtn);
 	}
 	void onUpdate() {
@@ -26,9 +26,9 @@ private:
 		if (gistbtn.clicked) GUIoptions();
 		if (backbtn.clicked) ExitSignal = true;
 		if (savebtn.clicked) saveoptions();
-		FOVyBar.text = strWithVar("ÊÓÒ°½Ç¶È£º", FOVyNormal);
-		mmsBar.text = strWithVar("Êó±êÁéÃô¶È£º", mousemove);
-		viewdistBar.text = strWithVar("äÖÈ¾¾àÀë£º", viewdistance);
+		FOVyBar.text = strWithVar("è§†é‡è§’åº¦ï¼š", FOVyNormal);
+		mmsBar.text = strWithVar("é¼ æ ‡çµæ•åº¦ï¼š", mousemove);
+		viewdistBar.text = strWithVar("æ¸²æŸ“è·ç¦»ï¼š", viewdistance);
 	}
 };
 void options() { OptionsMenu Menu; Menu.start(); }

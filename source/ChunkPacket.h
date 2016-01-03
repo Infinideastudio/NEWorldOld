@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Definitions.h"
 enum { CHUNK_DATA = 2, CHUNK_COMMAND, CHUNK_EMPTY, CHUNK_NOTBEMODIFIED };
 struct ChunkPacket {

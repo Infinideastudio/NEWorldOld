@@ -1,12 +1,12 @@
-#include "OnlinePlayer.h"
+ï»¿#include "OnlinePlayer.h"
 #include "Renderer.h"
 
 map<SkinID, pair<VBOID, vtxCount>> playerSkins;
 vector<OnlinePlayer> players;
 
-void OnlinePlayer::GenVAOVBO(int skinID) {
-	return;
-	if (skinID != -1) { //Ä¬ÈÏÆ¤·ô
+void OnlinePlayer::GenVAOVBO(int) {
+	/*
+	if (skinID != -1) { //é»˜è®¤çš®è‚¤
 		using renderer::TexCoord2d;
 		using renderer::Vertex3f;
 		using renderer::Color3f;
@@ -269,6 +269,7 @@ void OnlinePlayer::GenVAOVBO(int skinID) {
 
 		renderer::Flush(VBO, vtxs);
 	}
+	*/
 }
 
 void OnlinePlayer::buildRenderIfNeed() {
@@ -281,7 +282,7 @@ void OnlinePlayer::buildRenderIfNeed() {
 		else {
 			VBO = 0;
 			vtxs = 0;
-			GenVAOVBO(_skinID); //Éú³ÉÍæ¼ÒµÄVAO/VBO
+			GenVAOVBO(_skinID); //ç”Ÿæˆç©å®¶çš„VAO/VBO
 			playerSkins[_skinID] = std::make_pair(VBO, vtxs);
 		}
 	}
