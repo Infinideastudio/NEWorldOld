@@ -1,11 +1,18 @@
 #pragma once
 #include "Definitions.h"
 #include "GUI.h"
-void mainmenu();
-void options();
-void Renderoptions();
-void GUIoptions();
-void worldmenu();
-void createworldmenu();
-void gamemenu();
-void multiplayermenu();
+
+namespace InfinideaStudio
+{
+	namespace NEWorld
+	{
+		void mainmenu();
+		void options();
+		void Renderoptions();
+		void GUIoptions();
+		void worldmenu();
+		void createworldmenu();
+		void gamemenu();
+		void multiplayermenu();
+	}
+}
