@@ -64,8 +64,7 @@ void updateHitbox() {
 	MoveHitbox(player::xpos, player::ypos, player::zpos);
 }
 
-void player::init(double x, double y, double z)
-{
+void player::init(double x, double y, double z) {
 	xpos = x;
 	ypos = y;
 	zpos = z;
@@ -74,14 +73,33 @@ void player::init(double x, double y, double z)
 	updateHitbox();
 }
 
-void player::spawn()
-{
+void player::spawn() {
 	xpos = 0;
 	ypos = 60;
 	zpos = 0;
 	jump = 0;
 	InitPosition();
 	updateHitbox();
+	memset(inventory, 0, sizeof(inventory));
+	memset(inventoryAmount, 0, sizeof(inventoryAmount));
+	inventory[0][0] = 1; inventoryAmount[0][0] = 255;
+	inventory[0][1] = 2; inventoryAmount[0][1] = 255;
+	inventory[0][2] = 3; inventoryAmount[0][2] = 255;
+	inventory[0][3] = 4; inventoryAmount[0][3] = 255;
+	inventory[0][4] = 5; inventoryAmount[0][4] = 255;
+	inventory[0][5] = 6; inventoryAmount[0][5] = 255;
+	inventory[0][6] = 7; inventoryAmount[0][6] = 255;
+	inventory[0][7] = 8; inventoryAmount[0][7] = 255;
+	inventory[0][8] = 9; inventoryAmount[0][8] = 255;
+	inventory[0][9] = 10; inventoryAmount[0][9] = 255;
+	inventory[1][0] = 11; inventoryAmount[1][0] = 255;
+	inventory[1][1] = 12; inventoryAmount[1][1] = 255;
+	inventory[1][2] = 13; inventoryAmount[1][2] = 255;
+	inventory[1][3] = 14; inventoryAmount[1][3] = 255;
+	inventory[1][4] = 15; inventoryAmount[1][4] = 255;
+	inventory[1][5] = 16; inventoryAmount[1][5] = 255;
+	inventory[1][6] = 17; inventoryAmount[1][6] = 255;
+	inventory[1][7] = 18; inventoryAmount[1][7] = 255;
 }
 
 void player::updatePosition() {
@@ -177,27 +195,25 @@ bool player::putBlock(int x, int y, int z, block blockname) {
 bool player::save(string worldn) {
 	uint32 curversion = VERSION;
 	std::stringstream ss;
-	ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
+	ss << "Worlds/" << worldn << "/player.NEWorldPlayer";
 	std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
 	if (!isave.is_open()) return false;
-	isave << curversion << endl;
-	isave << OnGround << endl;
-	isave << Running << endl;
-	isave << AirJumps << endl;
-	isave << lookupdown << endl;
-	isave << heading << endl;
-	isave << xpos << endl;
-	isave << ypos << endl;
-	isave << zpos << endl;
-	isave << jump << endl;
-	isave << xlookspeed << endl;
-	isave << ylookspeed << endl;
-	isave << FLY << endl;
-	isave << CROSS << endl;
-	isave << canGliding;
+	isave.write((char*)&curversion, sizeof(curversion));
+	isave.write((char*)&xpos, sizeof(xpos));
+	isave.write((char*)&ypos, sizeof(ypos));
+	isave.write((char*)&zpos, sizeof(zpos));
+	isave.write((char*)&lookupdown, sizeof(lookupdown));
+	isave.write((char*)&heading, sizeof(heading));
+	isave.write((char*)&jump, sizeof(jump));
+	isave.write((char*)&OnGround, sizeof(OnGround));
+	isave.write((char*)&Running, sizeof(Running));
+	isave.write((char*)&AirJumps, sizeof(AirJumps));
+	isave.write((char*)&FLY, sizeof(FLY));
+	isave.write((char*)&CROSS, sizeof(CROSS));
+	isave.write((char*)&indexInHand, sizeof(indexInHand));
+	isave.write((char*)&health, sizeof(health));
 	isave.write((char*)inventory, sizeof(inventory));
 	isave.write((char*)inventoryAmount, sizeof(inventoryAmount));
-	isave << indexInHand;
 	isave.close();
 	return true;
 }
@@ -205,16 +221,26 @@ bool player::save(string worldn) {
 bool player::load(string worldn) {
 	uint32 targetVersion;
 	std::stringstream ss;
-	ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
+	ss << "Worlds/" << worldn << "/player.NEWorldPlayer";
 	std::ifstream iload(ss.str().c_str(), std::ios::binary | std::ios::in);
 	if (!iload.is_open()) return false;
-	iload >> targetVersion;
+	iload.read((char*)&targetVersion, sizeof(targetVersion));
 	if (targetVersion != VERSION) return false;
-	iload >> OnGround >> Running >> AirJumps >> lookupdown >> heading
-		>> xpos >> ypos >> zpos >> jump >> xlookspeed >> ylookspeed >> FLY >> CROSS >> canGliding;
+	iload.read((char*)&xpos, sizeof(xpos));
+	iload.read((char*)&ypos, sizeof(ypos));
+	iload.read((char*)&zpos, sizeof(zpos));
+	iload.read((char*)&lookupdown, sizeof(lookupdown));
+	iload.read((char*)&heading, sizeof(heading));
+	iload.read((char*)&jump, sizeof(jump));
+	iload.read((char*)&OnGround, sizeof(OnGround));
+	iload.read((char*)&Running, sizeof(Running));
+	iload.read((char*)&AirJumps, sizeof(AirJumps));
+	iload.read((char*)&FLY, sizeof(FLY));
+	iload.read((char*)&CROSS, sizeof(CROSS));
+	iload.read((char*)&indexInHand, sizeof(indexInHand));
+	iload.read((char*)&health, sizeof(health));
 	iload.read((char*)inventory, sizeof(inventory));
 	iload.read((char*)inventoryAmount, sizeof(inventoryAmount));
-	iload >> indexInHand;
 	iload.close();
 	return true;
 }
