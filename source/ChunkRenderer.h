@@ -2,9 +2,7 @@
 #include "Definitions.h"
 #include "Blocks.h"
 
-namespace world {
-	class chunk;
-}
+namespace World { class chunk; }
 
 namespace ChunkRenderer {
 	
@@ -13,10 +11,10 @@ namespace ChunkRenderer {
 		int x, y, z, length, direction;
 		block block;
 		brightness brightness;
-		QuadPrimitive() : x(0), y(0), z(0), length(0), direction(0), block(blocks::AIR), brightness(0) {}
+		QuadPrimitive() : x(0), y(0), z(0), length(0), direction(0), block(Blocks::AIR), brightness(0) {}
 	};
 	void renderPrimitive(QuadPrimitive& p);
-	void renderChunk(world::chunk* c);
-	void mergeFaceRender(world::chunk* c);
+	void renderChunk(World::chunk* c);
+	void mergeFaceRender(World::chunk* c);
 
 }

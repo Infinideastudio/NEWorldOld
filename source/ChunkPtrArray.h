@@ -1,7 +1,7 @@
 #pragma once
 #include "Definitions.h"
 
-namespace world{
+namespace World {
 	class chunk;
 	struct chunkPtrArray{
 		chunk** array = nullptr;

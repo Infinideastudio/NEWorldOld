@@ -1,5 +1,5 @@
 #include "Renderer.h"
-namespace renderer {
+namespace Renderer {
 	
 	int Vertexes, Texcoordc, Colorc;
 	float* VertexArray = nullptr;

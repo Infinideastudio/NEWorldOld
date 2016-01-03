@@ -34,7 +34,7 @@ namespace Textures{
 	};
 #pragma pack(pop)
 
-	enum {
+	enum BlockTextureID {
 		AIR, ROCK, GRASS_TOP, GRASS_SIDE, DIRT, STONE, PLANK, WOOD_TOP, WOOD_SIDE, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON, UNKNOWN
 	};

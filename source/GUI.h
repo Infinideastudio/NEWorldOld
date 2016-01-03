@@ -12,7 +12,7 @@ inline string strWithVar(string str, T var) {
 	return ss.str();
 }
 //图形界面系统。。。正宗OOP！！！
-namespace gui {
+namespace GUI {
 	extern float linewidth;
 	extern float linealpha;
 	extern float FgR;
