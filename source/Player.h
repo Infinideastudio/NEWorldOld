@@ -13,7 +13,7 @@ extern double glidingMinimumSpeed;
 struct PlayerPacket;
 namespace Hitbox { struct AABB; }
 
-class player {
+class Player {
 public:
 	static void init(double x, double y, double z);
 	static void spawn();

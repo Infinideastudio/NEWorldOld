@@ -1,13 +1,13 @@
 #include "Items.h"
 #include "Textures.h"
 
-itemInfo itemsinfo[] = { STICK, APPLE };
+ItemInfo itemsinfo[] = { STICK, APPLE };
 
 void loadItemsTextures()
 {
-	itemsinfo[builtInItems::STICK - theFirstItem].texture =
-		Textures::LoadRGBTexture("Textures\\items\\stick.bmp");
-	itemsinfo[builtInItems::APPLE - theFirstItem].texture =
-		Textures::LoadRGBTexture("Textures\\items\\apple.bmp");
+	itemsinfo[BuiltInItems::STICK - theFirstItem].texture =
+		Textures::LoadRGBTexture("Textures/Items/stick.bmp");
+	itemsinfo[BuiltInItems::APPLE - theFirstItem].texture =
+		Textures::LoadRGBTexture("Textures/Items/apple.bmp");
 
 }

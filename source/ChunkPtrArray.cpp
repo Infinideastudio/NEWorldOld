@@ -1,6 +1,6 @@
 #include "chunkPtrArray.h"
 
-namespace world{
+namespace World {
 	
 	void chunkPtrArray::setSize(int s){
 		size = s;

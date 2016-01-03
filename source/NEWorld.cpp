@@ -50,7 +50,7 @@ int getMouseButton() { return mb; }
 void registerCommands();
 
 struct RenderChunk{
-	RenderChunk(world::chunk* c, double TimeDelta){
+	RenderChunk(World::chunk* c, double TimeDelta){
 		cx = c->cx;
 		cy = c->cy;
 		cz = c->cz;
@@ -137,8 +137,8 @@ int main(){
 main_menu:
 	gamebegin = gameexit = false;
 	glDisable(GL_LINE_SMOOTH);
-	gui::clearTransition();
-	mainmenu();
+	GUI::clearTransition();
+	Menus::mainmenu();
 	glEnable(GL_LINE_SMOOTH);
 	glEnable(GL_TEXTURE_2D);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -150,18 +150,18 @@ main_menu:
 	updateThread = ThreadCreate(&updateThreadFunc, NULL);
 	if (multiplayer) {
 		srand((unsigned int)time(NULL));
-		player::name = "";
-		player::onlineID = rand();
+		Player::name = "";
+		Player::onlineID = rand();
 		Network::init(serverip, port);
 	}
 	//初始化游戏状态
 	printf("[Console][Game]");
 	printf("Init player...\n");
-	if (loadGame()) player::init(player::xpos, player::ypos, player::zpos);
-	else player::spawn();
+	if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
+	else Player::spawn();
 	printf("[Console][Game]");
 	printf("Init world...\n");
-	world::Init();
+	World::Init();
 	registerCommands();
 	GUIrenderswitch = true;
 	glDepthFunc(GL_LEQUAL);
@@ -199,8 +199,8 @@ main_menu:
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1) {
 			updateThreadPaused = true;
 			createThumbnail();
-			gui::clearTransition();
-			gamemenu();
+			GUI::clearTransition();
+			Menus::gamemenu();
 			if (!gameexit) {
 				glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 				glDepthFunc(GL_LEQUAL);
@@ -225,7 +225,7 @@ main_menu:
 			ThreadDestroy(updateThread);
 			MutexDestroy(Mutex);
 			saveGame();
-			world::destroyAllChunks();
+			World::destroyAllChunks();
 			printf("[Console][Game]");
 			printf("Threads terminated\n");
 			printf("[Console][Game]");
@@ -390,7 +390,7 @@ void setupscreen() {
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClearDepth(1.0);
-	glGenBuffersARB(1, &world::EmptyBuffer);
+	glGenBuffersARB(1, &World::EmptyBuffer);
 
 }
 
@@ -452,8 +452,8 @@ void LoadTextures(){
 }
 
 void saveGame(){
-	world::saveAllChunks();
-	if (!player::save(world::worldname)) {
+	World::saveAllChunks();
+	if (!Player::save(World::worldname)) {
 #ifdef NEWORLD_CONSOLE_OUTPUT
 		DebugWarning("Failed saving player info!");
 #endif
@@ -461,7 +461,7 @@ void saveGame(){
 }
 
 bool loadGame(){
-	if (!player::load(world::worldname)) {
+	if (!Player::load(World::worldname)) {
 #ifdef NEWORLD_CONSOLE_OUTPUT
 		DebugWarning("Failed loading player info!");
 #endif
@@ -487,7 +487,7 @@ void registerCommands() {
 		if (command.size() != 3) return false;
 		item itemid; conv(command[1], itemid);
 		short amount; conv(command[2], amount);
-		player::addItem(itemid, amount);
+		Player::addItem(itemid, amount);
 		return true;
 	}));
 	commands.push_back(Command("/tp", [](const vector<string>& command) {
@@ -495,13 +495,13 @@ void registerCommands() {
 		double x; conv(command[1], x);
 		double y; conv(command[2], y);
 		double z; conv(command[3], z);
-		player::xpos = x;
-		player::ypos = y;
-		player::zpos = z;
+		Player::xpos = x;
+		Player::ypos = y;
+		Player::zpos = z;
 		return true;
 	}));
 	commands.push_back(Command("/suicide", [](const vector<string>& command) {
-		player::spawn();
+		Player::spawn();
 		return true;
 	}));
 }
@@ -520,65 +520,65 @@ void updategame(){
 	static bool WP;
 	//static double mxl, myl;
 	//glfwGetCursorPos(MainWindow, &mx, &my);
-	player::BlockInHand = player::inventory[3][player::indexInHand];
+	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 	//生命值相关
-	if (player::health > 0) {
-		if (player::health < player::healthMax) player::health += player::healSpeed;
-		if (player::health > player::healthMax) player::health = player::healthMax;
+	if (Player::health > 0) {
+		if (Player::health < Player::healthMax) Player::health += Player::healSpeed;
+		if (Player::health > Player::healthMax) Player::health = Player::healthMax;
 	}
 	else {
-		player::health = 1;
+		Player::health = 1;
 	}
 
-	//world::unloadedChunks=0
-	world::rebuiltChunks = 0;
-	world::updatedChunks = 0;
+	//World::unloadedChunks=0
+	World::rebuiltChunks = 0;
+	World::updatedChunks = 0;
 
 	//ciArray move
-	if (world::cpArray.originX != player::cxt - viewdistance - 2 || world::cpArray.originY != player::cyt - viewdistance - 2 || world::cpArray.originZ != player::czt - viewdistance - 2){
-		world::cpArray.moveTo(player::cxt - viewdistance - 2, player::cyt - viewdistance - 2, player::czt - viewdistance - 2);
+	if (World::cpArray.originX != Player::cxt - viewdistance - 2 || World::cpArray.originY != Player::cyt - viewdistance - 2 || World::cpArray.originZ != Player::czt - viewdistance - 2){
+		World::cpArray.moveTo(Player::cxt - viewdistance - 2, Player::cyt - viewdistance - 2, Player::czt - viewdistance - 2);
 	}
 	//HeightMap move
-	if (world::HMap.originX != (player::cxt - viewdistance - 2) * 16 || world::HMap.originZ != (player::czt - viewdistance - 2) * 16){
-		world::HMap.moveTo((player::cxt - viewdistance - 2) * 16, (player::czt - viewdistance - 2) * 16);
+	if (World::HMap.originX != (Player::cxt - viewdistance - 2) * 16 || World::HMap.originZ != (Player::czt - viewdistance - 2) * 16){
+		World::HMap.moveTo((Player::cxt - viewdistance - 2) * 16, (Player::czt - viewdistance - 2) * 16);
 	}
 
 	if (FirstUpdateThisFrame){
-		world::sortChunkLoadUnloadList(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos));
+		World::sortChunkLoadUnloadList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
 
 		//卸载区块(Unload chunks)
 		int sumUnload;
-		sumUnload = world::chunkUnloads > world::MaxChunkUnloads ? world::MaxChunkUnloads : world::chunkUnloads;
+		sumUnload = World::chunkUnloads > World::MaxChunkUnloads ? World::MaxChunkUnloads : World::chunkUnloads;
 		for (int i = 0; i < sumUnload; i++) {
-			world::chunk* cp = world::chunkUnloadList[i].first;
+			World::chunk* cp = World::chunkUnloadList[i].first;
 #ifdef NEWORLD_DEBUG
 			if (cp == nullptr)DebugError("Unload error!");
 #endif
 			int cx = cp->cx, cy = cp->cy, cz = cp->cz;
 			cp->Unload();
-			world::DeleteChunk(cx, cy, cz);
+			World::DeleteChunk(cx, cy, cz);
 		}
 
 		//加载区块(Load chunks)
 		int sumLoad;
-		sumLoad = world::chunkLoads > world::MaxChunkLoads ? world::MaxChunkLoads : world::chunkLoads;
+		sumLoad = World::chunkLoads > World::MaxChunkLoads ? World::MaxChunkLoads : World::chunkLoads;
 		for (int i = 0; i < sumLoad; i++){
-			int cx = world::chunkLoadList[i][1];
-			int cy = world::chunkLoadList[i][2];
-			int cz = world::chunkLoadList[i][3];
-			world::chunk* c = world::AddChunk(cx, cy, cz);
+			int cx = World::chunkLoadList[i][1];
+			int cy = World::chunkLoadList[i][2];
+			int cz = World::chunkLoadList[i][3];
+			World::chunk* c = World::AddChunk(cx, cy, cz);
 			c->Load();
 			if (c->Empty) {
-				c->Unload(); world::DeleteChunk(cx, cy, cz);
-				world::cpArray.setChunkPtr(cx, cy, cz, world::EmptyChunkPtr);
+				c->Unload(); World::DeleteChunk(cx, cy, cz);
+				World::cpArray.setChunkPtr(cx, cy, cz, World::EmptyChunkPtr);
 			}
 		}
 		
 	}
 	
 	//加载动画
-	for (int i = 0; i < world::loadedChunks; i++){
-		world::chunk* cp = world::chunks[i];
+	for (int i = 0; i < World::loadedChunks; i++){
+		World::chunk* cp = World::chunks[i];
 		if (cp->loadAnim <= 0.3f)
 			cp->loadAnim = 0.0f;
 		else
@@ -586,44 +586,44 @@ void updategame(){
 	}
 
 	//随机状态更新
-	for (int i = 0; i < world::loadedChunks; i++){
+	for (int i = 0; i < World::loadedChunks; i++){
 		int x, y, z, gx, gy, gz;
-		int cx = world::chunks[i]->cx;
-		int cy = world::chunks[i]->cy;
-		int cz = world::chunks[i]->cz;
+		int cx = World::chunks[i]->cx;
+		int cy = World::chunks[i]->cy;
+		int cz = World::chunks[i]->cz;
 		x = int(rnd() * 16); gx = x + cx * 16;
 		y = int(rnd() * 16); gy = y + cy * 16;
 		z = int(rnd() * 16); gz = z + cz * 16;
-		if (world::chunks[i]->getblock(x, y, z) == blocks::DIRT &&
-			world::getblock(gx, gy + 1, gz, blocks::NONEMPTY) == blocks::AIR && (
-			world::getblock(gx + 1, gy, gz, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx - 1, gy, gz, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx, gy, gz + 1, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx, gy, gz - 1, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx + 1, gy + 1, gz, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx - 1, gy + 1, gz, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx, gy + 1, gz + 1, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx, gy + 1, gz - 1, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx + 1, gy - 1, gz, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx - 1, gy - 1, gz, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx, gy - 1, gz + 1, blocks::AIR) == blocks::GRASS ||
-			world::getblock(gx, gy - 1, gz - 1, blocks::AIR) == blocks::GRASS)){
+		if (World::chunks[i]->getblock(x, y, z) == Blocks::DIRT &&
+			World::getblock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR && (
+			World::getblock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx, gy, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx, gy, gz - 1, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx + 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx - 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx, gy + 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx, gy + 1, gz - 1, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx + 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+			World::getblock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)){
 			//长草
-			world::chunks[i]->setblock(x, y, z, blocks::GRASS);
-			world::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
-			world::setChunkUpdated(cx, cy, cz, true);
+			World::chunks[i]->setblock(x, y, z, Blocks::GRASS);
+			World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
+			World::setChunkUpdated(cx, cy, cz, true);
 		}
-		if (world::chunks[i]->getblock(x, y, z) == blocks::GRASS && world::getblock(gx, gy + 1, gz, blocks::AIR) != blocks::AIR) {
+		if (World::chunks[i]->getblock(x, y, z) == Blocks::GRASS && World::getblock(gx, gy + 1, gz, Blocks::AIR) != Blocks::AIR) {
 			//草被覆盖
-			world::chunks[i]->setblock(x, y, z, blocks::DIRT);
-			world::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
+			World::chunks[i]->setblock(x, y, z, Blocks::DIRT);
+			World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
 		}
 	}
 	
 	//判断选中的方块
 	double lx, ly, lz, sidedist[7];
 	int sidedistmin;
-	lx = player::xpos; ly = player::ypos + player::height + player::heightExt; lz = player::zpos;
+	lx = Player::xpos; ly = Player::ypos + Player::height + Player::heightExt; lz = Player::zpos;
 	
 	sel = false;
 	selx = sely = selz = selbx = selby = selbz = selcx = selcy = selcz = selb = selbr = 0;
@@ -634,12 +634,12 @@ void updategame(){
 		//从玩家位置发射一条线段
 		for (int i = 0; i < selectPrecision*selectDistance; i++) {
 			//线段延伸
-			lx += sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) / (double)selectPrecision;
-			ly += cos(M_PI / 180 * (player::lookupdown + 90)) / (double)selectPrecision;
-			lz += cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) / (double)selectPrecision;
+			lx += sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
+			ly += cos(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
+			lz += cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
 
 			//碰到方块
-			if (BlockInfo(world::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
+			if (BlockInfo(World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
 				int x, y, z;
 				x = RoundInt(lx);
 				y = RoundInt(ly);
@@ -667,41 +667,41 @@ void updategame(){
 					if (sidedist[j] < sidedist[sidedistmin]) sidedistmin = j;
 				}
 
-				if (world::chunkOutOfBound(selcx, selcy, selcz) == false) {
-					world::chunk* cp = world::getChunkPtr(selcx, selcy, selcz);
-					if (cp == nullptr || cp == world::EmptyChunkPtr) continue;
+				if (World::chunkOutOfBound(selcx, selcy, selcz) == false) {
+					World::chunk* cp = World::getChunkPtr(selcx, selcy, selcz);
+					if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
 					selb = cp->getblock(selbx, selby, selbz);
 				}
 
 				switch (sidedistmin) {
 				case 1:
-					if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = world::getbrightness(selx, sely + 1, selz);
+					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
+						selbr = World::getbrightness(selx, sely + 1, selz);
 					break;
 				case 2:
-					if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = world::getbrightness(selx, sely - 1, selz);
+					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
+						selbr = World::getbrightness(selx, sely - 1, selz);
 					break;
 				case 3:
-					if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = world::getbrightness(selx + 1, sely, selz);
+					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
+						selbr = World::getbrightness(selx + 1, sely, selz);
 					break;
 				case 4:
-					if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = world::getbrightness(selx - 1, sely, selz);
+					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
+						selbr = World::getbrightness(selx - 1, sely, selz);
 					break;
 				case 5:
-					if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = world::getbrightness(selx, sely, selz + 1);
+					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
+						selbr = World::getbrightness(selx, sely, selz + 1);
 					break;
 				case 6:
-					if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = world::getbrightness(selx, sely, selz - 1);
+					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
+						selbr = World::getbrightness(selx, sely, selz - 1);
 					break;
 				}
 
 				if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
-					particles::throwParticle(world::getblock(x, y, z),
+					Particles::throwParticle(World::getblock(x, y, z),
 						float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 						float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 						float(rnd()*0.01f + 0.02f), int(rnd() * 30) + 30);
@@ -711,43 +711,43 @@ void updategame(){
 					else
 						seldes += 5.0;
 					if (seldes >= 100.0) {
-						player::addItem(world::getblock(x, y, z));
+						Player::addItem(World::getblock(x, y, z));
 						for (int j = 1; j <= 25; j++) {
-							particles::throwParticle(world::getblock(x, y, z),
+							Particles::throwParticle(World::getblock(x, y, z),
 								float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 								float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 								float(rnd()*0.02 + 0.03), int(rnd() * 60) + 30);
 						}
-						world::pickblock(x, y, z);
+						World::pickblock(x, y, z);
 					}
 				}
 				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB))) { //鼠标右键
-					if (player::inventoryAmount[3][player::indexInHand] > 0 && isBlock(player::inventory[3][player::indexInHand])) {
+					if (Player::inventoryAmount[3][Player::indexInHand] > 0 && isBlock(Player::inventory[3][Player::indexInHand])) {
 						//放置方块
 						put = true;
 						switch (sidedistmin) {
 						case 1:
-							if (player::putBlock(x, y + 1, z, player::BlockInHand) == false) put = false;
+							if (Player::putBlock(x, y + 1, z, Player::BlockInHand) == false) put = false;
 							break;
 						case 2:
-							if (player::putBlock(x, y - 1, z, player::BlockInHand) == false) put = false;
+							if (Player::putBlock(x, y - 1, z, Player::BlockInHand) == false) put = false;
 							break;
 						case 3:
-							if (player::putBlock(x + 1, y, z, player::BlockInHand) == false) put = false;
+							if (Player::putBlock(x + 1, y, z, Player::BlockInHand) == false) put = false;
 							break;
 						case 4:
-							if (player::putBlock(x - 1, y, z, player::BlockInHand) == false) put = false;
+							if (Player::putBlock(x - 1, y, z, Player::BlockInHand) == false) put = false;
 							break;
 						case 5:
-							if (player::putBlock(x, y, z + 1, player::BlockInHand) == false) put = false;
+							if (Player::putBlock(x, y, z + 1, Player::BlockInHand) == false) put = false;
 							break;
 						case 6:
-							if (player::putBlock(x, y, z - 1, player::BlockInHand) == false) put = false;
+							if (Player::putBlock(x, y, z - 1, Player::BlockInHand) == false) put = false;
 							break;
 						}
 						if (put) {
-							player::inventoryAmount[3][player::indexInHand]--;
-							if (player::inventoryAmount[3][player::indexInHand] == 0) player::inventory[3][player::indexInHand] = blocks::AIR;
+							Player::inventoryAmount[3][Player::indexInHand]--;
+							if (Player::inventoryAmount[3][Player::indexInHand] == 0) Player::inventory[3][Player::indexInHand] = Blocks::AIR;
 						}
 					}
 					else {
@@ -764,138 +764,138 @@ void updategame(){
 		oldsely = sely;
 		oldselz = selz;
 		
-		player::intxpos = RoundInt(player::xpos);
-		player::intypos = RoundInt(player::ypos);
-		player::intzpos = RoundInt(player::zpos);
+		Player::intxpos = RoundInt(Player::xpos);
+		Player::intypos = RoundInt(Player::ypos);
+		Player::intzpos = RoundInt(Player::zpos);
 
 		//更新方向
-		player::heading += player::xlookspeed;
-		player::lookupdown += player::ylookspeed;
-		player::xlookspeed = player::ylookspeed = 0.0;
+		Player::heading += Player::xlookspeed;
+		Player::lookupdown += Player::ylookspeed;
+		Player::xlookspeed = Player::ylookspeed = 0.0;
 	
 		if (!chatmode) {
 			//移动！(生命在于运动)
-			if (glfwGetKey(MainWindow, GLFW_KEY_W) || player::gliding()) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_W) || Player::gliding()) {
 				if (!WP) {
 					if (Wprstm == 0.0) {
 						Wprstm = timer();
 					}
 					else {
-						if (timer() - Wprstm <= 0.5) { player::Running = true; Wprstm = 0.0; }
+						if (timer() - Wprstm <= 0.5) { Player::Running = true; Wprstm = 0.0; }
 						else Wprstm = timer();
 					}
 				}
 				if (Wprstm != 0.0 && timer() - Wprstm > 0.5) Wprstm = 0.0;
 				WP = true;
-				if (!player::gliding()) {
-					player::xa = -sin(player::heading*M_PI / 180.0) * player::speed;
-					player::za = -cos(player::heading*M_PI / 180.0) * player::speed;
+				if (!Player::gliding()) {
+					Player::xa = -sin(Player::heading*M_PI / 180.0) * Player::speed;
+					Player::za = -cos(Player::heading*M_PI / 180.0) * Player::speed;
 				}
 				else {
-					player::xa = sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
-					player::ya = cos(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
-					player::za = cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * player::glidingSpeed * speedCast;
-					if (player::ya < 0) player::ya *= 2;
+					Player::xa = sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
+					Player::ya = cos(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
+					Player::za = cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
+					if (Player::ya < 0) Player::ya *= 2;
 				}
 			}
 			else {
-				player::Running = false;
+				Player::Running = false;
 				WP = false;
 			}
-			if (player::Running)player::speed = runspeed;
-			else player::speed = walkspeed;
+			if (Player::Running)Player::speed = runspeed;
+			else Player::speed = walkspeed;
 
-			if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!player::gliding()) {
-				player::xa += sin(player::heading*M_PI / 180.0) * player::speed;
-				player::za += cos(player::heading*M_PI / 180.0) * player::speed;
+			if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!Player::gliding()) {
+				Player::xa += sin(Player::heading*M_PI / 180.0) * Player::speed;
+				Player::za += cos(Player::heading*M_PI / 180.0) * Player::speed;
 				Wprstm = 0.0;
 			}
 
-			if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!player::gliding()) {
-				player::xa += sin((player::heading - 90)*M_PI / 180.0) * player::speed;
-				player::za += cos((player::heading - 90)*M_PI / 180.0) * player::speed;
+			if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!Player::gliding()) {
+				Player::xa += sin((Player::heading - 90)*M_PI / 180.0) * Player::speed;
+				Player::za += cos((Player::heading - 90)*M_PI / 180.0) * Player::speed;
 				Wprstm = 0.0;
 			}
 
-			if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS&&!player::gliding()) {
-				player::xa += -sin((player::heading - 90)*M_PI / 180.0) * player::speed;
-				player::za += -cos((player::heading - 90)*M_PI / 180.0) * player::speed;
+			if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS&&!Player::gliding()) {
+				Player::xa += -sin((Player::heading - 90)*M_PI / 180.0) * Player::speed;
+				Player::za += -cos((Player::heading - 90)*M_PI / 180.0) * Player::speed;
 				Wprstm = 0.0;
 			}
  
-			if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!player::gliding()) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!Player::gliding()) {
 				if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-					player::xa = -sin(player::heading*M_PI / 180.0) * runspeed * 10;
-					player::za = -cos(player::heading*M_PI / 180.0) * runspeed * 10;
+					Player::xa = -sin(Player::heading*M_PI / 180.0) * runspeed * 10;
+					Player::za = -cos(Player::heading*M_PI / 180.0) * runspeed * 10;
 				}
 				else {
-					player::xa = sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
-					player::ya = cos(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
-					player::za = cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+					Player::xa = sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+					Player::ya = cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+					Player::za = cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
 				}
 			}
 
-			if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS&&!player::gliding()) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS&&!Player::gliding()) {
 				if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-					player::xa = sin(player::heading*M_PI / 180.0) * runspeed * 10;
-					player::za = cos(player::heading*M_PI / 180.0) * runspeed * 10;
+					Player::xa = sin(Player::heading*M_PI / 180.0) * runspeed * 10;
+					Player::za = cos(Player::heading*M_PI / 180.0) * runspeed * 10;
 				}
 				else {
-					player::xa = -sin(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
-					player::ya = -cos(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
-					player::za = -cos(M_PI / 180 * (player::heading - 180))*sin(M_PI / 180 * (player::lookupdown + 90)) * runspeed * 20;
+					Player::xa = -sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+					Player::ya = -cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+					Player::za = -cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
 				}
 			}
 
 			//切换方块
-			if (isPressed(GLFW_KEY_Z) && player::indexInHand > 0) player::indexInHand--;
-			if (isPressed(GLFW_KEY_X) && player::indexInHand < 9) player::indexInHand++;
-			if ((int)player::indexInHand + (mwl - mw) < 0)player::indexInHand = 0;
-			else if ((int)player::indexInHand + (mwl - mw) > 9)player::indexInHand = 9;
-			else player::indexInHand += (byte)(mwl - mw);
+			if (isPressed(GLFW_KEY_Z) && Player::indexInHand > 0) Player::indexInHand--;
+			if (isPressed(GLFW_KEY_X) && Player::indexInHand < 9) Player::indexInHand++;
+			if ((int)Player::indexInHand + (mwl - mw) < 0)Player::indexInHand = 0;
+			else if ((int)Player::indexInHand + (mwl - mw) > 9)Player::indexInHand = 9;
+			else Player::indexInHand += (byte)(mwl - mw);
 			mwl = mw;
 
 			//起跳！
 			if (isPressed(GLFW_KEY_SPACE)) {
-				if (!player::inWater) {
-					if ((player::OnGround || player::AirJumps < MaxAirJumps) && FLY == false && CROSS == false) {
-						if (player::OnGround == false) {
-							player::jump = 0.3;
-							player::AirJumps++;
+				if (!Player::inWater) {
+					if ((Player::OnGround || Player::AirJumps < MaxAirJumps) && FLY == false && CROSS == false) {
+						if (Player::OnGround == false) {
+							Player::jump = 0.3;
+							Player::AirJumps++;
 						}
 						else {
-							player::jump = 0.25;
-							player::OnGround = false;
+							Player::jump = 0.25;
+							Player::OnGround = false;
 						}
 					}
 					if (FLY || CROSS) {
-						player::ya += walkspeed / 2;
+						Player::ya += walkspeed / 2;
 						isPressed(GLFW_KEY_SPACE, true);
 					}
 					Wprstm = 0.0;
 				}
 				else {
-					player::ya = walkspeed;
+					Player::ya = walkspeed;
 					isPressed(GLFW_KEY_SPACE, true);
 				}
 			}
 
-			if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !player::gliding()) {
-				if (CROSS || FLY) player::ya -= walkspeed / 2;
+			if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !Player::gliding()) {
+				if (CROSS || FLY) Player::ya -= walkspeed / 2;
 				Wprstm = 0.0;
 			}
 
-			if (glfwGetKey(MainWindow, GLFW_KEY_K) && canGliding&&!player::OnGround&&!player::gliding()) {
-				double h = player::ypos + player::height + player::heightExt;
-				player::glidingEnergy = g*h;
-				player::glidingSpeed = 0;
-				player::glidingNow = true;
+			if (glfwGetKey(MainWindow, GLFW_KEY_K) && canGliding&&!Player::OnGround&&!Player::gliding()) {
+				double h = Player::ypos + Player::height + Player::heightExt;
+				Player::glidingEnergy = g*h;
+				Player::glidingSpeed = 0;
+				Player::glidingNow = true;
 			}
 
 			//各种设置切换
 			if (isPressed(GLFW_KEY_F1)) {
 				FLY = !FLY;
-				player::jump = 0.0;
+				Player::jump = 0.0;
 			}
 
 			if (isPressed(GLFW_KEY_F2)) shouldGetScreenshot = true;
@@ -906,8 +906,8 @@ void updategame(){
 			}
 			if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
 			if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
-			if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) player::xpos = 2147483600;
-			if (isPressed(GLFW_KEY_F7) == GLFW_PRESS) player::spawn();
+			if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) Player::xpos = 2147483600;
+			if (isPressed(GLFW_KEY_F7) == GLFW_PRESS) Player::spawn();
 			if (isPressed(GLFW_KEY_SLASH) == GLFW_PRESS) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
 		}
 		
@@ -961,78 +961,78 @@ void updategame(){
 		}
 		else {
 			shouldGetThumbnail = true;
-			player::xlookspeed = player::ylookspeed = 0.0;
+			Player::xlookspeed = Player::ylookspeed = 0.0;
 		}
 	}
 
 	if (!bagOpened && !chatmode){
-		if (isPressed(GLFW_KEY_L))world::saveAllChunks();
+		if (isPressed(GLFW_KEY_L))World::saveAllChunks();
 	}
 
 	//跳跃
-	if (!player::gliding()) {
-		if (!player::inWater) {
+	if (!Player::gliding()) {
+		if (!Player::inWater) {
 			if (!FLY && !CROSS && !glfwGetKey(MainWindow, GLFW_KEY_R) && !glfwGetKey(MainWindow, GLFW_KEY_F)) {
-				player::ya = -0.001;
-				if (player::OnGround) {
-					player::jump = 0.0;
-					player::AirJumps = 0;
+				Player::ya = -0.001;
+				if (Player::OnGround) {
+					Player::jump = 0.0;
+					Player::AirJumps = 0;
 					isPressed(GLFW_KEY_SPACE, true);
 				}
 				else {
 					//自由落体计算
-					player::jump -= 0.025;
-					player::ya = player::jump + 0.5 * 0.6 * 1 / 900;
+					Player::jump -= 0.025;
+					Player::ya = Player::jump + 0.5 * 0.6 * 1 / 900;
 				}
 			}
 			else {
-				player::jump = 0.0;
-				player::AirJumps = 0;
+				Player::jump = 0.0;
+				Player::AirJumps = 0;
 			}
 		}
 		else {
-			player::jump = 0.0;
-			player::AirJumps = MaxAirJumps;
+			Player::jump = 0.0;
+			Player::AirJumps = MaxAirJumps;
 			isPressed(GLFW_KEY_SPACE, true);
-			if (player::ya <= 0.001 && !FLY && !CROSS) {
-				player::ya =- 0.001;
-				if (!player::OnGround) player::ya -= 0.1;
+			if (Player::ya <= 0.001 && !FLY && !CROSS) {
+				Player::ya =- 0.001;
+				if (!Player::OnGround) Player::ya -= 0.1;
 			}
 		}
 	}
 
 	//爬墙
-	//if (player::NearWall && FLY == false && CROSS == false){
-	//	player::ya += walkspeed
-	//	player::jump = 0.0
+	//if (Player::NearWall && FLY == false && CROSS == false){
+	//	Player::ya += walkspeed
+	//	Player::jump = 0.0
 	//}
 	
-	if (player::gliding()) {
-		double& E = player::glidingEnergy;
-		double oldh = player::ypos + player::height + player::heightExt + player::ya;
+	if (Player::gliding()) {
+		double& E = Player::glidingEnergy;
+		double oldh = Player::ypos + Player::height + Player::heightExt + Player::ya;
 		double h = oldh;
 		if (E - glidingMinimumSpeed < h*g) {  //小于最小速度
 			h = (E - glidingMinimumSpeed) / g;
 		}
-		player::glidingSpeed = sqrt(2 * (E - g*h));
+		Player::glidingSpeed = sqrt(2 * (E - g*h));
 		E -= EDrop;
-		player::ya += h - oldh;
+		Player::ya += h - oldh;
 	}
 
 	mbp = mb;
 	FirstFrameThisUpdate = true;
 	
-	player::intxpos = RoundInt(player::xpos);
-	player::intypos = RoundInt(player::ypos);
-	player::intzpos = RoundInt(player::zpos);
-	player::updatePosition();
-	player::xposold = player::xpos;
-	player::yposold = player::ypos;
-	player::zposold = player::zpos;
-	player::intxposold = RoundInt(player::xpos);
-	player::intyposold = RoundInt(player::ypos);
-	player::intzposold = RoundInt(player::zpos);
-	particles::updateall();
+	Player::intxpos = RoundInt(Player::xpos);
+	Player::intypos = RoundInt(Player::ypos);
+	Player::intzpos = RoundInt(Player::zpos);
+	Player::updatePosition();
+	Player::xposold = Player::xpos;
+	Player::yposold = Player::ypos;
+	Player::zposold = Player::zpos;
+	Player::intxposold = RoundInt(Player::xpos);
+	Player::intyposold = RoundInt(Player::ypos);
+	Player::intzposold = RoundInt(Player::zpos);
+	Particles::updateall();
 
 	//	Time_updategame += timer() - Time_updategame;
 
@@ -1067,7 +1067,7 @@ void Render() {
 	mxl = mx; myl = my;
 	glfwGetCursorPos(MainWindow, &mx, &my);
 	
-	if (player::Running) {
+	if (Player::Running) {
 		if (FOVyExt < 9.8) {
 			TimeDelta = curtime - SpeedupAnimTimer;
 			FOVyExt = 10.0f - (10.0f - FOVyExt)*(float)pow(0.8, TimeDelta * 30);
@@ -1085,38 +1085,38 @@ void Render() {
 	}
 	SpeedupAnimTimer = curtime;
 
-	if (player::OnGround) {
+	if (Player::OnGround) {
 		//半蹲特效
-		if (player::jump < -0.005) {
-			if (player::jump <= -(player::height - 0.5f))
-				player::heightExt = -(player::height - 0.5f);
+		if (Player::jump < -0.005) {
+			if (Player::jump <= -(Player::height - 0.5f))
+				Player::heightExt = -(Player::height - 0.5f);
 			else
-				player::heightExt = (float)player::jump;
+				Player::heightExt = (float)Player::jump;
 			TouchdownAnimTimer = curtime;
 		}
 		else {
-			if (player::heightExt <= -0.005) {
-				player::heightExt *= (float)pow(0.8, (curtime - TouchdownAnimTimer) * 30);
+			if (Player::heightExt <= -0.005) {
+				Player::heightExt *= (float)pow(0.8, (curtime - TouchdownAnimTimer) * 30);
 				TouchdownAnimTimer = curtime;
 			}
 		}
 	}
 
-	xpos = player::xpos - player::xd + (curtime - lastupdate) * 30.0 * player::xd;
-	ypos = player::ypos + player::height + player::heightExt - player::yd + (curtime - lastupdate) * 30.0 * player::yd;
-	zpos = player::zpos - player::zd + (curtime - lastupdate) * 30.0 * player::zd;
+	xpos = Player::xpos - Player::xd + (curtime - lastupdate) * 30.0 * Player::xd;
+	ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + (curtime - lastupdate) * 30.0 * Player::yd;
+	zpos = Player::zpos - Player::zd + (curtime - lastupdate) * 30.0 * Player::zd;
 	
 	if (!bagOpened) {
 		//转头！你治好了我多年的颈椎病！
-		if (mx != mxl)player::xlookspeed -= (mx - mxl)*mousemove;
-		if (my != myl)player::ylookspeed += (my - myl)*mousemove;
-		if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == 1) player::xlookspeed -= mousemove * 16 * (curtime - lastframe) * 30.0;
-		if (glfwGetKey(MainWindow, GLFW_KEY_LEFT) == 1) player::xlookspeed += mousemove * 16 * (curtime - lastframe) * 30.0;
-		if (glfwGetKey(MainWindow, GLFW_KEY_UP) == 1) player::ylookspeed -= mousemove * 16 * (curtime - lastframe) * 30.0;
-		if (glfwGetKey(MainWindow, GLFW_KEY_DOWN) == 1) player::ylookspeed += mousemove * 16 * (curtime - lastframe) * 30.0;
+		if (mx != mxl) Player::xlookspeed -= (mx - mxl)*mousemove;
+		if (my != myl) Player::ylookspeed += (my - myl)*mousemove;
+		if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == 1) Player::xlookspeed -= mousemove * 16 * (curtime - lastframe) * 30.0;
+		if (glfwGetKey(MainWindow, GLFW_KEY_LEFT) == 1) Player::xlookspeed += mousemove * 16 * (curtime - lastframe) * 30.0;
+		if (glfwGetKey(MainWindow, GLFW_KEY_UP) == 1) Player::ylookspeed -= mousemove * 16 * (curtime - lastframe) * 30.0;
+		if (glfwGetKey(MainWindow, GLFW_KEY_DOWN) == 1) Player::ylookspeed += mousemove * 16 * (curtime - lastframe) * 30.0;
 		//限制角度，别把头转掉下来了 ←_←
-		if (player::lookupdown + player::ylookspeed < -90.0) player::ylookspeed = -90.0 - player::lookupdown;
-		if (player::lookupdown + player::ylookspeed > 90.0) player::ylookspeed = 90.0 - player::lookupdown;
+		if (Player::lookupdown + Player::ylookspeed < -90.0) Player::ylookspeed = -90.0 - Player::lookupdown;
+		if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
 	}
 
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
@@ -1134,26 +1134,26 @@ void Render() {
 	glCullFace(GL_BACK);
 	glColor4f(1.0, 1.0, 1.0, 1.0);
 
-	player::cxt = getchunkpos((int)player::xpos);
-	player::cyt = getchunkpos((int)player::ypos);
-	player::czt = getchunkpos((int)player::zpos);
+	Player::cxt = getchunkpos((int)Player::xpos);
+	Player::cyt = getchunkpos((int)Player::ypos);
+	Player::czt = getchunkpos((int)Player::zpos);
 
 	//更新区块显示列表
-	world::sortChunkBuildRenderList(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos));
-	int brl = world::chunkBuildRenders > world::MaxChunkRenders ? world::MaxChunkRenders : world::chunkBuildRenders;
+	World::sortChunkBuildRenderList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
+	int brl = World::chunkBuildRenders > World::MaxChunkRenders ? World::MaxChunkRenders : World::chunkBuildRenders;
 	for (int i = 0; i < brl; i++) {
-		int ci = world::chunkBuildRenderList[i][1];
-		world::chunks[ci]->buildRender();
+		int ci = World::chunkBuildRenderList[i][1];
+		World::chunks[ci]->buildRender();
 	}
 
 	//删除已卸载区块的VBO
-	if (world::vbuffersShouldDelete.size() > 0) {
-		glDeleteBuffersARB(world::vbuffersShouldDelete.size(), world::vbuffersShouldDelete.data());
-		world::vbuffersShouldDelete.clear();
+	if (World::vbuffersShouldDelete.size() > 0) {
+		glDeleteBuffersARB(World::vbuffersShouldDelete.size(), World::vbuffersShouldDelete.data());
+		World::vbuffersShouldDelete.clear();
 	}
 
-	double plookupdown = player::lookupdown + player::ylookspeed;
-	double pheading = player::heading + player::xlookspeed;
+	double plookupdown = Player::lookupdown + Player::ylookspeed;
+	double pheading = Player::heading + Player::xlookspeed;
 
 	glLoadIdentity();
 	glRotated(plookupdown, 1, 0, 0);
@@ -1163,15 +1163,15 @@ void Render() {
 	Frustum::multRotate((float)plookupdown, 1, 0, 0);
 	Frustum::multRotate(360.0f - (float)pheading, 0, 1, 0);
 	Frustum::calc();
-	world::calcVisible(xpos, ypos, zpos);
+	World::calcVisible(xpos, ypos, zpos);
 
 	displayChunks.clear();
-	for (int i = 0; i < world::loadedChunks; i++) {
-		if (!world::chunks[i]->renderBuilt || world::chunks[i]->Empty) continue;
-		if (world::chunkInRange(world::chunks[i]->cx, world::chunks[i]->cy, world::chunks[i]->cz,
-			player::cxt, player::cyt, player::czt, viewdistance)) {
-			if (world::chunks[i]->visible) {
-				displayChunks.push_back(RenderChunk(world::chunks[i], (curtime - lastupdate) * 30.0));
+	for (int i = 0; i < World::loadedChunks; i++) {
+		if (!World::chunks[i]->renderBuilt || World::chunks[i]->Empty) continue;
+		if (World::chunkInRange(World::chunks[i]->cx, World::chunks[i]->cy, World::chunks[i]->cz,
+			Player::cxt, Player::cyt, Player::czt, viewdistance)) {
+			if (World::chunks[i]->visible) {
+				displayChunks.push_back(RenderChunk(World::chunks[i], (curtime - lastupdate) * 30.0));
 			}
 		}
 	}
@@ -1196,7 +1196,7 @@ void Render() {
 		if (cr.vtxs[0] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
+		Renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
 		glPopMatrix();
 	}
 
@@ -1218,7 +1218,7 @@ void Render() {
 		glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
 	}
 	glBindTexture(GL_TEXTURE_2D, BlockTextures);
-	particles::renderall(xpos, ypos, zpos);
+	Particles::renderall(xpos, ypos, zpos);
 
 	glDisable(GL_TEXTURE_2D);
 	if (GUIrenderswitch&&sel) {
@@ -1251,7 +1251,7 @@ void Render() {
 		if (cr.vtxs[1] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3);
+		Renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3);
 		glPopMatrix();
 	}
 	glDisable(GL_CULL_FACE);
@@ -1260,7 +1260,7 @@ void Render() {
 		if (cr.vtxs[2] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3);
+		Renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3);
 		glPopMatrix();
 	}
 
@@ -1291,11 +1291,11 @@ void Render() {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	if (world::getblock(RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)) == blocks::WATER) {
+	if (World::getblock(RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)) == Blocks::WATER) {
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		glBindTexture(GL_TEXTURE_2D, BlockTextures);
-		double tcX = Textures::getTexcoordX(blocks::WATER, 1);
-		double tcY = Textures::getTexcoordY(blocks::WATER, 1);
+		double tcX = Textures::getTexcoordX(Blocks::WATER, 1);
+		double tcY = Textures::getTexcoordY(Blocks::WATER, 1);
 		glBegin(GL_QUADS);
 		glTexCoord2d(tcX, tcY + 1 / 8.0); glVertex2i(0, 0);
 		glTexCoord2d(tcX, tcY); glVertex2i(0, windowheight);
@@ -1441,10 +1441,10 @@ void drawGUI(){
 
 	if (DebugMode) {
 
-		if (selb != blocks::AIR) {
+		if (selb != Blocks::AIR) {
 			glLineWidth(1);
 			glBegin(GL_LINES);
-				glColor4f(gui::FgR, gui::FgG, gui::FgB, 0.8f);
+				glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, 0.8f);
 				glVertex2i(windowwidth / 2, windowheight / 2);
 				glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
 				glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
@@ -1535,7 +1535,7 @@ void drawGUI(){
 	glVertex2d(10, 30);
 	glEnd();
 
-	double healthPercent = (double)player::health / player::healthMax;
+	double healthPercent = (double)Player::health / Player::healthMax;
 	glColor4d(1.0, 0.0, 0.0, 0.5);
 	glBegin(GL_QUADS);
 	glVertex2d(20, 15);
@@ -1555,49 +1555,49 @@ void drawGUI(){
 		debugText(ss.str()); ss.str("");
 		ss << "Can Gliding:" << boolstr(canGliding);
 		debugText(ss.str()); ss.str("");
-		ss << "Gliding:" << boolstr(player::gliding());
+		ss << "Gliding:" << boolstr(Player::gliding());
 		debugText(ss.str()); ss.str("");
-		ss << "Energy:" << player::glidingEnergy;
+		ss << "Energy:" << Player::glidingEnergy;
 		debugText(ss.str()); ss.str("");
-		ss << "Speed:" << player::glidingSpeed;
+		ss << "Speed:" << Player::glidingSpeed;
 		debugText(ss.str()); ss.str("");
 		ss << "Debug Mode:" << boolstr(DebugMode);
 		debugText(ss.str()); ss.str("");
 		ss << "Crosswall:" << boolstr(CROSS);
 		debugText(ss.str()); ss.str("");
-		ss << "Block:" << (isBlock(player::BlockInHand) ? BlockInfo(player::BlockInHand).getBlockName() : "-") << " (ID" << (int)player::BlockInHand << ")";
+		ss << "Block:" << (isBlock(Player::BlockInHand) ? BlockInfo(Player::BlockInHand).getBlockName() : "-") << " (ID" << (int)Player::BlockInHand << ")";
 		debugText(ss.str()); ss.str("");
 		ss << "Fps:" << fps;
 		debugText(ss.str()); ss.str("");
 		ss << "Ups(Tps):" << ups;
 		debugText(ss.str()); ss.str("");
 
-		ss << "Xpos:" << player::xpos;
+		ss << "Xpos:" << Player::xpos;
 		debugText(ss.str()); ss.str("");
-		ss << "Ypos:" << player::ypos;
+		ss << "Ypos:" << Player::ypos;
 		debugText(ss.str()); ss.str("");
-		ss << "Zpos:" << player::zpos;
+		ss << "Zpos:" << Player::zpos;
 		debugText(ss.str()); ss.str("");
-		ss << "Direction:" << player::heading;
+		ss << "Direction:" << Player::heading;
 		debugText(ss.str()); ss.str("");
-		ss << "Head:" << player::lookupdown;
+		ss << "Head:" << Player::lookupdown;
 		debugText(ss.str()); ss.str("");
-		ss << "On ground:" << boolstr(player::OnGround);
+		ss << "On ground:" << boolstr(Player::OnGround);
 		debugText(ss.str()); ss.str("");
-		ss << "Jump speed:" << player::jump;
+		ss << "Jump speed:" << Player::jump;
 		debugText(ss.str()); ss.str("");
-		ss << "Near wall:" << boolstr(player::NearWall);
+		ss << "Near wall:" << boolstr(Player::NearWall);
 		debugText(ss.str()); ss.str("");
-		ss << "In water:" << boolstr(player::inWater);
+		ss << "In water:" << boolstr(Player::inWater);
 		debugText(ss.str()); ss.str("");
 		
-		ss << world::loadedChunks << " chunks loaded";
+		ss << World::loadedChunks << " chunks loaded";
 		debugText(ss.str()); ss.str("");
 		ss << displayChunks.size() << " chunks rendered";
 		debugText(ss.str()); ss.str("");
-		ss << world::unloadedChunks << " chunks unloaded";
+		ss << World::unloadedChunks << " chunks unloaded";
 		debugText(ss.str()); ss.str("");
-		ss << world::updatedChunks << " chunks updated";
+		ss << World::updatedChunks << " chunks updated";
 		debugText(ss.str()); ss.str("");
 		MutexLock(Network::mutex);
 		ss << Network::getRequestCount() << "/" << networkRequestMax << " network request in the queue";
@@ -1660,21 +1660,21 @@ void drawCloud(double px, double pz) {
 		generated = true;
 		for (int i = 0; i != 128; i++) {
 			for (int j = 0; j != 128; j++) {
-				world::cloud[i][j] = int(rnd() * 2);
+				World::cloud[i][j] = int(rnd() * 2);
 			}
 		}
 		glGenBuffersARB(128, cloudvb);
 		for (int i = 0; i != 128; i++) {
-			renderer::Init(0, 0);
+			Renderer::Init(0, 0);
 			for (int j = 0; j != 128; j++) {
-				if (world::cloud[i][j]!=0) {
-					renderer::Vertex3d(j*cloudwidth, 128.0, 0.0);
-					renderer::Vertex3d(j*cloudwidth, 128.0, cloudwidth);
-					renderer::Vertex3d((j + 1)*cloudwidth, 128.0, cloudwidth);
-					renderer::Vertex3d((j + 1)*cloudwidth, 128.0, 0.0);
+				if (World::cloud[i][j]!=0) {
+					Renderer::Vertex3d(j*cloudwidth, 128.0, 0.0);
+					Renderer::Vertex3d(j*cloudwidth, 128.0, cloudwidth);
+					Renderer::Vertex3d((j + 1)*cloudwidth, 128.0, cloudwidth);
+					Renderer::Vertex3d((j + 1)*cloudwidth, 128.0, 0.0);
 				}
 			}
-			renderer::Flush(cloudvb[i], vtxs[i]);
+			Renderer::Flush(cloudvb[i], vtxs[i]);
 		}
 	}
 
@@ -1684,7 +1684,7 @@ void drawCloud(double px, double pz) {
 	for (int i = 0; i < 128; i++) {
 		glPushMatrix();
 		glTranslated(-64.0 * cloudwidth - px, 0.0, cloudwidth*((l + i) % 128 + f) - 64.0 * cloudwidth - pz);
-		renderer::renderbuffer(cloudvb[i], vtxs[i], 0, 0);
+		Renderer::renderbuffer(cloudvb[i], vtxs[i], 0, 0);
 		glPopMatrix();
 	}
 	//setupNormalFog();
@@ -1760,10 +1760,10 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 			glTexCoord2f(1.0, 1.0);glVertex2d(xbase + i * (32 + spac), ybase + 32);
 		glEnd();
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		if (player::inventory[row][i] != blocks::AIR) {
+		if (Player::inventory[row][i] != Blocks::AIR) {
 			glBindTexture(GL_TEXTURE_2D, BlockTextures);
-			double tcX = Textures::getTexcoordX(player::inventory[row][i], 1);
-			double tcY = Textures::getTexcoordY(player::inventory[row][i], 1);
+			double tcX = Textures::getTexcoordX(Player::inventory[row][i], 1);
+			double tcY = Textures::getTexcoordY(Player::inventory[row][i], 1);
 			glBegin(GL_QUADS);
 				glTexCoord2d(tcX, tcY + 1 / 8.0);
 				glVertex2d(xbase + i * (32 + spac) + 2, ybase + 2);
@@ -1775,7 +1775,7 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 				glVertex2d(xbase + i * (32 + spac) + 2, ybase + 30);
 			glEnd();
 			std::stringstream ss;
-			ss << (int)player::inventoryAmount[row][i];
+			ss << (int)Player::inventoryAmount[row][i];
 			TextRenderer::renderString(xbase + i * (32 + spac), ybase, ss.str());
 		}
 	}
@@ -1788,7 +1788,7 @@ void drawBag() {
 	int leftp = (windowwidth - 392) / 2;
 	int upp = windowheight - 152 - 16;
 	static int mousew, mouseb, mousebl;
-	static block indexselected = blocks::AIR;
+	static block indexselected = Blocks::AIR;
 	static short Amountselected = 0;
 	double curtime = timer();
 	double TimeDelta = curtime - bagAnimTimer;
@@ -1823,41 +1823,41 @@ void drawBag() {
 					if (mx >= j*(32 + 8) + leftp && mx <= j*(32 + 8) + 32 + leftp &&
 						my >= i*(32 + 8) + upp && my <= i*(32 + 8) + 32 + upp) {
 						csi = si = i; csj = sj = j; sf = 1;
-						if (mousebl == 0 && mouseb == 1 && indexselected == player::inventory[i][j]) {
-							if (player::inventoryAmount[i][j] + Amountselected <= 255) {
-								player::inventoryAmount[i][j] += Amountselected;
+						if (mousebl == 0 && mouseb == 1 && indexselected == Player::inventory[i][j]) {
+							if (Player::inventoryAmount[i][j] + Amountselected <= 255) {
+								Player::inventoryAmount[i][j] += Amountselected;
 								Amountselected = 0;
 							}
 							else
 							{
-								Amountselected = player::inventoryAmount[i][j] + Amountselected - 255;
-								player::inventoryAmount[i][j] = 255;
+								Amountselected = Player::inventoryAmount[i][j] + Amountselected - 255;
+								Player::inventoryAmount[i][j] = 255;
 							}
 						}
-						if (mousebl == 0 && mouseb == 1 && indexselected != player::inventory[i][j]) {
-							std::swap(Amountselected, player::inventoryAmount[i][j]);
-							std::swap(indexselected, player::inventory[i][j]);
+						if (mousebl == 0 && mouseb == 1 && indexselected != Player::inventory[i][j]) {
+							std::swap(Amountselected, Player::inventoryAmount[i][j]);
+							std::swap(indexselected, Player::inventory[i][j]);
 						}
-						if (mousebl == 0 && mouseb == 2 && indexselected == player::inventory[i][j] && player::inventoryAmount[i][j] < 255) {
+						if (mousebl == 0 && mouseb == 2 && indexselected == Player::inventory[i][j] && Player::inventoryAmount[i][j] < 255) {
 							Amountselected--;
-							player::inventoryAmount[i][j]++;
+							Player::inventoryAmount[i][j]++;
 						}
-						if (mousebl == 0 && mouseb == 2 && player::inventory[i][j] == blocks::AIR) {
+						if (mousebl == 0 && mouseb == 2 && Player::inventory[i][j] == Blocks::AIR) {
 							Amountselected--;
-							player::inventoryAmount[i][j] = 1;
-							player::inventory[i][j] = indexselected;
+							Player::inventoryAmount[i][j] = 1;
+							Player::inventory[i][j] = indexselected;
 						}
 
-						if (Amountselected == 0) indexselected = blocks::AIR;
-						if (indexselected == blocks::AIR) Amountselected = 0;
-						if (player::inventoryAmount[i][j] == 0) player::inventory[i][j] = blocks::AIR;
-						if (player::inventory[i][j] == blocks::AIR) player::inventoryAmount[i][j] = 0;
+						if (Amountselected == 0) indexselected = Blocks::AIR;
+						if (indexselected == Blocks::AIR) Amountselected = 0;
+						if (Player::inventoryAmount[i][j] == 0) Player::inventory[i][j] = Blocks::AIR;
+						if (Player::inventory[i][j] == Blocks::AIR) Player::inventoryAmount[i][j] = 0;
 					}
 				}
 				drawBagRow(i, (csi == i ? csj : -1), (windowwidth - 392) / 2, windowheight - 152 - 16 + i * 40, 8, 1.0f);
 			}
 		}
-		if (indexselected != blocks::AIR) {
+		if (indexselected != Blocks::AIR) {
 			glBindTexture(GL_TEXTURE_2D, BlockTextures);
 			double tcX = Textures::getTexcoordX(indexselected, 1);
 			double tcY = Textures::getTexcoordY(indexselected, 1);
@@ -1875,9 +1875,9 @@ void drawBag() {
 			ss << Amountselected;
 			TextRenderer::renderString((int)mx - 16, (int)my - 16, ss.str());
 		}
-		if (player::inventory[si][sj] != 0 && sf == 1) {
+		if (Player::inventory[si][sj] != 0 && sf == 1) {
 			glColor4f(1.0, 1.0, 0.0, 1.0);
-			TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(player::inventory[si][sj]).getBlockName());
+			TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(Player::inventory[si][sj]).getBlockName());
 		}
 
 		int xbase = 0, ybase = 0, spac = 0;
@@ -1921,7 +1921,7 @@ void drawBag() {
 			ybase = (int)round((windowheight - 152 - 16 + 120 - (windowheight - 32)) - (windowheight - 152 - 16 + 120 - (windowheight - 32))*bagAnim + (windowheight - 32));
 			spac = (int)round(8 - 8 * bagAnim);
 			glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-			drawBagRow(3, player::indexInHand, xbase, ybase, spac, alpha);
+			drawBagRow(3, Player::indexInHand, xbase, ybase, spac, alpha);
 			xbase = (int)round(((windowwidth - 392) / 2 - windowwidth) - ((windowwidth - 392) / 2 - windowwidth)*bagAnim + windowwidth);
 			ybase = (int)round((windowheight - 152 - 16 - (windowheight - 32)) - (windowheight - 152 - 16 - (windowheight - 32))*bagAnim + (windowheight - 32));
 			for (int i = 0; i < 3; i++) {
@@ -1929,7 +1929,7 @@ void drawBag() {
 				drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
 			}
 		}
-		else drawBagRow(3, player::indexInHand, 0, windowheight - 32, 0, 0.5f);
+		else drawBagRow(3, Player::indexInHand, 0, windowheight - 32, 0, 0.5f);
 	}
 }
 void saveScreenshot(int x, int y, int w, int h, string filename){
@@ -1946,7 +1946,7 @@ void saveScreenshot(int x, int y, int w, int h, string filename){
 
 void createThumbnail(){
 	std::stringstream ss;
-	ss << "Worlds/" << world::worldname << "/Thumbnail.bmp";
+	ss << "Worlds/" << World::worldname << "/Thumbnail.bmp";
 	saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
 }
 

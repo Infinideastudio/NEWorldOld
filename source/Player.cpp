@@ -7,36 +7,36 @@ bool FLY;      //飞行
 bool CROSS;    //穿墙 ←_← (Superman!)
 double glidingMinimumSpeed = pow(1, 2) / 2;
 
-float player::height = 1.2f;
-float player::heightExt = 0.0f;
-bool player::OnGround = false;
-bool player::Running = false;
-bool player::NearWall = false;
-bool player::inWater = false;
-bool player::glidingNow = false;
-item player::BlockInHand = blocks::AIR;
-ubyte player::indexInHand = 0;
+float Player::height = 1.2f;
+float Player::heightExt = 0.0f;
+bool Player::OnGround = false;
+bool Player::Running = false;
+bool Player::NearWall = false;
+bool Player::inWater = false;
+bool Player::glidingNow = false;
+item Player::BlockInHand = Blocks::AIR;
+ubyte Player::indexInHand = 0;
 
-Hitbox::AABB player::playerbox;
+Hitbox::AABB Player::playerbox;
 
-double player::xa, player::ya, player::za, player::xd, player::yd, player::zd;
-double player::health = 20, player::healthMax = 20, player::healSpeed = 0.01, player::dropDamagePerBlock = 0.5;
-onlineid player::onlineID;
-string player::name;
+double Player::xa, Player::ya, Player::za, Player::xd, Player::yd, Player::zd;
+double Player::health = 20, Player::healthMax = 20, Player::healSpeed = 0.01, Player::dropDamagePerBlock = 0.5;
+onlineid Player::onlineID;
+string Player::name;
 
-double player::speed;
-int player::AirJumps;
-int player::cxt, player::cyt, player::czt, player::cxtl, player::cytl, player::cztl;
-double player::lookupdown, player::heading, player::xpos, player::ypos, player::zpos;
-double player::xposold, player::yposold, player::zposold, player::jump;
-double player::xlookspeed, player::ylookspeed;
-int player::intxpos, player::intypos, player::intzpos;
-int player::intxposold, player::intyposold, player::intzposold;
+double Player::speed;
+int Player::AirJumps;
+int Player::cxt, Player::cyt, Player::czt, Player::cxtl, Player::cytl, Player::cztl;
+double Player::lookupdown, Player::heading, Player::xpos, Player::ypos, Player::zpos;
+double Player::xposold, Player::yposold, Player::zposold, Player::jump;
+double Player::xlookspeed, Player::ylookspeed;
+int Player::intxpos, Player::intypos, Player::intzpos;
+int Player::intxposold, Player::intyposold, Player::intzposold;
 
-item player::inventory[4][10];
-short player::inventoryAmount[4][10];
+item Player::inventory[4][10];
+short Player::inventoryAmount[4][10];
 
-double player::glidingEnergy, player::glidingSpeed;
+double Player::glidingEnergy, Player::glidingSpeed;
 
 void InitHitbox(Hitbox::AABB& playerbox) {
 	playerbox.xmin = -0.3;
@@ -48,32 +48,32 @@ void InitHitbox(Hitbox::AABB& playerbox) {
 }
 
 void InitPosition() {
-	player::xposold = player::xpos;
-	player::yposold = player::ypos;
-	player::zposold = player::zpos;
-	player::cxt = getchunkpos((int)player::xpos); player::cxtl = player::cxt;
-	player::cyt = getchunkpos((int)player::ypos); player::cytl = player::cyt;
-	player::czt = getchunkpos((int)player::zpos); player::cztl = player::czt;
+	Player::xposold = Player::xpos;
+	Player::yposold = Player::ypos;
+	Player::zposold = Player::zpos;
+	Player::cxt = getchunkpos((int)Player::xpos); Player::cxtl = Player::cxt;
+	Player::cyt = getchunkpos((int)Player::ypos); Player::cytl = Player::cyt;
+	Player::czt = getchunkpos((int)Player::zpos); Player::cztl = Player::czt;
 }
 
 void MoveHitbox(double x, double y, double z) {
-	Hitbox::MoveTo(player::playerbox, x, y + 0.5, z);
+	Hitbox::MoveTo(Player::playerbox, x, y + 0.5, z);
 }
 
 void updateHitbox() {
-	MoveHitbox(player::xpos, player::ypos, player::zpos);
+	MoveHitbox(Player::xpos, Player::ypos, Player::zpos);
 }
 
-void player::init(double x, double y, double z) {
+void Player::init(double x, double y, double z) {
 	xpos = x;
 	ypos = y;
 	zpos = z;
-	InitHitbox(player::playerbox);
+	InitHitbox(Player::playerbox);
 	InitPosition();
 	updateHitbox();
 }
 
-void player::spawn() {
+void Player::spawn() {
 	xpos = 0;
 	ypos = 60;
 	zpos = 0;
@@ -102,9 +102,9 @@ void player::spawn() {
 	inventory[1][7] = 18; inventoryAmount[1][7] = 255;
 }
 
-void player::updatePosition() {
+void Player::updatePosition() {
 
-	inWater = world::inWater(playerbox);
+	inWater = World::inWater(playerbox);
 	if (!FLY && !CROSS && inWater) {
 		xa *= 0.6;
 		ya *= 0.6;
@@ -116,7 +116,7 @@ void player::updatePosition() {
 	double zal = za;
 	static double ydam = 0;
 	if (!CROSS) {
-		vector<Hitbox::AABB> Hitboxes = world::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
+		vector<Hitbox::AABB> Hitboxes = World::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
 		int num = Hitboxes.size();
 		if (num > 0) {
 			for (int i = 0; i < num; i++) {
@@ -137,11 +137,11 @@ void player::updatePosition() {
 		}
 		if (ya != yal && yal < 0.0) {
 			OnGround = true;
-			player::glidingEnergy = 0;
-			player::glidingSpeed = 0;
-			player::glidingNow = false;
+			Player::glidingEnergy = 0;
+			Player::glidingSpeed = 0;
+			Player::glidingNow = false;
 			if (ydam - (ypos + ya) > 0) {
-				player::health -= (ydam - (ypos + ya)) * player::dropDamagePerBlock;
+				Player::health -= (ydam - (ypos + ya)) * Player::dropDamagePerBlock;
 				ydam = 0;
 			}
 		}
@@ -176,7 +176,7 @@ void player::updatePosition() {
 	updateHitbox();
 }
 
-bool player::putBlock(int x, int y, int z, block blockname) {
+bool Player::putBlock(int x, int y, int z, block blockname) {
 	Hitbox::AABB blockbox;
 	bool success = false;
 	blockbox.xmin = x - 0.5;
@@ -185,14 +185,14 @@ bool player::putBlock(int x, int y, int z, block blockname) {
 	blockbox.ymax = y + 0.5;
 	blockbox.zmin = z - 0.5;
 	blockbox.zmax = z + 0.5;
-	if (((Hitbox::Hit(playerbox, blockbox) == false) || CROSS || BlockInfo(blockname).isSolid() == false) && BlockInfo(world::getblock(x, y, z)).isSolid() == false) {
-		world::putblock(x, y, z, blockname);
+	if (((Hitbox::Hit(playerbox, blockbox) == false) || CROSS || BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(x, y, z)).isSolid() == false) {
+		World::putblock(x, y, z, blockname);
 		success = true;
 	}
 	return success;
 }
 
-bool player::save(string worldn) {
+bool Player::save(string worldn) {
 	uint32 curversion = VERSION;
 	std::stringstream ss;
 	ss << "Worlds/" << worldn << "/player.NEWorldPlayer";
@@ -218,7 +218,7 @@ bool player::save(string worldn) {
 	return true;
 }
 
-bool player::load(string worldn) {
+bool Player::load(string worldn) {
 	uint32 targetVersion;
 	std::stringstream ss;
 	ss << "Worlds/" << worldn << "/player.NEWorldPlayer";
@@ -245,7 +245,7 @@ bool player::load(string worldn) {
 	return true;
 }
 
-void player::addItem(item itemname, short amount) {
+void Player::addItem(item itemname, short amount) {
 	//向背包里加入物品
 	const int InvMaxStack = 255;
 	for (int i = 3; i >= 0; i--) {
@@ -261,7 +261,7 @@ void player::addItem(item itemname, short amount) {
 					inventoryAmount[i][j] = InvMaxStack;
 				}
 			}
-			else if (inventory[i][j] == blocks::AIR) {
+			else if (inventory[i][j] == Blocks::AIR) {
 				//找到一个空白格子
 				inventory[i][j] = itemname;
 				if (amount <= InvMaxStack) {
@@ -277,7 +277,7 @@ void player::addItem(item itemname, short amount) {
 	}
 }
 
-PlayerPacket player::convertToPlayerPacket()
+PlayerPacket Player::convertToPlayerPacket()
 {
 	PlayerPacket p;
 	p.x = xpos;

@@ -1,7 +1,7 @@
 #pragma once
 #include "Definitions.h"
 
-namespace world{
+namespace World {
 	chunkid getChunkID(int x, int y, int z);
 	struct HeightMap {
 		int* array = nullptr;
