@@ -2,6 +2,22 @@
 //==============================初始化(包括闪屏)================================//
 
 #include "Definitions.h"
+#include "Blocks.h"
+#include "Textures.h"
+#include "Renderer.h"
+#include "TextRenderer.h"
+#include "Player.h"
+#include "WorldGen.h"
+#include "World.h"
+#include "Particles.h"
+#include "Hitbox.h"
+#include "GUI.h"
+#include "Menus.h"
+#include "Frustum.h"
+#include "Network.h"
+#include "Effect.h"
+#include "Items.h"
+#include "Command.h"
 
 void WindowSizeFunc(GLFWwindow* win, int width, int height);
 void MouseButtonFunc(GLFWwindow*, int button, int action, int);
@@ -31,22 +47,7 @@ void loadoptions();
 void saveoptions();
 int getMouseScroll() { return mw; }
 int getMouseButton() { return mb; }
-
-#include "Blocks.h"
-#include "Textures.h"
-#include "Renderer.h"
-#include "TextRenderer.h"
-#include "Player.h"
-#include "WorldGen.h"
-#include "World.h"
-#include "Particles.h"
-#include "Hitbox.h"
-#include "GUI.h"
-#include "Menus.h"
-#include "Frustum.h"
-#include "Network.h"
-#include "Effect.h"
-#include "Items.h"
+void registerCommands();
 
 struct RenderChunk{
 	RenderChunk(world::chunk* c, double TimeDelta){
@@ -83,6 +84,7 @@ int selbx, selby, selbz, selcx, selcy, selcz;
 
 string chatword;
 bool chatmode = false;
+vector<Command> commands;
 
 #if 0
 	woca, 这样注释都行？！
@@ -164,6 +166,7 @@ main_menu:
 	printf("[Console][Game]");
 	printf("Init world...\n");
 	world::Init();
+	registerCommands();
 	GUIrenderswitch = true;
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_CULL_FACE);
@@ -481,6 +484,38 @@ bool isPressed(int key, bool setFalse = false) {
 		return true;
 	}
 	return false;
+}
+
+void registerCommands() {
+	commands.push_back(Command("/give", [](const vector<string>& command) {
+		if (command.size() != 3) return false;
+		item itemid; conv(command[1], itemid);
+		short amount; conv(command[2], amount);
+		player::addItem(itemid, amount);
+		return true;
+	}));
+	commands.push_back(Command("/tp", [](const vector<string>& command) {
+		if (command.size() != 4) return false;
+		double x; conv(command[1], x);
+		double y; conv(command[2], y);
+		double z; conv(command[3], z);
+		player::xpos = x;
+		player::ypos = y;
+		player::zpos = z;
+		return true;
+	}));
+	commands.push_back(Command("/suicide", [](const vector<string>& command) {
+		player::spawn();
+		return true;
+	}));
+}
+
+bool doCommand(const vector<string>& command) {
+	for (int i = 0; i != commands.size(); i++) {
+		if (command[0] == commands[i].identifier) {
+			return commands[i].execute(command);
+		}
+	}
 }
 
 void updategame(){
@@ -892,6 +927,15 @@ void updategame(){
 		if (isPressed(GLFW_KEY_ENTER) == GLFW_PRESS) {
 			chatmode = !chatmode;
 			if (chatword != "") { //指令的执行，或发出聊天文本
+				if (chatword.substr(0, 1) == "/") { //指令
+					vector<string> command = split(chatword, " ");
+					if (!doCommand(command)) { //执行失败
+						DebugWarning("Fail to execute the command: " + chatword);
+					}
+				}
+				else {
+
+				}
 			}
 			chatword = "";
 		}
@@ -905,6 +949,15 @@ void updategame(){
 			}
 			else {
 				chatword += inputstr;
+			}
+
+			//自动补全
+			if (isPressed(GLFW_KEY_TAB) && chatmode && chatword.size()>0 && chatword.substr(0, 1) == "/") {
+				for (int i = 0; i != commands.size(); i++) {
+					if (beginWith(commands[i].identifier, chatword)) {
+						chatword = commands[i].identifier;
+					}
+				}
 			}
 		}
 	}
