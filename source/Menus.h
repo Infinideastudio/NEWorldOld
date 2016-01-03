@@ -1,10 +1,12 @@
 #pragma once
 #include "GUI.h"
-void mainmenu();
-void options();
-void Renderoptions();
-void GUIoptions();
-void worldmenu();
-void createworldmenu();
-void gamemenu();
-void multiplayermenu();
+namespace Menus {
+	void mainmenu();
+	void options();
+	void Renderoptions();
+	void GUIoptions();
+	void worldmenu();
+	void createworldmenu();
+	void gamemenu();
+	void multiplayermenu();
+}

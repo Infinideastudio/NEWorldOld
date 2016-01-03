@@ -1,7 +1,7 @@
 #pragma once
 #include "Definitions.h"
 
-namespace renderer{
+namespace Renderer{
 	const int ArrayUNITSIZE = 65536;
 
 	void Init(int tcc, int cc);

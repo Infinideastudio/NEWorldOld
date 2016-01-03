@@ -15,11 +15,11 @@ namespace Textures {
 
 	ubyte getTextureIndex(block blockname, ubyte side) {
 		switch (blockname) {
-		case blocks::AIR:
+		case Blocks::AIR:
 			return AIR;
-		case blocks::ROCK:
+		case Blocks::ROCK:
 			return ROCK;
-		case blocks::GRASS:
+		case Blocks::GRASS:
 			switch (side) {
 			case 1:
 				return GRASS_TOP;
@@ -28,13 +28,13 @@ namespace Textures {
 			case 3:
 				return DIRT;
 			}
-		case blocks::DIRT:
+		case Blocks::DIRT:
 			return DIRT;
-		case blocks::STONE:
+		case Blocks::STONE:
 			return STONE;
-		case blocks::PLANK:
+		case Blocks::PLANK:
 			return PLANK;
-		case blocks::WOOD:
+		case Blocks::WOOD:
 			switch (side) {
 			case 1:
 				return WOOD_TOP;
@@ -43,27 +43,27 @@ namespace Textures {
 			case 3:
 				return WOOD_TOP;
 			}
-		case blocks::BEDROCK:
+		case Blocks::BEDROCK:
 			return BEDROCK;
-		case blocks::LEAF:
+		case Blocks::LEAF:
 			return LEAF;
-		case blocks::GLASS:
+		case Blocks::GLASS:
 			return GLASS;
-		case blocks::WATER:
+		case Blocks::WATER:
 			return WATER;
-		case blocks::LAVA:
+		case Blocks::LAVA:
 			return LAVA;
-		case blocks::GLOWSTONE:
+		case Blocks::GLOWSTONE:
 			return GLOWSTONE;
-		case blocks::SAND:
+		case Blocks::SAND:
 			return SAND;
-		case blocks::CEMENT:
+		case Blocks::CEMENT:
 			return CEMENT;
-		case blocks::ICE:
+		case Blocks::ICE:
 			return ICE;
-		case blocks::COAL:
+		case Blocks::COAL:
 			return COAL;
-		case blocks::IRON:
+		case Blocks::IRON:
 			return IRON;
 		default:
 			return UNKNOWN;

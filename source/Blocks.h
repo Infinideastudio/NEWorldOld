@@ -1,8 +1,8 @@
 ﻿#pragma once
 #include "stdinclude.h"
 
-namespace blocks{  //方块ID
-	enum{
+namespace Blocks {
+	enum BlockID {
 		AIR, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
 		TNT, BLOCK_DEF_END
@@ -58,6 +58,6 @@ namespace blocks{  //方块ID
 		SingleBlock("Null Block", true  , true  , false , false)
 	};
 }
-inline blocks::SingleBlock BlockInfo(int blockID) {
-	return blocks::blockData[blockID >= blocks::BLOCK_DEF_END || blockID < 0 ? blocks::BLOCK_DEF_END : blockID];
+inline Blocks::SingleBlock BlockInfo(int blockID) {
+	return Blocks::blockData[blockID >= Blocks::BLOCK_DEF_END || blockID < 0 ? Blocks::BLOCK_DEF_END : blockID];
 }

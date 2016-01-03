@@ -7,10 +7,10 @@ vector<OnlinePlayer> players;
 void OnlinePlayer::GenVAOVBO(int skinID) {
 	return;
 	if (skinID != -1) { //Ä¬ÈÏÆ¤·ô
-		using renderer::TexCoord2d;
-		using renderer::Vertex3f;
-		using renderer::Color3f;
-		renderer::Init(0, 0);
+		using Renderer::TexCoord2d;
+		using Renderer::Vertex3f;
+		using Renderer::Color3f;
+		Renderer::Init(0, 0);
 		//===Head===
 		//Left
 		Color3f(1, 1, 1);
@@ -267,7 +267,7 @@ void OnlinePlayer::GenVAOVBO(int skinID) {
 		TexCoord2d(1.0 / 8 * 3.5, 1.0 / 8 * 1); Vertex3f(0.125f, -0.625f, -0.0625f);
 		TexCoord2d(1.0 / 8 * 4, 1.0 / 8 * 1); Vertex3f(0.25f, -0.625f, -0.0625f);
 
-		renderer::Flush(VBO, vtxs);
+		Renderer::Flush(VBO, vtxs);
 	}
 }
 
@@ -292,6 +292,6 @@ void OnlinePlayer::render() const {
 	glNormal3f(0, 0, 0);
 	glColor4f(1.0, 1.0, 1.0, 0.5);
 	glBindTexture(GL_TEXTURE_2D, _skinID == 0 ? DefaultSkin : _skinID);
-	renderer::renderbuffer(VBO, vtxs, true, true);
+	Renderer::renderbuffer(VBO, vtxs, true, true);
 	glEnable(GL_CULL_FACE);
 }
