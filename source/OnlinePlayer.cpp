@@ -1,16 +1,12 @@
-ï»¿#include "OnlinePlayer.h"
+#include "OnlinePlayer.h"
 #include "Renderer.h"
 
-namespace InfinideaStudio
-{
-	namespace NEWorld
-	{
 map<SkinID, pair<VBOID, vtxCount>> playerSkins;
 vector<OnlinePlayer> players;
 
-void OnlinePlayer::GenVAOVBO(int) {
-	/*
-	if (skinID != -1) { //é»˜è®¤çš®è‚¤
+void OnlinePlayer::GenVAOVBO(int skinID) {
+	return;
+	if (skinID != -1) { //Ä¬ÈÏÆ¤·ô
 		using renderer::TexCoord2d;
 		using renderer::Vertex3f;
 		using renderer::Color3f;
@@ -273,37 +269,29 @@ void OnlinePlayer::GenVAOVBO(int) {
 
 		renderer::Flush(VBO, vtxs);
 	}
-	*/
 }
 
-		void OnlinePlayer::buildRenderIfNeed()
-		{
-			if(VBO == 0 || vtxs == 0)
-			{
+void OnlinePlayer::buildRenderIfNeed() {
+	if (VBO == 0 || vtxs == 0) {
 		auto iter = playerSkins.find(_skinID);
-				if(iter != playerSkins.end())
-				{
+		if (iter != playerSkins.end()) {
 			VBO = iter->second.first;
 			vtxs = iter->second.second;
 		}
-				else
-				{
+		else {
 			VBO = 0;
 			vtxs = 0;
-			GenVAOVBO(_skinID); //ç”Ÿæˆç©å®¶çš„VAO/VBO
-					playerSkins [_skinID] = std::make_pair(VBO, vtxs);
+			GenVAOVBO(_skinID); //Éú³ÉÍæ¼ÒµÄVAO/VBO
+			playerSkins[_skinID] = std::make_pair(VBO, vtxs);
 		}
 	}
 }
 
-		void OnlinePlayer::render() const
-		{
+void OnlinePlayer::render() const {
 	glDisable(GL_CULL_FACE);
 	glNormal3f(0, 0, 0);
 	glColor4f(1.0, 1.0, 1.0, 0.5);
 	glBindTexture(GL_TEXTURE_2D, _skinID == 0 ? DefaultSkin : _skinID);
 	renderer::renderbuffer(VBO, vtxs, true, true);
 	glEnable(GL_CULL_FACE);
-}
-	}
 }

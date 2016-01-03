@@ -1,49 +1,42 @@
-ï»¿#include "Renderer.h"
+#include "Renderer.h"
+namespace renderer {
 	
-namespace InfinideaStudio
-{
-	namespace NEWorld
-	{
-		namespace renderer
-		{
-
 	int Vertexes, Texcoordc, Colorc;
 	float* VertexArray = nullptr;
-			float tc [3], col [4];
-			unsigned int Buffers [3];
+	float tc[3], col[4];
+	unsigned int Buffers[3];
 	bool ShaderAval, EnableShaders = false;
-			GLhandleARB shaders [16];
-			GLhandleARB shaderPrograms [16];
+	GLhandleARB shaders[16];
+	GLhandleARB shaderPrograms[16];
 	int shadercount = 0;
 	int index = 0;
 
-			void Init(int tcc, int cc)
-			{
+	void Init(int tcc, int cc) {
 		Texcoordc = tcc; Colorc = cc;
-				if(VertexArray == nullptr) VertexArray = new float [ArrayUNITSIZE];
+		if (VertexArray == nullptr) VertexArray = new float[ArrayUNITSIZE];
 		index = 0;
 		Vertexes = 0;
 	}
 
-			void Vertex3f(float x, float y, float z)
-			{
-				if((Vertexes + 1)*(Texcoordc + Colorc + 3) > ArrayUNITSIZE) return;
-				if(Texcoordc != 0) for(int i = 0; i < Texcoordc; i++) VertexArray [index++] = tc [i];
-				if(Colorc != 0) for(int i = 0; i < Colorc; i++) VertexArray [index++] = col [i];
-				VertexArray [index++] = x;
-				VertexArray [index++] = y;
-				VertexArray [index++] = z;
+	void Vertex3f(float x, float y, float z) {
+		if ((Vertexes + 1)*(Texcoordc + Colorc + 3) > ArrayUNITSIZE) return;
+		if (Texcoordc != 0) for (int i = 0; i < Texcoordc; i++) VertexArray[index++] = tc[i];
+		if (Colorc != 0) for (int i = 0; i < Colorc; i++) VertexArray[index++] = col[i];
+		VertexArray[index++] = x;
+		VertexArray[index++] = y;
+		VertexArray[index++] = z;
 		Vertexes++;
 	}
 
-			void TexCoord2f(float x, float y) { tc [0] = x; tc [1] = y; }
-			void TexCoord3f(float x, float y, float z) { tc [0] = x; tc [1] = y; tc [2] = z; }
-			void Color3f(float r, float g, float b) { col [0] = r; col [1] = g; col [2] = b; }
-			void Color4f(float r, float g, float b, float a) { col [0] = r; col [1] = g; col [2] = b; col [3] = a; }
+	void TexCoord2f(float x, float y) { tc[0] = x; tc[1] = y; }
+	void TexCoord3f(float x, float y, float z) { tc[0] = x; tc[1] = y; tc[2] = z; }
+	void Color3f(float r, float g, float b) { col[0] = r; col[1] = g; col[2] = b; }
+	void Color4f(float r, float g, float b, float a) { col[0] = r; col[1] = g; col[2] = b; col[3] = a; }
 
-			void Flush(VBOID& buffer, vtxCount& vtxs)
-			{
+	void Flush(VBOID& buffer, vtxCount& vtxs) {
 
+		//ÉÏ´Î²ÅÖªµÀÔ­À´Flush»¹ÓÐ³å²ÞËùµÄÒâË¼QAQ
+		//OpenGLÓÐ¸öº¯ÊýglFlush()£¬·­Òë¹ýÀ´¾ÍÊÇGL³å²ÞËù() ¡û_¡û
 
 		/*
 		if (EnableShaders) {
@@ -54,9 +47,8 @@ namespace InfinideaStudio
 		*/
 
 		vtxs = Vertexes;
-				if(Vertexes != 0)
-				{
-					if(buffer == 0) glGenBuffersARB(1, &buffer);
+		if (Vertexes != 0) {
+			if (buffer == 0) glGenBuffersARB(1, &buffer);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
 			glBufferDataARB(GL_ARRAY_BUFFER_ARB, Vertexes * (Texcoordc + Colorc + 3) * sizeof(float), VertexArray, GL_STATIC_DRAW_ARB);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
@@ -65,36 +57,29 @@ namespace InfinideaStudio
 		//if (EnableShaders) glUseProgramObjectARB(0);
 	}
     
-			void renderbuffer(VBOID buffer, vtxCount vtxs, int ctex, int ccol)
-			{
+	void renderbuffer(VBOID buffer, vtxCount vtxs, int ctex, int ccol) {
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
 		int cnt = ctex + ccol + 3;
 
-				if(ctex != 0)
-				{
-					if(ccol != 0)
-					{
-						glTexCoordPointer(ctex, GL_FLOAT, cnt * sizeof(float), (float*) 0);
-						glColorPointer(ccol, GL_FLOAT, cnt * sizeof(float), (float*) (ctex * sizeof(float)));
-						glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*) ((ctex + ccol) * sizeof(float)));
+		if (ctex != 0) {
+			if (ccol != 0) {
+				glTexCoordPointer(ctex, GL_FLOAT, cnt * sizeof(float), (float*)0);
+				glColorPointer(ccol, GL_FLOAT, cnt * sizeof(float), (float*)(ctex * sizeof(float)));
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((ctex + ccol) * sizeof(float)));
 			}
-					else
-					{
-						glTexCoordPointer(ctex, GL_FLOAT, cnt * sizeof(float), (float*) 0);
-						glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*) (ctex * sizeof(float)));
+			else {
+				glTexCoordPointer(ctex, GL_FLOAT, cnt * sizeof(float), (float*)0);
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(ctex * sizeof(float)));
 			}
 		}
-				else
-				{
-					if(ccol != 0)
-					{
-						glColorPointer(ccol, GL_FLOAT, cnt * sizeof(float), (float*) 0);
-						glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*) (ccol * sizeof(float)));
+		else {
+			if (ccol != 0) {
+				glColorPointer(ccol, GL_FLOAT, cnt * sizeof(float), (float*)0);
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(ccol * sizeof(float)));
 			}
-					else
-					{
-						glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*) 0);
+			else {
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)0);
 			}
 		}
 
@@ -135,18 +120,14 @@ namespace InfinideaStudio
         
     //}
     
-			void initShader()
-			{
+    void initShader(){
 
-				for(int i = 0; i != shadercount; i++)
-				{
-					shaderPrograms [i] = glCreateProgramObjectARB();
-					glAttachObjectARB(shaderPrograms [i * 2], shaders [i]);
-					glAttachObjectARB(shaderPrograms [i * 2 + 1], shaders [i]);
-					glLinkProgramARB(shaderPrograms [i]);
+		for (int i = 0; i != shadercount; i++) {
+			shaderPrograms[i] = glCreateProgramObjectARB();
+			glAttachObjectARB(shaderPrograms[i*2], shaders[i]);
+			glAttachObjectARB(shaderPrograms[i*2+1], shaders[i]);
+			glLinkProgramARB(shaderPrograms[i]);
 		}
 
     }
-}
-	}
 }

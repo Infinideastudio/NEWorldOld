@@ -1,15 +1,10 @@
-Ôªø#include "GUI.h"
+#include "GUI.h"
 #include "TextRenderer.h"
 
 extern string inputstr;
-namespace InfinideaStudio
-{
-	namespace NEWorld
-	{
 
-//ÂõæÂΩ¢ÁïåÈù¢Á≥ªÁªü„ÄÇ„ÄÇ„ÄÇÊ≠£ÂÆóOOPÔºÅÔºÅÔºÅ
-		namespace UI
-		{
+//Õº–ŒΩÁ√ÊœµÕ≥°£°£°£’˝◊⁄OOP£°£°£°
+namespace gui {
 	float linewidth = 1.0f;
 	float linealpha = 0.9f;
 	float FgR = 0.2f;
@@ -26,121 +21,52 @@ namespace InfinideaStudio
 	double transitionTimer;
 	bool transitionForward;
 
-			void clearTransition()
-			{
-				if(transitionList != 0)
-				{
+	void clearTransition() {
+		if (transitionList != 0) {
 			glDeleteLists(transitionList, 1);
 			transitionList = 0;
 		}
-				if(lastdisplaylist != 0)
-				{
+		if (lastdisplaylist != 0) {
 			glDeleteLists(lastdisplaylist, 1);
 			lastdisplaylist = 0;
 		}
 	}
 
 	void screenBlur() {
-		/*
-		int w = windowwidth; //Width
-		int h = windowheight; //Height
-		int r = 8; //ËåÉÂõ¥
-		int psw = w + 2 * r, psh = h + 2 * r;
-		ubyte *scr; //Â±èÂπïÂÉèÁ¥†ÁºìÂ≠ò
-		int *cps; //ÂàóÂâçÁºÄÂíå
-		int *rps; //Ë°åÂâçÁºÄÂíå
-		int* sum;
-		scr = new ubyte[w*h * 3];
-		cps = new int[psw*psh * 3];
-		rps = new int[psw*psh * 3];
-		sum = new int[w*h * 3];
-		glPixelStorei(GL_PACK_ALIGNMENT, 1);
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
-		//Â§ÑÁêÜÂâçÁºÄÂíå
-		for (int col = 0; col < 3; col++) {
-		for (int x = 0; x < psw; x++) {
-		for (int y = 0; y < psh; y++) {
-		int scrx = x - r, scry = y - r;
-		if (scrx < 0) scrx = 0; if (scrx >= w) scrx = w - 1;
-		if (scry < 0) scry = 0; if (scry >= h) scry = h - 1;
-		rps[(y*psw + x) * 3 + col] = cps[(y*psw + x) * 3 + col] = scr[(scry*w + scrx) * 3 + col];
-		if (x != 0) rps[(y*psw + x) * 3 + col] += rps[(y*psw + (x - 1)) * 3 + col];
-		if (y != 0) cps[(y*psw + x) * 3 + col] += cps[((y - 1)*psw + x) * 3 + col];
-		}
-		}
-		}
-		//Ê®°Á≥äËÆ°ÁÆó
-		int cursum; //ÂΩìÂâçÈ¢úËâ≤‰πãÂíå
-		for (int col = 0; col < 3; col++) {
-		cursum = 0;
-		for (int y = 0; y <= 2 * r; y++) cursum += rps[(y*psw + 2 * r) * 3 + col];
-		for (int x = 0; x < w; x++) {
-		int psx = x + r;
-		if (x != 0) {
-		cursum = sum[(x - 1) * 3 + col];
-		cursum -= cps[(2 * r*psw + psx - r - 1) * 3 + col];
-		cursum += cps[(2 * r*psw + psx + r) * 3 + col];
-		}
-		for (int y = 0; y < h; y++) {
-		int psy = y + r;
-		if (y != 0) {
-		cursum -= rps[((psy - r - 1)*psw + psx + r) * 3 + col];
-		if (x != 0) cursum += rps[((psy - r - 1)*psw + psx - r - 1) * 3 + col];
-		cursum += rps[((psy + r)*psw + psx + r) * 3 + col];
-		if (x != 0) cursum -= rps[((psy + r)*psw + psx - r - 1) * 3 + col];
-		}
-		sum[(y*w + x) * 3 + col] = cursum;
-		scr[(y*w + x) * 3 + col] = (ubyte)(cursum / ((2 * r + 1)*(2 * r + 1)));
-		}
-		}
-		}
-		glDrawPixels(w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
-		delete[] scr;
-		delete[] cps;
-		delete[] rps;
-		delete[] sum;
-		glPixelStorei(GL_PACK_ALIGNMENT, 4);
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-		*/
 		static int szl = 0, rl = 0;
 		static float* mat = nullptr;
-		static ubyte *scr; //Â±èÂπïÂÉèÁ¥†ÁºìÂ≠ò
+		static ubyte *scr; //∆¡ƒªœÒÀÿª∫¥Ê
 
 		int w = windowwidth; //Width
 		int h = windowheight; //Height
-		int r = 2; //ËåÉÂõ¥
+		int r = 2; //∑∂Œß
 		int sz = 1;
 		float scale = 2;
 		TextureID bgTex;
 
-				while(sz < w || sz < h) sz *= 2;
-				if(sz != szl)
-				{
+		while (sz < w || sz < h) sz *= 2;
+		if (sz != szl) {
 			szl = sz;
-					delete [] scr;
-					scr = new ubyte [sz * sz * 3];
+			delete[] scr;
+			scr = new ubyte[sz * sz * 3];
 		}
 
-				if(rl != r)
-				{
-					if(mat != nullptr) delete [] mat;
+		if (rl != r) {
+			if (mat != nullptr) delete[] mat;
 			int size = r * 2 + 1;
 			int size2 = size * size;
 			float sum = 0.0f;
 			int index = 0;
-					mat = new float [size2];
-					for(int x = -r; x <= r; x++)
-					{
-						for(int y = -r; y <= r; y++)
-						{
-							float val = 1.0f / (float) (abs(x) + abs(y) + 1);
-							mat [index++] = val;
+			mat = new float[size2];
+			for (int x = -r; x <= r; x++) {
+				for (int y = -r; y <= r; y++) {
+					float val = 1.0f / (float)(abs(x) + abs(y) + 1);
+					mat[index++] = val;
 					sum += val;
 				}
 			}
 			sum = 1.0f / sum;
-					for(int i = 0; i < size2; i++) mat [i] *= sum;
+			for (int i = 0; i < size2; i++) mat[i] *= sum;
 		}
 
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -156,18 +82,16 @@ namespace InfinideaStudio
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-				for(int x = -r; x <= r; x++)
-				{
-					for(int y = -r; y <= r; y++)
-					{
-						float d = mat [(x + r)*(r * 2 + 1) + y + r];
+		for (int x = -r; x <= r; x++) {
+			for (int y = -r; y <= r; y++) {
+				float d = mat[(x + r)*(r * 2 + 1) + y + r];
 				glColor4f(1.0f, 1.0f, 1.0f, d);
 				glBegin(GL_QUADS);
-						glTexCoord2f(0.0f, (float) h / sz);
+				glTexCoord2f(0.0f, (float)h / sz);
 				glVertex2f(x * scale, y * scale);
-						glTexCoord2f((float) w / sz, (float) h / sz);
+				glTexCoord2f((float)w / sz, (float)h / sz);
 				glVertex2f(w + x * scale, y * scale);
-						glTexCoord2f((float) w / sz, 0.0f);
+				glTexCoord2f((float)w / sz, 0.0f);
 				glVertex2f(w + x * scale, h + y * scale);
 				glTexCoord2f(0.0f, 0.0f);
 				glVertex2f(x * scale, h + y * scale);
@@ -183,13 +107,12 @@ namespace InfinideaStudio
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	}
 
-			void drawBackground()
-			{
+	void drawBackground() {
 		static double startTimer = timer();
 		double elapsed = timer() - startTimer;
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-				gluPerspective(90.0, (double) windowwidth / windowheight, 0.1, 10.0);
+		gluPerspective(90.0, (double)windowwidth / windowheight, 0.1, 10.0);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);
@@ -200,42 +123,42 @@ namespace InfinideaStudio
 		glEnable(GL_TEXTURE_2D);
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		//Begin to draw a cube
-				glBindTexture(GL_TEXTURE_2D, tex_mainmenu [0]);
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[0]);
 		glBegin(GL_QUADS);
 		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
 		glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
 		glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
 		glEnd();
-				glBindTexture(GL_TEXTURE_2D, tex_mainmenu [1]);
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[1]);
 		glBegin(GL_QUADS);
 		glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
 		glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
 		glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
 		glEnd();
-				glBindTexture(GL_TEXTURE_2D, tex_mainmenu [2]);
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[2]);
 		glBegin(GL_QUADS);
 		glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
 		glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 		glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
 		glEnd();
-				glBindTexture(GL_TEXTURE_2D, tex_mainmenu [3]);
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[3]);
 		glBegin(GL_QUADS);
 		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 		glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
 		glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
 		glEnd();
-				glBindTexture(GL_TEXTURE_2D, tex_mainmenu [4]);
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[4]);
 		glBegin(GL_QUADS);
 		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
 		glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
 		glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
 		glEnd();
-				glBindTexture(GL_TEXTURE_2D, tex_mainmenu [5]);
+		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[5]);
 		glBegin(GL_QUADS);
 		glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
 		glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
@@ -244,43 +167,37 @@ namespace InfinideaStudio
 		glEnd();
 	}
 
-			void Control::updatepos()
-			{
-				xmin = (int) (windowwidth*_xmin_b) + _xmin_r;
-				ymin = (int) (windowheight*_ymin_b) + _ymin_r;
-				xmax = (int) (windowwidth*_xmax_b) + _xmax_r;
-				ymax = (int) (windowheight*_ymax_b) + _ymax_r;
+	void controls::updatepos() {
+		xmin = (int)(windowwidth*_xmin_b) + _xmin_r;
+		ymin = (int)(windowheight*_ymin_b) + _ymin_r;
+		xmax = (int)(windowwidth*_xmax_b) + _xmax_r;
+		ymax = (int)(windowheight*_ymax_b) + _ymax_r;
 	}
 
-			void Control::resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-			{
+	void controls::resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
 		_xmin_r = xi_r; _xmax_r = xa_r; _ymin_r = yi_r; _ymax_r = ya_r;
 		_xmin_b = xi_b; _xmax_b = xa_b; _ymin_b = yi_b; _ymax_b = ya_b;
 	}
 
-			void Label::Update()
-			{
-		//Êõ¥Êñ∞Ê†áÁ≠æÁä∂ÊÄÅ
-				if(parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)               //Èº†Ê†áÊÇ¨ÂÅú
+	void label::update() {
+		//∏¸–¬±Í«©◊¥Ã¨
+		if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)               // Û±Í–¸Õ£
 			mouseon = true;
 		else
 			mouseon = false;
 
-				if(parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = Id;              //ÁÑ¶ÁÇπÂú®Ê≠§
-				focused = parent->focusid == Id;   //ÁÑ¶ÁÇπ
+		if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;              //Ωπµ„‘⁄¥À
+		focused = parent->focusid == id;   //Ωπµ„
 	}
 
-			void Label::render()
-			{
-		//Ê∏≤ÊüìÊ†áÁ≠æ
+	void label::render() {
+		//‰÷»æ±Í«©
 		float fcR, fcG, fcB, fcA;
 		fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
-				if(mouseon)
-				{
+		if (mouseon) {
 			fcR = FgR*1.2f; fcG = FgG*1.2f; fcB = FgB*1.2f; fcA = FgA*0.8f;
 		}
-				if(focused)
-				{                                                 //Focus
+		if (focused) {                                                 //Focus
 			glDisable(GL_TEXTURE_2D);
 			glColor4f(FgR*0.6f, FgG*0.6f, FgB*0.6f, linealpha);
 			glLineWidth(linewidth);
@@ -296,52 +213,46 @@ namespace InfinideaStudio
 		}
 		glEnable(GL_TEXTURE_2D);
 		TextRenderer::setFontColor(fcR, fcG, fcB, fcA);
-				TextRenderer::renderString(xmin, ymin, Text);
+		TextRenderer::renderString(xmin, ymin, text);
 	}
 
-			void button::Update()
-			{
-				if(!enabled)
-				{
+	void button::update() {
+		if (!enabled) {
 			mouseon = false, focused = false, pressed = false, clicked = false;
 			return;
 		}
 
-		//Êõ¥Êñ∞ÊåâÈíÆÁä∂ÊÄÅ
-				if(parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
+		//∏¸–¬∞¥≈•◊¥Ã¨
+		if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
 			mouseon = true;
 		else
 			mouseon = false;
 
-				if((parent->mb == 1 && mouseon || parent->enterp) && focused)
+		if ((parent->mb == 1 && mouseon || parent->enterp) && focused)
 			pressed = true;
 		else
 			pressed = false;
 
-				if(parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = Id;
-				if(parent->focusid == Id) focused = true; else focused = false;
+		if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;
+		if (parent->focusid == id) focused = true; else focused = false;
 
 		clicked = (parent->mb == 0 && parent->mbl == 1 && mouseon || parent->enterpl && parent->enterp == false) && focused;
 		//clicked = lp&&!pressed
 
 	}
 
-			void button::render()
-			{
+	void button::render() {
 
-		//Ê∏≤ÊüìÊåâÈíÆ
+		//‰÷»æ∞¥≈•
 		float fcR, fcG, fcB, fcA;
 		fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
-				if(mouseon)
-				{
+		if (mouseon) {
 			fcR = FgR*1.2f; fcG = FgG*1.2f; fcB = FgB*1.2f; fcA = FgA*0.8f;
 		}
-				if(pressed)
-				{
+		if (pressed) {
 			fcR = FgR*0.8f; fcG = FgG*0.8f; fcB = FgB*0.8f; fcA = FgA*1.5f;
 		}
-				if(!enabled)
-				{
+		if (!enabled) {
 			fcR = FgR*0.5f; fcG = FgG*0.5f; fcB = FgB*0.5f; fcA = FgA*0.3f;
 		}
 		glColor4f(fcR, fcG, fcB, fcA);
@@ -355,7 +266,7 @@ namespace InfinideaStudio
 		glEnd();
 		glColor4f(FgR*0.9f, FgG*0.9f, FgB*0.9f, linealpha);
 
-				if(!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
+		if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 		glLineWidth(linewidth);
 		glBegin(GL_LINE_LOOP);
 		glVertex2i(xmin, ymin);
@@ -366,25 +277,25 @@ namespace InfinideaStudio
 
 		glBegin(GL_LINE_LOOP);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 		glVertex2i(xmin + 1, ymin + 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 		glVertex2i(xmin + 1, ymax - 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 		glVertex2i(xmax - 1, ymax - 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
@@ -394,59 +305,52 @@ namespace InfinideaStudio
 
 		glEnable(GL_TEXTURE_2D);
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-				if(!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
+		if (!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
 		TextRenderer::renderString((xmin + xmax - TextRenderer::getStrWidth(text)) / 2, (ymin + ymax - 20) / 2, text);
 	}
 
-			void trackbar::Update()
-			{
-				if(!enabled)
-				{
+	void trackbar::update() {
+		if (!enabled) {
 			mouseon = false, focused = false, pressed = false;
 			return;
 		}
 
-		//Êõ¥Êñ∞TrackBarÔºàÂà∞Â∫ïËØ•ÊÄé‰πàÁøªËØëÂë¢ÔºüÔºâÁä∂ÊÄÅ
-				if(parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax && parent->mb == 1)
-					parent->focusid = Id;
-				if(parent->mx >= xmin + barpos && parent->mx <= xmin + barpos + barwidth && parent->my >= ymin && parent->my <= ymax)
+		//∏¸–¬TrackBar£®µΩµ◊∏√‘ı√¥∑≠“Îƒÿ£ø£©◊¥Ã¨
+		if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax && parent->mb == 1)
+			parent->focusid = id;
+		if (parent->mx >= xmin + barpos && parent->mx <= xmin + barpos + barwidth && parent->my >= ymin && parent->my <= ymax)
 			mouseon = true;
 		else mouseon = false;
-				if(parent->mb == 1 && mouseon && focused)pressed = true;
-				else if(parent->mbl == 0) pressed = false;
-				if(parent->mb == 1 && parent->mbl == 0 && mouseon)parent->focusid = Id;
-				focused = parent->focusid == Id;
-				if(focused && pressed)barpos += parent->mx - parent->mxl;
-				if(focused)
-				{
-					if(parent->upkp && !parent->upkpl) barpos -= 1;
-					if(parent->downkp && !parent->downkpl) barpos += 1;
-					if(parent->leftkp) barpos -= 1;
-					if(parent->rightkp) barpos += 1;
+		if (parent->mb == 1 && mouseon && focused)pressed = true;
+		else if (parent->mbl == 0) pressed = false;
+		if (parent->mb == 1 && parent->mbl == 0 && mouseon)parent->focusid = id;
+		focused = parent->focusid == id;
+		if (focused && pressed)barpos += parent->mx - parent->mxl;
+		if (focused) {
+			if (parent->upkp && !parent->upkpl) barpos -= 1;
+			if (parent->downkp && !parent->downkpl) barpos += 1;
+			if (parent->leftkp) barpos -= 1;
+			if (parent->rightkp) barpos += 1;
 		}
-				if(barpos <= 0) barpos = 0;
-				if(barpos >= xmax - xmin - barwidth) barpos = xmax - xmin - barwidth - 1;
+		if (barpos <= 0) barpos = 0;
+		if (barpos >= xmax - xmin - barwidth) barpos = xmax - xmin - barwidth - 1;
 
 	}
 
-			void trackbar::render()
-			{
+	void trackbar::render() {
 
-		//Ê∏≤ÊüìTrackBarÔºàHow can I translate it?Ôºâ
+		//‰÷»æTrackBar£®How can I translate it?£©
 		float fcR, fcG, fcB, fcA;
 		float bcR, bcG, bcB, bcA;
 		fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
 		bcR = BgR; bcG = BgG; bcB = BgB; bcA = BgA;
-				if(mouseon)
-				{
+		if (mouseon) {
 			fcR = FgR*1.2f; fcG = FgG*1.2f; fcB = FgB*1.2f; fcA = FgA*0.8f;
 		}
-				if(pressed)
-				{
+		if (pressed) {
 			fcR = FgR*0.8f; fcG = FgG*0.8f; fcB = FgB*0.8f; fcA = FgA*1.5f;
 		}
-				if(!enabled)
-				{
+		if (!enabled) {
 			fcR = FgR*0.5f; fcG = FgG*0.5f; fcB = FgB*0.5f; fcA = FgA*0.3f;
 		}
 		glColor4f(bcR, bcG, bcB, bcA);
@@ -467,7 +371,7 @@ namespace InfinideaStudio
 		glEnd();
 		glColor4f(FgR*0.9f, FgG*0.9f, FgB*0.9f, linealpha);
 
-				if(!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
+		if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 		glBegin(GL_LINE_LOOP);
 		glVertex2i(xmin, ymin);
 		glVertex2i(xmin, ymax);
@@ -475,30 +379,30 @@ namespace InfinideaStudio
 		glVertex2i(xmax, ymin);
 		glEnd();
 
-				if(focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 
 		glBegin(GL_LINE_LOOP);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 		glVertex2i(xmin + 1, ymin + 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 		glVertex2i(xmin + 1, ymax - 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 		glVertex2i(xmax - 1, ymax - 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
@@ -507,56 +411,50 @@ namespace InfinideaStudio
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-				if(!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
+		if (!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
 		TextRenderer::renderString((xmin + xmax - TextRenderer::getStrWidth(text)) / 2, ymin, text);
 
 	}
 
-			void textbox::Update()
-			{
-				if(!enabled)
-				{
+	void textbox::update() {
+		if (!enabled) {
 			mouseon = false, focused = false, pressed = false;
 			return;
 		}
 		static int delt = 0;
 		static int ldel = 0;
-				if(delt > INT_MAX - 2) delt = 0;
-				if(ldel > INT_MAX - 2) delt = 0;
-		//Êõ¥Êñ∞ÊñáÊú¨Ê°ÜÁä∂ÊÄÅ
-				if(parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
+		if (delt > INT_MAX - 2) delt = 0;
+		if (ldel > INT_MAX - 2) delt = 0;
+		//∏¸–¬Œƒ±æøÚ◊¥Ã¨
+		if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
 			mouseon = true, parent->MouseOnTextbox = true;
 		else mouseon = false;
 
-				if((parent->mb == 1 && mouseon || parent->enterp) && focused) pressed = true;
+		if ((parent->mb == 1 && mouseon || parent->enterp) && focused) pressed = true;
 		else pressed = false;
 
-				if(parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = Id;       //ÁÑ¶ÁÇπÂú®Ê≠§
-				if(parent->focusid == Id) focused = true; else focused = false;                //ÁÑ¶ÁÇπ
-				if(focused && inputstr != "")
-				{
+		if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;       //Ωπµ„‘⁄¥À
+		if (parent->focusid == id) focused = true; else focused = false;                //Ωπµ„
+		if (focused && inputstr != "") {
 			text += inputstr;
 		}
 		delt++;
-				if(parent->backspacep && (delt - ldel > 50) && text.length() >= 1)
-				{
+		if (parent->backspacep && (delt - ldel > 50) && text.length() >= 1) {
 			ldel = delt;
-					int n = text [text.length() - 1];
-					if(n > 0 && n <= 127)
+			int n = text[text.length() - 1];
+			if (n > 0 && n <= 127)
 				text = text.substr(0, text.length() - 1);
 			else
 				text = text.substr(0, text.length() - 2);
 		}
 	}
 
-			void textbox::render()
-			{
+	void textbox::render() {
 
-		//Ê∏≤ÊüìÊñáÊú¨Ê°Ü
+		//‰÷»æŒƒ±æøÚ
 		float bcR, bcG, bcB, bcA;
 		bcR = BgR; bcG = BgG; bcB = BgB; bcA = BgA;
-				if(!enabled)
-				{
+		if (!enabled) {
 			bcR = BgR*0.5f; bcG = BgG*0.5f; bcB = BgB*0.5f; bcA = BgA*0.3f;
 		}
 		glColor4f(bcR, bcG, bcB, bcA);
@@ -570,7 +468,7 @@ namespace InfinideaStudio
 		glEnd();
 		glColor4f(FgR*0.9f, FgG*0.9f, FgB*0.9f, linealpha);
 
-				if(!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
+		if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 		glLineWidth(linewidth);
 		glBegin(GL_LINE_LOOP);
 		glVertex2i(xmin, ymin);
@@ -581,25 +479,25 @@ namespace InfinideaStudio
 
 		glBegin(GL_LINE_LOOP);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 		glVertex2i(xmin + 1, ymin + 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 		glVertex2i(xmin + 1, ymax - 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 		glVertex2i(xmax - 1, ymax - 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
@@ -609,15 +507,13 @@ namespace InfinideaStudio
 
 		glEnable(GL_TEXTURE_2D);
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-				if(!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
+		if (!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
 		TextRenderer::renderString(xmin, (ymin + ymax - 20) / 2, text);
 
 	}
 
-			void vscroll::Update()
-			{
-				if(!enabled)
-				{
+	void vscroll::update() {
+		if (!enabled) {
 			mouseon = false, focused = false, pressed = false;
 			return;
 		}
@@ -627,74 +523,63 @@ namespace InfinideaStudio
 		psup = false;
 		psdown = false;
 
-		//Êõ¥Êñ∞ÊªöÂä®Êù°Áä∂ÊÄÅ
-		//Èº†Ê†áÊÇ¨ÂÅú
+		//∏¸–¬πˆ∂ØÃı◊¥Ã¨
+		// Û±Í–¸Õ£
 		mouseon = (parent->my >= ymin + barpos + 20 && parent->my <= ymin + barpos + barheight + 20 && parent->mx >= xmin && parent->mx <= xmax);
-				if(parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
-				{
-					if(parent->mb == 1) parent->focusid = Id;
-					if(parent->my <= ymin + 20)
-					{
+		if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax) {
+			if (parent->mb == 1) parent->focusid = id;
+			if (parent->my <= ymin + 20) {
 				msup = true;
-						if(parent->mb == 1 && parent->mbl == 0) barpos -= 10;
-						if(parent->mb == 1) psup = true;
+				if (parent->mb == 1 && parent->mbl == 0) barpos -= 10;
+				if (parent->mb == 1) psup = true;
 			}
-					else if(parent->my >= ymax - 20)
-					{
+			else if (parent->my >= ymax - 20) {
 				msdown = true;
-						if(parent->mb == 1 && parent->mbl == 0)  barpos += 10;
-						if(parent->mb == 1)  psdown = true;
+				if (parent->mb == 1 && parent->mbl == 0)  barpos += 10;
+				if (parent->mb == 1)  psdown = true;
 			}
-					else if(timer() - lstime > 0.1 && parent->mb == 1)
-					{
+			else if (timer() - lstime > 0.1 && parent->mb == 1) {
 				lstime = timer();
-						if(parent->my < ymin + barpos + 20) barpos -= 25;
-						if(parent->my > ymin + barpos + barheight + 20)  barpos += 25;
+				if (parent->my<ymin + barpos + 20) barpos -= 25;
+				if (parent->my>ymin + barpos + barheight + 20)  barpos += 25;
 			}
 		}
-				if(parent->mb == 1 && mouseon && focused)
-				{//Èº†Ê†áÊåâ‰Ωè
+		if (parent->mb == 1 && mouseon && focused) {// Û±Í∞¥◊°
 			pressed = true;
 		}
-				else
-				{
-					if(parent->mbl == 0) pressed = false;
+		else {
+			if (parent->mbl == 0) pressed = false;
 		}
 
-				if(parent->mb == 1 && parent->mbl == 0 && mouseon)  parent->focusid = Id;     //ÁÑ¶ÁÇπÂú®Ê≠§
-				focused = (parent->focusid == Id);   //ÁÑ¶ÁÇπ
-				if(pressed) barpos += parent->my - parent->myl;                               //ÊãñÂä®
-				if(focused)
-				{
-					if(parent->upkp)  barpos -= 1;
-					if(parent->downkp)  barpos += 1;
-					if(parent->leftkp && !parent->leftkpl)barpos -= 1;
-					if(parent->rightkp && !parent->rightkpl) barpos += 1;
+		if (parent->mb == 1 && parent->mbl == 0 && mouseon)  parent->focusid = id;     //Ωπµ„‘⁄¥À
+		focused = (parent->focusid == id);   //Ωπµ„
+		if (pressed) barpos += parent->my - parent->myl;                               //Õœ∂Ø
+		if (focused) {
+			if (parent->upkp)  barpos -= 1;
+			if (parent->downkp)  barpos += 1;
+			if (parent->leftkp && !parent->leftkpl)barpos -= 1;
+			if (parent->rightkp && !parent->rightkpl) barpos += 1;
 		}
-				if(defaultv)
+		if (defaultv)
 			barpos += (parent->mwl - parent->mw) * 15;
-				if(barpos < 0) barpos = 0;                                                    //ËÆ©ÊãñÂä®Êù°‰∏çË∂äÁïå
-				if(barpos >= ymax - ymin - barheight - 40)
+		if (barpos < 0) barpos = 0;                                                    //»√Õœ∂ØÃı≤ª‘ΩΩÁ
+		if (barpos >= ymax - ymin - barheight - 40)
 			barpos = ymax - ymin - barheight - 40;
 	}
 
-			void vscroll::render()
-			{
-		//Ê∏≤ÊüìÊªöÂä®Êù°
+	void vscroll::render() {
+		//‰÷»æπˆ∂ØÃı
 		float fcR, fcG, fcB, fcA;
 		float bcR, bcG, bcB, bcA;
 		fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
 		bcR = BgR; bcG = BgG; bcB = BgB; bcA = BgA;
-				if(mouseon)
-				{
+		if (mouseon) {
 			fcR = FgR*1.2f; fcG = FgG*1.2f; fcB = FgB*1.2f; fcA = FgA*0.8f;
 		}
-				if(pressed)
-				{
+		if (pressed) {
 			fcR = FgR*0.8f; fcG = FgG*0.8f; fcB = FgB*0.8f; fcA = FgA*1.5f;
 		}
-				if(!enabled)
-				{
+		if (!enabled) {
 			fcR = FgR*0.5f; fcG = FgG*0.5f; fcB = FgB*0.5f; fcA = FgA*0.3f;
 		}
 
@@ -715,10 +600,9 @@ namespace InfinideaStudio
 		glVertex2i(xmax, ymin + barpos + 20);
 		glEnd();
 
-				if(msup)
-				{
+		if (msup) {
 			glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
-					if(psup) glColor4f(FgR, FgG, FgB, 0.9f);
+			if (psup) glColor4f(FgR, FgG, FgB, 0.9f);
 			glBegin(GL_QUADS);
 			glVertex2i(xmin, ymin);
 			glVertex2i(xmin, ymin + 20);
@@ -726,10 +610,9 @@ namespace InfinideaStudio
 			glVertex2i(xmax, ymin);
 			glEnd();
 		}
-				if(msdown)
-				{
+		if (msdown) {
 			glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
-					if(psdown) glColor4f(FgR, FgG, FgB, 0.9f);
+			if (psdown) glColor4f(FgR, FgG, FgB, 0.9f);
 			glBegin(GL_QUADS);
 			glVertex2i(xmin, ymax - 20);
 			glVertex2i(xmin, ymax);
@@ -739,7 +622,7 @@ namespace InfinideaStudio
 		}
 
 		glColor4f(FgR*0.9f, FgG*0.9f, FgB*0.9f, linealpha);
-				if(!enabled)  glColor4f(0.5f, 0.5f, 0.5f, linealpha);
+		if (!enabled)  glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 		glBegin(GL_LINE_LOOP);
 		glVertex2i(xmin, ymin);
 		glVertex2i(xmin, ymax);
@@ -749,25 +632,25 @@ namespace InfinideaStudio
 
 		glBegin(GL_LINE_LOOP);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 		glVertex2i(xmin + 1, ymin + 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 		glVertex2i(xmin + 1, ymax - 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 		glVertex2i(xmax - 1, ymax - 1);
 
-				if(focused)
+		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
@@ -778,13 +661,13 @@ namespace InfinideaStudio
 		glLineWidth(3.0);
 		glBegin(GL_LINES);
 		glColor4f(FgR, FgG, FgB, 1.0);
-				if(psup) glColor4f(1.0f - FgR, 1.0f - FgG, 1.0f - FgB, 1.0f);
+		if (psup) glColor4f(1.0f - FgR, 1.0f - FgG, 1.0f - FgB, 1.0f);
 		glVertex2i((xmin + xmax) / 2, ymin + 8);
 		glVertex2i((xmin + xmax) / 2 - 4, ymin + 12);
 		glVertex2i((xmin + xmax) / 2, ymin + 8);
 		glVertex2i((xmin + xmax) / 2 + 4, ymin + 12);
 		glColor4f(FgR, FgG, FgB, 1.0);
-				if(psdown) glColor4f(1.0f - FgR, 1.0f - FgG, 1.0f - FgB, 1.0f);
+		if (psdown) glColor4f(1.0f - FgR, 1.0f - FgG, 1.0f - FgB, 1.0f);
 		glVertex2i((xmin + xmax) / 2, ymax - 8);
 		glVertex2i((xmin + xmax) / 2 - 4, ymax - 12);
 		glVertex2i((xmin + xmax) / 2, ymax - 8);
@@ -792,13 +675,11 @@ namespace InfinideaStudio
 		glEnd();
 	}
 
-			void imagebox::Update()
-			{
+	void imagebox::update() {
 
 	}
 
-			void imagebox::render()
-			{
+	void imagebox::render() {
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, imageid);
 		glBegin(GL_QUADS);
@@ -809,22 +690,20 @@ namespace InfinideaStudio
 		glEnd();
 	}
 
-			void Form::Init()
-			{
+	void Form::Init() {
 		maxid = 0;
 		currentid = 0;
 		focusid = -1;
 		childrenCount = 0;
 		//Transition forward
-				if(transitionList != 0) glDeleteLists(transitionList, 1);
+		if (transitionList != 0) glDeleteLists(transitionList, 1);
 		transitionList = lastdisplaylist;
 		transitionForward = true;
 		transitionTimer = timer();
 	}
 
-			void Form::registerControl(Control* c)
-			{
-				c->Id = currentid;
+	void Form::registerControl(controls* c) {
+		c->id = currentid;
 		c->parent = this;
 		children.push_back(c);
 		currentid++;
@@ -832,104 +711,90 @@ namespace InfinideaStudio
 		childrenCount++;
 	}
 
-			void Form::registerControls(int count, Control* c, ...)
-			{
+	void Form::registerControls(int count, controls* c, ...) {
 		va_list arg_ptr;
-				Control* cur = c;
+		controls* cur = c;
 		va_start(arg_ptr, c);
-				for(int i = 0; i < count; i++)
-				{
+		for (int i = 0; i < count; i++) {
 			registerControl(cur);
-					cur = va_arg(arg_ptr, Control*);
+			cur = va_arg(arg_ptr, controls*);
 		}
 		va_end(arg_ptr);
 	}
 
-			void Form::Update()
-			{
+	void Form::update() {
 
 		int i;
 		updated = false;
 		bool lMouseOnTextbox = MouseOnTextbox;
 		MouseOnTextbox = false;
 
-				if(glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS)
-				{                             //TABÈîÆÂàáÊç¢ÁÑ¶ÁÇπ
-					if(glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)
-					{   //Shift+Tab
+		if (glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS) {                             //TABº¸«–ªªΩπµ„
+			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {   //Shift+Tab
 				updated = true;
-						if(!tabp) focusid--;
-						if(focusid == -2) focusid = maxid - 1;                                //Âà∞‰∫ÜÊúÄÂâç‰∏Ä‰∏™ID
+				if (!tabp) focusid--;
+				if (focusid == -2) focusid = maxid - 1;                                //µΩ¡À◊Ó«∞“ª∏ˆID
 			}
-					else
-					{
+			else {
 				updated = true;
-						if(!tabp) focusid++;
-						if(focusid == maxid + 1) focusid = -1;                              //Âà∞‰∫ÜÊúÄÂêé‰∏Ä‰∏™ID
+				if (!tabp) focusid++;
+				if (focusid == maxid + 1) focusid = -1;                              //µΩ¡À◊Ó∫Û“ª∏ˆID
 			}
 			tabp = true;
 		}
-				if(glfwGetKey(MainWindow, GLFW_KEY_TAB) != GLFW_PRESS) tabp = false;
-				if(!(glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)) shiftp = false;
+		if (glfwGetKey(MainWindow, GLFW_KEY_TAB) != GLFW_PRESS) tabp = false;
+		if (!(glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)) shiftp = false;
 
 		enterpl = enterp;
-				if(glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS)
-				{
+		if (glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
 			updated = true;
 			enterp = true;
 		}
-				if(!(glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS)) enterp = false;
+		if (!(glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS)) enterp = false;
 
-		upkpl = upkp;                                                              //ÊñπÂêëÈîÆ‰∏ä
-				if(glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS)
-				{
+		upkpl = upkp;                                                              //∑ΩœÚº¸…œ
+		if (glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS) {
 			updated = true;
 			upkp = true;
 		}
-				if(!(glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS)) upkp = false;
+		if (!(glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS)) upkp = false;
 
-		downkpl = downkp;                                                          //ÊñπÂêëÈîÆ‰∏ã
-				if(glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS)
-				{
+		downkpl = downkp;                                                          //∑ΩœÚº¸œ¬
+		if (glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS) {
 			downkp = true;
 		}
-				if(!(glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS)) downkp = false;
+		if (!(glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS)) downkp = false;
 
-		leftkpl = leftkp;                                                          //ÊñπÂêëÈîÆÂ∑¶
-				if(glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS)
-				{
+		leftkpl = leftkp;                                                          //∑ΩœÚº¸◊Û
+		if (glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS) {
 			leftkp = true;
 		}
-				if(!(glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS)) leftkp = false;
-		rightkpl = rightkp;                                                        //ÊñπÂêëÈîÆÂè≥
-				if(glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == GLFW_PRESS)
-				{
+		if (!(glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS)) leftkp = false;
+		rightkpl = rightkp;                                                        //∑ΩœÚº¸”“
+		if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == GLFW_PRESS) {
 			rightkp = true;
 		}
-				if(glfwGetKey(MainWindow, GLFW_KEY_RIGHT) != GLFW_PRESS) rightkp = false;
+		if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) != GLFW_PRESS) rightkp = false;
 
 		backspacepl = backspacep;
-				if(glfwGetKey(MainWindow, GLFW_KEY_BACKSPACE) == GLFW_PRESS)
+		if (glfwGetKey(MainWindow, GLFW_KEY_BACKSPACE) == GLFW_PRESS)
 			backspacep = true;
 		else
 			backspacep = false;
 
-				if(mb == 1 && mbl == 0) focusid = -1;                                   //Á©∫ÁÇπÂáªÊó∂‰ΩøÁÑ¶ÁÇπÊ∏ÖÁ©∫
+		if (mb == 1 && mbl == 0) focusid = -1;                                   //ø’µ„ª˜ ± πΩπµ„«Âø’
 
-				for(i = 0; i != childrenCount; i++)
-				{
-					children [i]->updatepos();
-					children [i]->Update();                                               //Êõ¥Êñ∞Â≠êÊéß‰ª∂
+		for (i = 0; i != childrenCount; i++) {
+			children[i]->updatepos();
+			children[i]->update();                                               //∏¸–¬◊”øÿº˛
 		}
 
-				if(!lMouseOnTextbox && MouseOnTextbox)
-				{
+		if (!lMouseOnTextbox && MouseOnTextbox) {
 			glfwDestroyCursor(MouseCursor);
 			MouseCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
 			glfwSetCursor(MainWindow, MouseCursor);
 		}
-				if(lMouseOnTextbox && !MouseOnTextbox)
-				{
+		if (lMouseOnTextbox && !MouseOnTextbox) {
 			glfwDestroyCursor(MouseCursor);
 			MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 			glfwSetCursor(MainWindow, MouseCursor);
@@ -938,12 +803,11 @@ namespace InfinideaStudio
 
 	}
 
-			void Form::render()
-			{
+	void Form::render() {
 		Background();
 
 		double TimeDelta = timer() - transitionTimer;
-				float transitionAnim = (float) (1.0 - pow(0.8, TimeDelta*60.0) + pow(0.8, 0.3*60.0) / 0.3 * TimeDelta);
+		float transitionAnim = (float)(1.0 - pow(0.8, TimeDelta*60.0) + pow(0.8, 0.3*60.0) / 0.3 * TimeDelta);
 
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
@@ -951,30 +815,27 @@ namespace InfinideaStudio
 		glMatrixMode(GL_MODELVIEW);
 		glDepthFunc(GL_ALWAYS);
 		glLoadIdentity();
-				if(GUIScreenBlur) screenBlur();
+		if (GUIScreenBlur) screenBlur();
 		glDisable(GL_TEXTURE_2D);
 		glDisable(GL_LINE_SMOOTH);
 
-				if(TimeDelta <= 0.3 && transitionList != 0)
-				{
-					if(transitionForward) glTranslatef(-transitionAnim * windowwidth, 0.0f, 0.0f);
+		if (TimeDelta <= 0.3 && transitionList != 0) {
+			if (transitionForward) glTranslatef(-transitionAnim * windowwidth, 0.0f, 0.0f);
 			else glTranslatef(transitionAnim * windowwidth, 0.0f, 0.0f);
 			glCallList(transitionList);
 			glLoadIdentity();
-					if(transitionForward) glTranslatef(windowwidth - transitionAnim * windowwidth, 0.0f, 0.0f);
+			if (transitionForward) glTranslatef(windowwidth - transitionAnim * windowwidth, 0.0f, 0.0f);
 			else glTranslatef(transitionAnim * windowwidth - windowwidth, 0.0f, 0.0f);
 		}
-				else if(transitionList != 0)
-				{
+		else if (transitionList != 0) {
 			glDeleteLists(transitionList, 1);
 			transitionList = 0;
 		}
 
-				if(displaylist == 0) displaylist = glGenLists(1);
+		if (displaylist == 0) displaylist = glGenLists(1);
 		glNewList(displaylist, GL_COMPILE_AND_EXECUTE);
-				for(int i = 0; i != childrenCount; i++)
-				{
-					children [i]->render();
+		for (int i = 0; i != childrenCount; i++) {
+			children[i]->render();
 		}
 		onRender();
 		glEndList();
@@ -982,21 +843,18 @@ namespace InfinideaStudio
 
 	}
 
-			Label::Label(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-			{
-				Text = t;
+	label::label(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
+		text = t;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-			button::button(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-			{
+	button::button(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
 		text = t;
 		enabled = true;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-			trackbar::trackbar(string t, int w, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-			{
+	trackbar::trackbar(string t, int w, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
 		text = t;
 		enabled = true;
 		barwidth = w;
@@ -1004,80 +862,68 @@ namespace InfinideaStudio
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-			textbox::textbox(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-			{
+	textbox::textbox(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
 		text = t;
 		enabled = true;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-			vscroll::vscroll(int h, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-			{
+	vscroll::vscroll(int h, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
 		enabled = true;
 		barheight = h;
 		barpos = s;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-			imagebox::imagebox(float _txmin, float _txmax, float _tymin, float _tymax, TextureID iid, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-			{
+	imagebox::imagebox(float _txmin, float _txmax, float _tymin, float _tymax, TextureID iid, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
 		txmin = _txmin; txmax = _txmax;
 		tymin = _tymin; tymax = _tymax;
 		imageid = iid;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-			void Form::cleanup()
-			{
+	void Form::cleanup() {
 		//Transition backward
-				if(transitionList != 0) glDeleteLists(transitionList, 1);
+		if (transitionList != 0) glDeleteLists(transitionList, 1);
 		transitionList = displaylist;
 		transitionForward = false;
 		transitionTimer = timer();
-				for(int i = 0; i != childrenCount; i++)
-				{
-					children [i]->Dispose();
+		for (int i = 0; i != childrenCount; i++) {
+			children[i]->destroy();
 		}
 		childrenCount = 0;
 	}
 
-			Control* Form::getControlByID(int cid)
-			{
-				for(int i = 0; i != childrenCount; i++)
-				{
-					if(children [i]->Id == cid) return children [i];
+	controls* Form::getControlByID(int cid) {
+		for (int i = 0; i != childrenCount; i++) {
+			if (children[i]->id == cid) return children[i];
 		}
 		return nullptr;
 	}
 
 	Form::Form() { Init(); }
-			void Form::start()
-			{
+	void Form::start() {
 		double dmx, dmy;
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glDisable(GL_CULL_FACE);
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 		onLoad();
-				do
-				{
+		do {
 			mxl = mx; myl = my; mwl = mw; mbl = mb;
 			mb = getMouseButton();
 			mw = getMouseScroll();
 			glfwGetCursorPos(MainWindow, &dmx, &dmy);
-					mx = (int) dmx, my = (int) dmy;
-					Update();
+			mx = (int)dmx, my = (int)dmy;
+			update();
 			render();
 			glfwSwapBuffers(MainWindow);
 			glfwPollEvents();
-					if(ExitSignal) onLeaving();
-					if(glfwWindowShouldClose(MainWindow)) exit(0);
-				}
-				while(!ExitSignal);
+			if (ExitSignal) onLeaving();
+			if (glfwWindowShouldClose(MainWindow)) exit(0);
+		} while (!ExitSignal);
 		onLeave();
 	}
 	Form::~Form() { cleanup(); }
 
-}
-	}
 }

@@ -36,9 +36,6 @@
     <Filter Include="源代码\GUI\Menus">
       <UniqueIdentifier>{a3b20020-88a5-471c-8536-f09a7af5af56}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\Game">
-      <UniqueIdentifier>{ef7833db-0c84-4c19-a567-6c4833d0e663}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Object.h">
@@ -151,9 +148,6 @@
     </ClInclude>
     <ClInclude Include="source\OnlinePlayer.h">
       <Filter>源代码\Network</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Command.h">
-      <Filter>源代码\Game</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

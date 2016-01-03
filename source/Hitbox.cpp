@@ -1,137 +1,112 @@
-ï»¿#include "Hitbox.h"
+#include "Hitbox.h"
 #include "Definitions.h"
 
-namespace InfinideaStudio
-{
-	namespace NEWorld
-	{
-		namespace Hitbox
-		{
+namespace Hitbox{
 
 	bool stuck = false;
 	AABB Emptybox;
 
-			bool inXclip(const AABB& boxA, const AABB& boxB)
-			{
+	bool inXclip(const AABB& boxA, const AABB& boxB){
 		bool ret = false;
-				if(boxA.xmin > boxB.xmin && boxA.xmin<boxB.xmax || boxA.xmax>boxB.xmin && boxA.xmax < boxB.xmax) ret = true;
-				if(boxB.xmin > boxA.xmin && boxB.xmin<boxA.xmax || boxB.xmax>boxA.xmin && boxB.xmax < boxA.xmax) ret = true;
+		if (boxA.xmin > boxB.xmin && boxA.xmin<boxB.xmax || boxA.xmax>boxB.xmin && boxA.xmax<boxB.xmax) ret = true;
+		if (boxB.xmin > boxA.xmin && boxB.xmin<boxA.xmax || boxB.xmax>boxA.xmin && boxB.xmax < boxA.xmax) ret = true;
 		return ret;
 	}
 
-			bool inYclip(const AABB& boxA, const AABB& boxB)
-			{
+	bool inYclip(const AABB& boxA, const AABB& boxB){
 		bool ret = false;
-				if(boxA.ymin > boxB.ymin && boxA.ymin<boxB.ymax || boxA.ymax>boxB.ymin && boxA.ymax < boxB.ymax) ret = true;
-				if(boxB.ymin > boxA.ymin && boxB.ymin<boxA.ymax || boxB.ymax>boxA.ymin && boxB.ymax < boxA.ymax) ret = true;
+		if (boxA.ymin>boxB.ymin && boxA.ymin<boxB.ymax || boxA.ymax>boxB.ymin && boxA.ymax<boxB.ymax) ret = true;
+		if (boxB.ymin>boxA.ymin && boxB.ymin<boxA.ymax || boxB.ymax>boxA.ymin && boxB.ymax < boxA.ymax) ret = true;
 		return ret;
 	}
 
-			bool inZclip(const AABB& boxA, const AABB& boxB)
-			{
+	bool inZclip(const AABB& boxA, const AABB& boxB){
 		bool ret = false;
-				if(boxA.zmin > boxB.zmin && boxA.zmin<boxB.zmax || boxA.zmax>boxB.zmin && boxA.zmax < boxB.zmax) ret = true;
-				if(boxB.zmin > boxA.zmin && boxB.zmin<boxA.zmax || boxB.zmax>boxA.zmin && boxB.zmax < boxA.zmax) ret = true;
+		if (boxA.zmin>boxB.zmin && boxA.zmin<boxB.zmax || boxA.zmax>boxB.zmin && boxA.zmax<boxB.zmax) ret = true;
+		if (boxB.zmin>boxA.zmin && boxB.zmin<boxA.zmax || boxB.zmax>boxA.zmin && boxB.zmax < boxA.zmax) ret = true;
 		return ret;
 	}
 
-			bool Hit(const AABB& boxA, const AABB& boxB)
-			{
+	bool Hit(const AABB& boxA, const AABB& boxB){
 		return inXclip(boxA, boxB) && inYclip(boxA, boxB) && inZclip(boxA, boxB);
 	}
 
-			double MaxMoveOnXclip(const AABB& boxA, const AABB& boxB, double movedist)
-			{
-		//ç”¨boxAå»æ’boxBï¼Œåˆ«æåäº†
+	double MaxMoveOnXclip(const AABB& boxA, const AABB& boxB, double movedist){
+		//ÓÃboxAÈ¥×²boxB£¬±ğ¸ã·´ÁË
 		double ret = 0.0;
-				if(!(inYclip(boxA, boxB) && inZclip(boxA, boxB)))
-				{
+		if (!(inYclip(boxA, boxB) && inZclip(boxA, boxB))){
 			ret = movedist;
 		}
-				else if(boxA.xmin >= boxB.xmax && movedist < 0.00)
-				{
+		else if (boxA.xmin >= boxB.xmax && movedist < 0.00) {
 			ret = boxB.xmax - boxA.xmin;
-					if(ret<movedist) ret = movedist;
+			if (ret<movedist) ret = movedist;
 		}
-				else if(boxA.xmax <= boxB.xmin && movedist > 0.0)
-				{
+		else if (boxA.xmax <= boxB.xmin && movedist > 0.0) {
 			ret = boxB.xmin - boxA.xmax;
-					if(ret > movedist) ret = movedist;
+			if (ret > movedist) ret = movedist;
 		}
-				else
-				{
-					if(!stuck) ret = movedist;
+		else{
+			if (!stuck) ret = movedist;
 			else ret = 0.0;
 		}
 		return ret;
 	}
 
-			double MaxMoveOnYclip(const AABB& boxA, const AABB& boxB, double movedist)
-			{
-		//ç”¨boxAå»æ’boxBï¼Œåˆ«æåäº† ï¼ˆè¿™å¥½åƒæ˜¯å¥åºŸè¯ï¼‰
+	double MaxMoveOnYclip(const AABB& boxA, const AABB& boxB, double movedist){
+		//ÓÃboxAÈ¥×²boxB£¬±ğ¸ã·´ÁË £¨ÕâºÃÏñÊÇ¾ä·Ï»°£©
 		double ret = 0.0;
-				if(!(inXclip(boxA, boxB) && inZclip(boxA, boxB)))
-				{
+		if (!(inXclip(boxA, boxB) && inZclip(boxA, boxB))){
 			ret = movedist;
 		}
-				else if(boxA.ymin >= boxB.ymax && movedist < 0.00)
-				{
+		else if (boxA.ymin >= boxB.ymax && movedist < 0.00) {
 			ret = boxB.ymax - boxA.ymin;
-					if(ret<movedist) ret = movedist;
+			if (ret<movedist) ret = movedist;
 		}
-				else if(boxA.ymax <= boxB.ymin && movedist > 0.0)
-				{
+		else if (boxA.ymax <= boxB.ymin && movedist > 0.0) {
 			ret = boxB.ymin - boxA.ymax;
-					if(ret > movedist) ret = movedist;
+			if (ret > movedist) ret = movedist;
 		}
-				else
-				{
-					if(!stuck) ret = movedist;
+		else{
+			if (!stuck) ret = movedist;
 			else ret = 0.0;
 		}
 		return ret;
 	}
 
-			double MaxMoveOnZclip(const AABB& boxA, const AABB& boxB, double movedist)
-			{
-		//ç”¨boxAå»æ’boxBï¼Œåˆ«æåäº† ï¼ˆè¿™å¥½åƒè¿˜æ˜¯å¥åºŸè¯ï¼‰
+	double MaxMoveOnZclip(const AABB& boxA, const AABB& boxB, double movedist){
+		//ÓÃboxAÈ¥×²boxB£¬±ğ¸ã·´ÁË £¨ÕâºÃÏñ»¹ÊÇ¾ä·Ï»°£©
 		double ret = 0.0;
-				if(!(inXclip(boxA, boxB) && inYclip(boxA, boxB)))
-				{
+		if (!(inXclip(boxA, boxB) && inYclip(boxA, boxB))){
 			ret = movedist;
 		}
-				else if(boxA.zmin >= boxB.zmax && movedist < 0.00)
-				{
+		else if (boxA.zmin >= boxB.zmax && movedist < 0.00) {
 			ret = boxB.zmax - boxA.zmin;
-					if(ret<movedist) ret = movedist;
+			if (ret<movedist) ret = movedist;
 		}
-				else if(boxA.zmax <= boxB.zmin && movedist > 0.0)
-				{
+		else if (boxA.zmax <= boxB.zmin && movedist > 0.0) {
 			ret = boxB.zmin - boxA.zmax;
-					if(ret > movedist) ret = movedist;
+			if (ret > movedist) ret = movedist;
 		}
-				else
-				{
-					if(!stuck) ret = movedist;
+		else{
+			if (!stuck) ret = movedist;
 			else ret = 0.0;
 		}
 		return ret;
 	}
 
-			AABB Expand(const AABB& box, double xe, double ye, double ze)
-			{
+	AABB Expand(const AABB& box, double xe, double ye, double ze){
 		AABB ret = box;
-				if(xe > 0.0)
+		if (xe > 0.0)
 			ret.xmax += xe;
 		else
 			ret.xmin += xe;
 
-				if(ye > 0.0)
+		if (ye > 0.0)
 			ret.ymax += ye;
 		else
 			ret.ymin += ye;
 
-				if(ze > 0.0)
+		if (ze > 0.0)
 			ret.zmax += ze;
 		else
 			ret.zmin += ze;
@@ -139,8 +114,7 @@ namespace InfinideaStudio
 		return ret;
 	}
 
-			void Move(AABB &box, double xa, double ya, double za)
-			{
+	void Move(AABB &box, double xa, double ya, double za){
 		box.xmin += xa;
 		box.xmax += xa;
 		box.ymin += ya;
@@ -149,10 +123,9 @@ namespace InfinideaStudio
 		box.zmax += za;
 	}
 
-			void MoveTo(AABB &box, double x, double y, double z)
-			{
+	void MoveTo(AABB &box, double x, double y, double z){
 		double l, w, h;
-		//æ³¨æ„åœ¨æ‰§è¡Œè¿™ä¸ªè¿‡ç¨‹æ—¶ï¼Œå‚æ•°ä¸­çš„xyzåæ ‡å°†æˆä¸ºç§»åŠ¨åçš„AABBçš„ä¸­å¿ƒï¼Œè€Œä¸æ˜¯åˆå§‹åŒ–AABBæ—¶çš„åŸç‚¹ï¼
+		//×¢ÒâÔÚÖ´ĞĞÕâ¸ö¹ı³ÌÊ±£¬²ÎÊıÖĞµÄxyz×ø±ê½«³ÉÎªÒÆ¶¯ºóµÄAABBµÄÖĞĞÄ£¬¶ø²»ÊÇ³õÊ¼»¯AABBÊ±µÄÔ­µã£¡
 		l = (box.xmax - box.xmin) / 2;
 		w = (box.ymax - box.ymin) / 2;
 		h = (box.zmax - box.zmin) / 2;
@@ -163,16 +136,14 @@ namespace InfinideaStudio
 		box.zmin = z - h;
 		box.zmax = z + h;
 	}
-			void renderAABB(const AABB& box, float colR, float colG, float colB, int mode)
-			{
+	void renderAABB(const AABB& box, float colR, float colG, float colB, int mode){
 		//Debug only!
-		//ç¢°æ’ç®±æ¸²æŸ“å‡ºæ¥å¾ˆçç‹—çœ¼çš„QAQè€Œä¸”åˆæ²¡ç”¨QAQ
+		//Åö×²ÏääÖÈ¾³öÀ´ºÜÏ¹¹·ÑÛµÄQAQ¶øÇÒÓÖÃ»ÓÃQAQ
 		glLineWidth(2.0);
 		glEnable(GL_LINE_SMOOTH);
 		glColor4f(colR, colG, colB, 1.0);
 
-				if(mode == 1 || mode == 3)
-				{
+		if (mode == 1 || mode == 3){
 			glBegin(GL_LINE_LOOP);
 			glVertex3d(box.xmin, box.ymin, box.zmin);
 			glVertex3d(box.xmax, box.ymin, box.zmin);
@@ -213,8 +184,7 @@ namespace InfinideaStudio
 
 		glColor4f(colR, colG, colB, 0.5);
 
-				if(mode == 2 || mode == 3)
-				{
+		if (mode == 2 || mode == 3){
 			glBegin(GL_QUADS);
 			glVertex3d(box.xmin, box.ymin, box.zmin);
 			glVertex3d(box.xmax, box.ymin, box.zmin);
@@ -244,6 +214,4 @@ namespace InfinideaStudio
 		}
 	}
 
-}
-	}
 }
