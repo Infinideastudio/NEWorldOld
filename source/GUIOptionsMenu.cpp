@@ -1,4 +1,4 @@
-#include "Menus.h"
+ï»¿#include "Menus.h"
 #include "TextRenderer.h"
 
 class GUIOptionsMenu :public gui::Form {
@@ -6,18 +6,18 @@ private:
 	gui::label title;
 	gui::button fontbtn, blurbtn, backbtn;
 	void onLoad() {
-		title = gui::label("===============< Í¼ÐÎ½çÃæÑ¡Ïî >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-		fontbtn = gui::button("È«²¿Ê¹ÓÃUnicode×ÖÌå£º", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-		blurbtn = gui::button("±³¾°Ä£ºý£º", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-		backbtn = gui::button("<< ·µ»ØÑ¡Ïî²Ëµ¥", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+		title = gui::label("===============< å›¾å½¢ç•Œé¢é€‰é¡¹ >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		fontbtn = gui::button("å…¨éƒ¨ä½¿ç”¨Unicodeå­—ä½“ï¼š", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+		blurbtn = gui::button("èƒŒæ™¯æ¨¡ç³Šï¼š", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+		backbtn = gui::button("<< è¿”å›žé€‰é¡¹èœå•", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 		registerControls(4, &title, &fontbtn, &blurbtn, &backbtn);
 	}
 	void onUpdate() {
 		if (fontbtn.clicked) TextRenderer::useUnicodeASCIIFont = !TextRenderer::useUnicodeASCIIFont;
 		if (blurbtn.clicked) GUIScreenBlur = !GUIScreenBlur;
 		if (backbtn.clicked) ExitSignal = true;
-		fontbtn.text = "È«²¿Ê¹ÓÃUnicode×ÖÌå£º" + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
-		blurbtn.text = "±³¾°Ä£ºý£º" + BoolEnabled(GUIScreenBlur);
+		fontbtn.text = "å…¨éƒ¨ä½¿ç”¨Unicodeå­—ä½“ï¼š" + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
+		blurbtn.text = "èƒŒæ™¯æ¨¡ç³Šï¼š" + BoolEnabled(GUIScreenBlur);
 	}
 };
 void GUIoptions() { GUIOptionsMenu Menu; Menu.start(); }

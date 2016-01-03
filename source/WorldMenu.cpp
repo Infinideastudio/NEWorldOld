@@ -1,4 +1,4 @@
-#include "Menus.h"
+ï»¿#include "Menus.h"
 #include "World.h"
 #include "Textures.h"
 #include "TextRenderer.h"
@@ -20,11 +20,11 @@ private:
 	gui::vscroll vscroll;
 	gui::button enterbtn, deletebtn, backbtn;
 	void onLoad() {
-		title = gui::label("==============<  Ñ¡ Ôñ ÊÀ ½ç  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		title = gui::label("==============<  é€‰ æ‹© ä¸– ç•Œ  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 		vscroll = gui::vscroll(100, 0, 275, 295, 36, -20, 0.5, 0.5, 0.0, 1.0);
-		enterbtn = gui::button("½øÈëÑ¡¶¨µÄÊÀ½ç", -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
-		deletebtn = gui::button("É¾³ýÑ¡¶¨µÄÊÀ½ç", 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
-		backbtn = gui::button("<< ·µ»ØÖ÷²Ëµ¥", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+		enterbtn = gui::button("è¿›å…¥é€‰å®šçš„ä¸–ç•Œ", -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
+		deletebtn = gui::button("åˆ é™¤é€‰å®šçš„ä¸–ç•Œ", 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
+		backbtn = gui::button("<< è¿”å›žä¸»èœå•", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 		registerControls(5, &title, &vscroll, &enterbtn, &deletebtn, &backbtn);
 		world::worldname = "";
 		enterbtn.enabled = false;
@@ -70,7 +70,7 @@ private:
 			world::worldname = chosenWorldName;
 		}
 		if (deletebtn.clicked) {
-			//É¾³ýÊÀ½çÎÄ¼þ
+			//åˆ é™¤ä¸–ç•Œæ–‡ä»¶
 			system((string("rd /s/q Worlds\\") + chosenWorldName).c_str());
 			deletebtn.clicked = false;
 			world::worldname = "";
@@ -88,7 +88,7 @@ private:
 			mouseon = -1;
 			vscroll.barpos = 0;
 			chosenWorldName = "";
-			//²éÕÒËùÓÐÊÀ½ç´æµµ
+			//æŸ¥æ‰¾æ‰€æœ‰ä¸–ç•Œå­˜æ¡£
 			Textures::TEXTURE_RGB tmb;
 			long hFile = 0;
 			_finddata_t fileinfo;
@@ -147,7 +147,7 @@ private:
 			else {
 				bool marginOnSides;
 				float w, h;
-				//¼ÆËã²ÄÖÊ×ø±ê£¬±£³Ö¸ß¿í±È£¨°´Å¥´óÐ¡Îª500x60£©£¬ÓÐÐ¡Ñ§ÊýÑ§»ù´¡µÄÈË×ÐÏ¸ÏëÒ»ÏëÓ¦¸ÃÄÜ¶®QAQ
+				//è®¡ç®—æè´¨åæ ‡ï¼Œä¿æŒé«˜å®½æ¯”ï¼ˆæŒ‰é’®å¤§å°ä¸º500x60ï¼‰ï¼Œæœ‰å°å­¦æ•°å­¦åŸºç¡€çš„äººä»”ç»†æƒ³ä¸€æƒ³åº”è¯¥èƒ½æ‡‚QAQ
 				if (texSizeX[i] * 60 / 500 < texSizeY[i]) {
 					marginOnSides = true;
 					w = 1.0f, h = texSizeX[i] * 60 / 500.0f / texSizeY[i];
@@ -207,7 +207,7 @@ private:
 		glVertex2i(midp + 250, 48 + i * 64 + 60);
 		glVertex2i(midp - 250, 48 + i * 64 + 60);
 		glEnd();
-		TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(">>´´½¨ÐÂµÄÊÀ½ç")) / 2, (140 + i * 128) / 2, ">>´´½¨ÐÂµÄÊÀ½ç");
+		TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(">>åˆ›å»ºæ–°çš„ä¸–ç•Œ")) / 2, (140 + i * 128) / 2, ">>åˆ›å»ºæ–°çš„ä¸–ç•Œ");
 		glDisable(GL_SCISSOR_TEST);
 	}
 };

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "stdinclude.h"
 
 namespace blocks{  //方块ID

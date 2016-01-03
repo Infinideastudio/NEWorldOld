@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 enum { PLAYER_PACKET_SEND, PLAYER_PACKET_REQ };
 struct PlayerPacket {
 	double x, y, z;
