@@ -1,5 +1,6 @@
-#include "Definitions.h"
-#include "Hitbox.h"
+﻿namespace Hitbox {
+	struct AABB;
+}
 
 namespace InfinideaStudio
 {

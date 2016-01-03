@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace InfinideaStudio
 {
@@ -8,13 +8,13 @@ namespace InfinideaStudio
 		namespace Effect
 		{
 
-			void readScreen(int x, int y, int w, int h, uint8_t* data);
-			void writeScreen(int x, int y, int w, int h, uint8_t* data);
+	void readScreen(int x, int y, int w, int h, uint8_t* data);
+	void writeScreen(int x, int y, int w, int h, uint8_t* data);
 
-			void gray(int w, int h, uint8_t* src, uint8_t* dst);
-			void blurGaussianX(int w, int h, uint8_t* src, uint8_t* dst, int rx);
-			void blurGaussianY(int w, int h, uint8_t* src, uint8_t* dst, int ry);
+	void gray(int w, int h, uint8_t* src, uint8_t* dst);
+	void blurGaussianX(int w, int h, uint8_t* src, uint8_t* dst, int rx);
+	void blurGaussianY(int w, int h, uint8_t* src, uint8_t* dst, int ry);
 
-		}
+}
 	}
 }

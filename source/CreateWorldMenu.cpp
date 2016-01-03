@@ -1,4 +1,4 @@
-#include "Menus.h"
+ï»¿#include "Menus.h"
 #include "World.h"
 
 namespace InfinideaStudio
@@ -7,45 +7,45 @@ namespace InfinideaStudio
 	{
 		class CreateWorldMenu:public UI::Form
 		{
-		private:
-			bool worldnametbChanged;
+private:
+	bool worldnametbChanged;
 			UI::Label title;
 			UI::textbox worldnametb;
 			UI::button okbtn, backbtn;
 			void onLoad()
 			{
-				title = UI::Label("==============<  ĞÂ ½¨ ÊÀ ½ç  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-				worldnametb = UI::textbox("ÊäÈëÊÀ½çÃû³Æ", -250, 250, 48, 72, 0.5, 0.5, 0.0, 0.0);
-				okbtn = UI::button("È·¶¨", -250, 250, 84, 120, 0.5, 0.5, 0.0, 0.0);
-				backbtn = UI::button("<< ·µ»ØÊÀ½ç²Ëµ¥", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-				registerControls(4, &title, &worldnametb, &okbtn, &backbtn);
-				inputstr = "";
-				okbtn.enabled = false;
-				worldnametbChanged = false;
-			}
+				title = UI::Label("==============<  æ–° å»º ä¸– ç•Œ  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+				worldnametb = UI::textbox("è¾“å…¥ä¸–ç•Œåç§°", -250, 250, 48, 72, 0.5, 0.5, 0.0, 0.0);
+				okbtn = UI::button("ç¡®å®š", -250, 250, 84, 120, 0.5, 0.5, 0.0, 0.0);
+				backbtn = UI::button("<< è¿”å›ä¸–ç•Œèœå•", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+		registerControls(4, &title, &worldnametb, &okbtn, &backbtn);
+		inputstr = "";
+		okbtn.enabled = false;
+		worldnametbChanged = false;
+	}
 			void onUpdate()
 			{
 				if(worldnametb.pressed && !worldnametbChanged)
 				{
-					worldnametb.text = "";
-					worldnametbChanged = true;
-				}
+			worldnametb.text = "";
+			worldnametbChanged = true;
+		}
 				if(worldnametb.text == "" || !worldnametbChanged || worldnametb.text.find(" ") != -1)
-					okbtn.enabled = false;
-				else okbtn.enabled = true;
+			okbtn.enabled = false;
+		else okbtn.enabled = true;
 				if(okbtn.clicked)
 				{
 					if(worldnametb.text != "")
 					{
-						world::worldname = worldnametb.text;
-						gamebegin = true;
-					}
-					ExitSignal = true;
-				}
-				if(backbtn.clicked) ExitSignal = true;
-				inputstr = "";
+				world::worldname = worldnametb.text;
+				gamebegin = true;
 			}
-		};
-		void createworldmenu() { CreateWorldMenu Menu; Menu.start(); }
+			ExitSignal = true;
+		}
+				if(backbtn.clicked) ExitSignal = true;
+		inputstr = "";
+	}
+};
+void createworldmenu() { CreateWorldMenu Menu; Menu.start(); }
 	}
 }

@@ -1,4 +1,4 @@
-#include "HeightMap.h"
+﻿#include "HeightMap.h"
 #include "WorldGen.h"
 
 namespace InfinideaStudio
