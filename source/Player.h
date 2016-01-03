@@ -3,56 +3,65 @@
 #include "Hitbox.h"
 #include "OnlinePlayer.h"
 
-const double g = 9.8;
-const double EDrop = 0.1;
-const double speedCast = 1 / 20.0;
+namespace InfinideaStudio
+{
+	namespace NEWorld
+	{
 
-extern bool canGliding;  //»¬Ïè
-extern bool FLY;      //·ÉÐÐ
-extern bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
 
-extern double glidingMinimumSpeed;
+		const double g = 9.8;
+		const double EDrop = 0.1;
+		const double speedCast = 1 / 20.0;
 
-class player {
-public:
-	static void init(double x, double y, double z);
+		extern bool canGliding;  //»¬Ïè
+		extern bool FLY;      //·ÉÐÐ
+		extern bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
 
-	static void updatePosition();
+		extern double glidingMinimumSpeed;
 
-	static bool save(string worldn);
-	static bool load(string worldn);
+		class player
+		{
+		public:
+			static void init(double x, double y, double z);
 
-	static void addItem(item itemname, int amount = 1);
-	static bool putBlock(int x, int y, int z, block blockname);
+			static void updatePosition();
 
-	static PlayerPacket convertToPlayerPacket();
-	static Hitbox::AABB playerbox;
-	static double xa, ya, za, xd, yd, zd;
-	static double health, healthMax, healSpeed, dropDamagePerBlock;
-	static onlineid onlineID;
-	static string name;
-	static bool OnGround;
-	static bool Running;
-	static bool NearWall;
-	static bool inWater;
-	static bool glidingNow;
+			static bool save(string worldn);
+			static bool load(string worldn);
 
-	static double speed;
-	static int AirJumps;
-	static int cxt, cyt, czt, cxtl, cytl, cztl;
-	static double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
-	static double xlookspeed, ylookspeed;
-	static int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
+			static void addItem(item itemname, int amount = 1);
+			static bool putBlock(int x, int y, int z, block blockname);
 
-	static float height;
-	static float heightExt;
+			static PlayerPacket convertToPlayerPacket();
+			static Hitbox::AABB playerbox;
+			static double xa, ya, za, xd, yd, zd;
+			static double health, healthMax, healSpeed, dropDamagePerBlock;
+			static onlineid onlineID;
+			static string name;
+			static bool OnGround;
+			static bool Running;
+			static bool NearWall;
+			static bool inWater;
+			static bool glidingNow;
 
-	static item BlockInHand;
-	static ubyte indexInHand;
-	static item inventory[4][10];
-	static item inventoryAmount[4][10];
+			static double speed;
+			static int AirJumps;
+			static int cxt, cyt, czt, cxtl, cytl, cztl;
+			static double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
+			static double xlookspeed, ylookspeed;
+			static int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
 
-	static double glidingEnergy, glidingSpeed;
-	static inline bool gliding() { return glidingNow; }
+			static float height;
+			static float heightExt;
 
-};
+			static item BlockInHand;
+			static ubyte indexInHand;
+			static item inventory [4] [10];
+			static item inventoryAmount [4] [10];
+
+			static double glidingEnergy, glidingSpeed;
+			static inline bool gliding() { return glidingNow; }
+
+		};
+	}
+}

@@ -1,12 +1,19 @@
 #pragma once
 #include "Object.h"
 
-class Mob : public Object {
-public:
+namespace InfinideaStudio
+{
+	namespace NEWorld
+	{
+		class Mob: public Object
+		{
+		public:
 
 
-protected:
-	int health;
+		protected:
+			int health;
 
 
-};
+		};
+	}
+}
