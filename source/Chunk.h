@@ -87,7 +87,7 @@ namespace world{
 		}
 		inline void setblock(int x, int y, int z, block iblock) {
 			if (iblock == blocks::TNT) {
-				world::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 5, this);
+				world::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 8, this);
 				return;
 			}
 			pblocks[(x << 8) + (y << 4) + z] = iblock;
