@@ -1,8 +1,6 @@
 #include "Particles.h"
 #include "World.h"
 #include "Textures.h"
-#include "Renderer.h"
-#include "Player.h"
 
 namespace particles{
 	vector<particle> ptcs;
@@ -67,7 +65,7 @@ namespace particles{
 	}
 
 	void render(particle &ptc){
-		//if (!Frustum::aabbInFrustum(ptc.hb)) return
+		//if (!Frustum::aabbInFrustum(ptc.hb)) return;
 		ptcsrendered++;
 		float size = (float)BLOCKTEXTURE_UNITSIZE / BLOCKTEXTURE_SIZE * ptc.psize;
 		float col = world::getbrightness(RoundInt(ptc.xpos), RoundInt(ptc.ypos), RoundInt(ptc.zpos)) / (float)world::BRIGHTNESSMAX;

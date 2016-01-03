@@ -1,6 +1,5 @@
 #pragma once
 #include "Definitions.h"
-#include "Blocks.h"
 
 extern int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, filter;
 const short BITMAP_ID = 0x4D42;
