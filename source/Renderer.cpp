@@ -1,5 +1,5 @@
-#include "Renderer.h"
-
+﻿#include "Renderer.h"
+	
 namespace InfinideaStudio
 {
 	namespace NEWorld
@@ -7,23 +7,23 @@ namespace InfinideaStudio
 		namespace renderer
 		{
 
-			int Vertexes, Texcoordc, Colorc;
-			float* VertexArray = nullptr;
+	int Vertexes, Texcoordc, Colorc;
+	float* VertexArray = nullptr;
 			float tc [3], col [4];
 			unsigned int Buffers [3];
-			bool ShaderAval, EnableShaders = false;
+	bool ShaderAval, EnableShaders = false;
 			GLhandleARB shaders [16];
 			GLhandleARB shaderPrograms [16];
-			int shadercount = 0;
-			int index = 0;
+	int shadercount = 0;
+	int index = 0;
 
 			void Init(int tcc, int cc)
 			{
-				Texcoordc = tcc; Colorc = cc;
+		Texcoordc = tcc; Colorc = cc;
 				if(VertexArray == nullptr) VertexArray = new float [ArrayUNITSIZE];
-				index = 0;
-				Vertexes = 0;
-			}
+		index = 0;
+		Vertexes = 0;
+	}
 
 			void Vertex3f(float x, float y, float z)
 			{
@@ -33,8 +33,8 @@ namespace InfinideaStudio
 				VertexArray [index++] = x;
 				VertexArray [index++] = y;
 				VertexArray [index++] = z;
-				Vertexes++;
-			}
+		Vertexes++;
+	}
 
 			void TexCoord2f(float x, float y) { tc [0] = x; tc [1] = y; }
 			void TexCoord3f(float x, float y, float z) { tc [0] = x; tc [1] = y; tc [2] = z; }
@@ -45,31 +45,31 @@ namespace InfinideaStudio
 			{
 
 
-				/*
-				if (EnableShaders) {
-					for (int i = 0; i < shadercount; i++) {
-						glUseProgramObjectARB(shaderPrograms[i]);
-					}
-				}
-				*/
+		/*
+		if (EnableShaders) {
+			for (int i = 0; i < shadercount; i++) {
+				glUseProgramObjectARB(shaderPrograms[i]);
+			}
+		}
+		*/
 
-				vtxs = Vertexes;
+		vtxs = Vertexes;
 				if(Vertexes != 0)
 				{
 					if(buffer == 0) glGenBuffersARB(1, &buffer);
-					glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
-					glBufferDataARB(GL_ARRAY_BUFFER_ARB, Vertexes * (Texcoordc + Colorc + 3) * sizeof(float), VertexArray, GL_STATIC_DRAW_ARB);
-					glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-				}
+			glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
+			glBufferDataARB(GL_ARRAY_BUFFER_ARB, Vertexes * (Texcoordc + Colorc + 3) * sizeof(float), VertexArray, GL_STATIC_DRAW_ARB);
+			glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+		}
 
-				//if (EnableShaders) glUseProgramObjectARB(0);
-			}
-
+		//if (EnableShaders) glUseProgramObjectARB(0);
+	}
+    
 			void renderbuffer(VBOID buffer, vtxCount vtxs, int ctex, int ccol)
 			{
 
-				glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
-				int cnt = ctex + ccol + 3;
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
+		int cnt = ctex + ccol + 3;
 
 				if(ctex != 0)
 				{
@@ -78,63 +78,63 @@ namespace InfinideaStudio
 						glTexCoordPointer(ctex, GL_FLOAT, cnt * sizeof(float), (float*) 0);
 						glColorPointer(ccol, GL_FLOAT, cnt * sizeof(float), (float*) (ctex * sizeof(float)));
 						glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*) ((ctex + ccol) * sizeof(float)));
-					}
+			}
 					else
 					{
 						glTexCoordPointer(ctex, GL_FLOAT, cnt * sizeof(float), (float*) 0);
 						glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*) (ctex * sizeof(float)));
-					}
-				}
+			}
+		}
 				else
 				{
 					if(ccol != 0)
 					{
 						glColorPointer(ccol, GL_FLOAT, cnt * sizeof(float), (float*) 0);
 						glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*) (ccol * sizeof(float)));
-					}
+			}
 					else
 					{
 						glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*) 0);
-					}
-				}
-
-				//================================
-				glDrawArrays(GL_QUADS, 0, vtxs);
-				//================================
-
 			}
+		}
 
-			//GLhandleARB loadShader(string filename, uint mode){
+		//================================
+		glDrawArrays(GL_QUADS, 0, vtxs);
+		//================================
 
-				//GLhandleARB shader;
-		  //      dim as zstring ptr ptr shaderSource
-		  //      dim as integer ptr shaderSourceLen
-		  //      dim as integer shaderLineNums
-		  //      dim shaderSourceCurLine as zstring ptr
-		  //      dim shaderSourceCurLineStr as string
-		  //      dim f as integer
-		  //      f=freefile
-		  //      open filename for input as #f
-		  //      do until eof(f)
-		  //          line input #f,shaderSourceCurLineStr
-		  //          print shaderSourceCurLineStr
-		  //          shaderSourceCurLine=allocate(len(shaderSourceCurLineStr)+2)
-		  //          *shaderSourceCurLine=shaderSourceCurLineStr+chr(10)
-		  //          shaderlinenums+=1
-		  //          shaderSource=reallocate(shaderSource,shaderlinenums*sizeof(zstring ptr))
-		  //          shaderSource[shaderlinenums-1]=shaderSourceCurLine
-		  //          print *shaderSource[shaderlinenums-1]
-		  //          shaderSourceLen=reallocate(shaderSourceLen,shaderlinenums*sizeof(integer))
-		  //          shaderSourceLen[shaderlinenums-1]=len(shaderSourceCurLineStr)+1
-		  //      loop
-		  //      close #f
-		  //      shader=glCreateShaderObjectARB(mode)
-		  //      glShaderSourceARB(shader,shaderLineNums,shaderSource,0)
-		  //      glCompileShaderARB(shader)
-		  //      return shader;
-
-			//}
-
+	}
+    
+	//GLhandleARB loadShader(string filename, uint mode){
+        
+		//GLhandleARB shader;
+  //      dim as zstring ptr ptr shaderSource
+  //      dim as integer ptr shaderSourceLen
+  //      dim as integer shaderLineNums
+  //      dim shaderSourceCurLine as zstring ptr
+  //      dim shaderSourceCurLineStr as string
+  //      dim f as integer
+  //      f=freefile
+  //      open filename for input as #f
+  //      do until eof(f)
+  //          line input #f,shaderSourceCurLineStr
+  //          print shaderSourceCurLineStr
+  //          shaderSourceCurLine=allocate(len(shaderSourceCurLineStr)+2)
+  //          *shaderSourceCurLine=shaderSourceCurLineStr+chr(10)
+  //          shaderlinenums+=1
+  //          shaderSource=reallocate(shaderSource,shaderlinenums*sizeof(zstring ptr))
+  //          shaderSource[shaderlinenums-1]=shaderSourceCurLine
+  //          print *shaderSource[shaderlinenums-1]
+  //          shaderSourceLen=reallocate(shaderSourceLen,shaderlinenums*sizeof(integer))
+  //          shaderSourceLen[shaderlinenums-1]=len(shaderSourceCurLineStr)+1
+  //      loop
+  //      close #f
+  //      shader=glCreateShaderObjectARB(mode)
+  //      glShaderSourceARB(shader,shaderLineNums,shaderSource,0)
+  //      glCompileShaderARB(shader)
+  //      return shader;
+        
+    //}
+    
 			void initShader()
 			{
 
@@ -144,9 +144,9 @@ namespace InfinideaStudio
 					glAttachObjectARB(shaderPrograms [i * 2], shaders [i]);
 					glAttachObjectARB(shaderPrograms [i * 2 + 1], shaders [i]);
 					glLinkProgramARB(shaderPrograms [i]);
-				}
-
-			}
 		}
+
+    }
+}
 	}
 }
