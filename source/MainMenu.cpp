@@ -1,4 +1,4 @@
-#include "Menus.h"
+ï»¿#include "Menus.h"
 #include "TextRenderer.h"
 
 class MainMenu :public gui::Form {
@@ -7,9 +7,9 @@ private:
 	gui::button startbtn, optionsbtn, quitbtn;
 	void onLoad() {
 		title = gui::imagebox(0.0f, 1.0f, 0.5f, 1.0f, tex_title, -256, 256, 20, 276, 0.5, 0.5, 0.0, 0.0);
-		startbtn = gui::button("¿ªÊ¼ÓÎÏ·", -200, 200, 280, 312, 0.5, 0.5, 0.0, 0.0);
-		optionsbtn = gui::button(">> Ñ¡Ïî...", -200, -3, 318, 352, 0.5, 0.5, 0.0, 0.0);
-		quitbtn = gui::button("ÍË³ö", 3, 200, 318, 352, 0.5, 0.5, 0.0, 0.0);
+		startbtn = gui::button("å¼€å§‹æ¸¸æˆ", -200, 200, 280, 312, 0.5, 0.5, 0.0, 0.0);
+		optionsbtn = gui::button(">> é€‰é¡¹...", -200, -3, 318, 352, 0.5, 0.5, 0.0, 0.0);
+		quitbtn = gui::button("é€€å‡º", 3, 200, 318, 352, 0.5, 0.5, 0.0, 0.0);
 		registerControls(4, &title, &startbtn, &optionsbtn, &quitbtn);
 	}
 	void onUpdate() {

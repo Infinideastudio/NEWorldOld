@@ -1,4 +1,4 @@
-#include "Network.h"
+ï»¿#include "Network.h"
 namespace Network {
 
 	Net::Socket socketClient;
@@ -55,13 +55,13 @@ namespace Network {
 				buffer.write((void*)&r._signal, sizeof(int));
 				getClientSocket().send(buffer);
 			}
-			if (r._callback) { //ÅĞ¶ÏÓĞÎŞ»Øµ÷º¯Êı
+			if (r._callback) { //åˆ¤æ–­æœ‰æ— å›è°ƒå‡½æ•°
 				auto callback = r._callback;
 				MutexUnlock(mutex);
-				int len = getClientSocket().recvInt();   //»ñµÃÊı¾İ³¤¶È
+				int len = getClientSocket().recvInt();   //è·å¾—æ•°æ®é•¿åº¦
 				Net::Buffer buffer(len);
 				getClientSocket().recv(buffer, Net::BufferConditionExactLength(len));
-				if (len > 0) callback(buffer.getData(), len); //µ÷ÓÃ»Øµ÷º¯Êı
+				if (len > 0) callback(buffer.getData(), len); //è°ƒç”¨å›è°ƒå‡½æ•°
 				MutexLock(mutex);
 			}
 			reqs.pop();
@@ -71,10 +71,10 @@ namespace Network {
 	}
 
 	void pushRequest(Request& r) {
-		if (reqs.size() + 1 > networkRequestMax) {  //³¬¹ıÇëÇó¶ÓÁĞ³¤¶È£¬ÊÔÍ¼¾«¼ò¶ÓÁĞ
+		if (reqs.size() + 1 > networkRequestMax) {  //è¶…è¿‡è¯·æ±‚é˜Ÿåˆ—é•¿åº¦ï¼Œè¯•å›¾ç²¾ç®€é˜Ÿåˆ—
 			if (!reqs.front().isImportant()) reqs.pop();
 		}
-		if (reqs.size() + 1 > networkRequestMax * 2) {  //´óÁ¿³¬¹ıÇëÇó¶ÓÁĞ³¤¶È£¬Ö»±£ÁôÖØÒªÇëÇó
+		if (reqs.size() + 1 > networkRequestMax * 2) {  //å¤§é‡è¶…è¿‡è¯·æ±‚é˜Ÿåˆ—é•¿åº¦ï¼Œåªä¿ç•™é‡è¦è¯·æ±‚
 			std::queue<Request> q;
 			while (reqs.size() != 0) {
 				if (reqs.front().isImportant()) q.push(reqs.front());

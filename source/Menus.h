@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "GUI.h"
 void mainmenu();
 void options();

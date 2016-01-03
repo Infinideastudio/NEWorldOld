@@ -1,4 +1,4 @@
-#include "TextRenderer.h"
+﻿#include "TextRenderer.h"
 #include "Textures.h"
 
 namespace TextRenderer{

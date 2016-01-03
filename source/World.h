@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "Definitions.h"
 #include "chunkPtrArray.h"
 #include "HeightMap.h"
@@ -78,7 +78,7 @@ namespace world{
 	inline void pickblock(int x, int y, int z) { setblock(x, y, z, blocks::AIR); }
 
 	inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
-		//¼ì²â¸ø³öµÄchunk×ø±êÊÇ·ñÔÚäÖÈ¾·¶Î§ÄÚ
+		//æ£€æµ‹ç»™å‡ºçš„chunkåæ ‡æ˜¯å¦åœ¨æ¸²æŸ“èŒƒå›´å†…
 		if (x<px - dist || x>px + dist - 1 || y<py - dist || y>py + dist - 1 || z<pz - dist || z>pz + dist - 1) return false;
 		return true;
 	}

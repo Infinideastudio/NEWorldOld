@@ -1,4 +1,4 @@
-#include "Menus.h"
+ï»¿#include "Menus.h"
 
 int getDotCount(string s) {
 	int ret = 0;
@@ -13,11 +13,11 @@ private:
 	gui::textbox serveriptb;
 	gui::button runbtn, okbtn, backbtn;
 	void onLoad() {
-		title = gui::label("==============<  ¶à ÈË ÓÎ Ï·  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-		serveriptb = gui::textbox("ÊäÈë·şÎñÆ÷IP", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-		runbtn = gui::button("ÔËĞĞ·şÎñÆ÷£¨¿ª·ş£©", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-		okbtn = gui::button("È·¶¨", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-		backbtn = gui::button("<< ·µ»Ø", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		title = gui::label("==============<  å¤š äºº æ¸¸ æˆ  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		serveriptb = gui::textbox("è¾“å…¥æœåŠ¡å™¨IP", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		runbtn = gui::button("è¿è¡ŒæœåŠ¡å™¨ï¼ˆå¼€æœï¼‰", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		okbtn = gui::button("ç¡®å®š", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		backbtn = gui::button("<< è¿”å›", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 		inputstr = "";
 		okbtn.enabled = false;
 		registerControls(4, &title, &serveriptb, &runbtn, &okbtn, &backbtn);

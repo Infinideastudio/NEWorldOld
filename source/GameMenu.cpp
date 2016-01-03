@@ -1,4 +1,4 @@
-#include "Menus.h"
+ï»¿#include "Menus.h"
 #include "TextRenderer.h"
 
 class GameMenu :public gui::Form {
@@ -6,9 +6,9 @@ private:
 	gui::label title;
 	gui::button resumebtn, exitbtn;
 	void onLoad() {
-		title = gui::label("==============<  ÓÎ Ï· ²Ë µ¥  >==============", -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
-		resumebtn = gui::button("¼ÌĞøÓÎÏ·", -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
-		exitbtn = gui::button("<< ·µ»ØÖ÷²Ëµ¥", -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
+		title = gui::label("==============<  æ¸¸ æˆ èœ å•  >==============", -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
+		resumebtn = gui::button("ç»§ç»­æ¸¸æˆ", -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
+		exitbtn = gui::button("<< è¿”å›ä¸»èœå•", -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
 		registerControls(3, &title, &resumebtn, &exitbtn);
 	}
 	void onUpdate() {

@@ -1,4 +1,4 @@
-#include "Menus.h"
+ï»¿#include "Menus.h"
 #include "TextRenderer.h"
 
 class RenderOptionsMenu :public gui::Form {
@@ -6,11 +6,11 @@ private:
 	gui::label title;
 	gui::button smoothlightingbtn, fancygrassbtn, mergefacebtn, backbtn;
 	void onLoad() {
-		title = gui::label("==============<  äÖ È¾ Ñ¡ Ïî  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-		smoothlightingbtn = gui::button("Æ½»¬¹âÕÕ£º", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-		fancygrassbtn = gui::button("²İ·½¿é²ÄÖÊÁ¬½Ó£º", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-		mergefacebtn = gui::button("ºÏ²¢ÃæäÖÈ¾£º", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
-		backbtn = gui::button("<< ·µ»ØÑ¡Ïî²Ëµ¥", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+		title = gui::label("==============<  æ¸² æŸ“ é€‰ é¡¹  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		smoothlightingbtn = gui::button("å¹³æ»‘å…‰ç…§ï¼š", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+		fancygrassbtn = gui::button("è‰æ–¹å—æè´¨è¿æ¥ï¼š", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+		mergefacebtn = gui::button("åˆå¹¶é¢æ¸²æŸ“ï¼š", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
+		backbtn = gui::button("<< è¿”å›é€‰é¡¹èœå•", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 		registerControls(5, &title, &smoothlightingbtn, &fancygrassbtn, &mergefacebtn, &backbtn);
 		if (MergeFace) SmoothLighting = smoothlightingbtn.enabled = NiceGrass = fancygrassbtn.enabled = false;
 	}
@@ -23,9 +23,9 @@ private:
 			else SmoothLighting = smoothlightingbtn.enabled = NiceGrass = fancygrassbtn.enabled = true;
 		}
 		if (backbtn.clicked) ExitSignal = true;
-		smoothlightingbtn.text = "Æ½»¬¹âÕÕ£º" + BoolEnabled(SmoothLighting);
-		fancygrassbtn.text = "²İ·½¿é²ÄÖÊÁ¬½Ó£º" + BoolEnabled(NiceGrass);
-		mergefacebtn.text = "ºÏ²¢ÃæäÖÈ¾£º" + BoolEnabled(MergeFace);
+		smoothlightingbtn.text = "å¹³æ»‘å…‰ç…§ï¼š" + BoolEnabled(SmoothLighting);
+		fancygrassbtn.text = "è‰æ–¹å—æè´¨è¿æ¥ï¼š" + BoolEnabled(NiceGrass);
+		mergefacebtn.text = "åˆå¹¶é¢æ¸²æŸ“ï¼š" + BoolEnabled(MergeFace);
 	}
 };
 void Renderoptions() { RenderOptionsMenu Menu; Menu.start(); }

@@ -1,4 +1,4 @@
-#include "Effect.h"
+﻿#include "Effect.h"
 #include "Definitions.h"
 #include <math.h>
 

@@ -1,4 +1,4 @@
-#include "Items.h"
+﻿#include "Items.h"
 #include "Textures.h"
 
 itemInfo itemsinfo[] = { STICK, APPLE };

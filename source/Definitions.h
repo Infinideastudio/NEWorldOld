@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #ifndef _DEBUG
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
@@ -50,10 +50,10 @@ const unsigned int VERSION = 37;
 const string MAJOR_VERSION = "Alpha 0.";
 const string MINOR_VERSION = "5.0";
 const string EXT_VERSION = "[Dev]";
-const int defaultwindowwidth = 852; //Ä¬ÈÏ´°¿Ú¿í¶È
-const int defaultwindowheight = 480; //Ä¬ÈÏ´°¿Ú¸ß¶È
-const int networkRequestFrequency = 3; //ÇëÇóÆµÂÊ
-const int networkRequestMax = 20; //ÀíÏë×î´óÇëÇó¶ÓÁĞ³¤¶È
+const int defaultwindowwidth = 852; //é»˜è®¤çª—å£å®½åº¦
+const int defaultwindowheight = 480; //é»˜è®¤çª—å£é«˜åº¦
+const int networkRequestFrequency = 3; //è¯·æ±‚é¢‘ç‡
+const int networkRequestMax = 20; //ç†æƒ³æœ€å¤§è¯·æ±‚é˜Ÿåˆ—é•¿åº¦
 extern float FOVyNormal;
 extern float mousemove;
 extern int viewdistance;
