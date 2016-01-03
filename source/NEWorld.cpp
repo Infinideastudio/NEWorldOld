@@ -822,6 +822,12 @@ void updategame(){
 				Player::za += -cos((Player::heading - 90)*M_PI / 180.0) * Player::speed;
 				Wprstm = 0.0;
 			}
+
+			double horizontalSpeed = sqrt(Player::xa*Player::xa + Player::za*Player::za);
+			if (horizontalSpeed > Player::speed&&!Player::gliding()) {
+				Player::xa *= Player::speed / horizontalSpeed;
+				Player::za *= Player::speed / horizontalSpeed;
+			}
  
 			if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!Player::gliding()) {
 				if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
