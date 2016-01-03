@@ -1,17 +1,9 @@
-﻿#pragma once
-
-namespace InfinideaStudio
-{
-	namespace NEWorld
-	{
+#pragma once
 enum { PLAYER_PACKET_SEND, PLAYER_PACKET_REQ };
-		struct PlayerPacket
-		{
+struct PlayerPacket {
 	double x, y, z;
 	double lookupdown, heading;
-			char name [32];
+	char name[32];
 	int onlineID;
 	int skinID;
 };
-	}
-}

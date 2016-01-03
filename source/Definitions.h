@@ -1,4 +1,4 @@
-ï»¿#pragma once
+#pragma once
 #ifndef _DEBUG
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
@@ -11,10 +11,6 @@
 #define NEWORLD_DEBUG_PERFORMANCE_REC
 #endif
 
-namespace InfinideaStudio
-{
-	namespace NEWorld
-	{
 //Types/constants define
 typedef unsigned char ubyte;
 typedef signed char int8;
@@ -54,10 +50,10 @@ const unsigned int VERSION = 37;
 const string MAJOR_VERSION = "Alpha 0.";
 const string MINOR_VERSION = "5.0";
 const string EXT_VERSION = "[Dev]";
-const int defaultwindowwidth = 852; //é»˜è®¤çª—å£å®½åº¦
-const int defaultwindowheight = 480; //é»˜è®¤çª—å£é«˜åº¦
-const int networkRequestFrequency = 3; //è¯·æ±‚é¢‘ç‡
-const int networkRequestMax = 20; //ç†æƒ³æœ€å¤§è¯·æ±‚é˜Ÿåˆ—é•¿åº¦
+const int defaultwindowwidth = 852; //Ä¬ÈÏ´°¿Ú¿í¶È
+const int defaultwindowheight = 480; //Ä¬ÈÏ´°¿Ú¸ß¶È
+const int networkRequestFrequency = 3; //ÇëÇóÆµÂÊ
+const int networkRequestMax = 20; //ÀíÏë×î´óÇëÇó¶ÓÁĞ³¤¶È
 extern float FOVyNormal;
 extern float mousemove;
 extern int viewdistance;
@@ -84,8 +80,8 @@ extern int windowheight;
 extern bool gamebegin, gameexit, bagOpened;
 
 extern TextureID BlockTextures, BlockTextures3D;
-		extern TextureID tex_select, tex_unselect, tex_title, tex_mainmenu [6];
-		extern TextureID DestroyImage [11];
+extern TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
+extern TextureID DestroyImage[11];
 extern TextureID DefaultSkin;
 
 extern bool multiplayer;
@@ -139,52 +135,49 @@ extern int c_getChunkPtrFromSearch;
 extern int c_getHeightFromHMap;
 extern int c_getHeightFromWorldGen;
 #endif
-//å¸¸ç”¨å‡½æ•°
-vector<string> split(string str, string pattern);
+
 inline string boolstr(bool b){ return b ? "True" : "False"; }
 inline double rnd() { return (double)rand() / (RAND_MAX + 1); }
 #ifdef NEWORLD_USE_WINAPI
-		inline double timer()
-		{
+inline double timer(){
 	static LARGE_INTEGER counterFreq;
-			if(counterFreq.QuadPart == 0) QueryPerformanceFrequency(&counterFreq);
+	if (counterFreq.QuadPart == 0) QueryPerformanceFrequency(&counterFreq);
 	LARGE_INTEGER now;
 	QueryPerformanceCounter(&now);
-			return (double) now.QuadPart / counterFreq.QuadPart;
+	return (double)now.QuadPart / counterFreq.QuadPart;
 }
 #else
-		inline double timer() { return (double) clock() / CLOCKS_PER_SEC; }
+inline double timer() { return (double)clock() / CLOCKS_PER_SEC; }
 #endif
 
 #ifdef NEWORLD_USE_WINAPI
-		inline Mutex_t MutexCreate() { return CreateMutex(NULL, FALSE, ""); }
-		inline void MutexDestroy(Mutex_t _hMutex) { CloseHandle(_hMutex); }
-		inline void MutexLock(Mutex_t _hMutex) { WaitForSingleObject(_hMutex, INFINITE); }
-		inline void MutexUnlock(Mutex_t _hMutex) { ReleaseMutex(_hMutex); }
-		inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return CreateThread(NULL, 0, func, param, 0, NULL); }
-		inline void ThreadWait(Thread_t _hThread) { WaitForSingleObject(_hThread, INFINITE); }
-		inline void ThreadDestroy(Thread_t _hThread) { CloseHandle(_hThread); }
+inline Mutex_t MutexCreate(){return CreateMutex(NULL, FALSE, "");}
+inline void MutexDestroy(Mutex_t _hMutex){CloseHandle(_hMutex);}
+inline void MutexLock(Mutex_t _hMutex){WaitForSingleObject(_hMutex, INFINITE);}
+inline void MutexUnlock(Mutex_t _hMutex){ReleaseMutex(_hMutex);}
+inline Thread_t ThreadCreate(ThreadFunc_t func, void* param){return CreateThread(NULL, 0, func, param, 0, NULL);}
+inline void ThreadWait(Thread_t _hThread){WaitForSingleObject(_hThread, INFINITE);}
+inline void ThreadDestroy(Thread_t _hThread){CloseHandle(_hThread);}
 unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n);
 unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n);
-		inline unsigned int wstrlen(const wchar_t* wstr) { return lstrlenW(wstr); }
+inline unsigned int wstrlen(const wchar_t* wstr){ return lstrlenW(wstr); }
 #else
-		inline Mutex_t MutexCreate() { return new std::mutex; }
-		inline void MutexDestroy(Mutex_t _hMutex) { delete _hMutex; }
-		inline void MutexLock(Mutex_t _hMutex) { _hMutex->lock(); }
-		inline void MutexUnlock(Mutex_t _hMutex) { _hMutex->unlock(); }
-		inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return new std::thread(func, param); }
-		inline void ThreadWait(Thread_t _hThread) { _hThread->join(); }
-		inline void ThreadDestroy(Thread_t _hThread) { delete _hThread; }
-		inline unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n) { size_t res; mbstowcs_s(&res, dst, n, src, _TRUNCATE); return res; }
-		inline unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n) { size_t res; wcstombs_s(&res, dst, n, src, _TRUNCATE); return res; }
-		inline unsigned int wstrlen(const wchar_t* wstr) { return wcslen(wstr); }
+inline Mutex_t MutexCreate(){return new std::mutex;}
+inline void MutexDestroy(Mutex_t _hMutex){delete _hMutex;}
+inline void MutexLock(Mutex_t _hMutex){_hMutex->lock();}
+inline void MutexUnlock(Mutex_t _hMutex){_hMutex->unlock();}
+inline Thread_t ThreadCreate(ThreadFunc_t func, void* param){return new std::thread(func, param);}
+inline void ThreadWait(Thread_t _hThread){_hThread->join();}
+inline void ThreadDestroy(Thread_t _hThread){delete _hThread;}
+inline unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n){ size_t res; mbstowcs_s(&res, dst, n, src, _TRUNCATE); return res; }
+inline unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n){ size_t res; wcstombs_s(&res, dst, n, src, _TRUNCATE); return res; }
+inline unsigned int wstrlen(const wchar_t* wstr){ return wcslen(wstr); }
 void Sleep(unsigned int ms);
 #endif
 
-		inline int RoundInt(double d) { return int(floor(d + 0.5)); }
-		inline string itos(int i)
-		{
-			char a [12];
+inline int RoundInt(double d){ return int(floor(d + 0.5)); }
+inline string itos(int i){
+	char a[12];
 #ifdef NEWORLD_COMPILE_DISABLE_SECURE
 	_itoa(i, a, 10);
 #else
@@ -193,21 +186,6 @@ void Sleep(unsigned int ms);
 	return string(a);
 }
 
-inline bool beginWith(string str, string begin) {
-	if (str.size() < begin.size()) return false;
-	for (size_t i = 0; i != begin.size(); i++) {
-		if (str[i] != begin[i]) return false;
-	}
-	return true;
-}
-
-template<class T>
-inline void conv(string str, T& ret) {
-	std::stringstream s(str);
-	s >> ret;
-}
 void DebugWarning(string msg);
 void DebugError(string msg);
 #endif
-	}
-}

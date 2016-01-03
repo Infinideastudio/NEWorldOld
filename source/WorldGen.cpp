@@ -1,32 +1,24 @@
-ï»¿#include "WorldGen.h"
+#include "WorldGen.h"
 #include "Definitions.h"
 
-namespace InfinideaStudio
-{
-	namespace NEWorld
-	{
 //Perlin Noise 2D
-		namespace WorldGen
-		{
+namespace WorldGen{
 
-			double	perm [256];
+	double	perm[256];
 	int		seed;
 	double	NoiseScaleX = 64;
 	double	NoiseScaleZ = 64;
 	int		WaterLevel = 30;
 
-			void perlinNoiseInit(int mapseed)
-			{
+	void perlinNoiseInit(int mapseed){
 		srand(mapseed);
-				for(int i = 0; i < 256; i++)
-				{
-					perm [i] = rnd() * 256.0;
+		for (int i = 0; i < 256; i++){
+			perm[i] = rnd() * 256.0;
 		}
 		seed = mapseed;
 	}
 
-			double SmoothedNoise(int x, int y)
-			{
+	double SmoothedNoise(int x, int y){
 		double corners, sides, center;
 		corners = (Noise(x - 1, y - 1) + Noise(x + 1, y - 1) + Noise(x - 1, y + 1) + Noise(x + 1, y + 1)) / 8.0;
 		sides = (Noise(x - 1, y) + Noise(x + 1, y) + Noise(x, y - 1) + Noise(x, y + 1)) / 4.0;
@@ -34,13 +26,12 @@ namespace InfinideaStudio
 		return corners + sides + center;
 	}
 
-			double InterpolatedNoise(double x, double y)
-			{
+	double InterpolatedNoise(double x, double y){
 		int int_X, int_Y;
 		double fractional_X, fractional_Y, v1, v2, v3, v4, i1, i2;
-				int_X = (int) floor(x); //ä¸è¦é—®æˆ‘ä¸ºæ¯›ç”¨floorï¼Œc++é»˜è®¤å±…ç„¶TMçš„æ˜¯å‘é›¶å–æ•´çš„
+		int_X = (int)floor(x); //²»ÒªÎÊÎÒÎªÃ«ÓÃfloor£¬c++Ä¬ÈÏ¾ÓÈ»TMµÄÊÇÏòÁãÈ¡ÕûµÄ
 		fractional_X = x - int_X;
-				int_Y = (int) floor(y);
+		int_Y = (int)floor(y);
 		fractional_Y = y - int_Y;
 		v1 = Noise(int_X, int_Y);
 		v2 = Noise(int_X + 1, int_Y);
@@ -51,17 +42,13 @@ namespace InfinideaStudio
 		return Interpolate(i1, i2, fractional_Y);
 	}
 
-			double PerlinNoise2D(double x, double y)
-			{
+	double PerlinNoise2D(double x, double y){
 		double total = 0, frequency = 1, amplitude = 1;
-				for(int i = 0; i <= 4; i++)
-				{
+		for (int i = 0; i <= 4; i++){
 			total += InterpolatedNoise(x*frequency, y*frequency)*amplitude;
 			frequency *= 2; amplitude /= 2.0;
 		}
 		return total;
 	}
 
-}
-	}
 }

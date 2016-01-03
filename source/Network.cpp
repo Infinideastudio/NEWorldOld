@@ -1,11 +1,5 @@
-Ôªø#include "Network.h"
-
-namespace InfinideaStudio
-{
-	namespace NEWorld
-	{
-		namespace Network
-		{
+#include "Network.h"
+namespace Network {
 
 	Net::Socket socketClient;
 	Thread_t t;
@@ -13,16 +7,13 @@ namespace InfinideaStudio
 	std::queue<Request> reqs;
 	bool threadRun = true;
 
-			void init(string ip, unsigned short _port)
-			{
+	void init(string ip, unsigned short _port) {
 		Net::startup();
 
-				try
-				{
+		try {
 			socketClient.connectIPv4(ip, _port);
 		}
-				catch(...)
-				{
+		catch (...) {
 			DebugError("Cannot connect to the server!");
 			return;
 		}
@@ -35,49 +26,42 @@ namespace InfinideaStudio
 	int getRequestCount() { return reqs.size(); }
 	Net::Socket& getClientSocket() { return socketClient; }
 
-			ThreadFunc networkThread(void *)
-			{
-				while(true)
-				{
+	ThreadFunc networkThread(void *) {
+		while (true) {
 			MutexLock(mutex);
-					if(!threadRun)
-					{
+			if (!threadRun) {
 				MutexUnlock(mutex);
 				break;
 			}
-					if(reqs.empty())
-					{
+			if (reqs.empty()) {
 				MutexUnlock(mutex);
 				continue;
 			}
 			Request& r = reqs.front();
 			//if (r._signal == PLAYER_PACKET_SEND && ((PlayerPacket*)r._dataSend)->onlineID != player::onlineID)
 			//	cout << "[ERROR]WTF!!!" << endl;
-					if(r._dataSend != nullptr && r._dataLen != 0)
-					{
+			if (r._dataSend != nullptr && r._dataLen != 0) {
 				Net::Buffer buffer(r._dataLen + sizeof(int) * 2);
 				int len = r._dataLen + sizeof(int);
-						buffer.write((void*) &len, sizeof(int));
-						buffer.write((void*) &r._signal, sizeof(int));
-						buffer.write((void*) r._dataSend, r._dataLen);
+				buffer.write((void*)&len, sizeof(int));
+				buffer.write((void*)&r._signal, sizeof(int));
+				buffer.write((void*)r._dataSend, r._dataLen);
 				getClientSocket().send(buffer);
 			}
-					else
-					{
+			else {
 				Net::Buffer buffer(sizeof(int) * 2);
 				int len = sizeof(int);
-						buffer.write((void*) &len, sizeof(int));
-						buffer.write((void*) &r._signal, sizeof(int));
+				buffer.write((void*)&len, sizeof(int));
+				buffer.write((void*)&r._signal, sizeof(int));
 				getClientSocket().send(buffer);
 			}
-					if(r._callback)
-					{ //Âà§Êñ≠ÊúâÊó†ÂõûË∞ÉÂáΩÊï∞
+			if (r._callback) { //≈–∂œ”–Œﬁªÿµ˜∫Ø ˝
 				auto callback = r._callback;
 				MutexUnlock(mutex);
-				int len = getClientSocket().recvInt();   //Ëé∑ÂæóÊï∞ÊçÆÈïøÂ∫¶
+				int len = getClientSocket().recvInt();   //ªÒµ√ ˝æ›≥§∂»
 				Net::Buffer buffer(len);
 				getClientSocket().recv(buffer, Net::BufferConditionExactLength(len));
-						if(len > 0) callback(buffer.getData(), len); //Ë∞ÉÁî®ÂõûË∞ÉÂáΩÊï∞
+				if (len > 0) callback(buffer.getData(), len); //µ˜”√ªÿµ˜∫Ø ˝
 				MutexLock(mutex);
 			}
 			reqs.pop();
@@ -86,18 +70,14 @@ namespace InfinideaStudio
 		return 0;
 	}
 
-			void pushRequest(Request& r)
-			{
-				if(reqs.size() + 1 > networkRequestMax)
-				{  //Ë∂ÖËøáËØ∑Ê±ÇÈòüÂàóÈïøÂ∫¶ÔºåËØïÂõæÁ≤æÁÆÄÈòüÂàó
-					if(!reqs.front().isImportant()) reqs.pop();
+	void pushRequest(Request& r) {
+		if (reqs.size() + 1 > networkRequestMax) {  //≥¨π˝«Î«Û∂”¡–≥§∂»£¨ ‘Õºæ´ºÚ∂”¡–
+			if (!reqs.front().isImportant()) reqs.pop();
 		}
-				if(reqs.size() + 1 > networkRequestMax * 2)
-				{  //Â§ßÈáèË∂ÖËøáËØ∑Ê±ÇÈòüÂàóÈïøÂ∫¶ÔºåÂè™‰øùÁïôÈáçË¶ÅËØ∑Ê±Ç
+		if (reqs.size() + 1 > networkRequestMax * 2) {  //¥Û¡ø≥¨π˝«Î«Û∂”¡–≥§∂»£¨÷ª±£¡Ù÷ÿ“™«Î«Û
 			std::queue<Request> q;
-					while(reqs.size() != 0)
-					{
-						if(reqs.front().isImportant()) q.push(reqs.front());
+			while (reqs.size() != 0) {
+				if (reqs.front().isImportant()) q.push(reqs.front());
 				reqs.pop();
 			}
 			reqs = q;
@@ -105,15 +85,12 @@ namespace InfinideaStudio
 		reqs.push(r);
 	}
 	
-			void cleanUp()
-			{
+	void cleanUp() {
 		threadRun = false;
 		ThreadWait(t);
 		ThreadDestroy(t);
 		MutexDestroy(mutex);
 		getClientSocket().close();
 		Net::cleanup();
-	}
-}
 	}
 }
