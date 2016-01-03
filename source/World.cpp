@@ -905,13 +905,14 @@ namespace world {
 
 	}
 
-	void explode(int x, int y, int z, int r, chunk* c)
-	{
+	void explode(int x, int y, int z, int r, chunk* c) {
 		double maxdistsqr = r*r;
 		for (int fx = x - r - 1; fx < x + r + 1; fx++) {
 			for (int fy = y - r - 1; fy < y + r + 1; fy++) {
 				for (int fz = z - r - 1; fz < z + r + 1; fz++) {
-					if ((fx - x)*(fx - x) + (fy - y)*(fy - y) + (fz - z)*(fz - z) <= maxdistsqr) {
+					int distsqr = (fx - x)*(fx - x) + (fy - y)*(fy - y) + (fz - z)*(fz - z);
+					if (distsqr <= maxdistsqr*0.75 ||
+						distsqr <= maxdistsqr && rnd() > (distsqr - maxdistsqr*0.6) / (maxdistsqr*0.4)) {
 						setblock(fx, fy, fz, blocks::AIR, c);
 					}
 				}
