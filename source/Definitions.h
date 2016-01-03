@@ -46,10 +46,10 @@ typedef unsigned int(*ThreadFunc_t)(void* param);
 #endif
 
 //Global Vars
-const unsigned int VERSION = 37;
+const unsigned int VERSION = 38;
 const string MAJOR_VERSION = "Alpha 0.";
-const string MINOR_VERSION = "5.0";
-const string EXT_VERSION = "[Dev]";
+const string MINOR_VERSION = "5";
+const string EXT_VERSION = " [In Development]";
 const int defaultwindowwidth = 852; //默认窗口宽度
 const int defaultwindowheight = 480; //默认窗口高度
 const int networkRequestFrequency = 3; //请求频率

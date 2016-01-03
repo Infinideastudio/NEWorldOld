@@ -1,11 +1,11 @@
-#pragma once
+﻿#pragma once
 #include "stdinclude.h"
 
 namespace blocks{  //方块ID
 	enum{
 		AIR, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
-		TNT,BLOCK_DEF_END
+		TNT, BLOCK_DEF_END
 	};
 	const block NONEMPTY = 1;
 
@@ -35,7 +35,7 @@ namespace blocks{  //方块ID
 	};
 
 	const SingleBlock blockData[BLOCK_DEF_END + 1] = {
-		//		    方块名称		  固体	 不透明	  半透明  可以爆炸
+		//			方块名称		  固体	 不透明	  半透明  可以爆炸
 		SingleBlock("Air"		, false	, false	, false , false),
 		SingleBlock("Rock"		, true	, true	, false , false),
 		SingleBlock("Grass"		, true	, true	, false , false),
@@ -58,4 +58,6 @@ namespace blocks{  //方块ID
 		SingleBlock("Null Block", true  , true  , false , false)
 	};
 }
-#define BlockInfo(blockID) blocks::blockData[blockID>=blocks::BLOCK_DEF_END?blocks::BLOCK_DEF_END:blockID]
+inline blocks::SingleBlock BlockInfo(int blockID) {
+	return blocks::blockData[blockID >= blocks::BLOCK_DEF_END || blockID < 0 ? blocks::BLOCK_DEF_END : blockID];
+}

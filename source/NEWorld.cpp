@@ -158,11 +158,7 @@ main_menu:
 	printf("[Console][Game]");
 	printf("Init player...\n");
 	if (loadGame()) player::init(player::xpos, player::ypos, player::zpos);
-	else player::init(0, 60.0, 0);
-	player::inventory[0][0] = 1; player::inventoryAmount[0][0] = 255;
-	player::addItem(builtInItems::APPLE);
-	player::addItem(builtInItems::STICK);
-	player::addItem(blocks::TNT, 1024);
+	else player::spawn();
 	printf("[Console][Game]");
 	printf("Init world...\n");
 	world::Init();
@@ -631,7 +627,7 @@ void updategame(){
 	
 	sel = false;
 	selx = sely = selz = selbx = selby = selbz = selcx = selcy = selcz = selb = selbr = 0;
-	bool put = false;     //(puted)标准的chinglish吧。。。主要是put已经被FB作为关键字了。。   --等等不对啊！这已经是c++了！！！   --所以我就改回来了
+	bool put = false;
 	
 	if (!bagOpened) {
 
@@ -1142,8 +1138,6 @@ void Render() {
 	player::cyt = getchunkpos((int)player::ypos);
 	player::czt = getchunkpos((int)player::zpos);
 
-	world::calcVisible(xpos, ypos, zpos);
-
 	//更新区块显示列表
 	world::sortChunkBuildRenderList(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos));
 	int brl = world::chunkBuildRenders > world::MaxChunkRenders ? world::MaxChunkRenders : world::chunkBuildRenders;
@@ -1169,6 +1163,7 @@ void Render() {
 	Frustum::multRotate((float)plookupdown, 1, 0, 0);
 	Frustum::multRotate(360.0f - (float)pheading, 0, 1, 0);
 	Frustum::calc();
+	world::calcVisible(xpos, ypos, zpos);
 
 	displayChunks.clear();
 	for (int i = 0; i < world::loadedChunks; i++) {

@@ -1,4 +1,4 @@
-
+﻿
 #include "World.h"
 #include "Textures.h"
 #include "Renderer.h"
@@ -704,27 +704,23 @@ namespace world {
 	}
 
 	void sortChunkBuildRenderList(int xpos, int ypos, int zpos) {
+		int cxp, cyp, czp, cx, cy, cz, p = 0;
+		int xd, yd, zd, distsqr;
 
-		int  p = 0;
-		int cxp = getchunkpos(xpos);
-		int cyp = getchunkpos(ypos);
-		int czp = getchunkpos(zpos);
+		cxp = getchunkpos(xpos);
+		cyp = getchunkpos(ypos);
+		czp = getchunkpos(zpos);
 
 		for (int ci = 0; ci < loadedChunks; ci++) {
 			if (chunks[ci]->updated) {
-				int cx = chunks[ci]->cx;
-				int cy = chunks[ci]->cy;
-				int cz = chunks[ci]->cz;
+				cx = chunks[ci]->cx;
+				cy = chunks[ci]->cy;
+				cz = chunks[ci]->cz;
 				if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance)) continue;
-				int xd = cx - cxp;
-				int yd = cy - cyp;
-				int zd = cz - czp;
-				int distsqr = labs(xd) + labs(yd) + labs(zd);
-				if (distsqr > viewdistance) {
-
-					continue;
-
-				}
+				xd = cx * 16 + 7 - xpos;
+				yd = cy * 16 + 7 - ypos;
+				zd = cz * 16 + 7 - zpos;
+				distsqr = xd*xd + yd*yd + zd*zd;
 				for (int i = 0; i < MaxChunkRenders; i++) {
 					if (distsqr < chunkBuildRenderList[i][0] || p <= i) {
 						for (int j = MaxChunkRenders - 1; j >= i + 1; j--) {
@@ -746,7 +742,6 @@ namespace world {
 
 		int cxp, cyp, czp, cx, cy, cz, pl = 0, pu = 0, i;
 		int xd, yd, zd, distsqr, first, middle, last;
-		//memset(loadedChunkArray, false, lcasize*lcasize*lcasize*sizeof(bool));
 
 		cxp = getchunkpos(xpos);
 		cyp = getchunkpos(ypos);
@@ -821,13 +816,9 @@ namespace world {
 	}
 
 	void calcVisible(const double& xpos, const double& ypos, const double& zpos) {
-
 		for (int ci = 0; ci < loadedChunks; ci++) {
-
 			chunks[ci]->calcVisible(xpos, ypos, zpos);
-
 		}
-
 	}
 
 	void saveAllChunks() {

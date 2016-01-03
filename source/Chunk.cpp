@@ -217,9 +217,7 @@ namespace world{
 	}
 
 	void chunk::calcVisible(const double& xpos, const double& ypos, const double& zpos) {
-
 		visible = Frustum::AABBInFrustum(getRelativeAABB(xpos, ypos, zpos));
-
 	}
 	
 }
