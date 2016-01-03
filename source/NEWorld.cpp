@@ -885,10 +885,7 @@ void updategame(){
 			if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
 			if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
 			if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) player::xpos = 2147483600;
-			if (isPressed(GLFW_KEY_F7) == GLFW_PRESS) {
-				player::init(0, 60.0, 0);
-				player::jump = 0;
-			}
+			if (isPressed(GLFW_KEY_F7) == GLFW_PRESS) player::spawn();
 			if (isPressed(GLFW_KEY_SLASH) == GLFW_PRESS) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
 		}
 		
@@ -1753,7 +1750,7 @@ void drawBag() {
 	int upp = windowheight - 152 - 16;
 	static int mousew, mouseb, mousebl;
 	static block indexselected = blocks::AIR;
-	static block Amountselected = 0;
+	static short Amountselected = 0;
 	double curtime = timer();
 	double TimeDelta = curtime - bagAnimTimer;
 	float bagAnim = (float)(1.0 - pow(0.9, TimeDelta*60.0) + pow(0.9, bagAnimDuration*60.0) / bagAnimDuration * TimeDelta);

@@ -1,5 +1,6 @@
 #include "Player.h"
 #include "World.h"
+#include "OnlinePlayer.h"
 
 bool canGliding = false; //滑翔
 bool FLY;      //飞行
@@ -33,7 +34,7 @@ int player::intxpos, player::intypos, player::intzpos;
 int player::intxposold, player::intyposold, player::intzposold;
 
 item player::inventory[4][10];
-item player::inventoryAmount[4][10];
+short player::inventoryAmount[4][10];
 
 double player::glidingEnergy, player::glidingSpeed;
 
@@ -69,6 +70,16 @@ void player::init(double x, double y, double z)
 	ypos = y;
 	zpos = z;
 	InitHitbox(player::playerbox);
+	InitPosition();
+	updateHitbox();
+}
+
+void player::spawn()
+{
+	xpos = 0;
+	ypos = 60;
+	zpos = 0;
+	jump = 0;
 	InitPosition();
 	updateHitbox();
 }
@@ -169,20 +180,20 @@ bool player::save(string worldn) {
 	ss << "Worlds\\" << worldn << "\\player.NEWorldPlayer";
 	std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
 	if (!isave.is_open()) return false;
-	isave << curversion << '\n';
-	isave << OnGround << '\n';
-	isave << Running << '\n';
-	isave << AirJumps << '\n';
-	isave << lookupdown << '\n';
-	isave << heading << '\n';
-	isave << xpos << '\n';
-	isave << ypos << '\n';
-	isave << zpos << '\n';
-	isave << jump << '\n';
-	isave << xlookspeed << '\n';
-	isave << ylookspeed << '\n';
-	isave << FLY << '\n';
-	isave << CROSS << '\n';
+	isave << curversion << endl;
+	isave << OnGround << endl;
+	isave << Running << endl;
+	isave << AirJumps << endl;
+	isave << lookupdown << endl;
+	isave << heading << endl;
+	isave << xpos << endl;
+	isave << ypos << endl;
+	isave << zpos << endl;
+	isave << jump << endl;
+	isave << xlookspeed << endl;
+	isave << ylookspeed << endl;
+	isave << FLY << endl;
+	isave << CROSS << endl;
 	isave << canGliding;
 	isave.write((char*)inventory, sizeof(inventory));
 	isave.write((char*)inventoryAmount, sizeof(inventoryAmount));
@@ -208,7 +219,7 @@ bool player::load(string worldn) {
 	return true;
 }
 
-void player::addItem(item itemname, int amount) {
+void player::addItem(item itemname, short amount) {
 	//向背包里加入物品
 	const int InvMaxStack = 255;
 	for (int i = 3; i >= 0; i--) {
