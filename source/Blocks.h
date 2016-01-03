@@ -1,5 +1,5 @@
-#pragma once
-#include "Definitions.h"
+﻿#pragma once
+#include "stdinclude.h"
 
 namespace InfinideaStudio
 {

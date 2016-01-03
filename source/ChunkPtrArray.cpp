@@ -1,4 +1,4 @@
-#include "chunkPtrArray.h"
+﻿#include "chunkPtrArray.h"
 
 namespace InfinideaStudio
 {

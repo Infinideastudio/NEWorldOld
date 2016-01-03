@@ -132,6 +132,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glfw3dll.lib;ws2_32.lib</AdditionalDependencies>
       <Profile>true</Profile>
+      <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -266,6 +267,7 @@
     <ClInclude Include="source\Chunk.h" />
     <ClInclude Include="source\ChunkPacket.h" />
     <ClInclude Include="source\ChunkPtrArray.h" />
+    <ClInclude Include="source\Command.h" />
     <ClInclude Include="source\Effect.h" />
     <ClInclude Include="source\ChunkRenderer.h" />
     <ClInclude Include="source\HeightMap.h" />

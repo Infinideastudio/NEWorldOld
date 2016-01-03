@@ -1,8 +1,8 @@
 ﻿#pragma once
 #include "Definitions.h"
-#include "Blocks.h"
 #include "Hitbox.h"
-#include "Object.h"
+#include "Blocks.h"
+class Object;
 
 namespace InfinideaStudio
 {

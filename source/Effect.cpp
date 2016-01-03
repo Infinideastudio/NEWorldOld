@@ -1,7 +1,6 @@
-#include <math.h>
-
+﻿#include "Effect.h"
 #include "Definitions.h"
-#include "Effect.h"
+#include <math.h>
 
 namespace InfinideaStudio
 {

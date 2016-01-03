@@ -1,4 +1,4 @@
-#include "Network.h"
+ï»¿#include "Network.h"
 
 namespace InfinideaStudio
 {
@@ -7,113 +7,113 @@ namespace InfinideaStudio
 		namespace Network
 		{
 
-			Net::Socket socketClient;
-			Thread_t t;
-			Mutex_t mutex;
-			std::queue<Request> reqs;
-			bool threadRun = true;
+	Net::Socket socketClient;
+	Thread_t t;
+	Mutex_t mutex;
+	std::queue<Request> reqs;
+	bool threadRun = true;
 
 			void init(string ip, unsigned short _port)
 			{
-				Net::startup();
+		Net::startup();
 
 				try
 				{
-					socketClient.connectIPv4(ip, _port);
-				}
+			socketClient.connectIPv4(ip, _port);
+		}
 				catch(...)
 				{
-					DebugError("Cannot connect to the server!");
-					return;
-				}
+			DebugError("Cannot connect to the server!");
+			return;
+		}
 
-				threadRun = true;
-				mutex = MutexCreate();
-				t = ThreadCreate(networkThread, NULL);
-			}
+		threadRun = true;
+		mutex = MutexCreate();
+		t = ThreadCreate(networkThread, NULL);
+	}
 
-			int getRequestCount() { return reqs.size(); }
-			Net::Socket& getClientSocket() { return socketClient; }
+	int getRequestCount() { return reqs.size(); }
+	Net::Socket& getClientSocket() { return socketClient; }
 
 			ThreadFunc networkThread(void *)
 			{
 				while(true)
 				{
-					MutexLock(mutex);
+			MutexLock(mutex);
 					if(!threadRun)
 					{
-						MutexUnlock(mutex);
-						break;
-					}
+				MutexUnlock(mutex);
+				break;
+			}
 					if(reqs.empty())
 					{
-						MutexUnlock(mutex);
-						continue;
-					}
-					Request& r = reqs.front();
-					//if (r._signal == PLAYER_PACKET_SEND && ((PlayerPacket*)r._dataSend)->onlineID != player::onlineID)
-					//	cout << "[ERROR]WTF!!!" << endl;
+				MutexUnlock(mutex);
+				continue;
+			}
+			Request& r = reqs.front();
+			//if (r._signal == PLAYER_PACKET_SEND && ((PlayerPacket*)r._dataSend)->onlineID != player::onlineID)
+			//	cout << "[ERROR]WTF!!!" << endl;
 					if(r._dataSend != nullptr && r._dataLen != 0)
 					{
-						Net::Buffer buffer(r._dataLen + sizeof(int) * 2);
-						int len = r._dataLen + sizeof(int);
+				Net::Buffer buffer(r._dataLen + sizeof(int) * 2);
+				int len = r._dataLen + sizeof(int);
 						buffer.write((void*) &len, sizeof(int));
 						buffer.write((void*) &r._signal, sizeof(int));
 						buffer.write((void*) r._dataSend, r._dataLen);
-						getClientSocket().send(buffer);
-					}
+				getClientSocket().send(buffer);
+			}
 					else
 					{
-						Net::Buffer buffer(sizeof(int) * 2);
-						int len = sizeof(int);
+				Net::Buffer buffer(sizeof(int) * 2);
+				int len = sizeof(int);
 						buffer.write((void*) &len, sizeof(int));
 						buffer.write((void*) &r._signal, sizeof(int));
-						getClientSocket().send(buffer);
-					}
-					if(r._callback)
-					{ //ÅĞ¶ÏÓĞÎŞ»Øµ÷º¯Êı
-						auto callback = r._callback;
-						MutexUnlock(mutex);
-						int len = getClientSocket().recvInt();   //»ñµÃÊı¾İ³¤¶È
-						Net::Buffer buffer(len);
-						getClientSocket().recv(buffer, Net::BufferConditionExactLength(len));
-						if(len > 0) callback(buffer.getData(), len); //µ÷ÓÃ»Øµ÷º¯Êı
-						MutexLock(mutex);
-					}
-					reqs.pop();
-					MutexUnlock(mutex);
-				}
-				return 0;
+				getClientSocket().send(buffer);
 			}
+					if(r._callback)
+					{ //åˆ¤æ–­æœ‰æ— å›è°ƒå‡½æ•°
+				auto callback = r._callback;
+				MutexUnlock(mutex);
+				int len = getClientSocket().recvInt();   //è·å¾—æ•°æ®é•¿åº¦
+				Net::Buffer buffer(len);
+				getClientSocket().recv(buffer, Net::BufferConditionExactLength(len));
+						if(len > 0) callback(buffer.getData(), len); //è°ƒç”¨å›è°ƒå‡½æ•°
+				MutexLock(mutex);
+			}
+			reqs.pop();
+			MutexUnlock(mutex);
+		}
+		return 0;
+	}
 
 			void pushRequest(Request& r)
 			{
 				if(reqs.size() + 1 > networkRequestMax)
-				{  //³¬¹ıÇëÇó¶ÓÁĞ³¤¶È£¬ÊÔÍ¼¾«¼ò¶ÓÁĞ
+				{  //è¶…è¿‡è¯·æ±‚é˜Ÿåˆ—é•¿åº¦ï¼Œè¯•å›¾ç²¾ç®€é˜Ÿåˆ—
 					if(!reqs.front().isImportant()) reqs.pop();
-				}
+		}
 				if(reqs.size() + 1 > networkRequestMax * 2)
-				{  //´óÁ¿³¬¹ıÇëÇó¶ÓÁĞ³¤¶È£¬Ö»±£ÁôÖØÒªÇëÇó
-					std::queue<Request> q;
+				{  //å¤§é‡è¶…è¿‡è¯·æ±‚é˜Ÿåˆ—é•¿åº¦ï¼Œåªä¿ç•™é‡è¦è¯·æ±‚
+			std::queue<Request> q;
 					while(reqs.size() != 0)
 					{
 						if(reqs.front().isImportant()) q.push(reqs.front());
-						reqs.pop();
-					}
-					reqs = q;
-				}
-				reqs.push(r);
+				reqs.pop();
 			}
-
+			reqs = q;
+		}
+		reqs.push(r);
+	}
+	
 			void cleanUp()
 			{
-				threadRun = false;
-				ThreadWait(t);
-				ThreadDestroy(t);
-				MutexDestroy(mutex);
-				getClientSocket().close();
-				Net::cleanup();
-			}
-		}
+		threadRun = false;
+		ThreadWait(t);
+		ThreadDestroy(t);
+		MutexDestroy(mutex);
+		getClientSocket().close();
+		Net::cleanup();
+	}
+}
 	}
 }

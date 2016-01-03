@@ -1,5 +1,4 @@
-#pragma once
-#include "stdinclude.h"
+ï»¿#pragma once
 #include "Definitions.h"
 
 
@@ -7,23 +6,23 @@ namespace InfinideaStudio
 {
 	namespace NEWorld
 	{
-		//Object ËùÓĞÉúÎï¡¢¿ÉÒÆ¶¯ÎïÌå¡¢·Ç¾²Ì¬·½¿éµÄ»ùÀà
+//Object æ‰€æœ‰ç”Ÿç‰©ã€å¯ç§»åŠ¨ç‰©ä½“ã€éé™æ€æ–¹å—çš„åŸºç±»
 		class Object
 		{
-		public:
+public:
 			Object(double x, double y, double z) :_x(x), _y(y), _z(z), VBO(0), vtxs(0) { };
 			virtual ~Object() { };
-			virtual void render() const = 0;
-			const double getXPos() const { return _x; }
-			const double getYPos() const { return _y; }
-			const double getZPos() const { return _z; }
+	virtual void render() const = 0;
+	const double getXPos() const { return _x; }
+	const double getYPos() const { return _y; }
+	const double getZPos() const { return _z; }
 
-		protected:
-			int _id;
-			double _x, _y, _z;  //Î»ÖÃ
-			vtxCount vtxs;
-			VBOID VBO;
+protected:
+	int _id;
+	double _x, _y, _z;  //ä½ç½®
+	vtxCount vtxs;
+	VBOID VBO;
 
-		};
+};
 	}
 }
