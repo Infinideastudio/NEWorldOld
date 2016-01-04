@@ -788,8 +788,8 @@ void updategame(){
 				if (Wprstm != 0.0 && timer() - Wprstm > 0.5) Wprstm = 0.0;
 				WP = true;
 				if (!Player::gliding()) {
-					Player::xa = -sin(Player::heading*M_PI / 180.0) * Player::speed;
-					Player::za = -cos(Player::heading*M_PI / 180.0) * Player::speed;
+					Player::xa += -sin(Player::heading*M_PI / 180.0) * Player::speed;
+					Player::za += -cos(Player::heading*M_PI / 180.0) * Player::speed;
 				}
 				else {
 					Player::xa = sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
