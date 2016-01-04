@@ -775,7 +775,7 @@ void updategame(){
 	
 		if (!chatmode) {
 			//移动！(生命在于运动)
-			if (glfwGetKey(MainWindow, GLFW_KEY_W) || Player::gliding()) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_W) || Player::glidingNow) {
 				if (!WP) {
 					if (Wprstm == 0.0) {
 						Wprstm = timer();
@@ -787,7 +787,7 @@ void updategame(){
 				}
 				if (Wprstm != 0.0 && timer() - Wprstm > 0.5) Wprstm = 0.0;
 				WP = true;
-				if (!Player::gliding()) {
+				if (!Player::glidingNow) {
 					Player::xa += -sin(Player::heading*M_PI / 180.0) * Player::speed;
 					Player::za += -cos(Player::heading*M_PI / 180.0) * Player::speed;
 				}
@@ -805,33 +805,33 @@ void updategame(){
 			if (Player::Running)Player::speed = runspeed;
 			else Player::speed = walkspeed;
 
-			if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!Player::gliding()) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS&&!Player::glidingNow) {
 				Player::xa += sin(Player::heading*M_PI / 180.0) * Player::speed;
 				Player::za += cos(Player::heading*M_PI / 180.0) * Player::speed;
 				Wprstm = 0.0;
 			}
 
-			if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!Player::gliding()) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS&&!Player::glidingNow) {
 				Player::xa += sin((Player::heading - 90)*M_PI / 180.0) * Player::speed;
 				Player::za += cos((Player::heading - 90)*M_PI / 180.0) * Player::speed;
 				Wprstm = 0.0;
 			}
 
-			if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS&&!Player::gliding()) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS&&!Player::glidingNow) {
 				Player::xa += -sin((Player::heading - 90)*M_PI / 180.0) * Player::speed;
 				Player::za += -cos((Player::heading - 90)*M_PI / 180.0) * Player::speed;
 				Wprstm = 0.0;
 			}
 
-			if (!FLY) {
+			if (!Player::Flying) {
 				double horizontalSpeed = sqrt(Player::xa*Player::xa + Player::za*Player::za);
-				if (horizontalSpeed > Player::speed && !Player::gliding()) {
+				if (horizontalSpeed > Player::speed && !Player::glidingNow) {
 					Player::xa *= Player::speed / horizontalSpeed;
 					Player::za *= Player::speed / horizontalSpeed;
 				}
 			}
 			else {
-				if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS && !Player::gliding()) {
+				if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS && !Player::glidingNow) {
 					if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 						Player::xa = -sin(Player::heading*M_PI / 180.0) * runspeed * 10;
 						Player::za = -cos(Player::heading*M_PI / 180.0) * runspeed * 10;
@@ -843,7 +843,7 @@ void updategame(){
 					}
 				}
 
-				if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS && !Player::gliding()) {
+				if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS && !Player::glidingNow) {
 					if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
 						Player::xa = sin(Player::heading*M_PI / 180.0) * runspeed * 10;
 						Player::za = cos(Player::heading*M_PI / 180.0) * runspeed * 10;
@@ -867,7 +867,7 @@ void updategame(){
 			//起跳！
 			if (isPressed(GLFW_KEY_SPACE)) {
 				if (!Player::inWater) {
-					if ((Player::OnGround || Player::AirJumps < MaxAirJumps) && FLY == false && CROSS == false) {
+					if ((Player::OnGround || Player::AirJumps < MaxAirJumps) && Player::Flying == false && Player::CrossWall == false) {
 						if (Player::OnGround == false) {
 							Player::jump = 0.3;
 							Player::AirJumps++;
@@ -877,7 +877,7 @@ void updategame(){
 							Player::OnGround = false;
 						}
 					}
-					if (FLY || CROSS) {
+					if (Player::Flying || Player::CrossWall) {
 						Player::ya += walkspeed / 2;
 						isPressed(GLFW_KEY_SPACE, true);
 					}
@@ -889,12 +889,12 @@ void updategame(){
 				}
 			}
 
-			if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !Player::gliding()) {
-				if (CROSS || FLY) Player::ya -= walkspeed / 2;
+			if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !Player::glidingNow) {
+				if (Player::CrossWall || Player::Flying) Player::ya -= walkspeed / 2;
 				Wprstm = 0.0;
 			}
 
-			if (glfwGetKey(MainWindow, GLFW_KEY_K) && canGliding&&!Player::OnGround&&!Player::gliding()) {
+			if (glfwGetKey(MainWindow, GLFW_KEY_K) && Player::Glide && !Player::OnGround && !Player::glidingNow) {
 				double h = Player::ypos + Player::height + Player::heightExt;
 				Player::glidingEnergy = g*h;
 				Player::glidingSpeed = 0;
@@ -903,7 +903,7 @@ void updategame(){
 
 			//各种设置切换
 			if (isPressed(GLFW_KEY_F1)) {
-				FLY = !FLY;
+				Player::Flying = !Player::Flying;
 				Player::jump = 0.0;
 			}
 
@@ -913,7 +913,7 @@ void updategame(){
 				DebugHitbox = !DebugHitbox;
 				DebugMode = true;
 			}
-			if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) CROSS = !CROSS;
+			if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) Player::CrossWall = !Player::CrossWall;
 			if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
 			if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) Player::xpos = 2147483600;
 			if (isPressed(GLFW_KEY_F7) == GLFW_PRESS) Player::spawn();
@@ -979,9 +979,9 @@ void updategame(){
 	}
 
 	//跳跃
-	if (!Player::gliding()) {
+	if (!Player::glidingNow) {
 		if (!Player::inWater) {
-			if (!FLY && !CROSS && !glfwGetKey(MainWindow, GLFW_KEY_R) && !glfwGetKey(MainWindow, GLFW_KEY_F)) {
+			if (!Player::Flying && !Player::CrossWall && !glfwGetKey(MainWindow, GLFW_KEY_R) && !glfwGetKey(MainWindow, GLFW_KEY_F)) {
 				Player::ya = -0.001;
 				if (Player::OnGround) {
 					Player::jump = 0.0;
@@ -1003,7 +1003,7 @@ void updategame(){
 			Player::jump = 0.0;
 			Player::AirJumps = MaxAirJumps;
 			isPressed(GLFW_KEY_SPACE, true);
-			if (Player::ya <= 0.001 && !FLY && !CROSS) {
+			if (Player::ya <= 0.001 && !Player::Flying && !Player::CrossWall) {
 				Player::ya =- 0.001;
 				if (!Player::OnGround) Player::ya -= 0.1;
 			}
@@ -1011,17 +1011,17 @@ void updategame(){
 	}
 
 	//爬墙
-	//if (Player::NearWall && FLY == false && CROSS == false){
+	//if (Player::NearWall && Player::Flying == false && Player::CrossWall == false){
 	//	Player::ya += walkspeed
 	//	Player::jump = 0.0
 	//}
 	
-	if (Player::gliding()) {
+	if (Player::glidingNow) {
 		double& E = Player::glidingEnergy;
 		double oldh = Player::ypos + Player::height + Player::heightExt + Player::ya;
 		double h = oldh;
-		if (E - glidingMinimumSpeed < h*g) {  //小于最小速度
-			h = (E - glidingMinimumSpeed) / g;
+		if (E - Player::glidingMinimumSpeed < h*g) {  //小于最小速度
+			h = (E - Player::glidingMinimumSpeed) / g;
 		}
 		Player::glidingSpeed = sqrt(2 * (E - g*h));
 		E -= EDrop;
@@ -1553,32 +1553,34 @@ void drawGUI(){
 	glVertex2d(20, 25);
 	glEnd();
 	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
-	TextRenderer::renderString(0, windowheight - 50, chatword);
+	if (chatmode) {
+		glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
+		glDisable(GL_TEXTURE_2D);
+		glBegin(GL_QUADS);
+		glVertex2i(1, windowheight - 33);
+		glVertex2i(windowwidth - 1, windowheight - 33);
+		glVertex2i(windowwidth - 1, windowheight - 51);
+		glVertex2i(1, windowheight - 51);
+		glEnd();
+		glEnable(GL_TEXTURE_2D);
+		TextRenderer::renderString(0, windowheight - 50, chatword);
+	}
+
 	if (DebugMode) {
-		//TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 		std::stringstream ss;
 		ss << std::fixed << std::setprecision(4);
 		ss << "NEWorld v" << VERSION << " [OpenGL " << GLVersionMajor << "." << GLVersionMinor << "|" << GLVersionRev << "]";
 		debugText(ss.str()); ss.str("");
-		ss << "Flying:" << boolstr(FLY);
+		ss << "Fps:" << fps << "|" << "Ups:" << ups;
 		debugText(ss.str()); ss.str("");
-		ss << "Can Gliding:" << boolstr(canGliding);
-		debugText(ss.str()); ss.str("");
-		ss << "Gliding:" << boolstr(Player::gliding());
-		debugText(ss.str()); ss.str("");
-		ss << "Energy:" << Player::glidingEnergy;
-		debugText(ss.str()); ss.str("");
-		ss << "Speed:" << Player::glidingSpeed;
+
+		ss << "Flying:" << boolstr(Player::Flying);
 		debugText(ss.str()); ss.str("");
 		ss << "Debug Mode:" << boolstr(DebugMode);
 		debugText(ss.str()); ss.str("");
-		ss << "Crosswall:" << boolstr(CROSS);
+		ss << "Cross Wall:" << boolstr(Player::CrossWall);
 		debugText(ss.str()); ss.str("");
-		ss << "Block:" << (isBlock(Player::BlockInHand) ? BlockInfo(Player::BlockInHand).getBlockName() : "-") << " (ID" << (int)Player::BlockInHand << ")";
-		debugText(ss.str()); ss.str("");
-		ss << "Fps:" << fps;
-		debugText(ss.str()); ss.str("");
-		ss << "Ups(Tps):" << ups;
+		ss << "Gliding Enabled:" << boolstr(Player::Glide);
 		debugText(ss.str()); ss.str("");
 
 		ss << "Xpos:" << Player::xpos;
@@ -1599,7 +1601,14 @@ void drawGUI(){
 		debugText(ss.str()); ss.str("");
 		ss << "In water:" << boolstr(Player::inWater);
 		debugText(ss.str()); ss.str("");
-		
+
+		ss << "Gliding:" << boolstr(Player::glidingNow);
+		debugText(ss.str()); ss.str("");
+		ss << "Energy:" << Player::glidingEnergy;
+		debugText(ss.str()); ss.str("");
+		ss << "Speed:" << Player::glidingSpeed;
+		debugText(ss.str()); ss.str("");
+
 		ss << World::loadedChunks << " chunks loaded";
 		debugText(ss.str()); ss.str("");
 		ss << displayChunks.size() << " chunks rendered";
@@ -1608,10 +1617,14 @@ void drawGUI(){
 		debugText(ss.str()); ss.str("");
 		ss << World::updatedChunks << " chunks updated";
 		debugText(ss.str()); ss.str("");
-		MutexLock(Network::mutex);
-		ss << Network::getRequestCount() << "/" << networkRequestMax << " network request in the queue";
-		debugText(ss.str()); ss.str("");
-		MutexUnlock(Network::mutex);
+
+		if (multiplayer) {
+			MutexLock(Network::mutex);
+			ss << Network::getRequestCount() << "/" << networkRequestMax << " network requests";
+			debugText(ss.str()); ss.str("");
+			MutexUnlock(Network::mutex);
+		}
+
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		ss << c_getChunkPtrFromCPA << " CPA requests";
 		debugText(ss.str()); ss.str("");
