@@ -1,10 +1,15 @@
 #include "Textures.h"
+#include <fstream>
 
 int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, BLOCKTEXTURE_UNITS;
 
 namespace Textures {
-
+	ubyte* Fontdata;
 	void Init() {
+		Fontdata = new ubyte[1024 * 1024 * 2];
+		std::ifstream f("Textures\\Fonts\\unicode.F", std::ios::binary);
+		f.read((char*)Fontdata, 1024 * 1024 * 2);
+		f.close();
 		BLOCKTEXTURE_SIZE = 256;
 		BLOCKTEXTURE_UNITSIZE = 32;
 		BLOCKTEXTURE_UNITS = 8;
@@ -196,6 +201,38 @@ namespace Textures {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Texture.sizeX, Texture.sizeY, 0, GL_RGBA, GL_UNSIGNED_BYTE, Texture.buffer.get());
+		return ret;
+	}
+
+	TextureID LoadFontTexture(int id) {
+		ubyte *d = new ubyte[256 * 256 * 4];
+		for (int i = 0; i < 8192; ++i){
+			d[i * 32 + 30] = d[i * 32 + 29] = d[i * 32 + 28]
+				= d[i * 32 + 26] = d[i * 32 + 25] = d[i * 32 + 24]
+				= d[i * 32 + 22] = d[i * 32 + 21] = d[i * 32 + 20]
+				= d[i * 32 + 18] = d[i * 32 + 17] = d[i * 32 + 16]
+				= d[i * 32 + 14] = d[i * 32 + 13] = d[i * 32 + 12]
+				= d[i * 32 + 10] = d[i * 32 + 9] = d[i * 32 + 8]
+				= d[i * 32 + 6] = d[i * 32 + 5] = d[i * 32 + 4]
+				= d[i * 32 + 2] = d[i * 32 + 1] = d[i * 32 + 0] = 255;
+
+			ubyte t = Fontdata[id * 8192 + i];
+			d[i * 32 + 31] = (t % 2) * 255; t /= 2;
+			d[i * 32 + 27] = (t % 2) * 255; t /= 2;
+			d[i * 32 + 23] = (t % 2) * 255; t /= 2;
+			d[i * 32 + 19] = (t % 2) * 255; t /= 2;
+			d[i * 32 + 15] = (t % 2) * 255; t /= 2;
+			d[i * 32 + 11] = (t % 2) * 255; t /= 2;
+			d[i * 32 + 7] = (t % 2) * 255; t /= 2;
+			d[i * 32 + 3] = t * 255;
+		}
+		GLuint ret;
+		glGenTextures(1, &ret);
+		glBindTexture(GL_TEXTURE_2D, ret);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, d);
+		delete[]d;
 		return ret;
 	}
 

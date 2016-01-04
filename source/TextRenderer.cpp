@@ -134,9 +134,7 @@ namespace TextRenderer{
 			if (!useUnicodeASCIIFont && glstring[i] >= 0 && glstring[i] <= 127) ftex = Font;
 			else {
 				if (!unicodeTexAval[uc / 256]) {
-					std::stringstream ss;
-					ss << "Textures\\Fonts\\unicode\\unicode_glyph_" << uc / 256 << ".bmp";
-					ftex = Textures::LoadFontTexture(ss.str());
+					ftex = Textures::LoadFontTexture(uc / 256);
 					unicodeTex[uc / 256] = ftex;
 					unicodeTexAval[uc / 256] = true;
 				}
