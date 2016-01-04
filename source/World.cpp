@@ -868,7 +868,7 @@ namespace World {
 
 		block trblock = getblock(x, y, z), tublock = getblock(x, y - 1, z);
 		ubyte th = ubyte(rnd() * 3) + 4;
-		if (trblock != Blocks::AIR || tublock != Blocks::GRASS) { return; }
+		//if (trblock != Blocks::AIR || tublock != Blocks::GRASS) { return; }
 
 		for (ubyte yt = 0; yt != th; yt++) {
 			setblock(x, y + yt, z, Blocks::WOOD);
@@ -876,16 +876,16 @@ namespace World {
 
 		setblock(x, y - 1, z, Blocks::DIRT);
 
-		for (ubyte xt = 0; xt != 4; xt++) {
-			for (ubyte zt = 0; zt != 4; zt++) {
+		for (ubyte xt = 0; xt != 5; xt++) {
+			for (ubyte zt = 0; zt != 5; zt++) {
 				for (ubyte yt = 0; yt != 1; yt++) {
 					if (getblock(x + xt - 2, y + th - 2 - yt, z + zt - 2) == Blocks::AIR) setblock(x + xt - 2, y + th - 2 - yt, z + zt - 2, Blocks::LEAF);
 				}
 			}
 		}
 
-		for (ubyte xt = 0; xt != 2; xt++) {
-			for (ubyte zt = 0; zt != 2; zt++) {
+		for (ubyte xt = 0; xt != 3; xt++) {
+			for (ubyte zt = 0; zt != 3; zt++) {
 				for (ubyte yt = 0; yt != 1; yt++) {
 					if (getblock(x + xt - 1, y + th - 1 + yt, z + zt - 1) == Blocks::AIR && abs(xt - 1) != abs(zt - 1)) setblock(x + xt - 1, y + th - 1 + yt, z + zt - 1, Blocks::LEAF);
 				}
