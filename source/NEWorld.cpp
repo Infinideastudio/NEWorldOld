@@ -504,6 +504,32 @@ void registerCommands() {
 		Player::spawn();
 		return true;
 	}));
+	commands.push_back(Command("/setblock", [](const vector<string>& command) {
+		if (command.size() != 5) return false;
+		int x; conv(command[1], x);
+		int y; conv(command[2], y);
+		int z; conv(command[3], z);
+		block b; conv(command[4], b);
+		World::setblock(x, y, z, b);
+		return true;
+	}));
+	commands.push_back(Command("/tree", [](const vector<string>& command) {
+		if (command.size() != 4) return false;
+		int x; conv(command[1], x);
+		int y; conv(command[2], y);
+		int z; conv(command[3], z);
+		World::buildtree(x, y, z);
+		return true;
+	}));
+	commands.push_back(Command("/explode", [](const vector<string>& command) {
+		if (command.size() != 5) return false;
+		int x; conv(command[1], x);
+		int y; conv(command[2], y);
+		int z; conv(command[3], z);
+		int r; conv(command[4], r);
+		World::explode(x, y, z, r);
+		return true;
+	}));
 }
 
 bool doCommand(const vector<string>& command) {
@@ -936,7 +962,7 @@ void updategame(){
 			chatword = "";
 		}
 		if (chatmode) {
-			if (isPressed(GLFW_KEY_BACKSPACE)&& chatword.length()>0) {
+			if (isPressed(GLFW_KEY_BACKSPACE) && chatword.length()>0) {
 				int n = chatword[chatword.length() - 1];
 				if (n > 0 && n <= 127)
 					chatword = chatword.substr(0, chatword.length() - 1);
