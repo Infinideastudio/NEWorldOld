@@ -823,33 +823,36 @@ void updategame(){
 				Wprstm = 0.0;
 			}
 
-			double horizontalSpeed = sqrt(Player::xa*Player::xa + Player::za*Player::za);
-			if (horizontalSpeed > Player::speed&&!Player::gliding()) {
-				Player::xa *= Player::speed / horizontalSpeed;
-				Player::za *= Player::speed / horizontalSpeed;
-			}
- 
-			if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS&&!Player::gliding()) {
-				if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-					Player::xa = -sin(Player::heading*M_PI / 180.0) * runspeed * 10;
-					Player::za = -cos(Player::heading*M_PI / 180.0) * runspeed * 10;
-				}
-				else {
-					Player::xa = sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-					Player::ya = cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-					Player::za = cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+			if (!FLY) {
+				double horizontalSpeed = sqrt(Player::xa*Player::xa + Player::za*Player::za);
+				if (horizontalSpeed > Player::speed && !Player::gliding()) {
+					Player::xa *= Player::speed / horizontalSpeed;
+					Player::za *= Player::speed / horizontalSpeed;
 				}
 			}
+			else {
+				if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS && !Player::gliding()) {
+					if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+						Player::xa = -sin(Player::heading*M_PI / 180.0) * runspeed * 10;
+						Player::za = -cos(Player::heading*M_PI / 180.0) * runspeed * 10;
+					}
+					else {
+						Player::xa = sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+						Player::ya = cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+						Player::za = cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+					}
+				}
 
-			if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS&&!Player::gliding()) {
-				if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-					Player::xa = sin(Player::heading*M_PI / 180.0) * runspeed * 10;
-					Player::za = cos(Player::heading*M_PI / 180.0) * runspeed * 10;
-				}
-				else {
-					Player::xa = -sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-					Player::ya = -cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-					Player::za = -cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+				if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS && !Player::gliding()) {
+					if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+						Player::xa = sin(Player::heading*M_PI / 180.0) * runspeed * 10;
+						Player::za = cos(Player::heading*M_PI / 180.0) * runspeed * 10;
+					}
+					else {
+						Player::xa = -sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+						Player::ya = -cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+						Player::za = -cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+					}
 				}
 			}
 
