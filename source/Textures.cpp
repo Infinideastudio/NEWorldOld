@@ -4,12 +4,7 @@
 int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, BLOCKTEXTURE_UNITS;
 
 namespace Textures {
-	ubyte* Fontdata;
 	void Init() {
-		Fontdata = new ubyte[1024 * 1024 * 2];
-		std::ifstream f("Textures\\Fonts\\unicode.F", std::ios::binary);
-		f.read((char*)Fontdata, 1024 * 1024 * 2);
-		f.close();
 		BLOCKTEXTURE_SIZE = 256;
 		BLOCKTEXTURE_UNITSIZE = 32;
 		BLOCKTEXTURE_UNITS = 8;
@@ -208,23 +203,19 @@ namespace Textures {
 
 		ubyte* buff = new ubyte[256 * 256 * 3];
 		ubyte* buffer = new ubyte[256 * 256 * 4];
-		ubyte *ip, *tp;
+		ubyte *ip = buff, *tp = buffer;
 		GLuint ret;
 
-		std::ifstream bmpfile(Filename, std::ios::binary); //位图文件（二进制）
-		if (!bmpfile.is_open()) {
-			std::stringstream ss; ss << "Cannot load bitmap " << Filename;
-			DebugWarning(ss.str()); return;
-		}
-		bmpfile.read((char*)buff, sizeof(BITMAPFILEHEADER));
-		bmpfile.read((char*)buff, sizeof(BITMAPINFOHEADER));
+		std::stringstream s; 
+		s << "Textures\\Fonts\\unicode\\unicode_glyph_"<<id<<".bmp";
+
+		std::ifstream bmpfile(s.str(), std::ios::binary); //位图文件（二进制）
+		if (!bmpfile.is_open()) {DebugWarning("Cannot load bitmap " + s.str()); return 0;}
+		bmpfile.read((char*)buff, sizeof(BITMAPFILEHEADER)+sizeof(BITMAPINFOHEADER));
 		bmpfile.read((char*)buff, 256 * 256 * 3);
 		bmpfile.close();
 
-
-		ip = buff;
-		tp = buffer;
-		for (unsigned int i = 0; i != 256 * 256; i++) {
+		for (int i = 0; i != 256 * 256; i++) {
 			*tp = 255; tp++;
 			*tp = 255; tp++;
 			*tp = 255; tp++;
@@ -235,6 +226,8 @@ namespace Textures {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+		delete []buff;
+		delete []buffer;
 		return ret;
 	}
 
