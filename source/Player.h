@@ -5,11 +5,6 @@ const double g = 9.8;
 const double EDrop = 0.1;
 const double speedCast = 1 / 20.0;
 
-extern bool canGliding;  //»¬Ïè
-extern bool FLY;      //·ÉÐÐ
-extern bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
-
-extern double glidingMinimumSpeed;
 struct PlayerPacket;
 namespace Hitbox { struct AABB; }
 
@@ -32,6 +27,12 @@ public:
 	static double health, healthMax, healSpeed, dropDamagePerBlock;
 	static onlineid onlineID;
 	static string name;
+
+	static bool Glide;
+	static bool Flying;
+	static bool CrossWall;
+	static double glidingMinimumSpeed;
+
 	static bool OnGround;
 	static bool Running;
 	static bool NearWall;
@@ -54,6 +55,5 @@ public:
 	static short inventoryAmount[4][10];
 
 	static double glidingEnergy, glidingSpeed;
-	static inline bool gliding() { return glidingNow; }
 
 };
