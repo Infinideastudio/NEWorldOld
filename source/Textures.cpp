@@ -205,34 +205,36 @@ namespace Textures {
 	}
 
 	TextureID LoadFontTexture(int id) {
-		ubyte *d = new ubyte[256 * 256 * 4];
-		for (int i = 0; i < 8192; ++i){
-			d[i * 32 + 30] = d[i * 32 + 29] = d[i * 32 + 28]
-				= d[i * 32 + 26] = d[i * 32 + 25] = d[i * 32 + 24]
-				= d[i * 32 + 22] = d[i * 32 + 21] = d[i * 32 + 20]
-				= d[i * 32 + 18] = d[i * 32 + 17] = d[i * 32 + 16]
-				= d[i * 32 + 14] = d[i * 32 + 13] = d[i * 32 + 12]
-				= d[i * 32 + 10] = d[i * 32 + 9] = d[i * 32 + 8]
-				= d[i * 32 + 6] = d[i * 32 + 5] = d[i * 32 + 4]
-				= d[i * 32 + 2] = d[i * 32 + 1] = d[i * 32 + 0] = 255;
 
-			ubyte t = Fontdata[id * 8192 + i];
-			d[i * 32 + 31] = (t % 2) * 255; t /= 2;
-			d[i * 32 + 27] = (t % 2) * 255; t /= 2;
-			d[i * 32 + 23] = (t % 2) * 255; t /= 2;
-			d[i * 32 + 19] = (t % 2) * 255; t /= 2;
-			d[i * 32 + 15] = (t % 2) * 255; t /= 2;
-			d[i * 32 + 11] = (t % 2) * 255; t /= 2;
-			d[i * 32 + 7] = (t % 2) * 255; t /= 2;
-			d[i * 32 + 3] = t * 255;
-		}
+		ubyte* buff = new ubyte[256 * 256 * 3];
+		ubyte* buffer = new ubyte[256 * 256 * 4];
+		ubyte *ip, *tp;
 		GLuint ret;
+
+		std::ifstream bmpfile(Filename, std::ios::binary); //位图文件（二进制）
+		if (!bmpfile.is_open()) {
+			std::stringstream ss; ss << "Cannot load bitmap " << Filename;
+			DebugWarning(ss.str()); return;
+		}
+		bmpfile.read((char*)buff, sizeof(BITMAPFILEHEADER));
+		bmpfile.read((char*)buff, sizeof(BITMAPINFOHEADER));
+		bmpfile.read((char*)buff, 256 * 256 * 3);
+		bmpfile.close();
+
+
+		ip = buff;
+		tp = buffer;
+		for (unsigned int i = 0; i != 256 * 256; i++) {
+			*tp = 255; tp++;
+			*tp = 255; tp++;
+			*tp = 255; tp++;
+			*tp = 255 - *ip; tp++; ip += 3;
+		}
 		glGenTextures(1, &ret);
 		glBindTexture(GL_TEXTURE_2D, ret);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, d);
-		delete[]d;
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
 		return ret;
 	}
 
