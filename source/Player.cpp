@@ -2,10 +2,10 @@
 #include "World.h"
 #include "OnlinePlayer.h"
 
-bool canGliding = false; //»¬Ïè
-bool FLY;      //·ÉÐÐ
-bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
-double glidingMinimumSpeed = pow(1, 2) / 2;
+bool Player::Glide;
+bool Player::Flying;
+bool Player::CrossWall;
+double Player::glidingMinimumSpeed = pow(1, 2) / 2;
 
 float Player::height = 1.2f;
 float Player::heightExt = 0.0f;
@@ -106,7 +106,7 @@ void Player::spawn() {
 void Player::updatePosition() {
 
 	inWater = World::inWater(playerbox);
-	if (!FLY && !CROSS && inWater) {
+	if (!Flying && !CrossWall && inWater) {
 		xa *= 0.6;
 		ya *= 0.6;
 		za *= 0.6;
@@ -116,7 +116,7 @@ void Player::updatePosition() {
 	double yal = ya;
 	double zal = za;
 	static double ydam = 0;
-	if (!CROSS) {
+	if (!CrossWall) {
 		vector<Hitbox::AABB> Hitboxes = World::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
 		int num = Hitboxes.size();
 		if (num > 0) {
@@ -133,7 +133,7 @@ void Player::updatePosition() {
 			}
 			Hitbox::Move(playerbox, 0.0, 0.0, za);
 		}
-		if (!FLY) {
+		if (!Flying) {
 			if (ypos + ya > ydam) ydam = ypos + ya;
 		}
 		if (ya != yal && yal < 0.0) {
@@ -157,7 +157,7 @@ void Player::updatePosition() {
 			xa *= 0.7;
 			za *= 0.7;
 		}
-		if (FLY)ya *= 0.8;
+		if (Flying) ya *= 0.8;
 	}
 	else {
 		xpos += xa;
@@ -186,7 +186,7 @@ bool Player::putBlock(int x, int y, int z, block blockname) {
 	blockbox.ymax = y + 0.5;
 	blockbox.zmin = z - 0.5;
 	blockbox.zmax = z + 0.5;
-	if (((Hitbox::Hit(playerbox, blockbox) == false) || CROSS || BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(x, y, z)).isSolid() == false) {
+	if (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall || BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(x, y, z)).isSolid() == false) {
 		World::putblock(x, y, z, blockname);
 		success = true;
 	}
@@ -209,8 +209,8 @@ bool Player::save(string worldn) {
 	isave.write((char*)&OnGround, sizeof(OnGround));
 	isave.write((char*)&Running, sizeof(Running));
 	isave.write((char*)&AirJumps, sizeof(AirJumps));
-	isave.write((char*)&FLY, sizeof(FLY));
-	isave.write((char*)&CROSS, sizeof(CROSS));
+	isave.write((char*)&Flying, sizeof(Flying));
+	isave.write((char*)&CrossWall, sizeof(CrossWall));
 	isave.write((char*)&indexInHand, sizeof(indexInHand));
 	isave.write((char*)&health, sizeof(health));
 	isave.write((char*)inventory, sizeof(inventory));
@@ -236,8 +236,8 @@ bool Player::load(string worldn) {
 	iload.read((char*)&OnGround, sizeof(OnGround));
 	iload.read((char*)&Running, sizeof(Running));
 	iload.read((char*)&AirJumps, sizeof(AirJumps));
-	iload.read((char*)&FLY, sizeof(FLY));
-	iload.read((char*)&CROSS, sizeof(CROSS));
+	iload.read((char*)&Flying, sizeof(Flying));
+	iload.read((char*)&CrossWall, sizeof(CrossWall));
 	iload.read((char*)&indexInHand, sizeof(indexInHand));
 	iload.read((char*)&health, sizeof(health));
 	iload.read((char*)inventory, sizeof(inventory));
