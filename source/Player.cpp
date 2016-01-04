@@ -78,6 +78,7 @@ void Player::spawn() {
 	ypos = 60;
 	zpos = 0;
 	jump = 0;
+	InitHitbox(Player::playerbox);
 	InitPosition();
 	updateHitbox();
 	memset(inventory, 0, sizeof(inventory));
