@@ -1,14 +1,16 @@
 #include "Chunk.h"
 #include "WorldGen.h"
 #include "World.h"
-#include "Frustum.h"
 #include "Blocks.h"
+
 namespace ChunkRenderer {
 	void renderChunk(World::chunk* c);
 	void mergeFaceRender(World::chunk* c);
 }
 
 namespace World {
+
+	double chunk::relBaseX, chunk::relBaseY, chunk::relBaseZ;
 
 	void chunk::create(){
 		aabb = getBaseAABB();
@@ -205,19 +207,15 @@ namespace World {
 		return ret;
 	}
 
-	Hitbox::AABB chunk::getRelativeAABB(const double& x, const double& y, const double& z) {
+	Hitbox::AABB chunk::getRelativeAABB() {
 		Hitbox::AABB ret;
-		ret.xmin = aabb.xmin - x;
-		ret.xmax = aabb.xmax - x;
-		ret.ymin = aabb.ymin - loadAnim - y;
-		ret.ymax = aabb.ymax - loadAnim - y;
-		ret.zmin = aabb.zmin - z;
-		ret.zmax = aabb.zmax - z;
+		ret.xmin = aabb.xmin - relBaseX;
+		ret.xmax = aabb.xmax - relBaseX;
+		ret.ymin = aabb.ymin - loadAnim - relBaseY;
+		ret.ymax = aabb.ymax - loadAnim - relBaseY;
+		ret.zmin = aabb.zmin - relBaseZ;
+		ret.zmax = aabb.zmax - relBaseZ;
 		return ret;
-	}
-
-	void chunk::calcVisible(const double& xpos, const double& ypos, const double& zpos) {
-		visible = Frustum::AABBInFrustum(getRelativeAABB(xpos, ypos, zpos));
 	}
 	
 }

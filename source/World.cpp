@@ -814,9 +814,10 @@ namespace World {
 		chunkLoads = pu;
 	}
 
-	void calcVisible(const double& xpos, const double& ypos, const double& zpos) {
+	void calcVisible(double xpos, double ypos, double zpos) {
+		chunk::setRelativeBase(xpos, ypos, zpos);
 		for (int ci = 0; ci < loadedChunks; ci++) {
-			chunks[ci]->calcVisible(xpos, ypos, zpos);
+			chunks[ci]->calcVisible();
 		}
 	}
 

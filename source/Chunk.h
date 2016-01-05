@@ -2,6 +2,7 @@
 #include "Definitions.h"
 #include "Hitbox.h"
 #include "Blocks.h"
+#include "Frustum.h"
 class Object;
 
 namespace World {
@@ -18,6 +19,7 @@ namespace World {
 		block* pblocks;
 		brightness* pbrightness;
 		vector<Object*> objects;
+		static double relBaseX, relBaseY, relBaseZ;
 
 	public:
 		//竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻
@@ -100,9 +102,14 @@ namespace World {
 			Modified = true;
 		}
 
+		static void setRelativeBase(double x, double y, double z) {
+			relBaseX = x; relBaseY = y; relBaseZ = z;
+		}
 		Hitbox::AABB getBaseAABB();
-		Hitbox::AABB getRelativeAABB(const double& x, const double& y, const double& z);
-		void calcVisible(const double& xpos, const double& ypos, const double& zpos);
+		Hitbox::AABB getRelativeAABB();
+		inline void calcVisible() {
+			visible = Frustum::AABBInFrustum(getRelativeAABB());
+		}
 
 	};
 }
