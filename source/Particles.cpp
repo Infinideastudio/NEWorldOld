@@ -9,8 +9,6 @@ namespace Particles {
 
 	void update(Particle &ptc) {
 
-		if (ptc.lasts < 30) ptc.psize *= 0.9f;
-		
 		double dx, dy, dz;
 		float psz = ptc.psize;
 
@@ -48,6 +46,7 @@ namespace Particles {
 		ptc.zsp *= 0.6f;
 		ptc.ysp -= 0.01f;
 		ptc.lasts -= 1;
+
 	}
 
 	void updateall(){
@@ -67,7 +66,7 @@ namespace Particles {
 	void render(Particle &ptc) {
 		//if (!Frustum::aabbInFrustum(ptc.hb)) return;
 		ptcsrendered++;
-		float size = (float)BLOCKTEXTURE_UNITSIZE / BLOCKTEXTURE_SIZE * ptc.psize;
+		float size = (float)BLOCKTEXTURE_UNITSIZE / BLOCKTEXTURE_SIZE * (ptc.psize <= 1.0f ? ptc.psize : 1.0f);
 		float col = World::getbrightness(RoundInt(ptc.xpos), RoundInt(ptc.ypos), RoundInt(ptc.zpos)) / (float)World::BRIGHTNESSMAX;
 		float col1 = col * 0.5f;
 		float col2 = col * 0.7f;

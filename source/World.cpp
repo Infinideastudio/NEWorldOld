@@ -1,5 +1,4 @@
-﻿
-#include "World.h"
+﻿#include "World.h"
 #include "Textures.h"
 #include "Renderer.h"
 #include "WorldGen.h"
@@ -866,7 +865,7 @@ namespace World {
 
 	void buildtree(int x, int y, int z) {
 
-		block trblock = getblock(x, y, z), tublock = getblock(x, y - 1, z);
+		//block trblock = getblock(x, y, z), tublock = getblock(x, y - 1, z);
 		ubyte th = ubyte(rnd() * 3) + 4;
 		//if (trblock != Blocks::AIR || tublock != Blocks::GRASS) { return; }
 
