@@ -219,7 +219,7 @@ namespace Textures {
 		tp+=3;
 
 		for (int i = 0; i < 256 * 256; ++i) {
-			tp[i * 4] = 255 - buffer[i * 3];
+			tp[i * 4] = 255 - buff[i * 3];
 		}
 
 		glGenTextures(1, &ret);
