@@ -203,7 +203,7 @@ namespace Textures {
 
 		ubyte* buff = new ubyte[256 * 256 * 3];
 		ubyte* buffer = new ubyte[256 * 256 * 4];
-		ubyte *ip = buff, *tp = buffer;
+		ubyte* tp = buffer;
 		GLuint ret;
 
 		std::stringstream s; 
@@ -215,12 +215,13 @@ namespace Textures {
 		bmpfile.read((char*)buff, 256 * 256 * 3);
 		bmpfile.close();
 
-		for (int i = 0; i != 256 * 256; i++) {
-			*tp = 255; tp++;
-			*tp = 255; tp++;
-			*tp = 255; tp++;
-			*tp = 255 - *ip; tp++; ip += 3;
+		std::memset(tp, 255, 256 * 256 * 4);
+		tp+=3;
+
+		for (int i = 0; i < 256 * 256; ++i) {
+			tp[i * 4] = 255 - buffer[i * 3];
 		}
+
 		glGenTextures(1, &ret);
 		glBindTexture(GL_TEXTURE_2D, ret);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
