@@ -2,7 +2,7 @@
 #include "Definitions.h"
 
 namespace Renderer{
-	const int ArrayUNITSIZE = 65536;
+	const int ArrayUNITSIZE = 262144;
 
 	void Init(int tcc, int cc);
 	void Vertex3f(float x, float y, float z);

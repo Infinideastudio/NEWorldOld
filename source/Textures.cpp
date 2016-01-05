@@ -65,8 +65,10 @@ namespace Textures {
 			return COAL;
 		case Blocks::IRON:
 			return IRON;
+		case Blocks::TNT:
+			return TNT;
 		default:
-			return UNKNOWN;
+			return NULLBLOCK;
 		}
 	}
 
