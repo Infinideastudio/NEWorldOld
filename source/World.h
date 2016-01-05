@@ -86,8 +86,7 @@ namespace World {
 	void setChunkUpdated(int x, int y, int z, bool value);
 	void sortChunkBuildRenderList(int xpos, int ypos, int zpos);
 	void sortChunkLoadUnloadList(int xpos, int ypos, int zpos);
-
-	void calcVisible(const double& xpos, const double& ypos, const double& zpos);
+	void calcVisible(double xpos, double ypos, double zpos);
 
 	void saveAllChunks();
 	void destroyAllChunks();

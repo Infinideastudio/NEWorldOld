@@ -41,23 +41,15 @@ namespace Textures{
 	const int NULLBLOCK = 64;
 
 	void Init();
-
 	ubyte getTextureIndex(block blockname, ubyte side);
-
 	double getTexcoordX(item item, ubyte side);
-
 	double getTexcoordY(item item, ubyte side);
-
 	void LoadRGBImage(TEXTURE_RGB& tex, string Filename);
-
 	void LoadRGBAImage(TEXTURE_RGBA& tex, string Filename, string MkFilename);
 
 	TextureID LoadRGBTexture(string Filename);
-
 	TextureID LoadFontTexture(string Filename);
-
 	TextureID LoadRGBATexture(string Filename, string MkFilename);
-
 	TextureID LoadBlock3DTexture(string Filename, string MkFilename);
 
 	void SaveRGBImage(string filename, TEXTURE_RGB& image);

@@ -932,18 +932,17 @@ void updategame(){
 				Player::Flying = !Player::Flying;
 				Player::jump = 0.0;
 			}
-
 			if (isPressed(GLFW_KEY_F2)) shouldGetScreenshot = true;
 			if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
 			if (isPressed(GLFW_KEY_F3) && glfwGetKey(MainWindow, GLFW_KEY_H) == GLFW_PRESS) {
 				DebugHitbox = !DebugHitbox;
 				DebugMode = true;
 			}
-			if (isPressed(GLFW_KEY_F4) == GLFW_PRESS) Player::CrossWall = !Player::CrossWall;
-			if (isPressed(GLFW_KEY_F5) == GLFW_PRESS) GUIrenderswitch = !GUIrenderswitch;
-			if (isPressed(GLFW_KEY_F6) == GLFW_PRESS) Player::xpos = 2147483600;
-			if (isPressed(GLFW_KEY_F7) == GLFW_PRESS) Player::spawn();
-			if (isPressed(GLFW_KEY_SLASH) == GLFW_PRESS) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
+			if (isPressed(GLFW_KEY_F4)) Player::CrossWall = !Player::CrossWall;
+			if (isPressed(GLFW_KEY_F5)) GUIrenderswitch = !GUIrenderswitch;
+			if (isPressed(GLFW_KEY_F6)) Player::Glide = !Player::Glide;
+			if (isPressed(GLFW_KEY_F7)) Player::spawn();
+			if (isPressed(GLFW_KEY_SLASH)) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
 		}
 		
 		if (isPressed(GLFW_KEY_ENTER) == GLFW_PRESS) {
@@ -972,7 +971,6 @@ void updategame(){
 			else {
 				chatword += inputstr;
 			}
-
 			//自动补全
 			if (isPressed(GLFW_KEY_TAB) && chatmode && chatword.size()>0 && chatword.substr(0, 1) == "/") {
 				for (int i = 0; i != commands.size(); i++) {
@@ -999,7 +997,7 @@ void updategame(){
 			Player::xlookspeed = Player::ylookspeed = 0.0;
 		}
 	}
-
+	
 	if (!bagOpened && !chatmode){
 		if (isPressed(GLFW_KEY_L))World::saveAllChunks();
 	}
@@ -1201,18 +1199,19 @@ void Render() {
 	World::calcVisible(xpos, ypos, zpos);
 
 	displayChunks.clear();
+	renderedChunk = 0;
 	for (int i = 0; i < World::loadedChunks; i++) {
 		if (!World::chunks[i]->renderBuilt || World::chunks[i]->Empty) continue;
 		if (World::chunkInRange(World::chunks[i]->cx, World::chunks[i]->cy, World::chunks[i]->cz,
 			Player::cxt, Player::cyt, Player::czt, viewdistance)) {
 			if (World::chunks[i]->visible) {
+				renderedChunk++;
 				displayChunks.push_back(RenderChunk(World::chunks[i], (curtime - lastupdate) * 30.0));
 			}
 		}
 	}
 
 	MutexUnlock(Mutex);
-	renderedChunk = displayChunks.size();
 	
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
