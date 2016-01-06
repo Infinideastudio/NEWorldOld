@@ -23,7 +23,7 @@ class player {
 		static void save(string worldn);
 		static void load(string worldn);
 		
-		static void addItem(block itemname);
+		static void addItem(item itemname);
 		static bool putBlock(int x, int y, int z, block blockname);
 		
 		static PlayerPacket convertToPlayerPacket();
@@ -50,10 +50,10 @@ class player {
 		static float height;
 		static float heightExt;
 		
-		static block BlockInHand;
-		static ubyte itemInHand;
-		static block inventorybox[4][10];
-		static block inventorypcs[4][10];
+		static item BlockInHand;
+		static ubyte indexInHand;
+		static item inventorybox[4][10];
+		static item inventorypcs[4][10];
 		
 		static double glidingEnergy, glidingSpeed;
 		static inline bool gliding() { return glidingNow; }

@@ -22,17 +22,6 @@ using std::pair;
 using std::unique_ptr;
 using std::map;
 
-#ifndef NEWORLD_SERVER
-//GLFW
-#ifdef _WIN32
-#define GLFW_DLL
-#endif
-#define GLFW_INCLUDE_GLU
-#include <GLFW/glfw3.h>
-//GLEXT
-#include <GL/glext.h>
-#endif
-
 //#pragma warning(pop)
 //#pragma warning(disable:4820) //忽略不必要的警告：数据结构对齐
 //#pragma warning(disable:4365) //忽略不必要的警告：有符号/无符号不匹配
@@ -56,6 +45,17 @@ using std::map;
 #include <wx/textfile.h>
 #include <wx/slider.h>
 
+#ifndef NEWORLD_SERVER
+//GLFW
+#ifdef _WIN32
+#define GLFW_DLL
+#endif
+#define GLFW_INCLUDE_GLU
+#include <GLFW/glfw3.h>
+//GLEXT
+#include <GL/glext.h>
+#endif
+
 //#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG
 #define NEWORLD_DEBUG_CONSOLE_OUTPUT
@@ -78,6 +78,7 @@ typedef unsigned char blockprop;
 typedef unsigned char brightness;
 typedef unsigned int TextureID;
 typedef unsigned short block;
+typedef unsigned short item;
 typedef unsigned int VBOID;
 typedef int vtxCount;
 typedef int SkinID;

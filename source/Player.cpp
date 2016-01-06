@@ -14,8 +14,8 @@ bool player::Running = false;
 bool player::NearWall = false;
 bool player::inWater = false;
 bool player::glidingNow = false;
-block player::BlockInHand = blocks::AIR;
-ubyte player::itemInHand = 0;
+item player::BlockInHand = blocks::AIR;
+ubyte player::indexInHand = 0;
 
 Hitbox::AABB player::playerbox;
 
@@ -33,8 +33,8 @@ double player::xlookspeed, player::ylookspeed;
 int player::intxpos, player::intypos, player::intzpos;
 int player::intxposold, player::intyposold, player::intzposold;
 
-block player::inventorybox[4][10];
-block player::inventorypcs[4][10];
+item player::inventorybox[4][10];
+item player::inventorypcs[4][10];
 
 double player::glidingEnergy, player::glidingSpeed;
 
@@ -186,7 +186,7 @@ void player::save(string worldn){
 	writestream(isave, canGliding);
 	isave.write((char*)inventorybox, sizeof(inventorybox));
 	isave.write((char*)inventorypcs, sizeof(inventorypcs));
-	writestream(isave, itemInHand);
+	writestream(isave, indexInHand);
 	isave.close();
 }
 #define readstream(a,b) (a.read((char*)&b,sizeof(b)))
@@ -212,11 +212,11 @@ void player::load(string worldn){
 	readstream(iload, canGliding);
 	iload.read((char*)inventorybox, sizeof(inventorybox));
 	iload.read((char*)inventorypcs, sizeof(inventorypcs));
-	readstream(iload, itemInHand);
+	readstream(iload, indexInHand);
 	iload.close();
 }
 
-void player::addItem(block itemname) {
+void player::addItem(item itemname) {
 	//向背包里加入物品
 	bool f = false;
 	for (int i = 0; i != 10; i++) {

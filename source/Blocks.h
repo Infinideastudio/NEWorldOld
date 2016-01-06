@@ -6,7 +6,7 @@ namespace blocks{  //方块ID
 	enum{
 		AIR, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
-		EOE
+		BLOCK_DEF_END
 	};
 	const block NONEMPTY = 1;
 
@@ -35,7 +35,7 @@ namespace blocks{  //方块ID
 		inline bool canExplode()const { return canexplode; }
 	};
 
-	const SingleBlock blockData[EOE] = {
+	const SingleBlock blockData[BLOCK_DEF_END] = {
 		//		    方块名称		  固体	 不透明	  半透明  可以爆炸
 		SingleBlock("Air"		, false	, false	, false , false),
 		SingleBlock("Rock"		, true	, true	, false , false),
