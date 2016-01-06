@@ -31,6 +31,7 @@ class player {
 		static Hitbox::AABB playerbox;
 		
 		static double xa, ya, za, xd, yd, zd;
+		static double health, healthMax, healSpeed, dropDamagePerBlock;
 		static onlineid onlineID;
 		static string name;
 		static bool OnGround;

@@ -20,6 +20,7 @@ ubyte player::itemInHand = 0;
 Hitbox::AABB player::playerbox;
 
 double player::xa, player::ya, player::za, player::xd, player::yd, player::zd;
+double player::health = 20, player::healthMax = 20, player::healSpeed = 0.01, player::dropDamagePerBlock = 0.5;
 onlineid player::onlineID;
 string player::name;
 
@@ -27,7 +28,7 @@ double player::speed;
 int player::AirJumps;
 int player::cxt, player::cyt, player::czt, player::cxtl, player::cytl, player::cztl;
 double player::lookupdown, player::heading, player::xpos, player::ypos, player::zpos;
-double  player::xposold, player::yposold, player::zposold, player::jump;
+double player::xposold, player::yposold, player::zposold, player::jump;
 double player::xlookspeed, player::ylookspeed;
 int player::intxpos, player::intypos, player::intzpos;
 int player::intxposold, player::intyposold, player::intzposold;
@@ -85,7 +86,7 @@ void player::updatePosition() {
 	double xal = xa;
 	double yal = ya;
 	double zal = za;
-
+	static double ydam = 0;
 	if (!CROSS) {
 		vector<Hitbox::AABB> Hitboxes = world::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
 		int num = Hitboxes.size();
@@ -103,11 +104,18 @@ void player::updatePosition() {
 			}
 			Hitbox::Move(playerbox, 0.0, 0.0, za);
 		}
+		if (!FLY) {
+			if (ypos + ya > ydam) ydam = ypos + ya;
+		}
 		if (ya != yal && yal < 0.0) {
 			OnGround = true;
 			player::glidingEnergy = 0;
 			player::glidingSpeed = 0;
 			player::glidingNow = false;
+			if (ydam - (ypos + ya) > 0) {
+				player::health -= (ydam - (ypos + ya)) * player::dropDamagePerBlock;
+				ydam = 0;
+			}
 		}
 		else OnGround = false;
 		if (ya != yal && yal>0.0) jump = 0.0;
