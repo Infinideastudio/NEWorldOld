@@ -87,19 +87,15 @@ namespace renderer {
 			if (buffer == 0) glGenBuffersARB(1, &buffer);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
 
-			if (Textured) {
-				if (Colored)
-					glBufferDataARB(GL_ARRAY_BUFFER_ARB, Vertexes * 8 * sizeof(float), VertexArray, GL_STATIC_DRAW_ARB);
-				else
-					glBufferDataARB(GL_ARRAY_BUFFER_ARB, Vertexes * 5 * sizeof(float), VertexArray, GL_STATIC_DRAW_ARB);
-			}
-			else {
-				if (Colored)
-					glBufferDataARB(GL_ARRAY_BUFFER_ARB, Vertexes * 6 * sizeof(float), VertexArray, GL_STATIC_DRAW_ARB);
-				else
-					glBufferDataARB(GL_ARRAY_BUFFER_ARB, Vertexes * 3 * sizeof(float), VertexArray, GL_STATIC_DRAW_ARB);
-			}
-
+			uintptr_t vertexSize = 3;
+			if (Textured)
+				vertexSize += 2;
+			if (Colored)
+				vertexSize += 3;
+			glBufferDataARB(GL_ARRAY_BUFFER_ARB,
+				Vertexes * vertexSize * sizeof(float),
+				VertexArray,
+				GL_STATIC_DRAW_ARB);
 			//ÖØÖÃ
 			Init();
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
