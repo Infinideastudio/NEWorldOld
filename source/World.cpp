@@ -835,7 +835,11 @@ namespace world{
 		}
 		chunkLoads = pu;
 	}
-	
+	void calcVisible(const double& xpos, const double& ypos, const double& zpos) {
+		for (int ci = 0; ci < loadedChunks; ci++) {
+			chunks[ci]->calcVisible(xpos, ypos, zpos);
+		}
+	}
 	void saveAllChunks(){
 #ifndef NEWORLD_DEBUG_NO_FILEIO
 		int i;

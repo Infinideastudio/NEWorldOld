@@ -943,12 +943,8 @@ void Render() {
 	ypos = player::ypos + player::height + player::heightExt - player::yd + (curtime - lastupdate) * 30.0 * player::yd;
 	zpos = player::zpos - player::zd + (curtime - lastupdate) * 30.0 * player::zd;
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(FOVyNormal + FOVyExt, windowwidth / (double)windowheight, 0.1, viewdistance * 16 * 2.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	double plookupdown = player::lookupdown - player::ylookspeed + (curtime - lastupdate) * 30.0 * player::ylookspeed;
+	double pheading = player::heading - player::xlookspeed + (curtime - lastupdate) * 30.0 * player::xlookspeed;
 
 	glDepthFunc(GL_LEQUAL);
 	glDepthMask(GL_TRUE);
@@ -957,9 +953,21 @@ void Render() {
 	glCullFace(GL_BACK);
 	glColor4f(1.0, 1.0, 1.0, 1.0);
 
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(FOVyNormal + FOVyExt, windowwidth / (double)windowheight, 0.1, viewdistance * 16 * 2.0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glRotated(plookupdown, 1, 0, 0);
+	glRotated(360.0 - pheading, 0, 1, 0);
+	Frustum::calc();
+	
 	player::cxt = getchunkpos((int)player::xpos);
 	player::cyt = getchunkpos((int)player::ypos);
 	player::czt = getchunkpos((int)player::zpos);
+
+	world::calcVisible(xpos, ypos, zpos);
 
 	//更新区块显示列表
 	world::sortChunkBuildRenderList(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos));
@@ -975,13 +983,6 @@ void Render() {
 		world::vbuffersShouldDelete.clear();
 	}
 
-	double plookupdown = player::lookupdown - player::ylookspeed + (curtime - lastupdate) * 30.0 * player::ylookspeed;
-	double pheading = player::heading - player::xlookspeed + (curtime - lastupdate) * 30.0 * player::xlookspeed;
-
-	glLoadIdentity();
-	glRotated(plookupdown, 1, 0, 0);
-	glRotated(360.0 - pheading, 0, 1, 0);
-	Frustum::calc();
 
 	displayChunks.clear();
 	for (int i = 0; i < world::loadedChunks; i++) {
@@ -989,7 +990,7 @@ void Render() {
 		if (!world::chunks[i]->renderBuilt)continue;
 		if (world::chunkInRange(world::chunks[i]->cx, world::chunks[i]->cy, world::chunks[i]->cz,
 			player::cxt, player::cyt, player::czt, viewdistance)) {
-			if (Frustum::AABBInFrustum(world::chunks[i]->getRelativeAABB(xpos, ypos, zpos))) {
+			if (world::chunks[i]->visible) {
 				displayChunks.push_back(RenderChunk(world::chunks[i], (curtime - lastupdate) * 30.0));
 			}
 		}
