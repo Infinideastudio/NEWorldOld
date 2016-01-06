@@ -53,8 +53,8 @@ namespace world{
 	#define getblockpos(n) ((n)&15)
 	#define chunkOutOfBound(x,y,z) ((y)<-world::worldheight || (y)>world::worldheight-1 || (x)<-134217728 || (x)>134217727 || (z)<-134217728 || (z)>134217727)
 
-	vector<Hitbox::AABB> getHitboxes(Hitbox::AABB box);
-	bool inWater(Hitbox::AABB box);
+	vector<Hitbox::AABB> getHitboxes(Hitbox::AABB& box);
+	bool inWater(Hitbox::AABB& box);
 
 	void renderblock(int x, int y, int z, chunk* chunkptr);
 	void updateblock(int x, int y, int z, bool blockchanged);
