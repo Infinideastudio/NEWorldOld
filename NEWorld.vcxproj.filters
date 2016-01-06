@@ -95,8 +95,11 @@
     <ClInclude Include="source\Blocks.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
-    <ClInclude Include="Items.h">
+    <ClInclude Include="source\Items.h">
       <Filter>源代码\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Effect.h">
+      <Filter>源代码\Renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -150,6 +153,9 @@
     </ClCompile>
     <ClCompile Include="source\GameManager.cpp">
       <Filter>源代码\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Effect.cpp">
+      <Filter>源代码\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

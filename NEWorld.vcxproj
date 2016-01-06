@@ -99,7 +99,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Items.h" />
+    <ClInclude Include="source\Effect.h" />
+    <ClInclude Include="source\Items.h" />
     <ClInclude Include="source\Blocks.h" />
     <ClInclude Include="source\Chunk.h" />
     <ClInclude Include="source\ChunkPacket.h" />
@@ -125,6 +126,7 @@
   <ItemGroup>
     <ClCompile Include="source\Chunk.cpp" />
     <ClCompile Include="source\ChunkPtrArray.cpp" />
+    <ClCompile Include="source\Effect.cpp" />
     <ClCompile Include="source\GameManager.cpp" />
     <ClCompile Include="source\HeightMap.cpp" />
     <ClCompile Include="source\Definitions.cpp">
