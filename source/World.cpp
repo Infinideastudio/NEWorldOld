@@ -455,7 +455,7 @@ namespace world{
 		}
 	}
 
-	vector<Hitbox::AABB> getHitboxes(Hitbox::AABB& box){
+	vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB& box){
 		//返回与box相交的所有方块AABB
 
 		Hitbox::AABB blockbox;
@@ -481,7 +481,7 @@ namespace world{
 		return hitBoxes;
 	}
 
-	bool inWater(Hitbox::AABB& box){
+	bool inWater(const Hitbox::AABB& box){
 		Hitbox::AABB blockbox;
 		int a, b, c;
 		for (a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5); a++){

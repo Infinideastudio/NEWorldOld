@@ -28,7 +28,8 @@ namespace particles{
 		dy = ptc.ysp;
 		dz = ptc.zsp;
 
-		vector<Hitbox::AABB> Hitboxes = world::getHitboxes(Hitbox::Expand(ptc.hb, dx, dy, dz));
+		Hitbox::AABB tmp = Hitbox::Expand(ptc.hb, dx, dy, dz);
+		vector<Hitbox::AABB> Hitboxes = world::getHitboxes(tmp);
 		int hitnum = Hitboxes.size();
 		for (int i = 0; i < hitnum; i++){
 			dy = Hitbox::MaxMoveOnYclip(ptc.hb, Hitboxes[i], dy);

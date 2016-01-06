@@ -88,7 +88,8 @@ void player::updatePosition() {
 	double zal = za;
 	static double ydam = 0;
 	if (!CROSS) {
-		vector<Hitbox::AABB> Hitboxes = world::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
+		Hitbox::AABB tmp = Hitbox::Expand(playerbox, xa, ya, za);
+		vector<Hitbox::AABB> Hitboxes = world::getHitboxes(tmp);
 		int num = Hitboxes.size();
 		if (num > 0) {
 			for (int i = 0; i < num; i++) {
