@@ -637,7 +637,7 @@ namespace world{
 		return skylight;
 	}
 
-	void setblock(int x, int y, int z, block Blockname){
+	void setblock(int x, int y, int z, block Blockname, chunk* cptr) {
 
 		//ÉèÖÃ·½¿é
 		int cx, cy, cz, bx, by, bz;
@@ -649,7 +649,9 @@ namespace world{
 		bx = getblockpos(x);
 		by = getblockpos(y);
 		bz = getblockpos(z);
-
+		if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
+			cptr->setblock(bx, by, bz, Blockname);
+		}
 		if (!chunkOutOfBound(cx, cy, cz)){
 			chunk* i = getChunkPtr(cx, cy, cz);
 			if (i != nullptr){
@@ -909,5 +911,14 @@ namespace world{
 		setblock(x, y + th, z, blocks::LEAF);
 
 	}
-
+	void explode(int x, int y, int z, int r, chunk* c)
+	{
+		double maxdistsqr = r*r;
+		for (int fx = x - r - 1; fx < x + r + 1; fx++)
+			for (int fy = y - r - 1; fy < y + r + 1; fy++)
+				for (int fz = z - r - 1; fz < z + r + 1; fz++)
+					if ((fx - x)*(fx - x) + (fy - y)*(fy - y) + (fz - z)*(fz - z) <= maxdistsqr)
+						//if(rnd()*maxdistsqr>((fx - x)*(fx - x) + (fy - y)*(fy - y) + (fz - z)*(fz - z)))
+						setblock(fx, fy, fz, blocks::AIR, c);
+	}
 }

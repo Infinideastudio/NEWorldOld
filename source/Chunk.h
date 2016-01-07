@@ -9,6 +9,8 @@ namespace world{
 	extern brightness BRIGHTNESSMIN;
 	extern brightness skylight;
 	chunkid getChunkID(int x, int y, int z);
+	class chunk;
+	void explode(int x, int y, int z, int r, chunk* c);
 	class chunk{
 
 	private:
@@ -64,6 +66,10 @@ namespace world{
 				create();
 				build();
 				Empty = false;
+			}
+			if (iblock == blocks::TNT) {
+				world::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 5, this);
+				return;
 			}
 			pblocks[x * 256 + y * 16 + z] = iblock;
 			Modified = true;

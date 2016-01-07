@@ -3,9 +3,10 @@
 #include "Definitions.h"
 
 namespace blocks{  //·½¿éID
-	enum{
+	enum BlockType{
 		AIR, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
+		TNT,
 		BLOCK_DEF_END
 	};
 	const block NONEMPTY = 1;
@@ -54,7 +55,8 @@ namespace blocks{  //·½¿éID
 		SingleBlock("Ice"		, true	, false	, true	, false),
 		SingleBlock("cement"	, true	, true	, false , false),
 		SingleBlock("Coal Block", true	, true	, false , false),
-		SingleBlock("Iron Block", true	, true	, false , false)
+		SingleBlock("Iron Block", true	, true	, false , false),
+		SingleBlock("TNT"		, true	, true	, false , true)
 	};
 }
 #define BlockInfo(blockID) blocks::blockData[blockID]

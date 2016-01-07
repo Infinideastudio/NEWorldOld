@@ -33,8 +33,8 @@ double player::xlookspeed, player::ylookspeed;
 int player::intxpos, player::intypos, player::intzpos;
 int player::intxposold, player::intyposold, player::intzposold;
 
-item player::inventorybox[4][10];
-item player::inventorypcs[4][10];
+item player::inventory[4][10];
+item player::inventoryAmount[4][10];
 
 double player::glidingEnergy, player::glidingSpeed;
 
@@ -184,8 +184,8 @@ void player::save(string worldn){
 	writestream(isave, FLY);
 	writestream(isave, CROSS);
 	writestream(isave, canGliding);
-	isave.write((char*)inventorybox, sizeof(inventorybox));
-	isave.write((char*)inventorypcs, sizeof(inventorypcs));
+	isave.write((char*)inventory, sizeof(inventory));
+	isave.write((char*)inventoryAmount, sizeof(inventoryAmount));
 	writestream(isave, indexInHand);
 	isave.close();
 }
@@ -210,40 +210,39 @@ void player::load(string worldn){
 	readstream(iload, FLY);
 	readstream(iload, CROSS);
 	readstream(iload, canGliding);
-	iload.read((char*)inventorybox, sizeof(inventorybox));
-	iload.read((char*)inventorypcs, sizeof(inventorypcs));
+	iload.read((char*)inventory, sizeof(inventory));
+	iload.read((char*)inventoryAmount, sizeof(inventoryAmount));
 	readstream(iload, indexInHand);
 	iload.close();
 }
 
-void player::addItem(item itemname) {
+void player::addItem(item itemname, int amount) {
 	//向背包里加入物品
-	bool f = false;
-	for (int i = 0; i != 10; i++) {
-		if (inventorybox[3][i] == blocks::AIR) {
-			inventorybox[3][i] = itemname;
-			inventorypcs[3][i] = 1;
-			f = true;
-		}
-		else if (inventorybox[3][i] == itemname && inventorypcs[3][i] < 255) {
-			inventorypcs[3][i]++;
-			f = true;
-		}
-		if (f) break;
-	}
-	if (!f) {
-		for (int i = 0; i != 3; i++) {
-			for (int j = 0; j != 10; j++) {
-				if (inventorybox[i][j] == blocks::AIR) {
-					inventorybox[i][j] = itemname;
-					inventorypcs[i][j] = 1;
-					f = true;
+	const int InvMaxStack = 255;
+	for (int i = 3; i >= 0; i--) {
+		for (int j = 0; j != 10; j++) {
+			if (inventory[i][j] == itemname && inventoryAmount[i][j] < InvMaxStack) {
+				//找到一个同类格子
+				if (amount + inventoryAmount[i][j] <= InvMaxStack) {
+					inventoryAmount[i][j] += amount;
+					break;
 				}
-				else if (inventorybox[i][j] == itemname && inventorypcs[i][j] < 255) {
-					inventorypcs[i][j]++;
-					f = true;
+				else {
+					amount -= InvMaxStack - inventoryAmount[i][j];
+					inventoryAmount[i][j] = InvMaxStack;
 				}
-				if (f) break;
+			}
+			else if (inventory[i][j] == blocks::AIR) {
+				//找到一个空白格子
+				inventory[i][j] = itemname;
+				if (amount <= InvMaxStack) {
+					inventoryAmount[i][j] = amount;
+					break;
+				}
+				else {
+					inventoryAmount[i][j] = InvMaxStack;
+					amount -= InvMaxStack;
+				}
 			}
 		}
 	}
