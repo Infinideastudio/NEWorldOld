@@ -291,7 +291,7 @@ void setupscreen() {
 	glEnable(GL_BLEND);
 	glEnable(GL_LINE_SMOOTH);
 	glDepthFunc(GL_LEQUAL);
-	glAlphaFunc(GL_GREATER, 0.0); //<--这家伙在卖萌？(往后面看看，卖萌的多着呢)
+	glAlphaFunc(GL_GREATER, 0.0);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
@@ -488,7 +488,7 @@ void updategame(){
 	selcz = 0;
 	selb = 0;
 	selbr = 0;
-	bool put = false;     //标准的chinglish吧。。。主要是put已经被FB作为关键字了。。   --等等不对啊！这已经是c++了！！！   --所以我就改回来了
+	bool put = false;
 	
 	if (!bagOpened) {
 		//从玩家位置发射一条线段
