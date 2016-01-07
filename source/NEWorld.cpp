@@ -1192,10 +1192,10 @@ void Render() {
 	glRotated(plookupdown, 1, 0, 0);
 	glRotated(360.0 - pheading, 0, 1, 0);
 	Frustum::LoadIdentity();
-	Frustum::setPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
-	Frustum::multRotate((float)plookupdown, 1, 0, 0);
-	Frustum::multRotate(360.0f - (float)pheading, 0, 1, 0);
-	Frustum::calc();
+	Frustum::SetPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
+	Frustum::MultRotate((float)plookupdown, 1, 0, 0);
+	Frustum::MultRotate(360.0f - (float)pheading, 0, 1, 0);
+	Frustum::update();
 	World::calcVisible(xpos, ypos, zpos);
 
 	displayChunks.clear();
