@@ -68,9 +68,6 @@
     <ClInclude Include="source\Player.h">
       <Filter>源代码\Player</Filter>
     </ClInclude>
-    <ClInclude Include="source\Mob.h">
-      <Filter>源代码\Objects</Filter>
-    </ClInclude>
     <ClInclude Include="source\OnlinePlayer.h">
       <Filter>源代码\Objects</Filter>
     </ClInclude>
@@ -156,6 +153,9 @@
     </ClCompile>
     <ClCompile Include="source\Effect.cpp">
       <Filter>源代码\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Items.cpp">
+      <Filter>源代码\Common</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

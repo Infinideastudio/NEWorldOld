@@ -1,5 +1,6 @@
 #include "Definitions.h"
 #include "Textures.h"
+#include "Items.h"
 
 int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, BLOCKTEXTURE_UNITS;
 
@@ -68,14 +69,20 @@ namespace Textures {
 		}
 	}
 
-	double getTexcoordX(block iblock, ubyte side) {
+	double getTexcoordX(item item, ubyte side) {
 		//return ((getTextureIndex(iblock, side) - 1) % (BLOCKTEXTURE_SIZE / BLOCKTEXTURE_UNITSIZE))*(BLOCKTEXTURE_UNITSIZE / (double)BLOCKTEXTURE_SIZE);
-		return ((getTextureIndex(iblock, side) - 1) & 7) / 8.0;
+		if (isBlock(item)) //如果为方块
+			return ((getTextureIndex(item, side) - 1) & 7) / 8.0;
+		else
+			return 0;
 	}
 
-	double getTexcoordY(block iblock, ubyte side) {
+	double getTexcoordY(item item, ubyte side) {
 		//return (int((getTextureIndex(iblock, side) - 1) / (BLOCKTEXTURE_SIZE / (double)BLOCKTEXTURE_UNITSIZE)))*(BLOCKTEXTURE_UNITSIZE / (double)BLOCKTEXTURE_SIZE);
-		return ((getTextureIndex(iblock, side) - 1) >> 3) / 8.0;
+		if (isBlock(item)) //如果为方块
+			return ((getTextureIndex(item, side) - 1) >> 3) / 8.0;
+		else
+			return 0;
 	}
 
 	void LoadRGBImage(TEXTURE_RGB& tex, string Filename) {
