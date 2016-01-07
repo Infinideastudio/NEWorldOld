@@ -785,15 +785,15 @@ namespace World {
 						xd = cx * 16 + 7 - xpos;
 						yd = cy * 16 + 7 - ypos;
 						zd = cz * 16 + 7 - zpos;
-						distsqr = xd *xd + yd *yd + zd *zd;
-
+						distsqr = xd*xd + yd*yd + zd*zd;
+						
 						first = 0; last = pu - 1;
 						while (first <= last) {
 							middle = (first + last) / 2;
-							if (distsqr < chunkLoadList[middle][0])last = middle - 1;
+							if (distsqr < chunkLoadList[middle][0]) last = middle - 1;
 							else first = middle + 1;
 						}
-						if (first > pu || first >= MaxChunkLoads)  continue;
+						if (first > pu || first >= MaxChunkLoads) continue;
 						i = first;
 
 						for (int j = MaxChunkLoads - 1; j > i; j--) {
@@ -816,18 +816,16 @@ namespace World {
 
 	void calcVisible(double xpos, double ypos, double zpos) {
 		chunk::setRelativeBase(xpos, ypos, zpos);
-		for (int ci = 0; ci < loadedChunks; ci++) {
+		for (int ci = 0; ci != loadedChunks; ci++) {
 			chunks[ci]->calcVisible();
 		}
 	}
 
 	void saveAllChunks() {
 #ifndef NEWORLD_DEBUG_NO_FILEIO
-
 		for (int i = 0; i != loadedChunks; i++) {
 			chunks[i]->SaveToFile();
 		}
-
 #endif
 	}
 

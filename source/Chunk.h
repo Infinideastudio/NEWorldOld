@@ -108,7 +108,7 @@ namespace World {
 		Hitbox::AABB getBaseAABB();
 		Hitbox::AABB getRelativeAABB();
 		inline void calcVisible() {
-			visible = Frustum::AABBInFrustum(getRelativeAABB());
+			visible = Frustum::FrustumTest(getRelativeAABB());
 		}
 
 	};
