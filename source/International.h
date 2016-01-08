@@ -1,7 +1,7 @@
 #pragma once
 #include"stdinclude.h"
 
-namespace NEInternational {
+namespace International {
 	struct Line {
 		string str;
 		int id;
@@ -14,5 +14,6 @@ namespace NEInternational {
 	
 	bool LoadLang(string lang);
 	bool Load();
-	string GetStr(int id);
+	string GetStrbyid(int id);
+	string GetStrbyKey(string key);
 }

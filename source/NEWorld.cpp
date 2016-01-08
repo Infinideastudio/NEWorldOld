@@ -105,7 +105,7 @@ int main(){
 #endif
 
 	loadoptions();
-	NEInternational::Load();
+	International::Load();
 
 	system("md Configs");
 	system("md Worlds");
@@ -2015,7 +2015,7 @@ void loadoptions() {
 		options[name] = value;
 	}
 	filein.close();
-	loadoption(options, "Language", NEInternational::Cur_Lang);
+	loadoption(options, "Language", International::Cur_Lang);
 	loadoption(options, "FOV", FOVyNormal);
 	loadoption(options, "RenderDistance", viewdistance);
 	loadoption(options, "Sensitivity", mousemove);
