@@ -17,8 +17,8 @@
 #include "Network.h"
 #include "Effect.h"
 #include "Items.h"
+#include "International.h"
 #include "Command.h"
-
 void WindowSizeFunc(GLFWwindow* win, int width, int height);
 void MouseButtonFunc(GLFWwindow*, int button, int action, int);
 void CharInputFunc(GLFWwindow*, unsigned int c);
@@ -105,6 +105,7 @@ int main(){
 #endif
 
 	loadoptions();
+	NEInternational::LoadLang("CHS");
 
 	system("md Configs");
 	system("md Worlds");
