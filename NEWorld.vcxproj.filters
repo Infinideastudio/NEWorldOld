@@ -155,6 +155,9 @@
     <ClInclude Include="source\Command.h">
       <Filter>源代码\Game</Filter>
     </ClInclude>
+    <ClInclude Include="source\International.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -264,6 +267,9 @@
     </ClCompile>
     <ClCompile Include="source\GameMenu.cpp">
       <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\International.cpp">
+      <Filter>源代码\Common</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

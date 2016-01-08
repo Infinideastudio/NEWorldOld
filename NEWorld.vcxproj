@@ -275,6 +275,7 @@
     <ClInclude Include="source\Frustum.h" />
     <ClInclude Include="source\GUI.h" />
     <ClInclude Include="source\Hitbox.h" />
+    <ClInclude Include="source\International.h" />
     <ClInclude Include="source\Items.h" />
     <ClInclude Include="source\Menus.h" />
     <ClInclude Include="source\Mob.h" />
@@ -310,6 +311,7 @@
     <ClCompile Include="source\Frustum.cpp" />
     <ClCompile Include="source\GUI.cpp" />
     <ClCompile Include="source\Hitbox.cpp" />
+    <ClCompile Include="source\International.cpp" />
     <ClCompile Include="source\Items.cpp" />
     <ClCompile Include="source\MainMenu.cpp" />
     <ClCompile Include="source\MultiplayerGame.cpp" />
