@@ -12,9 +12,9 @@ namespace NEInternational {
 		int pos;
 		Cur_Lang = lang;
 		f >> Cur_Symbol;
-		f >> Cur_Name;
+		getline(f, Cur_Name);
 		f >> pos;
-		while (!f.eof) {
+		while (!f.eof()) {
 			getline(f, Lines[pos].str);
 			++pos;
 		}
