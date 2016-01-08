@@ -2,7 +2,8 @@
 using namespace std;
 namespace NEInternational {
 
-	string Cur_Lang = "", Cur_Symbol = "", Cur_Name = "";
+	string Cur_Lang = "CHS", Cur_Symbol = "", Cur_Name = "";
+	string Yes, No, Enabled, Disabled;
 	map<int, Line> Lines;
 
 	bool LoadLang(string lang)
@@ -16,6 +17,10 @@ namespace NEInternational {
 		Cur_Lang = lang;
 		f >> Cur_Symbol; f.get();
 		getline(f, Cur_Name);
+		getline(f, Yes);
+		getline(f, No);
+		getline(f, Enabled);
+		getline(f, Disabled);
 		f >> pos;
 		f >> count;
 		f.get();
@@ -25,6 +30,11 @@ namespace NEInternational {
 		}
 		f.close();
 		return true;
+	}
+
+	bool Load()
+	{
+		return LoadLang(Cur_Lang);
 	}
 
 	string GetStr(int id)
