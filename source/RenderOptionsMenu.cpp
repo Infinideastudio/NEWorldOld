@@ -7,11 +7,11 @@ namespace Menus {
 		GUI::label title;
 		GUI::button smoothlightingbtn, fancygrassbtn, mergefacebtn, backbtn;
 		void onLoad() {
-			title = GUI::label("==============<  渲 染 选 项  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-			smoothlightingbtn = GUI::button("平滑光照：", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-			fancygrassbtn = GUI::button("草方块材质连接：", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-			mergefacebtn = GUI::button("合并面渲染：", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
-			backbtn = GUI::button("<< 返回选项菜单", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+			title = GUI::label("==============< " + GetStr(11) + "  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			smoothlightingbtn = GUI::button(GetStr(12) + "：", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+			fancygrassbtn = GUI::button(GetStr(13) + "：", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+			mergefacebtn = GUI::button(GetStr(14) + "：", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
+			backbtn = GUI::button("<< " + GetStr(15), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(5, &title, &smoothlightingbtn, &fancygrassbtn, &mergefacebtn, &backbtn);
 			if (MergeFace) SmoothLighting = smoothlightingbtn.enabled = NiceGrass = fancygrassbtn.enabled = false;
 		}
@@ -24,9 +24,9 @@ namespace Menus {
 				else SmoothLighting = smoothlightingbtn.enabled = NiceGrass = fancygrassbtn.enabled = true;
 			}
 			if (backbtn.clicked) ExitSignal = true;
-			smoothlightingbtn.text = "平滑光照：" + BoolEnabled(SmoothLighting);
-			fancygrassbtn.text = "草方块材质连接：" + BoolEnabled(NiceGrass);
-			mergefacebtn.text = "合并面渲染：" + BoolEnabled(MergeFace);
+			smoothlightingbtn.text = GetStr(12) + "：" + BoolEnabled(SmoothLighting);
+			fancygrassbtn.text = GetStr(13) + "：" + BoolEnabled(NiceGrass);
+			mergefacebtn.text = GetStr(14) + "：" + BoolEnabled(MergeFace);
 		}
 	};
 	void Renderoptions() { RenderOptionsMenu Menu; Menu.start(); }
