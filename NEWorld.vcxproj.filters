@@ -271,5 +271,8 @@
     <ClCompile Include="source\International.cpp">
       <Filter>源代码\Common</Filter>
     </ClCompile>
+    <ClCompile Include="source\LanguageMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

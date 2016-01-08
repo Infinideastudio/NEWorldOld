@@ -5,10 +5,10 @@
 extern int getMouseButton();
 extern int getMouseScroll();
 inline string BoolYesNo(bool b) { 
-	return b ? NEInternational::Yes : NEInternational::No;
+	return b ? International::Yes : International::No;
 }
 inline string BoolEnabled(bool b) { 
-	return b ? NEInternational::Enabled : NEInternational::Disabled;
+	return b ? International::Enabled : International::Disabled;
 }
 template<typename T>
 inline string strWithVar(string str, T var) {
