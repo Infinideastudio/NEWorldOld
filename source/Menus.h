@@ -1,7 +1,7 @@
 #pragma once
 #include "GUI.h"
 #include "International.h"
-using namespace NEInternational;
+using namespace International;
 namespace Menus {
 	void mainmenu();
 	void options();

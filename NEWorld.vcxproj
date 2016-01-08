@@ -313,6 +313,7 @@
     <ClCompile Include="source\Hitbox.cpp" />
     <ClCompile Include="source\International.cpp" />
     <ClCompile Include="source\Items.cpp" />
+    <ClCompile Include="source\LanguageMenu.cpp" />
     <ClCompile Include="source\MainMenu.cpp" />
     <ClCompile Include="source\MultiplayerGame.cpp" />
     <ClCompile Include="source\Network.cpp" />
