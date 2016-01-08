@@ -8,13 +8,18 @@ namespace NEInternational {
 	bool LoadLang(string lang)
 	{
 		ifstream f("Textures/Lang/" + lang + ".lang");
-		if (f.bad()) { return false; };
+		if (f.bad()) { 
+			return false;
+		};
 		int pos;
+		int count;
 		Cur_Lang = lang;
-		f >> Cur_Symbol;
+		f >> Cur_Symbol; f.get();
 		getline(f, Cur_Name);
 		f >> pos;
-		while (!f.eof()) {
+		f >> count;
+		f.get();
+		for (int i = 0; i < count; ++i) {
 			getline(f, Lines[pos].str);
 			++pos;
 		}
