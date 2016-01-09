@@ -8,10 +8,10 @@ namespace Globalization {
 		GLuint PerRender;
 	};
 	
+	extern int count;
 	extern map<int, Line> Lines;
 	extern map<string, int> keys;
 	extern string Cur_Lang;
-	extern string Yes, No, Enabled, Disabled;
 	
 	bool LoadLang(string lang);
 	bool Load();
