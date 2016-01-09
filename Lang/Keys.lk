@@ -1,0 +1,22 @@
+0 20
+gui.main.start
+gui.main.options
+gui.main.exit
+gui.options.caption
+gui.options.fov
+gui.options.sensitivity
+gui.options.distance
+gui.options.rendermenu
+gui.options.guimenu
+gui.options.back
+gui.options.save
+gui.render.caption
+gui.render.smooth
+gui.render.grasstex
+gui.render.merge
+gui.render.multisample
+gui.render.back
+gui.gui.caption
+gui.gui.unicode
+gui.gui.blur
+gui.gui.back
