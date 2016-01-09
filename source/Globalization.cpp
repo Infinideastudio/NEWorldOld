@@ -2,50 +2,32 @@
 
 namespace Globalization {
 
-	string Cur_Lang = "CHS", Cur_Symbol = "", Cur_Name = "";
-	string Yes, No, Enabled, Disabled;
+	int count;
+	string Cur_Lang = "en_US", Cur_Symbol = "", Cur_Name = "";
 	map<int, Line> Lines;
 	map<string, int> keys;
 
 	bool LoadLang(string lang) {
 		std::ifstream f("Lang/" + lang + ".lang");
-		if (f.bad()) { 
-			return false;
-		};
-		int pos;
-		int count;
+		if (f.bad()) return false;
 		Cur_Lang = lang;
 		f >> Cur_Symbol; f.get();
 		getline(f, Cur_Name);
-		getline(f, Yes);
-		getline(f, No);
-		getline(f, Enabled);
-		getline(f, Disabled);
-		f >> pos;
-		f >> count;
-		f.get();
-		for (int i = 0; i < count; ++i) {
-			getline(f, Lines[pos].str);
-			++pos;
+		for (int i = 0; i < count; i++) {
+			getline(f, Lines[i].str);
 		}
 		f.close();
 		return true;
 	}
 
 	bool Load() {
-		std::ifstream f("Lang/keys.lk");
-		if (f.bad()) {
-			return false;
-		};
-		int pos;
-		int count;
-		f >> pos >> count;
-		f.get();
-		for (int i = 0; i < count; ++i) {
+		std::ifstream f("Lang/Keys.lk");
+		if (f.bad()) return false;
+		f >> count; f.get();
+		for (int i = 0; i < count; i++) {
 			string temp;
 			getline(f, temp);
-			keys[temp] = pos;
-			++pos;
+			keys[temp] = i;
 		}
 		f.close();
 		return LoadLang(Cur_Lang);

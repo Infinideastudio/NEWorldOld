@@ -14,7 +14,7 @@ namespace TextRenderer{
 	void BuildFont(int w, int h){
 		ww = w;
 		wh = h;
-		Font = Textures::LoadFontTexture("Textures\\Fonts\\ASCII.bmp");
+		Font = Textures::LoadFontTexture("Textures/Fonts/ASCII.bmp");
 
 		float cx, cy;
 		gbe = glGenLists(256);
@@ -72,38 +72,6 @@ namespace TextRenderer{
 		}
 		free(wstr);
 		return ret;
-	}
-
-	void glprint(int x, int y, string glstring){
-
-		glBindTexture(GL_TEXTURE_2D, Font);
-		glDisable(GL_DEPTH_TEST);
-		glMatrixMode(GL_PROJECTION);
-		glPushMatrix();
-		glLoadIdentity();
-		glOrtho(0, ww, wh, 0, -1.0, 1.0);
-		glMatrixMode(GL_MODELVIEW);
-		glPushMatrix();
-
-		glLoadIdentity();
-		glColor4f(0.5, 0.5, 0.5, a);
-		glTranslated(x + 1, y + 1, 0);
-		glListBase(gbe);
-		glCallLists((GLsizei)glstring.length(), GL_UNSIGNED_BYTE, glstring.c_str());
-
-		glLoadIdentity();
-		glColor4f(r, g, b, a);
-		glTranslated(x, y, 0);
-		glListBase(gbe);
-		glCallLists((GLsizei)glstring.length(), GL_UNSIGNED_BYTE, glstring.c_str());
-
-		glPopMatrix();
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
-
-		glEnable(GL_DEPTH_TEST);
-		glColor4f(1.0, 1.0, 1.0, 1.0);
 	}
 
 	void renderString(int x, int y, string glstring){
@@ -185,4 +153,21 @@ namespace TextRenderer{
 		glColor4f(1.0, 1.0, 1.0, 1.0);
 		free(wstr);
 	}
+
+	void glprint(int x, int y, string glstring) {
+		glBindTexture(GL_TEXTURE_2D, Font);
+		glPushMatrix();
+		glLoadIdentity();
+		glColor4f(0.5, 0.5, 0.5, a);
+		glTranslated(x + 1, y + 1, 0);
+		glListBase(gbe);
+		glCallLists((GLsizei)glstring.length(), GL_UNSIGNED_BYTE, glstring.c_str());
+		glLoadIdentity();
+		glColor4f(r, g, b, a);
+		glTranslated(x, y, 0);
+		glListBase(gbe);
+		glCallLists((GLsizei)glstring.length(), GL_UNSIGNED_BYTE, glstring.c_str());
+		glPopMatrix();
+	}
+
 }
