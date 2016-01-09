@@ -25,7 +25,9 @@ namespace Menus {
 		}
 		void onUpdate() {
 			static bool serveripChanged = false;
+#ifdef NEWORLD_USE_WINAPI
 			if (runbtn.clicked) WinExec("NEWorldServer.exe", SW_SHOWDEFAULT);
+#endif
 			if (okbtn.clicked) {
 				serverip = serveriptb.text;
 				gamebegin = true;

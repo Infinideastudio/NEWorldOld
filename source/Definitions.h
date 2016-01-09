@@ -74,6 +74,7 @@ extern float skycolorG;
 extern float skycolorB;
 extern float FOVyRunning;
 extern float FOVyExt;
+extern int Multisample;
 
 extern int windowwidth;
 extern int windowheight;
