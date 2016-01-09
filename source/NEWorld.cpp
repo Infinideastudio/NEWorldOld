@@ -1692,7 +1692,7 @@ void drawBag() {
 		glEnd();
 		TextRenderer::renderString((int)mx + 4, (int)my + 16, itos(pcsselected));
 	}
-	if (player::inventory[si][sj] != 0 && sf == 1) {
+	if (player::inventory[si][sj] != 0 && sf == 1 && player::inventory[si][sj] < blocks::BLOCK_DEF_END) {
 		glColor4f(1.0, 1.0, 0.0, 1.0);
 		TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(player::inventory[si][sj]).getBlockName());
 	}
