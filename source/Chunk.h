@@ -53,12 +53,12 @@ namespace world{
 		inline block getblock(int x, int y, int z) {
 			//获取区块内的方块
 			if (Empty) return blocks::AIR;
-			return pblocks[x * 256 + y * 16 + z];
+			return pblocks[(x << 8) ^ (y << 4) ^ z];
 		}
 		inline brightness getbrightness(int x, int y, int z){
 			//获取区块内的亮度
 			if (Empty)if (cy < 0)return BRIGHTNESSMIN; else return skylight;
-			return pbrightness[x * 256 + y * 16 + z];
+			return pbrightness[(x << 8) ^ (y << 4) ^ z];
 		}
 		inline void setblock(int x, int y, int z, block iblock) {
 			//设置方块
@@ -71,7 +71,7 @@ namespace world{
 				world::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 5, this);
 				return;
 			}
-			pblocks[x * 256 + y * 16 + z] = iblock;
+			pblocks[(x << 8) ^ (y << 4) ^ z] = iblock;
 			Modified = true;
 		}
 		inline void setbrightness(int x, int y, int z, brightness ibrightness){
@@ -81,7 +81,7 @@ namespace world{
 				build();
 				Empty = false;
 			}
-			pbrightness[x * 256 + y * 16 + z] = ibrightness;
+			pbrightness[(x << 8) ^ (y << 4) ^ z] = ibrightness;
 		}
 
 		Hitbox::AABB getBaseAABB();
