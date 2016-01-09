@@ -1,15 +1,14 @@
-#include"International.h"
-using namespace std;
-namespace International {
+#include "Globalization.h"
+
+namespace Globalization {
 
 	string Cur_Lang = "CHS", Cur_Symbol = "", Cur_Name = "";
 	string Yes, No, Enabled, Disabled;
 	map<int, Line> Lines;
-	map<string, int>keys;
+	map<string, int> keys;
 
-	bool LoadLang(string lang)
-	{
-		ifstream f("Textures/Lang/" + lang + ".lang");
+	bool LoadLang(string lang) {
+		std::ifstream f("Lang/" + lang + ".lang");
 		if (f.bad()) { 
 			return false;
 		};
@@ -33,16 +32,14 @@ namespace International {
 		return true;
 	}
 
-	bool Load()
-	{
-		ifstream f("Textures/Lang/keys.lk");
+	bool Load() {
+		std::ifstream f("Lang/keys.lk");
 		if (f.bad()) {
 			return false;
 		};
 		int pos;
 		int count;
-		f >> pos;
-		f >> count;
+		f >> pos >> count;
 		f.get();
 		for (int i = 0; i < count; ++i) {
 			string temp;
@@ -54,12 +51,11 @@ namespace International {
 		return LoadLang(Cur_Lang);
 	}
 
-	string GetStrbyid(int id)
-	{
+	string GetStrbyid(int id) {
 		return Lines[id].str;
 	}
-	string GetStrbyKey(string key)
-	{
+
+	string GetStrbyKey(string key) {
 		return Lines[keys[key]].str;
 	}
 }
