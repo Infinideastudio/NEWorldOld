@@ -21,9 +21,9 @@ namespace Frustum {
 	}
 
 	void MultRotate(float angle, float x, float y, float z) {
-		float m[16];
+		float m[16], sum[16];
 		memset(m, 0, sizeof(m));
-		float length = sqrt(x * x + y * y + z * z);
+		float length = sqrtf(x * x + y * y + z * z);
 		x /= length; y /= length; z /= length;
 		float alpha = angle * (float)M_PI / 180.0f;
 		float s = sin(alpha);
@@ -39,7 +39,8 @@ namespace Frustum {
 		m[9] = t * y * z - s * x;
 		m[10] = t * z * z + c;
 		m[15] = 1.0f;
-		MultMatrix(modl, m);
+		MultMatrixTo(sum, m, modl);
+		memcpy(modl, sum, sizeof(sum));
 	}
 
 	void update() {
