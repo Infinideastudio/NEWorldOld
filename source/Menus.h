@@ -1,7 +1,11 @@
 #pragma once
 #include "GUI.h"
-#include "International.h"
-using namespace International;
+#include "Globalization.h"
+using Globalization::Yes;
+using Globalization::No;
+using Globalization::Enabled;
+using Globalization::Disabled;
+using Globalization::GetStrbyKey;
 namespace Menus {
 	void mainmenu();
 	void options();

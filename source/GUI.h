@@ -1,21 +1,20 @@
 #pragma once
 #include "Definitions.h"
-#include "International.h"
+#include "Globalization.h"
 
 extern int getMouseButton();
 extern int getMouseScroll();
 inline string BoolYesNo(bool b) { 
-	return b ? International::Yes : International::No;
+	return b ? Globalization::Yes : Globalization::No;
 }
 inline string BoolEnabled(bool b) { 
-	return b ? International::Enabled : International::Disabled;
+	return b ? Globalization::Enabled : Globalization::Disabled;
 }
 template<typename T>
 inline string strWithVar(string str, T var) {
-	std::stringstream ss;
-	ss << str << var;
-	return ss.str();
+	std::stringstream ss; ss << str << var; return ss.str();
 }
+
 //图形界面系统。。。正宗OOP！！！
 namespace GUI {
 	extern float linewidth;

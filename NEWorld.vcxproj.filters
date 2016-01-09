@@ -158,7 +158,7 @@
     <ClInclude Include="source\Command.h">
       <Filter>源代码\Game</Filter>
     </ClInclude>
-    <ClInclude Include="source\International.h">
+    <ClInclude Include="source\Globalization.h">
       <Filter>源代码\GUI\Globalization</Filter>
     </ClInclude>
   </ItemGroup>
@@ -271,8 +271,11 @@
     <ClCompile Include="source\GameMenu.cpp">
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
-    <ClCompile Include="source\International.cpp">
+    <ClCompile Include="source\Globalization.cpp">
       <Filter>源代码\GUI\Globalization</Filter>
+    </ClCompile>
+    <ClCompile Include="source\LanguageMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
