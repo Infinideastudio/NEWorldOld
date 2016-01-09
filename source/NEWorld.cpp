@@ -105,15 +105,11 @@ void MainLoop(){
 		Network::init(serverip, port);
 	}
 	//初始化游戏状态
-	printf("[Console][Game]");
-	printf("Init player...\n");
 	player::init(0, 60.0, 0);
 	player::addItem(builtInItems::APPLE);
 	player::addItem(builtInItems::STICK);
 	player::addItem(blocks::TNT, 1024);
 	player::load(world::worldname);
-	printf("[Console][Game]");
-	printf("Init world...\n");
 	world::Init();
 	GUIrenderswitch = true;
 	glDepthFunc(GL_LEQUAL);
@@ -122,15 +118,11 @@ void MainLoop(){
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glfwSwapBuffers(MainWindow);
 	glfwPollEvents();
-	printf("[Console][Game]");
-	printf("Game start!\n");
 	
 	//这才是游戏开始!
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	mxl = mx; myl = my;
-	printf("[Console][Game]");
-	printf("Main loop started\n");
 	updateThreadRun = true;
 	fctime = uctime = lastupdate = timer();
 
@@ -162,10 +154,6 @@ void MainLoop(){
 			world::saveAllChunks();
 			player::save(world::worldname);
 			world::destroyAllChunks();
-			printf("[Console][Game]");
-			printf("Threads terminated\n");
-			printf("[Console][Game]");
-			printf("Returned to main menu\n");
 			if (multiplayer)
 				Network::cleanUp();
 			glfwTerminate();
