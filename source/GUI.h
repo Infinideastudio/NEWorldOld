@@ -4,11 +4,11 @@
 
 extern int getMouseButton();
 extern int getMouseScroll();
-inline string BoolYesNo(bool b) { 
-	return b ? Globalization::Yes : Globalization::No;
+inline string BoolYesNo(bool b) {
+	return b ? Globalization::GetStrbyKey("gui.yes") : Globalization::GetStrbyKey("gui.no");
 }
-inline string BoolEnabled(bool b) { 
-	return b ? Globalization::Enabled : Globalization::Disabled;
+inline string BoolEnabled(bool b) {
+	return b ? Globalization::GetStrbyKey("gui.enabled") : Globalization::GetStrbyKey("gui.disabled");
 }
 template<typename T>
 inline string strWithVar(string str, T var) {
