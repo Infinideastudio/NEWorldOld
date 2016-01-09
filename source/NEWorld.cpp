@@ -61,13 +61,13 @@ bool DebugChunk;
 bool DebugPerformance;
 
 int selx, sely, selz, oldselx, oldsely, oldselz, selface;
+bool sel;
 float selt, seldes;
 block selb;
 brightness selbr;
 bool selce;
 int selbx, selby, selbz, selcx, selcy, selcz;
 void MainLoop(){
-	player::addItem(blocks::BlockType::TNT, 255);
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	printf("[Console][Event]Initialize GLFW%s\n",glfwInit() == 1 ? "" : " - Failed!");
@@ -479,6 +479,7 @@ void updategame(){
 	int sidedistmin;
 	lx = player::xpos; ly = player::ypos + player::height + player::heightExt; lz = player::zpos;
 
+	sel = false;
 	selx = 0;
 	sely = 0;
 	selz = 0;
@@ -508,6 +509,7 @@ void updategame(){
 				z = RoundInt(lz);
 
 				selx = x; sely = y; selz = z;
+				sel = true;
 
 				//找方块所在区块及位置
 				selcx = getchunkpos(x);
@@ -1045,7 +1047,7 @@ void Render() {
 	particles::renderall();
 
 	glDisable(GL_TEXTURE_2D);
-	if (GUIrenderswitch) {
+	if (GUIrenderswitch&&sel) {
 		glTranslated(selx - xpos, sely - ypos, selz - zpos);
 		drawBorder(0, 0, 0);
 		glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
