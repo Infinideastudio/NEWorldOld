@@ -12,9 +12,8 @@
 
 # Build results
 [Dd]ebug/
-[Dd]ebugPublic/
+[Pp]rofile/
 [Rr]elease/
-[Rr]eleases/
 x64/
 x86/
 build/
@@ -195,5 +194,8 @@ FakesAssemblies/
 # Visual Studio 6 workspace options file
 *.opt
 
-# NEWorld saved world
-Worlds/
+# NEWorld files
+[Ww]orlds/
+[Tt]extures/
+[Ss]creen[Ss]hots/
+[Cc]onfigs/
