@@ -1,4 +1,8 @@
-0 20
+25
+gui.yes
+gui.no
+gui.enabled
+gui.disabled
 gui.main.start
 gui.main.options
 gui.main.exit
