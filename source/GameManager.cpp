@@ -126,7 +126,7 @@ void GameManagerWindow::OnConnectServer(wxCommandEvent &)
 
 void GameManagerWindow::OnExecuteServer(wxCommandEvent &)
 {
-	wxExecute(L"NEWorldServer.exe");
+	wxExecute(L"NEWorldServer");
 }
 
 void GameManagerWindow::OnModifyFOVy(wxCommandEvent &)
