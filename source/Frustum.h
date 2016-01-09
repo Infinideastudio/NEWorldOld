@@ -7,6 +7,7 @@ namespace Frustum{
 	extern float proj[16], modl[16];
 	void LoadIdentity();
 	inline void MultMatrixTo(float* sum, float* a, float* b) {
+		//assert(a != sum && b != sum);
 		memset(sum, 0, sizeof(float*) * 16);
 		for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) {
 			for (int k = 0; k < 4; k++) sum[j * 4 + i] += a[k * 4 + i] * b[j * 4 + k];

@@ -21,6 +21,7 @@ float skycolorG = 1.0f;         //天空颜色Green
 float skycolorB = 1.0f;         //天空颜色Blue
 float FOVyRunning = 8.0f;
 float FOVyExt;
+int Multisample = 0;            //多重采样抗锯齿
 
 int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度
@@ -107,20 +108,28 @@ void Sleep(unsigned int ms){
 #endif
 
 void DebugWarning(string msg){
+#ifdef NEWORLD_USE_WINAPI
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
 	printf("[Debug][Warning]");
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
 	printf("%s\n", msg.c_str());
+#else
+	printf("[Debug][Warning]%s\n", msg.c_str());
+#endif
 }
 
 void DebugError(string msg){
+#ifdef NEWORLD_USE_WINAPI
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
 	printf("[Debug][Error]");
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-	printf("%s\n",msg.c_str());
+	printf("%s\n", msg.c_str());
+#else
+	printf("[Debug][Error]%s\n", msg.c_str());
+#endif
 }
 
-//甯哥敤鍑芥暟
+//常用函数
 vector<string> split(string str, string pattern)
 {
 	vector<string> ret;

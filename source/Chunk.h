@@ -54,7 +54,7 @@ namespace World {
 		}
 		inline string getObjectsPath() {
 			std::stringstream ss;
-			ss << "Worlds\\" << worldname << "\\objects\\chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldObjects";
+			ss << "Worlds/" << worldname << "/objects/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldObjects";
 			return ss.str();
 		}
 		inline bool fileExist(string path){

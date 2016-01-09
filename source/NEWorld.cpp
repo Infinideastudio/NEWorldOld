@@ -24,6 +24,7 @@ void MouseButtonFunc(GLFWwindow*, int button, int action, int);
 void CharInputFunc(GLFWwindow*, unsigned int c);
 void MouseScrollFunc(GLFWwindow*, double, double yoffset);
 void splashscreen();
+void createwindow();
 void setupscreen();
 void InitGL();
 //void glPrintInfoLog(GLhandleARB obj);
@@ -113,18 +114,8 @@ int main(){
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
-	std::stringstream title;
-	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
-	MainWindow = glfwCreateWindow(windowwidth, windowheight, title.str().c_str(), NULL, NULL);
-	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-	glfwMakeContextCurrent(MainWindow);
+	createwindow();
 	InitGL();
-	glfwSetCursor(MainWindow, MouseCursor);
-	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-	glfwSetWindowSizeCallback(MainWindow, &WindowSizeFunc);
-	glfwSetMouseButtonCallback(MainWindow, &MouseButtonFunc);
-	glfwSetScrollCallback(MainWindow, &MouseScrollFunc);
-	glfwSetCharCallback(MainWindow, &CharInputFunc);
 	setupscreen();
 	glDisable(GL_CULL_FACE);
 	splashscreen();
@@ -361,6 +352,21 @@ void splashscreen(){
 	glfwPollEvents();
 }
 
+void createwindow() {
+	std::stringstream title;
+	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
+	if (Multisample != 0) glfwWindowHint(GLFW_SAMPLES, Multisample);
+	MainWindow = glfwCreateWindow(windowwidth, windowheight, title.str().c_str(), NULL, NULL);
+	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+	glfwMakeContextCurrent(MainWindow);
+	glfwSetCursor(MainWindow, MouseCursor);
+	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	glfwSetWindowSizeCallback(MainWindow, &WindowSizeFunc);
+	glfwSetMouseButtonCallback(MainWindow, &MouseButtonFunc);
+	glfwSetScrollCallback(MainWindow, &MouseScrollFunc);
+	glfwSetCharCallback(MainWindow, &CharInputFunc);
+}
+
 void setupscreen() {
 
 	//OpenGL参数设置
@@ -383,6 +389,7 @@ void setupscreen() {
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
 	glHint(GL_FOG_HINT, GL_FASTEST);
 	glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
+	if (Multisample != 0) glEnable(GL_MULTISAMPLE_ARB);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 	glColor4f(0.0, 0.0, 0.0, 1.0);
@@ -887,7 +894,7 @@ void updategame(){
 			if (isPressed(GLFW_KEY_X) && Player::indexInHand < 9) Player::indexInHand++;
 			if ((int)Player::indexInHand + (mwl - mw) < 0)Player::indexInHand = 0;
 			else if ((int)Player::indexInHand + (mwl - mw) > 9)Player::indexInHand = 9;
-			else Player::indexInHand += (byte)(mwl - mw);
+			else Player::indexInHand += (char)(mwl - mw);
 			mwl = mw;
 
 			//起跳！
@@ -1390,78 +1397,77 @@ void Render() {
 }
 
 void drawBorder(int x, int y, int z) {
-	//绘制选择边框，建议用GL_LINE_LOOP，别学我QAQ
-	static float extrize = 0.002f; //实际上这个边框应该比方块大一些，否则很难看
+	//绘制选择边框
+	static float eps = 0.002f; //实际上这个边框应该比方块大一些，否则很难看
 	glEnable(GL_LINE_SMOOTH);
-	glLineWidth(1.0f);
+	glLineWidth(1);
 	glColor3f(0.2f, 0.2f, 0.2f);
 	// Top Face
 	glBegin(GL_LINES);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
 	glEnd();
 	// Bottom Face
 	glBegin(GL_LINES);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
 	glEnd();
 	// Left Face
 	glBegin(GL_LINES);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
 	glEnd();
 	// Right Face
 	glBegin(GL_LINES);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
 	glEnd();
 	// Front Face
 	glBegin(GL_LINES);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
 	glEnd();
 	// Back Face
 	glBegin(GL_LINES);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
 	glEnd();
-	glLineWidth(1);
 	glDisable(GL_LINE_SMOOTH);
 }
 
@@ -1543,7 +1549,7 @@ void drawGUI(){
 		glVertex2i(windowwidth / 2, windowheight / 2 + 15);
 	glEnd();
 
-	if (seldes>0.0) {
+	if (seldes > 0.0) {
 
 		glBegin(GL_LINES);
 			glColor4f(0.5, 0.5, 0.5, 1.0);
@@ -1738,59 +1744,52 @@ void drawCloud(double px, double pz) {
 }
 
 void renderDestroy(float level, int x, int y, int z) {
+	static float eps = 0.002f;
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
-	//float colors
-	static float ES = 0.002f;
-
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-
-	if (level < 100.0) {
-		glBindTexture(GL_TEXTURE_2D, DestroyImage[int(level / 10) + 1]);
-	}
-	else {
-		glBindTexture(GL_TEXTURE_2D, DestroyImage[10]);
-	}
+	if (level < 100.0) glBindTexture(GL_TEXTURE_2D, DestroyImage[int(level / 10) + 1]);
+	else glBindTexture(GL_TEXTURE_2D, DestroyImage[10]);
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
+	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
+	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
+	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
 	glEnd();
 }
 
@@ -1986,7 +1985,7 @@ void saveScreenshot(int x, int y, int w, int h, string filename){
 	while (bufh % 4 != 0){ bufh += 1; }
 	scrBuffer.sizeX = bufw;
 	scrBuffer.sizeY = bufh;
-	scrBuffer.buffer = unique_ptr<ubyte[]>(new byte[bufw*bufh * 3]);
+	scrBuffer.buffer = unique_ptr<ubyte[]>(new ubyte[bufw*bufh * 3]);
 	glReadPixels(x, y, bufw, bufh, GL_RGB , GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
 	Textures::SaveRGBImage(filename, scrBuffer);
 }
@@ -2021,6 +2020,7 @@ void loadoptions() {
 	loadoption(options, "SmoothLighting", SmoothLighting);
 	loadoption(options, "FancyGrass", NiceGrass);
 	loadoption(options, "MergeFaceRendering", MergeFace);
+	loadoption(options, "MultiSample", Multisample);
 	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 }
@@ -2041,6 +2041,7 @@ void saveoptions() {
 	saveoption(fileout, "SmoothLighting", SmoothLighting);
 	saveoption(fileout, "FancyGrass", NiceGrass);
 	saveoption(fileout, "MergeFaceRendering", MergeFace);
+	saveoption(fileout, "MultiSample", Multisample);
 	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 	fileout.close();
