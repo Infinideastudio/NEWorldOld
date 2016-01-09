@@ -3,7 +3,7 @@
 namespace Globalization {
 
 	int count;
-	string Cur_Lang = "en_US", Cur_Symbol = "", Cur_Name = "";
+	string Cur_Lang = "zh_CN", Cur_Symbol = "", Cur_Name = "";
 	map<int, Line> Lines;
 	map<string, int> keys;
 
