@@ -43,7 +43,7 @@ namespace Frustum {
 	}
 
 	void update() {
-		MultMatrixTo(clip, proj, modl);
+		MultMatrixTo(clip, modl, proj);
 
 		frus[0] = clip[3] - clip[0];
 		frus[1] = clip[7] - clip[4];

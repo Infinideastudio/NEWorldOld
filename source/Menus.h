@@ -1,5 +1,7 @@
 #pragma once
 #include "GUI.h"
+#include "International.h"
+using namespace International;
 namespace Menus {
 	void mainmenu();
 	void options();
@@ -9,4 +11,5 @@ namespace Menus {
 	void createworldmenu();
 	void gamemenu();
 	void multiplayermenu();
+	void languagemenu();
 }
