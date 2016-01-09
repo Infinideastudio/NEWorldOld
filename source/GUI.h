@@ -1,10 +1,15 @@
 #pragma once
 #include "Definitions.h"
+#include "International.h"
 
 extern int getMouseButton();
 extern int getMouseScroll();
-inline string BoolYesNo(bool b) { return b ? "ÊÇ" : "·ñ"; }
-inline string BoolEnabled(bool b) { return b ? "¿ªÆô" : "¹Ø±Õ"; }
+inline string BoolYesNo(bool b) { 
+	return b ? International::Yes : International::No;
+}
+inline string BoolEnabled(bool b) { 
+	return b ? International::Enabled : International::Disabled;
+}
 template<typename T>
 inline string strWithVar(string str, T var) {
 	std::stringstream ss;
