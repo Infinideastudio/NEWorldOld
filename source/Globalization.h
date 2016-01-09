@@ -1,7 +1,7 @@
 #pragma once
-#include"stdinclude.h"
+#include "stdinclude.h"
 
-namespace International {
+namespace Globalization {
 	struct Line {
 		string str;
 		int id;
@@ -9,6 +9,7 @@ namespace International {
 	};
 	
 	extern map<int, Line> Lines;
+	extern map<string, int> keys;
 	extern string Cur_Lang;
 	extern string Yes, No, Enabled, Disabled;
 	

@@ -1,0 +1,28 @@
+English
+English
+Yes
+No
+Enabled
+Disabled
+0 20
+Start game
+>> Options...
+Exit
+=================< Options >==================
+Field of view: 
+Mouse sensitivity: 
+Render distance: 
+>> Render options...
+>> GUI options...
+<< Back to main menu
+Save options
+=============< Render options >===============
+Smooth lighting: 
+Connect grass texture: 
+Merge face rendering: 
+Multi-sample AA: 
+<< Back to options menu
+===============< GUI options >================
+Force Unicode font: 
+Background blur: 
+<< Back to options menu

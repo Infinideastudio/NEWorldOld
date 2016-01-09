@@ -17,8 +17,9 @@
 #include "Network.h"
 #include "Effect.h"
 #include "Items.h"
-#include "International.h"
+#include "Globalization.h"
 #include "Command.h"
+
 void WindowSizeFunc(GLFWwindow* win, int width, int height);
 void MouseButtonFunc(GLFWwindow*, int button, int action, int);
 void CharInputFunc(GLFWwindow*, unsigned int c);
@@ -106,7 +107,7 @@ int main(){
 #endif
 
 	loadoptions();
-	International::Load();
+	Globalization::Load();
 
 	system("md Configs");
 	system("md Worlds");
@@ -2014,7 +2015,7 @@ void loadoptions() {
 		options[name] = value;
 	}
 	filein.close();
-	loadoption(options, "Language", International::Cur_Lang);
+	loadoption(options, "Language", Globalization::Cur_Lang);
 	loadoption(options, "FOV", FOVyNormal);
 	loadoption(options, "RenderDistance", viewdistance);
 	loadoption(options, "Sensitivity", mousemove);
@@ -2036,6 +2037,7 @@ void saveoptions() {
 	std::map<string, string> options;
 	std::ofstream fileout("Configs/options.ini", std::ios::out);
 	if (!fileout.is_open()) return;
+	saveoption(fileout, "Language", Globalization::Cur_Lang);
 	saveoption(fileout, "FOV", FOVyNormal);
 	saveoption(fileout, "RenderDistance", viewdistance);
 	saveoption(fileout, "Sensitivity", mousemove);
