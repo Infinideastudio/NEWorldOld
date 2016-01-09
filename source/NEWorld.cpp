@@ -17,8 +17,8 @@
 #include "Network.h"
 #include "Effect.h"
 #include "Items.h"
+#include "International.h"
 #include "Command.h"
-
 void WindowSizeFunc(GLFWwindow* win, int width, int height);
 void MouseButtonFunc(GLFWwindow*, int button, int action, int);
 void CharInputFunc(GLFWwindow*, unsigned int c);
@@ -106,6 +106,7 @@ int main(){
 #endif
 
 	loadoptions();
+	International::Load();
 
 	system("md Configs");
 	system("md Worlds");
@@ -2013,6 +2014,7 @@ void loadoptions() {
 		options[name] = value;
 	}
 	filein.close();
+	loadoption(options, "Language", International::Cur_Lang);
 	loadoption(options, "FOV", FOVyNormal);
 	loadoption(options, "RenderDistance", viewdistance);
 	loadoption(options, "Sensitivity", mousemove);
