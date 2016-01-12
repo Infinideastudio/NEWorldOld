@@ -135,10 +135,11 @@ namespace ChunkRenderer {
 							br = c->getbrightness(xx, yy, zz);
 						}
 						//Render
+						const Blocks::SingleBlock& info = BlockInfo(bl);
 						if (bl == Blocks::AIR || bl == neighbour && bl != Blocks::LEAF || BlockInfo(neighbour).isOpaque() ||
-							steps == 0 && BlockInfo(bl).isTranslucent() ||
-							steps == 1 && (!BlockInfo(bl).isTranslucent() || !BlockInfo(bl).isSolid()) ||
-							steps == 2 && (!BlockInfo(bl).isTranslucent() || BlockInfo(bl).isSolid())) {
+							steps == 0 && info.isTranslucent() ||
+							steps == 1 && (!info.isTranslucent() || !info.isSolid()) ||
+							steps == 2 && (!info.isTranslucent() || info.isSolid())) {
 							//Not valid block
 							if (valid) {
 								if (BlockInfo(neighbour).isOpaque()) {

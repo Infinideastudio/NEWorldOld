@@ -129,6 +129,7 @@ extern PFNGLGETINFOLOGARBPROC glGetInfoLogARB;
 extern PFNGLDETACHOBJECTARBPROC glDetachObjectARB;
 extern PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
 extern PFNGLTEXIMAGE3DPROC glTexImage3D;
+extern PFNGLTEXSUBIMAGE3DPROC glTexSubImage3D;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 extern int c_getChunkPtrFromCPA;
@@ -136,7 +137,7 @@ extern int c_getChunkPtrFromSearch;
 extern int c_getHeightFromHMap;
 extern int c_getHeightFromWorldGen;
 #endif
-//常用函数
+
 vector<string> split(string str, string pattern);
 inline string boolstr(bool b){ return b ? "True" : "False"; }
 inline double rnd() { return (double)rand() / (RAND_MAX + 1); }
