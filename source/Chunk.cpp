@@ -207,14 +207,14 @@ namespace World {
 		return ret;
 	}
 
-	Hitbox::AABB chunk::getRelativeAABB() {
-		Hitbox::AABB ret;
-		ret.xmin = aabb.xmin - relBaseX;
-		ret.xmax = aabb.xmax - relBaseX;
-		ret.ymin = aabb.ymin - loadAnim - relBaseY;
-		ret.ymax = aabb.ymax - loadAnim - relBaseY;
-		ret.zmin = aabb.zmin - relBaseZ;
-		ret.zmax = aabb.zmax - relBaseZ;
+	Frustum::ChunkBox chunk::getRelativeAABB() {
+		Frustum::ChunkBox ret;
+		ret.xmin = (float)(aabb.xmin - relBaseX);
+		ret.xmax = (float)(aabb.xmax - relBaseX);
+		ret.ymin = (float)(aabb.ymin - loadAnim - relBaseY);
+		ret.ymax = (float)(aabb.ymax - loadAnim - relBaseY);
+		ret.zmin = (float)(aabb.zmin - relBaseZ);
+		ret.zmax = (float)(aabb.zmax - relBaseZ);
 		return ret;
 	}
 	
