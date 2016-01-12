@@ -13,8 +13,8 @@ namespace World {
 	class chunk;
 	chunkid getChunkID(int x, int y, int z);
 	void explode(int x, int y, int z, int r, chunk* c);
-	class chunk{
 
+	class chunk{
 	private:
 		block* pblocks;
 		brightness* pbrightness;
@@ -22,7 +22,7 @@ namespace World {
 		static double relBaseX, relBaseY, relBaseZ;
 
 	public:
-		//竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻
+		//竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻ --Null
 		//2333 --qiaozhanrong
 		chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi),
 			Modified(false), Empty(false), updated(false), renderBuilt(false), loadAnim(0.0) {
@@ -76,7 +76,7 @@ namespace World {
 			if (pblocks == nullptr) { DebugWarning("chunk.getblock() error: Empty pointer"); return; }
 			if (x>15 || x<0 || y>15 || y<0 || z>15 || z<0) { DebugWarning("chunk.getblock() error: Out of range"); return; }
 #endif
-			return pblocks[(x << 8) + (y << 4) + z];
+			return pblocks[(x << 8) ^ (y << 4) ^ z];
 		}
 		inline brightness getbrightness(int x, int y, int z){
 			//»ñÈ¡Çø¿éÄÚµÄÁÁ¶È
@@ -85,20 +85,20 @@ namespace World {
 			if (pbrightness == nullptr) { DebugWarning("chunk.getbrightness() error: Empty pointer"); return; }
 			if (x>15 || x<0 || y>15 || y<0 || z>15 || z<0) { DebugWarning("chunk.getbrightness() error: Out of range"); return; }
 #endif
-			return pbrightness[(x << 8) + (y << 4) + z];
+			return pbrightness[(x << 8) ^ (y << 4) ^ z];
 		}
 		inline void setblock(int x, int y, int z, block iblock) {
 			if (iblock == Blocks::TNT) {
 				World::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 8, this);
 				return;
 			}
-			pblocks[(x << 8) + (y << 4) + z] = iblock;
+			pblocks[(x << 8) ^ (y << 4) ^ z] = iblock;
 			Modified = true;
 		}
 		inline void setbrightness(int x, int y, int z, brightness ibrightness){
 			//ÉèÖÃÁÁ¶È
 			//assert(Empty == false);
-			pbrightness[(x << 8) + (y << 4) + z] = ibrightness;
+			pbrightness[(x << 8) ^ (y << 4) ^ z] = ibrightness;
 			Modified = true;
 		}
 
@@ -106,10 +106,8 @@ namespace World {
 			relBaseX = x; relBaseY = y; relBaseZ = z;
 		}
 		Hitbox::AABB getBaseAABB();
-		Hitbox::AABB getRelativeAABB();
-		inline void calcVisible() {
-			visible = Frustum::FrustumTest(getRelativeAABB());
-		}
+		Frustum::ChunkBox getRelativeAABB();
+		inline void calcVisible() { visible = Frustum::FrustumTest(getRelativeAABB()); }
 
 	};
 }
