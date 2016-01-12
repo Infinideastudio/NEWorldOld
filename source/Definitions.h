@@ -5,7 +5,6 @@
 //#pragma warning(disable:4350) //忽略STL高发警告：行为更改
 //#pragma warning(push,0) //忽略头文件的警告
 
-#define _USE_MATH_DEFINES
 #include <math.h>
 #include <time.h>
 #include <string>
