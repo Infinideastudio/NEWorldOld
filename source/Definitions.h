@@ -47,9 +47,6 @@ using std::map;
 
 #ifndef NEWORLD_SERVER
 //GLFW
-#ifdef _WIN32
-#define GLFW_DLL
-#endif
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
 //GLEXT
