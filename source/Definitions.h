@@ -87,8 +87,8 @@ typedef unsigned int onlineid;
 #ifndef NEWORLD_SERVER
 typedef pthread_mutex_t Mutex_t;
 typedef pthread_t Thread_t;
-typedef void *(PTW32_CDECL *ThreadFunc_t)(void *);
-#define ThreadFunc void* PTW32_CDECL
+typedef void *(*ThreadFunc_t)(void *);
+#define ThreadFunc void*
 //Global Vars
 const unsigned int VERSION = 37;
 const string MAJOR_VERSION = "Alpha 0.";
@@ -192,13 +192,13 @@ inline void ThreadDestroy(Thread_t& _hThread) { _hThread.p = nullptr; _hThread.x
 inline int RoundInt(double d){ return int(floor(d + 0.5)); }
 inline string itos(int i){
 	char tmp[12];
-	sprintf_s(tmp, 12, "%d", i);
+	sprintf(tmp, "%d", i);
 	return tmp;
 }
 inline string ftos(double i)
 {
 	char tmp[64];
-	sprintf_s(tmp, 64, "%g", i);
+	sprintf(tmp, "%g", i);
 	return tmp;
 }
 #define DebugWarning(msg) printf("[Debug][Warning]%s\n",((string)msg).c_str())

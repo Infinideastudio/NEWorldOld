@@ -257,6 +257,6 @@ PlayerPacket player::convertToPlayerPacket()
 	p.lookupdown = lookupdown;
 	p.onlineID = onlineID;
 	p.skinID = 0;
-	strcpy_s(p.name, name.c_str());
+	strcpy(p.name, name.c_str());
 	return p;
 }

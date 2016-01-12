@@ -1134,11 +1134,7 @@ void Render() {
 		time_t t = time(0);
 		char tmp[64];
 		tm* timeinfo = new tm;
-#ifdef NEWORLD_COMPILE_DISABLE_SECURE
 		timeinfo = localtime(&t);
-#else
-		localtime_s(timeinfo, &t);
-#endif
 		strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", timeinfo);
 		saveScreenshot(0, 0, windowwidth, windowheight, "/screenshots/" + (string)tmp + ".bmp");
 	}
