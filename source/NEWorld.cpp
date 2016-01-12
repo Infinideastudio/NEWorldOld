@@ -1,4 +1,4 @@
-﻿#include "Definitions.h"
+#include "Definitions.h"
 
 //Functions Definitions
 void WindowSizeFunc(GLFWwindow* win, int width, int height);

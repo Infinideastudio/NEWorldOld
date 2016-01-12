@@ -1,4 +1,4 @@
-﻿#ifndef BLOCKS_H
+#ifndef BLOCKS_H
 #define BLOCKS_H
 #include "Definitions.h"
 

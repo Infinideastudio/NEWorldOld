@@ -8,9 +8,9 @@ const double g = 9.8;
 const double EDrop = 0.1;
 const double speedCast = 1 / 20.0;
 
-extern bool canGliding;  //»¬Ïè
-extern bool FLY;      //·ÉĞĞ
-extern bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
+extern bool canGliding;  //æ»‘ç¿”
+extern bool FLY;      //é£è¡Œ
+extern bool CROSS;    //ç©¿å¢™ â†_â† (Superman!)
 
 extern double glidingMinimumSpeed;
 

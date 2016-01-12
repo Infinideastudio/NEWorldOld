@@ -2,9 +2,9 @@
 #include "Player.h"
 #include "World.h"
 
-bool canGliding = false; //»¬Ïè
-bool FLY;      //·ÉÐÐ
-bool CROSS;    //´©Ç½ ¡û_¡û (Superman!)
+bool canGliding = false; //æ»‘ç¿”
+bool FLY;      //é£žè¡Œ
+bool CROSS;    //ç©¿å¢™ â†_â† (Superman!)
 double glidingMinimumSpeed = pow(1, 2) / 2;
 
 float player::height = 1.2f;
@@ -217,12 +217,12 @@ void player::load(string worldn){
 }
 
 void player::addItem(item itemname, int amount) {
-	//Ïò±³°üÀï¼ÓÈëÎïÆ·
+	//å‘èƒŒåŒ…é‡ŒåŠ å…¥ç‰©å“
 	const int InvMaxStack = 255;
 	for (int i = 3; i >= 0; i--) {
 		for (int j = 0; j != 10; j++) {
 			if (inventory[i][j] == itemname && inventoryAmount[i][j] < InvMaxStack) {
-				//ÕÒµ½Ò»¸öÍ¬Àà¸ñ×Ó
+				//æ‰¾åˆ°ä¸€ä¸ªåŒç±»æ ¼å­
 				if (amount + inventoryAmount[i][j] <= InvMaxStack) {
 					inventoryAmount[i][j] += amount;
 					break;
@@ -233,7 +233,7 @@ void player::addItem(item itemname, int amount) {
 				}
 			}
 			else if (inventory[i][j] == blocks::AIR) {
-				//ÕÒµ½Ò»¸ö¿Õ°×¸ñ×Ó
+				//æ‰¾åˆ°ä¸€ä¸ªç©ºç™½æ ¼å­
 				inventory[i][j] = itemname;
 				if (amount <= InvMaxStack) {
 					inventoryAmount[i][j] = amount;

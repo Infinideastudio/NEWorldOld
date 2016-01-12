@@ -11,7 +11,7 @@ bool NEWorld::OnInit()
 	wxString curdir = wxStandardPaths::Get().GetExecutablePath();
 	curdir.Replace(L"\\", L"/");
 	wxSetWorkingDirectory(curdir.substr(0, curdir.find_last_of('/')));
-	GameManagerWindow* frame = new GameManagerWindow(L"NEWorldÓÎÏ·¹ÜÀíÆ÷");
+	GameManagerWindow* frame = new GameManagerWindow(L"NEWorldæ¸¸æˆç®¡ç†å™¨");
 	frame->Show();
 	return true;
 }
@@ -33,28 +33,28 @@ GameManagerWindow::GameManagerWindow(const wxString & title)
 {
 	wxNotebook* tab = new wxNotebook(this, 10000, wxPoint(0, 0), GetClientSize());
 	wxPanel* singleplayer = new wxPanel(tab, 10001);
-	tab->AddPage(singleplayer, L"µ¥ÈËÓÎÏ·");
+	tab->AddPage(singleplayer, L"å•äººæ¸¸æˆ");
 	worlds = new wxListBox(singleplayer, 10002, wxPoint(10, 10), wxSize(800, 350));
 	Refresh();
-	enterworld = new wxButton(singleplayer, 10003, L"½øÈëÑ¡¶¨µÄÊÀ½ç", wxPoint(10, 370), wxSize(250, 30));
-	newworld = new wxButton(singleplayer, 10004, L"´´½¨ÊÀ½ç", wxPoint(285, 370), wxSize(250, 30));
-	deleteworld = new wxButton(singleplayer, 10005, L"É¾³ıÑ¡¶¨µÄÊÀ½ç", wxPoint(560, 370), wxSize(250, 30));
+	enterworld = new wxButton(singleplayer, 10003, L"è¿›å…¥é€‰å®šçš„ä¸–ç•Œ", wxPoint(10, 370), wxSize(250, 30));
+	newworld = new wxButton(singleplayer, 10004, L"åˆ›å»ºä¸–ç•Œ", wxPoint(285, 370), wxSize(250, 30));
+	deleteworld = new wxButton(singleplayer, 10005, L"åˆ é™¤é€‰å®šçš„ä¸–ç•Œ", wxPoint(560, 370), wxSize(250, 30));
 	wxPanel* multiplayerpage = new wxPanel(tab, 10006);
-	tab->AddPage(multiplayerpage, L"¶àÈËÓÎÏ·");
-	serveriptb = new wxTextCtrl(multiplayerpage, 10007, L"ÊäÈë·şÎñÆ÷IP", wxPoint(10, 10), wxSize(800, 25));
+	tab->AddPage(multiplayerpage, L"å¤šäººæ¸¸æˆ");
+	serveriptb = new wxTextCtrl(multiplayerpage, 10007, L"è¾“å…¥æœåŠ¡å™¨IP", wxPoint(10, 10), wxSize(800, 25));
 	serveriptb->SelectAll();
-	new wxButton(multiplayerpage, 10008, L"È·¶¨", wxPoint(10, 45), wxSize(800, 25));
-	new wxButton(multiplayerpage, 10009, L"ÔËĞĞ·şÎñÆ÷", wxPoint(10, 360), wxSize(800, 25));
+	new wxButton(multiplayerpage, 10008, L"ç¡®å®š", wxPoint(10, 45), wxSize(800, 25));
+	new wxButton(multiplayerpage, 10009, L"è¿è¡ŒæœåŠ¡å™¨", wxPoint(10, 360), wxSize(800, 25));
 	wxPanel* optionspage = new wxPanel(tab, 10010);
-	tab->AddPage(optionspage, L"Ñ¡Ïî");
-	new wxStaticText(optionspage, 10011, L"ÊÓÒ°½Ç¶È£º", wxPoint(10, 15));
+	tab->AddPage(optionspage, L"é€‰é¡¹");
+	new wxStaticText(optionspage, 10011, L"è§†é‡è§’åº¦ï¼š", wxPoint(10, 15));
 	scFOVy = new wxSlider(optionspage, 10012, (int)FOVyNormal, 1, 120, wxPoint(70, 13), wxSize(300, -1), wxSL_HORIZONTAL | wxSL_LABELS);
-	new wxStaticText(optionspage, 10013, L"Êó±êÁéÃô¶È£º", wxPoint(380, 15));
+	new wxStaticText(optionspage, 10013, L"é¼ æ ‡çµæ•åº¦ï¼š", wxPoint(380, 15));
 	scmousemove = new wxSlider(optionspage, 10014, (int)(mousemove * 1000), 25, 1000, wxPoint(450, 13), wxSize(300, -1), wxSL_HORIZONTAL | wxSL_LABELS);
-	new wxStaticText(optionspage, 10015, L"äÖÈ¾¾àÀë£º", wxPoint(10, 55));
+	new wxStaticText(optionspage, 10015, L"æ¸²æŸ“è·ç¦»ï¼š", wxPoint(10, 55));
 	scviewdistance = new wxSlider(optionspage, 10016, viewdistance, 2, 16, wxPoint(70, 53), wxSize(300, -1), wxSL_HORIZONTAL | wxSL_LABELS);
-	new wxStaticBox(optionspage, 10017, L"Í¼ĞÎ½çÃæÑ¡Ïî", wxPoint(5, 95), wxSize(800, 70));
-	cbAllUnicodeFont = new wxCheckBox(optionspage, 10018, L"È«²¿Ê¹ÓÃUnicode×ÖÌå", wxPoint(15, 125));
+	new wxStaticBox(optionspage, 10017, L"å›¾å½¢ç•Œé¢é€‰é¡¹", wxPoint(5, 95), wxSize(800, 70));
+	cbAllUnicodeFont = new wxCheckBox(optionspage, 10018, L"å…¨éƒ¨ä½¿ç”¨Unicodeå­—ä½“", wxPoint(15, 125));
 }
 
 void GameManagerWindow::Refresh()
@@ -104,7 +104,7 @@ void GameManagerWindow::OnDelete(wxCommandEvent &)
 
 void GameManagerWindow::OnCreate(wxCommandEvent &)
 {
-	wxTextEntryDialog dialog(this, L"ÊÀ½çÃû³Æ£º", L"NEWorld", L"NEWorld", wxOK);
+	wxTextEntryDialog dialog(this, L"ä¸–ç•Œåç§°ï¼š", L"NEWorld", L"NEWorld", wxOK);
 	dialog.ShowModal();
 	wxString worldname = dialog.GetValue();
 	world::worldname = worldname;

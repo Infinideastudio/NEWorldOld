@@ -71,7 +71,7 @@ namespace Textures {
 
 	double getTexcoordX(item item, ubyte side) {
 		//return ((getTextureIndex(iblock, side) - 1) % (BLOCKTEXTURE_SIZE / BLOCKTEXTURE_UNITSIZE))*(BLOCKTEXTURE_UNITSIZE / (double)BLOCKTEXTURE_SIZE);
-		if (isBlock(item)) //Èç¹ûÎª·½¿é
+		if (isBlock(item)) //å¦‚æœä¸ºæ–¹å—
 			return ((getTextureIndex(item, side) - 1) & 7) / 8.0;
 		else
 			return 0;
@@ -79,7 +79,7 @@ namespace Textures {
 
 	double getTexcoordY(item item, ubyte side) {
 		//return (int((getTextureIndex(iblock, side) - 1) / (BLOCKTEXTURE_SIZE / (double)BLOCKTEXTURE_UNITSIZE)))*(BLOCKTEXTURE_UNITSIZE / (double)BLOCKTEXTURE_SIZE);
-		if (isBlock(item)) //Èç¹ûÎª·½¿é
+		if (isBlock(item)) //å¦‚æœä¸ºæ–¹å—
 			return ((getTextureIndex(item, side) - 1) >> 3) / 8.0;
 		else
 			return 0;
@@ -88,23 +88,23 @@ namespace Textures {
 	void LoadRGBImage(TEXTURE_RGB& tex, string Filename) {
 		unsigned char col[3];
 		unsigned int ind = 0;
-		TEXTURE_RGB& bitmap = tex; //·µ»ØÎ»Í¼
+		TEXTURE_RGB& bitmap = tex; //è¿”å›ä½å›¾
 		bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
-		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //Î»Í¼ÎÄ¼ş£¨¶ş½øÖÆ£©
+		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //ä½å›¾æ–‡ä»¶ï¼ˆäºŒè¿›åˆ¶ï¼‰
 		if (!bmpfile.is_open()) {
 			printf("[console][Warning] Cannot load %s\n", Filename.c_str());
 			return;
 		}
-		BITMAPINFOHEADER bih; //¸÷ÖÖ¹ØÓÚÎ»Í¼µÄ²ÎÊı
-		BITMAPFILEHEADER bfh; //¸÷ÖÖ¹ØÓÚÎÄ¼şµÄ²ÎÊı
-							  //¿ªÊ¼¶ÁÈ¡
+		BITMAPINFOHEADER bih; //å„ç§å…³äºä½å›¾çš„å‚æ•°
+		BITMAPFILEHEADER bfh; //å„ç§å…³äºæ–‡ä»¶çš„å‚æ•°
+							  //å¼€å§‹è¯»å–
 		bmpfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER));
 		bmpfile.read((char*)&bih, sizeof(BITMAPINFOHEADER));
 		bitmap.sizeX = bih.biWidth;
 		bitmap.sizeY = bih.biHeight;
 		bitmap.buffer = unique_ptr<ubyte[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 3]);
 		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
-			//°ÑBGR¸ñÊ½×ª»»ÎªRGB¸ñÊ½
+			//æŠŠBGRæ ¼å¼è½¬æ¢ä¸ºRGBæ ¼å¼
 			bmpfile.read((char*)col, 3);
 			bitmap.buffer[ind++] = col[2]; //R
 			bitmap.buffer[ind++] = col[1]; //G
@@ -115,21 +115,21 @@ namespace Textures {
 
 	void LoadRGBAImage(TEXTURE_RGBA& tex, string Filename, string MkFilename) {
 		unsigned int ind = 0;
-		TEXTURE_RGBA& bitmap = tex; //·µ»ØÎ»Í¼
+		TEXTURE_RGBA& bitmap = tex; //è¿”å›ä½å›¾
 		bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
-		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //Î»Í¼ÎÄ¼ş£¨¶ş½øÖÆ£©
-		std::ifstream maskfile(MkFilename, std::ios::binary | std::ios::in); //ÕÚÕÖÎ»Í¼ÎÄ¼ş£¨¶ş½øÖÆ£©
+		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //ä½å›¾æ–‡ä»¶ï¼ˆäºŒè¿›åˆ¶ï¼‰
+		std::ifstream maskfile(MkFilename, std::ios::binary | std::ios::in); //é®ç½©ä½å›¾æ–‡ä»¶ï¼ˆäºŒè¿›åˆ¶ï¼‰
 		if (!bmpfile.is_open()) {
 			printf("[console][Warning] Cannot load %s\n", Filename.c_str());
 			return;
 		}
-		BITMAPFILEHEADER bfh; //¸÷ÖÖ¹ØÓÚÎÄ¼şµÄ²ÎÊı
-		BITMAPINFOHEADER bih; //¸÷ÖÖ¹ØÓÚÎ»Í¼µÄ²ÎÊı
-							  //¿ªÊ¼¶ÁÈ¡
-		maskfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //ÕâÁ½¸öÊÇÕ¼Î»maskÎÄ¼şµÄ
-		maskfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //µ½ÁËºóÃæmask¿ÉÒÔÖ±½Ó´ÓÑÕÉ«²¿·Ö¿ªÊ¼¶ÁÈ¡
-		bmpfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //ÕæÕıµÄinfoÒÔÕâ¸öbmpÎÄ¼şÎª×¼
-		bmpfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //Ëü½«¸²¸ÇÖ®Ç°´ÓmaskÎÄ¼ş¶Á³öÀ´µÄinfoÊı¾İ
+		BITMAPFILEHEADER bfh; //å„ç§å…³äºæ–‡ä»¶çš„å‚æ•°
+		BITMAPINFOHEADER bih; //å„ç§å…³äºä½å›¾çš„å‚æ•°
+							  //å¼€å§‹è¯»å–
+		maskfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //è¿™ä¸¤ä¸ªæ˜¯å ä½maskæ–‡ä»¶çš„
+		maskfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //åˆ°äº†åé¢maskå¯ä»¥ç›´æ¥ä»é¢œè‰²éƒ¨åˆ†å¼€å§‹è¯»å–
+		bmpfile.read((char*)&bfh, sizeof(BITMAPFILEHEADER)); //çœŸæ­£çš„infoä»¥è¿™ä¸ªbmpæ–‡ä»¶ä¸ºå‡†
+		bmpfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //å®ƒå°†è¦†ç›–ä¹‹å‰ä»maskæ–‡ä»¶è¯»å‡ºæ¥çš„infoæ•°æ®
 		bitmap.sizeX = bih.biWidth;
 		bitmap.sizeY = bih.biHeight;
 		bitmap.buffer = unique_ptr<ubyte[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 4]);
@@ -145,7 +145,7 @@ namespace Textures {
 		bmpfile.close();
 		maskfile.close();
 		for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
-			//°ÑBGR¸ñÊ½×ª»»ÎªRGB¸ñÊ½
+			//æŠŠBGRæ ¼å¼è½¬æ¢ä¸ºRGBæ ¼å¼
 			bitmap.buffer[ind++] = bmpdata[i * 3 + 2]; //R
 			bitmap.buffer[ind++] = bmpdata[i * 3 + 1]; //G
 			bitmap.buffer[ind++] = bmpdata[i * 3]; //B
@@ -153,7 +153,7 @@ namespace Textures {
 				bitmap.buffer[ind++] = 255;
 			}
 			else {
-				//½«ÕÚÕÖÍ¼µÄºìÉ«Í¨µÀ·´Ïà×÷ÎªAlphaÍ¨µÀ
+				//å°†é®ç½©å›¾çš„çº¢è‰²é€šé“åç›¸ä½œä¸ºAlphaé€šé“
 				bitmap.buffer[ind++] = 255 - maskdata[i * 3 + 2]; //A
 			}
 		}

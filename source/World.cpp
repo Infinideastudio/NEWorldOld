@@ -56,7 +56,7 @@ namespace world{
 
 	}
 	pair<int,int> binary_search_chunks(chunk** target, int len, chunkid cid) {
-		//¶ş·Ö²éÕÒ,GO!
+		//äºŒåˆ†æŸ¥æ‰¾,GO!
 		int first = 0, last = len - 1, middle;
 		middle = (first + last) / 2;
 		while (first <= last && target[middle]->id != cid) {
@@ -456,7 +456,7 @@ namespace world{
 	}
 
 	vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB& box){
-		//·µ»ØÓëboxÏà½»µÄËùÓĞ·½¿éAABB
+		//è¿”å›ä¸boxç›¸äº¤çš„æ‰€æœ‰æ–¹å—AABB
 
 		Hitbox::AABB blockbox;
 		vector<Hitbox::AABB> hitBoxes;
@@ -607,7 +607,7 @@ namespace world{
 	}
 
 	block getblock(int x, int y, int z, block mask, chunk* cptr){
-		//»ñÈ¡XYZµÄ·½¿é
+		//è·å–XYZçš„æ–¹å—
 		int cx, cy, cz;
 		cx = getchunkpos(x);cy = getchunkpos(y);cz = getchunkpos(z);
 		if (chunkOutOfBound(cx, cy, cz))return blocks::AIR;
@@ -622,7 +622,7 @@ namespace world{
 	}
 
 	brightness getbrightness(int x, int y, int z, chunk* cptr){
-		//»ñÈ¡XYZµÄÁÁ¶È
+		//è·å–XYZçš„äº®åº¦
 		int cx, cy, cz;
 		cx = getchunkpos(x);cy = getchunkpos(y);cz = getchunkpos(z);
 		if (chunkOutOfBound(cx, cy, cz))return skylight;
@@ -638,7 +638,7 @@ namespace world{
 
 	void setblock(int x, int y, int z, block Blockname, chunk* cptr) {
 
-		//ÉèÖÃ·½¿é
+		//è®¾ç½®æ–¹å—
 		int cx, cy, cz, bx, by, bz;
 
 		cx = getchunkpos(x);
@@ -663,7 +663,7 @@ namespace world{
 
 	void setbrightness(int x, int y, int z, brightness Brightness){
 
-		//ÉèÖÃXYZµÄÁÁ¶È
+		//è®¾ç½®XYZçš„äº®åº¦
 		int cx, cy, cz, bx, by, bz;
 
 		cx = getchunkpos(x);
@@ -685,26 +685,26 @@ namespace world{
 
 	void putblock(int x, int y, int z, block Blockname){
 
-		//Õâ¸övoidºÍÉÏÃæÄÇ¸öÊÇÒ»ÑùµÄ£¬Ö»ÊÇ±¾ÈËµÄÍêÃÀÖ÷Òå£¨Ëµ°×ÁË¾ÍÊÇÇ¿ÆÈÖ¢£©ÇıÊ¹ÎÒÔÙĞ´Ò»±é= =
-		//ÊÇ²»ÊÇ¸Ğ¾õÕâ¾ä»°ÓĞĞ©ÑÛÊì¡£¡£¡£
+		//è¿™ä¸ªvoidå’Œä¸Šé¢é‚£ä¸ªæ˜¯ä¸€æ ·çš„ï¼Œåªæ˜¯æœ¬äººçš„å®Œç¾ä¸»ä¹‰ï¼ˆè¯´ç™½äº†å°±æ˜¯å¼ºè¿«ç—‡ï¼‰é©±ä½¿æˆ‘å†å†™ä¸€é= =
+		//æ˜¯ä¸æ˜¯æ„Ÿè§‰è¿™å¥è¯æœ‰äº›çœ¼ç†Ÿã€‚ã€‚ã€‚
 		setblock(x, y, z, Blockname);
 
 	}
 
 	void pickblock(int x, int y, int z){
 
-		//Õâ¸övoid¸ù±¾Ã»ÓĞ´æÔÚµÄ±ØÒª£¬Æä¹¦ÄÜµÈÓÚsetblock(x,y,z,0)»òputblock(x,y,z,0),µ«ÊÇ±¾ÈËµÄÍê...
-		//ÊÇ²»ÊÇ¸Ğ¾õÕâ¾ä»°»¹ÊÇÓĞĞ©ÑÛÊì¡£¡£¡£
+		//è¿™ä¸ªvoidæ ¹æœ¬æ²¡æœ‰å­˜åœ¨çš„å¿…è¦ï¼Œå…¶åŠŸèƒ½ç­‰äºsetblock(x,y,z,0)æˆ–putblock(x,y,z,0),ä½†æ˜¯æœ¬äººçš„å®Œ...
+		//æ˜¯ä¸æ˜¯æ„Ÿè§‰è¿™å¥è¯è¿˜æ˜¯æœ‰äº›çœ¼ç†Ÿã€‚ã€‚ã€‚
 		setblock(x, y, z, blocks::AIR);
 
 	}
 
-	//ÎªÊ²Ã´Ö®Ç°ÄÇĞ©»°¶¼ÓĞĞ©ÑÛÊìÄØ£¿£¿£¿
-	//Ô­À´ÊÇÒòÎªÕâÀïµÄset/put/pickblockÈı¸öSubÊÇÊÀ½ç·¶Î§µÄ£¬¶øÖ®Ç°µÄÊÇÇø¿é·¶Î§µÄ¡£¡£¡£
+	//ä¸ºä»€ä¹ˆä¹‹å‰é‚£äº›è¯éƒ½æœ‰äº›çœ¼ç†Ÿå‘¢ï¼Ÿï¼Ÿï¼Ÿ
+	//åŸæ¥æ˜¯å› ä¸ºè¿™é‡Œçš„set/put/pickblockä¸‰ä¸ªSubæ˜¯ä¸–ç•ŒèŒƒå›´çš„ï¼Œè€Œä¹‹å‰çš„æ˜¯åŒºå—èŒƒå›´çš„ã€‚ã€‚ã€‚
 
 	bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist){
 
-		//¼ì²â¸ø³öµÄchunk×ø±êÊÇ·ñÔÚäÖÈ¾·¶Î§ÄÚ
+		//æ£€æµ‹ç»™å‡ºçš„chunkåæ ‡æ˜¯å¦åœ¨æ¸²æŸ“èŒƒå›´å†…
 		if (x<px - dist || x>px + dist - 1 || y<py - dist || y>py + dist - 1 || z<pz - dist || z>pz + dist - 1){
 			return false;
 		}

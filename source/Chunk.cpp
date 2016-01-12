@@ -30,7 +30,7 @@ namespace world{
 	}
 
 	void chunk::build(){
-		//生成地形
+		//鐢熸垚鍦板舰
 
 		int x, y, z, height, h=0, sh=0;
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
@@ -144,7 +144,7 @@ namespace world{
 			return;
 		}
 #endif
-		//建立chunk显示列表
+		//寤虹珛chunk鏄剧ず鍒楄〃
 		int x, y, z;
 		for (x = -1; x <= 1; x++) {
 			for (y = -1; y <= 1; y++) {

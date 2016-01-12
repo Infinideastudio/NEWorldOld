@@ -32,7 +32,7 @@ namespace Hitbox{
 	}
 
 	double MaxMoveOnXclip(const AABB& boxA, const AABB& boxB, double movedist){
-		//ÓÃboxAÈ¥×²boxB£¬±ğ¸ã·´ÁË
+		//ç”¨boxAå»æ’boxBï¼Œåˆ«æåäº†
 		double ret = 0.0;
 		if (!(inYclip(boxA, boxB) && inZclip(boxA, boxB))){
 			ret = movedist;
@@ -53,7 +53,7 @@ namespace Hitbox{
 	}
 
 	double MaxMoveOnYclip(const AABB& boxA, const AABB& boxB, double movedist){
-		//ÓÃboxAÈ¥×²boxB£¬±ğ¸ã·´ÁË £¨ÕâºÃÏñÊÇ¾ä·Ï»°£©
+		//ç”¨boxAå»æ’boxBï¼Œåˆ«æåäº† ï¼ˆè¿™å¥½åƒæ˜¯å¥åºŸè¯ï¼‰
 		double ret = 0.0;
 		if (!(inXclip(boxA, boxB) && inZclip(boxA, boxB))){
 			ret = movedist;
@@ -74,7 +74,7 @@ namespace Hitbox{
 	}
 
 	double MaxMoveOnZclip(const AABB& boxA, const AABB& boxB, double movedist){
-		//ÓÃboxAÈ¥×²boxB£¬±ğ¸ã·´ÁË £¨ÕâºÃÏñ»¹ÊÇ¾ä·Ï»°£©
+		//ç”¨boxAå»æ’boxBï¼Œåˆ«æåäº† ï¼ˆè¿™å¥½åƒè¿˜æ˜¯å¥åºŸè¯ï¼‰
 		double ret = 0.0;
 		if (!(inXclip(boxA, boxB) && inYclip(boxA, boxB))){
 			ret = movedist;
@@ -125,7 +125,7 @@ namespace Hitbox{
 
 	void MoveTo(AABB &box, double x, double y, double z){
 		double l, w, h;
-		//×¢ÒâÔÚÖ´ĞĞÕâ¸ö¹ı³ÌÊ±£¬²ÎÊıÖĞµÄxyz×ø±ê½«³ÉÎªÒÆ¶¯ºóµÄAABBµÄÖĞĞÄ£¬¶ø²»ÊÇ³õÊ¼»¯AABBÊ±µÄÔ­µã£¡
+		//æ³¨æ„åœ¨æ‰§è¡Œè¿™ä¸ªè¿‡ç¨‹æ—¶ï¼Œå‚æ•°ä¸­çš„xyzåæ ‡å°†æˆä¸ºç§»åŠ¨åçš„AABBçš„ä¸­å¿ƒï¼Œè€Œä¸æ˜¯åˆå§‹åŒ–AABBæ—¶çš„åŸç‚¹ï¼
 		l = (box.xmax - box.xmin) / 2;
 		w = (box.ymax - box.ymin) / 2;
 		h = (box.zmax - box.zmin) / 2;
@@ -138,7 +138,7 @@ namespace Hitbox{
 	}
 	void renderAABB(const AABB& box, float colR, float colG, float colB, int mode){
 		//Debug only!
-		//Åö×²ÏääÖÈ¾³öÀ´ºÜÏ¹¹·ÑÛµÄQAQ¶øÇÒÓÖÃ»ÓÃQAQ
+		//ç¢°æ’ç®±æ¸²æŸ“å‡ºæ¥å¾ˆçç‹—çœ¼çš„QAQè€Œä¸”åˆæ²¡ç”¨QAQ
 		glLineWidth(2.0);
 		glEnable(GL_LINE_SMOOTH);
 		glColor4f(colR, colG, colB, 1.0);
