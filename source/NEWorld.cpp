@@ -1087,7 +1087,7 @@ void debugText(string s, bool init) {
 		pos = 0;
 		return;
 	}
-	TextRenderer::renderString(0, 16 * pos, s);
+	TextRenderer::renderASCIIString(0, 16 * pos, s);
 	pos++;
 }
 
@@ -1498,7 +1498,8 @@ void drawGUI(){
 			glDisable(GL_CULL_FACE);
 			std::stringstream ss;
 			ss << BlockInfo(selb).getBlockName() << " (ID " << (int)selb << ")";
-			TextRenderer::renderString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, ss.str());
+			glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
+			TextRenderer::renderASCIIString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, ss.str());
 			glDisable(GL_TEXTURE_2D);
 			glEnable(GL_CULL_FACE);
 			glColor4f(0.0f, 0.0f, 0.0f, 0.9f);
@@ -1586,6 +1587,7 @@ void drawGUI(){
 	glVertex2d(20 + healthPercent * 170, 25);
 	glVertex2d(20, 25);
 	glEnd();
+
 	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 	if (chatmode) {
 		glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
@@ -1599,6 +1601,9 @@ void drawGUI(){
 		glEnable(GL_TEXTURE_2D);
 		TextRenderer::renderString(0, windowheight - 50, chatword);
 	}
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
 
 	if (DebugMode) {
 		std::stringstream ss;
@@ -1677,11 +1682,11 @@ void drawGUI(){
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 		std::stringstream ss;
 		ss << "v" << VERSION;
-		TextRenderer::renderString(0, 0, ss.str());
+		TextRenderer::renderASCIIString(0, 0, ss.str());
 		ss.clear();
 		ss.str("");
 		ss << "Fps:" << fps;
-		TextRenderer::renderString(0, 16, ss.str());
+		TextRenderer::renderASCIIString(0, 16, ss.str());
 
 	}
 
