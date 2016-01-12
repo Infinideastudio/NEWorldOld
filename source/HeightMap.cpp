@@ -40,10 +40,10 @@ namespace World {
 		x -= originX; z -= originZ;
 		if (x < 0 || z < 0 || x >= size || z >= size)
 			return WorldGen::getHeight(x + originX, z + originZ);
-		if (array[x*size + z] == -1)array[x*size + z] = WorldGen::getHeight(x + originX, z + originZ);
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		else c_getHeightFromHMap++;
 #endif
+		if (array[x*size + z] == -1) array[x*size + z] = WorldGen::getHeight(x + originX, z + originZ);
 		return array[x*size + z];
 	}
 }

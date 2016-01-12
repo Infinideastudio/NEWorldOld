@@ -38,7 +38,8 @@ namespace World {
 		//Éú³ÉµØÐÎ
 		//assert(Empty == false);
 		
-		int x, y, z, height, h = 0, sh = 0;
+		int x, z, h = 0, sh = 0, wh = 0;
+		int mn, mx, cur_br;
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr || pbrightness == nullptr) {
 			DebugWarning("Empty pointer when chunk generating!");
@@ -47,59 +48,56 @@ namespace World {
 #endif
 		Empty = true;
 
-		if (cy > 8) {
-			memset(pblocks, 0, 4096 * sizeof(block));
-			for (int index = 0; index < 4096; index++) pbrightness[index] = skylight;
-		}
-		else if (cy < 0) {
-			memset(pblocks, 0, 4096 * sizeof(block));
-			for (int index = 0; index < 4096; index++) pbrightness[index] = BRIGHTNESSMIN;
-		}
+		memset(pblocks, 0, 4096 * sizeof(block));
+		if (cy > 8) for (int index = 0; index < 4096; index++) pbrightness[index] = skylight;
+		else if (cy < 0) for (int index = 0; index < 4096; index++) pbrightness[index] = BRIGHTNESSMIN;
 		else {
-
+			memset(pbrightness, 0, 4096 * sizeof(brightness));
 			int hm[16][16];
 			for (x = 0; x < 16; x++) {
 				for (z = 0; z < 16; z++) {
 					hm[x][z] = HMap.getHeight(cx * 16 + x, cz * 16 + z);
 				}
 			}
-			sh = WorldGen::WaterLevel + 2;
+			sh = WorldGen::WaterLevel + 2 - cy * 16;
+			wh = WorldGen::WaterLevel - cy * 16;
 
-			int index = 0;
 			for (x = 0; x < 16; x++) {
-				for (y = 0; y < 16; y++) {
-					for (z = 0; z < 16; z++) {
-
-						h = hm[x][z]; height = cy * 16 + y;
-						pbrightness[index] = 0;
-						if (height == 0)
-							pblocks[index] = Blocks::BEDROCK;
-						else if (height == h && height > sh && height > WorldGen::WaterLevel + 1)
-							pblocks[index] = Blocks::GRASS;
-						else if (height<h && height>sh && height > WorldGen::WaterLevel + 1)
-							pblocks[index] = Blocks::DIRT;
-						else if ((height >= sh - 5 || height >= h - 5) && height <= h && (height <= sh || height <= WorldGen::WaterLevel + 1))
-							pblocks[index] = Blocks::SAND;
-						else if ((height < sh - 5 && height < h - 5) && height >= 1 && height <= h)
-							pblocks[index] = Blocks::ROCK;
-						else {
-							if (height <= WorldGen::WaterLevel) {
-								pblocks[index] = Blocks::WATER;
-								if (skylight - (WorldGen::WaterLevel - height) * 2 < BRIGHTNESSMIN)
-									pbrightness[index] = BRIGHTNESSMIN;
-								else
-									pbrightness[index] = skylight - (brightness)((WorldGen::WaterLevel - height) * 2);
-							}
-							else
-							{
-								pblocks[index] = Blocks::AIR;
-								pbrightness[index] = skylight;
-							}
-						}
-						if (pblocks[index] != Blocks::AIR) Empty = false;
-						index++;
-
+				for (z = 0; z < 16; z++) {
+					h = hm[x][z] - cy*16;
+					if (h >= 0) Empty = false;
+					if (h > sh && h > wh + 1) {
+						//Grass layer
+						if (h >= 0 && h < 16) pblocks[x * 256 + h * 16 + z] = Blocks::GRASS;
+						//Dirt layer
+						mn = min(max(0, h - 5), 16); mx = min(max(0, h), 16);
+						for (int y = mn; y < mx; y++) pblocks[x * 256 + y * 16 + z] = Blocks::DIRT;
 					}
+					else {
+						//Sand layer
+						mn = min(max(0, h - 5), 16); mx = min(max(0, h + 1), 16);
+						for (int y = mn; y < mx; y++) pblocks[x * 256 + y * 16 + z] = Blocks::SAND;
+						//Water layer
+						mn = min(max(0, h + 1), 16); mx = min(max(0, wh + 1), 16);
+						cur_br = BRIGHTNESSMAX - (WorldGen::WaterLevel - (mx - 1 + cy * 16)) * 2;
+						if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
+						for (int y = mx - 1; y >= mn; y--) {
+							pblocks[x * 256 + y * 16 + z] = Blocks::WATER;
+							pbrightness[x * 256 + y * 16 + z] = (brightness)cur_br;
+							cur_br -= 2; if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
+						}
+					}
+					//Rock layer
+					mx = min(max(0, h - 5), 16);
+					for (int y = 0; y < mx; y++) pblocks[x * 256 + y * 16 + z] = Blocks::ROCK;
+					//Air layer
+					mn = min(max(0, max(h + 1, wh + 1)), 16);
+					for (int y = mn; y < 16; y++) {
+						pblocks[x * 256 + y * 16 + z] = Blocks::AIR;
+						pbrightness[x * 256 + y * 16 + z] = skylight;
+					}
+					//Bedrock layer (overwrite)
+					if (cy == 0) pblocks[x * 256 + z] = Blocks::BEDROCK;
 				}
 			}
 		}
