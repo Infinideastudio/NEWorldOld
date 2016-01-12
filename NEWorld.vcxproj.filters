@@ -42,6 +42,9 @@
     <Filter Include="源代码\GUI\Globalization">
       <UniqueIdentifier>{a9cb3744-03b3-4b6d-af7a-a84d6f4b36d4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="源代码\Common\TreeUtils">
+      <UniqueIdentifier>{0aeaa96c-9ff1-4e81-849d-2f58e0517af4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Object.h">
@@ -164,6 +167,9 @@
     <ClInclude Include="source\NNN.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
+    <ClInclude Include="source\vduio.h">
+      <Filter>源代码\Common\TreeUtils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -282,6 +288,9 @@
     </ClCompile>
     <ClCompile Include="source\NNN.cpp">
       <Filter>源代码\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="source\vduio.cpp">
+      <Filter>源代码\Common\TreeUtils</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
