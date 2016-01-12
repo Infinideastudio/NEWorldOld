@@ -1,4 +1,4 @@
-#include "Definitions.h"
+﻿#include "Definitions.h"
 
 //Functions Definitions
 void WindowSizeFunc(GLFWwindow* win, int width, int height);
@@ -873,7 +873,7 @@ void updategame(){
 				lastz = player::intzpos;
 				firstCall = false;
 			}
-			Network::Request req = Network::Request(nullptr, 0, PLAYER_PACKET_REQ, (std::function)([](void* data, int len) {
+			Network::Request req = Network::Request(nullptr, 0, PLAYER_PACKET_REQ, (std::function<void(void*, int)>)([](void* data, int len) {
 				int playersCount = len / sizeof(PlayerPacket);
 				PlayerPacket* pp = (PlayerPacket*)data;
 				MutexLock(Mutex);

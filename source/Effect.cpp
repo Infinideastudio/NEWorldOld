@@ -1,4 +1,4 @@
-#include "Definitions.h"
+﻿#include "Definitions.h"
 #include "Effect.h"
 namespace Effect {
 	void readScreen(int x, int y, int w, int h, uint8_t* data) {

@@ -1,4 +1,4 @@
-#ifndef PLAYERPACKET_H
+﻿#ifndef PLAYERPACKET_H
 #define PLAYERPACKET_H
 enum { PLAYER_PACKET_SEND, PLAYER_PACKET_REQ };
 struct PlayerPacket {

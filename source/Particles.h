@@ -1,4 +1,4 @@
-#ifndef PARTICLES_H
+﻿#ifndef PARTICLES_H
 #define PARTICLES_H
 #include "Definitions.h"
 #include "Hitbox.h"

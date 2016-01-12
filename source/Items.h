@@ -1,4 +1,4 @@
-#ifndef ITEMS_H
+﻿#ifndef ITEMS_H
 #define ITEMS_H
 #include "Definitions.h"
 class itemInfo {

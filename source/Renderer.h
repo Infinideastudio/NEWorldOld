@@ -1,4 +1,4 @@
-#ifndef RENDERER_H
+﻿#ifndef RENDERER_H
 #define RENDERER_H
 #include "Definitions.h"
 

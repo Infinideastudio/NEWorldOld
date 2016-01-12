@@ -1,4 +1,4 @@
-#ifndef TEXTRENDERER_H
+﻿#ifndef TEXTRENDERER_H
 #define TEXTRENDERER_H
 #include "Definitions.h"
 

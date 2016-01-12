@@ -1,4 +1,4 @@
-#ifndef TEXTURES_H
+﻿#ifndef TEXTURES_H
 #define TEXTURES_H
 #include "Definitions.h"
 #include "Blocks.h"

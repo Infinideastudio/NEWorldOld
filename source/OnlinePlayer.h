@@ -1,4 +1,4 @@
-#ifndef ONLINEPLAYER_H
+﻿#ifndef ONLINEPLAYER_H
 #define ONLINEPLAYER_H
 #include "Object.h"
 #include "PlayerPacket.h"

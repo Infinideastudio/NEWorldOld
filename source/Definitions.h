@@ -1,4 +1,4 @@
-#ifndef DEFINITIONS_H
+﻿#ifndef DEFINITIONS_H
 #define DEFINITIONS_H
 //#pragma warning(disable:4710) //忽略STL高发警告：函数未内联
 //#pragma warning(disable:4514) //忽略STL高发警告：未使用的内联函数已移除

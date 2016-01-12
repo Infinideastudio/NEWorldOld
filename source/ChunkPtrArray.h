@@ -1,4 +1,4 @@
-#ifndef CHUNKPTRARRAY_H
+﻿#ifndef CHUNKPTRARRAY_H
 #define CHUNKPTRARRAY_H
 #include "Definitions.h"
 #include "Chunk.h"

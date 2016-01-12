@@ -1,4 +1,4 @@
-#ifndef CHUNKPACKET_H
+﻿#ifndef CHUNKPACKET_H
 #define CHUNKPACKET_H
 #include "Definitions.h"
 enum { CHUNK_DATA = 2, CHUNK_COMMAND, CHUNK_EMPTY, CHUNK_NOTBEMODIFIED };

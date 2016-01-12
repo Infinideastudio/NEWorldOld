@@ -1,4 +1,4 @@
-#ifndef NETWORK_H
+﻿#ifndef NETWORK_H
 #define NETWORK_H
 #include "Definitions.h"
 namespace Network{

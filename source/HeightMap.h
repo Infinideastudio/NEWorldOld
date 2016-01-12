@@ -1,4 +1,4 @@
-#ifndef HEIGHTMAP_H
+﻿#ifndef HEIGHTMAP_H
 #define HEIGHTMAP_H
 #include "Definitions.h"
 

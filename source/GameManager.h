@@ -1,4 +1,4 @@
-#ifndef GAMEMANAGER_H
+﻿#ifndef GAMEMANAGER_H
 #define GAMEMANAGER_H
 class NEWorld :public wxApp
 {

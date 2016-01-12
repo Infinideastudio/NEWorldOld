@@ -1,4 +1,4 @@
-#include "Definitions.h"
+﻿#include "Definitions.h"
 #ifndef EFFECT_H
 #define EFFECT_H
 namespace Effect {

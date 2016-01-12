@@ -1,4 +1,4 @@
-#ifndef WORLDGEN_H
+﻿#ifndef WORLDGEN_H
 #define WORLDGEN_H
 #include "Definitions.h"
 

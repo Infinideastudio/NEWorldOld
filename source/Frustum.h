@@ -1,4 +1,4 @@
-#ifndef FRUSTUM_H
+﻿#ifndef FRUSTUM_H
 #define FRUSTUM_H
 #include "Definitions.h"
 #include "Hitbox.h"

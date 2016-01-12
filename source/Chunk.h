@@ -1,4 +1,4 @@
-#ifndef CHUNK_H
+﻿#ifndef CHUNK_H
 #define CHUNK_H
 #include "Definitions.h"
 #include "Blocks.h"
