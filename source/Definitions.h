@@ -181,7 +181,7 @@ inline void MutexLock(Mutex_t _hMutex) { pthread_mutex_lock(&_hMutex); }
 inline void MutexUnlock(Mutex_t _hMutex) { pthread_mutex_unlock(&_hMutex); }
 inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { pthread_t ret; pthread_create(&ret, nullptr, func, param); return ret; }
 inline void ThreadWait(Thread_t _hThread) { pthread_join(_hThread, nullptr); }
-inline void ThreadDestroy(Thread_t& _hThread) { _hThread.p = nullptr; _hThread.x = 0; }
+inline void ThreadDestroy(Thread_t& _hThread) { memset(&_hThread, 0, sizeof(_hThread)); }
 #define Sleep wxMilliSleep
 #define wstrlen wcslen
 
