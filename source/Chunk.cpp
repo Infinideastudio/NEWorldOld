@@ -39,7 +39,7 @@ namespace World {
 		//assert(Empty == false);
 		
 		int x, z, h = 0, sh = 0, wh = 0;
-		int mn, mx, cur_br;
+		int minh, maxh, cur_br;
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr || pbrightness == nullptr) {
 			DebugWarning("Empty pointer when chunk generating!");
@@ -65,34 +65,34 @@ namespace World {
 			for (x = 0; x < 16; x++) {
 				for (z = 0; z < 16; z++) {
 					h = hm[x][z] - cy*16;
-					if (h >= 0) Empty = false;
+					if (h >= 0 || wh >= 0) Empty = false;
 					if (h > sh && h > wh + 1) {
 						//Grass layer
 						if (h >= 0 && h < 16) pblocks[x * 256 + h * 16 + z] = Blocks::GRASS;
 						//Dirt layer
-						mn = min(max(0, h - 5), 16); mx = min(max(0, h), 16);
-						for (int y = mn; y < mx; y++) pblocks[x * 256 + y * 16 + z] = Blocks::DIRT;
+						minh = min(max(0, h - 5), 16); maxh = min(max(0, h), 16);
+						for (int y = minh; y < maxh; y++) pblocks[x * 256 + y * 16 + z] = Blocks::DIRT;
 					}
 					else {
 						//Sand layer
-						mn = min(max(0, h - 5), 16); mx = min(max(0, h + 1), 16);
-						for (int y = mn; y < mx; y++) pblocks[x * 256 + y * 16 + z] = Blocks::SAND;
+						minh = min(max(0, h - 5), 16); maxh = min(max(0, h + 1), 16);
+						for (int y = minh; y < maxh; y++) pblocks[x * 256 + y * 16 + z] = Blocks::SAND;
 						//Water layer
-						mn = min(max(0, h + 1), 16); mx = min(max(0, wh + 1), 16);
-						cur_br = BRIGHTNESSMAX - (WorldGen::WaterLevel - (mx - 1 + cy * 16)) * 2;
+						minh = min(max(0, h + 1), 16); maxh = min(max(0, wh + 1), 16);
+						cur_br = BRIGHTNESSMAX - (WorldGen::WaterLevel - (maxh - 1 + cy * 16)) * 2;
 						if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
-						for (int y = mx - 1; y >= mn; y--) {
+						for (int y = maxh - 1; y >= minh; y--) {
 							pblocks[x * 256 + y * 16 + z] = Blocks::WATER;
 							pbrightness[x * 256 + y * 16 + z] = (brightness)cur_br;
 							cur_br -= 2; if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
 						}
 					}
 					//Rock layer
-					mx = min(max(0, h - 5), 16);
-					for (int y = 0; y < mx; y++) pblocks[x * 256 + y * 16 + z] = Blocks::ROCK;
+					maxh = min(max(0, h - 5), 16);
+					for (int y = 0; y < maxh; y++) pblocks[x * 256 + y * 16 + z] = Blocks::ROCK;
 					//Air layer
-					mn = min(max(0, max(h + 1, wh + 1)), 16);
-					for (int y = mn; y < 16; y++) {
+					minh = min(max(0, max(h + 1, wh + 1)), 16);
+					for (int y = minh; y < 16; y++) {
 						pblocks[x * 256 + y * 16 + z] = Blocks::AIR;
 						pbrightness[x * 256 + y * 16 + z] = skylight;
 					}
