@@ -399,6 +399,7 @@ void setupscreen() {
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClearDepth(1.0);
 	glGenBuffersARB(1, &World::EmptyBuffer);
+	Renderer::initShaders();
 
 }
 
@@ -1234,6 +1235,7 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
+	Renderer::EnableShaders();
 
 	for (int i = 0; i < renderedChunk; i++) {
 		RenderChunk cr = displayChunks[i];
@@ -1244,6 +1246,7 @@ void Render() {
 		glPopMatrix();
 	}
 
+	Renderer::DisableShaders();
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1282,6 +1285,7 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
+	Renderer::EnableShaders();
 	
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
@@ -1308,6 +1312,7 @@ void Render() {
 		glPopMatrix();
 	}
 
+	Renderer::DisableShaders();
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);

@@ -5,7 +5,7 @@ namespace Renderer {
 	float* VertexArray = nullptr;
 	float tc[3], col[4];
 	unsigned int Buffers[3];
-	bool ShaderAval, EnableShaders = false;
+	bool ShaderAval, UseShaders = false;
 	GLhandleARB shaders[16];
 	GLhandleARB shaderPrograms[16];
 	int shadercount = 0;
@@ -92,7 +92,7 @@ namespace Renderer {
 	void initShaders() {
 		shadercount = 1;
 		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[1] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB);
+		shaders[1] = loadShader("Shaders/Main.psh", GL_FRAGMENT_SHADER_ARB);
 		for (int i = 0; i != shadercount; i++) {
 			shaderPrograms[i] = glCreateProgramObjectARB();
 			glAttachObjectARB(shaderPrograms[i], shaders[i * 2]);
@@ -106,22 +106,27 @@ namespace Renderer {
 		string cur;
 		int lines = 0, curlen;;
 		char* curline;
+		const char* curline_c;
 		std::vector<char*> source;
+		std::vector<const char*> source_c;
 		std::vector<int> length;
 		std::ifstream filein(filename);
 		if (!filein.is_open()) return NULL;
 		while (!filein.eof()) {
 			lines++;
 			std::getline(filein, cur);
+			cur += '\n';
 			curlen = cur.size();
 			curline = new char[curlen];
 			memcpy(curline, cur.c_str(), curlen);
 			source.push_back(curline);
+			curline_c = curline;
+			source_c.push_back(curline_c);
 			length.push_back(curlen);
 		}
 		filein.close();
 		res = glCreateShaderObjectARB(mode);
-		glShaderSourceARB(res, lines, source.data(), length.data());
+		glShaderSourceARB(res, lines, source_c.data(), length.data());
 		glCompileShaderARB(res);
 		for (int i = 0; i < lines; i++) delete[] source[i];
 		int st = GL_TRUE;
@@ -137,8 +142,16 @@ namespace Renderer {
 		if (infologLength != 0) {
 			infoLog = new char[infologLength];
 			glGetInfoLogARB(obj, infologLength, &charsWritten, infoLog);
-			cout << *infoLog << endl;
+			cout << infoLog << endl;
 			delete[] infoLog;
 		}
+	}
+
+	void EnableShaders() {
+		glUseProgramObjectARB(shaderPrograms[0]);
+	}
+
+	void DisableShaders() {
+		glUseProgramObjectARB(0);
 	}
 }
