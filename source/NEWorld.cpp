@@ -28,7 +28,6 @@ void splashscreen();
 void createwindow();
 void setupscreen();
 void InitGL();
-//void glPrintInfoLog(GLhandleARB obj);
 void setupNormalFog();
 void LoadTextures();
 bool loadGame();
@@ -408,6 +407,7 @@ void InitGL() {
 	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
 	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
 	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
+	//获取OpenGL函数地址
 	glGenBuffersARB = (PFNGLGENBUFFERSARBPROC)glfwGetProcAddress("glGenBuffersARB");
 	glBindBufferARB = (PFNGLBINDBUFFERARBPROC)glfwGetProcAddress("glBindBufferARB");
 	glBufferDataARB = (PFNGLBUFFERDATAARBPROC)glfwGetProcAddress("glBufferDataARB");
