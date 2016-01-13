@@ -121,7 +121,7 @@ namespace Renderer {
 		}
 		filein.close();
 		res = glCreateShaderObjectARB(mode);
-		glShaderSourceARB(res, lines, source.data(), length.data());
+		glShaderSourceARB(res, lines, (const GLchar**)source.data(), length.data());
 		glCompileShaderARB(res);
 		for (int i = 0; i < lines; i++) delete[] source[i];
 		int st = GL_TRUE;
