@@ -14,9 +14,9 @@ namespace World {
 	brightness BRIGHTNESSDEC = 1;     //Brightness decrease
 	chunk* EmptyChunkPtr;
 	unsigned int EmptyBuffer;
-	int MaxChunkLoads = 256;
-	int MaxChunkUnloads = 256;
-	int MaxChunkRenders = 256;
+	int MaxChunkLoads = 32;
+	int MaxChunkUnloads = 32;
+	int MaxChunkRenders = 1;
 
 	chunk** chunks;
 	int loadedChunks, chunkArraySize;
