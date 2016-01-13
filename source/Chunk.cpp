@@ -38,6 +38,10 @@ namespace World {
 		//Éú³ÉµØÐÎ
 		//assert(Empty == false);
 		
+		memset(pblocks, 0, 4096 * sizeof(block));
+		if (cy > 8) { memset(pbrightness, skylight, 4096 * sizeof(brightness)); return; }
+		if (cy < 0) { memset(pbrightness, BRIGHTNESSMIN, 4096 * sizeof(brightness)); ; return; }
+
 		int x, z, h = 0, sh = 0, wh = 0;
 		int minh, maxh, cur_br;
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
@@ -48,59 +52,47 @@ namespace World {
 #endif
 		Empty = true;
 
-		memset(pblocks, 0, 4096 * sizeof(block));
-		if (cy > 8) for (int index = 0; index < 4096; index++) pbrightness[index] = skylight;
-		else if (cy < 0) for (int index = 0; index < 4096; index++) pbrightness[index] = BRIGHTNESSMIN;
-		else {
-			memset(pbrightness, 0, 4096 * sizeof(brightness));
-			int hm[16][16];
-			for (x = 0; x < 16; x++) {
-				for (z = 0; z < 16; z++) {
-					hm[x][z] = HMap.getHeight(cx * 16 + x, cz * 16 + z);
-				}
-			}
-			sh = WorldGen::WaterLevel + 2 - cy * 16;
-			wh = WorldGen::WaterLevel - cy * 16;
+			sh = WorldGen::WaterLevel + 2 - (cy << 4);
+			wh = WorldGen::WaterLevel - (cy << 4);
 
-			for (x = 0; x < 16; x++) {
-				for (z = 0; z < 16; z++) {
-					h = hm[x][z] - cy*16;
+			for (x = 0; x < 16; ++x) {
+				for (z = 0; z < 16; ++z) {
+					int base = (x << 8) + z;
+					h = HMap.getHeight(cx * 16 + x, cz * 16 + z) - (cy << 4);
 					if (h >= 0 || wh >= 0) Empty = false;
 					if (h > sh && h > wh + 1) {
 						//Grass layer
-						if (h >= 0 && h < 16) pblocks[x * 256 + h * 16 + z] = Blocks::GRASS;
+						if (h >= 0 && h < 16) pblocks[(h << 4) + base] = Blocks::GRASS;
 						//Dirt layer
-						minh = min(max(0, h - 5), 16); maxh = min(max(0, h), 16);
-						for (int y = minh; y < maxh; y++) pblocks[x * 256 + y * 16 + z] = Blocks::DIRT;
+						maxh = min(max(0, h), 16);
+						for (int y = min(max(0, h - 5), 16); y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::DIRT;
 					}
 					else {
 						//Sand layer
-						minh = min(max(0, h - 5), 16); maxh = min(max(0, h + 1), 16);
-						for (int y = minh; y < maxh; y++) pblocks[x * 256 + y * 16 + z] = Blocks::SAND;
+						maxh = min(max(0, h + 1), 16);
+						for (int y = min(max(0, h - 5), 16); y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::SAND;
 						//Water layer
 						minh = min(max(0, h + 1), 16); maxh = min(max(0, wh + 1), 16);
-						cur_br = BRIGHTNESSMAX - (WorldGen::WaterLevel - (maxh - 1 + cy * 16)) * 2;
+						cur_br = BRIGHTNESSMAX - (WorldGen::WaterLevel - (maxh - 1 + (cy << 4))) * 2;
 						if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
-						for (int y = maxh - 1; y >= minh; y--) {
-							pblocks[x * 256 + y * 16 + z] = Blocks::WATER;
-							pbrightness[x * 256 + y * 16 + z] = (brightness)cur_br;
+						for (int y = maxh - 1; y >= minh; --y) {
+							pblocks[(y << 4) + base] = Blocks::WATER;
+							pbrightness[(y << 4) + base] = (brightness)cur_br;
 							cur_br -= 2; if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
 						}
 					}
 					//Rock layer
 					maxh = min(max(0, h - 5), 16);
-					for (int y = 0; y < maxh; y++) pblocks[x * 256 + y * 16 + z] = Blocks::ROCK;
+					for (int y = 0; y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::ROCK;
 					//Air layer
-					minh = min(max(0, max(h + 1, wh + 1)), 16);
-					for (int y = minh; y < 16; y++) {
-						pblocks[x * 256 + y * 16 + z] = Blocks::AIR;
-						pbrightness[x * 256 + y * 16 + z] = skylight;
+					for (int y = min(max(0, max(h + 1, wh + 1)), 16); y < 16; ++y) {
+						pblocks[(y << 4) + base] = Blocks::AIR;
+						pbrightness[(y << 4) + base] = skylight;
 					}
 					//Bedrock layer (overwrite)
-					if (cy == 0) pblocks[x * 256 + z] = Blocks::BEDROCK;
+					if (cy == 0) pblocks[base] = Blocks::BEDROCK;
 				}
 			}
-		}
 		
 	}
 
