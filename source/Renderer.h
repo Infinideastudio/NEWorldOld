@@ -23,4 +23,6 @@ namespace Renderer{
 	void initShaders();
 	GLhandleARB loadShader(string filename, unsigned int mode);
 	void printInfoLog(GLhandleARB obj);
+	void EnableShaders();
+	void DisableShaders();
 }
