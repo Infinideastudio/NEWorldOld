@@ -1,15 +1,15 @@
 #pragma once
-#ifndef _DEBUG
+#define NEWORLD_DEBUG
+#ifndef NEWORLD_DEBUG
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
 #include "StdInclude.h"
 
-//#define NEWORLD_DEBUG
-#ifdef NEWORLD_DEBUG
-#define NEWORLD_DEBUG_CONSOLE_OUTPUT
-#define NEWORLD_DEBUG_NO_FILEIO
-#define NEWORLD_DEBUG_PERFORMANCE_REC
-#endif
+//#ifdef NEWORLD_DEBUG
+//#define NEWORLD_DEBUG_CONSOLE_OUTPUT
+//#define NEWORLD_DEBUG_NO_FILEIO
+//#define NEWORLD_DEBUG_PERFORMANCE_REC
+//#endif
 
 //Types/constants define
 typedef unsigned char ubyte;
