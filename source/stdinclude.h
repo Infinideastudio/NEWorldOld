@@ -1,5 +1,6 @@
 #pragma once
 #define NEWORLD_USE_WINAPI
+#define NERDMODE1
 #ifdef NEWORLD_USE_WINAPI
 	#ifdef NEWORLD_SERVER
 	#include <thread>

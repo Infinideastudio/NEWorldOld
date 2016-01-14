@@ -3,6 +3,9 @@
 
 namespace Renderer{
 	const int ArrayUNITSIZE = 262144;
+	extern float* VA;
+	extern int size;
+	extern int Vertexes;
 
 	void Init(int tcc, int cc);
 	void Vertex3f(float x, float y, float z);
@@ -16,6 +19,10 @@ namespace Renderer{
 	inline void TexCoord3d(double x, double y, double z) { TexCoord3f((float)x, (float)y, (float)z); }
 	inline void Color3d(double r, double g, double b) { Color3f((float)r, (float)g, (float)b); }
 	inline void Color4d(double r, double g, double b, double a) { Color4f((float)r, (float)g, (float)b, (float)a); }
+	inline void Quad(float *geomentry) {
+		memcpy(VA, geomentry, size*sizeof(float)); VA += size;
+		Vertexes += 4;
+	}
 
 	void Flush(VBOID& buffer, vtxCount& vtxs);
 	void renderbuffer(VBOID buffer, vtxCount vtxs, int ctex, int ccol);
