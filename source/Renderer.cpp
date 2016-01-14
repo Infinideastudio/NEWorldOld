@@ -92,7 +92,7 @@ namespace Renderer {
 	void initShaders() {
 		shadercount = 1;
 		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[1] = loadShader("Shaders/Main.psh", GL_FRAGMENT_SHADER_ARB);
+		shaders[1] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB);
 		for (int i = 0; i != shadercount; i++) {
 			shaderPrograms[i] = glCreateProgramObjectARB();
 			glAttachObjectARB(shaderPrograms[i], shaders[i * 2]);
