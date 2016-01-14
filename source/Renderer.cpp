@@ -95,9 +95,11 @@ namespace Renderer {
 	}
 
 	void initShaders() {
-		shadercount = 1;
+		shadercount = 2;
 		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
 		shaders[1] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB);
+		shaders[2] = loadShader("Shaders/MergeSurface.vsh", GL_VERTEX_SHADER_ARB);
+		shaders[3] = loadShader("Shaders/MergeSurface.fsh", GL_FRAGMENT_SHADER_ARB);
 		for (int i = 0; i != shadercount; i++) {
 			shaderPrograms[i] = glCreateProgramObjectARB();
 			glAttachObjectARB(shaderPrograms[i], shaders[i * 2]);
@@ -153,7 +155,8 @@ namespace Renderer {
 	}
 
 	void EnableShaders() {
-		glUseProgramObjectARB(shaderPrograms[0]);
+		glUseProgramObjectARB(shaderPrograms[1]);
+		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[1], "texwidth"), 1/8);
 	}
 
 	void DisableShaders() {
