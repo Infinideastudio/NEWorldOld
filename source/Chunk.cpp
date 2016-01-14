@@ -94,6 +94,7 @@ namespace World {
 
 		HMapManager cur = HMapManager(cx, cz);
 		if (cy > cur.high) { memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return; }
+		memset(pbrightness, 0, 4096 * sizeof(brightness));
 
 		int x, z, h = 0, sh = 0, wh = 0;
 		int minh, maxh, cur_br;
