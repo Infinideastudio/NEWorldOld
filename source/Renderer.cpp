@@ -7,7 +7,7 @@ namespace Renderer {
 	float* VA = nullptr;
 	float tc[3], col[4];
 	unsigned int Buffers[3];
-	bool ShaderAval, EnableShaders = false;
+	bool ShaderAval, UseShaders = false;
 	GLhandleARB shaders[16];
 	GLhandleARB shaderPrograms[16];
 	int shadercount = 0;
@@ -93,46 +93,70 @@ namespace Renderer {
 		//================================
 
 	}
-    
-	//GLhandleARB loadShader(string filename, uint mode){
-        
-		//GLhandleARB shader;
-  //      dim as zstring ptr ptr shaderSource
-  //      dim as integer ptr shaderSourceLen
-  //      dim as integer shaderLineNums
-  //      dim shaderSourceCurLine as zstring ptr
-  //      dim shaderSourceCurLineStr as string
-  //      dim f as integer
-  //      f=freefile
-  //      open filename for input as #f
-  //      do until eof(f)
-  //          line input #f,shaderSourceCurLineStr
-  //          print shaderSourceCurLineStr
-  //          shaderSourceCurLine=allocate(len(shaderSourceCurLineStr)+2)
-  //          *shaderSourceCurLine=shaderSourceCurLineStr+chr(10)
-  //          shaderlinenums+=1
-  //          shaderSource=reallocate(shaderSource,shaderlinenums*sizeof(zstring ptr))
-  //          shaderSource[shaderlinenums-1]=shaderSourceCurLine
-  //          print *shaderSource[shaderlinenums-1]
-  //          shaderSourceLen=reallocate(shaderSourceLen,shaderlinenums*sizeof(integer))
-  //          shaderSourceLen[shaderlinenums-1]=len(shaderSourceCurLineStr)+1
-  //      loop
-  //      close #f
-  //      shader=glCreateShaderObjectARB(mode)
-  //      glShaderSourceARB(shader,shaderLineNums,shaderSource,0)
-  //      glCompileShaderARB(shader)
-  //      return shader;
-        
-    //}
-    
-    void initShader(){
 
+	void initShaders() {
+		shadercount = 1;
+		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
+		shaders[1] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB);
 		for (int i = 0; i != shadercount; i++) {
 			shaderPrograms[i] = glCreateProgramObjectARB();
-			glAttachObjectARB(shaderPrograms[i*2], shaders[i]);
-			glAttachObjectARB(shaderPrograms[i*2+1], shaders[i]);
+			glAttachObjectARB(shaderPrograms[i], shaders[i * 2]);
+			glAttachObjectARB(shaderPrograms[i], shaders[i * 2 + 1]);
 			glLinkProgramARB(shaderPrograms[i]);
 		}
+	}
 
-    }
+	GLhandleARB loadShader(string filename, unsigned int mode) {
+		GLhandleARB res;
+		string cur;
+		int lines = 0, curlen;;
+		char* curline;
+		const char* curline_c;
+		std::vector<char*> source;
+		std::vector<const char*> source_c;
+		std::vector<int> length;
+		std::ifstream filein(filename);
+		if (!filein.is_open()) return NULL;
+		while (!filein.eof()) {
+			lines++;
+			std::getline(filein, cur);
+			cur += '\n';
+			curlen = cur.size();
+			curline = new char[curlen];
+			memcpy(curline, cur.c_str(), curlen);
+			source.push_back(curline);
+			curline_c = curline;
+			source_c.push_back(curline_c);
+			length.push_back(curlen);
+		}
+		filein.close();
+		res = glCreateShaderObjectARB(mode);
+		glShaderSourceARB(res, lines, source_c.data(), length.data());
+		glCompileShaderARB(res);
+		for (int i = 0; i < lines; i++) delete[] source[i];
+		int st = GL_TRUE;
+		glGetObjectParameterivARB(res, GL_COMPILE_STATUS, &st);
+		if (st == GL_FALSE) printInfoLog(res);
+		return res;
+	}
+
+	void printInfoLog(GLhandleARB obj) {
+		int infologLength, charsWritten;
+		char* infoLog;
+		glGetObjectParameterivARB(obj, GL_OBJECT_INFO_LOG_LENGTH_ARB, &infologLength);
+		if (infologLength != 0) {
+			infoLog = new char[infologLength];
+			glGetInfoLogARB(obj, infologLength, &charsWritten, infoLog);
+			cout << infoLog << endl;
+			delete[] infoLog;
+		}
+	}
+
+	void EnableShaders() {
+		glUseProgramObjectARB(shaderPrograms[0]);
+	}
+
+	void DisableShaders() {
+		glUseProgramObjectARB(0);
+	}
 }
