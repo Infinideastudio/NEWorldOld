@@ -87,11 +87,13 @@ namespace World {
 	void chunk::build() {
 		//Éú³ÉµØÐÎ
 		//assert(Empty == false);
-		HMapManager cur = HMapManager(cx, cz);
 
 		memset(pblocks, 0, 4096 * sizeof(block));
-		if (/*cy > 8*/cy > cur.high) { memset(pbrightness, skylight, 4096 * sizeof(brightness)); return; }
-		if (/*cy < 0*/cy < cur.low) { memset(pbrightness, BRIGHTNESSMIN, 4096 * sizeof(brightness)); Empty = true; return; }
+		if (cy > 8) { memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return; }
+		if (cy < 0) { memset(pbrightness, BRIGHTNESSMIN, 4096 * sizeof(brightness)); Empty = true; return; }
+
+		HMapManager cur = HMapManager(cx, cz);
+		if (cy > cur.high) { memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return; }
 
 		int x, z, h = 0, sh = 0, wh = 0;
 		int minh, maxh, cur_br;
