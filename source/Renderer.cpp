@@ -155,8 +155,14 @@ namespace Renderer {
 	}
 
 	void EnableShaders() {
-		glUseProgramObjectARB(shaderPrograms[1]);
-		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[1], "texwidth"), 1/8);
+		if (MergeFace) {
+			glUseProgramObjectARB(shaderPrograms[1]);
+			glUniform1fARB(glGetUniformLocationARB(shaderPrograms[1], "texwidth"), 1 / 8);
+		}
+		else {
+			glUseProgramObjectARB(shaderPrograms[0]);
+			glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance);
+		}
 	}
 
 	void DisableShaders() {
