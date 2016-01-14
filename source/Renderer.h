@@ -26,4 +26,10 @@ namespace Renderer{
 
 	void Flush(VBOID& buffer, vtxCount& vtxs);
 	void renderbuffer(VBOID buffer, vtxCount vtxs, int ctex, int ccol);
+
+	void initShaders();
+	GLhandleARB loadShader(string filename, unsigned int mode);
+	void printInfoLog(GLhandleARB obj);
+	void EnableShaders();
+	void DisableShaders();
 }
