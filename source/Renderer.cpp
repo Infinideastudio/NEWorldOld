@@ -161,7 +161,7 @@ namespace Renderer {
 		}
 		else {
 			glUseProgramObjectARB(shaderPrograms[0]);
-			glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance);
+			glUniform1fARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance * 16.0f);
 		}
 	}
 
