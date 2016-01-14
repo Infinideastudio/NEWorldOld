@@ -1,21 +1,25 @@
 #include "Renderer.h"
+#include <time.h>
 namespace Renderer {
 	
 	int Vertexes, Texcoordc, Colorc;
 	float* VertexArray = nullptr;
+	float* VA = nullptr;
 	float tc[3], col[4];
 	unsigned int Buffers[3];
 	bool ShaderAval, EnableShaders = false;
 	GLhandleARB shaders[16];
 	GLhandleARB shaderPrograms[16];
 	int shadercount = 0;
-	int index = 0;
+	int index = 0, size = 0;
 
 	void Init(int tcc, int cc) {
 		Texcoordc = tcc; Colorc = cc;
 		if (VertexArray == nullptr) VertexArray = new float[ArrayUNITSIZE];
-		index = 0;
+		index = 0; 
+		VA = VertexArray;
 		Vertexes = 0;
+		size = (tcc + cc + 3) * 4;
 	}
 
 	void Vertex3f(float x, float y, float z) {
@@ -32,6 +36,7 @@ namespace Renderer {
 	void TexCoord3f(float x, float y, float z) { tc[0] = x; tc[1] = y; tc[2] = z; }
 	void Color3f(float r, float g, float b) { col[0] = r; col[1] = g; col[2] = b; }
 	void Color4f(float r, float g, float b, float a) { col[0] = r; col[1] = g; col[2] = b; col[3] = a; }
+	
 
 	void Flush(VBOID& buffer, vtxCount& vtxs) {
 
