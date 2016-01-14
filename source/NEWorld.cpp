@@ -422,6 +422,7 @@ void InitGL() {
 	glUseProgramObjectARB = (PFNGLUSEPROGRAMOBJECTARBPROC)glfwGetProcAddress("glUseProgramObjectARB");
 	glGetUniformLocationARB = (PFNGLGETUNIFORMLOCATIONARBPROC)glfwGetProcAddress("glGetUniformLocationARB");
 	glUniform1fARB = (PFNGLUNIFORM1FARBPROC)glfwGetProcAddress("glUniform1fARB");
+	glUniform1iARB = (PFNGLUNIFORM1IARBPROC)glfwGetProcAddress("glUniform1iARB");
 	glGetObjectParameterivARB = (PFNGLGETOBJECTPARAMETERIVARBPROC)glfwGetProcAddress("glGetObjectParameterivARB");
 	glGetInfoLogARB = (PFNGLGETINFOLOGARBPROC)glfwGetProcAddress("glGetInfoLogARB");
 	glDetachObjectARB = (PFNGLDETACHOBJECTARBPROC)glfwGetProcAddress("glDetachObjectARB");
