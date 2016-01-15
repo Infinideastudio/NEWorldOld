@@ -194,7 +194,7 @@
       <Filter>源代码\Network</Filter>
     </ClCompile>
     <ClCompile Include="source\Globalization.cpp">
-      <Filter>源代码</Filter>
+      <Filter>源代码\Common</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
