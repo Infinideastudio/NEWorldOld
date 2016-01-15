@@ -24,7 +24,7 @@ namespace World {
 					H[x][z] = h;
 				}
 			}
-			low = l / 16, high = (hi + 16) / 16; count = 0;
+			low = (l - 21) / 16, high = (hi + 16) / 16; count = 0;
 		}
 	};
 
@@ -88,22 +88,42 @@ namespace World {
 		//Éú³ÉµØÐÎ
 		//assert(Empty == false);
 
-		memset(pblocks, 0, 4096 * sizeof(block));
-		if (cy > 8) { memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return; }
-		if (cy < 0) { memset(pbrightness, BRIGHTNESSMIN, 4096 * sizeof(brightness)); Empty = true; return; }
-
-		HMapManager cur = HMapManager(cx, cz);
-		if (cy > cur.high) { memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return; }
-		memset(pbrightness, 0, 4096 * sizeof(brightness));
-
-		int x, z, h = 0, sh = 0, wh = 0;
-		int minh, maxh, cur_br;
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
+#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT	//Error Report(Debug)
 		if (pblocks == nullptr || pbrightness == nullptr) {
 			DebugWarning("Empty pointer when chunk generating!");
 			return;
 		}
 #endif
+
+		//Fast Acress Part
+		//Part1 Outof The World
+		if (cy > 8) {
+			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return; 
+		}
+		if (cy < 0) {
+			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, BRIGHTNESSMIN, 4096 * sizeof(brightness)); Empty = true; return;
+		}
+
+		//Part2 Outof Geomentry Area
+		HMapManager cur = HMapManager(cx, cz);
+		if (cy > cur.high) { 
+			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return;
+		}
+		if (cy < cur.low) { 
+			for (int i = 0; i != 4096; ++i) pblocks[i] = Blocks::ROCK;
+			memset(pbrightness, skylight, 4096 * sizeof(brightness)); 
+			Empty = false; 
+			return; 
+		}
+
+		//Normal Calc
+		//Init
+		memset(pblocks, 0, 4096 * sizeof(block));//Empty the chunk
+		memset(pbrightness, 0, 4096 * sizeof(brightness));//Set All Brightness to 0
+
+		int x, z, h = 0, sh = 0, wh = 0;
+		int minh, maxh, cur_br;
+
 		Empty = true;
 		sh = WorldGen::WaterLevel + 2 - (cy << 4);
 		wh = WorldGen::WaterLevel - (cy << 4);
