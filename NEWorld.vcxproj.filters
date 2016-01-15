@@ -18,17 +18,17 @@
     <Filter Include="源代码\Network">
       <UniqueIdentifier>{b6623145-3e33-48a1-be11-1cf4ad2065bc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\GUI">
-      <UniqueIdentifier>{92f24a42-2d77-4317-9cd7-04a69e43c2fa}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\World">
-      <UniqueIdentifier>{0873facd-4fad-448a-a88b-afa8accfd800}</UniqueIdentifier>
-    </Filter>
     <Filter Include="源代码\Renderer">
       <UniqueIdentifier>{a448efda-cf30-4017-8d62-e5feed0408dd}</UniqueIdentifier>
     </Filter>
     <Filter Include="源代码\Common">
       <UniqueIdentifier>{2942a024-6889-447e-9918-2cd547c7a601}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源代码\GUI">
+      <UniqueIdentifier>{92f24a42-2d77-4317-9cd7-04a69e43c2fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源代码\World">
+      <UniqueIdentifier>{0873facd-4fad-448a-a88b-afa8accfd800}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -95,9 +95,6 @@
     <ClInclude Include="source\Blocks.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
-    <ClInclude Include="source\Items.h">
-      <Filter>源代码\Common</Filter>
-    </ClInclude>
     <ClInclude Include="source\Effect.h">
       <Filter>源代码\Renderer</Filter>
     </ClInclude>
@@ -116,9 +113,15 @@
     <ClInclude Include="source\OnlinePlayer.h">
       <Filter>源代码\Network</Filter>
     </ClInclude>
-    <ClInclude Include="source\Command.h" />
-    <ClInclude Include="source\Globalization.h" />
-    <ClInclude Include="source\Items.h" />
+    <ClInclude Include="source\Items.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Globalization.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Command.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
