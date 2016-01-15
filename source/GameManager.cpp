@@ -75,7 +75,7 @@ void GameManagerWindow::Refresh()
 void GameManagerWindow::OnEnter(wxCommandEvent &)
 {
 	gamebegin = true;
-	world::worldname = worlds->GetStringSelection();
+	World::worldname = worlds->GetStringSelection();
 	MainLoop();
 }
 void DeleteDir(wxString dir)
@@ -107,7 +107,7 @@ void GameManagerWindow::OnCreate(wxCommandEvent &)
 	wxTextEntryDialog dialog(this, L"世界名称：", L"NEWorld", L"NEWorld", wxOK);
 	dialog.ShowModal();
 	wxString worldname = dialog.GetValue();
-	world::worldname = worldname;
+	World::worldname = worldname;
 	gamebegin = true;
 	multiplayer = false;
 	MainLoop();
@@ -119,7 +119,7 @@ void GameManagerWindow::OnConnectServer(wxCommandEvent &)
 	serverip = serveriptb->GetValue();
 	gamebegin = true;
 	multiplayer = true;
-	world::worldname = "Multiplayer";
+	World::worldname = "Multiplayer";
 	MainLoop();
 	Refresh();
 }

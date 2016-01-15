@@ -2,7 +2,7 @@
 #define BLOCKS_H
 #include "Definitions.h"
 
-namespace blocks{  //方块ID
+namespace Blocks{  //方块ID
 	enum BlockType{
 		AIR, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
@@ -35,9 +35,8 @@ namespace blocks{  //方块ID
 		//是否可以爆炸
 		inline bool canExplode()const { return canexplode; }
 	};
-
-	const SingleBlock blockData[BLOCK_DEF_END] = {
-		//		    方块名称		  固体	 不透明	  半透明  可以爆炸
+	const SingleBlock blockData[BLOCK_DEF_END + 1] = {
+		//			方块名称		  固体	 不透明	  半透明  可以爆炸
 		SingleBlock("Air"		, false	, false	, false , false),
 		SingleBlock("Rock"		, true	, true	, false , false),
 		SingleBlock("Grass"		, true	, true	, false , false),
@@ -52,12 +51,13 @@ namespace blocks{  //方块ID
 		SingleBlock("Lava"		, false	, false	, true	, false),
 		SingleBlock("GlowStone"	, true	, true	, false	, false),
 		SingleBlock("Sand"		, true	, true	, false	, false),
-		SingleBlock("Ice"		, true	, false	, true	, false),
-		SingleBlock("cement"	, true	, true	, false , false),
+		SingleBlock("Ice"		, true	, false	, true  , false),
+		SingleBlock("Cement"	, true	, true	, false	, false),
 		SingleBlock("Coal Block", true	, true	, false , false),
 		SingleBlock("Iron Block", true	, true	, false , false),
-		SingleBlock("TNT"		, true	, true	, false , true)
+		SingleBlock("TNT"		, true	, true	, false , true),
+		SingleBlock("Null Block", true  , true  , false , false)
+#define BlockInfo(blockID) Blocks::blockData[blockID]
 	};
 }
-#define BlockInfo(blockID) blocks::blockData[blockID]
 #endif

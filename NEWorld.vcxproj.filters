@@ -53,6 +53,9 @@
     <ClInclude Include="source\Definitions.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
+    <ClInclude Include="source\Hitbox.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
     <ClInclude Include="source\Textures.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
@@ -98,6 +101,24 @@
     <ClInclude Include="source\Effect.h">
       <Filter>源代码\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="source\Blocks.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Items.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Effect.h">
+      <Filter>源代码\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ChunkRenderer.h">
+      <Filter>源代码\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="source\OnlinePlayer.h">
+      <Filter>源代码\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Command.h" />
+    <ClInclude Include="source\Globalization.h" />
+    <ClInclude Include="source\Items.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -121,6 +142,9 @@
     <ClCompile Include="source\Definitions.cpp">
       <Filter>源代码\Common</Filter>
     </ClCompile>
+    <ClCompile Include="source\Hitbox.cpp">
+      <Filter>源代码\Common</Filter>
+    </ClCompile>
     <ClCompile Include="source\Textures.cpp">
       <Filter>源代码\Common</Filter>
     </ClCompile>
@@ -136,12 +160,6 @@
     <ClCompile Include="source\Player.cpp">
       <Filter>源代码\Player</Filter>
     </ClCompile>
-    <ClCompile Include="source\OnlinePlayer.cpp">
-      <Filter>源代码\Objects</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Network.cpp">
-      <Filter>源代码\Network</Filter>
-    </ClCompile>
     <ClCompile Include="source\Particles.cpp">
       <Filter>源代码\Objects</Filter>
     </ClCompile>
@@ -156,6 +174,24 @@
     </ClCompile>
     <ClCompile Include="source\Items.cpp">
       <Filter>源代码\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Effect.cpp">
+      <Filter>源代码\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Items.cpp">
+      <Filter>源代码\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ChunkRenderer.cpp">
+      <Filter>源代码\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="source\OnlinePlayer.cpp">
+      <Filter>源代码\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Network.cpp">
+      <Filter>源代码\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Globalization.cpp">
+      <Filter>源代码</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

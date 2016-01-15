@@ -74,39 +74,6 @@ namespace TextRenderer{
 		return ret;
 	}
 
-	void glprint(int x, int y, string glstring){
-
-		glBindTexture(GL_TEXTURE_2D, Font);
-		glDisable(GL_DEPTH_TEST);
-		glMatrixMode(GL_PROJECTION);
-		glPushMatrix();
-		glLoadIdentity();
-		glOrtho(0, ww, wh, 0, -1.0, 1.0);
-		glMatrixMode(GL_MODELVIEW);
-		glPushMatrix();
-
-		glLoadIdentity();
-		glColor4f(0.5, 0.5, 0.5, a);
-		glTranslated(x + 1, y + 1, 0);
-		glListBase(gbe);
-		glCallLists((GLsizei)glstring.length(), GL_UNSIGNED_BYTE, glstring.c_str());
-
-		glLoadIdentity();
-		glColor4f(r, g, b, a);
-		glTranslated(x, y, 0);
-		glListBase(gbe);
-		glCallLists((GLsizei)glstring.length(), GL_UNSIGNED_BYTE, glstring.c_str());
-
-		glPopMatrix();
-		glMatrixMode(GL_PROJECTION);
-
-		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
-
-		glEnable(GL_DEPTH_TEST);
-		glColor4f(1.0, 1.0, 1.0, 1.0);
-	}
-
 	void renderString(int x, int y, string glstring){
 
 		unsigned int i = 0;
@@ -118,37 +85,33 @@ namespace TextRenderer{
 		wchar_t* wstr = nullptr;
 		MBToWC(glstring.c_str(), wstr);
 
+		/*
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
 		glLoadIdentity();
 		glOrtho(0, ww, wh, 0, -1.0, 1.0);
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
+		*/
 		glEnable(GL_TEXTURE_2D);
-		for (unsigned int k = 0, im = wstrlen(wstr); k < im; k++) {
-			glLoadIdentity();
+		for (unsigned int k = 0; k < wstrlen(wstr); k++) {
+			//glLoadIdentity();
 			glColor4f(r, g, b, a);
 			glTranslated(x + 1 + span, y + 1, 0);
 			uc = wstr[k];
-			if (!useUnicodeASCIIFont && glstring[i]>=0 && glstring[i] <= 127){
-				glprint(x + 1 + (int)span, y + 1, string() + glstring[i]);
-			}
-			else{
+			if (!useUnicodeASCIIFont && glstring[i] >= 0 && glstring[i] <= 127) ftex = Font;
+			else {
 				if (!unicodeTexAval[uc / 256]) {
-					//printf("[Console][Event]");
-					//printf("Loading unicode font texture #%d\n", uc / 256);
 					ftex = Textures::LoadFontTexture("Textures/Fonts/unicode/unicode_glyph_" + itos(uc / 256) + ".bmp");
 					unicodeTex[uc / 256] = ftex;
 					unicodeTexAval[uc / 256] = true;
 				}
-				else{
-					ftex = unicodeTex[uc / 256];
-				}
-
-				tx = ((uc % 256) % 16) / 16.0;
-				ty = 1 - ((uc % 256) / 16) / 16.0;
-				glBindTexture(GL_TEXTURE_2D, ftex);
-				glBegin(GL_QUADS);
+				else ftex = unicodeTex[uc / 256];
+			}
+			tx = ((uc % 256) % 16) / 16.0;
+			ty = 1 - ((uc % 256) / 16) / 16.0;
+			glBindTexture(GL_TEXTURE_2D, ftex);
+			glBegin(GL_QUADS);
 				glColor4f(0.5, 0.5, 0.5, a);
 				glTexCoord2d(tx, ty);
 				glVertex2i(1, 1);
@@ -167,25 +130,42 @@ namespace TextRenderer{
 				glVertex2i(16, 16);
 				glTexCoord2d(tx, ty - 0.0625);
 				glVertex2i(0, 16);
-				glEnd();
-			}
-			if (glstring[i] >= 0 && glstring[i] <= 127){
+			glEnd();
+			glTranslated(-x - 1 - span, -y - 1, 0);
+			if (glstring[i] >= 0 && glstring[i] <= 127) {
 				i += 1;
 				span += 10;
 			}
-			else{
+			else {
 				i += 2;
 				span += 16;
 			}
 		}
-
+		/*
 		glMatrixMode(GL_PROJECTION);
-
 		glPopMatrix();
 		glMatrixMode(GL_MODELVIEW);
 		glPopMatrix();
+		*/
 
 		glColor4f(1.0, 1.0, 1.0, 1.0);
 		free(wstr);
 	}
+
+	void glprint(int x, int y, string glstring) {
+		glBindTexture(GL_TEXTURE_2D, Font);
+		glPushMatrix();
+		glLoadIdentity();
+		glColor4f(0.5, 0.5, 0.5, a);
+		glTranslated(x + 1, y + 1, 0);
+		glListBase(gbe);
+		glCallLists((GLsizei)glstring.length(), GL_UNSIGNED_BYTE, glstring.c_str());
+		glLoadIdentity();
+		glColor4f(r, g, b, a);
+		glTranslated(x, y, 0);
+		glListBase(gbe);
+		glCallLists((GLsizei)glstring.length(), GL_UNSIGNED_BYTE, glstring.c_str());
+		glPopMatrix();
+	}
+
 }

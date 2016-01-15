@@ -19,13 +19,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v140_xp</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140_xp</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -106,10 +106,14 @@
     <ClInclude Include="source\ChunkPacket.h" />
     <ClInclude Include="source\ChunkPtrArray.h" />
     <ClInclude Include="source\GameManager.h" />
+    <ClInclude Include="source\Command.h" />
+    <ClInclude Include="source\ChunkRenderer.h" />
     <ClInclude Include="source\HeightMap.h" />
     <ClInclude Include="source\Definitions.h" />
     <ClInclude Include="source\Frustum.h" />
     <ClInclude Include="source\Hitbox.h" />
+    <ClInclude Include="source\Globalization.h" />
+    <ClInclude Include="source\Items.h" />
     <ClInclude Include="source\Network.h" />
     <ClInclude Include="source\Object.h" />
     <ClInclude Include="source\OnlinePlayer.h" />
@@ -127,6 +131,7 @@
     <ClCompile Include="source\ChunkPtrArray.cpp" />
     <ClCompile Include="source\Effect.cpp" />
     <ClCompile Include="source\GameManager.cpp" />
+    <ClCompile Include="source\ChunkRenderer.cpp" />
     <ClCompile Include="source\HeightMap.cpp" />
     <ClCompile Include="source\Definitions.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -135,6 +140,7 @@
     <ClCompile Include="source\Frustum.cpp" />
     <ClCompile Include="source\Hitbox.cpp" />
     <ClCompile Include="source\Items.cpp" />
+    <ClCompile Include="source\Globalization.cpp" />
     <ClCompile Include="source\Network.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
     <ClCompile Include="source\OnlinePlayer.cpp" />

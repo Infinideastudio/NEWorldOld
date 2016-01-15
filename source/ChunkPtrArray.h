@@ -1,9 +1,9 @@
 ﻿#ifndef CHUNKPTRARRAY_H
 #define CHUNKPTRARRAY_H
 #include "Definitions.h"
-#include "Chunk.h"
 
-namespace world{
+namespace World {
+	class chunk;
 	struct chunkPtrArray{
 		chunk** array = nullptr;
 		int originX, originY, originZ, size, size2, size3;
@@ -18,6 +18,7 @@ namespace world{
 			return x >= 0 && x < size && z >= 0 && z < size && y >= 0 && y < size;
 		}
 		chunk* getChunkPtr(int x, int y, int z);
+		void setChunkPtr(int x, int y, int z, chunk* c);
 	};
 }
 #endif

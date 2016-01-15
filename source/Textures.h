@@ -1,7 +1,6 @@
 ﻿#ifndef TEXTURES_H
 #define TEXTURES_H
 #include "Definitions.h"
-#include "Blocks.h"
 
 extern int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, filter;
 const short BITMAP_ID = 0x4D42;
@@ -36,28 +35,23 @@ namespace Textures{
 	};
 #pragma pack(pop)
 
-	enum {
+	enum BlockTextureID {
 		AIR, ROCK, GRASS_TOP, GRASS_SIDE, DIRT, STONE, PLANK, WOOD_TOP, WOOD_SIDE, BEDROCK, LEAF,
-		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON, UNKNOWN
+		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON, TNT, UNKNOWN
 	};
+	const int NULLBLOCK = 64;
 
 	void Init();
-
 	ubyte getTextureIndex(block blockname, ubyte side);
-
 	double getTexcoordX(item item, ubyte side);
-
 	double getTexcoordY(item item, ubyte side);
-
 	void LoadRGBImage(TEXTURE_RGB& tex, string Filename);
-
 	void LoadRGBAImage(TEXTURE_RGBA& tex, string Filename, string MkFilename);
 
 	TextureID LoadRGBTexture(string Filename);
-
 	TextureID LoadFontTexture(string Filename);
-
 	TextureID LoadRGBATexture(string Filename, string MkFilename);
+	TextureID LoadBlock3DTexture(string Filename, string MkFilename);
 
 	void SaveRGBImage(string filename, TEXTURE_RGB& image);
 

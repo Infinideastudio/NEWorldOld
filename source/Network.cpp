@@ -38,7 +38,7 @@ namespace Network {
 				continue;
 			}
 			Request& r = reqs.front();
-			//if (r._signal == PLAYER_PACKET_SEND && ((PlayerPacket*)r._dataSend)->onlineID != player::onlineID)
+			//if (r._signal == PLAYER_PACKET_SEND && ((PlayerPacket*)r._dataSend)->onlineID != Player::onlineID)
 			//	cout << "[ERROR]WTF!!!" << endl;
 			if (r._dataSend != nullptr && r._dataLen != 0) {
 				socketClient->Write((const void*)&r._signal, sizeof(int));
