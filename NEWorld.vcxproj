@@ -293,6 +293,7 @@
     <ClInclude Include="source\StdInclude.h" />
     <ClInclude Include="source\TextRenderer.h" />
     <ClInclude Include="source\Textures.h" />
+    <ClInclude Include="source\vduio.h" />
     <ClInclude Include="source\World.h" />
     <ClInclude Include="source\WorldGen.h" />
   </ItemGroup>
@@ -331,6 +332,7 @@
     <ClCompile Include="source\RenderOptionsMenu.cpp" />
     <ClCompile Include="source\TextRenderer.cpp" />
     <ClCompile Include="source\Textures.cpp" />
+    <ClCompile Include="source\vduio.cpp" />
     <ClCompile Include="source\World.cpp" />
     <ClCompile Include="source\WorldGen.cpp" />
     <ClCompile Include="source\WorldMenu.cpp" />
