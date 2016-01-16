@@ -657,7 +657,8 @@ void updategame(){
 			lz += cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
 
 			//碰到方块
-			if (BlockInfo(World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
+			block b = World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz));
+			if (BlockInfo(b).isSolid()) {
 				int x, y, z;
 				x = RoundInt(lx);
 				y = RoundInt(ly);
@@ -673,7 +674,8 @@ void updategame(){
 				selby = getblockpos(y);
 				selcz = getchunkpos(z);
 				selbz = getblockpos(z);
-				
+				selb = b;
+
 				sidedist[1] = abs(y + 0.5 - ly);          //顶面
 				sidedist[2] = abs(y - 0.5 - ly);		  //底面
 				sidedist[3] = abs(x + 0.5 - lx);		  //左面
@@ -683,12 +685,6 @@ void updategame(){
 				sidedistmin = 1;						  //离哪个面最近
 				for (int j = 2; j <= 6; j++) {
 					if (sidedist[j] < sidedist[sidedistmin]) sidedistmin = j;
-				}
-
-				if (World::chunkOutOfBound(selcx, selcy, selcz) == false) {
-					World::chunk* cp = World::getChunkPtr(selcx, selcy, selcz);
-					if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
-					selb = cp->getblock(selbx, selby, selbz);
 				}
 
 				switch (sidedistmin) {
@@ -719,7 +715,7 @@ void updategame(){
 				}
 
 				if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
-					Particles::throwParticle(World::getblock(x, y, z),
+					Particles::throwParticle(b,
 						float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 						float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 						float(rnd()*0.01f + 0.02f), int(rnd() * 30) + 30);
@@ -727,11 +723,11 @@ void updategame(){
 					if (selx != oldselx || sely != oldsely || selz != oldselz)
 						seldes = 0.0;
 					else
-						seldes += 5.0;
+						seldes += BlockInfo(b).getHardness();
 					if (seldes >= 100.0) {
-						Player::addItem(World::getblock(x, y, z));
+						Player::addItem(b);
 						for (int j = 1; j <= 25; j++) {
-							Particles::throwParticle(World::getblock(x, y, z),
+							Particles::throwParticle(b,
 								float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 								float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 								float(rnd()*0.02 + 0.03), int(rnd() * 60) + 30);
