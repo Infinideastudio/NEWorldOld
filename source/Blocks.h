@@ -58,6 +58,4 @@ namespace Blocks {
 		SingleBlock("Null Block", true  , true  , false , false)
 	};
 }
-inline Blocks::SingleBlock BlockInfo(int blockID) {
-	return Blocks::blockData[blockID >= Blocks::BLOCK_DEF_END || blockID < 0 ? Blocks::BLOCK_DEF_END : blockID];
-}
+#define BlockInfo(blockID) Blocks::blockData[(blockID) >= Blocks::BLOCK_DEF_END || (blockID) < 0 ? Blocks::BLOCK_DEF_END : (blockID)]
