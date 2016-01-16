@@ -255,7 +255,7 @@ void Player::addItem(item itemname, short amount) {
 				//找到一个同类格子
 				if (amount + inventoryAmount[i][j] <= InvMaxStack) {
 					inventoryAmount[i][j] += amount;
-					break;
+					return;
 				}
 				else {
 					amount -= InvMaxStack - inventoryAmount[i][j];
@@ -267,7 +267,7 @@ void Player::addItem(item itemname, short amount) {
 				inventory[i][j] = itemname;
 				if (amount <= InvMaxStack) {
 					inventoryAmount[i][j] = amount;
-					break;
+					return;
 				}
 				else {
 					inventoryAmount[i][j] = InvMaxStack;
