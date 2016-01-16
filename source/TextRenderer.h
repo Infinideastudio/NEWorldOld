@@ -13,9 +13,9 @@ namespace TextRenderer{
 	extern bool useUnicodeASCIIFont;
 
 	void BuildFont(int w, int h);
-	void glprint(int x, int y, string glstring);
 	void setFontColor(float r, float g, float b, float a);
 	int getStrWidth(string s);
 	void renderString(int x, int y, string glstring);
+	void renderASCIIString(int x, int y, string glstring);
 }
 #endif

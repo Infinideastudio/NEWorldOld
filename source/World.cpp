@@ -15,9 +15,9 @@ namespace World {
 	brightness BRIGHTNESSDEC = 1;     //Brightness decrease
 	chunk* EmptyChunkPtr;
 	unsigned int EmptyBuffer;
-	int MaxChunkLoads = 16;
-	int MaxChunkUnloads = 16;
-	int MaxChunkRenders = 16;
+	int MaxChunkLoads = 32;
+	int MaxChunkUnloads = 32;
+	int MaxChunkRenders = 1;
 
 	chunk** chunks;
 	int loadedChunks, chunkArraySize;
@@ -524,14 +524,14 @@ namespace World {
 						getblock(x + 1, y, z),    //Right face
 						getblock(x - 1, y, z),    //Left face
 						getblock(x, y + 1, z),    //Top face
-						getblock(x, y - 1, z) };     //Bottom face
+						getblock(x, y - 1, z) };  //Bottom face
 					brightness brts[7] = { 0,
 						getbrightness(x, y, z + 1),    //Front face
 						getbrightness(x, y, z - 1),    //Back face
 						getbrightness(x + 1, y, z),    //Right face
 						getbrightness(x - 1, y, z),    //Left face
 						getbrightness(x, y + 1, z),    //Top face
-						getbrightness(x, y - 1, z) };     //Bottom face
+						getbrightness(x, y - 1, z) };  //Bottom face
 					maxbrightness = 1;
 					for (int i = 2; i <= 6; i++) {
 						if (brts[maxbrightness] < brts[i]) maxbrightness = i;

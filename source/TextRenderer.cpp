@@ -125,8 +125,8 @@ namespace TextRenderer{
 		free(wstr);
 	}
 
-	void glprint(int x, int y, string glstring) {
-		glBindTexture(GL_TEXTURE_2D, Font);
+	void renderASCIIString(int x, int y, string glstring) {
+		//glBindTexture(GL_TEXTURE_2D, Font);
 		glPushMatrix();
 		glLoadIdentity();
 		glColor4f(0.5, 0.5, 0.5, a);

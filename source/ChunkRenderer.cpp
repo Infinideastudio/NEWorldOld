@@ -8,16 +8,15 @@ namespace ChunkRenderer {
 
 	void renderPrimitive(QuadPrimitive& p){
 		double color = (double)p.brightness / World::BRIGHTNESSMAX;
-		ubyte face = 0;
 		int x = p.x, y = p.y, z = p.z, length = p.length;
-
+		ubyte face = 0;
 		if (p.direction == 2) face = 1;
 		else if (p.direction == 3) face = 3;
 		else face = 2;
+#ifdef NERDMODE1
 		Renderer::TexCoord3d(0.0, 0.0, (Textures::getTextureIndex(p.block, face) - 0.5) / 64.0);
-
 		if (p.direction == 0) {
-			if (p.block != Blocks::GLOWSTONE) color*=0.7;
+			if (p.block != Blocks::GLOWSTONE) color *= 0.7;
 			Renderer::Color3d(color, color, color);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x + 0.5, y - 0.5, z - 0.5);
 			Renderer::TexCoord2d(0.0, 1.0); Renderer::Vertex3d(x + 0.5, y + 0.5, z - 0.5);
@@ -62,6 +61,77 @@ namespace ChunkRenderer {
 			Renderer::TexCoord2d(length + 1.0, 1.0); Renderer::Vertex3d(x + length + 0.5, y + 0.5, z - 0.5);
 			Renderer::TexCoord2d(length + 1.0, 0.0); Renderer::Vertex3d(x + length + 0.5, y - 0.5, z - 0.5);
 		}
+#else
+		float T3d = (Textures::getTextureIndex(p.block, face) - 0.5) / 64.0;
+		switch (p.direction)
+		{
+			case 0: {
+				if (p.block != Blocks::GLOWSTONE) color *= 0.7;
+				float geomentry[] = {
+					0.0, 0.0, T3d, color, color, color, x + 0.5, y - 0.5, z - 0.5,
+					0.0, 1.0, T3d, color, color, color, x + 0.5, y + 0.5, z - 0.5,
+					length + 1.0, 1.0, T3d, color, color, color, x + 0.5, y + 0.5, z + length + 0.5,
+					length + 1.0, 0.0, T3d, color, color, color, x + 0.5, y - 0.5, z + length + 0.5
+				};
+				Renderer::Quad(geomentry);
+			}
+			break;
+			case 1: {
+				if (p.block != Blocks::GLOWSTONE) color *= 0.7;
+				float geomentry[] = {
+					0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z - 0.5,
+					0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z - 0.5,
+					length + 1.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z + length + 0.5,
+					length + 1.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z + length + 0.5
+				};
+				Renderer::Quad(geomentry);
+			}
+			break;
+			case 2: {
+				float geomentry[] = {
+					0.0, 0.0, T3d, color, color, color, x + 0.5, y + 0.5, z - 0.5,
+					0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z - 0.5,
+					length + 1.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z + length + 0.5,
+					length + 1.0, 0.0, T3d, color, color, color, x + 0.5, y + 0.5, z + length + 0.5
+				};
+				Renderer::Quad(geomentry);
+			}
+			break;
+			case 3: {
+				float geomentry[] = {
+					0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z - 0.5,
+					0.0, 1.0, T3d, color, color, color, x + 0.5, y - 0.5, z - 0.5,
+					length + 1.0, 1.0, T3d, color, color, color, x + 0.5, y - 0.5, z + length + 0.5,
+					length + 1.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z + length + 0.5
+				};
+				Renderer::Quad(geomentry);
+			}
+			break;
+			case 4: {
+				if (p.block != Blocks::GLOWSTONE) color *= 0.5;
+				float geomentry[] = {
+					0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z + 0.5,
+					0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z + 0.5,
+					length + 1.0, 0.0, T3d, color, color, color, x + length + 0.5, y - 0.5, z + 0.5,
+					length + 1.0, 1.0, T3d, color, color, color, x + length + 0.5, y + 0.5, z + 0.5
+				};
+				Renderer::Quad(geomentry);
+			}
+			break;
+			case 5: {
+				if (p.block != Blocks::GLOWSTONE) color *= 0.5;
+				float geomentry[] = {
+					0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z - 0.5,
+					0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z - 0.5,
+					length + 1.0, 1.0, T3d, color, color, color, x + length + 0.5, y + 0.5, z - 0.5,
+					length + 1.0, 0.0, T3d, color, color, color, x + length + 0.5, y - 0.5, z - 0.5
+				};
+				Renderer::Quad(geomentry);
+			}
+			break;
+		}
+#endif // NERDMODE1
+				
 	}
 
 	void renderChunk(World::chunk* c) {
@@ -136,10 +206,11 @@ namespace ChunkRenderer {
 							br = c->getbrightness(xx, yy, zz);
 						}
 						//Render
+						const Blocks::SingleBlock& info = BlockInfo(bl);
 						if (bl == Blocks::AIR || bl == neighbour && bl != Blocks::LEAF || BlockInfo(neighbour).isOpaque() ||
-							steps == 0 && BlockInfo(bl).isTranslucent() ||
-							steps == 1 && (!BlockInfo(bl).isTranslucent() || !BlockInfo(bl).isSolid()) ||
-							steps == 2 && (!BlockInfo(bl).isTranslucent() || BlockInfo(bl).isSolid())) {
+							steps == 0 && info.isTranslucent() ||
+							steps == 1 && (!info.isTranslucent() || !info.isSolid()) ||
+							steps == 2 && (!info.isTranslucent() || info.isSolid())) {
 							//Not valid block
 							if (valid) {
 								if (BlockInfo(neighbour).isOpaque()) {

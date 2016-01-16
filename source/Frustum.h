@@ -6,6 +6,13 @@
 namespace Frustum{
 	extern float frus[24], clip[16];
 	extern float proj[16], modl[16];
+
+	//AABB with Float32 coords
+	struct ChunkBox {
+		float xmin, ymin, zmin;
+		float xmax, ymax, zmax;
+	};
+
 	void LoadIdentity();
 	inline void MultMatrixTo(float* sum, float* a, float* b) {
         sum[0] = a[0] * b[0] + a[1] * b[4] + a[2] * b[8] + a[3] * b[12];
@@ -25,7 +32,6 @@ namespace Frustum{
         sum[14] = a[12] * b[2] + a[13] * b[6] + a[14] * b[10] + a[15] * b[14];
         sum[15] = a[12] * b[3] + a[13] * b[7] + a[14] * b[11] + a[15] * b[15];
 	}
-
 	inline void MultMatrix(float* a, float* b) {
 		float sum[16]; MultMatrixTo(sum, a, b);
 		memcpy(a, sum, sizeof(sum));
@@ -40,7 +46,7 @@ namespace Frustum{
 	}
 	
     void update();
-	bool FrustumTest(const Hitbox::AABB& aabb);
+	bool FrustumTest(const ChunkBox& aabb);
 }
 
 #endif

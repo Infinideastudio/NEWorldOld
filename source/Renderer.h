@@ -7,6 +7,7 @@ namespace Renderer {
 	extern float* VA;
 	extern int size;
 	extern int Vertexes;
+	extern bool ShaderAval, UseShaders;
 
 	void Init(int tcc, int cc);
 	void Vertex3f(float x, float y, float z);
@@ -29,6 +30,7 @@ namespace Renderer {
 	void renderbuffer(VBOID buffer, vtxCount vtxs, int ctex, int ccol);
 
 	void initShaders();
+	void destroyShaders();
 	GLhandleARB loadShader(string filename, unsigned int mode);
 	void printInfoLog(GLhandleARB obj);
 	void EnableShaders();

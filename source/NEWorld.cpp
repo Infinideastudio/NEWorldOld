@@ -274,7 +274,7 @@ void MouseScrollFunc(GLFWwindow*, double, double yoffset) {
 
 void setupscreen() {
 
-	//OpenGL参数设置
+	//渲染参数设置
 	glViewport(0, 0, windowwidth, windowheight);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -303,6 +303,7 @@ void setupscreen() {
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClearDepth(1.0);
 	glGenBuffersARB(1, &World::EmptyBuffer);
+	if (Renderer::UseShaders) Renderer::initShaders();
 
 }
 
@@ -1021,7 +1022,7 @@ void debugText(string s, bool init) {
 		pos = 0;
 		return;
 	}
-	TextRenderer::renderString(0, 16 * pos, s);
+	TextRenderer::renderASCIIString(0, 16 * pos, s);
 	pos++;
 }
 
@@ -1168,7 +1169,7 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	Renderer::EnableShaders();
+	if (Renderer::UseShaders) Renderer::EnableShaders();
 
 	for (int i = 0; i < renderedChunk; i++) {
 		RenderChunk cr = displayChunks[i];
@@ -1179,7 +1180,7 @@ void Render() {
 		glPopMatrix();
 	}
 
-	Renderer::DisableShaders();
+	if (Renderer::UseShaders) Renderer::DisableShaders();
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1218,8 +1219,9 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	Renderer::EnableShaders();
-
+	
+	if (Renderer::UseShaders) Renderer::EnableShaders();
+	
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
 		glEnable(GL_TEXTURE_3D);
@@ -1245,7 +1247,7 @@ void Render() {
 		glPopMatrix();
 	}
 
-	Renderer::DisableShaders();
+	if (Renderer::UseShaders) Renderer::DisableShaders();
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1434,7 +1436,8 @@ void drawGUI(){
 			TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
 			glEnable(GL_TEXTURE_2D);
 			glDisable(GL_CULL_FACE);
-			TextRenderer::renderString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, BlockInfo(selb).getBlockName() + " (ID " + itos(selb) + ")");
+			glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
+			TextRenderer::renderASCIIString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, BlockInfo(selb).getBlockName() + " (ID " + itos(selb) + ")");
 			glDisable(GL_TEXTURE_2D);
 			glEnable(GL_CULL_FACE);
 			glColor4f(0.0f, 0.0f, 0.0f, 0.9f);
@@ -1522,6 +1525,7 @@ void drawGUI(){
 	glVertex2d(20 + healthPercent * 170, 25);
 	glVertex2d(20, 25);
 	glEnd();
+
 	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 	if (chatmode) {
 		glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
@@ -1534,6 +1538,9 @@ void drawGUI(){
 		glEnd();
 		TextRenderer::renderString(0, windowheight - 50, chatword);
 	}
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
 
 	if (DebugMode) {
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
@@ -1580,8 +1587,8 @@ void drawGUI(){
 	else {
 
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
-		TextRenderer::renderString(0, 0, "v" + itos(VERSION));
-		TextRenderer::renderString(0, 16, "Fps:" + itos(fps));
+		TextRenderer::renderASCIIString(0, 0, "v" + itos(VERSION));
+		TextRenderer::renderASCIIString(0, 16, "Fps:" + itos(fps));
 
 	}
 
@@ -1915,6 +1922,7 @@ void loadoptions() {
 	loadoption(options, "FancyGrass", NiceGrass);
 	loadoption(options, "MergeFaceRendering", MergeFace);
 	loadoption(options, "MultiSample", Multisample);
+	loadoption(options, "UseShaders", Renderer::UseShaders);
 	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 }
@@ -1937,6 +1945,7 @@ void saveoptions() {
 	saveoption(fileout, "FancyGrass", NiceGrass);
 	saveoption(fileout, "MergeFaceRendering", MergeFace);
 	saveoption(fileout, "MultiSample", Multisample);
+	saveoption(fileout, "UseShaders", Renderer::UseShaders);
 	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 	fileout.close();

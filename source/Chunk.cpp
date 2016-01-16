@@ -11,6 +11,55 @@ namespace ChunkRenderer {
 
 namespace World {
 
+	struct HMapManager {
+		int H[16][16];
+		int low, high, count;
+		HMapManager() {};
+		HMapManager(int cx, int cz) {
+			int l = MAXINT, hi = MININT, h;
+			for (int x = 0; x < 16; ++x) {
+				for (int z = 0; z < 16; ++z) {
+					h = HMap.getHeight(cx * 16 + x, cz * 16 + z);
+					if (h < l) l = h;
+					if (h > hi) hi = h;
+					H[x][z] = h;
+				}
+			}
+			low = (l - 21) / 16, high = (hi + 16) / 16; count = 0;
+		}
+	};
+
+	inline string v22string(int x, int y) {
+		char * _ = (char*)malloc(sizeof(int) * 2+1);
+		int * __ = (int*)_;
+		__[0] = x;
+		__[1] = y;
+		_[sizeof(int) * 2] = '\0';
+		string s = string(_);
+		free(_);
+		free(__);
+		return string(_);
+	}
+
+	/*std::map<std::string, HMapManager> HeightMap;
+
+	HMapManager* HMapInclude(int x, int z) {
+		string _ = v22string(x, z);
+		if (!(HeightMap.find(_) != HeightMap.end())) {
+			pair<string, HMapManager> n = { _, HMapManager(x, z) };
+			HeightMap.insert(n);
+		}
+		HeightMap[_].count++;
+		return &HeightMap[_];
+	}
+
+	void HMapExclude(int x, int z) {
+		string _ = v22string(x, z);
+		if (!(HeightMap.find(_) != HeightMap.end())) return;
+		HeightMap[_].count--;
+		if (HeightMap[_].count == 0) HeightMap.erase(_);
+	}*/
+
 	double chunk::relBaseX, chunk::relBaseY, chunk::relBaseZ;
 
 	void chunk::create(){
@@ -27,6 +76,7 @@ namespace World {
 	}
 
 	void chunk::destroy(){
+		//HMapExclude(cx, cz);
 		delete[] pblocks;
 		delete[] pbrightness;
 		pblocks = nullptr;
@@ -45,57 +95,76 @@ namespace World {
 			return;
 		}
 #endif
-		Empty = true;
+
+		//Fast Acress Part
+		//Part1 Outof The World
 		if (cy > 8) {
-			memset(pblocks, 0, 4096 * sizeof(block));
-			for (int index = 0; index < 4096; index++) pbrightness[index] = skylight;
+			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return; 
 		}
-		else if (cy < 0) {
-			memset(pblocks, 0, 4096 * sizeof(block));
-			for (int index = 0; index < 4096; index++) pbrightness[index] = BRIGHTNESSMIN;
+		if (cy < 0) {
+			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, BRIGHTNESSMIN, 4096 * sizeof(brightness)); Empty = true; return;
 		}
-		else {
-			int hm[16][16];
-			for (x = 0; x < 16; x++) {
-				for (z = 0; z < 16; z++) {
-					hm[x][z] = HMap.getHeight(cx * 16 + x, cz * 16 + z);
+
+		//Part2 Outof Geomentry Area
+		HMapManager cur = HMapManager(cx, cz);
+		if (cy > cur.high) { 
+			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return;
+		}
+		if (cy < cur.low) { 
+			for (int i = 0; i != 4096; ++i) pblocks[i] = Blocks::ROCK;
+			memset(pbrightness, skylight, 4096 * sizeof(brightness)); 
+			Empty = false; 
+			return; 
+		}
+
+		//Normal Calc
+		//Init
+		memset(pblocks, 0, 4096 * sizeof(block));//Empty the chunk
+		memset(pbrightness, 0, 4096 * sizeof(brightness));//Set All Brightness to 0
+
+		int x, z, h = 0, sh = 0, wh = 0;
+		int minh, maxh, cur_br;
+
+		Empty = true;
+		sh = WorldGen::WaterLevel + 2 - (cy << 4);
+		wh = WorldGen::WaterLevel - (cy << 4);
+
+		for (x = 0; x < 16; ++x) {
+			for (z = 0; z < 16; ++z) {
+				int base = (x << 8) + z;
+				h = cur.H[x][z] - (cy << 4);
+				if (h >= 0 || wh >= 0) Empty = false;
+				if (h > sh && h > wh + 1) {
+					//Grass layer
+					if (h >= 0 && h < 16) pblocks[(h << 4) + base] = Blocks::GRASS;
+					//Dirt layer
+					maxh = min(max(0, h), 16);
+					for (int y = min(max(0, h - 5), 16); y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::DIRT;
 				}
-			}
-			sh = WorldGen::WaterLevel + 2;
-			int index = 0;
-			for (x = 0; x < 16; x++) {
-				for (y = 0; y < 16; y++) {
-					for (z = 0; z < 16; z++) {
-						h = hm[x][z]; height = cy * 16 + y;
-						pbrightness[index] = 0;
-						if (height == 0)
-							pblocks[index] = Blocks::BEDROCK;
-						else if (height == h && height > sh && height > WorldGen::WaterLevel + 1)
-							pblocks[index] = Blocks::GRASS;
-						else if (height<h && height>sh && height > WorldGen::WaterLevel + 1)
-							pblocks[index] = Blocks::DIRT;
-						else if ((height >= sh - 5 || height >= h - 5) && height <= h && (height <= sh || height <= WorldGen::WaterLevel + 1))
-							pblocks[index] = Blocks::SAND;
-						else if ((height < sh - 5 && height < h - 5) && height >= 1 && height <= h)
-							pblocks[index] = Blocks::ROCK;
-						else {
-							if (height <= WorldGen::WaterLevel) {
-								pblocks[index] = Blocks::WATER;
-								if (skylight - (WorldGen::WaterLevel - height) * 2 < BRIGHTNESSMIN)
-									pbrightness[index] = BRIGHTNESSMIN;
-								else
-									pbrightness[index] = skylight - (brightness)((WorldGen::WaterLevel - height) * 2);
-							}
-							else
-							{
-								pblocks[index] = Blocks::AIR;
-								pbrightness[index] = skylight;
-							}
-						}
-						if (pblocks[index] != Blocks::AIR) Empty = false;
-						index++;
+				else {
+					//Sand layer
+					maxh = min(max(0, h + 1), 16);
+					for (int y = min(max(0, h - 5), 16); y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::SAND;
+					//Water layer
+					minh = min(max(0, h + 1), 16); maxh = min(max(0, wh + 1), 16);
+					cur_br = BRIGHTNESSMAX - (WorldGen::WaterLevel - (maxh - 1 + (cy << 4))) * 2;
+					if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
+					for (int y = maxh - 1; y >= minh; --y) {
+						pblocks[(y << 4) + base] = Blocks::WATER;
+						pbrightness[(y << 4) + base] = (brightness)cur_br;
+						cur_br -= 2; if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
 					}
 				}
+				//Rock layer
+				maxh = min(max(0, h - 5), 16);
+				for (int y = 0; y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::ROCK;
+				//Air layer
+				for (int y = min(max(0, max(h + 1, wh + 1)), 16); y < 16; ++y) {
+					pblocks[(y << 4) + base] = Blocks::AIR;
+					pbrightness[(y << 4) + base] = skylight;
+				}
+				//Bedrock layer (overwrite)
+				if (cy == 0) pblocks[base] = Blocks::BEDROCK;
 			}
 		}
 	}
@@ -192,14 +261,14 @@ namespace World {
 		return ret;
 	}
 
-	Hitbox::AABB chunk::getRelativeAABB() {
-		Hitbox::AABB ret;
-		ret.xmin = aabb.xmin - relBaseX;
-		ret.xmax = aabb.xmax - relBaseX;
-		ret.ymin = aabb.ymin - loadAnim - relBaseY;
-		ret.ymax = aabb.ymax - loadAnim - relBaseY;
-		ret.zmin = aabb.zmin - relBaseZ;
-		ret.zmax = aabb.zmax - relBaseZ;
+	Frustum::ChunkBox chunk::getRelativeAABB() {
+		Frustum::ChunkBox ret;
+		ret.xmin = (float)(aabb.xmin - relBaseX);
+		ret.xmax = (float)(aabb.xmax - relBaseX);
+		ret.ymin = (float)(aabb.ymin - loadAnim - relBaseY);
+		ret.ymax = (float)(aabb.ymax - loadAnim - relBaseY);
+		ret.zmin = (float)(aabb.zmin - relBaseZ);
+		ret.zmax = (float)(aabb.zmax - relBaseZ);
 		return ret;
 	}
 }

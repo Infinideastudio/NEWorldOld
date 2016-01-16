@@ -53,12 +53,6 @@ using std::map;
 #include <GL/glext.h>
 #endif
 
-//#define NEWORLD_DEBUG
-#ifdef NEWORLD_DEBUG
-#define NEWORLD_DEBUG_CONSOLE_OUTPUT
-#define NEWORLD_DEBUG_NO_FILEIO
-#define NEWORLD_DEBUG_PERFORMANCE_REC
-#endif
 
 //Types/constants define
 typedef unsigned char ubyte;

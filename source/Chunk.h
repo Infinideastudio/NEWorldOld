@@ -12,16 +12,14 @@ namespace World{
 	chunkid getChunkID(int x, int y, int z);
 	class chunk;
 	void explode(int x, int y, int z, int r, chunk* c);
-	class chunk{
 
+	class chunk{
 	private:
 		block* pblocks;
 		brightness* pbrightness;
 		static double relBaseX, relBaseY, relBaseZ;
 
 	public:
-		//竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻
-		//2333 --qiaozhanrong
 		chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi),
 			Modified(false), Empty(false), updated(false), renderBuilt(false), loadAnim(0.0) {
 			memset(vertexes, 0, sizeof(vertexes));
@@ -84,10 +82,8 @@ namespace World{
 		}
 
 		Hitbox::AABB getBaseAABB();
-		Hitbox::AABB getRelativeAABB();
-		inline void calcVisible() {
-			visible = Frustum::FrustumTest(getRelativeAABB());
-		}
+		Frustum::ChunkBox getRelativeAABB();
+		inline void calcVisible() { visible = Frustum::FrustumTest(getRelativeAABB()); }
 
 	};
 }

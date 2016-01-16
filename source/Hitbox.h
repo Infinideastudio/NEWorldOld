@@ -4,14 +4,10 @@
 
 namespace Hitbox {
 
+	//Axis Aligned Bounding Box
 	struct AABB{
-		//Axis Aligned Bounding Box
-		double xmin;
-		double ymin;
-		double zmin;
-		double xmax;
-		double ymax;
-		double zmax;
+		double xmin, ymin, zmin;
+		double xmax, ymax, zmax;
 	};
 
 	extern AABB Emptybox;
