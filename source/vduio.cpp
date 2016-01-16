@@ -6,7 +6,7 @@ bool TRU_MODE_NO_CREATE = false;
 Tree::Tree(std::string fname){
 	//Try to open the file with out mood to check exsistance
 	f.open(fname, std::ios::out);
-	if (f.bad) {
+	if (f.bad()) {
 		f.close();
 		if (!TRU_MODE_NO_CREATE) {
 			f.open(fname, std::ios::out | std::ios::binary);
