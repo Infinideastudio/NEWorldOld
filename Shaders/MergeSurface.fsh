@@ -1,8 +1,9 @@
 #version 110
-uniform sampler2D tex;
-uniform float texwidth;
+uniform sampler3D tex;
+uniform float renderdist;
+varying float dist;
 void main() {
-	vec2 pos = vec2(gl_TexCoord[0].s - floor(gl_TexCoord[0].s / texwidth) * texwidth, gl_TexCoord[0].t);
-	vec4 color = texture2D(tex, pos);
-	gl_FragColor = color * gl_Color;
+	gl_FragColor = mix(vec4(0.7, 1.0, 1.0, 1.0),
+		texture3D(tex, gl_TexCoord[0].stp) * gl_Color,
+		clamp((renderdist - dist) / 32.0, 0.0, 1.0));
 }
