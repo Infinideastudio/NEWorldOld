@@ -7,7 +7,6 @@ DECLARE_APP(NEWorld)
 IMPLEMENT_APP(NEWorld)
 bool NEWorld::OnInit()
 {
-	setlocale(LC_ALL, "zh_CN.UTF-8");
 	wxString curdir = wxStandardPaths::Get().GetExecutablePath();
 	curdir.Replace(L"\\", L"/");
 	wxSetWorkingDirectory(curdir.substr(0, curdir.find_last_of('/')));

@@ -116,9 +116,6 @@
     <ClInclude Include="source\Items.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
-    <ClInclude Include="source\Globalization.h">
-      <Filter>源代码\Common</Filter>
-    </ClInclude>
     <ClInclude Include="source\Command.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
@@ -192,9 +189,6 @@
     </ClCompile>
     <ClCompile Include="source\Network.cpp">
       <Filter>源代码\Network</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Globalization.cpp">
-      <Filter>源代码\Common</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

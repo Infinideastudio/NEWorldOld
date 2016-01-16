@@ -4,6 +4,7 @@ class NEWorld :public wxApp
 {
 public:
 	virtual bool OnInit();
+	wxLocale m_locale;
 };
 class GameManagerWindow :public wxFrame
 {

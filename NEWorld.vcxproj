@@ -111,7 +111,6 @@
     <ClInclude Include="source\Definitions.h" />
     <ClInclude Include="source\Frustum.h" />
     <ClInclude Include="source\Hitbox.h" />
-    <ClInclude Include="source\Globalization.h" />
     <ClInclude Include="source\Items.h" />
     <ClInclude Include="source\Network.h" />
     <ClInclude Include="source\Object.h" />
@@ -139,7 +138,6 @@
     <ClCompile Include="source\Frustum.cpp" />
     <ClCompile Include="source\Hitbox.cpp" />
     <ClCompile Include="source\Items.cpp" />
-    <ClCompile Include="source\Globalization.cpp" />
     <ClCompile Include="source\Network.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
     <ClCompile Include="source\OnlinePlayer.cpp" />

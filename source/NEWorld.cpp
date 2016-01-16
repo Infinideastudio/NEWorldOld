@@ -14,7 +14,6 @@
 #include "Network.h"
 #include "Effect.h"
 #include "Items.h"
-#include "Globalization.h"
 #include "Command.h"
 #include "PlayerPacket.h"
 #include "OnlinePlayer.h"
@@ -92,7 +91,6 @@ void MainLoop(){
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwMakeContextCurrent(MainWindow);
 	loadoptions();
-	Globalization::Load();
 	InitGL();
 	glfwSetCursor(MainWindow, MouseCursor);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -161,8 +159,6 @@ void MainLoop(){
 			TextRenderer::renderString(0, 0, "Saving world...");
 			glfwSwapBuffers(MainWindow);
 			glfwPollEvents();
-			printf("[Console][Game]");
-			printf("Terminate threads\n");
 			updateThreadRun = false;
 			MutexUnlock(Mutex);
 			ThreadWait(updateThread);
@@ -1913,7 +1909,6 @@ void loadoptions() {
 		options[name] = value;
 	}
 	filein.close();
-	loadoption(options, "Language", Globalization::Cur_Lang);
 	loadoption(options, "FOV", FOVyNormal);
 	loadoption(options, "RenderDistance", viewdistance);
 	loadoption(options, "Sensitivity", mousemove);
@@ -1936,7 +1931,6 @@ void saveoptions() {
 	std::map<string, string> options;
 	std::ofstream fileout("Configs/options.ini", std::ios::out);
 	if (!fileout.is_open()) return;
-	saveoption(fileout, "Language", Globalization::Cur_Lang);
 	saveoption(fileout, "FOV", FOVyNormal);
 	saveoption(fileout, "RenderDistance", viewdistance);
 	saveoption(fileout, "Sensitivity", mousemove);
