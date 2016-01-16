@@ -273,6 +273,7 @@
     <ClInclude Include="source\Command.h" />
     <ClInclude Include="source\Effect.h" />
     <ClInclude Include="source\ChunkRenderer.h" />
+    <ClInclude Include="source\GLProc.h" />
     <ClInclude Include="source\HeightMap.h" />
     <ClInclude Include="source\Definitions.h" />
     <ClInclude Include="source\Frustum.h" />
@@ -309,6 +310,7 @@
     <ClCompile Include="source\CreateWorldMenu.cpp" />
     <ClCompile Include="source\Effect.cpp" />
     <ClCompile Include="source\GameMenu.cpp" />
+    <ClCompile Include="source\GLProc.cpp" />
     <ClCompile Include="source\GUIOptionsMenu.cpp" />
     <ClCompile Include="source\HeightMap.cpp" />
     <ClCompile Include="source\Definitions.cpp" />
