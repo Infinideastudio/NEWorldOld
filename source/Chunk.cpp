@@ -88,7 +88,6 @@ namespace World {
 	void chunk::build(){
 		//生成地形
 
-		int x, y, z, height, h=0, sh=0;
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr || pbrightness == nullptr) {
 			DebugWarning("Empty pointer when chunk generating!");

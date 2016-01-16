@@ -147,7 +147,7 @@ namespace Renderer {
 		if (infologLength != 0) {
 			infoLog = new char[infologLength];
 			glGetInfoLogARB(obj, infologLength, &charsWritten, infoLog);
-			cout << infoLog << endl;
+			printf("%s\n", infoLog);
 			delete[] infoLog;
 		}
 	}

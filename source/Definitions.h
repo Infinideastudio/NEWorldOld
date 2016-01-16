@@ -15,6 +15,8 @@
 #include <map>
 #include <queue>
 #include <functional>
+#define min(a,b) ((a)<(b)?(a):(b))
+#define max(a,b) ((a)>(b)?(a):(b))
 
 using std::string;
 using std::vector;
