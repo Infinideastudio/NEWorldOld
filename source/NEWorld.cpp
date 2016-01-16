@@ -86,7 +86,7 @@ vector<Command> commands;
 void MainLoop(){
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
-	printf("[Console][Event]Initialize GLFW%s\n",glfwInit() == 1 ? "" : " - Failed!");
+	glfwInit();
 	MainWindow = glfwCreateWindow(windowwidth, windowheight, ("NEWorld " + MAJOR_VERSION + MINOR_VERSION + EXT_VERSION).c_str(), NULL, NULL);
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwMakeContextCurrent(MainWindow);
@@ -159,29 +159,21 @@ void MainLoop(){
 			TextRenderer::renderString(0, 0, "Saving world...");
 			glfwSwapBuffers(MainWindow);
 			glfwPollEvents();
-			updateThreadRun = false;
-			MutexUnlock(Mutex);
-			ThreadWait(updateThread);
-			ThreadDestroy(updateThread);
-			MutexDestroy(Mutex);
-			World::saveAllChunks();
-			Player::save(World::worldname);
-			World::destroyAllChunks();
-			if (multiplayer)
-				Network::cleanUp();
-			glfwTerminate();
-			return;
+			break;
 		}
 	} while (!glfwWindowShouldClose(MainWindow));
-	World::saveAllChunks();
-	Player::save(World::worldname);
 
 	updateThreadRun = false;
 	MutexUnlock(Mutex);
 	ThreadWait(updateThread);
 	ThreadDestroy(updateThread);
 	MutexDestroy(Mutex);
-	return;
+	saveGame();
+	World::destroyAllChunks();
+	saveoptions();
+	if (multiplayer)
+		Network::cleanUp();
+	glfwTerminate();
 }
 
 ThreadFunc updateThreadFunc(void*){
@@ -303,7 +295,8 @@ void setupscreen() {
 
 }
 
-void InitGL() {
+void InitGL()
+{
 	//获取OpenGL版本
 	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
 	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
@@ -1306,16 +1299,9 @@ void Render() {
 		screenshotAnimTimer = curtime;
 		time_t t = time(0);
 		char tmp[64];
-		tm* timeinfo = new tm;
-#ifdef NEWORLD_COMPILE_DISABLE_SECURE
-		timeinfo = localtime(&t);
-#else
-		localtime_s(timeinfo, &t);
-#endif
+		tm* timeinfo = localtime(&t);
 		strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", timeinfo);
-		std::stringstream ss;
-		ss << "Screenshots/" << tmp << ".bmp";
-		saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
+		saveScreenshot(0, 0, windowwidth, windowheight, (string)"Screenshots/" + tmp + ".bmp");
 	}
 	if (shouldGetThumbnail) {
 		shouldGetThumbnail = false;
