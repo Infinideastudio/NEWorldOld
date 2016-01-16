@@ -51,6 +51,7 @@ namespace Textures{
 	TextureID LoadRGBTexture(string Filename);
 	TextureID LoadFontTexture(string Filename);
 	TextureID LoadRGBATexture(string Filename, string MkFilename);
+	TextureID LoadFontTexture(int id);
 	TextureID LoadBlock3DTexture(string Filename, string MkFilename);
 
 	void SaveRGBImage(string filename, TEXTURE_RGB& image);

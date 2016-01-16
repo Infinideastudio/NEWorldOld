@@ -75,79 +75,52 @@ namespace TextRenderer{
 	}
 
 	void renderString(int x, int y, string glstring){
-
-		unsigned int i = 0;
-		int uc;
 		double tx, ty, span = 0;
-		//Textures::TEXTURE_RGBA Tex;
 		TextureID ftex;
 
 		wchar_t* wstr = nullptr;
 		MBToWC(glstring.c_str(), wstr);
 
-		/*
-		glMatrixMode(GL_PROJECTION);
-		glPushMatrix();
-		glLoadIdentity();
-		glOrtho(0, ww, wh, 0, -1.0, 1.0);
-		glMatrixMode(GL_MODELVIEW);
-		glPushMatrix();
-		*/
 		glEnable(GL_TEXTURE_2D);
+		glTranslated(x + 1, y + 1, 0);
 		for (unsigned int k = 0; k < wstrlen(wstr); k++) {
-			//glLoadIdentity();
-			glColor4f(r, g, b, a);
-			glTranslated(x + 1 + span, y + 1, 0);
-			uc = wstr[k];
-			if (!useUnicodeASCIIFont && glstring[i] >= 0 && glstring[i] <= 127) ftex = Font;
+			int hbit = wstr[k] / 256, lbit = wstr[k] % 256;
+			if (!useUnicodeASCIIFont && wstr[k] < 128) ftex = Font;
 			else {
-				if (!unicodeTexAval[uc / 256]) {
-					ftex = Textures::LoadFontTexture("Textures/Fonts/unicode/unicode_glyph_" + itos(uc / 256) + ".bmp");
-					unicodeTex[uc / 256] = ftex;
-					unicodeTexAval[uc / 256] = true;
+				if (!unicodeTexAval[hbit]) {
+					unicodeTex[hbit] = Textures::LoadFontTexture(hbit);
+					unicodeTexAval[hbit] = true;
 				}
-				else ftex = unicodeTex[uc / 256];
+				ftex = unicodeTex[hbit];
 			}
-			tx = ((uc % 256) % 16) / 16.0;
-			ty = 1 - ((uc % 256) / 16) / 16.0;
+			tx = (lbit % 16) * 0.0625;
+			ty = 1 - (lbit / 16) * 0.0625;
 			glBindTexture(GL_TEXTURE_2D, ftex);
 			glBegin(GL_QUADS);
 				glColor4f(0.5, 0.5, 0.5, a);
 				glTexCoord2d(tx, ty);
-				glVertex2i(1, 1);
+				glVertex2i(1 + span, 1);
 				glTexCoord2d(tx + 0.0625, ty);
-				glVertex2i(17, 1);
+				glVertex2i(17 + span, 1);
 				glTexCoord2d(tx + 0.0625, ty - 0.0625);
-				glVertex2i(17, 17);
+				glVertex2i(17 + span, 17);
 				glTexCoord2d(tx, ty - 0.0625);
-				glVertex2i(1, 17);
+				glVertex2i(1 + span, 17);
+
 				glColor4f(r, g, b, a);
 				glTexCoord2d(tx, ty);
-				glVertex2i(0, 0);
+				glVertex2i(0 + span, 0);
 				glTexCoord2d(tx + 0.0625, ty);
-				glVertex2i(16, 0);
+				glVertex2i(16 + span, 0);
 				glTexCoord2d(tx + 0.0625, ty - 0.0625);
-				glVertex2i(16, 16);
+				glVertex2i(16 + span, 16);
 				glTexCoord2d(tx, ty - 0.0625);
-				glVertex2i(0, 16);
+				glVertex2i(0 + span, 16);
 			glEnd();
-			glTranslated(-x - 1 - span, -y - 1, 0);
-			if (glstring[i] >= 0 && glstring[i] <= 127) {
-				i += 1;
-				span += 10;
-			}
-			else {
-				i += 2;
-				span += 16;
-			}
+			if (wstr[k] < 128) { span += 10; }
+			else { span += 16; }
 		}
-		/*
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
-		glPopMatrix();
-		*/
-
+		glTranslated(-x - 1, -y - 1, 0);
 		glColor4f(1.0, 1.0, 1.0, 1.0);
 		free(wstr);
 	}
