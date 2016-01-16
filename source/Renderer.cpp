@@ -1,5 +1,4 @@
 #include "Renderer.h"
-#include <time.h>
 namespace Renderer {
 	
 	int Vertexes, Texcoordc, Colorc;
@@ -7,7 +6,7 @@ namespace Renderer {
 	float* VA = nullptr;
 	float tc[3], col[4];
 	unsigned int Buffers[3];
-	bool ShaderAval, UseShaders = false;
+	bool ShaderAval, UseShaders;
 	GLhandleARB shaders[16];
 	GLhandleARB shaderPrograms[16];
 	int shadercount = 0;
@@ -43,14 +42,6 @@ namespace Renderer {
 		//上次才知道原来Flush还有冲厕所的意思QAQ
 		//OpenGL有个函数glFlush()，翻译过来就是GL冲厕所() ←_←
 
-		/*
-		if (EnableShaders) {
-			for (int i = 0; i < shadercount; i++) {
-				glUseProgramObjectARB(shaderPrograms[i]);
-			}
-		}
-		*/
-
 		vtxs = Vertexes;
 		if (Vertexes != 0) {
 			if (buffer == 0) glGenBuffersARB(1, &buffer);
@@ -58,8 +49,6 @@ namespace Renderer {
 			glBufferDataARB(GL_ARRAY_BUFFER_ARB, Vertexes * (Texcoordc + Colorc + 3) * sizeof(float), VertexArray, GL_STATIC_DRAW_ARB);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 		}
-
-		//if (EnableShaders) glUseProgramObjectARB(0);
 	}
     
 	void renderbuffer(VBOID buffer, vtxCount vtxs, int ctex, int ccol) {
@@ -108,14 +97,22 @@ namespace Renderer {
 		}
 	}
 
+	void destroyShaders() {
+		for (int i = 0; i != shadercount; i++) {
+			glDetachObjectARB(shaderPrograms[i], shaders[i * 2]);
+			glDetachObjectARB(shaderPrograms[i], shaders[i * 2 + 1]);
+			glDeleteObjectARB(shaders[i * 2]);
+			glDeleteObjectARB(shaders[i * 2 + 1]);
+			glDeleteObjectARB(shaderPrograms[i]);
+		}
+	}
+
 	GLhandleARB loadShader(string filename, unsigned int mode) {
 		GLhandleARB res;
 		string cur;
 		int lines = 0, curlen;;
 		char* curline;
-		const char* curline_c;
 		std::vector<char*> source;
-		std::vector<const char*> source_c;
 		std::vector<int> length;
 		std::ifstream filein(filename);
 		if (!filein.is_open()) return NULL;
@@ -127,13 +124,11 @@ namespace Renderer {
 			curline = new char[curlen];
 			memcpy(curline, cur.c_str(), curlen);
 			source.push_back(curline);
-			curline_c = curline;
-			source_c.push_back(curline_c);
 			length.push_back(curlen);
 		}
 		filein.close();
 		res = glCreateShaderObjectARB(mode);
-		glShaderSourceARB(res, lines, source_c.data(), length.data());
+		glShaderSourceARB(res, lines, (const GLchar**)source.data(), length.data());
 		glCompileShaderARB(res);
 		for (int i = 0; i < lines; i++) delete[] source[i];
 		int st = GL_TRUE;
@@ -157,12 +152,13 @@ namespace Renderer {
 	void EnableShaders() {
 		if (MergeFace) {
 			glUseProgramObjectARB(shaderPrograms[1]);
-			glUniform1fARB(glGetUniformLocationARB(shaderPrograms[1], "texwidth"), 1 / 8);
+			//glUniform1fARB(glGetUniformLocationARB(shaderPrograms[1], "texwidth"), 1 / 8);
 		}
 		else {
 			glUseProgramObjectARB(shaderPrograms[0]);
-			glUniform1fARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance * 16.0f);
+			//glUniform1fARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance * 16.0f);
 		}
+		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance * 16.0f);
 	}
 
 	void DisableShaders() {

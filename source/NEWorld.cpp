@@ -4,6 +4,7 @@
 #include "Definitions.h"
 #include "Blocks.h"
 #include "Textures.h"
+#include "GLProc.h"
 #include "Renderer.h"
 #include "TextRenderer.h"
 #include "Player.h"
@@ -27,7 +28,6 @@ void MouseScrollFunc(GLFWwindow*, double, double yoffset);
 void splashscreen();
 void createwindow();
 void setupscreen();
-void InitGL();
 void setupNormalFog();
 void LoadTextures();
 bool loadGame();
@@ -116,7 +116,6 @@ int main(){
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
 	createwindow();
-	InitGL();
 	setupscreen();
 	glDisable(GL_CULL_FACE);
 	splashscreen();
@@ -370,7 +369,14 @@ void createwindow() {
 
 void setupscreen() {
 
-	//OpenGL参数设置
+	//获取OpenGL版本
+	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
+	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
+	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
+	//获取OpenGL函数地址
+	InitGLProc();
+
+	//渲染参数设置
 	glViewport(0, 0, windowwidth, windowheight);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -399,36 +405,8 @@ void setupscreen() {
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClearDepth(1.0);
 	glGenBuffersARB(1, &World::EmptyBuffer);
-	Renderer::initShaders();
+	if (Renderer::UseShaders) Renderer::initShaders();
 
-}
-
-void InitGL() {
-	//获取OpenGL版本
-	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
-	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
-	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
-	//获取OpenGL函数地址
-	glGenBuffersARB = (PFNGLGENBUFFERSARBPROC)glfwGetProcAddress("glGenBuffersARB");
-	glBindBufferARB = (PFNGLBINDBUFFERARBPROC)glfwGetProcAddress("glBindBufferARB");
-	glBufferDataARB = (PFNGLBUFFERDATAARBPROC)glfwGetProcAddress("glBufferDataARB");
-	glDeleteBuffersARB = (PFNGLDELETEBUFFERSARBPROC)glfwGetProcAddress("glDeleteBuffersARB");
-	glCreateShaderObjectARB = (PFNGLCREATESHADEROBJECTARBPROC)glfwGetProcAddress("glCreateShaderObjectARB");
-	glShaderSourceARB = (PFNGLSHADERSOURCEARBPROC)glfwGetProcAddress("glShaderSourceARB");
-	glCompileShaderARB = (PFNGLCOMPILESHADERARBPROC)glfwGetProcAddress("glCompileShaderARB");
-	glCreateProgramObjectARB = (PFNGLCREATEPROGRAMOBJECTARBPROC)glfwGetProcAddress("glCreateProgramObjectARB");
-	glAttachObjectARB = (PFNGLATTACHOBJECTARBPROC)glfwGetProcAddress("glAttachObjectARB");
-	glLinkProgramARB = (PFNGLLINKPROGRAMARBPROC)glfwGetProcAddress("glLinkProgramARB");
-	glUseProgramObjectARB = (PFNGLUSEPROGRAMOBJECTARBPROC)glfwGetProcAddress("glUseProgramObjectARB");
-	glGetUniformLocationARB = (PFNGLGETUNIFORMLOCATIONARBPROC)glfwGetProcAddress("glGetUniformLocationARB");
-	glUniform1fARB = (PFNGLUNIFORM1FARBPROC)glfwGetProcAddress("glUniform1fARB");
-	glUniform1iARB = (PFNGLUNIFORM1IARBPROC)glfwGetProcAddress("glUniform1iARB");
-	glGetObjectParameterivARB = (PFNGLGETOBJECTPARAMETERIVARBPROC)glfwGetProcAddress("glGetObjectParameterivARB");
-	glGetInfoLogARB = (PFNGLGETINFOLOGARBPROC)glfwGetProcAddress("glGetInfoLogARB");
-	glDetachObjectARB = (PFNGLDETACHOBJECTARBPROC)glfwGetProcAddress("glDetachObjectARB");
-	glDeleteObjectARB = (PFNGLDELETEOBJECTARBPROC)glfwGetProcAddress("glDeleteObjectARB");
-	glTexImage3D = (PFNGLTEXIMAGE3DPROC)glfwGetProcAddress("glTexImage3DEXT");
-	glTexSubImage3D = (PFNGLTEXSUBIMAGE3DPROC)glfwGetProcAddress("glTexSubImage3DEXT");
 }
 
 void setupNormalFog() {
@@ -1238,7 +1216,7 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	Renderer::EnableShaders();
+	if (Renderer::UseShaders) Renderer::EnableShaders();
 
 	for (int i = 0; i < renderedChunk; i++) {
 		RenderChunk cr = displayChunks[i];
@@ -1249,7 +1227,7 @@ void Render() {
 		glPopMatrix();
 	}
 
-	Renderer::DisableShaders();
+	if (Renderer::UseShaders) Renderer::DisableShaders();
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1288,7 +1266,7 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	Renderer::EnableShaders();
+	if (Renderer::UseShaders) Renderer::EnableShaders();
 	
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
@@ -1315,7 +1293,7 @@ void Render() {
 		glPopMatrix();
 	}
 
-	Renderer::DisableShaders();
+	if (Renderer::UseShaders) Renderer::DisableShaders();
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -2038,6 +2016,7 @@ void loadoptions() {
 	loadoption(options, "FancyGrass", NiceGrass);
 	loadoption(options, "MergeFaceRendering", MergeFace);
 	loadoption(options, "MultiSample", Multisample);
+	loadoption(options, "UseShaders", Renderer::UseShaders);
 	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 }
@@ -2060,6 +2039,7 @@ void saveoptions() {
 	saveoption(fileout, "FancyGrass", NiceGrass);
 	saveoption(fileout, "MergeFaceRendering", MergeFace);
 	saveoption(fileout, "MultiSample", Multisample);
+	saveoption(fileout, "UseShaders", Renderer::UseShaders);
 	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 	fileout.close();
