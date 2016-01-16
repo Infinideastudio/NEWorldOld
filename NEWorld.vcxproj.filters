@@ -170,6 +170,9 @@
     <ClInclude Include="source\GLProc.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
+    <ClInclude Include="source\vduio.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -290,6 +293,9 @@
       <Filter>源代码\Common</Filter>
     </ClCompile>
     <ClCompile Include="source\GLProc.cpp">
+      <Filter>源代码\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="source\vduio.cpp">
       <Filter>源代码\Common</Filter>
     </ClCompile>
   </ItemGroup>
