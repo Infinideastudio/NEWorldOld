@@ -167,8 +167,8 @@
     <ClInclude Include="source\NNN.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
-    <ClInclude Include="source\vduio.h">
-      <Filter>源代码\Common\TreeUtils</Filter>
+    <ClInclude Include="source\GLProc.h">
+      <Filter>源代码\Common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -289,8 +289,8 @@
     <ClCompile Include="source\NNN.cpp">
       <Filter>源代码\Common</Filter>
     </ClCompile>
-    <ClCompile Include="source\vduio.cpp">
-      <Filter>源代码\Common\TreeUtils</Filter>
+    <ClCompile Include="source\GLProc.cpp">
+      <Filter>源代码\Common</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
