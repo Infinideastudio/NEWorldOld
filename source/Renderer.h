@@ -12,6 +12,8 @@ namespace Renderer{
 	extern int ShadowRes;
 	extern float sunlightXrot, sunlightYrot;
 	extern unsigned int DepthTexture;
+	extern GLhandleARB shaders[16];
+	extern GLhandleARB shaderPrograms[16];
 
 	void Init(int tcc, int cc);
 	void Vertex3f(float x, float y, float z);

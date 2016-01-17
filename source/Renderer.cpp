@@ -86,7 +86,7 @@ namespace Renderer {
 	}
 
 	void initShaders() {
-		ShadowRes = 256;
+		ShadowRes = 2048;
 		sunlightXrot = 30.0;
 		sunlightYrot = 60.0;
 
@@ -113,7 +113,7 @@ namespace Renderer {
 		glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, ShadowRes, ShadowRes, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, ShadowRes, ShadowRes, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
 		glActiveTextureARB(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, DepthTexture);
@@ -222,7 +222,7 @@ namespace Renderer {
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, ShadowFBO);
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
 		//glUseProgramObjectARB(shaderPrograms[2]);
-		glViewport(0, 0, 256, 256);
+		glViewport(0, 0, ShadowRes, ShadowRes);
 	}
 
 	void EndShadowPass() {
