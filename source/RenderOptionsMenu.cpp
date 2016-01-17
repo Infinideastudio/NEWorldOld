@@ -30,8 +30,8 @@ namespace Menus {
 			if (msaabar.barpos == 0) Multisample = 0;
 			else Multisample = 1 << ((msaabar.barpos + 1) / 30 + 1);
 			if (shaderbtn.clicked) {
-				Renderer::UseShaders = !Renderer::UseShaders;
-				if (Renderer::UseShaders) Renderer::initShaders();
+				Renderer::AdvancedRender = !Renderer::AdvancedRender;
+				if (Renderer::AdvancedRender) Renderer::initShaders();
 				else Renderer::destroyShaders();
 			}
 			if (backbtn.clicked) ExitSignal = true;
@@ -40,7 +40,7 @@ namespace Menus {
 			fancygrassbtn.text = GetStrbyKey("NEWorld.render.grasstex") + BoolEnabled(NiceGrass);
 			mergefacebtn.text = GetStrbyKey("NEWorld.render.merge") + BoolEnabled(MergeFace);
 			msaabar.text = GetStrbyKey("NEWorld.render.multisample") + (Multisample != 0 ? ss.str() + "x" : BoolEnabled(false));
-			shaderbtn.text = GetStrbyKey("NEWorld.render.shaders") + BoolEnabled(Renderer::UseShaders);
+			shaderbtn.text = GetStrbyKey("NEWorld.render.advanced") + BoolEnabled(Renderer::AdvancedRender);
 		}
 	};
 	void Renderoptions() { RenderOptionsMenu Menu; Menu.start(); }
