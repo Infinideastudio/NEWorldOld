@@ -657,8 +657,7 @@ void updategame(){
 			lz += cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
 
 			//碰到方块
-			block b = World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz));
-			if (BlockInfo(b).isSolid()) {
+			if (BlockInfo(World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
 				int x, y, z;
 				x = RoundInt(lx);
 				y = RoundInt(ly);
@@ -674,8 +673,7 @@ void updategame(){
 				selby = getblockpos(y);
 				selcz = getchunkpos(z);
 				selbz = getblockpos(z);
-				selb = b;
-
+				
 				sidedist[1] = abs(y + 0.5 - ly);          //顶面
 				sidedist[2] = abs(y - 0.5 - ly);		  //底面
 				sidedist[3] = abs(x + 0.5 - lx);		  //左面
@@ -685,6 +683,12 @@ void updategame(){
 				sidedistmin = 1;						  //离哪个面最近
 				for (int j = 2; j <= 6; j++) {
 					if (sidedist[j] < sidedist[sidedistmin]) sidedistmin = j;
+				}
+
+				if (World::chunkOutOfBound(selcx, selcy, selcz) == false) {
+					World::chunk* cp = World::getChunkPtr(selcx, selcy, selcz);
+					if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
+					selb = cp->getblock(selbx, selby, selbz);
 				}
 
 				switch (sidedistmin) {
@@ -715,7 +719,7 @@ void updategame(){
 				}
 
 				if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
-					Particles::throwParticle(b,
+					Particles::throwParticle(World::getblock(x, y, z),
 						float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 						float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 						float(rnd()*0.01f + 0.02f), int(rnd() * 30) + 30);
@@ -723,11 +727,11 @@ void updategame(){
 					if (selx != oldselx || sely != oldsely || selz != oldselz)
 						seldes = 0.0;
 					else
-						seldes += BlockInfo(b).getHardness();
+						seldes += 5.0;
 					if (seldes >= 100.0) {
-						Player::addItem(b);
+						Player::addItem(World::getblock(x, y, z));
 						for (int j = 1; j <= 25; j++) {
-							Particles::throwParticle(b,
+							Particles::throwParticle(World::getblock(x, y, z),
 								float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 								float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 								float(rnd()*0.02 + 0.03), int(rnd() * 60) + 30);
@@ -1224,16 +1228,16 @@ void Render() {
 
 		/*
 		if (isPressed(GLFW_KEY_F2)) {
-			unsigned int *p;
-			p = new unsigned int[256 * 256];
-			memset(p, 0, sizeof(unsigned int) * 256 * 256);
+			float *p;
+			p = new float[256 * 256];
+			memset(p, 0, sizeof(float) * 256 * 256);
 			glActiveTextureARB(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, Renderer::DepthTexture);
-			glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, p);
+			//glBindTexture(GL_TEXTURE_2D, Renderer::DepthTexture);
+			glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
 			std::ofstream fileout("2333.txt");
 			for (int x = 0; x < 256; x++) {
 				for (int y = 0; y < 256; y++) {
-					fileout << (p[x * 256 + y] == 4294967295 ? "  " : "[]");
+					fileout << p[x * 256 + y] << " ";
 				}
 				fileout << endl;
 			}
@@ -1291,6 +1295,10 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
+
+	float m[16]; memset(m, 0, sizeof(m));
+	m[0] = m[5] = m[10] = m[15] = 1.0f;
+
 	if (Renderer::AdvancedRender) Renderer::EnableShaders();
 
 	for (int i = 0; i < renderedChunk; i++) {
@@ -1298,6 +1306,10 @@ void Render() {
 		if (cr.vtxs[0] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
+		if (Renderer::AdvancedRender) {
+			m[12] = cr.cx * 16.0 - xpos; m[13] = cr.cy * 16.0 - cr.loadAnim - ypos; m[14] = cr.cz * 16.0 - zpos;
+			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[0], "TransMat"), 1, GL_FALSE, m);
+		}
 		Renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
 		glPopMatrix();
 	}
@@ -1341,7 +1353,7 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	if (Renderer::AdvancedRender) Renderer::EnableShaders();
+	//if (Renderer::AdvancedRender) Renderer::EnableShaders();
 	
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
@@ -1368,7 +1380,7 @@ void Render() {
 		glPopMatrix();
 	}
 
-	if (Renderer::AdvancedRender) Renderer::DisableShaders();
+	//if (Renderer::AdvancedRender) Renderer::DisableShaders();
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
