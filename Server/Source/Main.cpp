@@ -3,7 +3,7 @@
 #include <map>
 #include "Network.h"
 #include "Console.h"
-#include "..\..\..\source\PlayerPacket.h"
+#include "..\..\source\PlayerPacket.h"
 #include <pthread/pthread.h>
 #include <wx/init.h>
 using std::map;

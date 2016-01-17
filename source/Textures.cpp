@@ -252,7 +252,6 @@ namespace Textures {
 
 	TextureID LoadBlock3DTexture(string Filename, string MkFilename) {
 		int sz = BLOCKTEXTURE_UNITSIZE, cnt = BLOCKTEXTURE_UNITS*BLOCKTEXTURE_UNITS;
-		int mipmapLevel = (int)log2(BLOCKTEXTURE_UNITSIZE), sum = 0, cursize = 0, scale = 1;
 		ubyte *src, *cur;
 		glDisable(GL_TEXTURE_2D);
 		glEnable(GL_TEXTURE_3D);
