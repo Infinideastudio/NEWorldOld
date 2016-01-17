@@ -36,8 +36,9 @@ namespace Frustum{
 		float sum[16]; MultMatrixTo(sum, a, b);
 		memcpy(a, sum, sizeof(sum));
 	}
-
+	
 	void SetPerspective(float FOV, float aspect, float Znear, float Zfar);
+	void SetOrtho(float left, float right, float top, float bottom, float Znear, float Zfar);
 	void MultRotate(float angle, float x, float y, float z);
 	
     inline void normalize(int side) {

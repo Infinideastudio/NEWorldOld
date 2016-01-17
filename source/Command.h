@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿#ifndef COMMAND_H
+#define COMMAND_H
 #include "Definitions.h"
 
 class Command {
@@ -8,3 +9,4 @@ public:
 	string identifier;
 	std::function<bool(const vector<string>&)> execute;
 };
+#endif

@@ -57,7 +57,7 @@ namespace Blocks{  //方块ID
 		SingleBlock("Iron Block", true	, true	, false , false),
 		SingleBlock("TNT"		, true	, true	, false , true),
 		SingleBlock("Null Block", true  , true  , false , false)
-#define BlockInfo(blockID) Blocks::blockData[blockID]
+#define BlockInfo(blockID) Blocks::blockData[(blockID) >= Blocks::BLOCK_DEF_END || (blockID) < 0 ? Blocks::BLOCK_DEF_END : (blockID)]
 	};
 }
 #endif

@@ -7,7 +7,12 @@ namespace Renderer {
 	extern float* VA;
 	extern int size;
 	extern int Vertexes;
-	extern bool ShaderAval, UseShaders;
+	extern bool AdvancedRender;
+	extern int ShadowRes;
+	extern float sunlightXrot, sunlightYrot;
+	extern unsigned int DepthTexture;
+	extern GLhandleARB shaders[16];
+	extern GLhandleARB shaderPrograms[16];
 
 	void Init(int tcc, int cc);
 	void Vertex3f(float x, float y, float z);
@@ -22,6 +27,7 @@ namespace Renderer {
 	inline void Color3d(double r, double g, double b) { Color3f((float)r, (float)g, (float)b); }
 	inline void Color4d(double r, double g, double b, double a) { Color4f((float)r, (float)g, (float)b, (float)a); }
 	inline void Quad(float *geomentry) {
+		//这样做貌似提升不了性能吧。。。 --qiaozhanrong
 		memcpy(VA, geomentry, size*sizeof(float)); VA += size;
 		Vertexes += 4;
 	}
@@ -35,5 +41,7 @@ namespace Renderer {
 	void printInfoLog(GLhandleARB obj);
 	void EnableShaders();
 	void DisableShaders();
+	void StartShadowPass();
+	void EndShadowPass();
 }
 #endif

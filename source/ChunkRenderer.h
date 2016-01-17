@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿#ifndef CHUNKRENDERER_H
+#define CHUNKRENDERER_H
 #include "Definitions.h"
 #include "Blocks.h"
 
@@ -18,3 +19,4 @@ namespace ChunkRenderer {
 	void mergeFaceRender(World::chunk* c);
 
 }
+#endif

@@ -95,25 +95,29 @@ namespace World {
 		}
 #endif
 
-		//Fast Acress Part
-		//Part1 Outof The World
-		if (cy > 8) {
-			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return; 
+		//Fast generate parts
+		//Part1 out of the terrain bound
+		if (cy > 4) {
+			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, skylight, 4096 * sizeof(brightness));
+			Empty = true; return;
 		}
 		if (cy < 0) {
-			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, BRIGHTNESSMIN, 4096 * sizeof(brightness)); Empty = true; return;
+			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, BRIGHTNESSMIN, 4096 * sizeof(brightness));
+			Empty = true; return;
 		}
 
-		//Part2 Outof Geomentry Area
+		//Part2 out of geomentry area
 		HMapManager cur = HMapManager(cx, cz);
-		if (cy > cur.high) { 
-			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, skylight, 4096 * sizeof(brightness)); Empty = true; return;
+		if (cy > cur.high) {
+			memset(pblocks, Blocks::AIR, 4096 * sizeof(block));
+			memset(pbrightness, skylight, 4096 * sizeof(brightness));
+			Empty = true; return;
 		}
-		if (cy < cur.low) { 
-			for (int i = 0; i != 4096; ++i) pblocks[i] = Blocks::ROCK;
-			memset(pbrightness, skylight, 4096 * sizeof(brightness)); 
-			Empty = false; 
-			return; 
+		if (cy < cur.low) {
+			memset(pblocks, Blocks::ROCK, 4096 * sizeof(block));
+			memset(pbrightness, 0, 4096 * sizeof(brightness));
+			for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) pblocks[x * 256 + z] = Blocks::BEDROCK;
+			Empty = false; return;
 		}
 
 		//Normal Calc
