@@ -8,10 +8,8 @@ void main() {
 	position = Depth_proj * Depth_modl * TransMat * gl_Vertex;
 	//Normalize position
 	position /= position.w;
-	position.x = (position.x + 1.0) / 2.0;
-	position.y = (position.y + 1.0) / 2.0;
-	position.z = (position.z + 1.0) / 2.0;
-	//position.z -= 0.001;
+	position.xyz = (position.xyz + vec3(1.0, 1.0, 1.0)) / 2.0;
+	position.z -= 0.0002;
 	//Distance for fog calculation
 	vec4 rel = gl_ModelViewMatrix * gl_Vertex;
 	dist = length(rel);

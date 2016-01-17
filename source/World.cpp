@@ -218,7 +218,7 @@ namespace World {
 			color2 /= BRIGHTNESSMAX;
 			color3 /= BRIGHTNESSMAX;
 			color4 /= BRIGHTNESSMAX;
-			if (blk[0] != Blocks::GLOWSTONE) {
+			if (blk[0] != Blocks::GLOWSTONE && !Renderer::AdvancedRender) {
 				color1 *= 0.5;
 				color2 *= 0.5;
 				color3 *= 0.5;
@@ -262,7 +262,7 @@ namespace World {
 			color2 /= BRIGHTNESSMAX;
 			color3 /= BRIGHTNESSMAX;
 			color4 /= BRIGHTNESSMAX;
-			if (blk[0] != Blocks::GLOWSTONE) {
+			if (blk[0] != Blocks::GLOWSTONE && !Renderer::AdvancedRender) {
 				color1 *= 0.5;
 				color2 *= 0.5;
 				color3 *= 0.5;
@@ -306,7 +306,7 @@ namespace World {
 			color2 /= BRIGHTNESSMAX;
 			color3 /= BRIGHTNESSMAX;
 			color4 /= BRIGHTNESSMAX;
-			if (blk[0] != Blocks::GLOWSTONE) {
+			if (blk[0] != Blocks::GLOWSTONE && !Renderer::AdvancedRender) {
 				color1 *= 0.7;
 				color2 *= 0.7;
 				color3 *= 0.7;
@@ -350,7 +350,7 @@ namespace World {
 			color2 /= BRIGHTNESSMAX;
 			color3 /= BRIGHTNESSMAX;
 			color4 /= BRIGHTNESSMAX;
-			if (blk[0] != Blocks::GLOWSTONE) {
+			if (blk[0] != Blocks::GLOWSTONE && !Renderer::AdvancedRender) {
 				color1 *= 0.7;
 				color2 *= 0.7;
 				color3 *= 0.7;
