@@ -86,7 +86,7 @@ namespace Renderer {
 	}
 
 	void initShaders() {
-		ShadowRes = 2048;
+		ShadowRes = 8192;
 		sunlightXrot = 30.0;
 		sunlightYrot = 60.0;
 
@@ -190,14 +190,7 @@ namespace Renderer {
 	}
 
 	void EnableShaders() {
-		if (MergeFace) {
-			glUseProgramObjectARB(shaderPrograms[0]);
-			//glUniform1fARB(glGetUniformLocationARB(shaderPrograms[1], "texwidth"), 1 / 8);
-		}
-		else {
-			glUseProgramObjectARB(shaderPrograms[0]);
-			//glUniform1fARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance * 16.0f);
-		}
+		glUseProgramObjectARB(shaderPrograms[0]);
 		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance * 16.0f);
 
 		//Calc matrix
@@ -221,12 +214,12 @@ namespace Renderer {
 	void StartShadowPass() {
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, ShadowFBO);
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
-		//glUseProgramObjectARB(shaderPrograms[2]);
+		glUseProgramObjectARB(shaderPrograms[2]);
 		glViewport(0, 0, ShadowRes, ShadowRes);
 	}
 
 	void EndShadowPass() {
-		//glUseProgramObjectARB(0);
+		glUseProgramObjectARB(0);
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		glDrawBuffer(GL_BACK); glReadBuffer(GL_BACK);
