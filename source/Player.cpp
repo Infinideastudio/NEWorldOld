@@ -196,7 +196,7 @@ bool Player::putBlock(int x, int y, int z, block blockname) {
 
 bool Player::save(string worldn) {
 	uint32 curversion = VERSION;
-	std::ofstream isave("Worlds/" + worldn + "player.NEWorldPlayer", std::ios::binary | std::ios::out);
+	std::ofstream isave("Worlds/" + worldn + "/player.NEWorldPlayer", std::ios::binary | std::ios::out);
 	if (!isave.is_open()) return false;
 	isave.write((char*)&curversion, sizeof(curversion));
 	isave.write((char*)&xpos, sizeof(xpos));
@@ -220,7 +220,7 @@ bool Player::save(string worldn) {
 
 bool Player::load(string worldn) {
 	uint32 targetVersion;
-	std::ifstream iload("Worlds/" + worldn + "player.NEWorldPlayer", std::ios::binary | std::ios::in);
+	std::ifstream iload("Worlds/" + worldn + "/player.NEWorldPlayer", std::ios::binary | std::ios::in);
 	if (!iload.is_open()) return false;
 	iload.read((char*)&targetVersion, sizeof(targetVersion));
 	if (targetVersion != VERSION) return false;
