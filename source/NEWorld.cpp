@@ -118,7 +118,7 @@ int main(){
 	createwindow();
 	setupscreen();
 	glDisable(GL_CULL_FACE);
-	splashscreen();
+	//splashscreen();
 	LoadTextures();
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -405,7 +405,7 @@ void setupscreen() {
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClearDepth(1.0);
 	glGenBuffersARB(1, &World::EmptyBuffer);
-	if (Renderer::UseShaders) Renderer::initShaders();
+	if (Renderer::AdvancedRender) Renderer::initShaders();
 
 }
 
@@ -1140,21 +1140,6 @@ void Render() {
 		if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
 	}
 
-	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(FOVyNormal + FOVyExt, windowwidth / (double)windowheight, 0.05, viewdistance * 16.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	glDepthFunc(GL_LEQUAL);
-	glDepthMask(GL_TRUE);
-	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-
 	Player::cxt = getchunkpos((int)Player::xpos);
 	Player::cyt = getchunkpos((int)Player::ypos);
 	Player::czt = getchunkpos((int)Player::zpos);
@@ -1176,6 +1161,100 @@ void Render() {
 	double plookupdown = Player::lookupdown + Player::ylookspeed;
 	double pheading = Player::heading + Player::xlookspeed;
 
+	glDepthFunc(GL_LEQUAL);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+
+	if (Renderer::AdvancedRender) {
+		//Build shadow map
+		float scale = 16.0f * sqrt(3.0f);
+
+		Renderer::StartShadowPass();
+		//glClearColor(0.0, 0.0, 0.0, 1.0);
+		glClearDepth(viewdistance*scale);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		glClearDepth(1.0);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//glEnableClientState(GL_COLOR_ARRAY);
+		//glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glDisable(GL_TEXTURE_2D);
+		glDisable(GL_FOG);
+		glDisable(GL_BLEND);
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(-viewdistance*scale, viewdistance*scale,
+			-viewdistance*scale, viewdistance*scale,
+			-viewdistance*scale, viewdistance*scale);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glRotated(Renderer::sunlightXrot, 1.0, 0.0, 0.0);
+		glRotated(Renderer::sunlightYrot, 0.0, 1.0, 0.0);
+
+		displayChunks.clear();
+		renderedChunk = 0;
+		for (int i = 0; i < World::loadedChunks; i++) {
+			if (!World::chunks[i]->renderBuilt || World::chunks[i]->Empty) continue;
+			if (World::chunkInRange(World::chunks[i]->cx, World::chunks[i]->cy, World::chunks[i]->cz,
+				Player::cxt, Player::cyt, Player::czt, viewdistance)) {
+				renderedChunk++;
+				displayChunks.push_back(RenderChunk(World::chunks[i], (curtime - lastupdate) * 30.0));
+			}
+		}
+
+		MutexUnlock(Mutex);
+		for (int i = 0; i < renderedChunk; i++) {
+			RenderChunk cr = displayChunks[i];
+			if (cr.vtxs[0] == 0) continue;
+			glPushMatrix();
+			glTranslated(cr.cx * 16.0 - xpos,
+				cr.cy * 16.0 - cr.loadAnim - ypos,
+				cr.cz * 16.0 - zpos);
+			Renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
+			glPopMatrix();
+		}
+		MutexLock(Mutex);
+
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+		//glDisableClientState(GL_COLOR_ARRAY);
+		//glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+		glDisableClientState(GL_VERTEX_ARRAY);
+		Renderer::EndShadowPass();
+
+		/*
+		if (isPressed(GLFW_KEY_F2)) {
+			unsigned int *p;
+			p = new unsigned int[256 * 256];
+			memset(p, 0, sizeof(unsigned int) * 256 * 256);
+			glActiveTextureARB(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, Renderer::DepthTexture);
+			glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, p);
+			std::ofstream fileout("2333.txt");
+			for (int x = 0; x < 256; x++) {
+				for (int y = 0; y < 256; y++) {
+					fileout << (p[x * 256 + y] == 4294967295 ? "  " : "[]");
+				}
+				fileout << endl;
+			}
+			fileout.close();
+			delete[] p;
+			exit(0);
+		}
+		*/
+
+		glEnable(GL_FOG);
+		glEnable(GL_BLEND);
+	}
+
+	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_TEXTURE_2D);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(FOVyNormal + FOVyExt, windowwidth / (double)windowheight, 0.05, viewdistance * 16.0);
+	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glRotated(plookupdown, 1, 0, 0);
 	glRotated(360.0 - pheading, 0, 1, 0);
@@ -1212,7 +1291,7 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	if (Renderer::UseShaders) Renderer::EnableShaders();
+	if (Renderer::AdvancedRender) Renderer::EnableShaders();
 
 	for (int i = 0; i < renderedChunk; i++) {
 		RenderChunk cr = displayChunks[i];
@@ -1223,7 +1302,7 @@ void Render() {
 		glPopMatrix();
 	}
 
-	if (Renderer::UseShaders) Renderer::DisableShaders();
+	if (Renderer::AdvancedRender) Renderer::DisableShaders();
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1262,7 +1341,7 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	if (Renderer::UseShaders) Renderer::EnableShaders();
+	if (Renderer::AdvancedRender) Renderer::EnableShaders();
 	
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
@@ -1289,7 +1368,7 @@ void Render() {
 		glPopMatrix();
 	}
 
-	if (Renderer::UseShaders) Renderer::DisableShaders();
+	if (Renderer::AdvancedRender) Renderer::DisableShaders();
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -2012,7 +2091,7 @@ void loadoptions() {
 	loadoption(options, "FancyGrass", NiceGrass);
 	loadoption(options, "MergeFaceRendering", MergeFace);
 	loadoption(options, "MultiSample", Multisample);
-	loadoption(options, "UseShaders", Renderer::UseShaders);
+	loadoption(options, "AdvancedRender", Renderer::AdvancedRender);
 	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 }
@@ -2035,7 +2114,7 @@ void saveoptions() {
 	saveoption(fileout, "FancyGrass", NiceGrass);
 	saveoption(fileout, "MergeFaceRendering", MergeFace);
 	saveoption(fileout, "MultiSample", Multisample);
-	saveoption(fileout, "UseShaders", Renderer::UseShaders);
+	saveoption(fileout, "AdvancedRender", Renderer::AdvancedRender);
 	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 	fileout.close();
