@@ -19,7 +19,7 @@ NEWorld.render.smooth
 NEWorld.render.grasstex
 NEWorld.render.merge
 NEWorld.render.multisample
-NEWorld.render.shaders
+NEWorld.render.advanced
 NEWorld.render.back
 NEWorld.gui.caption
 NEWorld.gui.unicode
