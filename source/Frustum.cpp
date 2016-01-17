@@ -20,6 +20,13 @@ namespace Frustum {
 		proj[14] = -2 * Zfar * Znear / (Zfar - Znear);
 	}
 
+	void SetOrtho(float left, float right, float top, float bottom, float Znear, float Zfar) {
+		proj[0] = 2 / (right - left);
+		proj[5] = 2 / (bottom - top);
+		proj[10] = 2 / (Znear - Zfar);
+		proj[15] = 1.0f;
+	}
+
 	void MultRotate(float angle, float x, float y, float z) {
 		float m[16], sum[16];
 		memset(m, 0, sizeof(m));
