@@ -298,5 +298,8 @@
     <ClCompile Include="source\vduio.cpp">
       <Filter>源代码\Common</Filter>
     </ClCompile>
+    <ClCompile Include="source\ShaderOptionsMenu.cpp">
+      <Filter>源代码\GUI\Menus</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

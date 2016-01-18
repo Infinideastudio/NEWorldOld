@@ -2,6 +2,7 @@
 uniform mat4 Depth_proj;
 uniform mat4 Depth_modl;
 uniform mat4 TransMat;
+uniform float renderdist;
 varying float dist;
 varying vec4 position;
 void main() {
@@ -9,7 +10,7 @@ void main() {
 	//Normalize position
 	position /= position.w;
 	position.xyz = (position.xyz + vec3(1.0, 1.0, 1.0)) / 2.0;
-	position.z -= 0.0002;
+	position.z -= 0.001;
 	//Distance for fog calculation
 	vec4 rel = gl_ModelViewMatrix * gl_Vertex;
 	dist = length(rel);

@@ -55,13 +55,13 @@ struct RenderChunk{
 		cx = c->cx;
 		cy = c->cy;
 		cz = c->cz;
-		memcpy(vbuffers, c->vbuffer, 3 * sizeof(VBOID));
-		memcpy(vtxs, c->vertexes, 3 * sizeof(vtxCount));
+		memcpy(vbuffers, c->vbuffer, 4 * sizeof(VBOID));
+		memcpy(vtxs, c->vertexes, 4 * sizeof(vtxCount));
 		loadAnim = c->loadAnim * pow(0.6, TimeDelta);
 	}
 	int cx, cy, cz;
-	vtxCount vtxs[3];
-	VBOID vbuffers[3];
+	vtxCount vtxs[4];
+	VBOID vbuffers[4];
 	double loadAnim;
 };
 
@@ -118,7 +118,7 @@ int main(){
 	createwindow();
 	setupscreen();
 	glDisable(GL_CULL_FACE);
-	//splashscreen();
+	splashscreen();
 	LoadTextures();
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -1172,15 +1172,10 @@ void Render() {
 	if (Renderer::AdvancedRender) {
 		//Build shadow map
 		float scale = 16.0f * sqrt(3.0f);
+		float length = Renderer::shadowdist*scale;
 
 		Renderer::StartShadowPass();
-		//glClearColor(0.0, 0.0, 0.0, 1.0);
-		glClearDepth(viewdistance*scale);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		glClearDepth(1.0);
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//glEnableClientState(GL_COLOR_ARRAY);
-		//glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glDisable(GL_TEXTURE_2D);
 		glDisable(GL_FOG);
@@ -1188,9 +1183,7 @@ void Render() {
 
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		glOrtho(-viewdistance*scale, viewdistance*scale,
-			-viewdistance*scale, viewdistance*scale,
-			-viewdistance*scale, viewdistance*scale);
+		glOrtho(-length, length, -length, length, -length, length);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		glRotated(Renderer::sunlightXrot, 1.0, 0.0, 0.0);
@@ -1199,9 +1192,9 @@ void Render() {
 		displayChunks.clear();
 		renderedChunk = 0;
 		for (int i = 0; i < World::loadedChunks; i++) {
-			if (!World::chunks[i]->renderBuilt || World::chunks[i]->Empty) continue;
+			if (!World::chunks[i]->renderBuilt || World::chunks[i]->Empty || World::chunks[i]->vertexes[3] == 0) continue;
 			if (World::chunkInRange(World::chunks[i]->cx, World::chunks[i]->cy, World::chunks[i]->cz,
-				Player::cxt, Player::cyt, Player::czt, viewdistance)) {
+				Player::cxt, Player::cyt, Player::czt, Renderer::shadowdist)) {
 				renderedChunk++;
 				displayChunks.push_back(RenderChunk(World::chunks[i], (curtime - lastupdate) * 30.0));
 			}
@@ -1210,42 +1203,16 @@ void Render() {
 		MutexUnlock(Mutex);
 		for (int i = 0; i < renderedChunk; i++) {
 			RenderChunk cr = displayChunks[i];
-			if (cr.vtxs[0] == 0) continue;
 			glPushMatrix();
-			glTranslated(cr.cx * 16.0 - xpos,
-				cr.cy * 16.0 - cr.loadAnim - ypos,
-				cr.cz * 16.0 - zpos);
-			Renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
+			glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
+			Renderer::renderbuffer(cr.vbuffers[3], cr.vtxs[3], 0, 0);
 			glPopMatrix();
 		}
 		MutexLock(Mutex);
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-		//glDisableClientState(GL_COLOR_ARRAY);
-		//glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 		glDisableClientState(GL_VERTEX_ARRAY);
 		Renderer::EndShadowPass();
-
-		/*
-		if (isPressed(GLFW_KEY_F2)) {
-			float *p;
-			p = new float[256 * 256];
-			memset(p, 0, sizeof(float) * 256 * 256);
-			glActiveTextureARB(GL_TEXTURE1);
-			//glBindTexture(GL_TEXTURE_2D, Renderer::DepthTexture);
-			glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, p);
-			std::ofstream fileout("2333.txt");
-			for (int x = 0; x < 256; x++) {
-				for (int y = 0; y < 256; y++) {
-					fileout << p[x * 256 + y] << " ";
-				}
-				fileout << endl;
-			}
-			fileout.close();
-			delete[] p;
-			exit(0);
-		}
-		*/
 
 		glEnable(GL_FOG);
 		glEnable(GL_BLEND);
@@ -1308,7 +1275,7 @@ void Render() {
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
 		if (Renderer::AdvancedRender) {
 			m[12] = cr.cx * 16.0 - xpos; m[13] = cr.cy * 16.0 - cr.loadAnim - ypos; m[14] = cr.cz * 16.0 - zpos;
-			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[0], "TransMat"), 1, GL_FALSE, m);
+			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
 		}
 		Renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
 		glPopMatrix();
@@ -1353,7 +1320,7 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	//if (Renderer::AdvancedRender) Renderer::EnableShaders();
+	if (Renderer::AdvancedRender) Renderer::EnableShaders();
 	
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
@@ -1367,6 +1334,10 @@ void Render() {
 		if (cr.vtxs[1] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
+		if (Renderer::AdvancedRender) {
+			m[12] = cr.cx * 16.0 - xpos; m[13] = cr.cy * 16.0 - cr.loadAnim - ypos; m[14] = cr.cz * 16.0 - zpos;
+			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
+		}
 		Renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3);
 		glPopMatrix();
 	}
@@ -1376,11 +1347,15 @@ void Render() {
 		if (cr.vtxs[2] == 0) continue;
 		glPushMatrix();
 		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
+		if (Renderer::AdvancedRender) {
+			m[12] = cr.cx * 16.0 - xpos; m[13] = cr.cy * 16.0 - cr.loadAnim - ypos; m[14] = cr.cz * 16.0 - zpos;
+			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
+		}
 		Renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3);
 		glPopMatrix();
 	}
 
-	//if (Renderer::AdvancedRender) Renderer::DisableShaders();
+	if (Renderer::AdvancedRender) Renderer::DisableShaders();
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -2104,6 +2079,8 @@ void loadoptions() {
 	loadoption(options, "MergeFaceRendering", MergeFace);
 	loadoption(options, "MultiSample", Multisample);
 	loadoption(options, "AdvancedRender", Renderer::AdvancedRender);
+	loadoption(options, "ShadowMapRes", Renderer::ShadowRes);
+	loadoption(options, "ShadowDistance", Renderer::MaxShadowDist);
 	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 }
@@ -2127,6 +2104,8 @@ void saveoptions() {
 	saveoption(fileout, "MergeFaceRendering", MergeFace);
 	saveoption(fileout, "MultiSample", Multisample);
 	saveoption(fileout, "AdvancedRender", Renderer::AdvancedRender);
+	saveoption(fileout, "ShadowMapRes", Renderer::ShadowRes);
+	saveoption(fileout, "ShadowDistance", Renderer::MaxShadowDist);
 	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 	fileout.close();

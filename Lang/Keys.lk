@@ -1,4 +1,4 @@
-26
+31
 NEWorld.yes
 NEWorld.no
 NEWorld.enabled
@@ -19,8 +19,13 @@ NEWorld.render.smooth
 NEWorld.render.grasstex
 NEWorld.render.merge
 NEWorld.render.multisample
-NEWorld.render.advanced
+NEWorld.render.shaders
 NEWorld.render.back
+NEWorld.shaders.caption
+NEWorld.shaders.enable
+NEWorld.shaders.shadowres
+NEWorld.shaders.distance
+NEWorld.shaders.back
 NEWorld.gui.caption
 NEWorld.gui.unicode
 NEWorld.gui.blur
