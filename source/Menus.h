@@ -6,6 +6,7 @@ namespace Menus {
 	void mainmenu();
 	void options();
 	void Renderoptions();
+	void Shaderoptions();
 	void GUIoptions();
 	void worldmenu();
 	void createworldmenu();
