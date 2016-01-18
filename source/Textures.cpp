@@ -91,7 +91,7 @@ namespace Textures {
 		bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
 		std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); //位图文件（二进制）
 		if (!bmpfile.is_open()) {
-			printf("[console][Warning] Cannot load %s\n", Filename.c_str());
+			DebugWarning(L"Could not load " + Filename);
 			return;
 		}
 		BITMAPINFOHEADER bih; //各种关于位图的参数
@@ -184,7 +184,7 @@ namespace Textures {
 		Texture.sizeY = image.sizeY;
 		Texture.buffer = unique_ptr<ubyte[]>(new unsigned char[image.sizeX * image.sizeY * 4]);
 		if (Texture.buffer == nullptr) {
-			printf("[console][Warning] Cannot alloc memory when loading %s\n", Filename.c_str());
+			DebugWarning(L"Cannot alloc memory when loading" + Filename);
 			return 0;
 		}
 		ip = image.buffer.get();

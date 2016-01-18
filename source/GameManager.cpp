@@ -3,6 +3,7 @@
 #include "World.h"
 #include "TextRenderer.h"
 void MainLoop();
+wxTextCtrl* GameManagerWindow::logtb;
 DECLARE_APP(NEWorld)
 IMPLEMENT_APP(NEWorld)
 bool NEWorld::OnInit()
@@ -23,9 +24,9 @@ EVT_SLIDER(ID_SLIDER_MOUSEMOVE,GameManagerWindow::OnModifyMouseMove)
 EVT_SLIDER(ID_SLIDER_VIEWDISTANCE,GameManagerWindow::OnModifyViewDistance)
 END_EVENT_TABLE()
 
-GameManagerWindow::GameManagerWindow(const wxString & title)
-	:wxFrame(NULL, wxID_ANY, title, wxDefaultPosition, wxSize(870, 500))
+GameManagerWindow::GameManagerWindow(const wxString& title)
 {
+	Create(NULL, wxID_ANY, title, wxDefaultPosition, wxSize(870, 500));
 	wxNotebook* tab = new wxNotebook(this, wxID_ANY, wxPoint(0, 0), GetClientSize());
 	wxPanel* singleplayer = new wxPanel(tab, wxID_ANY);
 	tab->AddPage(singleplayer, L"单人游戏");
@@ -50,6 +51,7 @@ GameManagerWindow::GameManagerWindow(const wxString & title)
 	scviewdistance = new wxSlider(optionspage, ID_SLIDER_VIEWDISTANCE, viewdistance, 2, 16, wxPoint(70, 53), wxSize(300, -1), wxSL_HORIZONTAL | wxSL_LABELS);
 	wxPanel* logpage = new wxPanel(tab, wxID_ANY);
 	tab->AddPage(logpage, L"日志");
+	logtb = new wxTextCtrl(logpage, wxID_ANY, L"", wxDefaultPosition, logpage->GetClientSize(), wxTE_MULTILINE);
 }
 
 void GameManagerWindow::Refresh()
@@ -71,7 +73,9 @@ void GameManagerWindow::OnEnter(wxCommandEvent &)
 {
 	gamebegin = true;
 	World::worldname = worlds->GetStringSelection();
+	Hide();
 	MainLoop();
+	Show();
 }
 void DeleteDir(wxString dir)
 {
@@ -106,7 +110,9 @@ void GameManagerWindow::OnCreate(wxCommandEvent &)
 		World::worldname = worldname;
 		gamebegin = true;
 		multiplayer = false;
+		Hide();
 		MainLoop();
+		Show();
 		Refresh();
 	}
 }
@@ -117,7 +123,9 @@ void GameManagerWindow::OnConnectServer(wxCommandEvent &)
 	gamebegin = true;
 	multiplayer = true;
 	World::worldname = "Multiplayer";
+	Hide();
 	MainLoop();
+	Show();
 	Refresh();
 }
 

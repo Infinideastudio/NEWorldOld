@@ -31,12 +31,12 @@ public:
 	void OnModifyFOVy(wxCommandEvent&);
 	void OnModifyMouseMove(wxCommandEvent&);
 	void OnModifyViewDistance(wxCommandEvent&);
+	static wxTextCtrl *logtb;
 private:
 	DECLARE_EVENT_TABLE()
 	wxListBox* worlds;
 	wxButton *enterworld, *deleteworld, *newworld;
 	wxTextCtrl* serveriptb;
 	wxSlider *scFOVy, *scmousemove, *scviewdistance;
-	wxCheckBox* cbAllUnicodeFont;
 };
 #endif

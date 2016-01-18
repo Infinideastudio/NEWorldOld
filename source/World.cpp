@@ -73,8 +73,7 @@ namespace World {
 		cid = getChunkID(x, y, z);  //Chunk ID
 		pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
 		if (loadedChunks > 0 && chunks[pos.second]->id == cid) {
-			printf("[Console][Error]");
-			printf("Chunk(%d,%d,%d)has been loaded,when adding chunk.\n", x, y, z);
+			DebugError(L"Chunk(" + itos(x) + L"," + itos(y) + L"," + itos(z) + L") has been loaded,when adding chunk.");
 			return chunks[pos.second];
 		}
 

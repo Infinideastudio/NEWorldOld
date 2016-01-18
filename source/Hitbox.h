@@ -1,6 +1,5 @@
 ﻿#ifndef HITBOX_H
 #define HITBOX_H
-#include "Definitions.h"
 
 namespace Hitbox {
 
