@@ -36,8 +36,8 @@ namespace World {
 		bool renderBuilt = false;
 		bool Modified = false;
 		chunkid id;
-		vtxCount vertexes[3];
-		VBOID vbuffer[3];
+		vtxCount vertexes[4];
+		VBOID vbuffer[4];
 		double loadAnim;
 		bool visible;
 

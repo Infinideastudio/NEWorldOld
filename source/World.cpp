@@ -275,7 +275,7 @@ namespace World {
 				color3 *= 0.5;
 				color4 *= 0.5;
 			}
-
+			
 			Renderer::Color3d(color1, color1, color1);
 			Renderer::TexCoord2d(tcx + size*1.0, tcy + size*0.0); Renderer::Vertex3d(-0.5 + x, -0.5 + y, -0.5 + z);
 			Renderer::Color3d(color2, color2, color2);
@@ -319,7 +319,7 @@ namespace World {
 				color3 *= 0.7;
 				color4 *= 0.7;
 			}
-
+			
 			Renderer::Color3d(color1, color1, color1);
 			Renderer::TexCoord2d(tcx + size*1.0, tcy + size*0.0); Renderer::Vertex3d(0.5 + x, -0.5 + y, -0.5 + z);
 			Renderer::Color3d(color2, color2, color2);

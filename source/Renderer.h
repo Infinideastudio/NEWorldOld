@@ -4,18 +4,21 @@
 #include "Frustum.h"
 
 namespace Renderer{
-	const int ArrayUNITSIZE = 262144;
+	const int ArraySize = 2621440;
 	extern float* VA;
 	extern int size;
 	extern int Vertexes;
 	extern bool AdvancedRender;
 	extern int ShadowRes;
+	extern int MaxShadowDist;
+	extern int shadowdist;
 	extern float sunlightXrot, sunlightYrot;
 	extern unsigned int DepthTexture;
 	extern GLhandleARB shaders[16];
 	extern GLhandleARB shaderPrograms[16];
+	extern int ActiveShader;
 
-	void Init(int tcc, int cc);
+	void Init(int tc, int cc);
 	void Vertex3f(float x, float y, float z);
 	void TexCoord2f(float x, float y);
 	void TexCoord3f(float x, float y, float z);
@@ -34,7 +37,7 @@ namespace Renderer{
 	}
 
 	void Flush(VBOID& buffer, vtxCount& vtxs);
-	void renderbuffer(VBOID buffer, vtxCount vtxs, int ctex, int ccol);
+	void renderbuffer(VBOID buffer, vtxCount vtxs, int tc, int cc);
 
 	void initShaders();
 	void destroyShaders();
