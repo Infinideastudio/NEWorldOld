@@ -332,6 +332,7 @@
     <ClCompile Include="source\Player.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="source\RenderOptionsMenu.cpp" />
+    <ClCompile Include="source\ShaderOptionsMenu.cpp" />
     <ClCompile Include="source\TextRenderer.cpp" />
     <ClCompile Include="source\Textures.cpp" />
     <ClCompile Include="source\vduio.cpp" />
