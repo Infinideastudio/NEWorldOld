@@ -5,8 +5,9 @@
 #include "Blocks.h"
 
 namespace ChunkRenderer {
-	void renderChunk(World::chunk* c);
-	void mergeFaceRender(World::chunk* c);
+	void RenderChunk(World::chunk* c);
+	void MergeFaceRender(World::chunk* c);
+	void RenderDepthModel(World::chunk* c);
 }
 
 namespace World {
@@ -237,8 +238,9 @@ namespace World {
 			loadAnim = cy * 16.0f + 16.0f;
 		}
 		
-		if (MergeFace) ChunkRenderer::mergeFaceRender(this);
-		else ChunkRenderer::renderChunk(this);
+		if (MergeFace) ChunkRenderer::MergeFaceRender(this);
+		else ChunkRenderer::RenderChunk(this);
+		ChunkRenderer::RenderDepthModel(this);
 
 		updated = false;
 

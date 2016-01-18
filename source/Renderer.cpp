@@ -10,17 +10,19 @@ namespace Renderer {
 	float tc[3], col[4];
 	//unsigned int Buffers[3];
 	bool AdvancedRender;
-	int ShadowRes;
+	int ShadowRes = 4096;
+	int MaxShadowDist = 8;
+	int shadowdist;
 	float sunlightXrot, sunlightYrot;
 	GLhandleARB shaders[16];
 	GLhandleARB shaderPrograms[16];
-	int shadercount = 0;
+	int shadercount = 0, ActiveShader = -1;
 	int index = 0, size = 0;
 	unsigned int ShadowFBO, DepthTexture;
 
 	void Init(int tcc, int cc) {
 		Texcoordc = tcc; Colorc = cc;
-		if (VertexArray == nullptr) VertexArray = new float[ArrayUNITSIZE];
+		if (VertexArray == nullptr) VertexArray = new float[ArraySize];
 		index = 0;
 		VA = VertexArray;
 		Vertexes = 0;
@@ -28,7 +30,7 @@ namespace Renderer {
 	}
 
 	void Vertex3f(float x, float y, float z) {
-		if ((Vertexes + 1)*(Texcoordc + Colorc + 3) > ArrayUNITSIZE) return;
+		if ((Vertexes + 1)*(Texcoordc + Colorc + 3) > ArraySize) return;
 		if (Texcoordc != 0) for (int i = 0; i < Texcoordc; i++) VertexArray[index++] = tc[i];
 		if (Colorc != 0) for (int i = 0; i < Colorc; i++) VertexArray[index++] = col[i];
 		VertexArray[index++] = x;
@@ -51,47 +53,42 @@ namespace Renderer {
 		if (Vertexes != 0) {
 			if (buffer == 0) glGenBuffersARB(1, &buffer);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
-			glBufferDataARB(GL_ARRAY_BUFFER_ARB, Vertexes * (Texcoordc + Colorc + 3) * sizeof(float), VertexArray, GL_STATIC_DRAW_ARB);
+			glBufferDataARB(GL_ARRAY_BUFFER_ARB,
+				Vertexes * ((Texcoordc + Colorc + 3) * sizeof(float)),
+				VertexArray, GL_STATIC_DRAW_ARB);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 		}
 	}
 
-	void renderbuffer(VBOID buffer, vtxCount vtxs, int ctex, int ccol) {
+	void renderbuffer(VBOID buffer, vtxCount vtxs, int tc, int cc) {
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
-		int cnt = ctex + ccol + 3;
-
-		if (ctex != 0) {
-			if (ccol != 0) {
-				glTexCoordPointer(ctex, GL_FLOAT, cnt * sizeof(float), (float*)0);
-				glColorPointer(ccol, GL_FLOAT, cnt * sizeof(float), (float*)(ctex * sizeof(float)));
-				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((ctex + ccol) * sizeof(float)));
+		int cnt = tc + cc + 3;
+		if (tc != 0) {
+			if (cc != 0) {
+				glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float*)0);
+				glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)(tc * sizeof(float)));
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((tc + cc) * sizeof(float)));
 			}
 			else {
-				glTexCoordPointer(ctex, GL_FLOAT, cnt * sizeof(float), (float*)0);
-				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(ctex * sizeof(float)));
+				glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float*)0);
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(tc * sizeof(float)));
 			}
 		}
 		else {
-			if (ccol != 0) {
-				glColorPointer(ccol, GL_FLOAT, cnt * sizeof(float), (float*)0);
-				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(ccol * sizeof(float)));
+			if (cc != 0) {
+				glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)0);
+				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(cc * sizeof(float)));
 			}
-			else {
-				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)0);
-			}
+			else glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)0);
 		}
-
-		//================================
 		glDrawArrays(GL_QUADS, 0, vtxs);
-		//================================
 
 	}
 
 	void initShaders() {
-		ShadowRes = 8192;
-		sunlightXrot = 30.0;
-		sunlightYrot = 60.0;
+		sunlightXrot = 30.0f;
+		sunlightYrot = 60.0f;
 
 		shadercount = 3;
 		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
@@ -109,14 +106,14 @@ namespace Renderer {
 
 		glGenTextures(1, &DepthTexture);
 		glBindTexture(GL_TEXTURE_2D, DepthTexture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, ShadowRes, ShadowRes, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, ShadowRes, ShadowRes, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
 
 		glActiveTextureARB(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, DepthTexture);
@@ -129,12 +126,12 @@ namespace Renderer {
 			DebugError("Frame buffer creation error!");
 		}
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
-		//Set texture uniform
+		
 		glUseProgramObjectARB(shaderPrograms[0]);
 		glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "Tex"), 0);
 		glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "DepthTex"), 1);
 		glUseProgramObjectARB(0);
+		
 	}
 
 	void destroyShaders() {
@@ -193,21 +190,23 @@ namespace Renderer {
 	}
 
 	void EnableShaders() {
-		glUseProgramObjectARB(shaderPrograms[0]);
-		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance * 16.0f);
+		shadowdist = min(MaxShadowDist, viewdistance);
+		if (MergeFace) ActiveShader = 1; else ActiveShader = 0;
+
+		glUseProgramObjectARB(shaderPrograms[ActiveShader]);
+		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "renderdist"), viewdistance * 16.0f);
 
 		//Calc matrix
 		float scale = 16.0f * sqrt(3.0f);
+		float length = shadowdist*scale;
 		Frustum::LoadIdentity();
-		Frustum::SetOrtho(-viewdistance*scale, viewdistance*scale,
-			-viewdistance*scale, viewdistance*scale,
-			-viewdistance*scale, viewdistance*scale);
+		Frustum::SetOrtho(-length, length, -length, length, -length, length);
 		Frustum::MultRotate(sunlightXrot, 1.0f, 0.0f, 0.0f);
 		Frustum::MultRotate(sunlightYrot, 0.0f, 1.0f, 0.0f);
 
 		//Set matrix uniform
-		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[0], "Depth_proj"), 1, GL_FALSE, Frustum::proj);
-		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[0], "Depth_modl"), 1, GL_FALSE, Frustum::modl);
+		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_proj"), 1, GL_FALSE, Frustum::proj);
+		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_modl"), 1, GL_FALSE, Frustum::modl);
 	}
 
 	void DisableShaders() {
@@ -217,15 +216,17 @@ namespace Renderer {
 	void StartShadowPass() {
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, ShadowFBO);
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
+		ActiveShader = 2;
 		glUseProgramObjectARB(shaderPrograms[2]);
 		glViewport(0, 0, ShadowRes, ShadowRes);
 	}
 
 	void EndShadowPass() {
-		glUseProgramObjectARB(0);
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		glDrawBuffer(GL_BACK); glReadBuffer(GL_BACK);
+		ActiveShader = -1;
+		glUseProgramObjectARB(0);
 		glViewport(0, 0, windowwidth, windowheight);
 	}
 }
