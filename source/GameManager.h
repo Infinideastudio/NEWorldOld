@@ -4,6 +4,7 @@ class NEWorld :public wxApp
 {
 public:
 	virtual bool OnInit();
+	virtual int OnExit();
 	wxLocale m_locale;
 };
 enum ControlID {

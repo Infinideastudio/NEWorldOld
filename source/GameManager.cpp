@@ -2,15 +2,55 @@
 #include "GameManager.h"
 #include "World.h"
 #include "TextRenderer.h"
+#include "Renderer.h"
+#include <DYTDataStorage.h>
 void MainLoop();
 wxTextCtrl* GameManagerWindow::logtb;
 DECLARE_APP(NEWorld)
 IMPLEMENT_APP(NEWorld)
+
+void LoadOptions()
+{
+	DataFile file(L"options");
+	DataNode& node = file.RootNode;
+	FOVyNormal = node.GetValue(L"FOVy").GetFloat();
+	viewdistance = node.GetValue(L"ViewDistance").GetInt32();
+	mousemove = node.GetValue(L"MouseMove").GetFloat();
+	SmoothLighting = node.GetValue(L"SmoothLighting").GetBoolean();
+	NiceGrass = node.GetValue(L"NiceGrass").GetBoolean();
+	MergeFace = node.GetValue(L"MergeFace").GetBoolean();
+	Multisample = node.GetValue(L"MultiSample").GetInt32();
+	Renderer::AdvancedRender = node.GetValue(L"AdvancedRender").GetBoolean();
+}
+
+void SaveOptions()
+{
+	DataFile file;
+	DataNode& node = file.RootNode;
+	node.GetValue(L"FOVy").SetFloat(FOVyNormal);
+	node.GetValue(L"ViewDistance").SetInt32(viewdistance);
+	node.GetValue(L"MouseMove").SetFloat(mousemove);
+	node.GetValue(L"CloudWidth").SetInt32(cloudwidth);
+	node.GetValue(L"SmoothLighting").SetBoolean(SmoothLighting);
+	node.GetValue(L"NiceGrass").SetBoolean(NiceGrass);
+	node.GetValue(L"MergeFace").SetBoolean(MergeFace);
+	node.GetValue(L"MultiSample").SetInt32(Multisample);
+	node.GetValue(L"AdvancedRender").SetBoolean(Renderer::AdvancedRender);
+	file.Save(L"options");
+}
+
 bool NEWorld::OnInit()
 {
 	wxSetWorkingDirectory(wxPathOnly(wxStandardPaths::Get().GetExecutablePath()));
+	LoadOptions();
 	(new GameManagerWindow(L"NEWorld游戏管理器"))->Show();
 	return true;
+}
+
+int NEWorld::OnExit()
+{
+	SaveOptions();
+	return 0;
 }
 
 BEGIN_EVENT_TABLE(GameManagerWindow, wxFrame)
