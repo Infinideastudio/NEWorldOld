@@ -41,8 +41,6 @@ void drawBag();
 void saveScreenshot(int x, int y, int w, int h, string filename);
 #define createThumbnail() saveScreenshot(0, 0, windowwidth, windowheight, "Worlds/" + World::worldname + "/Thumbnail.bmp")
 
-void loadoptions();
-void saveoptions();
 int getMouseScroll() { return mw; }
 int getMouseButton() { return mb; }
 void registerCommands();
@@ -90,7 +88,6 @@ void MainLoop(){
 	MainWindow = glfwCreateWindow(windowwidth, windowheight, ("NEWorld " + MAJOR_VERSION + MINOR_VERSION + EXT_VERSION).c_str(), NULL, NULL);
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwMakeContextCurrent(MainWindow);
-	loadoptions();
 	InitGL();
 	glfwSetCursor(MainWindow, MouseCursor);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -170,7 +167,6 @@ void MainLoop(){
 	MutexDestroy(Mutex);
 	saveGame();
 	World::destroyAllChunks();
-	saveoptions();
 	if (multiplayer)
 		Network::cleanUp();
 	glfwTerminate();
@@ -1990,57 +1986,4 @@ void saveScreenshot(int x, int y, int w, int h, string filename){
 	scrBuffer.buffer = unique_ptr<ubyte[]>(new ubyte[bufw*bufh * 3]);
 	glReadPixels(x, y, bufw, bufh, GL_RGB , GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
 	Textures::SaveRGBImage(filename, scrBuffer);
-}
-
-template<typename T>
-void loadoption(std::map<string, string> &m, char* name, T &value) {
-	if (m.find(name) == m.end()) return;
-	std::stringstream ss;
-	ss << m[name]; ss >> value;
-}
-
-void loadoptions() {
-	std::map<string, string> options;
-	std::ifstream filein("Configs/options.ini", std::ios::in);
-	if (!filein.is_open()) return;
-	string name, value;
-	while (!filein.eof()) {
-		filein >> name >> value;
-		options[name] = value;
-	}
-	filein.close();
-	loadoption(options, "FOV", FOVyNormal);
-	loadoption(options, "RenderDistance", viewdistance);
-	loadoption(options, "Sensitivity", mousemove);
-	loadoption(options, "CloudWidth", cloudwidth);
-	loadoption(options, "SmoothLighting", SmoothLighting);
-	loadoption(options, "FancyGrass", NiceGrass);
-	loadoption(options, "MergeFaceRendering", MergeFace);
-	loadoption(options, "MultiSample", Multisample);
-	loadoption(options, "AdvancedRender", Renderer::AdvancedRender);
-	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
-	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
-}
-
-template<typename T>
-void saveoption(std::ofstream &out, char* name, T &value) {
-	out << string(name) << " " << value << '\n';
-}
-
-void saveoptions() {
-	std::map<string, string> options;
-	std::ofstream fileout("Configs/options.ini", std::ios::out);
-	if (!fileout.is_open()) return;
-	saveoption(fileout, "FOV", FOVyNormal);
-	saveoption(fileout, "RenderDistance", viewdistance);
-	saveoption(fileout, "Sensitivity", mousemove);
-	saveoption(fileout, "CloudWidth", cloudwidth);
-	saveoption(fileout, "SmoothLighting", SmoothLighting);
-	saveoption(fileout, "FancyGrass", NiceGrass);
-	saveoption(fileout, "MergeFaceRendering", MergeFace);
-	saveoption(fileout, "MultiSample", Multisample);
-	saveoption(fileout, "AdvancedRender", Renderer::AdvancedRender);
-	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
-	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
-	fileout.close();
 }

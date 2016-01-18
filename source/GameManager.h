@@ -17,6 +17,9 @@ enum ControlID {
 	ID_SLIDER_FOVY,
 	ID_SLIDER_MOUSEMOVE,
 	ID_SLIDER_VIEWDISTANCE,
+	ID_CHECKBOX_SMOOTHLIGHTING,
+	ID_CHECKBOX_NICEGRASS,
+	ID_CHECKBOX_MERGEFACE
 };
 class GameManagerWindow :public wxFrame
 {
@@ -31,12 +34,16 @@ public:
 	void OnModifyFOVy(wxCommandEvent&);
 	void OnModifyMouseMove(wxCommandEvent&);
 	void OnModifyViewDistance(wxCommandEvent&);
+	void OnModifySmoothLighting(wxCommandEvent&);
+	void OnModifyNiceGrass(wxCommandEvent&);
+	void OnModifyMergeFace(wxCommandEvent&);
 	static wxTextCtrl *logtb;
 private:
 	DECLARE_EVENT_TABLE()
-	wxListBox* worlds;
-	wxButton *enterworld, *deleteworld, *newworld;
-	wxTextCtrl* serveriptb;
+	wxListBox* lstWorlds;
+	wxButton *btnEnter, *btnDelete, *btnNew;
+	wxTextCtrl* tbServerAddress;
 	wxSlider *scFOVy, *scmousemove, *scviewdistance;
+	wxCheckBox *cbSmoothLighting, *cbNiceGrass, *cbMergeFace;
 };
 #endif
