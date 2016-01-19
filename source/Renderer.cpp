@@ -1,10 +1,44 @@
 #include "Renderer.h"
 namespace Renderer {
 	
-	int Vertexes, Texcoordc, Colorc;
+	/*
+	好纠结啊好纠结，“高级”渲染模式里的所有数据要不要都用VertexAttribArray啊。。。
+	然而我还是比较懒。。。所以除了【附加】的顶点属性之外，其他属性（比如颜色、纹理坐标）都保留原来的算了。。。
+	
+	说到为啥要用【附加】的顶点属性。。。这是由于Shadow Map的精度问题。。。
+	有的时候背光面的外圈会有亮光。。。很难看。。。所以要用Shader把背光面弄暗。。。
+	于是如何让shader知道这个面朝哪里呢？懒得用NormalArray的我就用了一个附加的顶点属性。。。
+	0.0f表示前面(z+)，1.0f表示后面(z-)，2.0f表示右面(x+)，3.0f表示左面(x-)，4.0f表示上面(y+)，5.0f表示下面(y-)
+
+		你没有看错。。。这些值。。。全都是
+
+			浮！
+				点！
+					型！
+						的！！！！！！！
+
+	坑爹的GLSL不支持整型作为顶点属性。。。只好用浮点型代替了(╯‵□′)╯︵┻━┻
+	然后为了解决浮点数的精度问题，我在shader里写了个四舍五入取整。。。
+	不说了。。。
+
+	等等我还没有签名呢。。。
+	--qiaozhanrong
+
+	====================================================
+	留言板：
+
+	1楼. qiaozhanrong: 自己抢个沙发先
+
+	2楼. [请输入姓名]: [请输入回复内容]
+
+	[回复]
+	====================================================
+	*/
+
+	int Vertexes, Texcoordc, Colorc, Attribc;
 	float* VertexArray = nullptr;
 	float* VA = nullptr;
-	float tc[3], col[4];
+	float TexCoords[3], Colors[4], Attribs;
 	//unsigned int Buffers[3];
 	bool AdvancedRender;
 	int ShadowRes = 4096;
@@ -16,30 +50,35 @@ namespace Renderer {
 	int shadercount = 0, ActiveShader = -1;
 	int index = 0, size = 0;
 	unsigned int ShadowFBO, DepthTexture;
+	unsigned int ShaderAttribLoc;
 	
-	void Init(int tcc, int cc) {
-		Texcoordc = tcc; Colorc = cc;
+	void Init(int tc, int cc, int ac) {
+		Texcoordc = tc; Colorc = cc; Attribc = ac;
 		if (VertexArray == nullptr) VertexArray = new float[ArraySize];
 		index = 0;
 		VA = VertexArray;
 		Vertexes = 0;
-		size = (tcc + cc + 3) * 4;
+		size = (tc + cc + + ac + 3) * 4;
 	}
 
 	void Vertex3f(float x, float y, float z) {
 		if ((Vertexes + 1)*(Texcoordc + Colorc + 3) > ArraySize) return;
-		if (Texcoordc != 0) for (int i = 0; i < Texcoordc; i++) VertexArray[index++] = tc[i];
-		if (Colorc != 0) for (int i = 0; i < Colorc; i++) VertexArray[index++] = col[i];
+		if (Attribc != 0) VertexArray[index++] = Attribs;
+		if (Texcoordc != 0) memcpy(VertexArray + index, TexCoords, Texcoordc*sizeof(float));
+		index += Texcoordc;
+		if (Colorc != 0) memcpy(VertexArray + index, Colors, Colorc*sizeof(float));
+		index += Colorc;
 		VertexArray[index++] = x;
 		VertexArray[index++] = y;
 		VertexArray[index++] = z;
 		Vertexes++;
 	}
 
-	void TexCoord2f(float x, float y) { tc[0] = x; tc[1] = y; }
-	void TexCoord3f(float x, float y, float z) { tc[0] = x; tc[1] = y; tc[2] = z; }
-	void Color3f(float r, float g, float b) { col[0] = r; col[1] = g; col[2] = b; }
-	void Color4f(float r, float g, float b, float a) { col[0] = r; col[1] = g; col[2] = b; col[3] = a; }
+	void TexCoord2f(float x, float y) { TexCoords[0] = x; TexCoords[1] = y; }
+	void TexCoord3f(float x, float y, float z) { TexCoords[0] = x; TexCoords[1] = y; TexCoords[2] = z; }
+	void Color3f(float r, float g, float b) { Colors[0] = r; Colors[1] = g; Colors[2] = b; }
+	void Color4f(float r, float g, float b, float a) { Colors[0] = r; Colors[1] = g; Colors[2] = b; Colors[3] = a; }
+	void Attrib1f(float a) { Attribs = a; }
 	
 	void Flush(VBOID& buffer, vtxCount& vtxs) {
 
@@ -51,33 +90,42 @@ namespace Renderer {
 			if (buffer == 0) glGenBuffersARB(1, &buffer);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
 			glBufferDataARB(GL_ARRAY_BUFFER_ARB,
-				Vertexes * ((Texcoordc + Colorc + 3) * sizeof(float)),
+				Vertexes * ((Texcoordc + Colorc + Attribc + 3) * sizeof(float)),
 				VertexArray, GL_STATIC_DRAW_ARB);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 		}
 	}
 
-	void renderbuffer(VBOID buffer, vtxCount vtxs, int tc, int cc) {
+	void renderbuffer(VBOID buffer, vtxCount vtxs, int tc, int cc, int ac) {
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
 		int cnt = tc + cc + 3;
-		if (tc != 0) {
-			if (cc != 0) {
-				glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float*)0);
-				glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)(tc * sizeof(float)));
-				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((tc + cc) * sizeof(float)));
+		if (!AdvancedRender || ac == 0) {
+			if (tc != 0) {
+				if (cc != 0) {
+					glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float*)0);
+					glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)(tc * sizeof(float)));
+					glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((tc + cc) * sizeof(float)));
+				}
+				else {
+					glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float*)0);
+					glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(tc * sizeof(float)));
+				}
 			}
 			else {
-				glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float*)0);
-				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(tc * sizeof(float)));
+				if (cc != 0) {
+					glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)0);
+					glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(cc * sizeof(float)));
+				}
+				else glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)0);
 			}
 		}
 		else {
-			if (cc != 0) {
-				glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)0);
-				glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(cc * sizeof(float)));
-			}
-			else glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)0);
+			cnt += ac;
+			glVertexAttribPointerARB(ShaderAttribLoc, ac, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float*)0);
+			glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float*)(ac * sizeof(float)));
+			glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)((ac + tc) * sizeof(float)));
+			glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((ac + tc + cc) * sizeof(float)));
 		}
 		
 		//这个框是不是很装逼2333 --qiaozhanrong
@@ -135,6 +183,7 @@ namespace Renderer {
 		glUseProgramObjectARB(shaderPrograms[0]);
 		glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "Tex"), 0);
 		glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "DepthTex"), 1);
+		ShaderAttribLoc = glGetAttribLocationARB(shaderPrograms[0], "VertexAttrib");
 		glUseProgramObjectARB(0);
 		
 	}
@@ -198,8 +247,8 @@ namespace Renderer {
 		shadowdist = min(MaxShadowDist, viewdistance);
 		if (MergeFace) ActiveShader = 1; else ActiveShader = 0;
 
+		//Enable shader
 		glUseProgramObjectARB(shaderPrograms[ActiveShader]);
-		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "renderdist"), viewdistance * 16.0f);
 
 		//Calc matrix
 		float scale = 16.0f * sqrt(3.0f);
@@ -209,13 +258,21 @@ namespace Renderer {
 		Frustum::MultRotate(sunlightXrot, 1.0f, 0.0f, 0.0f);
 		Frustum::MultRotate(sunlightYrot, 0.0f, 1.0f, 0.0f);
 
-		//Set matrix uniform
+		//Set uniform
+		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "renderdist"), viewdistance * 16.0f);
 		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_proj"), 1, GL_FALSE, Frustum::proj);
 		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_modl"), 1, GL_FALSE, Frustum::modl);
+
+		//Enable arrays for additional vertex attributes
+		glEnableVertexAttribArrayARB(ShaderAttribLoc);
 	}
 
 	void DisableShaders() {
+		//Disable shader
 		glUseProgramObjectARB(0);
+
+		//Disable arrays for additional vertex attributes
+		glDisableVertexAttribArrayARB(ShaderAttribLoc);
 	}
 
 	void StartShadowPass() {
