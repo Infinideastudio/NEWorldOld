@@ -1,4 +1,5 @@
 ﻿#include "Definitions.h"
+#include "GameManager.h"
 
 //Global Vars
 float FOVyNormal = 60.0f;       //视野角度
@@ -141,4 +142,19 @@ vector<string> split(string str, string pattern)
 	if (!str.substr(start).empty())
 		ret.push_back(str.substr(start));
 	return ret;
+}
+
+void DebugWarning(wxString msg)
+{
+	GameManagerWindow::logtb->AppendText(L"Warning:" + msg + "\n");
+}
+
+void DebugError(wxString msg)
+{
+	GameManagerWindow::logtb->AppendText(L"Error:" + msg + "\n");
+}
+
+void DebugInfo(wxString msg)
+{
+	GameManagerWindow::logtb->AppendText(L"Log:" + msg + "\n");
 }

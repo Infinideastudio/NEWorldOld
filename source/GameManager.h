@@ -20,7 +20,8 @@ enum ControlID {
 	ID_SLIDER_VIEWDISTANCE,
 	ID_CHECKBOX_SMOOTHLIGHTING,
 	ID_CHECKBOX_NICEGRASS,
-	ID_CHECKBOX_MERGEFACE
+	ID_CHECKBOX_MERGEFACE,
+	ID_CHECKBOX_ADVANCEDRENDER
 };
 class GameManagerWindow :public wxFrame
 {
@@ -38,6 +39,7 @@ public:
 	void OnModifySmoothLighting(wxCommandEvent&);
 	void OnModifyNiceGrass(wxCommandEvent&);
 	void OnModifyMergeFace(wxCommandEvent&);
+	void OnModifyAdvancedRender(wxCommandEvent&);
 	static wxTextCtrl *logtb;
 private:
 	DECLARE_EVENT_TABLE()
@@ -45,6 +47,6 @@ private:
 	wxButton *btnEnter, *btnDelete, *btnNew;
 	wxTextCtrl* tbServerAddress;
 	wxSlider *scFOVy, *scmousemove, *scviewdistance;
-	wxCheckBox *cbSmoothLighting, *cbNiceGrass, *cbMergeFace;
+	wxCheckBox *cbSmoothLighting, *cbNiceGrass, *cbMergeFace, *cbAdvancedRender;
 };
 #endif

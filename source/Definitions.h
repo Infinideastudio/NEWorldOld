@@ -234,10 +234,9 @@ inline string ftos(double i)
 	sprintf(tmp, "%g", i);
 	return tmp;
 }
-#include "GameManager.h"
-#define DebugWarning(msg) GameManagerWindow::logtb->AppendText(wxString(L"Warning:")+wxString(msg)+L"\n")
-#define DebugError(msg) GameManagerWindow::logtb->AppendText(wxString(L"Error:")+wxString(msg)+L"\n")
-#define DebugInfo(msg) GameManagerWindow::logtb->AppendText(wxString(L"Log:")+wxString(msg)+L"\n")
+void DebugWarning(wxString msg);
+void DebugError(wxString msg);
+void DebugInfo(wxString msg);
 inline bool beginWith(string str, string begin) {
 	if (str.size() < begin.size()) return false;
 	for (size_t i = 0; i != begin.size(); i++) {

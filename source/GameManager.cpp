@@ -11,16 +11,22 @@ IMPLEMENT_APP(NEWorld)
 
 void LoadOptions()
 {
-	DataFile file(L"options");
-	DataNode& node = file.RootNode;
-	FOVyNormal = node.GetValue(L"FOVy").GetFloat();
-	viewdistance = node.GetValue(L"ViewDistance").GetInt32();
-	mousemove = node.GetValue(L"MouseMove").GetFloat();
-	SmoothLighting = node.GetValue(L"SmoothLighting").GetBoolean();
-	NiceGrass = node.GetValue(L"NiceGrass").GetBoolean();
-	MergeFace = node.GetValue(L"MergeFace").GetBoolean();
-	Multisample = node.GetValue(L"MultiSample").GetInt32();
-	Renderer::AdvancedRender = node.GetValue(L"AdvancedRender").GetBoolean();
+	try
+	{
+		DataFile file(L"options");
+		DataNode& node = file.RootNode;
+		FOVyNormal = node.GetValue(L"FOVy").GetFloat();
+		viewdistance = node.GetValue(L"ViewDistance").GetInt32();
+		mousemove = node.GetValue(L"MouseMove").GetFloat();
+		SmoothLighting = node.GetValue(L"SmoothLighting").GetBoolean();
+		NiceGrass = node.GetValue(L"NiceGrass").GetBoolean();
+		MergeFace = node.GetValue(L"MergeFace").GetBoolean();
+		Multisample = node.GetValue(L"MultiSample").GetInt32();
+		Renderer::AdvancedRender = node.GetValue(L"AdvancedRender").GetBoolean();
+	}
+	catch (...)
+	{
+	}
 }
 
 void SaveOptions()
@@ -65,6 +71,7 @@ EVT_SLIDER(ID_SLIDER_VIEWDISTANCE,GameManagerWindow::OnModifyViewDistance)
 EVT_CHECKBOX(ID_CHECKBOX_SMOOTHLIGHTING, GameManagerWindow::OnModifySmoothLighting)
 EVT_CHECKBOX(ID_CHECKBOX_NICEGRASS, GameManagerWindow::OnModifyNiceGrass)
 EVT_CHECKBOX(ID_CHECKBOX_MERGEFACE, GameManagerWindow::OnModifyMergeFace)
+EVT_CHECKBOX(ID_CHECKBOX_ADVANCEDRENDER,GameManagerWindow::OnModifyAdvancedRender)
 END_EVENT_TABLE()
 
 GameManagerWindow::GameManagerWindow(const wxString & title)
@@ -104,6 +111,8 @@ GameManagerWindow::GameManagerWindow(const wxString & title)
 		cbSmoothLighting->Disable();
 		cbNiceGrass->Disable();
 	}
+	cbAdvancedRender = new wxCheckBox(optionspage, ID_CHECKBOX_ADVANCEDRENDER, L"高级渲染", wxPoint(450, 155), wxSize(300, -1));
+	cbAdvancedRender->SetValue(Renderer::AdvancedRender);
 	wxPanel* logpage = new wxPanel(tab, wxID_ANY);
 	tab->AddPage(logpage, L"日志");
 	logtb = new wxTextCtrl(logpage, wxID_ANY, L"", wxDefaultPosition, logpage->GetClientSize(), wxTE_MULTILINE | wxTE_READONLY);
@@ -229,4 +238,9 @@ void GameManagerWindow::OnModifyMergeFace(wxCommandEvent &)
 		cbSmoothLighting->Enable();
 		cbNiceGrass->Enable();
 	}
+}
+
+void GameManagerWindow::OnModifyAdvancedRender(wxCommandEvent &)
+{
+	Renderer::AdvancedRender = cbAdvancedRender->GetValue();
 }
