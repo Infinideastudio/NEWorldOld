@@ -7,7 +7,7 @@ PFNGLACTIVETEXTUREARBPROC glActiveTextureARB;
 
 PFNGLENABLEVERTEXATTRIBARRAYARBPROC glEnableVertexAttribArrayARB;
 PFNGLDISABLEVERTEXATTRIBARRAYARBPROC glDisableVertexAttribArrayARB;
-PFNGLGETATTRIBLOCATIONARBPROC glGetAttribLocation;
+PFNGLGETATTRIBLOCATIONARBPROC glGetAttribLocationARB;
 PFNGLVERTEXATTRIBPOINTERARBPROC glVertexAttribPointerARB;
 
 PFNGLGENBUFFERSARBPROC glGenBuffersARB;
@@ -64,7 +64,7 @@ void InitGLProc() {
 
 	glEnableVertexAttribArrayARB = (PFNGLENABLEVERTEXATTRIBARRAYARBPROC)glfwGetProcAddress("glEnableVertexAttribArrayARB");
 	glDisableVertexAttribArrayARB = (PFNGLDISABLEVERTEXATTRIBARRAYARBPROC)glfwGetProcAddress("glDisableVertexAttribArrayARB");
-	glGetAttribLocation = (PFNGLGETATTRIBLOCATIONPROC)glfwGetProcAddress("glGetAttribLocation");
+	glGetAttribLocationARB = (PFNGLGETATTRIBLOCATIONARBPROC)glfwGetProcAddress("glGetAttribLocationARB");
 	glVertexAttribPointerARB = (PFNGLVERTEXATTRIBPOINTERARBPROC)glfwGetProcAddress("glVertexAttribPointerARB");
 
 	glGenBuffersARB = (PFNGLGENBUFFERSARBPROC)glfwGetProcAddress("glGenBuffersARB");

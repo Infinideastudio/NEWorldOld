@@ -1276,8 +1276,9 @@ void Render() {
 		if (Renderer::AdvancedRender) {
 			m[12] = cr.cx * 16.0 - xpos; m[13] = cr.cy * 16.0 - cr.loadAnim - ypos; m[14] = cr.cz * 16.0 - zpos;
 			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
+			Renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3, 1);
 		}
-		Renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
+		else Renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
 		glPopMatrix();
 	}
 
@@ -1337,8 +1338,9 @@ void Render() {
 		if (Renderer::AdvancedRender) {
 			m[12] = cr.cx * 16.0 - xpos; m[13] = cr.cy * 16.0 - cr.loadAnim - ypos; m[14] = cr.cz * 16.0 - zpos;
 			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
+			Renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3, 1);
 		}
-		Renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3);
+		else Renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3);
 		glPopMatrix();
 	}
 	glDisable(GL_CULL_FACE);
@@ -1350,8 +1352,9 @@ void Render() {
 		if (Renderer::AdvancedRender) {
 			m[12] = cr.cx * 16.0 - xpos; m[13] = cr.cy * 16.0 - cr.loadAnim - ypos; m[14] = cr.cz * 16.0 - zpos;
 			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
+			Renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3, 1);
 		}
-		Renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3);
+		else Renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3);
 		glPopMatrix();
 	}
 
