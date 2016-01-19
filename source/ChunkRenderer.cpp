@@ -175,7 +175,7 @@ namespace ChunkRenderer {
 
 	void RenderChunk(World::chunk* c) {
 		int x, y, z;
-		Renderer::Init(2, 3);
+		if (Renderer::AdvancedRender) Renderer::Init(2, 3, 1); else Renderer::Init(2, 3);
 		for (x = 0; x < 16; x++) {
 			for (y = 0; y < 16; y++) {
 				for (z = 0; z < 16; z++) {
@@ -186,7 +186,7 @@ namespace ChunkRenderer {
 			}
 		}
 		Renderer::Flush(c->vbuffer[0], c->vertexes[0]);
-		Renderer::Init(2, 3);
+		if (Renderer::AdvancedRender) Renderer::Init(2, 3, 1); else Renderer::Init(2, 3);
 		for (x = 0; x < 16; x++) {
 			for (y = 0; y < 16; y++) {
 				for (z = 0; z < 16; z++) {
@@ -197,7 +197,7 @@ namespace ChunkRenderer {
 			}
 		}
 		Renderer::Flush(c->vbuffer[1], c->vertexes[1]);
-		Renderer::Init(2, 3);
+		if (Renderer::AdvancedRender) Renderer::Init(2, 3, 1); else Renderer::Init(2, 3);
 		for (x = 0; x < 16; x++) {
 			for (y = 0; y < 16; y++) {
 				for (z = 0; z < 16; z++) {
