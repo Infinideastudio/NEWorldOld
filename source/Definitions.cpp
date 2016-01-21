@@ -125,6 +125,8 @@ PFNGLUNIFORMMATRIX4FVARBPROC glUniformMatrix4fvARB;
 PFNGLGETUNIFORMFVARBPROC glGetUniformfvARB;
 PFNGLGETUNIFORMIVARBPROC glGetUniformivARB;
 
+wxString CurrentWorldGen = L"NormalWorldGen";
+
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 int c_getChunkPtrFromCPA;
 int c_getChunkPtrFromSearch;

@@ -9,6 +9,7 @@
 #include <string>
 #include <fstream>
 #include <exception>
+#include <vector>
 #ifdef UNICODE
 typedef std::wstring dds_string;
 typedef wchar_t dds_char;
@@ -25,27 +26,25 @@ typedef char dds_char;
 #ifndef DDS_VERSION
 #define DDS_VERSION ((int)0)
 #endif
-#ifndef have_declare_data_type_defined
-#define have_declare_data_type_defined
-#define declare_data_type(type,name,get_func_name,set_func_name) \
-inline type get_func_name() const \
-{ \
-if (Pointer->Type!=TEXT(name)) \
-throw new std::exception("Type mismatched!"); \
-return *(type*)Pointer->Data; \
-} \
-inline void set_func_name(type data) \
-{ \
-if (Pointer->Type!=TEXT(name)) \
-{ \
-Pointer->Type=TEXT(name); \
-delete[] Pointer->Data; \
-Pointer->Length=sizeof(type); \
-Pointer->Data=new char[Pointer->Length]; \
-} \
-*(type*)Pointer->Data=data; \
-}
-#endif
+class dds_exception :public std::exception
+{
+public:
+	inline dds_exception(char const* const _Message)
+	{
+		message = new char[strlen(_Message) + 1];
+		strcpy(message, _Message);
+	}
+	inline ~dds_exception()
+	{
+		delete[] message;
+	}
+	inline char const* what() const
+	{
+		return message;
+	}
+protected:
+	char* message;
+};
 class DataItemInternal
 {
 public:
@@ -54,78 +53,501 @@ public:
 	int Length;
 	int Count;
 	inline DataItemInternal()
-		:Count(1),Length(0),Type(TEXT("")),Data(new char[2])
+		:Count(1), Data(new char[2]), Length(0)
 	{
+		Data[1] = Data[0] = 0;
+	}
+	inline DataItemInternal(const dds_string& type)
+		:Count(1), Type(type)
+	{
+		int size = 0;
+		if (Type == "boolean" || Type == "int8" || Type == "sint8")
+			size = 1;
+		if (Type == "int16" || Type == "uint16")
+			size = 2;
+		if (Type == "int32" || Type == "uint32" || Type == "float")
+			size = 4;
+		if (Type == "int64" || Type == "uint64" || Type == "double")
+			size = 8;
+		Data = new char[size + 2];
+		Data[size + 1] = Data[size] = 0;
+		Length = size;
+	}
+	inline DataItemInternal(const dds_string& type, const char* data, int length)
+		:Count(1), Type(type), Length(length)
+	{
+		Data = new char[length + 2];
+		Data[length + 1] = Data[length] = 0;
+		memcpy(Data, data, length);
 	}
 	inline ~DataItemInternal()
 	{
 		delete[] Data;
 	}
 };
-inline dds_string ReadString(std::ifstream& stream)
+class HelperFunctions
 {
-	int length;
-	stream.read((char*)&length, sizeof(int));
-	dds_char* data = new dds_char[length + 1];
-	stream.read((char*)data, length*sizeof(dds_char));
-	data[length] = 0;
-	dds_string ret = data;
-	delete[] data;
-	return ret;
-}
-inline void WriteString(std::ofstream& stream, const dds_string& str)
+public:
+	inline static dds_string ReadString(std::ifstream& stream)
+	{
+		int length;
+		stream.read((char*)&length, sizeof(int));
+		dds_char* data = new dds_char[length + 1];
+		stream.read((char*)data, length*sizeof(dds_char));
+		data[length] = 0;
+		dds_string ret = data;
+		delete[] data;
+		return ret;
+	}
+	inline static void WriteString(std::ofstream& stream, const dds_string& str)
+	{
+		int length = (int)str.size();
+		stream.write((char*)&length, sizeof(int));
+		stream.write((char*)str.c_str(), length*sizeof(dds_char));
+	}
+	inline static std::vector<dds_string> SplitString(const dds_string& str)
+	{
+		std::vector<dds_string> ret;
+		int index = 0;
+		while (true)
+		{
+			int next = str.find(TEXT("."), index);
+			if (next == dds_string::npos)
+			{
+				ret.push_back(str.substr(index));
+				return ret;
+			}
+			else
+			{
+				ret.push_back(str.substr(index, next - index));
+				index = next + 1;
+			}
+		}
+	}
+	inline static dds_string GetLast(const dds_string& str)
+	{
+		return str.substr(str.find_last_of(TEXT(".")) + 1);
+	}
+};
+typedef class DataItemBoolean
 {
-	int length = (int)str.size();
-	stream.write((char*)&length, sizeof(int));
-	stream.write((char*)str.c_str(), length*sizeof(dds_char));
-}
+public:
+	bool Value;
+	inline DataItemBoolean(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("boolean"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(bool*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("boolean"))
+			throw new dds_exception("Type mismatched!");
+		*(bool*)ptr->Data = Value;
+	}
+	inline ~DataItemBoolean()
+	{
+		Commit();
+	}
+	inline void SetValue(bool value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+}DataItemBool;
+typedef class DataItemInt8
+{
+public:
+	char Value;
+	inline DataItemInt8(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("int8"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(char*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("int8"))
+			throw new dds_exception("Type mismatched!");
+		*(char*)ptr->Data = Value;
+	}
+	inline ~DataItemInt8()
+	{
+		Commit();
+	}
+	inline void SetValue(char value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+}DataItemChar;
+typedef class DataItemSInt8
+{
+public:
+	signed char Value;
+	inline DataItemSInt8(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("sint8"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(signed char*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("sint8"))
+			throw new dds_exception("Type mismatched!");
+		*(signed char*)ptr->Data = Value;
+	}
+	inline ~DataItemSInt8()
+	{
+		Commit();
+	}
+	inline void SetValue(signed char value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+}DataItemSignedChar;
+typedef class DataItemInt16
+{
+public:
+	short Value;
+	inline DataItemInt16(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("int16"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(short*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("int16"))
+			throw new dds_exception("Type mismatched!");
+		*(short*)ptr->Data = Value;
+	}
+	inline ~DataItemInt16()
+	{
+		Commit();
+	}
+	inline void SetValue(short value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+}DataItemShort;
+typedef class DataItemUInt16
+{
+public:
+	unsigned short Value;
+	inline DataItemUInt16(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("uint16"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(unsigned short*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("uint16"))
+			throw new dds_exception("Type mismatched!");
+		*(unsigned short*)ptr->Data = Value;
+	}
+	inline ~DataItemUInt16()
+	{
+		Commit();
+	}
+	inline void SetValue(unsigned short value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+}DataItemUnsignedShort;
+typedef class DataItemInt32
+{
+public:
+	int Value;
+	inline DataItemInt32(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("int32"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(int*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("int32"))
+			throw new dds_exception("Type mismatched!");
+		*(int*)ptr->Data = Value;
+	}
+	inline ~DataItemInt32()
+	{
+		Commit();
+	}
+	inline void SetValue(int value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+}DataItemInteger;
+typedef class DataItemUInt32
+{
+public:
+	unsigned int Value;
+	inline DataItemUInt32(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("uint32"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(unsigned int*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("uint32"))
+			throw new dds_exception("Type mismatched!");
+		*(unsigned int*)ptr->Data = Value;
+	}
+	inline ~DataItemUInt32()
+	{
+		Commit();
+	}
+	inline void SetValue(unsigned int value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+}DataItemUnsignedInteger;
+typedef class DataItemInt64
+{
+public:
+	long long Value;
+	inline DataItemInt64(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("int64"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(long long*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("int64"))
+			throw new dds_exception("Type mismatched!");
+		*(long long*)ptr->Data = Value;
+	}
+	inline ~DataItemInt64()
+	{
+		Commit();
+	}
+	inline void SetValue(long long value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+}DataItemLongLong;
+typedef class DataItemUInt64
+{
+public:
+	unsigned long long Value;
+	inline DataItemUInt64(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("uint64"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(unsigned long long*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("uint64"))
+			throw new dds_exception("Type mismatched!");
+		*(unsigned long long*)ptr->Data = Value;
+	}
+	inline ~DataItemUInt64()
+	{
+		Commit();
+	}
+	inline void SetValue(unsigned long long value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+}DataItemUnsignedLongLong;
+class DataItemFloat
+{
+public:
+	float Value;
+	inline DataItemFloat(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("float"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(float*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("float"))
+			throw new dds_exception("Type mismatched!");
+		*(float*)ptr->Data = Value;
+	}
+	inline ~DataItemFloat()
+	{
+		Commit();
+	}
+	inline void SetValue(float value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+};
+class DataItemDouble
+{
+public:
+	double Value;
+	inline DataItemDouble(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("double"))
+			throw new dds_exception("Type mismatched!");
+		Value = *(double*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("double"))
+			throw new dds_exception("Type mismatched!");
+		*(double*)ptr->Data = Value;
+	}
+	inline ~DataItemDouble()
+	{
+		Commit();
+	}
+	inline void SetValue(double value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+};
+class DataItemString
+{
+public:
+	std::string Value;
+	inline DataItemString(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("string"))
+			throw new dds_exception("Type mismatched!");
+		Value = ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("string"))
+			throw new dds_exception("Type mismatched!");
+		if ((int)Value.size()*(int)sizeof(char) != ptr->Length)
+		{
+			delete[] ptr->Data;
+			ptr->Length = (int)Value.size()*sizeof(char);
+			ptr->Data = new char[(int)Value.size()*sizeof(char) + 2];
+			ptr->Data[(int)Value.size()*sizeof(char) + 1] = ptr->Data[(int)Value.size()*sizeof(char)] = 0;
+		}
+		strcpy(ptr->Data, Value.c_str());
+	}
+	inline ~DataItemString()
+	{
+		Commit();
+	}
+	inline void SetValue(const std::string& value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+};
+class DataItemWString
+{
+public:
+	std::wstring Value;
+	inline DataItemWString(DataItemInternal* data)
+	{
+		ptr = data;
+		if (ptr->Type != TEXT("wstring"))
+			throw new dds_exception("Type mismatched!");
+		Value = (wchar_t*)ptr->Data;
+	}
+	inline void Commit()
+	{
+		if (ptr->Type != TEXT("wstring"))
+			throw new dds_exception("Type mismatched!");
+		if ((int)Value.size()*(int)sizeof(wchar_t) != ptr->Length)
+		{
+			delete[] ptr->Data;
+			ptr->Length = (int)Value.size()*sizeof(wchar_t);
+			ptr->Data = new char[(int)Value.size()*sizeof(wchar_t) + 2];
+			ptr->Data[(int)Value.size()*sizeof(wchar_t) + 1] = ptr->Data[(int)Value.size()*sizeof(wchar_t)] = 0;
+		}
+		wcscpy((wchar_t*)ptr->Data, Value.c_str());
+	}
+	inline ~DataItemWString()
+	{
+		Commit();
+	}
+	inline void SetValue(const std::wstring& value)
+	{
+		Value = value;
+	}
+protected:
+	DataItemInternal* ptr;
+};
 class DataItem
 {
 public:
 	dds_string Name;
 	inline DataItem()
 	{
-		Pointer = new DataItemInternal;
+		ptr = new DataItemInternal;
 	}
 	inline DataItem(const dds_string& name)
 	{
-		Pointer = new DataItemInternal;
+		ptr = new DataItemInternal;
 		Name = name;
 	}
 	inline DataItem(const dds_string& name, const dds_string& type)
 	{
-		Pointer = new DataItemInternal;
+		ptr = new DataItemInternal(type);
 		Name = name;
-		Pointer->Type = type;
 	}
 	inline DataItem(const dds_string& name, const dds_string& type, const char* data, int length)
 	{
-		Pointer = new DataItemInternal;
+		ptr = new DataItemInternal(type, data, length);
 		Name = name;
-		Pointer->Type = type;
-		Pointer->Length = length;
-		Pointer->Data = new char[length + 2];
-		memcpy(Pointer->Data, data, length);
-		Pointer->Data[length + 1] = Pointer->Data[length] = 0;
 	}
 	inline DataItem(const DataItem& src)
 	{
-		Pointer = src.Pointer;
-		Pointer->Count++;
+		ptr = src.ptr;
+		ptr->Count++;
 		Name = src.Name;
 	}
 	inline DataItem& operator=(const DataItem& src)
 	{
-		Pointer = src.Pointer;
-		Pointer->Count++;
+		ptr = src.ptr;
+		ptr->Count++;
 		Name = src.Name;
 		return *this;
 	}
 	inline ~DataItem()
 	{
-		Pointer->Count--;
-		if (!Pointer->Count)
-			delete Pointer;
+		ptr->Count--;
+		if (!ptr->Count)
+			delete ptr;
 	}
 	inline DataItem(std::ifstream& stream)
 	{
@@ -133,76 +555,83 @@ public:
 	}
 	inline void Read(std::ifstream& stream)
 	{
-		Pointer = new DataItemInternal;
-		Pointer->Count = 1;
-		Name = ReadString(stream);
-		Pointer->Type = ReadString(stream);
-		stream.read((char*)&Pointer->Length, sizeof(int));
-		Pointer->Data = new char[Pointer->Length + 2];
-		stream.read(Pointer->Data, Pointer->Length);
-		Pointer->Data[Pointer->Length + 1] = Pointer->Data[Pointer->Length] = 0;
+		ptr = new DataItemInternal;
+		ptr->Count = 1;
+		Name = HelperFunctions::ReadString(stream);
+		ptr->Type = HelperFunctions::ReadString(stream);
+		stream.read((char*)&ptr->Length, sizeof(int));
+		ptr->Data = new char[ptr->Length + 2];
+		stream.read(ptr->Data, ptr->Length);
+		ptr->Data[ptr->Length + 1] = ptr->Data[ptr->Length] = 0;
 	}
 	inline void Write(std::ofstream& stream) const
 	{
-		WriteString(stream, Name);
-		WriteString(stream, Pointer->Type);
-		stream.write((char*)&Pointer->Length, sizeof(int));
-		stream.write(Pointer->Data, Pointer->Length);
+		HelperFunctions::WriteString(stream, Name);
+		HelperFunctions::WriteString(stream, ptr->Type);
+		stream.write((char*)&ptr->Length, sizeof(int));
+		stream.write(ptr->Data, ptr->Length);
 	}
-	declare_data_type(char,"int8",GetInt8,SetInt8)
-	declare_data_type(unsigned char,"uint8",GetUInt8,SetUInt8)
-	declare_data_type(short,"int16",GetInt16,SetInt16)
-	declare_data_type(unsigned short,"uint16",GetUInt16,SetUInt16)
-	declare_data_type(int,"int32",GetInt32,SetInt32)
-	declare_data_type(unsigned int,"uint32",GetUInt32,SetUInt32)
-	declare_data_type(float,"float",GetFloat,SetFloat)
-	declare_data_type(double,"double",GetDouble,SetDouble)
-	declare_data_type(bool,"boolean",GetBoolean,SetBoolean)
-	inline std::string GetString() const
+	inline DataItemBoolean ToBoolean()
 	{
-		if (Pointer->Type != "string")
-			throw new std::exception("Type mismatched!");
-		return std::string(Pointer->Data);
+		return DataItemBoolean(ptr);
 	}
-	inline void SetString(const std::string& value)
+	inline DataItemInt8 ToInt8()
 	{
-		if (Pointer->Type != "string")
-		{
-			Pointer->Type = TEXT("string");
-			delete[] Pointer->Data;
-			Pointer->Length = (int)value.size()*sizeof(char);
-			Pointer->Data = new char[Pointer->Length + 2];
-			Pointer->Data[Pointer->Length + 1] = Pointer->Data[Pointer->Length] = 0;
-		}
-		strcpy(Pointer->Data, value.c_str());
+		return DataItemInt8(ptr);
 	}
-	inline std::wstring GetWString() const
+	inline DataItemSInt8 ToUInt8()
 	{
-		if (Pointer->Type != "wstring")
-			throw new std::exception("Type mismatched!");
-		return std::wstring((wchar_t*)Pointer->Data);
+		return DataItemSInt8(ptr);
 	}
-	inline void SetWString(const std::wstring& value)
+	inline DataItemInt16 ToInt16()
 	{
-		if (Pointer->Type != "string")
-		{
-			Pointer->Type = TEXT("string");
-			delete[] Pointer->Data;
-			Pointer->Length = (int)value.size()*sizeof(wchar_t);
-			Pointer->Data = new char[Pointer->Length + 2];
-			Pointer->Data[Pointer->Length + 1] = Pointer->Data[Pointer->Length] = 0;
-		}
-		wcscpy((wchar_t*)Pointer->Data, value.c_str());
+		return DataItemInt16(ptr);
+	}
+	inline DataItemUInt16 ToUInt16()
+	{
+		return DataItemUInt16(ptr);
+	}
+	inline DataItemInt32 ToInt32()
+	{
+		return DataItemInt32(ptr);
+	}
+	inline DataItemUInt32 ToUInt32()
+	{
+		return DataItemUInt32(ptr);
+	}
+	inline DataItemInt64 ToInt64()
+	{
+		return DataItemInt64(ptr);
+	}
+	inline DataItemUInt64 ToUInt64()
+	{
+		return DataItemUInt64(ptr);
+	}
+	inline DataItemFloat ToFloat()
+	{
+		return DataItemFloat(ptr);
+	}
+	inline DataItemDouble ToDouble()
+	{
+		return DataItemDouble(ptr);
+	}
+	inline DataItemString ToString()
+	{
+		return DataItemString(ptr);
+	}
+	inline DataItemWString ToWString()
+	{
+		return DataItemWString(ptr);
 	}
 	inline char* GetRawData()
 	{
-		return Pointer->Data;
+		return ptr->Data;
 	}
 	inline void SetRawData(const dds_string& type, const char* data, int length)
 	{
-		Pointer->Count--;
-		if (!Pointer->Count)
-			delete Pointer;
+		ptr->Count--;
+		if (!ptr->Count)
+			delete ptr;
 		DataItemInternal* tmp = new DataItemInternal;
 		tmp->Type = type;
 		tmp->Length = length;
@@ -210,48 +639,48 @@ public:
 		memcpy(tmp->Data, data, length);
 		tmp->Data[length + 1] = tmp->Data[length] = 0;
 		tmp->Count = 1;
-		Pointer = tmp;
+		ptr = tmp;
 	}
 	inline int GetDataLength() const
 	{
-		return Pointer->Length;
+		return ptr->Length;
 	}
 	inline dds_string GetDataType() const
 	{
-		return Pointer->Type;
+		return ptr->Type;
 	}
 	inline void SetDataType(const dds_string& type)
 	{
-		Pointer->Type = type;
+		ptr->Type = type;
 	}
 protected:
-	DataItemInternal* Pointer;
+	DataItemInternal* ptr;
 };
-class DataNode
+class DataTree
 {
 public:
 	dds_string Name;
-	inline DataNode()
+	inline DataTree()
 	{
 	}
-	inline DataNode(const dds_string& name)
+	inline DataTree(const dds_string& name)
 	{
 		Name = name;
 	}
-	inline DataNode(std::ifstream& stream)
+	inline DataTree(std::ifstream& stream)
 	{
 		Read(stream);
 	}
 	inline void Read(std::ifstream& stream)
 	{
-		Name = ReadString(stream);
+		Name = HelperFunctions::ReadString(stream);
 		int count;
 		stream.read((char*)&count, sizeof(int));
 		while (count--)
 		{
-			DataNode tmp(stream);
+			DataTree tmp(stream);
 			if (SubNodes.count(tmp.Name) || Values.count(tmp.Name))
-				throw new std::exception("Node name duplicated!");
+				throw new dds_exception("Node name duplicated!");
 			SubNodes[tmp.Name] = tmp;
 		}
 		stream.read((char*)&count, sizeof(int));
@@ -259,74 +688,60 @@ public:
 		{
 			DataItem tmp(stream);
 			if (SubNodes.count(tmp.Name) || Values.count(tmp.Name))
-				throw new std::exception("Item name duplicated!");
+				throw new dds_exception("Item name duplicated!");
 			Values[tmp.Name] = tmp;
 		}
 	}
 	inline void Write(std::ofstream& stream) const
 	{
-		WriteString(stream, Name);
+		HelperFunctions::WriteString(stream, Name);
 		int count = (int)SubNodes.size();
 		stream.write((char*)&count, sizeof(int));
-		for (std::map<dds_string, DataNode>::const_iterator it = SubNodes.begin(); it != SubNodes.end(); it++)
+		for (std::map<dds_string, DataTree>::const_iterator it = SubNodes.begin(); it != SubNodes.end(); it++)
 			it->second.Write(stream);
 		count = (int)Values.size();
 		stream.write((char*)&count, sizeof(int));
 		for (std::map<dds_string, DataItem>::const_iterator it = Values.begin(); it != Values.end(); it++)
 			it->second.Write(stream);
 	}
+	inline DataItem& CreateValue(const dds_string& name, const dds_string type)
+	{
+		DataTree* ret = GetSubNodeInternal(name, false);
+		dds_string last = HelperFunctions::GetLast(name);
+		if (ret->Values.count(last))
+			throw new dds_exception("Value already exists!");
+		ret->Values[last] = DataItem(last, type);
+		return ret->Values[last];
+	}
+	inline DataTree& CreateSubNode(const dds_string& name)
+	{
+		DataTree* ret = GetSubNodeInternal(name, false);
+		dds_string last = HelperFunctions::GetLast(name);
+		if (ret->SubNodes.count(last))
+			throw new dds_exception("Value already exists!");
+		ret->SubNodes[last] = DataTree(last);
+		return ret->SubNodes[last];
+	}
 	inline DataItem& GetValue(const dds_string& name)
 	{
-		int index = -1;
-		DataNode* current = this;
-		while (true)
-		{
-			int next = name.find(TEXT("."), index + 1);
-			if (next == dds_string::npos)
-			{
-				dds_string itemname = name.substr(index + 1);
-				if (!current->Values.count(itemname))
-					current->Values[itemname] = DataItem(itemname);
-				return current->Values[itemname];
-			}
-			else
-			{
-				dds_string nodename = name.substr(index + 1, next - index - 1);
-				if (!current->SubNodes.count(nodename))
-					current->SubNodes[nodename] = DataNode(nodename);
-				current = &current->SubNodes[nodename];
-				index = next;
-			}
-		}
+		DataTree* ret = GetSubNodeInternal(name, true);
+		dds_string last = HelperFunctions::GetLast(name);
+		if (!ret->Values.count(last))
+			throw new dds_exception("Value doesn't exist!");
+		return ret->Values[last];
 	}
-	inline DataNode& GetSubNode(const dds_string& name)
+	inline DataTree& GetSubNode(const dds_string& name)
 	{
-		int index = -1;
-		DataNode* current = this;
-		while (true)
-		{
-			int next = name.find(TEXT("."), index + 1);
-			if (next == dds_string::npos)
-			{
-				dds_string itemname = name.substr(index + 1);
-				if (!current->SubNodes.count(itemname))
-					current->SubNodes[itemname] = DataNode(itemname);
-				return current->SubNodes[itemname];
-			}
-			else
-			{
-				dds_string nodename = name.substr(index + 1, next - index - 1);
-				if (!current->SubNodes.count(nodename))
-					current->SubNodes[nodename] = DataNode(nodename);
-				current = &current->SubNodes[nodename];
-				index = next;
-			}
-		}
+		DataTree* ret = GetSubNodeInternal(name, true);
+		dds_string last = HelperFunctions::GetLast(name);
+		if (!ret->SubNodes.count(last))
+			throw new dds_exception("DataNode doesn't exist!");
+		return ret->SubNodes[last];
 	}
 	inline bool ValueExists(const dds_string& name) const
 	{
 		int index = -1;
-		DataNode* current = (DataNode*)this;
+		DataTree* current = (DataTree*)this;
 		while (true)
 		{
 			int next = name.find(TEXT("."), index + 1);
@@ -348,7 +763,7 @@ public:
 	inline bool SubNodeExists(const dds_string& name) const
 	{
 		int index = -1;
-		DataNode* current = (DataNode*)this;
+		DataTree* current = (DataTree*)this;
 		while (true)
 		{
 			int next = name.find(TEXT("."), index + 1);
@@ -370,7 +785,7 @@ public:
 	inline void RemoveSubNode(const dds_string& name)
 	{
 		int index = -1;
-		DataNode* current = this;
+		DataTree* current = this;
 		while (true)
 		{
 			int next = name.find(TEXT("."), index + 1);
@@ -378,14 +793,14 @@ public:
 			{
 				dds_string nodename = name.substr(index + 1);
 				if (!current->SubNodes.count(nodename))
-					throw new std::exception("DataNode doesn't exist!");
+					throw new dds_exception("DataTree doesn't exist!");
 				current->SubNodes.erase(nodename);
 			}
 			else
 			{
 				dds_string nodename = name.substr(index + 1, next - index - 1);
 				if (!current->SubNodes.count(nodename))
-					throw new std::exception("DataNode doesn't exist!");
+					throw new dds_exception("DataTree doesn't exist!");
 				current = &current->SubNodes[nodename];
 				index = next;
 			}
@@ -394,7 +809,7 @@ public:
 	inline void RemoveValue(const dds_string& name)
 	{
 		int index = -1;
-		DataNode* current = this;
+		DataTree* current = this;
 		while (true)
 		{
 			int next = name.find(TEXT("."), index + 1);
@@ -402,22 +817,40 @@ public:
 			{
 				dds_string valuename = name.substr(index + 1);
 				if (!current->Values.count(valuename))
-					throw new std::exception("Value doesn't exist!");
+					throw new dds_exception("Value doesn't exist!");
 				current->Values.erase(valuename);
 			}
 			else
 			{
 				dds_string nodename = name.substr(index + 1, next - index - 1);
 				if (!current->SubNodes.count(nodename))
-					throw new std::exception("DataNode doesn't exist!");
+					throw new dds_exception("DataTree doesn't exist!");
 				current = &current->SubNodes[nodename];
 				index = next;
 			}
 		}
 	}
 protected:
-	std::map<dds_string, DataNode> SubNodes;
+	std::map<dds_string, DataTree> SubNodes;
 	std::map<dds_string, DataItem> Values;
+	inline DataTree* GetSubNodeInternal(const dds_string& name, bool throw_exception)
+	{
+		std::vector<dds_string> items = HelperFunctions::SplitString(name);
+		DataTree* ret = this;
+		for (int i = 0; i < (int)items.size() - 1; i++)
+		{
+			dds_string& tmp = items[i];
+			if (!ret->SubNodes.count(tmp))
+			{
+				if (throw_exception)
+					throw new dds_exception("DataNode doesn't exist!");
+				else
+					ret->SubNodes[tmp] = DataTree(tmp);
+			}
+			ret = &ret->SubNodes[tmp];
+		}
+		return ret;
+	}
 };
 class DataFile
 {
@@ -444,19 +877,19 @@ public:
 	inline void Read(std::ifstream stream)
 	{
 		if (!stream.is_open())
-			throw new std::exception("Unable to read!");
+			throw new dds_exception("Unable to read!");
 		stream.read(Magic, sizeof(Magic));
 		if (Magic[0] != 'D' || Magic[1] != 'D' || Magic[2] != 'S' || Magic[3] != '\0')
-			throw new std::exception("Magic mismatched!");
+			throw new dds_exception("Magic mismatched!");
 		stream.read((char*)&Version, sizeof(int));
 		if (Version != DDS_VERSION)
-			throw new std::exception("Version mismatched!");
+			throw new dds_exception("Version mismatched!");
 		RootNode.Read(stream);
 	}
 	inline void Write(std::ofstream stream)
 	{
 		if (!stream.is_open())
-			throw new std::exception("Unable to write!");
+			throw new dds_exception("Unable to write!");
 		stream.write(Magic, sizeof(Magic));
 		stream.write((char*)&Version, sizeof(int));
 		RootNode.Write(stream);
@@ -470,7 +903,7 @@ public:
 		Write(std::ofstream(filename));
 		FileName = filename;
 	}
-	DataNode RootNode;
+	DataTree RootNode;
 	inline int GetVersion()
 	{
 		return Version;

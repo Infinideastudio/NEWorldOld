@@ -8,14 +8,12 @@ namespace WorldGen{
 	GetHeightFunc heightfunc;
 	void Init(int mapseed){
 		seed = mapseed;
-		wxTextFile config(L"worldgen");
-		config.Open();
-		curWorldGen = config.GetFirstLine();
-		wxDynamicLibrary* lib;
-		lib = new wxDynamicLibrary(curWorldGen);
+		wxDynamicLibrary* lib = new wxDynamicLibrary(CurrentWorldGen);
 		if (lib->HasSymbol(L"Init"))
 			((InitFunc)lib->GetSymbol(L"Init"))(seed);
 		heightfunc = (GetHeightFunc)lib->GetSymbol(L"GetHeight");
+		lib->Detach();
+		delete lib;
 	}
 	int getHeight(int x, int y)
 	{

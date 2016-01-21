@@ -205,6 +205,8 @@ extern PFNGLUNIFORMMATRIX4FVARBPROC glUniformMatrix4fvARB;
 extern PFNGLGETUNIFORMFVARBPROC glGetUniformfvARB;
 extern PFNGLGETUNIFORMIVARBPROC glGetUniformivARB;
 
+extern wxString CurrentWorldGen;
+
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 extern int c_getChunkPtrFromCPA;
 extern int c_getChunkPtrFromSearch;

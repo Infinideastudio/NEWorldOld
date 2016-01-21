@@ -14,15 +14,16 @@ void LoadOptions()
 	try
 	{
 		DataFile file(L"options");
-		DataNode& node = file.RootNode;
-		FOVyNormal = node.GetValue(L"FOVy").GetFloat();
-		viewdistance = node.GetValue(L"ViewDistance").GetInt32();
-		mousemove = node.GetValue(L"MouseMove").GetFloat();
-		SmoothLighting = node.GetValue(L"SmoothLighting").GetBoolean();
-		NiceGrass = node.GetValue(L"NiceGrass").GetBoolean();
-		MergeFace = node.GetValue(L"MergeFace").GetBoolean();
-		Multisample = node.GetValue(L"MultiSample").GetInt32();
-		Renderer::AdvancedRender = node.GetValue(L"AdvancedRender").GetBoolean();
+		DataTree& node = file.RootNode;
+		FOVyNormal = node.GetValue(L"FOVy").ToFloat().Value;
+		viewdistance = node.GetValue(L"ViewDistance").ToInt32().Value;
+		mousemove = node.GetValue(L"MouseMove").ToFloat().Value;
+		SmoothLighting = node.GetValue(L"SmoothLighting").ToBoolean().Value;
+		NiceGrass = node.GetValue(L"NiceGrass").ToBoolean().Value;
+		MergeFace = node.GetValue(L"MergeFace").ToBoolean().Value;
+		Multisample = node.GetValue(L"MultiSample").ToInt32().Value;
+		Renderer::AdvancedRender = node.GetValue(L"AdvancedRender").ToBoolean().Value;
+		CurrentWorldGen = node.GetValue(L"CurrentWorldGen").ToWString().Value;
 	}
 	catch (...)
 	{
@@ -31,18 +32,19 @@ void LoadOptions()
 
 void SaveOptions()
 {
-	DataFile file;
-	DataNode& node = file.RootNode;
-	node.GetValue(L"FOVy").SetFloat(FOVyNormal);
-	node.GetValue(L"ViewDistance").SetInt32(viewdistance);
-	node.GetValue(L"MouseMove").SetFloat(mousemove);
-	node.GetValue(L"CloudWidth").SetInt32(cloudwidth);
-	node.GetValue(L"SmoothLighting").SetBoolean(SmoothLighting);
-	node.GetValue(L"NiceGrass").SetBoolean(NiceGrass);
-	node.GetValue(L"MergeFace").SetBoolean(MergeFace);
-	node.GetValue(L"MultiSample").SetInt32(Multisample);
-	node.GetValue(L"AdvancedRender").SetBoolean(Renderer::AdvancedRender);
-	file.Save(L"options");
+	DataFile file(L"options");
+	DataTree& node = file.RootNode;
+	node.GetValue(L"FOVy").ToFloat().SetValue(FOVyNormal);
+	node.GetValue(L"ViewDistance").ToInt32().SetValue(viewdistance);
+	node.GetValue(L"MouseMove").ToFloat().SetValue(mousemove);
+	node.GetValue(L"CloudWidth").ToInt32().SetValue(cloudwidth);
+	node.GetValue(L"SmoothLighting").ToBoolean().SetValue(SmoothLighting);
+	node.GetValue(L"NiceGrass").ToBoolean().SetValue(NiceGrass);
+	node.GetValue(L"MergeFace").ToBoolean().SetValue(MergeFace);
+	node.GetValue(L"MultiSample").ToInt32().SetValue(Multisample);
+	node.GetValue(L"AdvancedRender").ToBoolean().SetValue(Renderer::AdvancedRender);
+	node.GetValue(L"CurrentWorldGen").ToWString().SetValue(CurrentWorldGen.ToStdWstring());
+	file.Save();
 }
 
 bool NEWorld::OnInit()
