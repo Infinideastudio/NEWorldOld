@@ -1,16 +1,21 @@
 #pragma once
-#include "stdinclude.h"
+#include "StdInclude.h"
 #include "Hitbox.h"
 
-namespace Frustum{
-	extern float frus[24], clip[16];
-	extern float proj[16], modl[16];
+class Frustum {
+private:
+	float frus[24], clip[16];
+	float proj[16], modl[16];
 
+public:
 	//AABB with Float32 coords
 	struct ChunkBox {
 		float xmin, ymin, zmin;
 		float xmax, ymax, zmax;
 	};
+
+	inline float* getProjMatrix() { return proj; }
+	inline float* getModlMatrix() { return modl; }
 
 	void LoadIdentity();
 	inline void MultMatrixTo(float* sum, float* a, float* b) {
@@ -47,5 +52,4 @@ namespace Frustum{
 	
     void update();
 	bool FrustumTest(const ChunkBox& aabb);
-}
-
+};

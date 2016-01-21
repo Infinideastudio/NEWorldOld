@@ -14,23 +14,21 @@ namespace Menus {
 			shadowdistbar = GUI::trackbar("", 120, (Renderer::MaxShadowDist - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button(GetStrbyKey("NEWorld.render.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(5, &title, &enablebtn, &shadowresbar, &shadowdistbar, &backbtn);
+			Renderer::destroyShaders();
 			if (!Renderer::AdvancedRender) shadowresbar.enabled = shadowdistbar.enabled = false;
 		}
 		void onUpdate() {
 			if (enablebtn.clicked) {
 				Renderer::AdvancedRender = !Renderer::AdvancedRender;
-				if (Renderer::AdvancedRender) {
-					Renderer::initShaders();
-					shadowresbar.enabled = shadowdistbar.enabled = true;
-				}
-				else {
-					Renderer::destroyShaders();
-					shadowresbar.enabled = shadowdistbar.enabled = false;
-				}
+				if (Renderer::AdvancedRender) shadowresbar.enabled = shadowdistbar.enabled = true;
+				else shadowresbar.enabled = shadowdistbar.enabled = false;
 			}
 			Renderer::ShadowRes = pow(2, (shadowresbar.barpos + 1) / 40 + 10);
 			Renderer::MaxShadowDist = (shadowdistbar.barpos + 1) / 4 + 2;
-			if (backbtn.clicked) ExitSignal = true;
+			if (backbtn.clicked) {
+				ExitSignal = true;
+				if (Renderer::AdvancedRender) Renderer::initShaders();
+			}
 			enablebtn.text = GetStrbyKey("NEWorld.shaders.enable") + BoolYesNo(Renderer::AdvancedRender);
 			std::stringstream ss; ss << Renderer::ShadowRes;
 			shadowresbar.text = GetStrbyKey("NEWorld.shaders.shadowres") + ss.str() + "x";
