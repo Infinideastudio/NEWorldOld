@@ -28,6 +28,7 @@
 #include <map>
 #include <queue>
 #include <functional>
+#include <algorithm>
 #include <cassert>
 #include <stdarg.h>
 
@@ -38,6 +39,8 @@ using std::unique_ptr;
 using std::map;
 using std::cout;
 using std::endl;
+using std::max;
+using std::min;
 
 #ifndef NEWORLD_SERVER
 //GLFW

@@ -6,6 +6,9 @@
 #include "Hitbox.h"
 #include "Blocks.h"
 
+extern int viewdistance;
+class Frsutum;
+
 namespace World {
 
 	extern string worldname;
@@ -86,7 +89,7 @@ namespace World {
 	void setChunkUpdated(int x, int y, int z, bool value);
 	void sortChunkBuildRenderList(int xpos, int ypos, int zpos);
 	void sortChunkLoadUnloadList(int xpos, int ypos, int zpos);
-	void calcVisible(double xpos, double ypos, double zpos);
+	void calcVisible(double xpos, double ypos, double zpos, Frustum& frus);
 
 	void saveAllChunks();
 	void destroyAllChunks();

@@ -58,8 +58,8 @@ namespace GUI {
 	public:
 		//标签
 		string text;
-		bool mouseon = false, focused = false;
-		label() {};
+		bool mouseon, focused;
+		label() : mouseon(false), focused(false) {};
 		label(string t,
 			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
@@ -70,8 +70,8 @@ namespace GUI {
 	public:
 		//按钮
 		string text;
-		bool mouseon = false, focused = false, pressed = false, clicked = false, enabled = false;
-		button() {};
+		bool mouseon, focused, pressed, clicked, enabled;
+		button() : mouseon(false), focused(false), pressed(false), clicked(false), enabled(false) {};
 		button(string t,
 			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
@@ -84,8 +84,8 @@ namespace GUI {
 		string text;
 		int barwidth;
 		int barpos;
-		bool mouseon = false, focused = false, pressed = false, enabled = false;
-		trackbar() {};
+		bool mouseon, focused, pressed, enabled;
+		trackbar() : mouseon(false), focused(false), pressed(false), enabled(false) {};
 		trackbar(string t, int w, int s,
 			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
@@ -96,8 +96,8 @@ namespace GUI {
 	public:
 		//文本框
 		string text;
-		bool mouseon = false, focused = false, pressed = false, enabled = false;
-		textbox() {};
+		bool mouseon, focused, pressed, enabled;
+		textbox() : mouseon(false), focused(false), pressed(false), enabled(false) {};
 		textbox(string t,
 			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
@@ -108,9 +108,9 @@ namespace GUI {
 	public:
 		//垂直滚动条
 		int barheight, barpos;
-		bool mouseon = false, focused = false, pressed = false, enabled = false;
+		bool mouseon, focused, pressed, enabled;
 		bool defaultv, msup, msdown, psup, psdown;
-		vscroll() {};
+		vscroll() : mouseon(false), focused(false), pressed(false), enabled(false) {};
 		vscroll(int h, int s,
 			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
@@ -122,7 +122,7 @@ namespace GUI {
 		//图片框
 		float txmin, txmax, tymin, tymax;
 		TextureID imageid;
-		imagebox() {};
+		imagebox() : imageid(0) {};
 		imagebox(float _txmin, float _txmax, float _tymin, float _tymax, TextureID iid,
 			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();

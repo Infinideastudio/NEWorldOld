@@ -3,6 +3,7 @@
 #include "Hitbox.h"
 #include "Blocks.h"
 #include "Frustum.h"
+
 class Object;
 
 namespace World {
@@ -10,6 +11,7 @@ namespace World {
 	extern string worldname;
 	extern brightness BRIGHTNESSMIN;
 	extern brightness skylight;
+
 	class chunk;
 	chunkid getChunkID(int x, int y, int z);
 	void explode(int x, int y, int z, int r, chunk* c);
@@ -20,6 +22,7 @@ namespace World {
 		brightness* pbrightness;
 		vector<Object*> objects;
 		static double relBaseX, relBaseY, relBaseZ;
+		static Frustum TestFrustum;
 
 	public:
 		//竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻ --Null
@@ -102,12 +105,13 @@ namespace World {
 			Modified = true;
 		}
 
-		static void setRelativeBase(double x, double y, double z) {
-			relBaseX = x; relBaseY = y; relBaseZ = z;
+		static void setRelativeBase(double x, double y, double z, Frustum& frus) {
+			relBaseX = x; relBaseY = y; relBaseZ = z; TestFrustum = frus;
 		}
+
 		Hitbox::AABB getBaseAABB();
 		Frustum::ChunkBox getRelativeAABB();
-		inline void calcVisible() { visible = Frustum::FrustumTest(getRelativeAABB()); }
+		inline void calcVisible() { visible = TestFrustum.FrustumTest(getRelativeAABB()); }
 
 	};
 }
