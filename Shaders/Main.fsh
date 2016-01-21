@@ -7,7 +7,7 @@ const mat4 normalize = mat4(
 	0.0, 0.5, 0.0, 0.0,
 	0.0, 0.0, 0.5, 0.0,
 	0.5, 0.5, 0.499, 1.0);
-const float delta = 0.05;
+const float delta = 0.1;
 
 uniform sampler2D Tex;
 uniform sampler2D DepthTex;
@@ -35,23 +35,26 @@ void main() {
 	float dist = length(rel);
 	
 #ifdef SMOOTH_SHADOW
-	if (facing == 0 || facing == 1) {
-		ShadowCoords01 = transf * vec4(VertCoords.x - delta, VertCoords.yzw);
-		ShadowCoords21 = transf * vec4(VertCoords.x + delta, VertCoords.yzw);
-		ShadowCoords10 = transf * vec4(VertCoords.x, VertCoords.y - delta, VertCoords.zw);
-		ShadowCoords12 = transf * vec4(VertCoords.x, VertCoords.y + delta, VertCoords.zw);
-	}
-	else if (facing == 2 || facing == 3) {
-		ShadowCoords01 = transf * vec4(VertCoords.x, VertCoords.y - delta, VertCoords.zw);
-		ShadowCoords21 = transf * vec4(VertCoords.x, VertCoords.y + delta, VertCoords.zw);
-		ShadowCoords10 = transf * vec4(VertCoords.xy, VertCoords.z - delta, VertCoords.w);
-		ShadowCoords12 = transf * vec4(VertCoords.xy, VertCoords.z + delta, VertCoords.w);
-	}
-	else if (facing == 4 || facing == 5) {
-		ShadowCoords01 = transf * vec4(VertCoords.x - delta, VertCoords.yzw);
-		ShadowCoords21 = transf * vec4(VertCoords.x + delta, VertCoords.yzw);
-		ShadowCoords10 = transf * vec4(VertCoords.xy, VertCoords.z - delta, VertCoords.w);
-		ShadowCoords12 = transf * vec4(VertCoords.xy, VertCoords.z + delta, VertCoords.w);
+	//Shadow smoothing (Super-sample)
+	if (dist < 16.0) {
+		if (facing == 0 || facing == 1) {
+			ShadowCoords01 = transf * vec4(VertCoords.x - delta, VertCoords.yzw);
+			ShadowCoords21 = transf * vec4(VertCoords.x + delta, VertCoords.yzw);
+			ShadowCoords10 = transf * vec4(VertCoords.x, VertCoords.y - delta, VertCoords.zw);
+			ShadowCoords12 = transf * vec4(VertCoords.x, VertCoords.y + delta, VertCoords.zw);
+		}
+		else if (facing == 2 || facing == 3) {
+			ShadowCoords01 = transf * vec4(VertCoords.x, VertCoords.y - delta, VertCoords.zw);
+			ShadowCoords21 = transf * vec4(VertCoords.x, VertCoords.y + delta, VertCoords.zw);
+			ShadowCoords10 = transf * vec4(VertCoords.xy, VertCoords.z - delta, VertCoords.w);
+			ShadowCoords12 = transf * vec4(VertCoords.xy, VertCoords.z + delta, VertCoords.w);
+		}
+		else if (facing == 4 || facing == 5) {
+			ShadowCoords01 = transf * vec4(VertCoords.x - delta, VertCoords.yzw);
+			ShadowCoords21 = transf * vec4(VertCoords.x + delta, VertCoords.yzw);
+			ShadowCoords10 = transf * vec4(VertCoords.xy, VertCoords.z - delta, VertCoords.w);
+			ShadowCoords12 = transf * vec4(VertCoords.xy, VertCoords.z + delta, VertCoords.w);
+		}
 	}
 #endif
 	
@@ -61,11 +64,13 @@ void main() {
 			 ShadowCoords.y >= 0.0 && ShadowCoords.y <= 1.0 && ShadowCoords.z <= 1.0) {
 		if (ShadowCoords.z < texture2D(DepthTex, ShadowCoords.xy).z) shadow += 1.2; else shadow += 0.5;
 #ifdef SMOOTH_SHADOW
-		if (ShadowCoords01.z < texture2D(DepthTex, ShadowCoords01.xy).z) shadow += 1.2; else shadow += 0.5;
-		if (ShadowCoords21.z < texture2D(DepthTex, ShadowCoords21.xy).z) shadow += 1.2; else shadow += 0.5;
-		if (ShadowCoords10.z < texture2D(DepthTex, ShadowCoords10.xy).z) shadow += 1.2; else shadow += 0.5;
-		if (ShadowCoords12.z < texture2D(DepthTex, ShadowCoords12.xy).z) shadow += 1.2; else shadow += 0.5;
-		shadow *= 0.2;
+		if (dist < 16.0) {
+			if (ShadowCoords01.z < texture2D(DepthTex, ShadowCoords01.xy).z) shadow += 1.2; else shadow += 0.5;
+			if (ShadowCoords21.z < texture2D(DepthTex, ShadowCoords21.xy).z) shadow += 1.2; else shadow += 0.5;
+			if (ShadowCoords10.z < texture2D(DepthTex, ShadowCoords10.xy).z) shadow += 1.2; else shadow += 0.5;
+			if (ShadowCoords12.z < texture2D(DepthTex, ShadowCoords12.xy).z) shadow += 1.2; else shadow += 0.5;
+			shadow *= 0.2;
+		}
 #endif
 	}
 	else shadow = 1.2;

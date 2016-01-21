@@ -3,8 +3,6 @@
 #include "Renderer.h"
 #include "WorldGen.h"
 
-extern int viewdistance;
-
 namespace World {
 
 	string worldname;
@@ -820,11 +818,9 @@ namespace World {
 		chunkLoads = pu;
 	}
 
-	void calcVisible(double xpos, double ypos, double zpos) {
-		chunk::setRelativeBase(xpos, ypos, zpos);
-		for (int ci = 0; ci != loadedChunks; ci++) {
-			chunks[ci]->calcVisible();
-		}
+	void calcVisible(double xpos, double ypos, double zpos, Frustum& frus) {
+		chunk::setRelativeBase(xpos, ypos, zpos, frus);
+		for (int ci = 0; ci != loadedChunks; ci++) chunks[ci]->calcVisible();
 	}
 
 	void saveAllChunks() {
