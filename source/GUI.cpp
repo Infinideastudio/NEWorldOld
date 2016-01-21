@@ -843,18 +843,21 @@ namespace GUI {
 
 	}
 
-	label::label(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
+	label::label(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
+		: label() {
 		text = t;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-	button::button(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
+	button::button(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
+		: button() {
 		text = t;
 		enabled = true;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-	trackbar::trackbar(string t, int w, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
+	trackbar::trackbar(string t, int w, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
+		: trackbar() {
 		text = t;
 		enabled = true;
 		barwidth = w;
@@ -862,20 +865,23 @@ namespace GUI {
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-	textbox::textbox(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
+	textbox::textbox(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
+		: textbox() {
 		text = t;
 		enabled = true;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-	vscroll::vscroll(int h, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
+	vscroll::vscroll(int h, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
+		: vscroll() {
 		enabled = true;
 		barheight = h;
 		barpos = s;
 		resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 	}
 
-	imagebox::imagebox(float _txmin, float _txmax, float _tymin, float _tymax, TextureID iid, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
+	imagebox::imagebox(float _txmin, float _txmax, float _tymin, float _tymax, TextureID iid, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
+		: imagebox() {
 		txmin = _txmin; txmax = _txmax;
 		tymin = _tymin; tymax = _tymax;
 		imageid = iid;
@@ -901,7 +907,7 @@ namespace GUI {
 		return nullptr;
 	}
 
-	Form::Form() { Init(); }
+	Form::Form() { memset(this, 0, sizeof(Form)); Init(); }
 	void Form::start() {
 		double dmx, dmy;
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

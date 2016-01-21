@@ -16,7 +16,7 @@ namespace World {
 		int low, high, count;
 		HMapManager() {};
 		HMapManager(int cx, int cz) {
-			int l = MAXINT, hi = MININT, h;
+			int l = MAXINT, hi = WorldGen::WaterLevel, h;
 			for (int x = 0; x < 16; ++x) {
 				for (int z = 0; z < 16; ++z) {
 					h = HMap.getHeight(cx * 16 + x, cz * 16 + z);
@@ -61,6 +61,7 @@ namespace World {
 	}*/
 
 	double chunk::relBaseX, chunk::relBaseY, chunk::relBaseZ;
+	Frustum chunk::TestFrustum;
 
 	void chunk::create(){
 		aabb = getBaseAABB();
@@ -89,7 +90,7 @@ namespace World {
 		//Éú³ÉµØÐÎ
 		//assert(Empty == false);
 
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT	//Error Report(Debug)
+#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr || pbrightness == nullptr) {
 			DebugWarning("Empty pointer when chunk generating!");
 			return;
@@ -99,25 +100,26 @@ namespace World {
 		//Fast generate parts
 		//Part1 out of the terrain bound
 		if (cy > 4) {
-			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, skylight, 4096 * sizeof(brightness));
+			memset(pblocks, 0, 4096 * sizeof(block));
+			for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
 			Empty = true; return;
 		}
 		if (cy < 0) {
-			memset(pblocks, 0, 4096 * sizeof(block)); memset(pbrightness, BRIGHTNESSMIN, 4096 * sizeof(brightness));
+			for (int i = 0; i < 4096; i++) pbrightness[i] = BRIGHTNESSMIN;
 			Empty = true; return;
 		}
 
 		//Part2 out of geomentry area
 		HMapManager cur = HMapManager(cx, cz);
 		if (cy > cur.high) {
-			memset(pblocks, Blocks::AIR, 4096 * sizeof(block));
-			memset(pbrightness, skylight, 4096 * sizeof(brightness));
+			memset(pblocks, 0, 4096 * sizeof(block));
+			for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
 			Empty = true; return;
 		}
 		if (cy < cur.low) {
-			memset(pblocks, Blocks::ROCK, 4096 * sizeof(block));
+			for (int i = 0; i < 4096; i++) pblocks[i] = Blocks::ROCK;
 			memset(pbrightness, 0, 4096 * sizeof(brightness));
-			for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) pblocks[x * 256 + z] = Blocks::BEDROCK;
+			if (cy == 0) for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) pblocks[x * 256 + z] = Blocks::BEDROCK;
 			Empty = false; return;
 		}
 

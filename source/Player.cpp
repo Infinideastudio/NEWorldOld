@@ -23,6 +23,7 @@ double Player::xa, Player::ya, Player::za, Player::xd, Player::yd, Player::zd;
 double Player::health = 20, Player::healthMax = 20, Player::healSpeed = 0.01, Player::dropDamagePerBlock = 0.5;
 onlineid Player::onlineID;
 string Player::name;
+Frustum Player::ViewFrustum;
 
 double Player::speed;
 int Player::AirJumps;
@@ -288,7 +289,11 @@ PlayerPacket Player::convertToPlayerPacket()
 	p.lookupdown = lookupdown;
 	p.onlineID = onlineID;
 	p.skinID = 0;
+#ifdef NEWORLD_COMPILE_DISABLE_SECURE
+	strcpy(p.name, name.c_str());
+#else
 	strcpy_s(p.name, name.c_str());
+#endif
 	return p;
 }
 

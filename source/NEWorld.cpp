@@ -10,6 +10,8 @@
 #include "Player.h"
 #include "WorldGen.h"
 #include "World.h"
+#include "WorldRenderer.h"
+#include "ShadowMaps.h"
 #include "Particles.h"
 #include "Hitbox.h"
 #include "GUI.h"
@@ -50,24 +52,8 @@ int getMouseScroll() { return mw; }
 int getMouseButton() { return mb; }
 void registerCommands();
 
-struct RenderChunk{
-	RenderChunk(World::chunk* c, double TimeDelta){
-		cx = c->cx;
-		cy = c->cy;
-		cz = c->cz;
-		memcpy(vbuffers, c->vbuffer, 4 * sizeof(VBOID));
-		memcpy(vtxs, c->vertexes, 4 * sizeof(vtxCount));
-		loadAnim = c->loadAnim * pow(0.6, TimeDelta);
-	}
-	int cx, cy, cz;
-	vtxCount vtxs[4];
-	VBOID vbuffers[4];
-	double loadAnim;
-};
-
 int fps, fpsc, ups, upsc;
 double fctime, uctime;
-vector<RenderChunk> displayChunks;
 
 bool GUIrenderswitch;
 bool DebugMode;
@@ -1079,7 +1065,7 @@ void Render() {
 	double TimeDelta;
 	double xpos, ypos, zpos;
 	int renderedChunk = 0;
-	int TexcoordCount = MergeFace ? 3 : 2;
+	//int TexcoordCount = MergeFace ? 3 : 2;
 	/*
 	static vector<GLint> multiDrawArrays[3];
 	static vector<GLsizei> multiDrawCounts[3];
@@ -1171,51 +1157,7 @@ void Render() {
 
 	if (Renderer::AdvancedRender) {
 		//Build shadow map
-		float scale = 16.0f * sqrt(3.0f);
-		float length = Renderer::shadowdist*scale;
-
-		Renderer::StartShadowPass();
-		glClear(GL_DEPTH_BUFFER_BIT);
-		glEnableClientState(GL_VERTEX_ARRAY);
-		glDisable(GL_TEXTURE_2D);
-		glDisable(GL_FOG);
-		glDisable(GL_BLEND);
-
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(-length, length, -length, length, -length, length);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glRotated(Renderer::sunlightXrot, 1.0, 0.0, 0.0);
-		glRotated(Renderer::sunlightYrot, 0.0, 1.0, 0.0);
-
-		displayChunks.clear();
-		renderedChunk = 0;
-		for (int i = 0; i < World::loadedChunks; i++) {
-			if (!World::chunks[i]->renderBuilt || World::chunks[i]->Empty || World::chunks[i]->vertexes[3] == 0) continue;
-			if (World::chunkInRange(World::chunks[i]->cx, World::chunks[i]->cy, World::chunks[i]->cz,
-				Player::cxt, Player::cyt, Player::czt, Renderer::shadowdist)) {
-				renderedChunk++;
-				displayChunks.push_back(RenderChunk(World::chunks[i], (curtime - lastupdate) * 30.0));
-			}
-		}
-
-		MutexUnlock(Mutex);
-		for (int i = 0; i < renderedChunk; i++) {
-			RenderChunk cr = displayChunks[i];
-			glPushMatrix();
-			glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-			Renderer::renderbuffer(cr.vbuffers[3], cr.vtxs[3], 0, 0);
-			glPopMatrix();
-		}
-		MutexLock(Mutex);
-
-		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-		glDisableClientState(GL_VERTEX_ARRAY);
-		Renderer::EndShadowPass();
-
-		glEnable(GL_FOG);
-		glEnable(GL_BLEND);
+		ShadowMaps::BuildShadowMap(xpos, ypos, zpos, curtime);
 	}
 
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
@@ -1229,25 +1171,14 @@ void Render() {
 	glLoadIdentity();
 	glRotated(plookupdown, 1, 0, 0);
 	glRotated(360.0 - pheading, 0, 1, 0);
-	Frustum::LoadIdentity();
-	Frustum::SetPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
-	Frustum::MultRotate((float)plookupdown, 1, 0, 0);
-	Frustum::MultRotate(360.0f - (float)pheading, 0, 1, 0);
-	Frustum::update();
-	World::calcVisible(xpos, ypos, zpos);
+	Player::ViewFrustum.LoadIdentity();
+	Player::ViewFrustum.SetPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
+	Player::ViewFrustum.MultRotate((float)plookupdown, 1, 0, 0);
+	Player::ViewFrustum.MultRotate(360.0f - (float)pheading, 0, 1, 0);
+	Player::ViewFrustum.update();
+	World::calcVisible(xpos, ypos, zpos, Player::ViewFrustum);
 
-	displayChunks.clear();
-	renderedChunk = 0;
-	for (int i = 0; i < World::loadedChunks; i++) {
-		if (!World::chunks[i]->renderBuilt || World::chunks[i]->Empty) continue;
-		if (World::chunkInRange(World::chunks[i]->cx, World::chunks[i]->cy, World::chunks[i]->cz,
-			Player::cxt, Player::cyt, Player::czt, viewdistance)) {
-			if (World::chunks[i]->visible) {
-				renderedChunk++;
-				displayChunks.push_back(RenderChunk(World::chunks[i], (curtime - lastupdate) * 30.0));
-			}
-		}
-	}
+	renderedChunk = WorldRenderer::ListRenderChunks(Player::cxt, Player::cyt, Player::czt, viewdistance, curtime);
 
 	MutexUnlock(Mutex);
 	
@@ -1263,26 +1194,10 @@ void Render() {
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
 
-	float m[16]; memset(m, 0, sizeof(m));
-	m[0] = m[5] = m[10] = m[15] = 1.0f;
-
 	if (Renderer::AdvancedRender) Renderer::EnableShaders();
-
-	for (int i = 0; i < renderedChunk; i++) {
-		RenderChunk cr = displayChunks[i];
-		if (cr.vtxs[0] == 0) continue;
-		glPushMatrix();
-		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		if (Renderer::AdvancedRender) {
-			m[12] = cr.cx * 16.0 - xpos; m[13] = cr.cy * 16.0 - cr.loadAnim - ypos; m[14] = cr.cz * 16.0 - zpos;
-			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
-			Renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3, 1);
-		}
-		else Renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
-		glPopMatrix();
-	}
-
+	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
 	if (Renderer::AdvancedRender) Renderer::DisableShaders();
+
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1321,6 +1236,7 @@ void Render() {
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
+
 	if (Renderer::AdvancedRender) Renderer::EnableShaders();
 	
 	if (MergeFace) {
@@ -1330,35 +1246,11 @@ void Render() {
 	}
 	else glBindTexture(GL_TEXTURE_2D, BlockTextures);
 
-	for (int i = 0; i < renderedChunk; i++) {
-		RenderChunk cr = displayChunks[i];
-		if (cr.vtxs[1] == 0) continue;
-		glPushMatrix();
-		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		if (Renderer::AdvancedRender) {
-			m[12] = cr.cx * 16.0 - xpos; m[13] = cr.cy * 16.0 - cr.loadAnim - ypos; m[14] = cr.cz * 16.0 - zpos;
-			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
-			Renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3, 1);
-		}
-		else Renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3);
-		glPopMatrix();
-	}
+	WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
 	glDisable(GL_CULL_FACE);
-	for (int i = 0; i < renderedChunk; i++) {
-		RenderChunk cr = displayChunks[i];
-		if (cr.vtxs[2] == 0) continue;
-		glPushMatrix();
-		glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-		if (Renderer::AdvancedRender) {
-			m[12] = cr.cx * 16.0 - xpos; m[13] = cr.cy * 16.0 - cr.loadAnim - ypos; m[14] = cr.cz * 16.0 - zpos;
-			glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
-			Renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3, 1);
-		}
-		else Renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3);
-		glPopMatrix();
-	}
-
+	WorldRenderer::RenderChunks(xpos, ypos, zpos, 2);
 	if (Renderer::AdvancedRender) Renderer::DisableShaders();
+
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1701,7 +1593,7 @@ void drawGUI(){
 
 		ss << World::loadedChunks << " chunks loaded";
 		debugText(ss.str()); ss.str("");
-		ss << displayChunks.size() << " chunks rendered";
+		ss << WorldRenderer::RenderChunkList.size() << " chunks rendered";
 		debugText(ss.str()); ss.str("");
 		ss << World::unloadedChunks << " chunks unloaded";
 		debugText(ss.str()); ss.str("");
@@ -2037,6 +1929,7 @@ void drawBag() {
 		else drawBagRow(3, Player::indexInHand, 0, windowheight - 32, 0, 0.5f);
 	}
 }
+
 void saveScreenshot(int x, int y, int w, int h, string filename){
 	Textures::TEXTURE_RGB scrBuffer;
 	int bufw = w, bufh = h;
@@ -2056,7 +1949,7 @@ void createThumbnail(){
 }
 
 template<typename T>
-void loadoption(std::map<string, string> &m, char* name, T &value) {
+void loadoption(std::map<string, string> &m, const char* name, T &value) {
 	if (m.find(name) == m.end()) return;
 	std::stringstream ss;
 	ss << m[name]; ss >> value;
@@ -2089,7 +1982,7 @@ void loadoptions() {
 }
 
 template<typename T>
-void saveoption(std::ofstream &out, char* name, T &value) {
+void saveoption(std::ofstream &out, const char* name, T &value) {
 	out << string(name) << " " << value << endl;
 }
 

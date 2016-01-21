@@ -317,7 +317,7 @@ namespace ChunkRenderer {
 						neighbour = World::getblock(gx, gy, gz);
 					else neighbour = c->getblock(xx, yy, zz);
 					//Render
-					if (bl == Blocks::AIR || bl == neighbour && bl != Blocks::LEAF ||
+					if (bl == Blocks::AIR || bl == Blocks::GLASS || bl == neighbour && bl != Blocks::LEAF ||
 						BlockInfo(neighbour).isOpaque() || BlockInfo(bl).isTranslucent()) {
 						//Not valid block
 						if (valid) {

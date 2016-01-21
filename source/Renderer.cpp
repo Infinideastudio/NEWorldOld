@@ -42,7 +42,7 @@ namespace Renderer {
 	//unsigned int Buffers[3];
 	bool AdvancedRender;
 	int ShadowRes = 4096;
-	int MaxShadowDist = 8;
+	int MaxShadowDist = 2;
 	int shadowdist;
 	float sunlightXrot, sunlightYrot;
 	GLhandleARB shaders[16];
@@ -143,13 +143,11 @@ namespace Renderer {
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
 
-		shadercount = 3;
+		shadercount = 2;
 		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
 		shaders[1] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB);
-		shaders[2] = loadShader("Shaders/MergeSurface.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[3] = loadShader("Shaders/MergeSurface.fsh", GL_FRAGMENT_SHADER_ARB);
-		shaders[4] = loadShader("Shaders/Shadow.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[5] = loadShader("Shaders/Shadow.fsh", GL_FRAGMENT_SHADER_ARB);
+		shaders[2] = loadShader("Shaders/Shadow.vsh", GL_VERTEX_SHADER_ARB);
+		shaders[3] = loadShader("Shaders/Shadow.fsh", GL_FRAGMENT_SHADER_ARB);
 		for (int i = 0; i != shadercount; i++) {
 			shaderPrograms[i] = glCreateProgramObjectARB();
 			glAttachObjectARB(shaderPrograms[i], shaders[i * 2]);
@@ -209,7 +207,7 @@ namespace Renderer {
 		std::vector<char*> source;
 		std::vector<int> length;
 		std::ifstream filein(filename);
-		if (!filein.is_open()) return NULL;
+		if (!filein.is_open()) return 0;
 		while (!filein.eof()) {
 			lines++;
 			std::getline(filein, cur);
@@ -245,7 +243,7 @@ namespace Renderer {
 
 	void EnableShaders() {
 		shadowdist = min(MaxShadowDist, viewdistance);
-		if (MergeFace) ActiveShader = 1; else ActiveShader = 0;
+		ActiveShader = 0;
 
 		//Enable shader
 		glUseProgramObjectARB(shaderPrograms[ActiveShader]);
@@ -253,15 +251,16 @@ namespace Renderer {
 		//Calc matrix
 		float scale = 16.0f * sqrt(3.0f);
 		float length = shadowdist*scale;
-		Frustum::LoadIdentity();
-		Frustum::SetOrtho(-length, length, -length, length, -length, length);
-		Frustum::MultRotate(sunlightXrot, 1.0f, 0.0f, 0.0f);
-		Frustum::MultRotate(sunlightYrot, 0.0f, 1.0f, 0.0f);
+		Frustum frus;
+		frus.LoadIdentity();
+		frus.SetOrtho(-length, length, -length, length, -length, length);
+		frus.MultRotate(sunlightXrot, 1.0f, 0.0f, 0.0f);
+		frus.MultRotate(sunlightYrot, 0.0f, 1.0f, 0.0f);
 
 		//Set uniform
 		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "renderdist"), viewdistance * 16.0f);
-		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_proj"), 1, GL_FALSE, Frustum::proj);
-		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_modl"), 1, GL_FALSE, Frustum::modl);
+		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_proj"), 1, GL_FALSE, frus.getProjMatrix());
+		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_modl"), 1, GL_FALSE, frus.getModlMatrix());
 
 		//Enable arrays for additional vertex attributes
 		glEnableVertexAttribArrayARB(ShaderAttribLoc);
@@ -278,8 +277,8 @@ namespace Renderer {
 	void StartShadowPass() {
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, ShadowFBO);
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
-		ActiveShader = 2;
-		glUseProgramObjectARB(shaderPrograms[2]);
+		ActiveShader = 1;
+		glUseProgramObjectARB(shaderPrograms[1]);
 		glViewport(0, 0, ShadowRes, ShadowRes);
 	}
 
