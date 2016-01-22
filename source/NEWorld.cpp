@@ -1323,13 +1323,13 @@ void Render() {
 		screenshotAnimTimer = curtime;
 		time_t t = time(0);
 		char tmp[64];
-		tm* timeinfo = new tm;
+		tm timeinfo;
 #ifdef NEWORLD_COMPILE_DISABLE_SECURE
 		timeinfo = localtime(&t);
 #else
-		localtime_s(timeinfo, &t);
+		localtime_s(&timeinfo, &t);
 #endif
-		strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", timeinfo);
+		strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", &timeinfo);
 		std::stringstream ss;
 		ss << "Screenshots/" << tmp << ".bmp";
 		saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
