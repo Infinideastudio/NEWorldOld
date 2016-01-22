@@ -1,4 +1,4 @@
-32
+44
 NEWorld.yes
 NEWorld.no
 NEWorld.enabled
@@ -31,3 +31,15 @@ NEWorld.gui.caption
 NEWorld.gui.unicode
 NEWorld.gui.blur
 NEWorld.gui.back
+NEWorld.worlds.caption
+NEWorld.worlds.enter
+NEWorld.worlds.delete
+NEWorld.worlds.new
+NEWorld.worlds.back
+NEWorld.pause.caption
+NEWorld.pause.continue
+NEWorld.pause.back
+NEWorld.create.caption
+NEWorld.create.inputname
+NEWorld.create.ok
+NEWorld.create.back

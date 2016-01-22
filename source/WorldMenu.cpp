@@ -21,11 +21,11 @@ namespace Menus {
 		GUI::vscroll vscroll;
 		GUI::button enterbtn, deletebtn, backbtn;
 		void onLoad() {
-			title = GUI::label("==============<  选 择 世 界  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			title = GUI::label(GetStrbyKey("NEWorld.worlds.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			vscroll = GUI::vscroll(100, 0, 275, 295, 36, -20, 0.5, 0.5, 0.0, 1.0);
-			enterbtn = GUI::button("进入选定的世界", -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
-			deletebtn = GUI::button("删除选定的世界", 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
-			backbtn = GUI::button("<< 返回主菜单", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+			enterbtn = GUI::button(GetStrbyKey("NEWorld.worlds.enter"), -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
+			deletebtn = GUI::button(GetStrbyKey("NEWorld.worlds.delete"), 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
+			backbtn = GUI::button(GetStrbyKey("NEWorld.worlds.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(5, &title, &vscroll, &enterbtn, &deletebtn, &backbtn);
 			World::worldname = "";
 			enterbtn.enabled = false;
@@ -208,7 +208,8 @@ namespace Menus {
 			glVertex2i(midp + 250, 48 + i * 64 + 60);
 			glVertex2i(midp - 250, 48 + i * 64 + 60);
 			glEnd();
-			TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(">>创建新的世界")) / 2, (140 + i * 128) / 2, ">>创建新的世界");
+			TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(GetStrbyKey("NEWorld.worlds.new"))) / 2,
+				(140 + i * 128) / 2, GetStrbyKey("NEWorld.worlds.new"));
 			glDisable(GL_SCISSOR_TEST);
 		}
 	};
