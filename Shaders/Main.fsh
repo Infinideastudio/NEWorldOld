@@ -7,7 +7,7 @@ const mat4 normalize = mat4(
 	0.0, 0.5, 0.0, 0.0,
 	0.0, 0.0, 0.5, 0.0,
 	0.5, 0.5, 0.499, 1.0);
-const float delta = 0.1;
+const float delta = 0.05;
 
 uniform sampler2D Tex;
 uniform sampler2D DepthTex;

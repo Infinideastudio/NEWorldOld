@@ -1,5 +1,6 @@
 #include "GUI.h"
 #include "TextRenderer.h"
+#include "Frustum.h"
 
 extern string inputstr;
 
@@ -108,11 +109,15 @@ namespace GUI {
 	}
 
 	void drawBackground() {
+		static Frustum frus;
 		static double startTimer = timer();
 		double elapsed = timer() - startTimer;
+		frus.LoadIdentity();
+		frus.SetPerspective(90.0f, (float)windowwidth / windowheight, 0.1f, 10.0f);
+
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		gluPerspective(90.0, (double)windowwidth / windowheight, 0.1, 10.0);
+		glMultMatrixf(frus.getProjMatrix());
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);
@@ -122,6 +127,7 @@ namespace GUI {
 		glDisable(GL_CULL_FACE);
 		glEnable(GL_TEXTURE_2D);
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
 		//Begin to draw a cube
 		glBindTexture(GL_TEXTURE_2D, tex_mainmenu[0]);
 		glBegin(GL_QUADS);
@@ -923,6 +929,7 @@ namespace GUI {
 			mx = (int)dmx, my = (int)dmy;
 			update();
 			render();
+			glFinish();
 			glfwSwapBuffers(MainWindow);
 			glfwPollEvents();
 			if (ExitSignal) onLeaving();

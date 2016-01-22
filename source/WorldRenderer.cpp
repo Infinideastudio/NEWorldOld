@@ -28,15 +28,15 @@ namespace WorldRenderer {
 		}
 		else TexcoordCount = ColorCount = 0;
 
-		for (int i = 0; i < RenderChunkList.size(); i++) {
+		for (unsigned int i = 0; i < RenderChunkList.size(); i++) {
 			RenderChunk cr = RenderChunkList[i];
 			if (cr.vertexes[0] == 0) continue;
 			glPushMatrix();
 			glTranslated(cr.cx * 16.0 - x, cr.cy * 16.0 - cr.loadAnim - y, cr.cz * 16.0 - z);
 			if (Renderer::AdvancedRender && buffer != 3) {
-				m[12] = cr.cx * 16.0f - x;
-				m[13] = cr.cy * 16.0f - cr.loadAnim - y;
-				m[14] = cr.cz * 16.0f - z;
+				m[12] = cr.cx * 16.0f - (float)x;
+				m[13] = cr.cy * 16.0f - (float)cr.loadAnim - (float)y;
+				m[14] = cr.cz * 16.0f - (float)z;
 				glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
 				Renderer::renderbuffer(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount, 1);
 			}

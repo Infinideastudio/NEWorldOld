@@ -72,7 +72,7 @@ namespace World {
 	bool inWater(const Hitbox::AABB& box);
 
 	void renderblock(int x, int y, int z, chunk* chunkptr);
-	void updateblock(int x, int y, int z, bool blockchanged);
+	void updateblock(int x, int y, int z, bool blockchanged, int depth = 0);
 	block getblock(int x, int y, int z, block mask = Blocks::AIR, chunk* cptr = nullptr);
 	brightness getbrightness(int x, int y, int z, chunk* cptr = nullptr);
 	void setblock(int x, int y, int z, block Block, chunk* cptr = nullptr);

@@ -490,109 +490,111 @@ namespace World {
 		return false;
 	}
 
-	void updateblock(int x, int y, int z, bool blockchanged) {
+	void updateblock(int x, int y, int z, bool blockchanged, int depth) {
 		//Blockupdate
 
+		if (depth > 4096) return;
+		depth++;
+
 		bool updated = blockchanged;
-		int  cx = getchunkpos(x);
+		int cx = getchunkpos(x);
 		int cy = getchunkpos(y);
-		int  cz = getchunkpos(z);
+		int cz = getchunkpos(z);
+
+		if (chunkOutOfBound(cx, cy, cz)) return;
 
 		int bx = getblockpos(x);
 		int by = getblockpos(y);
 		int bz = getblockpos(z);
 
-		if (chunkOutOfBound(cx, cy, cz) == false) {
+		chunk* cptr = getChunkPtr(cx, cy, cz);
+		if (cptr != nullptr) {
 
-			chunk* cptr = getChunkPtr(cx, cy, cz);
-			if (cptr != nullptr) {
-				if (cptr == EmptyChunkPtr) {
-					cptr = World::AddChunk(cx, cy, cz);
-					cptr->Load(); cptr->Empty = false;
+			if (cptr == EmptyChunkPtr) {
+				cptr = World::AddChunk(cx, cy, cz);
+				cptr->Load(); cptr->Empty = false;
+			}
+			brightness oldbrightness = cptr->getbrightness(bx, by, bz);
+			bool skylighted = true;
+			int yi, cyi;
+			yi = y + 1; cyi = getchunkpos(yi);
+			if (y < 0) skylighted = false;
+			else {
+				while (!chunkOutOfBound(cx, cyi + 1, cz) && chunkLoaded(cx, cyi + 1, cz) && skylighted) {
+					if (BlockInfo(getblock(x, yi, z)).isOpaque() || getblock(x, yi, z) == Blocks::WATER) {
+						skylighted = false;
+					}
+					yi++; cyi = getchunkpos(yi);
 				}
-				brightness oldbrightness = cptr->getbrightness(bx, by, bz);
-				bool skylighted = true;
-				int yi, cyi;
-				yi = y + 1; cyi = getchunkpos(yi);
-				if (y < 0) {
-					skylighted = false;
+			}
+
+			if (!BlockInfo(getblock(x, y, z)).isOpaque()) {
+
+				brightness br;
+				int maxbrightness;
+				block blks[7] = { 0,
+					getblock(x, y, z + 1),    //Front face
+					getblock(x, y, z - 1),    //Back face
+					getblock(x + 1, y, z),    //Right face
+					getblock(x - 1, y, z),    //Left face
+					getblock(x, y + 1, z),    //Top face
+					getblock(x, y - 1, z) };  //Bottom face
+				brightness brts[7] = { 0,
+					getbrightness(x, y, z + 1),    //Front face
+					getbrightness(x, y, z - 1),    //Back face
+					getbrightness(x + 1, y, z),    //Right face
+					getbrightness(x - 1, y, z),    //Left face
+					getbrightness(x, y + 1, z),    //Top face
+					getbrightness(x, y - 1, z) };  //Bottom face
+				maxbrightness = 1;
+				for (int i = 2; i <= 6; i++) {
+					if (brts[maxbrightness] < brts[i]) maxbrightness = i;
 				}
-				else {
-					while (chunkLoaded(cx, cyi + 1, cz) && skylighted) {
-						if (BlockInfo(getblock(x, yi, z)).isOpaque() || getblock(x, yi, z) == Blocks::WATER) {
-							skylighted = false;
-						}
-						yi++; cyi = getchunkpos(yi);
-					}
-				}
-				if (!BlockInfo(getblock(x, y, z)).isOpaque()) {
-
-					brightness br;
-					int maxbrightness;
-					block blks[7] = { 0,
-						getblock(x, y, z + 1),    //Front face
-						getblock(x, y, z - 1),    //Back face
-						getblock(x + 1, y, z),    //Right face
-						getblock(x - 1, y, z),    //Left face
-						getblock(x, y + 1, z),    //Top face
-						getblock(x, y - 1, z) };  //Bottom face
-					brightness brts[7] = { 0,
-						getbrightness(x, y, z + 1),    //Front face
-						getbrightness(x, y, z - 1),    //Back face
-						getbrightness(x + 1, y, z),    //Right face
-						getbrightness(x - 1, y, z),    //Left face
-						getbrightness(x, y + 1, z),    //Top face
-						getbrightness(x, y - 1, z) };  //Bottom face
-					maxbrightness = 1;
-					for (int i = 2; i <= 6; i++) {
-						if (brts[maxbrightness] < brts[i]) maxbrightness = i;
-					}
-					br = brts[maxbrightness];
-					if (blks[maxbrightness] == Blocks::WATER) {
-						if (br - 2 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br -= 2;
-					}
-					else {
-						if (br - 1 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br--;
-					}
-
-					if (skylighted) {
-						if (br < skylight) br = skylight;
-					}
-					if (br < BRIGHTNESSMIN) br = BRIGHTNESSMIN;
-					//Set brightness
-					cptr->setbrightness(bx, by, bz, br);
-
+				br = brts[maxbrightness];
+				if (blks[maxbrightness] == Blocks::WATER) {
+					if (br - 2 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br -= 2;
 				}
 				else {
-
-					//Opaque block
-					cptr->setbrightness(bx, by, bz, 0);
-					if (getblock(x, y, z) == Blocks::GLOWSTONE || getblock(x, y, z) == Blocks::LAVA) {
-						cptr->setbrightness(bx, by, bz, BRIGHTNESSMAX);
-					}
-
+					if (br - 1 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br--;
 				}
 
-				if (oldbrightness != cptr->getbrightness(bx, by, bz)) updated = true;
-
-				if (updated) {
-					updateblock(x, y + 1, z, false);
-					updateblock(x, y - 1, z, false);
-					updateblock(x + 1, y, z, false);
-					updateblock(x - 1, y, z, false);
-					updateblock(x, y, z + 1, false);
-					updateblock(x, y, z - 1, false);
+				if (skylighted) {
+					if (br < skylight) br = skylight;
 				}
-
-				setChunkUpdated(cx, cy, cz, true);
-				if (bx == 15 && cx < worldsize - 1) setChunkUpdated(cx + 1, cy, cz, true);
-				if (bx == 0 && cx > -worldsize) setChunkUpdated(cx - 1, cy, cz, true);
-				if (by == 15 && cy < worldheight - 1) setChunkUpdated(cx, cy + 1, cz, true);
-				if (by == 0 && cy > -worldheight) setChunkUpdated(cx, cy - 1, cz, true);
-				if (bz == 15 && cz < worldsize - 1) setChunkUpdated(cx, cy, cz + 1, true);
-				if (bz == 0 && cz > -worldsize) setChunkUpdated(cx, cy, cz - 1, true);
+				if (br < BRIGHTNESSMIN) br = BRIGHTNESSMIN;
+				//Set brightness
+				cptr->setbrightness(bx, by, bz, br);
 
 			}
+			else {
+
+				//Opaque block
+				cptr->setbrightness(bx, by, bz, 0);
+				if (getblock(x, y, z) == Blocks::GLOWSTONE || getblock(x, y, z) == Blocks::LAVA) {
+					cptr->setbrightness(bx, by, bz, BRIGHTNESSMAX);
+				}
+
+			}
+
+			if (oldbrightness != cptr->getbrightness(bx, by, bz)) updated = true;
+
+			if (updated) {
+				updateblock(x, y + 1, z, false, depth);
+				updateblock(x, y - 1, z, false, depth);
+				updateblock(x + 1, y, z, false, depth);
+				updateblock(x - 1, y, z, false, depth);
+				updateblock(x, y, z + 1, false, depth);
+				updateblock(x, y, z - 1, false, depth);
+			}
+
+			setChunkUpdated(cx, cy, cz, true);
+			if (bx == 15 && cx < worldsize - 1) setChunkUpdated(cx + 1, cy, cz, true);
+			if (bx == 0 && cx > -worldsize) setChunkUpdated(cx - 1, cy, cz, true);
+			if (by == 15 && cy < worldheight - 1) setChunkUpdated(cx, cy + 1, cz, true);
+			if (by == 0 && cy > -worldheight) setChunkUpdated(cx, cy - 1, cz, true);
+			if (bz == 15 && cz < worldsize - 1) setChunkUpdated(cx, cy, cz + 1, true);
+			if (bz == 0 && cz > -worldsize) setChunkUpdated(cx, cy, cz - 1, true);
+
 		}
 	}
 
