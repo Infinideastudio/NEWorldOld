@@ -1,4 +1,4 @@
-31
+32
 NEWorld.yes
 NEWorld.no
 NEWorld.enabled
@@ -20,6 +20,7 @@ NEWorld.render.grasstex
 NEWorld.render.merge
 NEWorld.render.multisample
 NEWorld.render.shaders
+NEWorld.render.vsync
 NEWorld.render.back
 NEWorld.shaders.caption
 NEWorld.shaders.enable

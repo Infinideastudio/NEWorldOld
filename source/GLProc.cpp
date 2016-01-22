@@ -1,6 +1,11 @@
 #include "GLProc.h"
 
 //OpenGL Procedure
+
+#ifdef NEWORLD_USE_WINAPI
+PFNWGLEXTSWAPCONTROLPROC wglSwapIntervalEXT;
+#endif
+
 PFNGLTEXIMAGE3DPROC glTexImage3D;
 PFNGLTEXSUBIMAGE3DPROC glTexSubImage3D;
 PFNGLACTIVETEXTUREARBPROC glActiveTextureARB;
@@ -58,6 +63,11 @@ PFNGLGETUNIFORMIVARBPROC glGetUniformivARB;
 
 //获取OpenGL函数地址
 void InitGLProc() {
+
+#ifdef NEWORLD_USE_WINAPI
+	wglSwapIntervalEXT = (PFNWGLEXTSWAPCONTROLPROC)wglGetProcAddress("wglSwapIntervalEXT");
+#endif
+
 	glTexImage3D = (PFNGLTEXIMAGE3DPROC)glfwGetProcAddress("glTexImage3DEXT");
 	glTexSubImage3D = (PFNGLTEXSUBIMAGE3DPROC)glfwGetProcAddress("glTexSubImage3DEXT");
 	glActiveTextureARB = (PFNGLACTIVETEXTUREARBPROC)glfwGetProcAddress("glActiveTextureARB");

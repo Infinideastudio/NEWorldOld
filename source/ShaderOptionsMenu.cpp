@@ -23,7 +23,7 @@ namespace Menus {
 				if (Renderer::AdvancedRender) shadowresbar.enabled = shadowdistbar.enabled = true;
 				else shadowresbar.enabled = shadowdistbar.enabled = false;
 			}
-			Renderer::ShadowRes = pow(2, (shadowresbar.barpos + 1) / 40 + 10);
+			Renderer::ShadowRes = (int)pow(2, (shadowresbar.barpos + 1) / 40 + 10);
 			Renderer::MaxShadowDist = (shadowdistbar.barpos + 1) / 4 + 2;
 			if (backbtn.clicked) {
 				ExitSignal = true;
