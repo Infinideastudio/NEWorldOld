@@ -27,7 +27,7 @@ Tree::Tree(std::string fname){
 	f.read(_, (index[1] - index[0]) * 65536);
 	unsigned int *__ = (unsigned int*)_;
 	datalast = __[2];
-	for (int i = 1; (i < (((index[1] - index[0]) * 65536) / (sizeof(unsigned int) * 3))&&(__[i*3]!=TRU_VOID)); ++i) {
+	for (unsigned int i = 1; (i < (((index[1] - index[0]) * 65536) / (sizeof(unsigned int) * 3))&&(__[i*3]!=TRU_VOID)); ++i) {
 		_Tree[__[i * 3]] = { __[i * 3] ,__[i * 3 + 1] ,__[i * 3 + 2] ,nullptr };
 	}
 	//free the ptr

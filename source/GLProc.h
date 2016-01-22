@@ -1,5 +1,11 @@
 #pragma once
 #include "StdInclude.h"
+
+#ifdef NEWORLD_USE_WINAPI
+typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
+extern PFNWGLEXTSWAPCONTROLPROC wglSwapIntervalEXT;
+#endif
+
 extern PFNGLTEXIMAGE3DPROC glTexImage3D;
 extern PFNGLTEXSUBIMAGE3DPROC glTexSubImage3D;
 extern PFNGLACTIVETEXTUREARBPROC glActiveTextureARB;

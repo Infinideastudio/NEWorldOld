@@ -22,6 +22,7 @@ float skycolorB = 1.0f;         //天空颜色Blue
 float FOVyRunning = 8.0f;
 float FOVyExt;
 int Multisample = 0;            //多重采样抗锯齿
+bool vsync = false;             //垂直同步
 
 int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度

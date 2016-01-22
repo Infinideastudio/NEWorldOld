@@ -175,9 +175,7 @@ namespace Textures {
 		glBindTexture(GL_TEXTURE_2D, ret);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (int)log2(image.sizeX));
-		gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGB, image.sizeX, image.sizeY, GL_RGB, GL_UNSIGNED_BYTE, image.buffer.get());
+		Build2DMipmaps(GL_RGB, image.sizeX, image.sizeY, (int)log2(image.sizeX), image.buffer.get());
 		return ret;
 	}
 	
@@ -218,15 +216,13 @@ namespace Textures {
 		glBindTexture(GL_TEXTURE_2D, ret);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (int)log2(BLOCKTEXTURE_UNITSIZE));
-		gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, image.sizeX, image.sizeY, GL_RGBA, GL_UNSIGNED_BYTE, image.buffer.get());
+		Build2DMipmaps(GL_RGBA, image.sizeX, image.sizeY, (int)log2(BLOCKTEXTURE_UNITSIZE), image.buffer.get());
 		return ret;
 	}
 
 	TextureID LoadBlock3DTexture(string Filename, string MkFilename) {
 		int sz = BLOCKTEXTURE_UNITSIZE, cnt = BLOCKTEXTURE_UNITS*BLOCKTEXTURE_UNITS;
-		int mipmapLevel = (int)log2(BLOCKTEXTURE_UNITSIZE), sum = 0, cursize = 0, scale = 1;
+		//int mipmapLevel = (int)log2(BLOCKTEXTURE_UNITSIZE), sum = 0, cursize = 0, scale = 1;
 		ubyte *src, *cur;
 		glDisable(GL_TEXTURE_2D);
 		glEnable(GL_TEXTURE_3D);
@@ -291,4 +287,32 @@ namespace Textures {
 		ofs.close();
 	}
 
+	void Build2DMipmaps(GLenum format, int w, int h, int level, const ubyte* src) {
+		int sum = 0, scale = 1, cur_w = 0, cur_h = 0, cc = 0;
+		if (format == GL_RGBA) cc = 4;
+		else if (format == GL_RGB) cc = 3;
+		ubyte *cur = new ubyte[w*h*cc];
+		memset(cur, 0, w*h*cc);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, level);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_LOD, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LOD, level);
+		glTexEnvf(GL_TEXTURE_FILTER_CONTROL, GL_TEXTURE_LOD_BIAS, 0.0f);
+		glTexImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, src);
+		for (int i = 1; i <= level; i++) {
+			scale <<= 1; cur_w = w / scale; cur_h = h / scale;
+			for (int y = 0; y < cur_h; y++) for (int x = 0; x < cur_w; x++) {
+				for (int col = 0; col < cc; col++) {
+					sum = 0;
+					for (int yy = 0; yy < scale; yy++) for (int xx = 0; xx < scale; xx++) {
+						sum += src[((y * scale + yy) * w + x * scale + xx) * cc + col];
+					}
+					cur[(y * cur_w + x) * cc + col] = (ubyte)(sum / (scale*scale));
+				}
+			}
+			glTexImage2D(GL_TEXTURE_2D, i, format, cur_w, cur_h, 0, format, GL_UNSIGNED_BYTE, cur);
+		}
+		delete[] cur;
+	}
+	
 }
