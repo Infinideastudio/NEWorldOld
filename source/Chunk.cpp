@@ -105,6 +105,7 @@ namespace World {
 			Empty = true; return;
 		}
 		if (cy < 0) {
+			memset(pblocks, 0, 4096 * sizeof(block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = BRIGHTNESSMIN;
 			Empty = true; return;
 		}

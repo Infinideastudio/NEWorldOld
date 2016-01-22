@@ -392,7 +392,10 @@ void setupscreen() {
 	glClearDepth(1.0);
 	glGenBuffersARB(1, &World::EmptyBuffer);
 	if (Renderer::AdvancedRender) Renderer::initShaders();
-
+	if (wglSwapIntervalEXT) {
+		if (vsync) wglSwapIntervalEXT(1);
+		else wglSwapIntervalEXT(0);
+	}
 }
 
 void setupNormalFog() {
@@ -479,6 +482,7 @@ void registerCommands() {
 		return true;
 	}));
 	commands.push_back(Command("/suicide", [](const vector<string>& command) {
+		if (command.size() != 1) return false;
 		Player::spawn();
 		return true;
 	}));
@@ -511,7 +515,7 @@ void registerCommands() {
 }
 
 bool doCommand(const vector<string>& command) {
-	for (int i = 0; i != commands.size(); i++) {
+	for (unsigned int i = 0; i != commands.size(); i++) {
 		if (command[0] == commands[i].identifier) {
 			return commands[i].execute(command);
 		}
@@ -950,8 +954,8 @@ void updategame(){
 				chatword += inputstr;
 			}
 			//自动补全
-			if (isPressed(GLFW_KEY_TAB) && chatmode && chatword.size()>0 && chatword.substr(0, 1) == "/") {
-				for (int i = 0; i != commands.size(); i++) {
+			if (isPressed(GLFW_KEY_TAB) && chatmode && chatword.size() > 0 && chatword.substr(0, 1) == "/") {
+				for (unsigned int i = 0; i != commands.size(); i++) {
 					if (beginWith(commands[i].identifier, chatword)) {
 						chatword = commands[i].identifier;
 					}
@@ -1164,20 +1168,21 @@ void Render() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_TEXTURE_2D);
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(FOVyNormal + FOVyExt, windowwidth / (double)windowheight, 0.05, viewdistance * 16.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glRotated(plookupdown, 1, 0, 0);
-	glRotated(360.0 - pheading, 0, 1, 0);
 	Player::ViewFrustum.LoadIdentity();
 	Player::ViewFrustum.SetPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
 	Player::ViewFrustum.MultRotate((float)plookupdown, 1, 0, 0);
 	Player::ViewFrustum.MultRotate(360.0f - (float)pheading, 0, 1, 0);
 	Player::ViewFrustum.update();
-	World::calcVisible(xpos, ypos, zpos, Player::ViewFrustum);
 
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glMultMatrixf(Player::ViewFrustum.getProjMatrix());
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glRotated(plookupdown, 1, 0, 0);
+	glRotated(360.0 - pheading, 0, 1, 0);
+
+	World::calcVisible(xpos, ypos, zpos, Player::ViewFrustum);
 	renderedChunk = WorldRenderer::ListRenderChunks(Player::cxt, Player::cyt, Player::czt, viewdistance, curtime);
 
 	MutexUnlock(Mutex);
@@ -1332,6 +1337,7 @@ void Render() {
 	//屏幕刷新，千万别删，后果自负！！！
 	//====refresh====//
 	MutexUnlock(Mutex);
+	if (vsync) glFinish();
 	glfwSwapBuffers(MainWindow);
 	glfwPollEvents();
 	MutexLock(Mutex);
@@ -1977,6 +1983,7 @@ void loadoptions() {
 	loadoption(options, "AdvancedRender", Renderer::AdvancedRender);
 	loadoption(options, "ShadowMapRes", Renderer::ShadowRes);
 	loadoption(options, "ShadowDistance", Renderer::MaxShadowDist);
+	loadoption(options, "VerticalSync", vsync);
 	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 }
@@ -2002,6 +2009,7 @@ void saveoptions() {
 	saveoption(fileout, "AdvancedRender", Renderer::AdvancedRender);
 	saveoption(fileout, "ShadowMapRes", Renderer::ShadowRes);
 	saveoption(fileout, "ShadowDistance", Renderer::MaxShadowDist);
+	saveoption(fileout, "VerticalSync", vsync);
 	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 	fileout.close();

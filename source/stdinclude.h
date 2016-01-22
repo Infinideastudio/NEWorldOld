@@ -45,7 +45,6 @@ using std::min;
 #ifndef NEWORLD_SERVER
 //GLFW
 #define GLFW_DLL
-#define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
 //GLEXT
 #include <GL/glext.h>

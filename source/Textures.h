@@ -55,4 +55,6 @@ namespace Textures{
 
 	void SaveRGBImage(string filename, TEXTURE_RGB& image);
 
+	void Build2DMipmaps(GLenum format, int w, int h, int level, const ubyte* src);
+
 }
