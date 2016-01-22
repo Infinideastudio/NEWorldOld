@@ -143,11 +143,13 @@ namespace Renderer {
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
 
-		shadercount = 2;
+		shadercount = 3;
 		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
 		shaders[1] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB);
 		shaders[2] = loadShader("Shaders/Shadow.vsh", GL_VERTEX_SHADER_ARB);
 		shaders[3] = loadShader("Shaders/Shadow.fsh", GL_FRAGMENT_SHADER_ARB);
+		shaders[4] = loadShader("Shaders/RenderShadowMap.vsh", GL_VERTEX_SHADER_ARB);
+		shaders[5] = loadShader("Shaders/RenderShadowMap.fsh", GL_FRAGMENT_SHADER_ARB);
 		for (int i = 0; i != shadercount; i++) {
 			shaderPrograms[i] = glCreateProgramObjectARB();
 			glAttachObjectARB(shaderPrograms[i], shaders[i * 2]);
