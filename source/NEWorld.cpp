@@ -58,8 +58,9 @@ double fctime, uctime;
 bool GUIrenderswitch;
 bool DebugMode;
 bool DebugHitbox;
-bool DebugChunk;
-bool DebugPerformance;
+//bool DebugChunk;
+//bool DebugPerformance;
+bool DebugShadow;
 
 int selx, sely, selz, oldselx, oldsely, oldselz, selface;
 bool sel;
@@ -916,8 +917,12 @@ void updategame(){
 			}
 			if (isPressed(GLFW_KEY_F2)) shouldGetScreenshot = true;
 			if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
-			if (isPressed(GLFW_KEY_F3) && glfwGetKey(MainWindow, GLFW_KEY_H) == GLFW_PRESS) {
+			if (isPressed(GLFW_KEY_H) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
 				DebugHitbox = !DebugHitbox;
+				DebugMode = true;
+			}
+			if (isPressed(GLFW_KEY_M) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
+				DebugShadow = !DebugShadow;
 				DebugMode = true;
 			}
 			if (isPressed(GLFW_KEY_F4)) Player::CrossWall = !Player::CrossWall;
@@ -1550,6 +1555,8 @@ void drawGUI(){
 		glEnable(GL_TEXTURE_2D);
 		TextRenderer::renderString(0, windowheight - 50, chatword);
 	}
+
+	if (DebugShadow) ShadowMaps::DrawShadowMap(windowwidth / 2, windowheight / 2, windowwidth, windowheight);
 
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);

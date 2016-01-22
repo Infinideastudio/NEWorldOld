@@ -1,34 +1,46 @@
-English
-English
-Yes
-No
-Enabled
-Disabled
-Start game
->> Options...
-Exit
-=================< Options >==================
-Field of view: 
-Mouse sensitivity: 
-Render distance: 
->> Render options...
->> GUI options...
-<< Back to main menu
-Save options
-=============< Render options >===============
-Smooth lighting: 
-Connect grass texture: 
-Merge face rendering: 
-Multi-sample AA: 
->> Advanced rendering ...
-Vertical sync: 
-<< Back to options menu
-============< Advanced rendering >============
-Enabled: 
-Shadow Map resolution: 
-Max shadow distance:
-<< Back to render options
-===============< GUI options >================
-Force Unicode font: 
-Background blur: 
-<< Back to options menu
+ENGLISH
+ENGLISH
+YES
+NO
+ENABLED
+DISABLED
+START GAME
+>> OPTIONS...
+EXIT
+=================< OPTIONS >==================
+FIELD OF VIEW: 
+MOUSE SENSITIVITY: 
+RENDER DISTANCE: 
+>> RENDER OPTIONS...
+>> GUI OPTIONS...
+<< BACK TO MAIN MENU
+SAVE OPTIONS
+=============< RENDER OPTIONS >===============
+SMOOTH LIGHTING: 
+CONNECT GRASS TEXTURE: 
+MERGE FACE RENDERING: 
+MULTI-SAMPLE AA: 
+>> ADVANCED RENDERING ...
+VERTICAL SYNC: 
+<< BACK TO OPTIONS MENU
+============< ADVANCED RENDERING >============
+ENABLED: 
+SHADOW MAP RESOLUTION: 
+MAX SHADOW DISTANCE:
+<< BACK TO RENDER OPTIONS
+===============< GUI OPTIONS >================
+FORCE UNICODE FONT: 
+BACKGROUND BLUR: 
+<< BACK TO OPTIONS MENU
+==============< SELECT WORLD >================
+ENTER THIS WORLD
+DELETE THIS WORLD
+>> CREATE A NEW WORLD ...
+<< BACK TO MAIN MENU
+================< GAME MENU >=================
+CONTINUE GAME
+<< BACK TO MAIN MENU
+==============< CREATE A WORLD >==============
+INPUT WORLD NAME
+OK
+<< BACK TO WORLD MENU
