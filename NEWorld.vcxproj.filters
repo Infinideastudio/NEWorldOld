@@ -54,11 +54,14 @@
     <Filter Include="源代码\Game\Player">
       <UniqueIdentifier>{40ea1808-71f0-4c4c-a9ee-d3c04da07f95}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\Game\Physics">
-      <UniqueIdentifier>{e671892d-d7a8-41a7-81ad-57abd5613c9c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="源代码\Game\Textures">
       <UniqueIdentifier>{1302ac14-18ec-431c-a891-8bbfe96b9099}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源代码\Game\Hitbox">
+      <UniqueIdentifier>{e671892d-d7a8-41a7-81ad-57abd5613c9c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源代码\Common\OpenGL">
+      <UniqueIdentifier>{f6aa1cb9-6009-404f-b1cc-68775a8f0ece}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -107,9 +110,6 @@
     <ClInclude Include="source\Particles.h">
       <Filter>源代码\Game\Objects</Filter>
     </ClInclude>
-    <ClInclude Include="source\Hitbox.h">
-      <Filter>源代码\World</Filter>
-    </ClInclude>
     <ClInclude Include="include\Netycat\include\Netycat\Core\Buffer.h">
       <Filter>Netycat</Filter>
     </ClInclude>
@@ -137,9 +137,6 @@
     <ClInclude Include="source\Menus.h">
       <Filter>源代码\GUI</Filter>
     </ClInclude>
-    <ClInclude Include="source\Blocks.h">
-      <Filter>源代码\Common</Filter>
-    </ClInclude>
     <ClInclude Include="source\StdInclude.h">
       <Filter>源代码\Common</Filter>
     </ClInclude>
@@ -154,9 +151,6 @@
     </ClInclude>
     <ClInclude Include="source\Globalization.h">
       <Filter>源代码\GUI\Globalization</Filter>
-    </ClInclude>
-    <ClInclude Include="source\GLProc.h">
-      <Filter>源代码\Common</Filter>
     </ClInclude>
     <ClInclude Include="source\TextRenderer.h">
       <Filter>源代码\Renderer\GUIRenderer</Filter>
@@ -176,9 +170,6 @@
     <ClInclude Include="source\NNN.h">
       <Filter>源代码\DataStorage</Filter>
     </ClInclude>
-    <ClInclude Include="source\Hitbox.h">
-      <Filter>源代码\Game\Physics</Filter>
-    </ClInclude>
     <ClInclude Include="source\vduio.h">
       <Filter>源代码\DataStorage</Filter>
     </ClInclude>
@@ -193,6 +184,16 @@
     </ClInclude>
     <ClInclude Include="source\WorldRenderer.h">
       <Filter>源代码\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Hitbox.h" />
+    <ClInclude Include="source\Hitbox.h">
+      <Filter>源代码\Game\Hitbox</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Blocks.h">
+      <Filter>源代码\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="source\GLProc.h">
+      <Filter>源代码\Common\OpenGL</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -225,9 +226,6 @@
     </ClCompile>
     <ClCompile Include="source\Particles.cpp">
       <Filter>源代码\Game\Objects</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Hitbox.cpp">
-      <Filter>源代码\World</Filter>
     </ClCompile>
     <ClCompile Include="include\Netycat\src\Netycat\Core\Buffer.cpp">
       <Filter>Netycat</Filter>
@@ -289,9 +287,6 @@
     <ClCompile Include="source\LanguageMenu.cpp">
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
-    <ClCompile Include="source\GLProc.cpp">
-      <Filter>源代码\Common</Filter>
-    </ClCompile>
     <ClCompile Include="source\ShaderOptionsMenu.cpp">
       <Filter>源代码\GUI\Menus</Filter>
     </ClCompile>
@@ -313,9 +308,6 @@
     <ClCompile Include="source\NNN.cpp">
       <Filter>源代码\DataStorage</Filter>
     </ClCompile>
-    <ClCompile Include="source\Hitbox.cpp">
-      <Filter>源代码\Game\Physics</Filter>
-    </ClCompile>
     <ClCompile Include="source\vduio.cpp">
       <Filter>源代码\DataStorage</Filter>
     </ClCompile>
@@ -327,6 +319,15 @@
     </ClCompile>
     <ClCompile Include="source\WorldRenderer.cpp">
       <Filter>源代码\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Hitbox.cpp">
+      <Filter>源代码\Game\Hitbox</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Hitbox.cpp">
+      <Filter>源代码\Game\Hitbox</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GLProc.cpp">
+      <Filter>源代码\Common\OpenGL</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
