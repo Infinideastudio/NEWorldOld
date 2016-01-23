@@ -33,7 +33,7 @@ namespace ShadowMaps {
 		glEnable(GL_FOG);
 		glEnable(GL_BLEND);
 	}
-
+	/*
 	void DrawShadowMap(int xi, int yi, int xa, int ya) {		
 		glDisable(GL_TEXTURE_2D);
 		glColor4f(0.2f, 0.2f, 0.2f, 0.5f);
@@ -61,4 +61,5 @@ namespace ShadowMaps {
 		//glActiveTextureARB(GL_TEXTURE0);
 		glUseProgramObjectARB(0);
 	}
+	*/
 }

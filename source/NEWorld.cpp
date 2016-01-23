@@ -173,7 +173,7 @@ main_menu:
 		}
 
 		Render();
-		
+
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1) {
 			updateThreadPaused = true;
 			createThumbnail();
@@ -1520,7 +1520,7 @@ void drawGUI(){
 		TextRenderer::renderString(0, windowheight - 50, chatword);
 	}
 
-	if (DebugShadow) ShadowMaps::DrawShadowMap(windowwidth / 2, windowheight / 2, windowwidth, windowheight);
+	//if (DebugShadow) ShadowMaps::DrawShadowMap(windowwidth / 2, windowheight / 2, windowwidth, windowheight);
 
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
