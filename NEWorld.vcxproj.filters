@@ -330,4 +330,9 @@
       <Filter>源代码\Common\OpenGL</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="source\resource.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
+  </ItemGroup>
 </Project>
