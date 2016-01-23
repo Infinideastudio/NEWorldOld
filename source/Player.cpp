@@ -143,7 +143,7 @@ void Player::updatePosition() {
 			Player::glidingSpeed = 0;
 			Player::glidingNow = false;
 			if (ydam - (ypos + ya) > 0) {
-				if(!Player::Flying) Player::health -= (ydam - (ypos + ya)) * Player::dropDamagePerBlock;
+				Player::health -= (ydam - (ypos + ya)) * Player::dropDamagePerBlock;
 				ydam = 0;
 			}
 		}
