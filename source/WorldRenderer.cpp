@@ -43,5 +43,6 @@ namespace WorldRenderer {
 			else Renderer::renderbuffer(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount);
 			glPopMatrix();
 		}
+		glFlush();
 	}
 }
