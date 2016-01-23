@@ -80,5 +80,6 @@ void main() {
 	vec4 color = vec4(texel.rgb * shadow, texel.a) * gl_Color;
 	
 	//Fog calculation & Final color
+	//if (color.a < 0.99) color = vec4(color.rgb, mix(1.0, 0.3, clamp((renderdist * 0.5 - dist) / 64.0, 0.0, 1.0)));
 	gl_FragColor = mix(vec4(0.7, 1.0, 1.0, 1.0), color, clamp((renderdist - dist) / 32.0, 0.0, 1.0));
 }
