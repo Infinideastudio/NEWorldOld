@@ -86,7 +86,7 @@ namespace World {
 		unloadedChunks++;
 	}
 
-	void chunk::build() {
+	void chunk::build(bool initIfEmpty) {
 		//Éú³ÉµØÐÎ
 		//assert(Empty == false);
 
@@ -100,22 +100,27 @@ namespace World {
 		//Fast generate parts
 		//Part1 out of the terrain bound
 		if (cy > 4) {
+			Empty = true;
+			if (!initIfEmpty) return;
 			memset(pblocks, 0, 4096 * sizeof(block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
-			Empty = true; return;
+			return;
 		}
 		if (cy < 0) {
+			Empty = true;
+			if (!initIfEmpty) return;
 			memset(pblocks, 0, 4096 * sizeof(block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = BRIGHTNESSMIN;
-			Empty = true; return;
+			return;
 		}
 
 		//Part2 out of geomentry area
 		HMapManager cur = HMapManager(cx, cz);
-		if (cy > cur.high) {
+		if (cy > cur.high) {Empty = true;
+			if (!initIfEmpty) return;
 			memset(pblocks, 0, 4096 * sizeof(block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
-			Empty = true; return;
+			return;
 		}
 		if (cy < cur.low) {
 			for (int i = 0; i < 4096; i++) pblocks[i] = Blocks::ROCK;
@@ -176,14 +181,14 @@ namespace World {
 		}
 	}
 
-	void chunk::Load() {
+	void chunk::Load(bool initIfEmpty) {
 		//assert(Empty == false);
 
 		create();
 #ifndef NEWORLD_DEBUG_NO_FILEIO
-		if (!LoadFromFile()) build();
+		if (!LoadFromFile()) build(initIfEmpty);
 #else
-		build();
+		build(initIfEmpty);
 #endif
 		if (!Empty) updated = true;
 	}

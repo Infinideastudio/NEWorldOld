@@ -46,9 +46,9 @@ namespace World {
 
 		void create();
 		void destroy();
-		void Load();
+		void Load(bool initIfEmpty = true);
 		void Unload();
-		void build();
+		void build(bool initIfEmpty = true);
 		inline string getChunkPath() {
 			//assert(Empty == false);
 			std::stringstream ss;
