@@ -1079,7 +1079,7 @@ void Render() {
 	Player::cyt = getchunkpos((int)Player::ypos);
 	Player::czt = getchunkpos((int)Player::zpos);
 
-	//更新区块显示列表
+	//更新区块VBO
 	World::sortChunkBuildRenderList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
 	int brl = World::chunkBuildRenders > World::MaxChunkRenders ? World::MaxChunkRenders : World::chunkBuildRenders;
 	for (int i = 0; i < brl; i++) {
@@ -1092,6 +1092,8 @@ void Render() {
 		glDeleteBuffersARB(World::vbuffersShouldDelete.size(), World::vbuffersShouldDelete.data());
 		World::vbuffersShouldDelete.clear();
 	}
+
+	glFlush();
 
 	double plookupdown = Player::lookupdown + Player::ylookspeed;
 	double pheading = Player::heading + Player::xlookspeed;
@@ -1280,11 +1282,19 @@ void Render() {
 	//屏幕刷新，千万别删，后果自负！！！
 	//====refresh====//
 	MutexUnlock(Mutex);
-	if (vsync) glFinish();
+	glFinish();
 	glfwSwapBuffers(MainWindow);
 	glfwPollEvents();
 	MutexLock(Mutex);
 	//==refresh end==//
+
+	//检测帧速率
+	if (timer() - fctime >= 1.0) {
+		fps = fpsc;
+		fpsc = 0;
+		fctime = timer();
+	}
+	fpsc++;
 
 	lastframe = curtime;
 	//Time_screensync = timer() - Time_screensync;
@@ -1568,11 +1578,9 @@ void drawGUI(){
 		ss << c_getHeightFromWorldGen << " worldgen requests";
 		debugText(ss.str()); ss.str("");
 #endif
-		
 		debugText("", true);
 	}
 	else {
-
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 		std::stringstream ss;
 		ss << "v" << VERSION;
@@ -1581,16 +1589,8 @@ void drawGUI(){
 		ss.str("");
 		ss << "Fps:" << fps;
 		TextRenderer::renderASCIIString(0, 16, ss.str());
-
 	}
-
-	//检测帧速率
-	if (timer() - fctime >= 1.0) {
-		fps = fpsc;
-		fpsc = 0;
-		fctime = timer();
-	}
-	fpsc++;
+	glFlush();
 }
 
 void drawCloud(double px, double pz) {
@@ -1879,6 +1879,7 @@ void drawBag() {
 		}
 		else drawBagRow(3, Player::indexInHand, 0, windowheight - 32, 0, 0.5f);
 	}
+	glFlush();
 }
 
 void saveScreenshot(int x, int y, int w, int h, string filename){
