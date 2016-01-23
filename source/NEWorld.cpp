@@ -630,18 +630,18 @@ void updategame(){
 	}
 	
 	//判断选中的方块
-	double lx, ly, lz, sidedist[7];
-	int sidedistmin;
+	double lx, ly, lz, lxl, lyl, lzl;
 	lx = Player::xpos; ly = Player::ypos + Player::height + Player::heightExt; lz = Player::zpos;
 	
 	sel = false;
 	selx = sely = selz = selbx = selby = selbz = selcx = selcy = selcz = selb = selbr = 0;
-	bool put = false;
 	
 	if (!bagOpened) {
 
 		//从玩家位置发射一条线段
 		for (int i = 0; i < selectPrecision*selectDistance; i++) {
+			lxl = lx; lyl = ly; lzl = lz;
+
 			//线段延伸
 			lx += sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
 			ly += cos(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
@@ -649,65 +649,23 @@ void updategame(){
 
 			//碰到方块
 			if (BlockInfo(World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
-				int x, y, z;
-				x = RoundInt(lx);
-				y = RoundInt(ly);
-				z = RoundInt(lz);
+				int x, y, z, xl, yl, zl;
+				x = RoundInt(lx); y = RoundInt(ly); z = RoundInt(lz);
+				xl = RoundInt(lxl); yl = RoundInt(lyl); zl = RoundInt(lzl);
 
 				selx = x; sely = y; selz = z;
 				sel = true;
 
 				//找方块所在区块及位置
-				selcx = getchunkpos(x);
-				selbx = getblockpos(x);
-				selcy = getchunkpos(y);
-				selby = getblockpos(y);
-				selcz = getchunkpos(z);
-				selbz = getblockpos(z);
-				
-				sidedist[1] = abs(y + 0.5 - ly);          //顶面
-				sidedist[2] = abs(y - 0.5 - ly);		  //底面
-				sidedist[3] = abs(x + 0.5 - lx);		  //左面
-				sidedist[4] = abs(x - 0.5 - lx);	   	  //右面
-				sidedist[5] = abs(z + 0.5 - lz);		  //前面
-				sidedist[6] = abs(z - 0.5 - lz);		  //后面
-				sidedistmin = 1;						  //离哪个面最近
-				for (int j = 2; j <= 6; j++) {
-					if (sidedist[j] < sidedist[sidedistmin]) sidedistmin = j;
-				}
+				selcx = getchunkpos(x); selcy = getchunkpos(y); selcz = getchunkpos(z);
+				selbx = getblockpos(x); selby = getblockpos(y); selbz = getblockpos(z);
 
 				if (World::chunkOutOfBound(selcx, selcy, selcz) == false) {
 					World::chunk* cp = World::getChunkPtr(selcx, selcy, selcz);
 					if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
 					selb = cp->getblock(selbx, selby, selbz);
 				}
-
-				switch (sidedistmin) {
-				case 1:
-					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = World::getbrightness(selx, sely + 1, selz);
-					break;
-				case 2:
-					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = World::getbrightness(selx, sely - 1, selz);
-					break;
-				case 3:
-					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = World::getbrightness(selx + 1, sely, selz);
-					break;
-				case 4:
-					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = World::getbrightness(selx - 1, sely, selz);
-					break;
-				case 5:
-					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = World::getbrightness(selx, sely, selz + 1);
-					break;
-				case 6:
-					if (World::chunkOutOfBound(selcx, selcy, selcz) == false)
-						selbr = World::getbrightness(selx, sely, selz - 1);
-					break;
-				}
+				selbr = World::getbrightness(xl, yl, zl);
 
 				if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
 					Particles::throwParticle(World::getblock(x, y, z),
@@ -715,10 +673,9 @@ void updategame(){
 						float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 						float(rnd()*0.01f + 0.02f), int(rnd() * 30) + 30);
 
-					if (selx != oldselx || sely != oldsely || selz != oldselz)
-						seldes = 0.0;
-					else
-						seldes += 5.0;
+					if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
+					else seldes += 5.0;
+
 					if (seldes >= 100.0) {
 						Player::addItem(World::getblock(x, y, z));
 						for (int j = 1; j <= 25; j++) {
@@ -733,28 +690,7 @@ void updategame(){
 				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB))) { //鼠标右键
 					if (Player::inventoryAmount[3][Player::indexInHand] > 0 && isBlock(Player::inventory[3][Player::indexInHand])) {
 						//放置方块
-						put = true;
-						switch (sidedistmin) {
-						case 1:
-							if (Player::putBlock(x, y + 1, z, Player::BlockInHand) == false) put = false;
-							break;
-						case 2:
-							if (Player::putBlock(x, y - 1, z, Player::BlockInHand) == false) put = false;
-							break;
-						case 3:
-							if (Player::putBlock(x + 1, y, z, Player::BlockInHand) == false) put = false;
-							break;
-						case 4:
-							if (Player::putBlock(x - 1, y, z, Player::BlockInHand) == false) put = false;
-							break;
-						case 5:
-							if (Player::putBlock(x, y, z + 1, Player::BlockInHand) == false) put = false;
-							break;
-						case 6:
-							if (Player::putBlock(x, y, z - 1, Player::BlockInHand) == false) put = false;
-							break;
-						}
-						if (put) {
+						if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
 							Player::inventoryAmount[3][Player::indexInHand]--;
 							if (Player::inventoryAmount[3][Player::indexInHand] == 0) Player::inventory[3][Player::indexInHand] = Blocks::AIR;
 						}
@@ -1323,13 +1259,15 @@ void Render() {
 		screenshotAnimTimer = curtime;
 		time_t t = time(0);
 		char tmp[64];
-		tm timeinfo;
+		tm* timeinfo;
 #ifdef NEWORLD_COMPILE_DISABLE_SECURE
 		timeinfo = localtime(&t);
 #else
-		localtime_s(&timeinfo, &t);
+		timeinfo = new tm;
+		localtime_s(timeinfo, &t);
 #endif
-		strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", &timeinfo);
+		strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", timeinfo);
+		delete timeinfo;
 		std::stringstream ss;
 		ss << "Screenshots/" << tmp << ".bmp";
 		saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
