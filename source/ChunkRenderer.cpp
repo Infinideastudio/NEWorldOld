@@ -13,7 +13,7 @@ namespace ChunkRenderer {
 		else if (p.direction == 3) face = 3;
 		else face = 2;
 #ifdef NERDMODE1
-		Renderer::TexCoord3d(0.0, 0.0, (Textures::getTextureIndex(p.block, face) - 0.5) / 64.0);
+		Renderer::TexCoord3d(0.0, 0.0, (Textures::getTextureIndex(p.block, face) + 0.5) / 64.0);
 		if (p.direction == 0) {
 			if (p.block != Blocks::GLOWSTONE && !Renderer::AdvancedRender) color *= 0.7;
 			Renderer::Color3d(color, color, color);
