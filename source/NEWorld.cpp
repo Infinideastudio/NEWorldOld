@@ -454,8 +454,8 @@ bool loadGame(){
 
 bool isPressed(int key, bool setFalse = false) {
 	static bool keyPressed[GLFW_KEY_LAST + 1];
-	if (setFalse) { keyPressed[key] = false; return true; }
 	if (key > GLFW_KEY_LAST || key <= 0) return false;
+	if (setFalse) { keyPressed[key] = false; return true; }
 	if (!glfwGetKey(MainWindow, key)) keyPressed[key] = false;
 	if (!keyPressed[key] && glfwGetKey(MainWindow, key)) {
 		keyPressed[key] = true;
@@ -527,6 +527,8 @@ void updategame(){
 	//Time_updategame_ = timer();
 	static double Wprstm;
 	static bool WP;
+	static int commandAutoComplete = -1;
+	static string preText;
 	//static double mxl, myl;
 	//glfwGetCursorPos(MainWindow, &mx, &my);
 	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
@@ -687,7 +689,7 @@ void updategame(){
 						World::pickblock(x, y, z);
 					}
 				}
-				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB))) { //鼠标右键
+				if (((mb == 2 && mbp == false) || (!chatmode&&isPressed(GLFW_KEY_TAB)))) { //鼠标右键
 					if (Player::inventoryAmount[3][Player::indexInHand] > 0 && isBlock(Player::inventory[3][Player::indexInHand])) {
 						//放置方块
 						if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
@@ -868,8 +870,9 @@ void updategame(){
 			if (isPressed(GLFW_KEY_SLASH)) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
 		}
 		
-		if (isPressed(GLFW_KEY_ENTER) == GLFW_PRESS) {
+		if ((isPressed(GLFW_KEY_C) &&!chatmode)||(isPressed(GLFW_KEY_ENTER)&&chatmode)) {
 			chatmode = !chatmode;
+			if (glfwGetKey(MainWindow, GLFW_KEY_C) == GLFW_PRESS) inputstr = ""; //防止输入了c
 			if (chatword != "") { //指令的执行，或发出聊天文本
 				if (chatword.substr(0, 1) == "/") { //指令
 					vector<string> command = split(chatword, " ");
@@ -878,10 +881,12 @@ void updategame(){
 					}
 				}
 				else {
-
+					//普通聊天文本
 				}
 			}
 			chatword = "";
+			commandAutoComplete = -1;
+			preText = "";
 		}
 		if (chatmode) {
 			if (isPressed(GLFW_KEY_BACKSPACE) && chatword.length()>0) {
@@ -890,16 +895,27 @@ void updategame(){
 					chatword = chatword.substr(0, chatword.length() - 1);
 				else
 					chatword = chatword.substr(0, chatword.length() - 2);
+				commandAutoComplete = -1; preText = "";
 			}
 			else {
 				chatword += inputstr;
 			}
+			if (!inputstr.empty()) { commandAutoComplete = -1; preText = ""; }
 			//自动补全
 			if (isPressed(GLFW_KEY_TAB) && chatmode && chatword.size() > 0 && chatword.substr(0, 1) == "/") {
-				for (unsigned int i = 0; i != commands.size(); i++) {
-					if (beginWith(commands[i].identifier, chatword)) {
-						chatword = commands[i].identifier;
+				bool found = false;
+				for (int n = 0; n < 2; n++) {
+					for (int i = 0; i != commands.size(); i++) {
+						if (beginWith(commands[i].identifier, preText == "" ? chatword : preText) && i > commandAutoComplete) {
+							if(preText=="") preText = chatword;
+							chatword = commands[i].identifier;
+							commandAutoComplete = i;
+							found = true;
+							break;
+						}
 					}
+					if (found) break;
+					else commandAutoComplete = -1;
 				}
 			}
 		}
@@ -928,7 +944,7 @@ void updategame(){
 	//跳跃
 	if (!Player::glidingNow) {
 		if (!Player::inWater) {
-			if (!Player::Flying && !Player::CrossWall && !glfwGetKey(MainWindow, GLFW_KEY_R) && !glfwGetKey(MainWindow, GLFW_KEY_F)) {
+			if (!Player::Flying && !Player::CrossWall) {
 				Player::ya = -0.001;
 				if (Player::OnGround) {
 					Player::jump = 0.0;
