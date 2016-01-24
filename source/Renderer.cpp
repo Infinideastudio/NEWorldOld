@@ -47,7 +47,7 @@ namespace Renderer {
 	float sunlightXrot, sunlightYrot;
 	GLhandleARB shaders[16];
 	GLhandleARB shaderPrograms[16];
-	int shadercount = 0, ActiveShader = -1;
+	int shadercount = 0;
 	int index = 0, size = 0;
 	unsigned int ShadowFBO, DepthTexture;
 	unsigned int ShaderAttribLoc;
@@ -136,20 +136,20 @@ namespace Renderer {
 		/**/																								/**/
 		/**/																								/**/
 		//====================================================================================================//
-
 	}
 
 	void initShaders() {
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
+		shadowdist = min(MaxShadowDist, viewdistance);
 
 		shadercount = 3;
 		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
 		shaders[1] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB);
 		shaders[2] = loadShader("Shaders/Shadow.vsh", GL_VERTEX_SHADER_ARB);
 		shaders[3] = loadShader("Shaders/Shadow.fsh", GL_FRAGMENT_SHADER_ARB);
-		shaders[4] = loadShader("Shaders/RenderShadowMap.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[5] = loadShader("Shaders/RenderShadowMap.fsh", GL_FRAGMENT_SHADER_ARB);
+		shaders[4] = loadShader("Shaders/Depth.vsh", GL_VERTEX_SHADER_ARB);
+		shaders[5] = loadShader("Shaders/Depth.fsh", GL_FRAGMENT_SHADER_ARB);
 		for (int i = 0; i != shadercount; i++) {
 			shaderPrograms[i] = glCreateProgramObjectARB();
 			glAttachObjectARB(shaderPrograms[i], shaders[i * 2]);
@@ -183,6 +183,7 @@ namespace Renderer {
 		glUseProgramObjectARB(shaderPrograms[0]);
 		glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "Tex"), 0);
 		glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "DepthTex"), 1);
+		//glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "Tex3D"), 0);
 		ShaderAttribLoc = glGetAttribLocationARB(shaderPrograms[0], "VertexAttrib");
 		glUseProgramObjectARB(0);
 		
@@ -245,10 +246,9 @@ namespace Renderer {
 
 	void EnableShaders() {
 		shadowdist = min(MaxShadowDist, viewdistance);
-		ActiveShader = 0;
 
 		//Enable shader
-		glUseProgramObjectARB(shaderPrograms[ActiveShader]);
+		glUseProgramObjectARB(shaderPrograms[0]);
 
 		//Calc matrix
 		float scale = 16.0f * sqrt(3.0f);
@@ -260,10 +260,11 @@ namespace Renderer {
 		frus.MultRotate(sunlightYrot, 0.0f, 1.0f, 0.0f);
 
 		//Set uniform
-		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "renderdist"), viewdistance * 16.0f);
-		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_proj"), 1, GL_FALSE, frus.getProjMatrix());
-		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_modl"), 1, GL_FALSE, frus.getModlMatrix());
-
+		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance * 16.0f);
+		//glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "MergeFace"), MergeFace);
+		//glUniform4fARB(glGetUniformLocationARB(shaderPrograms[0], "SkyColor"), skycolorR, skycolorG, skycolorB, 1.0f);
+		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[0], "Depth_proj"), 1, GL_FALSE, frus.getProjMatrix());
+		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[0], "Depth_modl"), 1, GL_FALSE, frus.getModlMatrix());
 		//Enable arrays for additional vertex attributes
 		glEnableVertexAttribArrayARB(ShaderAttribLoc);
 	}
@@ -279,7 +280,6 @@ namespace Renderer {
 	void StartShadowPass() {
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, ShadowFBO);
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
-		ActiveShader = 1;
 		glUseProgramObjectARB(shaderPrograms[1]);
 		glViewport(0, 0, ShadowRes, ShadowRes);
 	}
@@ -288,7 +288,6 @@ namespace Renderer {
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		glDrawBuffer(GL_BACK); glReadBuffer(GL_BACK);
-		ActiveShader = -1;
 		glUseProgramObjectARB(0);
 		glViewport(0, 0, windowwidth, windowheight);
 	}

@@ -116,7 +116,8 @@ namespace World {
 
 		//Part2 out of geomentry area
 		HMapManager cur = HMapManager(cx, cz);
-		if (cy > cur.high) {Empty = true;
+		if (cy > cur.high) {
+			Empty = true;
 			if (!initIfEmpty) return;
 			memset(pblocks, 0, 4096 * sizeof(block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
@@ -131,8 +132,8 @@ namespace World {
 
 		//Normal Calc
 		//Init
-		memset(pblocks, 0, 4096 * sizeof(block));//Empty the chunk
-		memset(pbrightness, 0, 4096 * sizeof(brightness));//Set All Brightness to 0
+		memset(pblocks, 0, 4096 * sizeof(block)); //Empty the chunk
+		memset(pbrightness, 0, 4096 * sizeof(brightness)); //Set All Brightness to 0
 
 		int x, z, h = 0, sh = 0, wh = 0;
 		int minh, maxh, cur_br;
