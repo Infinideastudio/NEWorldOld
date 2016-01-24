@@ -18,7 +18,6 @@ namespace Renderer{
 	extern unsigned int DepthTexture;
 	extern GLhandleARB shaders[16];
 	extern GLhandleARB shaderPrograms[16];
-	extern int ActiveShader;
 
 	void Init(int tc, int cc, int ac = 0);
 	void Vertex3f(float x, float y, float z);

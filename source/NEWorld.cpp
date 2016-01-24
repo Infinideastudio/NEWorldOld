@@ -204,10 +204,10 @@ main_menu:
 			MutexDestroy(Mutex);
 			saveGame();
 			World::destroyAllChunks();
-			printf("[Console][Game]");
-			printf("Threads terminated\n");
-			printf("[Console][Game]");
-			printf("Returned to main menu\n");
+			//printf("[Console][Game]");
+			//printf("Threads terminated\n");
+			//printf("[Console][Game]");
+			//printf("Returned to main menu\n");
 			if (multiplayer) Network::cleanUp();
 			goto main_menu;
 		}
@@ -857,10 +857,13 @@ void updategame(){
 				DebugHitbox = !DebugHitbox;
 				DebugMode = true;
 			}
-			if (isPressed(GLFW_KEY_M) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
-				DebugShadow = !DebugShadow;
-				DebugMode = true;
+			if (Renderer::AdvancedRender) {
+				if (isPressed(GLFW_KEY_M) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
+					DebugShadow = !DebugShadow;
+					DebugMode = true;
+				}
 			}
+			else DebugShadow = false;
 			if (isPressed(GLFW_KEY_F4)) Player::CrossWall = !Player::CrossWall;
 			if (isPressed(GLFW_KEY_F5)) GUIrenderswitch = !GUIrenderswitch;
 			if (isPressed(GLFW_KEY_F6)) Player::Glide = !Player::Glide;
@@ -1101,14 +1104,15 @@ void Render() {
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-
+	
 	if (Renderer::AdvancedRender) {
 		//Build shadow map
-		ShadowMaps::BuildShadowMap(xpos, ypos, zpos, curtime);
+		if (!DebugShadow) ShadowMaps::BuildShadowMap(xpos, ypos, zpos, curtime);
+		else ShadowMaps::RenderShadowMap(xpos, ypos, zpos, curtime);
 	}
 
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	if (!DebugShadow) glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_TEXTURE_2D);
 
 	Player::ViewFrustum.LoadIdentity();
@@ -1143,13 +1147,14 @@ void Render() {
 	glEnableClientState(GL_VERTEX_ARRAY);
 
 	if (Renderer::AdvancedRender) Renderer::EnableShaders();
-	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
+	if (!DebugShadow) WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
 	if (Renderer::AdvancedRender) Renderer::DisableShaders();
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
+
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_3D);
 		glEnable(GL_TEXTURE_2D);
@@ -1194,9 +1199,9 @@ void Render() {
 	}
 	else glBindTexture(GL_TEXTURE_2D, BlockTextures);
 
-	WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
+	if (!DebugShadow) WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
 	glDisable(GL_CULL_FACE);
-	WorldRenderer::RenderChunks(xpos, ypos, zpos, 2);
+	if (!DebugShadow) WorldRenderer::RenderChunks(xpos, ypos, zpos, 2);
 	if (Renderer::AdvancedRender) Renderer::DisableShaders();
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
@@ -1521,6 +1526,10 @@ void drawGUI(){
 		debugText(ss.str()); ss.str("");
 		ss << "Debug Mode:" << boolstr(DebugMode);
 		debugText(ss.str()); ss.str("");
+		if (Renderer::AdvancedRender) {
+			ss << "Shadow View:" << boolstr(DebugShadow);
+			debugText(ss.str()); ss.str("");
+		}
 		ss << "Cross Wall:" << boolstr(Player::CrossWall);
 		debugText(ss.str()); ss.str("");
 		ss << "Gliding Enabled:" << boolstr(Player::Glide);
