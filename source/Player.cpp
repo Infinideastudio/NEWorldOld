@@ -18,6 +18,7 @@ item Player::BlockInHand = Blocks::AIR;
 ubyte Player::indexInHand = 0;
 
 Hitbox::AABB Player::playerbox;
+vector<Hitbox::AABB> Player::Hitboxes;
 
 double Player::xa, Player::ya, Player::za, Player::xd, Player::yd, Player::zd;
 double Player::health = 20, Player::healthMax = 20, Player::healSpeed = 0.01, Player::dropDamagePerBlock = 0.5;
@@ -42,8 +43,8 @@ double Player::glidingEnergy, Player::glidingSpeed;
 void InitHitbox(Hitbox::AABB& playerbox) {
 	playerbox.xmin = -0.3;
 	playerbox.xmax = 0.3;
-	playerbox.ymin = -0.8;
-	playerbox.ymax = 0.8;
+	playerbox.ymin = -0.85;
+	playerbox.ymax = 0.85;
 	playerbox.zmin = -0.3;
 	playerbox.zmax = 0.3;
 }
@@ -108,9 +109,7 @@ void Player::updatePosition() {
 
 	inWater = World::inWater(playerbox);
 	if (!Flying && !CrossWall && inWater) {
-		xa *= 0.6;
-		ya *= 0.6;
-		za *= 0.6;
+		xa *= 0.6; ya *= 0.6; za *= 0.6;
 	}
 
 	double xal = xa;
@@ -118,7 +117,8 @@ void Player::updatePosition() {
 	double zal = za;
 	static double ydam = 0;
 	if (!CrossWall) {
-		vector<Hitbox::AABB> Hitboxes = World::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
+		Hitboxes.clear();
+		Hitboxes = World::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
 		int num = Hitboxes.size();
 		if (num > 0) {
 			for (int i = 0; i < num; i++) {
@@ -134,48 +134,34 @@ void Player::updatePosition() {
 			}
 			Hitbox::Move(playerbox, 0.0, 0.0, za);
 		}
-		if (!Flying) {
-			if (ypos + ya > ydam) ydam = ypos + ya;
-		}
-		if (ya != yal && yal < 0.0) {
-			OnGround = true;
-			Player::glidingEnergy = 0;
-			Player::glidingSpeed = 0;
-			Player::glidingNow = false;
-			if (ydam - (ypos + ya) > 0) {
-				Player::health -= (ydam - (ypos + ya)) * Player::dropDamagePerBlock;
-				ydam = 0;
-			}
-		}
-		else OnGround = false;
-		if (ya != yal && yal>0.0) jump = 0.0;
-		if (xa != xal || za != zal) NearWall = true; else NearWall = false;
-		xd = xa; yd = ya; zd = za;
-		xpos += xa; ypos += ya; zpos += za;
-		xa *= 0.8;
-		za *= 0.8;
-		if (OnGround) {
-			xa *= 0.7;
-			za *= 0.7;
-		}
-		if (Flying) ya *= 0.8;
 	}
-	else {
-		xpos += xa;
-		ypos += ya;
-		zpos += za;
-
-		xa *= 0.8;
-		ya *= 0.8;
-		za *= 0.8;
+	if (!Flying && !CrossWall) {
+		if (ypos + ya > ydam) ydam = ypos + ya;
 	}
+	if (ya != yal && yal < 0.0) {
+		OnGround = true;
+		Player::glidingEnergy = 0;
+		Player::glidingSpeed = 0;
+		Player::glidingNow = false;
+		if (ydam - (ypos + ya) > 0) {
+			Player::health -= (ydam - (ypos + ya)) * Player::dropDamagePerBlock;
+			ydam = 0;
+		}
+	}
+	else OnGround = false;
+	if (ya != yal && yal > 0.0) jump = 0.0;
+	if (xa != xal || za != zal) NearWall = true; else NearWall = false;
+	xd = xa; yd = ya; zd = za;
+	xpos += xa; ypos += ya; zpos += za;
+	xa *= 0.8; za *= 0.8;
+	if (OnGround) {
+		xa *= 0.7; za *= 0.7;
+	}
+	if (Flying || CrossWall) ya *= 0.8;
+	updateHitbox();
 
 	cxtl = cxt; cytl = cyt; cztl = czt;
-	cxt = getchunkpos((int)xpos);
-	cyt = getchunkpos((int)ypos);
-	czt = getchunkpos((int)zpos);
-
-	updateHitbox();
+	cxt = getchunkpos((int)xpos); cyt = getchunkpos((int)ypos); czt = getchunkpos((int)zpos);
 }
 
 bool Player::putBlock(int x, int y, int z, block blockname) {

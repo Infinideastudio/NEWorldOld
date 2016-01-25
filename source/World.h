@@ -76,7 +76,7 @@ namespace World {
 	block getblock(int x, int y, int z, block mask = Blocks::AIR, chunk* cptr = nullptr);
 	brightness getbrightness(int x, int y, int z, chunk* cptr = nullptr);
 	void setblock(int x, int y, int z, block Block, chunk* cptr = nullptr);
-	void setbrightness(int x, int y, int z, brightness Brightness);
+	void setbrightness(int x, int y, int z, brightness Brightness, chunk* cptr = nullptr);
 	inline void putblock(int x, int y, int z, block Block) { setblock(x, y, z, Block); }
 	inline void pickblock(int x, int y, int z) { setblock(x, y, z, Blocks::AIR); }
 
