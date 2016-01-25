@@ -76,10 +76,10 @@ void Player::init(double x, double y, double z) {
 }
 
 void Player::spawn() {
-	xpos = 0;
-	ypos = 60;
-	zpos = 0;
-	jump = 0;
+	xpos = 0.0;
+	ypos = 60.0;
+	zpos = 0.0;
+	jump = 0.0;
 	InitHitbox(Player::playerbox);
 	InitPosition();
 	updateHitbox();
@@ -111,11 +111,9 @@ void Player::updatePosition() {
 	if (!Flying && !CrossWall && inWater) {
 		xa *= 0.6; ya *= 0.6; za *= 0.6;
 	}
-
-	double xal = xa;
-	double yal = ya;
-	double zal = za;
+	double xal = xa, yal = ya, zal = za;
 	static double ydam = 0;
+
 	if (!CrossWall) {
 		Hitboxes.clear();
 		Hitboxes = World::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
@@ -154,9 +152,7 @@ void Player::updatePosition() {
 	xd = xa; yd = ya; zd = za;
 	xpos += xa; ypos += ya; zpos += za;
 	xa *= 0.8; za *= 0.8;
-	if (OnGround) {
-		xa *= 0.7; za *= 0.7;
-	}
+	if (OnGround) xa *= 0.7, za *= 0.7;
 	if (Flying || CrossWall) ya *= 0.8;
 	updateHitbox();
 
@@ -167,13 +163,11 @@ void Player::updatePosition() {
 bool Player::putBlock(int x, int y, int z, block blockname) {
 	Hitbox::AABB blockbox;
 	bool success = false;
-	blockbox.xmin = x - 0.5;
-	blockbox.xmax = x + 0.5;
-	blockbox.ymin = y - 0.5;
-	blockbox.ymax = y + 0.5;
-	blockbox.zmin = z - 0.5;
-	blockbox.zmax = z + 0.5;
-	if (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall || BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(x, y, z)).isSolid() == false) {
+	blockbox.xmin = x - 0.5; blockbox.ymin = y - 0.5; blockbox.zmin = z - 0.5;
+	blockbox.xmax = x + 0.5; blockbox.ymax = y + 0.5; blockbox.zmax = z + 0.5;
+	int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
+	if (!World::chunkOutOfBound(cz, cy, cz) && (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall ||
+		BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(x, y, z)).isSolid() == false)) {
 		World::putblock(x, y, z, blockname);
 		success = true;
 	}
@@ -233,7 +227,7 @@ bool Player::load(string worldn) {
 	return true;
 }
 
-void Player::addItem(item itemname, short amount) {
+bool Player::addItem(item itemname, short amount) {
 	//向背包里加入物品
 	const int InvMaxStack = 255;
 	for (int i = 3; i >= 0; i--) {
@@ -242,19 +236,23 @@ void Player::addItem(item itemname, short amount) {
 				//找到一个同类格子
 				if (amount + inventoryAmount[i][j] <= InvMaxStack) {
 					inventoryAmount[i][j] += amount;
-					return;
+					return true;
 				}
 				else {
 					amount -= InvMaxStack - inventoryAmount[i][j];
 					inventoryAmount[i][j] = InvMaxStack;
 				}
 			}
-			else if (inventory[i][j] == Blocks::AIR) {
+		}
+	}
+	for (int i = 3; i >= 0; i--) {
+		for (int j = 0; j != 10; j++) {
+			if (inventory[i][j] == Blocks::AIR) {
 				//找到一个空白格子
 				inventory[i][j] = itemname;
 				if (amount <= InvMaxStack) {
 					inventoryAmount[i][j] = amount;
-					return;
+					return true;
 				}
 				else {
 					inventoryAmount[i][j] = InvMaxStack;
@@ -263,6 +261,7 @@ void Player::addItem(item itemname, short amount) {
 			}
 		}
 	}
+	return false;
 }
 
 PlayerPacket Player::convertToPlayerPacket()

@@ -19,7 +19,7 @@ public:
 	static bool save(string worldn);
 	static bool load(string worldn);
 
-	static void addItem(item itemname, short amount = 1);
+	static bool addItem(item itemname, short amount = 1);
 	static bool putBlock(int x, int y, int z, block blockname);
 
 	static PlayerPacket convertToPlayerPacket();
