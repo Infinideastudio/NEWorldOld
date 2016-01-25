@@ -24,6 +24,7 @@ public:
 
 	static PlayerPacket convertToPlayerPacket();
 	static Hitbox::AABB playerbox;
+	static vector<Hitbox::AABB> Hitboxes;
 	static double xa, ya, za, xd, yd, zd;
 	static double health, healthMax, healSpeed, dropDamagePerBlock;
 	static onlineid onlineID;

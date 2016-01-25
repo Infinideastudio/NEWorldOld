@@ -448,26 +448,21 @@ namespace World {
 		//返回与box相交的所有方块AABB
 
 		Hitbox::AABB blockbox;
-		vector<Hitbox::AABB> hitBoxes;
+		vector<Hitbox::AABB> Hitboxes;
 
 		for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++) {
 			for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++) {
 				for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++) {
 					if (BlockInfo(getblock(a, b, c)).isSolid()) {
-						blockbox.xmin = a - 0.5;
-						blockbox.xmax = a + 0.5;
-						blockbox.ymin = b - 0.5;
-						blockbox.ymax = b + 0.5;
-						blockbox.zmin = c - 0.5;
-						blockbox.zmax = c + 0.5;
-						if (Hitbox::Hit(box, blockbox)) {
-							hitBoxes.push_back(blockbox);
-						}
+						blockbox.xmin = a - 0.5; blockbox.xmax = a + 0.5;
+						blockbox.ymin = b - 0.5; blockbox.ymax = b + 0.5;
+						blockbox.zmin = c - 0.5; blockbox.zmax = c + 0.5;
+						if (Hitbox::Hit(box, blockbox)) Hitboxes.push_back(blockbox);
 					}
 				}
 			}
 		}
-		return hitBoxes;
+		return Hitboxes;
 	}
 
 	bool inWater(const Hitbox::AABB& box) {
@@ -599,12 +594,10 @@ namespace World {
 	}
 
 	block getblock(int x, int y, int z, block mask, chunk* cptr) {
-		//获取XYZ的方块
-		int cx, cy, cz;
-		cx = getchunkpos(x); cy = getchunkpos(y); cz = getchunkpos(z);
-		if (chunkOutOfBound(cx, cy, cz))return Blocks::AIR;
-		int bx, by, bz;
-		bx = getblockpos(x); by = getblockpos(y); bz = getblockpos(z);
+		//获取方块
+		int	cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
+		if (chunkOutOfBound(cx, cy, cz)) return Blocks::AIR;
+		int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
 		if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
 			return cptr->getblock(bx, by, bz);
 		}
@@ -615,15 +608,10 @@ namespace World {
 	}
 
 	brightness getbrightness(int x, int y, int z, chunk* cptr) {
-		//获取XYZ的亮度
-
-		int	cx = getchunkpos(x);
-		int cy = getchunkpos(y);
-		int cz = getchunkpos(z);
-		if (chunkOutOfBound(cx, cy, cz)) { return skylight; }
-		int bx = getblockpos(x);
-		int by = getblockpos(y);
-		int bz = getblockpos(z);
+		//获取亮度
+		int	cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
+		if (chunkOutOfBound(cx, cy, cz)) return skylight;
+		int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
 		if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
 			return cptr->getbrightness(bx, by, bz);
 		}
@@ -634,17 +622,12 @@ namespace World {
 	}
 
 	void setblock(int x, int y, int z, block Blockname, chunk* cptr) {
-
 		//设置方块
+		int	cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
+		int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
 
-		int cx = getchunkpos(x);
-		int cy = getchunkpos(y);
-		int cz = getchunkpos(z);
-
-		int bx = getblockpos(x);
-		int by = getblockpos(y);
-		int bz = getblockpos(z);
-		if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
+		if (cptr != nullptr && cptr != EmptyChunkPtr &&
+			cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
 			cptr->setblock(bx, by, bz, Blockname);
 		}
 		if (!chunkOutOfBound(cx, cy, cz)) {
@@ -655,26 +638,22 @@ namespace World {
 				cp->Empty = false;
 				i = cp;
 			}
-			if (i != nullptr) {
+			if (i != nullptr && i != EmptyChunkPtr) {
 				i->setblock(bx, by, bz, Blockname);
 				updateblock(x, y, z, true);
 			}
 		}
-
 	}
 
-	void setbrightness(int x, int y, int z, brightness Brightness) {
+	void setbrightness(int x, int y, int z, brightness Brightness, chunk* cptr) {
+		//设置亮度
+		int	cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
+		int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
 
-		//设置XYZ的亮度
-
-		int cx = getchunkpos(x);
-		int cy = getchunkpos(y);
-		int cz = getchunkpos(z);
-
-		int bx = getblockpos(x);
-		int by = getblockpos(y);
-		int bz = getblockpos(z);
-
+		if (cptr != nullptr && cptr != EmptyChunkPtr &&
+			cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
+			cptr->setbrightness(bx, by, bz, Brightness);
+		}
 		if (!chunkOutOfBound(cx, cy, cz)) {
 			chunk* i = getChunkPtr(cx, cy, cz);
 			if (i == EmptyChunkPtr) {
@@ -683,17 +662,15 @@ namespace World {
 				cp->Empty = false;
 				i = cp;
 			}
-			if (i != nullptr) {
+			if (i != nullptr && i != EmptyChunkPtr) {
 				i->setbrightness(bx, by, bz, Brightness);
 			}
 		}
-
 	}
 	
 	bool chunkUpdated(int x, int y, int z) {
 		chunk* i = getChunkPtr(x, y, z);
-		if (i == EmptyChunkPtr) return false;
-
+		if (i == nullptr || i == EmptyChunkPtr) return false;
 		return i->updated;
 	}
 

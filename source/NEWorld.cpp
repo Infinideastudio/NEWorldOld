@@ -527,23 +527,20 @@ void updategame(){
 	//Time_updategame_ = timer();
 	static double Wprstm;
 	static bool WP;
-	//static double mxl, myl;
-	//glfwGetCursorPos(MainWindow, &mx, &my);
+	
 	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 	//生命值相关
 	if (Player::health > 0) {
 		if (Player::health < Player::healthMax) Player::health += Player::healSpeed;
 		if (Player::health > Player::healthMax) Player::health = Player::healthMax;
 	}
-	else {
-		Player::health = 1;
-	}
+	else Player::health = 1;
 
 	//World::unloadedChunks=0
 	World::rebuiltChunks = 0;
 	World::updatedChunks = 0;
 
-	//ciArray move
+	//cpArray move
 	if (World::cpArray.originX != Player::cxt - viewdistance - 2 || World::cpArray.originY != Player::cyt - viewdistance - 2 || World::cpArray.originZ != Player::czt - viewdistance - 2){
 		World::cpArray.moveTo(Player::cxt - viewdistance - 2, Player::cyt - viewdistance - 2, Player::czt - viewdistance - 2);
 	}
@@ -588,10 +585,8 @@ void updategame(){
 	//加载动画
 	for (int i = 0; i < World::loadedChunks; i++){
 		World::chunk* cp = World::chunks[i];
-		if (cp->loadAnim <= 0.3f)
-			cp->loadAnim = 0.0f;
-		else
-			cp->loadAnim *= 0.6f;
+		if (cp->loadAnim <= 0.3f) cp->loadAnim = 0.0f;
+		else cp->loadAnim *= 0.6f;
 	}
 
 	//随机状态更新
@@ -768,7 +763,7 @@ void updategame(){
 				Wprstm = 0.0;
 			}
 
-			if (!Player::Flying) {
+			if (!Player::Flying && !Player::CrossWall) {
 				double horizontalSpeed = sqrt(Player::xa*Player::xa + Player::za*Player::za);
 				if (horizontalSpeed > Player::speed && !Player::glidingNow) {
 					Player::xa *= Player::speed / horizontalSpeed;
@@ -931,7 +926,7 @@ void updategame(){
 	//跳跃
 	if (!Player::glidingNow) {
 		if (!Player::inWater) {
-			if (!Player::Flying && !Player::CrossWall && !glfwGetKey(MainWindow, GLFW_KEY_R) && !glfwGetKey(MainWindow, GLFW_KEY_F)) {
+			if (!Player::Flying && !Player::CrossWall) {
 				Player::ya = -0.001;
 				if (Player::OnGround) {
 					Player::jump = 0.0;
@@ -941,7 +936,7 @@ void updategame(){
 				else {
 					//自由落体计算
 					Player::jump -= 0.025;
-					Player::ya = Player::jump + 0.5 * 0.6 * 1 / 900;
+					Player::ya = Player::jump + 0.5 * 0.6 / 900.0;
 				}
 			}
 			else {
@@ -980,7 +975,8 @@ void updategame(){
 
 	mbp = mb;
 	FirstFrameThisUpdate = true;
-	
+	Particles::updateall();
+
 	Player::intxpos = RoundInt(Player::xpos);
 	Player::intypos = RoundInt(Player::ypos);
 	Player::intzpos = RoundInt(Player::zpos);
@@ -991,7 +987,6 @@ void updategame(){
 	Player::intxposold = RoundInt(Player::xpos);
 	Player::intyposold = RoundInt(Player::ypos);
 	Player::intzposold = RoundInt(Player::zpos);
-	Particles::updateall();
 
 	//	Time_updategame += timer() - Time_updategame;
 
@@ -1217,10 +1212,27 @@ void Render() {
 	glRotated(plookupdown, 1, 0, 0);
 	glRotated(360.0 - pheading, 0, 1, 0);
 	glTranslated(-xpos, -ypos, -zpos);
-	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_CULL_FACE);
-
+	
 	MutexLock(Mutex);
+
+	if (DebugHitbox) {
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_TEXTURE_2D);
+		for (unsigned int i = 0; i < Player::Hitboxes.size(); i++) {
+			Hitbox::renderAABB(Player::Hitboxes[i], GUI::FgR, GUI::FgG, GUI::FgB, 3, 0.002);
+		}
+
+		glLoadIdentity();
+		glRotated(plookupdown, 1, 0, 0);
+		glRotated(360.0 - pheading, 0, 1, 0);
+		glTranslated(-Player::xpos, -Player::ypos - Player::height - Player::heightExt, -Player::zpos);
+
+		Hitbox::renderAABB(Player::playerbox, 1.0f, 1.0f, 1.0f, 1);
+		Hitbox::renderAABB(Hitbox::Expand(Player::playerbox, Player::xd, Player::yd, Player::zd), 1.0f, 1.0f, 1.0f, 1);
+	}
+
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_TEXTURE_2D);
 
 	//Time_renderscene = timer() - Time_renderscene;
 	//Time_renderGUI_ = timer();
@@ -1516,7 +1528,7 @@ void drawGUI(){
 
 	if (DebugMode) {
 		std::stringstream ss;
-		ss << std::fixed << std::setprecision(4);
+		//ss << std::fixed << std::setprecision(4);
 		ss << "NEWorld v" << VERSION << " [OpenGL " << GLVersionMajor << "." << GLVersionMinor << "|" << GLVersionRev << "]";
 		debugText(ss.str()); ss.str("");
 		ss << "Fps:" << fps << "|" << "Ups:" << ups;
@@ -1540,6 +1552,10 @@ void drawGUI(){
 		ss << "Ypos:" << Player::ypos;
 		debugText(ss.str()); ss.str("");
 		ss << "Zpos:" << Player::zpos;
+		debugText(ss.str()); ss.str("");
+		ss << "Yadd:" << Player::ya;
+		debugText(ss.str()); ss.str("");
+		ss << "Ydel:" << Player::yd;
 		debugText(ss.str()); ss.str("");
 		ss << "Direction:" << Player::heading;
 		debugText(ss.str()); ss.str("");
