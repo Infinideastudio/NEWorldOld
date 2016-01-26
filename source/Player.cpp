@@ -106,7 +106,6 @@ void Player::spawn() {
 }
 
 void Player::updatePosition() {
-
 	inWater = World::inWater(playerbox);
 	if (!Flying && !CrossWall && inWater) {
 		xa *= 0.6; ya *= 0.6; za *= 0.6;
@@ -149,13 +148,19 @@ void Player::updatePosition() {
 	else OnGround = false;
 	if (ya != yal && yal > 0.0) jump = 0.0;
 	if (xa != xal || za != zal) NearWall = true; else NearWall = false;
+
+	//消除浮点数精度带来的影响（查了好久的穿墙bug才发现是在这里有问题(╯‵□′)╯︵┻━┻）
+	xa = (double)((int)(xa * 100000)) / 100000.0;
+	ya = (double)((int)(ya * 100000)) / 100000.0;
+	za = (double)((int)(za * 100000)) / 100000.0;
+	
 	xd = xa; yd = ya; zd = za;
 	xpos += xa; ypos += ya; zpos += za;
 	xa *= 0.8; za *= 0.8;
-	if (OnGround) xa *= 0.7, za *= 0.7;
 	if (Flying || CrossWall) ya *= 0.8;
+	if (OnGround) xa *= 0.7, ya = 0.0, za *= 0.7;
 	updateHitbox();
-
+	
 	cxtl = cxt; cytl = cyt; cztl = czt;
 	cxt = getchunkpos((int)xpos); cyt = getchunkpos((int)ypos); czt = getchunkpos((int)zpos);
 }
@@ -166,7 +171,7 @@ bool Player::putBlock(int x, int y, int z, block blockname) {
 	blockbox.xmin = x - 0.5; blockbox.ymin = y - 0.5; blockbox.zmin = z - 0.5;
 	blockbox.xmax = x + 0.5; blockbox.ymax = y + 0.5; blockbox.zmax = z + 0.5;
 	int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
-	if (!World::chunkOutOfBound(cz, cy, cz) && (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall ||
+	if (!World::chunkOutOfBound(cx, cy, cz) && (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall ||
 		BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(x, y, z)).isSolid() == false)) {
 		World::putblock(x, y, z, blockname);
 		success = true;

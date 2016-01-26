@@ -281,8 +281,8 @@ ThreadFunc updateThreadFunc(void*){
 }
 
 void WindowSizeFunc(GLFWwindow* win, int width, int height) {
-	if (width<650) width = 650;
-	if (height<400) height = 400;
+	if (width<640) width = 640;
+	if (height<360) height = 360;
 	windowwidth = width;
 	windowheight = height > 0 ? height : 1;
 	glfwSetWindowSize(win, width, height);
@@ -527,6 +527,7 @@ void updategame(){
 	//Time_updategame_ = timer();
 	static double Wprstm;
 	static bool WP;
+	bool chunkupdated = false;
 	
 	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 	//生命值相关
