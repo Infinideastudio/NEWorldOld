@@ -33,6 +33,7 @@ namespace Hitbox{
 		if (!(inYclip(boxA, boxB) && inZclip(boxA, boxB))) return movedist;
 		else if (boxA.xmin >= boxB.xmax && movedist < 0.0) return max(boxB.xmax - boxA.xmin, movedist);
 		else if (boxA.xmax <= boxB.xmin && movedist > 0.0) return min(boxB.xmin - boxA.xmax, movedist);
+		//assert(false);
 		return !stuck ? movedist : 0.0;
 	}
 
@@ -41,6 +42,7 @@ namespace Hitbox{
 		if (!(inXclip(boxA, boxB) && inZclip(boxA, boxB))) return movedist;
 		else if (boxA.ymin >= boxB.ymax && movedist < 0.0) return max(boxB.ymax - boxA.ymin, movedist);
 		else if (boxA.ymax <= boxB.ymin && movedist > 0.0) return min(boxB.ymin - boxA.ymax, movedist);
+		//assert(false);
 		return !stuck ? movedist : 0.0;
 	}
 
@@ -49,6 +51,7 @@ namespace Hitbox{
 		if (!(inXclip(boxA, boxB) && inYclip(boxA, boxB))) return movedist;
 		else if (boxA.zmin >= boxB.zmax && movedist < 0.0) return max(boxB.zmax - boxA.zmin, movedist);
 		else if (boxA.zmax <= boxB.zmin && movedist > 0.0) return min(boxB.zmin - boxA.zmax, movedist);
+		//assert(false);
 		return !stuck ? movedist : 0.0;
 	}
 
