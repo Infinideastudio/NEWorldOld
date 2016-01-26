@@ -185,7 +185,6 @@
     <ClInclude Include="source\WorldRenderer.h">
       <Filter>源代码\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="source\Hitbox.h" />
     <ClInclude Include="source\Hitbox.h">
       <Filter>源代码\Game\Hitbox</Filter>
     </ClInclude>
@@ -194,6 +193,9 @@
     </ClInclude>
     <ClInclude Include="source\GLProc.h">
       <Filter>源代码\Common\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Hitbox.h">
+      <Filter>源代码\Game\Hitbox</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
