@@ -14,7 +14,7 @@ namespace World {
 	unsigned int EmptyBuffer;
 	int MaxChunkLoads = 64;
 	int MaxChunkUnloads = 64;
-	int MaxChunkRenders = 1;
+	int MaxChunkRenders = 2;
 
 	chunk** chunks;
 	int loadedChunks, chunkArraySize;

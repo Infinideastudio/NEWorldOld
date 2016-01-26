@@ -9,6 +9,10 @@ namespace ChunkRenderer {
 	void RenderDepthModel(World::chunk* c);
 }
 
+namespace Renderer {
+	extern bool AdvancedRender;
+}
+
 namespace World {
 
 	struct HMapManager {
@@ -63,7 +67,7 @@ namespace World {
 	double chunk::relBaseX, chunk::relBaseY, chunk::relBaseZ;
 	Frustum chunk::TestFrustum;
 
-	void chunk::create(){
+	void chunk::create() {
 		aabb = getBaseAABB();
 		pblocks = new block[4096];
 		pbrightness = new brightness[4096];
@@ -76,7 +80,7 @@ namespace World {
 #endif
 	}
 
-	void chunk::destroy(){
+	void chunk::destroy() {
 		//HMapExclude(cx, cz);
 		delete[] pblocks;
 		delete[] pbrightness;
@@ -258,7 +262,7 @@ namespace World {
 		
 		if (MergeFace) ChunkRenderer::MergeFaceRender(this);
 		else ChunkRenderer::RenderChunk(this);
-		ChunkRenderer::RenderDepthModel(this);
+		if (Renderer::AdvancedRender) ChunkRenderer::RenderDepthModel(this);
 
 		updated = false;
 
@@ -269,7 +273,8 @@ namespace World {
 		if (vbuffer[0] != 0) vbuffersShouldDelete.push_back(vbuffer[0]);
 		if (vbuffer[1] != 0) vbuffersShouldDelete.push_back(vbuffer[1]);
 		if (vbuffer[2] != 0) vbuffersShouldDelete.push_back(vbuffer[2]);
-		vbuffer[0] = vbuffer[1] = vbuffer[2] = 0;
+		if (vbuffer[3] != 0) vbuffersShouldDelete.push_back(vbuffer[3]);
+		vbuffer[0] = vbuffer[1] = vbuffer[2] = vbuffer[3] = 0;
 		renderBuilt = false;
 	}
 
