@@ -29,8 +29,7 @@ namespace World {
 		//2333 --qiaozhanrong
 		chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi),
 			Modified(false), Empty(false), updated(false), renderBuilt(false), loadAnim(0.0) {
-			memset(vertexes, 0, sizeof(vertexes));
-			memset(vbuffer, 0, sizeof(vbuffer));
+			memset(vertexes, 0, sizeof(vertexes)); memset(vbuffer, 0, sizeof(vbuffer));
 		}
 		int cx, cy, cz;
 		Hitbox::AABB aabb;
