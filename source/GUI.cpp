@@ -283,28 +283,20 @@ namespace GUI {
 
 		glBegin(GL_LINE_LOOP);
 
-		if (focused)
-			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-		else
-			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
+		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+		else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 		glVertex2i(xmin + 1, ymin + 1);
 
-		if (focused)
-			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-		else
-			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
+		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+		else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 		glVertex2i(xmin + 1, ymax - 1);
 
-		if (focused)
-			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-		else
-			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
+		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+		else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 		glVertex2i(xmax - 1, ymax - 1);
 
-		if (focused)
-			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-		else
-			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
+		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+		else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 		glVertex2i(xmax - 1, ymin + 1);
 
 		glEnd();

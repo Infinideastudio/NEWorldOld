@@ -521,13 +521,14 @@ bool doCommand(const vector<string>& command) {
 			return commands[i].execute(command);
 		}
 	}
+	return false;
 }
 
 void updategame(){
 	//Time_updategame_ = timer();
 	static double Wprstm;
 	static bool WP;
-	bool chunkupdated = false;
+	//bool chunkupdated = false;
 	
 	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 	//生命值相关
