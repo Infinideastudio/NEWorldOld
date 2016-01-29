@@ -63,6 +63,9 @@
     <Filter Include="源代码\Common\OpenGL">
       <UniqueIdentifier>{f6aa1cb9-6009-404f-b1cc-68775a8f0ece}</UniqueIdentifier>
     </Filter>
+    <Filter Include="源代码\Mod">
+      <UniqueIdentifier>{f2eb1263-1080-487c-afb0-6d937680ea10}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Object.h">
@@ -194,6 +197,12 @@
     </ClInclude>
     <ClInclude Include="source\GLProc.h">
       <Filter>源代码\Common\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ModLoader.h">
+      <Filter>源代码\Mod</Filter>
+    </ClInclude>
+    <ClInclude Include="source\API.h">
+      <Filter>源代码\Mod</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -328,6 +337,12 @@
     </ClCompile>
     <ClCompile Include="source\GLProc.cpp">
       <Filter>源代码\Common\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ModLoader.cpp">
+      <Filter>源代码\Mod</Filter>
+    </ClCompile>
+    <ClCompile Include="source\API.cpp">
+      <Filter>源代码\Mod</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
