@@ -15,8 +15,6 @@ namespace Textures {
 
 	ubyte getTextureIndex(block blockname, ubyte side) {
 		switch (blockname) {
-		case Blocks::AIR:
-			return AIR;
 		case Blocks::ROCK:
 			return ROCK;
 		case Blocks::GRASS:
@@ -74,16 +72,16 @@ namespace Textures {
 
 	double getTexcoordX(item item, ubyte side) {
 		if (isBlock(item)) //如果为方块
-			return ((getTextureIndex(item, side) - 1) & 7) / 8.0;
+			return (getTextureIndex(item, side) & 7) / 8.0;
 		else
-			return 0;
+			return NULLBLOCK;
 	}
-
+	
 	double getTexcoordY(item item, ubyte side) {
 		if (isBlock(item)) //如果为方块
-			return ((getTextureIndex(item, side) - 1) >> 3) / 8.0;
+			return (getTextureIndex(item, side) >> 3) / 8.0;
 		else
-			return 0;
+			return NULLBLOCK;
 	}
 
 	void LoadRGBImage(TEXTURE_RGB& tex, string Filename) {

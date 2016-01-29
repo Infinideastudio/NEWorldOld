@@ -19,11 +19,12 @@ public:
 	static bool save(string worldn);
 	static bool load(string worldn);
 
-	static void addItem(item itemname, short amount = 1);
+	static bool addItem(item itemname, short amount = 1);
 	static bool putBlock(int x, int y, int z, block blockname);
 
 	static PlayerPacket convertToPlayerPacket();
 	static Hitbox::AABB playerbox;
+	static vector<Hitbox::AABB> Hitboxes;
 	static double xa, ya, za, xd, yd, zd;
 	static double health, healthMax, healSpeed, dropDamagePerBlock;
 	static onlineid onlineID;

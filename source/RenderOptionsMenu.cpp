@@ -40,7 +40,7 @@ namespace Menus {
 			if (backbtn.clicked) ExitSignal = true;
 			std::stringstream ss; ss << Multisample;
 			smoothlightingbtn.text = GetStrbyKey("NEWorld.render.smooth") + BoolEnabled(SmoothLighting);
-			fancygrassbtn.text = GetStrbyKey("NEWorld.render.grasstex") + BoolEnabled(NiceGrass);
+			fancygrassbtn.text = GetStrbyKey("NEWorld.render.grasstex") + BoolYesNo(NiceGrass);
 			mergefacebtn.text = GetStrbyKey("NEWorld.render.merge") + BoolEnabled(MergeFace);
 			msaabar.text = GetStrbyKey("NEWorld.render.multisample") + (Multisample != 0 ? ss.str() + "x" : BoolEnabled(false));
 			vsyncbtn.text = GetStrbyKey("NEWorld.render.vsync") + BoolEnabled(vsync);

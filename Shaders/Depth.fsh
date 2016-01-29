@@ -1,6 +1,6 @@
 #version 110
-uniform sampler2D Tex;
+varying vec4 pos;
 void main() {
-	float color = texture2D(Tex, gl_TexCoord[0].xy).z;
+	float color = (pos.z / pos.w + 1.0) * 0.5;
 	gl_FragColor = vec4(color, color, color, 1.0);
 }

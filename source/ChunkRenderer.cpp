@@ -13,9 +13,10 @@ namespace ChunkRenderer {
 		else if (p.direction == 3) face = 3;
 		else face = 2;
 #ifdef NERDMODE1
-		Renderer::TexCoord3d(0.0, 0.0, (Textures::getTextureIndex(p.block, face) - 0.5) / 64.0);
+		Renderer::TexCoord3d(0.0, 0.0, (Textures::getTextureIndex(p.block, face) + 0.5) / 64.0);
 		if (p.direction == 0) {
 			if (p.block != Blocks::GLOWSTONE && !Renderer::AdvancedRender) color *= 0.7;
+			if (Renderer::AdvancedRender) Renderer::Attrib1f(2.0f);
 			Renderer::Color3d(color, color, color);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x + 0.5, y - 0.5, z - 0.5);
 			Renderer::TexCoord2d(0.0, 1.0); Renderer::Vertex3d(x + 0.5, y + 0.5, z - 0.5);
@@ -24,6 +25,7 @@ namespace ChunkRenderer {
 		}
 		else if (p.direction == 1) {
 			if (p.block != Blocks::GLOWSTONE && !Renderer::AdvancedRender) color *= 0.7;
+			if (Renderer::AdvancedRender) Renderer::Attrib1f(3.0f);
 			Renderer::Color3d(color, color, color);
 			Renderer::TexCoord2d(0.0, 1.0); Renderer::Vertex3d(x - 0.5, y + 0.5, z - 0.5);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
@@ -31,6 +33,7 @@ namespace ChunkRenderer {
 			Renderer::TexCoord2d(length + 1.0, 1.0); Renderer::Vertex3d(x - 0.5, y + 0.5, z + length + 0.5);
 		}
 		else if (p.direction == 2) {
+			if (Renderer::AdvancedRender) Renderer::Attrib1f(4.0f);
 			Renderer::Color3d(color, color, color);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x + 0.5, y + 0.5, z - 0.5);
 			Renderer::TexCoord2d(0.0, 1.0); Renderer::Vertex3d(x - 0.5, y + 0.5, z - 0.5);
@@ -38,6 +41,7 @@ namespace ChunkRenderer {
 			Renderer::TexCoord2d(length + 1.0, 0.0); Renderer::Vertex3d(x + 0.5, y + 0.5, z + length + 0.5);
 		}
 		else if (p.direction == 3) {
+			if (Renderer::AdvancedRender) Renderer::Attrib1f(5.0f);
 			Renderer::Color3d(color, color, color);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
 			Renderer::TexCoord2d(0.0, 1.0); Renderer::Vertex3d(x + 0.5, y - 0.5, z - 0.5);
@@ -46,6 +50,7 @@ namespace ChunkRenderer {
 		}
 		else if (p.direction == 4) {
 			if (p.block != Blocks::GLOWSTONE && !Renderer::AdvancedRender) color *= 0.5;
+			if (Renderer::AdvancedRender) Renderer::Attrib1f(0.0f);
 			Renderer::Color3d(color, color, color);
 			Renderer::TexCoord2d(0.0, 1.0); Renderer::Vertex3d(x - 0.5, y + 0.5, z + 0.5);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x - 0.5, y - 0.5, z + 0.5);
@@ -54,6 +59,7 @@ namespace ChunkRenderer {
 		}
 		else if (p.direction == 5) {
 			if (p.block != Blocks::GLOWSTONE && !Renderer::AdvancedRender) color *= 0.5;
+			if (Renderer::AdvancedRender) Renderer::Attrib1f(1.0f);
 			Renderer::Color3d(color, color, color);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
 			Renderer::TexCoord2d(0.0, 1.0); Renderer::Vertex3d(x - 0.5, y + 0.5, z - 0.5);
@@ -222,7 +228,7 @@ namespace ChunkRenderer {
 			cur = QuadPrimitive();
 			cur_l_mx = bl = neighbour = br = 0;
 			//Linear merge
-			Renderer::Init(3, 3);
+			if (Renderer::AdvancedRender) Renderer::Init(3, 3, 1); else Renderer::Init(3, 3);
 			for (int d = 0; d < 6; d++) {
 				cur.direction = d;
 				for (int i = 0; i < 16; i++) for (int j = 0; j < 16; j++) {
