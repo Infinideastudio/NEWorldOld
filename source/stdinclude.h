@@ -43,9 +43,14 @@ using std::max;
 using std::min;
 
 #ifndef NEWORLD_SERVER
+
 //GLFW
 #define GLFW_DLL
 #include <GLFW/glfw3.h>
 //GLEXT
 #include <GL/glext.h>
+//FREETYPE
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
 #endif
