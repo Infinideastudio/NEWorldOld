@@ -445,7 +445,7 @@ namespace GUI {
 			text += inputstr;
 		}
 		delt++;
-		if (parent->backspacep && (delt - ldel > 50) && text.length() >= 1) {
+		if (parent->backspacep && (delt - ldel > 5) && text.length() >= 1) {
 			ldel = delt;
 			int n = text[text.length() - 1];
 			if (n > 0 && n <= 127)
