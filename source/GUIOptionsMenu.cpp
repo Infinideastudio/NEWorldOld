@@ -12,12 +12,14 @@ namespace Menus {
 			blurbtn = GUI::button("", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button(GetStrbyKey("NEWorld.gui.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(4, &title, &fontbtn, &blurbtn, &backbtn);
+			fontbtn.enabled = false;
 		}
 		void onUpdate() {
-			if (fontbtn.clicked) TextRenderer::useUnicodeASCIIFont = !TextRenderer::useUnicodeASCIIFont;
+			//if (fontbtn.clicked) TextRenderer::useUnicodeASCIIFont = !TextRenderer::useUnicodeASCIIFont;
 			if (blurbtn.clicked) GUIScreenBlur = !GUIScreenBlur;
 			if (backbtn.clicked) ExitSignal = true;
-			fontbtn.text = GetStrbyKey("NEWorld.gui.unicode") + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
+			//fontbtn.text = GetStrbyKey("NEWorld.gui.unicode") + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
+			fontbtn.text = GetStrbyKey("NEWorld.gui.unicode") + BoolYesNo(true);
 			blurbtn.text = GetStrbyKey("NEWorld.gui.blur") + BoolEnabled(GUIScreenBlur);
 		}
 	};

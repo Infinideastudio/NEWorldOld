@@ -37,12 +37,13 @@ namespace WorldRenderer {
 				m[12] = cr.cx * 16.0f - (float)x;
 				m[13] = cr.cy * 16.0f - (float)cr.loadAnim - (float)y;
 				m[14] = cr.cz * 16.0f - (float)z;
-				glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[Renderer::ActiveShader], "TransMat"), 1, GL_FALSE, m);
+				glUniformMatrix4fvARB(glGetUniformLocationARB(Renderer::shaderPrograms[0], "TransMat"), 1, GL_FALSE, m);
 				Renderer::renderbuffer(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount, 1);
 			}
 			else Renderer::renderbuffer(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount);
 			glPopMatrix();
 		}
+
 		glFlush();
 	}
 }
