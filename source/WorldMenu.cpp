@@ -93,7 +93,7 @@ namespace Menus {
 				Textures::TEXTURE_RGB tmb;
 				long hFile = 0;
 				_finddata_t fileinfo;
-				if ((hFile = _findfirst(string("Worlds\\*").c_str(), &fileinfo)) != -1) {
+				if ((hFile = _findfirst("Worlds\\*", &fileinfo)) != -1) {
 					do {
 						if ((fileinfo.attrib &  _A_SUBDIR)) {
 							if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0) {
