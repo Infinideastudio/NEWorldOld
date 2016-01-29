@@ -266,6 +266,7 @@
     <ClInclude Include="include\Netycat\include\Netycat\Core\InetAddress.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Socket.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Netycat.h" />
+    <ClInclude Include="source\API.h" />
     <ClInclude Include="source\Blocks.h" />
     <ClInclude Include="source\Chunk.h" />
     <ClInclude Include="source\ChunkPacket.h" />
@@ -283,6 +284,7 @@
     <ClInclude Include="source\Items.h" />
     <ClInclude Include="source\Menus.h" />
     <ClInclude Include="source\Mob.h" />
+    <ClInclude Include="source\ModLoader.h" />
     <ClInclude Include="source\Network.h" />
     <ClInclude Include="source\NNN.h" />
     <ClInclude Include="source\Object.h" />
@@ -307,6 +309,7 @@
     <ClCompile Include="include\Netycat\src\Netycat\Core\Exception.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\InetAddress.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\Socket.cpp" />
+    <ClCompile Include="source\API.cpp" />
     <ClCompile Include="source\Chunk.cpp" />
     <ClCompile Include="source\ChunkPtrArray.cpp" />
     <ClCompile Include="source\ChunkRenderer.cpp" />
@@ -324,6 +327,7 @@
     <ClCompile Include="source\Items.cpp" />
     <ClCompile Include="source\LanguageMenu.cpp" />
     <ClCompile Include="source\MainMenu.cpp" />
+    <ClCompile Include="source\ModLoader.cpp" />
     <ClCompile Include="source\MultiplayerGame.cpp" />
     <ClCompile Include="source\Network.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
