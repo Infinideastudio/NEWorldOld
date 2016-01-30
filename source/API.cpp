@@ -84,6 +84,8 @@ APIPackage Mod::getPackage() {
 		player.zposold = Player::zposold;
 		return player;
 	};
+	api.updateBlock= std::bind(World::updateblock, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, 0);
+	api.setChunkUpdated = World::setChunkUpdated;
 	init = true;
 	return api;
 }
