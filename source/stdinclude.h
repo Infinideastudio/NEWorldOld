@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <cassert>
 #include <stdarg.h>
+#include <direct.h>
 
 using std::string;
 using std::vector;
@@ -42,7 +43,7 @@ using std::endl;
 using std::max;
 using std::min;
 
-#ifndef NEWORLD_SERVER
+#ifdef NEWORLD_GAME
 
 //GLFW
 #define GLFW_DLL
