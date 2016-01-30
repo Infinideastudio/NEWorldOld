@@ -10,6 +10,7 @@ namespace Mod {
 	public:
 		static std::vector<ModInfo> mods;
 		static void loadMods();
+		static void unloadMods();
 
 	private:
 		enum ModLoadStatus { Success, MissDependence, InitFailed };
@@ -18,7 +19,6 @@ namespace Mod {
 		typedef void* ModCall;
 		typedef FARPROC FuncPtr;
 		static ModCall loadMod(std::string filename);
-		static void unloadMods();
 		static FuncPtr getFunction(ModCall call, std::string functionName);
 		static void unloadMod(ModCall call);
 	};
