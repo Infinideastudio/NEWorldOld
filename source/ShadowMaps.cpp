@@ -36,7 +36,7 @@ namespace ShadowMaps {
 	void RenderShadowMap(double xpos, double ypos, double zpos, double curtime) {
 		int cx = getchunkpos((int)xpos), cy = getchunkpos((int)ypos), cz = getchunkpos((int)zpos);
 
-		glUseProgramObjectARB(Renderer::shaderPrograms[2]);
+		Renderer::bindShader(Renderer::DepthShader);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glDisable(GL_TEXTURE_2D);
@@ -59,7 +59,7 @@ namespace ShadowMaps {
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 		glDisableClientState(GL_VERTEX_ARRAY);
-		glUseProgramObjectARB(0);
+		Renderer::unbindShader();
 
 		glEnable(GL_FOG);
 		glEnable(GL_BLEND);
@@ -79,7 +79,7 @@ namespace ShadowMaps {
 		//glActiveTextureARB(GL_TEXTURE1);
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, Renderer::DepthTexture);
-		glUseProgramObjectARB(Renderer::shaderPrograms[2]);
+		Renderer::bindShader(Renderer::DepthShader);
 		//glUniform1iARB(glGetUniformLocationARB(Renderer::shaderPrograms[2], "Tex"), 1);
 
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -91,7 +91,7 @@ namespace ShadowMaps {
 		glEnd();
 
 		//glActiveTextureARB(GL_TEXTURE0);
-		glUseProgramObjectARB(0);
+		Renderer::unbindShader();
 	}
 	*/
 }

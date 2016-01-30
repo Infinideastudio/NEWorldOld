@@ -62,6 +62,7 @@ bool DebugHitbox;
 //bool DebugChunk;
 //bool DebugPerformance;
 bool DebugShadow;
+bool DebugMergeFace;
 
 int selx, sely, selz, oldselx, oldsely, oldselz, selface;
 bool sel;
@@ -85,8 +86,7 @@ vector<Command> commands;
 
 //==============================  Main Program  ================================//
 //==============================     主程序     ================================//
-
-int main(){
+int main() {
 	//终于进入main函数了！激动人心的一刻！！！
 	
 #ifndef NEWORLD_USE_WINAPI
@@ -165,13 +165,13 @@ main_menu:
 	updateThreadRun = true;
 	fctime = uctime = lastupdate = timer();
 
-	do{
+	do {
 		//主循环，被简化成这样，惨不忍睹啊！
-
+		
 		MutexUnlock(Mutex);
 		MutexLock(Mutex);
 
-		if ((timer() - uctime) >= 1.0){
+		if ((timer() - uctime) >= 1.0) {
 			uctime = timer();
 			ups = upsc;
 			upsc = 0;
@@ -346,6 +346,7 @@ void splashscreen(){
 }
 
 void createwindow() {
+	glfwSetErrorCallback([](int err, const char* desc) { cout << desc << endl; });
 	std::stringstream title;
 	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
 	if (Multisample != 0) glfwWindowHint(GLFW_SAMPLES, Multisample);
@@ -867,6 +868,10 @@ void updategame(){
 				}
 			}
 			else DebugShadow = false;
+			if (isPressed(GLFW_KEY_G) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
+				DebugMergeFace = !DebugMergeFace;
+				DebugMode = true;
+			}
 			if (isPressed(GLFW_KEY_F4)) Player::CrossWall = !Player::CrossWall;
 			if (isPressed(GLFW_KEY_F5)) GUIrenderswitch = !GUIrenderswitch;
 			if (isPressed(GLFW_KEY_F6)) Player::Glide = !Player::Glide;
@@ -1144,6 +1149,11 @@ void Render() {
 	}
 	else glBindTexture(GL_TEXTURE_2D, BlockTextures);
 
+	if (DebugMergeFace) {
+		glDisable(GL_LINE_SMOOTH);
+		glPolygonMode(GL_FRONT, GL_LINE);
+	}
+
 	glDisable(GL_BLEND);
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1163,6 +1173,11 @@ void Render() {
 		glEnable(GL_TEXTURE_2D);
 	}
 	glEnable(GL_BLEND);
+
+	if (DebugMergeFace) {
+		glEnable(GL_LINE_SMOOTH);
+		glPolygonMode(GL_FRONT, GL_FILL);
+	}
 
 	MutexLock(Mutex);
 
@@ -1202,6 +1217,11 @@ void Render() {
 	}
 	else glBindTexture(GL_TEXTURE_2D, BlockTextures);
 
+	if (DebugMergeFace) {
+		glDisable(GL_LINE_SMOOTH);
+		glPolygonMode(GL_FRONT, GL_LINE);
+	}
+
 	if (!DebugShadow) WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
 	glDisable(GL_CULL_FACE);
 	if (!DebugShadow) WorldRenderer::RenderChunks(xpos, ypos, zpos, 2);
@@ -1211,9 +1231,15 @@ void Render() {
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
+
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_3D);
 		glEnable(GL_TEXTURE_2D);
+	}
+
+	if (DebugMergeFace) {
+		glEnable(GL_LINE_SMOOTH);
+		glPolygonMode(GL_FRONT, GL_FILL);
 	}
 
 	glLoadIdentity();
@@ -1320,6 +1346,9 @@ void Render() {
 		fctime = timer();
 	}
 	fpsc++;
+
+	//int err = glGetError();
+	//if (err != 0)cout << "GL Error ID: " << err << endl;
 
 	lastframe = curtime;
 	//Time_screensync = timer() - Time_screensync;
