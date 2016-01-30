@@ -1,5 +1,4 @@
 #pragma once
-#include "StdInclude.h"
 #include "Hitbox.h"
 
 class Frustum {
@@ -36,19 +35,13 @@ public:
         sum[14] = a[12] * b[2] + a[13] * b[6] + a[14] * b[10] + a[15] * b[14];
         sum[15] = a[12] * b[3] + a[13] * b[7] + a[14] * b[11] + a[15] * b[15];
 	}
-	inline void MultMatrix(float* a, float* b) {
-		float sum[16]; MultMatrixTo(sum, a, b);
-		memcpy(a, sum, sizeof(sum));
-	}
+	inline void MultMatrix(float* a, float* b);
 	
 	void SetPerspective(float FOV, float aspect, float Znear, float Zfar);
 	void SetOrtho(float left, float right, float top, float bottom, float Znear, float Zfar);
 	void MultRotate(float angle, float x, float y, float z);
 	
-    inline void normalize(int side) {
-		float magnitude = sqrtf(frus[side + 0] * frus[side + 0] + frus[side + 1] * frus[side + 1] + frus[side + 2] * frus[side + 2]);
-		frus[side + 0] /= magnitude; frus[side + 1] /= magnitude; frus[side + 2] /= magnitude; frus[side + 3] /= magnitude;
-	}
+	inline void normalize(int side);
 	
     void update();
 	bool FrustumTest(const ChunkBox& aabb);

@@ -1,10 +1,13 @@
-#include "ModLoader.h"
+ï»¿#include "ModLoader.h"
 #include <Windows.h>
 #include <fstream>
 #include <io.h>
 #include <functional>
+#include <iostream>
 
-//²éÕÒÒ»¸öÎÄ¼ş¼ĞÏÂËùÓĞµÄ×ÓÄ¿Â¼
+std::vector<ModInfo> Mod::ModLoader::mods;
+
+//æŸ¥æ‰¾ä¸€ä¸ªæ–‡ä»¶å¤¹ä¸‹æ‰€æœ‰çš„å­ç›®å½•
 std::vector<std::string> findFolders(std::string path) {
 	std::vector<std::string> ret;
 	long hFile = 0;
@@ -24,27 +27,30 @@ std::vector<std::string> findFolders(std::string path) {
 
 void Mod::ModLoader::loadMods()
 {
-	std::vector<std::string> modLoadList = findFolders("Mods\\"); //»ñµÃMods/ÏÂËùÓĞµÄÎÄ¼ş¼Ğ
+	std::vector<std::string> modLoadList = findFolders("Mods\\"); //è·å¾—Mods/ä¸‹æ‰€æœ‰çš„æ–‡ä»¶å¤¹
 	bool successAtLeastOne = false; 
-	do { //Ñ­»·¼ÓÔØMod£¬Ö±µ½Ä³Ò»´ÎÑ­»·Ò»¸ö³É¹¦¼ÓÔØµÄ¶¼Ã»ÓĞÎªÖ¹£¨ÒòÎªÒÀÀµÏî£©
+	do { //å¾ªç¯åŠ è½½Modï¼Œç›´åˆ°æŸä¸€æ¬¡å¾ªç¯ä¸€ä¸ªæˆåŠŸåŠ è½½çš„éƒ½æ²¡æœ‰ä¸ºæ­¢ï¼ˆå› ä¸ºä¾èµ–é¡¹ï¼‰
 		successAtLeastOne = false;
 		for (std::vector<std::string>::iterator iter = modLoadList.begin(); iter != modLoadList.end();) {
 			ModLoadStatus status = loadSingleMod("Mods\\" + *iter + "\\entry.dll");
 			if (status == Success) successAtLeastOne = true;
-			if (status != MissDependence) iter = modLoadList.erase(iter); //Ö»Òª²»ÊÇÒòÈ±ÉÙÒÀÀµ¶øÊ§°Ü¾ÍÉ¾µô¼ÇÂ¼
+			if (status != MissDependence) iter = modLoadList.erase(iter); //åªè¦ä¸æ˜¯å› ç¼ºå°‘ä¾èµ–è€Œå¤±è´¥å°±åˆ æ‰è®°å½•
 			else ++iter;
 		}
 	} while (successAtLeastOne);
+	std::cout << "[Console][Game]Load completely! "
+		<< mods.size() << " mod" << (mods.size() > 1 ? "s" : "") << " loaded." << std::endl;
 }
 
-//¼ÓÔØµ¥¸öMod£¬loadMods»áµ÷ÓÃ¸Ãº¯Êı
+//åŠ è½½å•ä¸ªModï¼ŒloadModsä¼šè°ƒç”¨è¯¥å‡½æ•°
 Mod::ModLoader::ModLoadStatus Mod::ModLoader::loadSingleMod(std::string modPath)
 {
 	ModCall call=loadMod(modPath);
-	std::function<ModInfo()>* getModInfo = (std::function<ModInfo()>*)getFunction(call, "getModInfo");
-	std::function<bool()>* init = (std::function<bool()>*)getFunction(call, "init");
-	ModInfo info = (*getModInfo)(); //»ñµÃModĞÅÏ¢
-	if (info.dependence != "") { //ÅĞ¶Ï²¢¼ì²éÒÀÀµÏî
+	ModInfo(*getModInfo)() = (ModInfo(*)())getFunction(call, "getModInfo");
+	bool(*init)() = (bool(*)())getFunction(call, "init");
+	ModInfo info = getModInfo(); //è·å¾—Modä¿¡æ¯
+	std::cout << "[Console][Game]Loading Mod" << info.name << "[" << info.version << "]" << std::endl;
+	if (info.dependence != "") { //åˆ¤æ–­å¹¶æ£€æŸ¥ä¾èµ–é¡¹
 		bool foundDependence = false;
 		for (std::vector<ModInfo>::iterator iter = mods.begin(); iter != mods.end(); ++iter) {
 			if (iter->name == info.dependence) {
@@ -54,7 +60,7 @@ Mod::ModLoader::ModLoadStatus Mod::ModLoader::loadSingleMod(std::string modPath)
 		}
 		if (!foundDependence) return MissDependence;
 	}
-	if (!(*init)()) return InitFailed; //³õÊ¼»¯Mod
+	if (!(*init)()) return InitFailed; //åˆå§‹åŒ–Mod
 	info.call = call;
 	mods.push_back(info);
 	return Success;
@@ -65,7 +71,7 @@ Mod::ModLoader::ModCall Mod::ModLoader::loadMod(std::string filename)
 	return LoadLibrary(filename.c_str());
 }
 
-void* Mod::ModLoader::getFunction(ModCall call, std::string functionName)
+Mod::ModLoader::FuncPtr Mod::ModLoader::getFunction(ModCall call, std::string functionName)
 {
 	return GetProcAddress((HMODULE)call, functionName.c_str());
 }
