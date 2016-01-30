@@ -50,7 +50,7 @@ Mod::ModLoader::ModLoadStatus Mod::ModLoader::loadSingleMod(std::string modPath)
 	ModInfo(*getModInfo)() = (ModInfo(*)())getFunction(call, "getModInfo");
 	bool(*init)(APIPackage) = (bool(*)(APIPackage))getFunction(call, "init");
 	ModInfo info = getModInfo(); //获得Mod信息
-	std::cout << "[Console][Game]Loading Mod" << info.name << "[" << info.version << "]" << std::endl;
+	std::cout << "[Console][Game]Loading Mod " << info.name << "[" << info.version << "]" << std::endl;
 	if (info.dependence != "") { //判断并检查依赖项
 		bool foundDependence = false;
 		for (std::vector<ModInfo>::iterator iter = mods.begin(); iter != mods.end(); ++iter) {
