@@ -36,12 +36,12 @@ namespace World {
 	void Init(){
 		
 		std::stringstream ss;
-		ss << "md \"Worlds/" << worldname << "\"";
-		system(ss.str().c_str());
+		ss << "Worlds/" << worldname << "/";
+		_mkdir(ss.str().c_str());
 		ss.clear(); ss.str("");
-		ss << "md \"Worlds/" << worldname << "/chunks\"";
-		system(ss.str().c_str());
-
+		ss << "Worlds/" << worldname << "/chunks";
+		_mkdir(ss.str().c_str());
+		
 		//EmptyChunkPtr = new chunk(0, 0, 0, getChunkID(0, 0, 0));
 		//EmptyChunkPtr->Empty = true;
 		EmptyChunkPtr = (chunk*)~0;
