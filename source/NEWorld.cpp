@@ -22,6 +22,7 @@
 #include "Items.h"
 #include "Globalization.h"
 #include "Command.h"
+#include "ModLoader.h"
 
 void WindowSizeFunc(GLFWwindow* win, int width, int height);
 void MouseButtonFunc(GLFWwindow*, int button, int action, int);
@@ -94,11 +95,12 @@ int main(){
 
 	loadoptions();
 	Globalization::Load();
-
-	system("md Configs");
-	system("md Worlds");
-	system("md Screenshots");
 	
+	_mkdir("Configs");
+	_mkdir("Worlds");
+	_mkdir("Screenshots");
+	_mkdir("Mods");
+
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
@@ -111,7 +113,7 @@ int main(){
 	glLoadIdentity();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-
+	Mod::ModLoader::loadMods();
 main_menu:
 	gamebegin = gameexit = false;
 	glDisable(GL_LINE_SMOOTH);
@@ -141,6 +143,9 @@ main_menu:
 	printf("Init world...\n");
 	World::Init();
 	registerCommands();
+	printf("[Console][Game]");
+	printf("Loading Mods...\n");
+
 	GUIrenderswitch = true;
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_CULL_FACE);
