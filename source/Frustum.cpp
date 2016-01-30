@@ -1,9 +1,17 @@
 #include "Frustum.h"
+#define _USE_MATH_DEFINES
+#include <math.h>
+#include <memory>
 
 void Frustum::LoadIdentity() {
 	memset(proj, 0, sizeof(proj));
 	memset(modl, 0, sizeof(modl));
 	modl[0] = modl[5] = modl[10] = modl[15] = 1.0f;
+}
+
+inline void Frustum::MultMatrix(float * a, float * b) {
+	float sum[16]; MultMatrixTo(sum, a, b);
+	memcpy(a, sum, sizeof(sum));
 }
 
 void Frustum::SetPerspective(float FOV, float aspect, float Znear, float Zfar) {
@@ -44,6 +52,11 @@ void Frustum::MultRotate(float angle, float x, float y, float z) {
 	m[15] = 1.0f;
 	MultMatrixTo(sum, m, modl);
 	memcpy(modl, sum, sizeof(sum));
+}
+
+inline void Frustum::normalize(int side) {
+	float magnitude = sqrtf(frus[side + 0] * frus[side + 0] + frus[side + 1] * frus[side + 1] + frus[side + 2] * frus[side + 2]);
+	frus[side + 0] /= magnitude; frus[side + 1] /= magnitude; frus[side + 2] /= magnitude; frus[side + 3] /= magnitude;
 }
 
 void Frustum::update() {
