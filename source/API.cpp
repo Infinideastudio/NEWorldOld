@@ -1,7 +1,9 @@
 ﻿#include "API.h"
 #include "Player.h"
 
-API::APIPackage API::getPackage() {
+std::map<std::string, void*> Mod::sharedData;
+
+APIPackage Mod::getPackage() {
 	static APIPackage api;
 	static bool init = false;
 	if (init) return api;

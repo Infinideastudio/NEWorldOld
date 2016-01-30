@@ -4,9 +4,11 @@
 #include "Hitbox.h"
 #include "Frustum.h"
 #include "Command.h"
+#include "Chunk.h"
 typedef unsigned char ubyte;
 typedef unsigned int onlineid;
 typedef unsigned short item;
+typedef unsigned short block;
 
 struct ModInfo {
 	std::string name;
@@ -44,4 +46,15 @@ struct PlayerData {
 	item* inventory;
 	short* inventoryAmount;
 	double glidingEnergy, glidingSpeed;
+};
+
+struct APIPackage {
+	std::function<World::chunk*(int cx, int cy, int cz)> getChunk;
+	std::function<block(int cx, int cy, int cz)> getBlock;
+	std::function<void(int x, int y, int z, block Block)> setBlock;
+	std::function<Command*(string commandName)> getCommand;
+	std::function<bool(Command command)> registerCommand;
+	std::function<void*(std::string key)> getSharedData;
+	std::function<void(std::string key, void* value)> setSharedData;
+	std::function<PlayerData()> getPlayerData;
 };
