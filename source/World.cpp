@@ -629,6 +629,7 @@ namespace World {
 		if (cptr != nullptr && cptr != EmptyChunkPtr &&
 			cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
 			cptr->setblock(bx, by, bz, Blockname);
+			updateblock(x, y, z, true);
 		}
 		if (!chunkOutOfBound(cx, cy, cz)) {
 			chunk* i = getChunkPtr(cx, cy, cz);
