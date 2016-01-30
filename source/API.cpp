@@ -1,4 +1,5 @@
-#include "API.h"
+﻿#include "API.h"
+#include "Player.h"
 
 API::APIPackage API::getPackage() {
 	static APIPackage api;
@@ -25,6 +26,61 @@ API::APIPackage API::getPackage() {
 	};
 	api.setSharedData = [](std::string key, void* value) {
 		sharedData[key] = value;
+	};
+	api.getPlayerData = []()->PlayerData {
+		PlayerData player;
+		player.AirJumps = Player::AirJumps;
+		player.BlockInHand = Player::BlockInHand;
+		player.CrossWall = Player::CrossWall;
+		player.cxt = Player::cxt;
+		player.cxtl = Player::cxtl;
+		player.cyt = Player::cyt;
+		player.cytl = Player::cytl;
+		player.czt = Player::czt;
+		player.cztl = Player::cztl;
+		player.dropDamagePerBlock = Player::dropDamagePerBlock;
+		player.Flying = Player::Flying;
+		player.Glide = Player::Glide;
+		player.glidingEnergy = Player::glidingEnergy;
+		player.glidingMinimumSpeed = Player::glidingMinimumSpeed;
+		player.glidingNow = Player::glidingNow;
+		player.glidingSpeed = Player::glidingSpeed;
+		player.heading = Player::heading;
+		player.healSpeed = Player::healSpeed;
+		player.health = Player::health;
+		player.healthMax = Player::healthMax;
+		player.height = Player::height;
+		player.heightExt = Player::heightExt;
+		player.Hitboxes = Player::Hitboxes;
+		player.indexInHand = Player::indexInHand;
+		player.inventory = (item*)Player::inventory;
+		player.inventoryAmount = (short*)Player::inventoryAmount;
+		player.inWater = Player::inWater;
+		player.jump= Player::jump;
+		player.lookupdown = Player::lookupdown;
+		player.name = Player::name;
+		player.NearWall = Player::NearWall;
+		player.OnGround = Player::OnGround;
+		player.onlineID = Player::onlineID;
+		player.playerbox = Player::playerbox;
+		player.Running = Player::Running;
+		player.speed = Player::speed;
+		player.ViewFrustum = Player::ViewFrustum;
+		player.xa = Player::xa;
+		player.xd = Player::xd;
+		player.xlookspeed = Player::xlookspeed;
+		player.xpos = Player::xpos;
+		player.xposold = Player::xposold;
+		player.ya = Player::ya;
+		player.yd = Player::yd;
+		player.ylookspeed = Player::ylookspeed;
+		player.ypos = Player::ypos;
+		player.yposold = Player::yposold;
+		player.za = Player::za;
+		player.zd = Player::zd;
+		player.zpos = Player::zpos;
+		player.zposold = Player::zposold;
+		return player;
 	};
 	init = true;
 	return api;

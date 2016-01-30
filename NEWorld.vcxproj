@@ -129,6 +129,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
+      <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -170,6 +171,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -223,6 +225,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
+      <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
@@ -287,6 +290,7 @@
     <ClInclude Include="source\Items.h" />
     <ClInclude Include="source\Menus.h" />
     <ClInclude Include="source\Mob.h" />
+    <ClInclude Include="source\ModSupport.h" />
     <ClInclude Include="source\ModLoader.h" />
     <ClInclude Include="source\Network.h" />
     <ClInclude Include="source\NNN.h" />
