@@ -202,9 +202,12 @@
     </ClInclude>
     <ClInclude Include="source\API.h">
       <Filter>源代码\Mod</Filter>
-	</ClInclude>
+    </ClInclude>
     <ClInclude Include="source\Hitbox.h">
       <Filter>源代码\Game\Hitbox</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ModSupport.h">
+      <Filter>源代码\Mod</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -346,10 +349,5 @@
     <ClCompile Include="source\API.cpp">
       <Filter>源代码\Mod</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="source\resource.rc">
-      <Filter>资源文件</Filter>
-    </ResourceCompile>
   </ItemGroup>
 </Project>

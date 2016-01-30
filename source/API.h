@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <functional>
 #include <string>
 #include <map>
@@ -7,6 +7,7 @@
 #include "World.h"
 #include "Chunk.h"
 #include "Command.h"
+#include "ModSupport.h"
 extern vector<Command> commands;
 
 namespace API {
@@ -21,6 +22,7 @@ namespace API {
 		std::function<bool(Command command)> registerCommand;
 		std::function<void*(std::string key)> getSharedData;
 		std::function<void(std::string key, void* value)> setSharedData;
+		std::function<PlayerData()> getPlayerData;
 	};
 
 	APIPackage getPackage();
