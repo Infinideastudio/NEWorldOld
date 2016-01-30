@@ -169,26 +169,26 @@ namespace TextRenderer {
 			glColor4f(0.5, 0.5, 0.5, a);
 			glBegin(GL_QUADS);
 			glTexCoord2d(0.0, 0.0);
-			glVertex2d(c.xpos, 16.0 - c.ypos);
+			glVertex2d(c.xpos, 15.0 - c.ypos);
 			glTexCoord2d(c.width / 32.0, 0.0);
-			glVertex2d(c.xpos + c.width, 16.0 - c.ypos);
+			glVertex2d(c.xpos + c.width, 15.0 - c.ypos);
 			glTexCoord2d(c.width / 32.0, c.height / 32.0);
-			glVertex2d(c.xpos + c.width, 16.0 + c.height - c.ypos);
+			glVertex2d(c.xpos + c.width, 15.0 + c.height - c.ypos);
 			glTexCoord2d(0.0, c.height / 32.0);
-			glVertex2d(c.xpos, 16.0 + c.height - c.ypos);
+			glVertex2d(c.xpos, 15.0 + c.height - c.ypos);
 			glEnd();
 
 			glTranslated(-1.0, -1.0, 0.0);
 			glColor4f(r, g, b, a);
 			glBegin(GL_QUADS);
 			glTexCoord2d(0.0, 0.0);
-			glVertex2d(c.xpos, 16.0 - c.ypos);
+			glVertex2d(c.xpos, 15.0 - c.ypos);
 			glTexCoord2d(c.width / 32.0, 0.0);
-			glVertex2d(c.xpos + c.width, 16.0 - c.ypos);
+			glVertex2d(c.xpos + c.width, 15.0 - c.ypos);
 			glTexCoord2d(c.width / 32.0, c.height / 32.0);
-			glVertex2d(c.xpos + c.width, 16.0 + c.height - c.ypos);
+			glVertex2d(c.xpos + c.width, 15.0 + c.height - c.ypos);
 			glTexCoord2d(0.0, c.height / 32.0);
-			glVertex2d(c.xpos, 16.0 + c.height - c.ypos);
+			glVertex2d(c.xpos, 15.0 + c.height - c.ypos);
 			glEnd();
 
 			/*

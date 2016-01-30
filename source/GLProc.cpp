@@ -13,6 +13,7 @@ PFNGLACTIVETEXTUREARBPROC glActiveTextureARB;
 PFNGLENABLEVERTEXATTRIBARRAYARBPROC glEnableVertexAttribArrayARB;
 PFNGLDISABLEVERTEXATTRIBARRAYARBPROC glDisableVertexAttribArrayARB;
 PFNGLGETATTRIBLOCATIONARBPROC glGetAttribLocationARB;
+PFNGLBINDATTRIBLOCATIONARBPROC glBindAttribLocationARB;
 PFNGLVERTEXATTRIBPOINTERARBPROC glVertexAttribPointerARB;
 
 PFNGLGENBUFFERSARBPROC glGenBuffersARB;
@@ -24,6 +25,7 @@ PFNGLGENFRAMEBUFFERSEXTPROC glGenFramebuffersEXT;
 PFNGLBINDFRAMEBUFFEREXTPROC glBindFramebufferEXT;
 PFNGLDELETEFRAMEBUFFERSEXTPROC glDeleteFramebuffersEXT;
 PFNGLFRAMEBUFFERTEXTURE2DEXTPROC glFramebufferTexture2DEXT;
+PFNGLFRAMEBUFFERTEXTURE3DEXTPROC glFramebufferTexture3DEXT;
 PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC glCheckFramebufferStatusEXT;
 
 PFNGLCREATESHADEROBJECTARBPROC glCreateShaderObjectARB;
@@ -75,6 +77,7 @@ void InitGLProc() {
 	glEnableVertexAttribArrayARB = (PFNGLENABLEVERTEXATTRIBARRAYARBPROC)glfwGetProcAddress("glEnableVertexAttribArrayARB");
 	glDisableVertexAttribArrayARB = (PFNGLDISABLEVERTEXATTRIBARRAYARBPROC)glfwGetProcAddress("glDisableVertexAttribArrayARB");
 	glGetAttribLocationARB = (PFNGLGETATTRIBLOCATIONARBPROC)glfwGetProcAddress("glGetAttribLocationARB");
+	glBindAttribLocationARB = (PFNGLBINDATTRIBLOCATIONARBPROC)glfwGetProcAddress("glBindAttribLocationARB");
 	glVertexAttribPointerARB = (PFNGLVERTEXATTRIBPOINTERARBPROC)glfwGetProcAddress("glVertexAttribPointerARB");
 
 	glGenBuffersARB = (PFNGLGENBUFFERSARBPROC)glfwGetProcAddress("glGenBuffersARB");
@@ -86,6 +89,7 @@ void InitGLProc() {
 	glBindFramebufferEXT = (PFNGLBINDFRAMEBUFFEREXTPROC)glfwGetProcAddress("glBindFramebufferEXT");
 	glDeleteFramebuffersEXT = (PFNGLDELETEFRAMEBUFFERSEXTPROC)glfwGetProcAddress("glDeleteFramebuffersEXT");
 	glFramebufferTexture2DEXT = (PFNGLFRAMEBUFFERTEXTURE2DEXTPROC)glfwGetProcAddress("glFramebufferTexture2DEXT");
+	glFramebufferTexture3DEXT = (PFNGLFRAMEBUFFERTEXTURE3DEXTPROC)glfwGetProcAddress("glFramebufferTexture3DEXT");
 	glCheckFramebufferStatusEXT = (PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC)glfwGetProcAddress("glCheckFramebufferStatusEXT");
 
 	glCreateShaderObjectARB = (PFNGLCREATESHADEROBJECTARBPROC)glfwGetProcAddress("glCreateShaderObjectARB");

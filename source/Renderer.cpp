@@ -1,4 +1,5 @@
 #include "Renderer.h"
+
 namespace Renderer {
 	
 	/*
@@ -47,10 +48,11 @@ namespace Renderer {
 	float sunlightXrot, sunlightYrot;
 	GLhandleARB shaders[16];
 	GLhandleARB shaderPrograms[16];
+	int ActiveShader;
 	int shadercount = 0;
 	int index = 0, size = 0;
 	unsigned int ShadowFBO, DepthTexture;
-	unsigned int ShaderAttribLoc;
+	unsigned int ShaderAttribLoc = 0;
 	
 	void Init(int tc, int cc, int ac) {
 		Texcoordc = tc; Colorc = cc; Attribc = ac;
@@ -139,21 +141,29 @@ namespace Renderer {
 	}
 
 	void initShaders() {
+		std::set<string> defines;
+		defines.insert("MergeFace");
+
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
 		shadowdist = min(MaxShadowDist, viewdistance);
 
-		shadercount = 3;
+		shadercount = 4;
 		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
 		shaders[1] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB);
-		shaders[2] = loadShader("Shaders/Shadow.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[3] = loadShader("Shaders/Shadow.fsh", GL_FRAGMENT_SHADER_ARB);
-		shaders[4] = loadShader("Shaders/Depth.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[5] = loadShader("Shaders/Depth.fsh", GL_FRAGMENT_SHADER_ARB);
+		shaders[2] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB, &defines);
+		shaders[3] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB, &defines);
+		shaders[4] = loadShader("Shaders/Shadow.vsh", GL_VERTEX_SHADER_ARB);
+		shaders[5] = loadShader("Shaders/Shadow.fsh", GL_FRAGMENT_SHADER_ARB);
+		shaders[6] = loadShader("Shaders/Depth.vsh", GL_VERTEX_SHADER_ARB);
+		shaders[7] = loadShader("Shaders/Depth.fsh", GL_FRAGMENT_SHADER_ARB);
 		for (int i = 0; i != shadercount; i++) {
 			shaderPrograms[i] = glCreateProgramObjectARB();
 			glAttachObjectARB(shaderPrograms[i], shaders[i * 2]);
 			glAttachObjectARB(shaderPrograms[i], shaders[i * 2 + 1]);
+			if (i == MainShader || i == MergeFaceShader) {
+				glBindAttribLocationARB(shaderPrograms[i], ShaderAttribLoc, "VertexAttrib");
+			}
 			glLinkProgramARB(shaderPrograms[i]);
 		}
 
@@ -180,12 +190,14 @@ namespace Renderer {
 		}
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		
-		glUseProgramObjectARB(shaderPrograms[0]);
-		glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "Tex"), 0);
-		glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "DepthTex"), 1);
-		//glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "Tex3D"), 0);
-		ShaderAttribLoc = glGetAttribLocationARB(shaderPrograms[0], "VertexAttrib");
-		glUseProgramObjectARB(0);
+		for (int i = 0; i < 2; i++) {
+			bindShader(i);
+			setUniform1i("Tex", 0);
+			setUniform1i("DepthTex", 1);
+			setUniform1i("Tex3D", 0);
+			setUniform4f("SkyColor", skycolorR, skycolorG, skycolorB, 1.0f);
+		}
+		unbindShader();
 		
 	}
 
@@ -202,10 +214,11 @@ namespace Renderer {
 		glDeleteFramebuffersEXT(1, &ShadowFBO);
 	}
 
-	GLhandleARB loadShader(string filename, unsigned int mode) {
+	GLhandleARB loadShader(string filename, unsigned int mode, std::set<string>* defines) {
+		std::stringstream ss;
 		GLhandleARB res;
-		string cur;
-		int lines = 0, curlen;;
+		string cur, var, macro;
+		int lines = 0, curlen;
 		char* curline;
 		std::vector<char*> source;
 		std::vector<int> length;
@@ -214,7 +227,22 @@ namespace Renderer {
 		while (!filein.eof()) {
 			lines++;
 			std::getline(filein, cur);
+			ss.str(cur);
+			macro = "";
+			ss >> macro;
+			if (macro == "##NEWORLD_SHADER_DEFINES") {
+				cout << "233" << endl;
+				ss >> var >> macro;
+				if (defines != nullptr) {
+					std::set<string>::iterator it = defines->find(var);
+					if (it != defines->end()) cur = "#define " + macro;
+					else cur = "";
+				}
+				else cur = "";
+			}
+			else cout << "[" << macro << "]\n";
 			cur += '\n';
+			cout << cur;
 			curlen = cur.size();
 			curline = new char[curlen];
 			memcpy(curline, cur.c_str(), curlen);
@@ -248,7 +276,7 @@ namespace Renderer {
 		shadowdist = min(MaxShadowDist, viewdistance);
 
 		//Enable shader
-		glUseProgramObjectARB(shaderPrograms[0]);
+		bindShader(MergeFace ? MergeFaceShader : MainShader);
 
 		//Calc matrix
 		float scale = 16.0f * sqrt(3.0f);
@@ -260,18 +288,17 @@ namespace Renderer {
 		frus.MultRotate(sunlightYrot, 0.0f, 1.0f, 0.0f);
 
 		//Set uniform
-		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[0], "renderdist"), viewdistance * 16.0f);
-		//glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "MergeFace"), MergeFace);
-		//glUniform4fARB(glGetUniformLocationARB(shaderPrograms[0], "SkyColor"), skycolorR, skycolorG, skycolorB, 1.0f);
-		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[0], "Depth_proj"), 1, GL_FALSE, frus.getProjMatrix());
-		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[0], "Depth_modl"), 1, GL_FALSE, frus.getModlMatrix());
+		setUniform1f("renderdist", viewdistance * 16.0f);
+		setUniformMatrix4fv("Depth_proj", frus.getProjMatrix());
+		setUniformMatrix4fv("Depth_modl", frus.getModlMatrix());
+
 		//Enable arrays for additional vertex attributes
 		glEnableVertexAttribArrayARB(ShaderAttribLoc);
 	}
 
 	void DisableShaders() {
 		//Disable shader
-		glUseProgramObjectARB(0);
+		unbindShader();
 
 		//Disable arrays for additional vertex attributes
 		glDisableVertexAttribArrayARB(ShaderAttribLoc);
@@ -280,7 +307,7 @@ namespace Renderer {
 	void StartShadowPass() {
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, ShadowFBO);
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
-		glUseProgramObjectARB(shaderPrograms[1]);
+		bindShader(ShadowShader);
 		glViewport(0, 0, ShadowRes, ShadowRes);
 	}
 
@@ -288,7 +315,35 @@ namespace Renderer {
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		glDrawBuffer(GL_BACK); glReadBuffer(GL_BACK);
-		glUseProgramObjectARB(0);
+		unbindShader();
 		glViewport(0, 0, windowwidth, windowheight);
+	}
+
+	bool setUniform1f(const char * uniform, float value) {
+		int loc = getUniformLocation(uniform);
+		if (loc == -1) return false;
+		glUniform1fARB(loc, value);
+		return true;
+	}
+
+	bool setUniform1i(const char * uniform, int value) {
+		int loc = getUniformLocation(uniform);
+		if (loc == -1) return false;
+		glUniform1iARB(loc, value);
+		return true;
+	}
+
+	bool setUniform4f(const char * uniform, float v0, float v1, float v2, float v3) {
+		int loc = getUniformLocation(uniform);
+		if (loc == -1) return false;
+		glUniform4fARB(loc, v0, v1, v2, v3);
+		return true;
+	}
+
+	bool setUniformMatrix4fv(const char * uniform, float * value) {
+		int loc = getUniformLocation(uniform);
+		if (loc == -1) return false;
+		glUniformMatrix4fvARB(loc, 1, GL_FALSE, value);
+		return true;
 	}
 }
