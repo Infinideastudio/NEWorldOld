@@ -4,6 +4,7 @@
 #include <io.h>
 #include <functional>
 #include <iostream>
+#include "API.h"
 
 std::vector<ModInfo> Mod::ModLoader::mods;
 
@@ -47,7 +48,7 @@ Mod::ModLoader::ModLoadStatus Mod::ModLoader::loadSingleMod(std::string modPath)
 {
 	ModCall call=loadMod(modPath);
 	ModInfo(*getModInfo)() = (ModInfo(*)())getFunction(call, "getModInfo");
-	bool(*init)() = (bool(*)())getFunction(call, "init");
+	bool(*init)(APIPackage) = (bool(*)(APIPackage))getFunction(call, "init");
 	ModInfo info = getModInfo(); //获得Mod信息
 	std::cout << "[Console][Game]Loading Mod" << info.name << "[" << info.version << "]" << std::endl;
 	if (info.dependence != "") { //判断并检查依赖项
@@ -60,11 +61,20 @@ Mod::ModLoader::ModLoadStatus Mod::ModLoader::loadSingleMod(std::string modPath)
 		}
 		if (!foundDependence) return MissDependence;
 	}
-	if (!(*init)()) return InitFailed; //初始化Mod
+	if (!(*init)(getPackage())) return InitFailed; //初始化Mod
 	info.call = call;
 	mods.push_back(info);
 	return Success;
 }
+
+void Mod::ModLoader::unloadMods()
+{
+	for (size_t i = 0; i != mods.size(); i++) {
+		unloadMod(mods[i].call);
+	}
+	mods.clear();
+}
+
 
 Mod::ModLoader::ModCall Mod::ModLoader::loadMod(std::string filename)
 {
