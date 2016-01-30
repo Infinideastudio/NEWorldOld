@@ -57,4 +57,6 @@ struct APIPackage {
 	std::function<void*(std::string key)> getSharedData;
 	std::function<void(std::string key, void* value)> setSharedData;
 	std::function<PlayerData()> getPlayerData;
+	std::function<void(int x, int y, int z, bool blockchanged)> updateBlock;
+	std::function<void(int x, int y, int z, bool value)> setChunkUpdated;
 };

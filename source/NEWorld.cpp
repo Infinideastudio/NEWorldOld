@@ -219,6 +219,7 @@ main_menu:
 		
 	} while (!glfwWindowShouldClose(MainWindow));
 	saveGame();
+	Mod::ModLoader::unloadMods();
 
 	updateThreadRun = false;
 	MutexUnlock(Mutex);
@@ -689,7 +690,7 @@ void updategame(){
 						World::pickblock(x, y, z);
 					}
 				}
-				if (((mb == 2 && mbp == false) || isPressed(GLFW_KEY_TAB))) { //鼠标右键
+				if (((mb == 2 && mbp == false) || (!chatmode&&isPressed(GLFW_KEY_TAB)))) { //鼠标右键
 					if (Player::inventoryAmount[3][Player::indexInHand] > 0 && isBlock(Player::inventory[3][Player::indexInHand])) {
 						//放置方块
 						if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
