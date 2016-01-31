@@ -346,7 +346,7 @@ void splashscreen(){
 }
 
 void createwindow() {
-	glfwSetErrorCallback([](int err, const char* desc) { cout << desc << endl; });
+	glfwSetErrorCallback([](int, const char* desc) { cout << desc << endl; });
 	std::stringstream title;
 	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
 	if (Multisample != 0) glfwWindowHint(GLFW_SAMPLES, Multisample);
