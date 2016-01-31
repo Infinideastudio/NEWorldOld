@@ -19,7 +19,6 @@ namespace Menus {
 			backbtn = GUI::button(GetStrbyKey("NEWorld.render.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(8, &title, &smoothlightingbtn, &fancygrassbtn, &mergefacebtn, &msaabar, &shaderbtn, &vsyncbtn, &backbtn);
 			if (MergeFace) SmoothLighting = smoothlightingbtn.enabled = NiceGrass = fancygrassbtn.enabled = false;
-			if (!wglSwapIntervalEXT) vsyncbtn.enabled = false;
 		}
 		void onUpdate() {
 			if (smoothlightingbtn.clicked) SmoothLighting = !SmoothLighting;
@@ -34,8 +33,8 @@ namespace Menus {
 			if (shaderbtn.clicked) Shaderoptions();
 			if (vsyncbtn.clicked) {
 				vsync = !vsync;
-				if (vsync) wglSwapIntervalEXT(1);
-				else wglSwapIntervalEXT(0);
+				if (vsync) glfwSwapInterval(1);
+				else glfwSwapInterval(0);
 			}
 			if (backbtn.clicked) ExitSignal = true;
 			std::stringstream ss; ss << Multisample;
