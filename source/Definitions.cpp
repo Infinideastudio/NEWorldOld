@@ -67,6 +67,7 @@ int mw, mb, mbp, mbl, mwl;
 double mxdelta, mydelta;
 //¼üÅÌÊäÈëÊı¾İ
 string inputstr;
+unsigned int g_seed;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 int c_getChunkPtrFromCPA;

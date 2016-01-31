@@ -121,10 +121,18 @@ extern int c_getChunkPtrFromSearch;
 extern int c_getHeightFromHMap;
 extern int c_getHeightFromWorldGen;
 #endif
+extern unsigned int g_seed;
 
+inline void fast_srand(int seed){
+	g_seed = seed;
+}
+inline int fastrand() {
+	g_seed = (214013 * g_seed + 2531011);
+	return (g_seed >> 16) & 0x7FFF;
+}
 vector<string> split(string str, string pattern);
 inline string boolstr(bool b){ return b ? "True" : "False"; }
-inline double rnd() { return (double)rand() / (RAND_MAX + 1); }
+inline double rnd() { return (double)fastrand() / (RAND_MAX + 1); }
 #ifdef NEWORLD_USE_WINAPI
 inline double timer(){
 	static LARGE_INTEGER counterFreq;
