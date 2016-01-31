@@ -274,6 +274,7 @@
     <ClInclude Include="include\Netycat\include\Netycat\Netycat.h" />
     <ClInclude Include="source\API.h" />
     <ClInclude Include="source\Blocks.h" />
+    <ClInclude Include="source\ByteOrder.h" />
     <ClInclude Include="source\Chunk.h" />
     <ClInclude Include="source\ChunkPacket.h" />
     <ClInclude Include="source\ChunkPtrArray.h" />
@@ -293,6 +294,7 @@
     <ClInclude Include="source\ModSupport.h" />
     <ClInclude Include="source\ModLoader.h" />
     <ClInclude Include="source\Network.h" />
+    <ClInclude Include="source\NNN.h" />
     <ClInclude Include="source\Object.h" />
     <ClInclude Include="source\OnlinePlayer.h" />
     <ClInclude Include="source\Particles.h" />
@@ -336,6 +338,7 @@
     <ClCompile Include="source\MultiplayerGame.cpp" />
     <ClCompile Include="source\Network.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
+    <ClCompile Include="source\NNN.cpp" />
     <ClCompile Include="source\OnlinePlayer.cpp" />
     <ClCompile Include="source\OptionsMenu.cpp" />
     <ClCompile Include="source\Particles.cpp" />

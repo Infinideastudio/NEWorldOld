@@ -74,10 +74,8 @@ namespace TextRenderer {
 		Texsrc = bitmap->buffer;
 		Tex = new ubyte[32 * 32 * 4];
 		memset(Tex, 0, 32 * 32 * 4 * sizeof(ubyte));
-		//assert(bitmap->width <= 32);
-		//assert(bitmap->rows <= 32);
-		for (int i = 0; i < bitmap->rows; i++) {
-			for (int j = 0; j < bitmap->width; j++) {
+		for (unsigned int i = 0; i < bitmap->rows; i++) {
+			for (unsigned int j = 0; j < bitmap->width; j++) {
 				Tex[(i * 32 + j) * 4 + 0] = Tex[(i * 32 + j) * 4 + 1] = Tex[(i * 32 + j) * 4 + 2] = 255U;
 				Tex[(i * 32 + j) * 4 + 3] = *Texsrc; Texsrc++;
 			}
@@ -134,7 +132,7 @@ namespace TextRenderer {
 		UnicodeChar c;
 		unsigned int i = 0;
 		int uc;
-		double tx, ty, span = 0;
+		double span = 0;
 		wchar_t* wstr = nullptr;
 		MBToWC(glstring.c_str(), wstr, 128);
 
