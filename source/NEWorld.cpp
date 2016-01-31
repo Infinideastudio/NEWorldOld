@@ -129,7 +129,7 @@ main_menu:
 	MutexLock(Mutex);
 	updateThread = ThreadCreate(&updateThreadFunc, NULL);
 	if (multiplayer) {
-		srand((unsigned int)time(NULL));
+		fast_srand((unsigned int)time(NULL));
 		Player::name = "";
 		Player::onlineID = rand();
 		Network::init(serverip, port);
