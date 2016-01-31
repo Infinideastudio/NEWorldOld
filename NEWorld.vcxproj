@@ -293,7 +293,6 @@
     <ClInclude Include="source\ModSupport.h" />
     <ClInclude Include="source\ModLoader.h" />
     <ClInclude Include="source\Network.h" />
-    <ClInclude Include="source\NNN.h" />
     <ClInclude Include="source\Object.h" />
     <ClInclude Include="source\OnlinePlayer.h" />
     <ClInclude Include="source\Particles.h" />
@@ -304,7 +303,6 @@
     <ClInclude Include="source\StdInclude.h" />
     <ClInclude Include="source\TextRenderer.h" />
     <ClInclude Include="source\Textures.h" />
-    <ClInclude Include="source\vduio.h" />
     <ClInclude Include="source\World.h" />
     <ClInclude Include="source\WorldGen.h" />
     <ClInclude Include="source\WorldRenderer.h" />
@@ -338,7 +336,6 @@
     <ClCompile Include="source\MultiplayerGame.cpp" />
     <ClCompile Include="source\Network.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
-    <ClCompile Include="source\NNN.cpp" />
     <ClCompile Include="source\OnlinePlayer.cpp" />
     <ClCompile Include="source\OptionsMenu.cpp" />
     <ClCompile Include="source\Particles.cpp" />
@@ -349,7 +346,6 @@
     <ClCompile Include="source\ShadowMaps.cpp" />
     <ClCompile Include="source\TextRenderer.cpp" />
     <ClCompile Include="source\Textures.cpp" />
-    <ClCompile Include="source\vduio.cpp" />
     <ClCompile Include="source\World.cpp" />
     <ClCompile Include="source\WorldGen.cpp" />
     <ClCompile Include="source\WorldMenu.cpp" />

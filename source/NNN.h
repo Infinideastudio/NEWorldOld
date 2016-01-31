@@ -1,433 +1,315 @@
-#ifndef _NNN_H_
-#define _NNN_H_
-
+#pragma once
 
 #include <iostream>
 #include <map>
 #include <stdint.h>
 #include <string>
-
+#include <vector>
+#include <stdexcept>
+#include "ByteOrder.h"
 
 namespace NNN {
 
-    namespace ByteOrder {
+	enum NodeType { Unknown, Package, String, U8, U16, U32, U64, S8, S16, S32, S64, F32, F64, VS32 };
 
-        // Convert from Little Endian to Native.
-        // U16
-        void convertLE2NativeU16(uint16_t* data, uintptr_t size);
-        // U32
-        void convertLE2NativeU32(uint32_t* data, uintptr_t size);
-        // U64
-        void convertLE2NativeU64(uint64_t* data, uintptr_t size);
-        // S16
-        void convertLE2NativeS16(int16_t* data, uintptr_t size);
-        // S32
-        void convertLE2NativeS32(int32_t* data, uintptr_t size);
-        // S64
-        void convertLE2NativeS64(int64_t* data, uintptr_t size);
-        // F32
-        void convertLE2NativeF32(float* data, uintptr_t size);
-        // F64
-        void convertLE2NativeF64(double* data, uintptr_t size);
+	struct Magic {
+		uint8_t data[4];
+		bool operator!= (const Magic &src) const;
+	};
 
-        // Convert from Native to Little Endian.
-        // U16
-        void convertNative2LEU16(uint16_t* data, uintptr_t size);
-        // U32
-        void convertNative2LEU32(uint32_t* data, uintptr_t size);
-        // U64
-        void convertNative2LEU64(uint64_t* data, uintptr_t size);
-        // S16
-        void convertNative2LES16(int16_t* data, uintptr_t size);
-        // S32
-        void convertNative2LES32(int32_t* data, uintptr_t size);
-        // S64
-        void convertNative2LES64(int64_t* data, uintptr_t size);
-        // F32
-        void convertNative2LEF32(float* data, uintptr_t size);
-        // F64
-        void convertNative2LEF64(double* data, uintptr_t size);
+	struct Version {
+		uint8_t data[4];
+		bool operator> (const Version &src) const;
+	};
 
-    }
+	struct Information {
 
-    struct Magic {
+		Version version;
+		uintptr_t depth;
 
-        uint8_t data[4];
+	};
 
-        bool operator !=(const Magic &src) const;
+	std::vector<std::string> split(std::string str, std::string pattern);
 
-    };
+	class Node {
+	protected:
+		NodeType type;
 
-    struct Version {
+	public:
 
-        uint8_t data[4];
+		virtual ~Node() {};
 
-        bool operator >(const Version &src) const;
+		virtual Node* clone() = 0;
 
-    };
+		virtual bool read(std::istream& in, Information& info) = 0;
+		virtual bool write(std::ostream& out, Information& info) = 0;
+		virtual void print(std::ostream& out) const = 0;
 
+		virtual NodeType getType() = 0;
+	};
 
-    struct Information {
+	NodeType getType(Node* n);
 
-        Version version;
-        uintptr_t depth;
+	template <typename DataType>
+	class ValueNode : public Node {
+	private:
+		DataType data;
 
-    };
+	public:
+		ValueNode() { type = NNN::getType(this); }
+		ValueNode(const DataType data_) : data(data_) { type = NNN::getType(this); }
+		virtual ~ValueNode() {}
 
+		Node* clone() { return new ValueNode(*this); }
 
-    class Node {
+		bool read(std::istream& in, Information&) {
+			uint8_t flags;
+			in.read((char*)&flags, 1);
+			if (!in) return false;
 
-        public:
+			DataType data_;
+			in.read((char*)&data_, sizeof(DataType));
+			if (!in) return false;
+			data = data_;
+			return true;
+		}
 
-        Node();
-        Node(const Node& src);
-        virtual ~Node() = 0;
+		bool write(std::ostream& out, Information&) {
+			uint8_t flags = 0x00;
+			out.write((char*)&flags, 1);
+			if (!out) return false;
 
-        virtual Node* clone() = 0;
+			out.write((char*)&data, sizeof(DataType));
+			if (!out) return false;
+			return true;
+		}
 
-        virtual bool read(std::istream& in, Information& info) = 0;
-        virtual bool write(std::ostream& out, Information& info) = 0;
+		virtual void print(std::ostream& out) const { out << data; }
 
-    };
+		inline virtual NodeType getType() { return type; }
 
-    class NodePackage : public Node {
+		inline DataType* get() { return data; }
+		inline const DataType* get() const { return data; }
 
-        private:
+		inline void set(const DataType& data_) { data = data_; }
+	};
 
-        std::map<std::string, Node*>* data;
-        uint32_t size;
+	template <>
+	class ValueNode<std::string> : public Node {
+	private:
 
-        public:
+		std::string data;
 
-        NodePackage();
-        NodePackage(const NodePackage& src);
-        virtual ~NodePackage();
+	public:
 
-        Node* clone();
+		ValueNode() {};
+		ValueNode(std::string data_) { data = data_; }
+		virtual ~ValueNode() {};
 
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
+		Node* clone() { return new ValueNode(*this); }
 
-        std::map<std::string, Node*>* getData();
-        const std::map<std::string, Node*>* getData() const;
-        uint32_t getSize() const;
+		bool read(std::istream& in, Information& info);
+		bool write(std::ostream& out, Information& info);
+		virtual void print(std::ostream& out) const { out << data; }
 
-        void set(std::map<std::string, Node*>* data_,
-            const uint32_t size_);
+		inline virtual NodeType getType() { return NodeType::String; }
 
-        private:
+		inline std::string& getData() { return data; }
 
-        void cleanMap(std::map<std::string, Node*>* data_, uintptr_t size_);
+		inline const std::string& getData() const { return data; }
 
-    };
+		void set(std::string data_) { data = data_; };
 
-    class NodeString : public Node {
+	};
 
-        private:
+	template <typename ArrayType>
+	class ValueNode<std::vector<ArrayType> > : public Node {
+	private:
+		typedef std::vector<ArrayType> Vector;
 
-        std::string* data;
-        uint32_t size;
+		Vector data;
 
-        public:
+	public:
 
-        NodeString();
-        NodeString(const NodeString& src);
-        virtual ~NodeString();
+		ValueNode() { type = NNN::getType(this); }
+		ValueNode(Vector data_) { data = data_; type = NNN::getType(this); }
+		virtual ~ValueNode() {}
 
-        Node* clone();
+		Node* clone() { return new ValueNode(*this); }
 
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
+		bool read(std::istream& in, Information&) {
 
-        std::string* getData();
-        const std::string* getData() const;
-        uint32_t getSize() const;
+			uint8_t flags;
+			in.read((char*)&flags, 1);
+			if (!in) return false;
 
-        void set(std::string* data_, uint32_t size_);
+			Vector data_;
 
-    };
+			uint16_t slen;
+			in.read((char*)&slen, sizeof(uint16_t));
+			if (!in) return false;
 
-    class NodeU8 : public Node {
-
-        private:
-
-        uint8_t* data;
-        uint32_t size;
-
-        public:
-
-        NodeU8();
-        NodeU8(const NodeU8& src);
-        virtual ~NodeU8();
-
-        Node* clone();
-
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
-
-        uint8_t* getData();
-        const uint8_t* getData() const;
-        uint32_t getSize() const;
-
-        void set(uint8_t* data_, uint32_t size_);
-
-    };
-
-    class NodeU16 : public Node {
-
-        private:
-
-        uint16_t* data;
-        uint32_t size;
-
-        public:
-
-        NodeU16();
-        NodeU16(const NodeU16& src);
-        virtual ~NodeU16();
-
-        Node* clone();
-
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
-
-        uint16_t* getData();
-        const uint16_t* getData() const;
-        uint32_t getSize() const;
-
-        void set(uint16_t* data_, uint32_t size_);
-
-    };
-
-    class NodeU32 : public Node {
-
-        private:
-
-        uint32_t* data;
-        uint32_t size;
-
-        public:
-
-        NodeU32();
-        NodeU32(const NodeU32& src);
-        virtual ~NodeU32();
-
-        Node* clone();
-
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
-
-        uint32_t* getData();
-        const uint32_t* getData() const;
-        uint32_t getSize() const;
-
-        void set(uint32_t* data_, uint32_t size_);
-
-    };
-
-    class NodeU64 : public Node {
-
-        private:
-
-        uint64_t* data;
-        uint32_t size;
-
-        public:
-
-        NodeU64();
-        NodeU64(const NodeU64& src);
-        virtual ~NodeU64();
-
-        Node* clone();
-
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
-
-        uint64_t* getData();
-        const uint64_t* getData() const;
-        uint32_t getSize() const;
-
-        void set(uint64_t* data_, uint32_t size_);
-
-    };
-
-    class NodeS8 : public Node {
-
-        private:
-
-        int8_t* data;
-        uint32_t size;
-
-        public:
-
-        NodeS8();
-        NodeS8(const NodeS8& src);
-        virtual ~NodeS8();
-
-        Node* clone();
-
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
-
-        int8_t* getData();
-        const int8_t* getData() const;
-        uint32_t getSize() const;
-
-        void set(int8_t* data_, uint32_t size_);
-
-    };
-
-    class NodeS16 : public Node {
-
-        private:
-
-        int16_t* data;
-        uint32_t size;
-
-        public:
-
-        NodeS16();
-        NodeS16(const NodeS16& src);
-        virtual ~NodeS16();
-
-        Node* clone();
-
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
-
-        int16_t* getData();
-        const int16_t* getData() const;
-        uint32_t getSize() const;
-
-        void set(int16_t* data_, uint32_t size_);
-
-    };
-
-    class NodeS32 : public Node {
-
-        private:
-
-        int32_t* data;
-        uint32_t size;
-
-        public:
-
-        NodeS32();
-        NodeS32(const NodeS32& src);
-        virtual ~NodeS32();
-
-        Node* clone();
-
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
-
-        int32_t* getData();
-        const int32_t* getData() const;
-        uint32_t getSize() const;
-
-        void set(int32_t* data_, uint32_t size_);
-
-    };
-
-    class NodeS64 : public Node {
-
-        private:
-
-        int64_t* data;
-        uint32_t size;
-
-        public:
-
-        NodeS64();
-        NodeS64(const NodeS64& src);
-        virtual ~NodeS64();
-
-        Node* clone();
-
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
-
-        int64_t* getData();
-        const int64_t* getData() const;
-        uint32_t getSize() const;
-
-        void set(int64_t* data_, uint32_t size_);
-
-    };
-
-    class NodeF32 : public Node {
-
-        private:
-
-        float* data;
-        uint32_t size;
-
-        public:
-
-        NodeF32();
-        NodeF32(const NodeF32& src);
-        virtual ~NodeF32();
-
-        Node* clone();
-
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
-
-        float* getData();
-        const float* getData() const;
-        uint32_t getSize() const;
-
-        void set(float* data_, uint32_t size_);
-
-    };
-
-    class NodeF64 : public Node {
-
-        private:
-
-        double* data;
-        uint32_t size;
-
-        public:
-
-        NodeF64();
-        NodeF64(const NodeF64& src);
-        virtual ~NodeF64();
-
-        Node* clone();
-
-        bool read(std::istream& in, Information& info);
-        bool write(std::ostream& out, Information& info);
-
-        double* getData();
-        const double* getData() const;
-        uint32_t getSize() const;
-
-        void set(double* data_, uint32_t size_);
-
-    };
-
-
-    using NodeByte = NodeS8;
-    using NodeShort = NodeS16;
-    using NodeInt = NodeS32;
-    using NodeLong = NodeS64;
-    using NodeUByte = NodeU8;
-    using NodeUShort = NodeU16;
-    using NodeUInt = NodeU32;
-    using NodeULong = NodeU64;
-    using NodeFloat = NodeF32;
-    using NodeDouble = NodeF64;
-
-
-    bool read(std::istream& in, NodePackage& package);
-    bool write(std::ostream& out, NodePackage& package);
-
-
-    const Magic MAGIC = {0x4E, 0x4E, 0x4E, 0xFF};
-    const Version VERSION = {0x00, 0x00, 0x01, 0x00};
+			if (slen != 0) {
+				char* sdata = new char[slen];
+				in.read(sdata, slen);
+				if (!in||slen%sizeof(ArrayType)!=0) {
+					delete[] sdata;
+					return false;
+				}
+			
+				int elemCount = slen / sizeof(ArrayType);
+				data_ = Vector(elemCount);
+				ArrayType* p = (ArrayType*)sdata;
+				for (int i = 0; i < elemCount; i++) {
+					data_[i]=*(p+i);
+				}
+				delete[] sdata;
+			}
+
+			data = data_;
+
+			return true;
+
+		}
+
+		bool write(std::ostream& out, Information&) {
+
+			uint8_t flags = 0x0D;
+			out.write((char*)&flags, 1);
+			if (!out) return false;
+			
+			uint16_t slen = (uint16_t)data.size()*sizeof(ArrayType);
+			ByteOrder::convertNative2LEU16(&slen, 1);
+			out.write((char*)&slen, sizeof(uint16_t));
+			if (!out) return false;
+
+			out.write((const char*)&data[0], data.size()* sizeof(ArrayType));
+			if (!out) return false;
+
+			return true;
+
+		}
+		
+		virtual void print(std::ostream& out) const {
+			for (Vector::const_iterator iter = data.begin(); iter != data.end(); ++iter)
+				out << *iter << " ";
+		}
+
+		inline virtual NodeType getType() { return type; }
+
+		inline Vector& getArray() { return data; }
+		inline const Vector& getArray() const { return data; }
+		void setArray(Vector data_) { data = data_; };
+
+		inline ArrayType& get(size_t index_) { return data[index_] }
+		inline const ArrayType& get(size_t index_) const { return data[index_] }
+		inline void set(size_t index_, ArrayType data_) { data[index_] = data_; }
+		inline void add(ArrayType data_) { data.push_back(data_); }
+		inline void remove(size_t index_) { data.erase(index_); }
+	};
+
+	typedef std::map<std::string, Node*> NodeMap;
+
+	class NodePackage : public Node {
+	private:
+		NodeMap data;
+
+		void cleanMap(NodeMap& data_) {
+			for (NodeMap::iterator it = data_.begin(); it != data_.end(); ++it) {
+				if (it->second != nullptr) delete it->second;
+			}
+		}
+
+	public:
+		NodePackage::NodePackage() { type = NNN::getType(this); }
+		NodePackage::NodePackage(const NodeMap& data_) { data = data_; type = NNN::getType(this); }
+		NodePackage::NodePackage(const NodePackage& src) {
+			data = src.data;
+			for (NodeMap::iterator it = data.begin(); it != data.end(); ++it) {
+				if (it->second != nullptr) it->second = it->second->clone();
+			}
+		}
+		virtual NodePackage::~NodePackage() {
+			cleanMap(data);
+		}
+
+		inline virtual Node* NodePackage::clone() { return new NodePackage(*this); }
+
+		bool read(std::istream& in, Information& info);
+		bool write(std::ostream& out, Information& info);
+
+		inline virtual NodeType getType() { return NodeType::Package; }
+
+		inline NodeMap& getNodeMap() { return data; }
+		inline const NodeMap& getNodeMap() const { return data; }
+		inline void setNodeMap(const NodeMap& data_) { data = data_; }
+		inline void addNode(std::string nodeName, Node* value) { data.insert(std::make_pair(nodeName, value)); }
+		inline void removeNode(std::string nodeName) { data.erase(nodeName); }
+
+		inline Node* get(std::string path) {
+			Node* M = this;
+			try {
+				std::vector<std::string> result = split(path, ".");
+				for (unsigned int i = 0; i < result.size(); i++) {
+					Node* n = static_cast<NodePackage*>(M)->data.at(result[i]);
+					if (n->getType() == NodeType::Package) M = static_cast<NodePackage*>(n);
+					else break;
+				}
+			}
+			catch (std::out_of_range&) {
+				return nullptr;
+			}
+			return M;
+		}
+
+		virtual void print(std::ostream& out) const { printStack(out); }
+		void printStack(std::ostream& out, int stack = 0) const {
+			for (NodeMap::const_iterator iter = data.begin(); iter != data.end(); iter++) {
+				out << std::string(stack, '\t');
+				out << iter->first;
+				if (iter->second->getType() == NodeType::Package) {
+					NodePackage* v = (NodePackage*)iter->second;
+					out << " - Package" << "\n";
+					v->printStack(out, stack + 1);
+				}
+				else {
+					out << "(" << iter->second->getType() << ") ";
+					iter->second->print(out);
+					out << "\n";
+
+				}
+			}
+		}
+	};
+	
+	using NodeS8 = ValueNode<char>;
+	using NodeS16 = ValueNode<short>;
+	using NodeS32 = ValueNode<int>;
+	using NodeS64 = ValueNode<long long>;
+	using NodeU8 = ValueNode<unsigned char>;
+	using NodeU16 = ValueNode<unsigned short>;
+	using NodeU32 = ValueNode<unsigned int>;
+	using NodeU64 = ValueNode<unsigned long long>;
+	using NodeF32 = ValueNode<float>;
+	using NodeF64 = ValueNode<double>;
+
+	using NodeByte = ValueNode<char>;
+	using NodeShort = ValueNode<short>;
+	using NodeInt = ValueNode<int>;
+	using NodeIntArray = ValueNode<std::vector<int> >;
+	using NodeLong = ValueNode<long long>;
+	using NodeUByte = ValueNode<unsigned char>;
+	using NodeUShort = ValueNode<unsigned short>;
+	using NodeUInt = ValueNode<unsigned int>;
+	using NodeULong = ValueNode<unsigned long long>;
+	using NodeFloat = ValueNode<float>;
+	using NodeDouble = ValueNode<double>;
+	using NodeString = ValueNode<std::string>;
+
+	bool read(std::istream& in, NodePackage& package);
+	bool write(std::ostream& out, NodePackage& package);
+
+	const Magic MAGIC = {0x4E, 0x4E, 0x4E, 0xFF};
+	const Version VERSION = {0x00, 0x00, 0x01, 0x00};
 
 }
-
-
-#endif

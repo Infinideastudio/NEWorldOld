@@ -39,9 +39,6 @@
     <Filter Include="源代码\DataStorage">
       <UniqueIdentifier>{949e684e-b65c-4015-82ab-e4bb1972035c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\DataStorage\TreeUtils">
-      <UniqueIdentifier>{0aeaa96c-9ff1-4e81-849d-2f58e0517af4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="源代码\Game\World">
       <UniqueIdentifier>{0873facd-4fad-448a-a88b-afa8accfd800}</UniqueIdentifier>
     </Filter>
@@ -169,12 +166,6 @@
     </ClInclude>
     <ClInclude Include="source\Textures.h">
       <Filter>源代码\Game\Textures</Filter>
-    </ClInclude>
-    <ClInclude Include="source\NNN.h">
-      <Filter>源代码\DataStorage</Filter>
-    </ClInclude>
-    <ClInclude Include="source\vduio.h">
-      <Filter>源代码\DataStorage</Filter>
     </ClInclude>
     <ClInclude Include="source\Items.h">
       <Filter>源代码\Game</Filter>
@@ -318,12 +309,6 @@
     </ClCompile>
     <ClCompile Include="source\Textures.cpp">
       <Filter>源代码\Game\Textures</Filter>
-    </ClCompile>
-    <ClCompile Include="source\NNN.cpp">
-      <Filter>源代码\DataStorage</Filter>
-    </ClCompile>
-    <ClCompile Include="source\vduio.cpp">
-      <Filter>源代码\DataStorage</Filter>
     </ClCompile>
     <ClCompile Include="source\Items.cpp">
       <Filter>源代码\Game</Filter>
