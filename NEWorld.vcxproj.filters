@@ -200,6 +200,12 @@
     <ClInclude Include="source\ModSupport.h">
       <Filter>源代码\Mod</Filter>
     </ClInclude>
+    <ClInclude Include="source\NNN.h">
+      <Filter>源代码\DataStorage</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ByteOrder.h">
+      <Filter>源代码\DataStorage</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -333,6 +339,9 @@
     </ClCompile>
     <ClCompile Include="source\API.cpp">
       <Filter>源代码\Mod</Filter>
+    </ClCompile>
+    <ClCompile Include="source\NNN.cpp">
+      <Filter>源代码\DataStorage</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

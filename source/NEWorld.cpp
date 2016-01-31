@@ -400,10 +400,8 @@ void setupscreen() {
 	glClearDepth(1.0);
 	glGenBuffersARB(1, &World::EmptyBuffer);
 	if (Renderer::AdvancedRender) Renderer::initShaders();
-	if (wglSwapIntervalEXT) {
-		if (vsync) wglSwapIntervalEXT(1);
-		else wglSwapIntervalEXT(0);
-	}
+	if (vsync) glfwSwapInterval(1);
+	else glfwSwapInterval(0);
 }
 
 void setupNormalFog() {
