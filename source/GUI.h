@@ -36,6 +36,7 @@ namespace GUI {
 	void clearTransition();
 	void screenBlur();
 	void drawBackground();
+	void InitStretch();
 
 	class Form;
 	class controls {

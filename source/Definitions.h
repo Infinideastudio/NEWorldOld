@@ -76,10 +76,11 @@ extern float FOVyRunning;
 extern float FOVyExt;
 extern int Multisample;
 extern bool vsync;
+extern double stretch;
 
 extern int windowwidth;
 extern int windowheight;
-extern bool gamebegin, gameexit, bagOpened;
+extern bool gamebegin, gameexit, bagOpened, reentry;
 
 extern TextureID BlockTextures, BlockTextures3D;
 extern TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
@@ -114,6 +115,9 @@ extern double mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
 extern double mxdelta, mydelta;
 extern string inputstr;
+
+void UITrans(int x, int y);
+void UIVertex(int x, int y);
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 extern int c_getChunkPtrFromCPA;

@@ -6,7 +6,6 @@ namespace TextRenderer {
 	FT_Face fontface;
 	FT_GlyphSlot slot;
 	UnicodeChar chars[65536];
-
 	unsigned int gbe;
 	unsigned int Font;
 	int gloop;
@@ -163,30 +162,30 @@ namespace TextRenderer {
 
 			glBindTexture(GL_TEXTURE_2D, c.tex);
 
-			glTranslated(x + 1.0 + span, y + 1.0, 0.0);
+			UITrans(x + 1 + span, y + 1);
 			glColor4f(0.5, 0.5, 0.5, a);
 			glBegin(GL_QUADS);
 			glTexCoord2d(0.0, 0.0);
-			glVertex2d(c.xpos, 15.0 - c.ypos);
+			UIVertex(c.xpos, 15.0 - c.ypos);
 			glTexCoord2d(c.width / 32.0, 0.0);
-			glVertex2d(c.xpos + c.width, 15.0 - c.ypos);
+			UIVertex(c.xpos + c.width, 15.0 - c.ypos);
 			glTexCoord2d(c.width / 32.0, c.height / 32.0);
-			glVertex2d(c.xpos + c.width, 15.0 + c.height - c.ypos);
+			UIVertex(c.xpos + c.width, 15.0 + c.height - c.ypos);
 			glTexCoord2d(0.0, c.height / 32.0);
-			glVertex2d(c.xpos, 15.0 + c.height - c.ypos);
+			UIVertex(c.xpos, 15.0 + c.height - c.ypos);
 			glEnd();
 
-			glTranslated(-1.0, -1.0, 0.0);
+			UITrans(-1, -1);
 			glColor4f(r, g, b, a);
 			glBegin(GL_QUADS);
 			glTexCoord2d(0.0, 0.0);
-			glVertex2d(c.xpos, 15.0 - c.ypos);
+			UIVertex(c.xpos, 15.0 - c.ypos);
 			glTexCoord2d(c.width / 32.0, 0.0);
-			glVertex2d(c.xpos + c.width, 15.0 - c.ypos);
+			UIVertex(c.xpos + c.width, 15.0 - c.ypos);
 			glTexCoord2d(c.width / 32.0, c.height / 32.0);
-			glVertex2d(c.xpos + c.width, 15.0 + c.height - c.ypos);
+			UIVertex(c.xpos + c.width, 15.0 + c.height - c.ypos);
 			glTexCoord2d(0.0, c.height / 32.0);
-			glVertex2d(c.xpos, 15.0 + c.height - c.ypos);
+			UIVertex(c.xpos, 15.0 + c.height - c.ypos);
 			glEnd();
 
 			/*
@@ -216,7 +215,7 @@ namespace TextRenderer {
 			glTranslated(-x - 1 - span, -y - 1, 0);
 			*/
 
-			glTranslated(-x - span, -y, 0);
+			UITrans(-x - span, -y);
 			span += c.advance;
 
 			if (glstring[i] >= 0 && glstring[i] <= 127) i++;
