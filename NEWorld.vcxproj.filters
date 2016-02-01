@@ -206,6 +206,9 @@
     <ClInclude Include="source\ByteOrder.h">
       <Filter>源代码\DataStorage</Filter>
     </ClInclude>
+    <ClInclude Include="source\Setup.h">
+      <Filter>源代码\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -343,5 +346,13 @@
     <ClCompile Include="source\NNN.cpp">
       <Filter>源代码\DataStorage</Filter>
     </ClCompile>
+    <ClCompile Include="source\Setup.cpp">
+      <Filter>源代码\Common</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="source\resource.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
