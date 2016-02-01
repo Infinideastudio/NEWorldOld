@@ -9,7 +9,11 @@ namespace Globalization {
 
 	bool LoadLang(string lang) {
 		std::ifstream f("Lang/" + lang + ".lang");
-		if (f.bad()) return false;
+		if (f.bad()) {
+			exit(-101);
+			return false;
+		}
+		Lines.clear();
 		Cur_Lang = lang;
 		f >> Cur_Symbol; f.get();
 		getline(f, Cur_Name);

@@ -1,4 +1,4 @@
-44
+47
 NEWorld.yes
 NEWorld.no
 NEWorld.enabled
@@ -12,6 +12,7 @@ NEWorld.options.sensitivity
 NEWorld.options.distance
 NEWorld.options.rendermenu
 NEWorld.options.guimenu
+NEWorld.options.languagemenu
 NEWorld.options.back
 NEWorld.options.save
 NEWorld.render.caption
@@ -43,3 +44,5 @@ NEWorld.create.caption
 NEWorld.create.inputname
 NEWorld.create.ok
 NEWorld.create.back
+NEWorld.language.caption
+NEWorld.language.back
