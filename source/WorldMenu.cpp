@@ -6,10 +6,10 @@
 namespace Menus {
 	class WorldMenu :public GUI::Form {
 	private:
-		int leftp = windowwidth / 2 - 200;
-		int midp = windowwidth / 2;
-		int rightp = windowwidth / 2 + 200;
-		int downp = windowheight - 20;
+		int leftp = windowwidth / 2 / stretch  - 200;
+		int midp = windowwidth / 2 / stretch;
+		int rightp = windowwidth / 2 / stretch+ 200;
+		int downp = windowheight / stretch - 20;
 		bool refresh = true;
 		int selected = 0, mouseon;
 		int worldcount;
@@ -34,10 +34,10 @@ namespace Menus {
 		}
 		void onUpdate() {
 			worldcount = (int)worldnames.size();
-			leftp = windowwidth / 2 - 250;
-			midp = windowwidth / 2;
-			rightp = windowwidth / 2 + 250;
-			downp = windowheight - 20;
+			leftp = windowwidth / 2 / stretch - 250;
+			midp = windowwidth / 2 / stretch;
+			rightp = windowwidth / 2 / stretch + 250;
+			downp = windowheight /stretch  - 20;
 
 			vscroll.barheight = (downp - 72 - 48)*(downp - 36 - 40) / (64 * worldcount + 64);
 			if (vscroll.barheight > downp - 36 - 40) {
@@ -128,7 +128,7 @@ namespace Menus {
 		}
 		void onRender() {
 			glEnable(GL_SCISSOR_TEST);
-			glScissor(0, windowheight - (downp - 72), windowwidth, downp - 72 - 48 + 1);
+			glScissor(0, windowheight - (downp - 72) * stretch, windowwidth, (downp - 72 - 48 + 1) * stretch);
 			glTranslatef(0.0f, (float)-trs, 0.0f);
 			for (int i = 0; i < worldcount; i++) {
 				int xmin, xmax, ymin, ymax;
@@ -139,10 +139,10 @@ namespace Menus {
 					if (mouseon == i) glColor4f(0.5, 0.5, 0.5, GUI::FgA);
 					else glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
 					glBegin(GL_QUADS);
-					glVertex2i(midp - 250, 48 + i * 64);
-					glVertex2i(midp + 250, 48 + i * 64);
-					glVertex2i(midp + 250, 48 + i * 64 + 60);
-					glVertex2i(midp - 250, 48 + i * 64 + 60);
+					UIVertex(midp - 250, 48 + i * 64);
+					UIVertex(midp + 250, 48 + i * 64);
+					UIVertex(midp + 250, 48 + i * 64 + 60);
+					UIVertex(midp - 250, 48 + i * 64 + 60);
 					glEnd();
 				}
 				else {
@@ -163,52 +163,52 @@ namespace Menus {
 					if (mouseon == (int)i) glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 					else glColor4f(0.8f, 0.8f, 0.8f, 0.9f);
 					glBegin(GL_QUADS);
-					glTexCoord2f(0.5f - w / 2, 0.5f + h / 2), glVertex2i(midp - 250, 48 + i * 64);
-					glTexCoord2f(0.5f + w / 2, 0.5f + h / 2), glVertex2i(midp + 250, 48 + i * 64);
-					glTexCoord2f(0.5f + w / 2, 0.5f - h / 2), glVertex2i(midp + 250, 48 + i * 64 + 60);
-					glTexCoord2f(0.5f - w / 2, 0.5f - h / 2), glVertex2i(midp - 250, 48 + i * 64 + 60);
+					glTexCoord2f(0.5f - w / 2, 0.5f + h / 2), UIVertex(midp - 250, 48 + i * 64);
+					glTexCoord2f(0.5f + w / 2, 0.5f + h / 2), UIVertex(midp + 250, 48 + i * 64);
+					glTexCoord2f(0.5f + w / 2, 0.5f - h / 2), UIVertex(midp + 250, 48 + i * 64 + 60);
+					glTexCoord2f(0.5f - w / 2, 0.5f - h / 2), UIVertex(midp - 250, 48 + i * 64 + 60);
 					glEnd();
 				}
 				glColor4f(GUI::FgR*0.9f, GUI::FgG*0.9f, GUI::FgB*0.9f, 0.9f);
 				glDisable(GL_TEXTURE_2D);
 				glLineWidth(1.0);
 				glBegin(GL_LINE_LOOP);
-				glVertex2i(xmin, ymin);
-				glVertex2i(xmin, ymax);
-				glVertex2i(xmax, ymax);
-				glVertex2i(xmax, ymin);
+				UIVertex(xmin, ymin);
+				UIVertex(xmin, ymax);
+				UIVertex(xmax, ymax);
+				UIVertex(xmax, ymin);
 				glEnd();
 				if (selected == (int)i) {
 					glLineWidth(2.0);
 					glColor4f(0.0, 0.0, 0.0, 1.0);
 					glBegin(GL_LINE_LOOP);
-					glVertex2i(midp - 250, 48 + i * 64);
-					glVertex2i(midp + 250, 48 + i * 64);
-					glVertex2i(midp + 250, 48 + i * 64 + 60);
-					glVertex2i(midp - 250, 48 + i * 64 + 60);
+					UIVertex(midp - 250, 48 + i * 64);
+					UIVertex(midp + 250, 48 + i * 64);
+					UIVertex(midp + 250, 48 + i * 64 + 60);
+					UIVertex(midp - 250, 48 + i * 64 + 60);
 					glEnd();
 				}
-				TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(worldnames[i])) / 2, (140 + i * 128) / 2, worldnames[i]);
+				TextRenderer::renderString((windowwidth / stretch - TextRenderer::getStrWidth(worldnames[i])) / 2, (140 + i * 128) / 2, worldnames[i]);
 			}
 			int i = worldcount;
 			glDisable(GL_TEXTURE_2D);
 			if (mouseon == i) glColor4f(0.5f, 0.5f, 0.5f, GUI::FgA); else glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
 			glBegin(GL_QUADS);
-			glVertex2i(midp - 250, 48 + i * 64);
-			glVertex2i(midp + 250, 48 + i * 64);
-			glVertex2i(midp + 250, 48 + i * 64 + 60);
-			glVertex2i(midp - 250, 48 + i * 64 + 60);
+			UIVertex(midp - 250, 48 + i * 64);
+			UIVertex(midp + 250, 48 + i * 64);
+			UIVertex(midp + 250, 48 + i * 64 + 60);
+			UIVertex(midp - 250, 48 + i * 64 + 60);
 			glEnd();
 			glColor4f(GUI::FgR*0.9f, GUI::FgG*0.9f, GUI::FgB*0.9f, 0.9f);
 			glDisable(GL_TEXTURE_2D);
 			glLineWidth(1.0);
 			glBegin(GL_LINE_LOOP);
-			glVertex2i(midp - 250, 48 + i * 64);
-			glVertex2i(midp + 250, 48 + i * 64);
-			glVertex2i(midp + 250, 48 + i * 64 + 60);
-			glVertex2i(midp - 250, 48 + i * 64 + 60);
+			UIVertex(midp - 250, 48 + i * 64);
+			UIVertex(midp + 250, 48 + i * 64);
+			UIVertex(midp + 250, 48 + i * 64 + 60);
+			UIVertex(midp - 250, 48 + i * 64 + 60);
 			glEnd();
-			TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(GetStrbyKey("NEWorld.worlds.new"))) / 2,
+			TextRenderer::renderString((windowwidth / stretch - TextRenderer::getStrWidth(GetStrbyKey("NEWorld.worlds.new"))) / 2,
 				(140 + i * 128) / 2, GetStrbyKey("NEWorld.worlds.new"));
 			glDisable(GL_SCISSOR_TEST);
 		}
