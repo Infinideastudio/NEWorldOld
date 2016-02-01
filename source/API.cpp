@@ -53,14 +53,14 @@ APIPackage Mod::getPackage() {
 		player.healthMax = Player::healthMax;
 		player.height = Player::height;
 		player.heightExt = Player::heightExt;
-		player.Hitboxes = Player::Hitboxes;
+		//player.Hitboxes = Player::Hitboxes;
 		player.indexInHand = Player::indexInHand;
 		player.inventory = (item*)Player::inventory;
 		player.inventoryAmount = (short*)Player::inventoryAmount;
 		player.inWater = Player::inWater;
 		player.jump= Player::jump;
 		player.lookupdown = Player::lookupdown;
-		player.name = Player::name;
+		//player.name = Player::name;
 		player.NearWall = Player::NearWall;
 		player.OnGround = Player::OnGround;
 		player.onlineID = Player::onlineID;

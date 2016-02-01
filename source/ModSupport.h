@@ -11,19 +11,19 @@ typedef unsigned short item;
 typedef unsigned short block;
 
 struct ModInfo {
-	std::string name;
-	std::string version;
-	std::string dependence;
+	char name[128];
+	char version[128];
+	char dependence[128];
 	void* call;
 };
 
 struct PlayerData {
 	Hitbox::AABB playerbox;
-	std::vector<Hitbox::AABB> Hitboxes;
+	//std::vector<Hitbox::AABB> Hitboxes;
 	double xa, ya, za, xd, yd, zd;
 	double health, healthMax, healSpeed, dropDamagePerBlock;
 	onlineid onlineID;
-	std::string name;
+	//std::string name;
 	Frustum ViewFrustum;
 	bool Glide;
 	bool Flying;

@@ -11,7 +11,7 @@ namespace WorldGen{
 	int		WaterLevel = 30;
 
 	void perlinNoiseInit(int mapseed){
-		srand(mapseed);
+		fast_srand(mapseed);
 		for (int i = 0; i < 256; i++){
 			perm[i] = rnd() * 256.0;
 		}
