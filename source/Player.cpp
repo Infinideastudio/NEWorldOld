@@ -2,6 +2,7 @@
 #include "World.h"
 #include "OnlinePlayer.h"
 
+int Player::gamemode = GameMode::Survival;
 bool Player::Glide;
 bool Player::Flying;
 bool Player::CrossWall;
@@ -83,26 +84,27 @@ void Player::spawn() {
 	InitHitbox(Player::playerbox);
 	InitPosition();
 	updateHitbox();
+	health = healthMax;
 	memset(inventory, 0, sizeof(inventory));
 	memset(inventoryAmount, 0, sizeof(inventoryAmount));
-	inventory[0][0] = 1; inventoryAmount[0][0] = 255;
-	inventory[0][1] = 2; inventoryAmount[0][1] = 255;
-	inventory[0][2] = 3; inventoryAmount[0][2] = 255;
-	inventory[0][3] = 4; inventoryAmount[0][3] = 255;
-	inventory[0][4] = 5; inventoryAmount[0][4] = 255;
-	inventory[0][5] = 6; inventoryAmount[0][5] = 255;
-	inventory[0][6] = 7; inventoryAmount[0][6] = 255;
-	inventory[0][7] = 8; inventoryAmount[0][7] = 255;
-	inventory[0][8] = 9; inventoryAmount[0][8] = 255;
-	inventory[0][9] = 10; inventoryAmount[0][9] = 255;
-	inventory[1][0] = 11; inventoryAmount[1][0] = 255;
-	inventory[1][1] = 12; inventoryAmount[1][1] = 255;
-	inventory[1][2] = 13; inventoryAmount[1][2] = 255;
-	inventory[1][3] = 14; inventoryAmount[1][3] = 255;
-	inventory[1][4] = 15; inventoryAmount[1][4] = 255;
-	inventory[1][5] = 16; inventoryAmount[1][5] = 255;
-	inventory[1][6] = 17; inventoryAmount[1][6] = 255;
-	inventory[1][7] = 18; inventoryAmount[1][7] = 255;
+	//inventory[0][0] = 1; inventoryAmount[0][0] = 255;
+	//inventory[0][1] = 2; inventoryAmount[0][1] = 255;
+	//inventory[0][2] = 3; inventoryAmount[0][2] = 255;
+	//inventory[0][3] = 4; inventoryAmount[0][3] = 255;
+	//inventory[0][4] = 5; inventoryAmount[0][4] = 255;
+	//inventory[0][5] = 6; inventoryAmount[0][5] = 255;
+	//inventory[0][6] = 7; inventoryAmount[0][6] = 255;
+	//inventory[0][7] = 8; inventoryAmount[0][7] = 255;
+	//inventory[0][8] = 9; inventoryAmount[0][8] = 255;
+	//inventory[0][9] = 10; inventoryAmount[0][9] = 255;
+	//inventory[1][0] = 11; inventoryAmount[1][0] = 255;
+	//inventory[1][1] = 12; inventoryAmount[1][1] = 255;
+	//inventory[1][2] = 13; inventoryAmount[1][2] = 255;
+	//inventory[1][3] = 14; inventoryAmount[1][3] = 255;
+	//inventory[1][4] = 15; inventoryAmount[1][4] = 255;
+	//inventory[1][5] = 16; inventoryAmount[1][5] = 255;
+	//inventory[1][6] = 17; inventoryAmount[1][6] = 255;
+	//inventory[1][7] = 18; inventoryAmount[1][7] = 255;
 }
 
 void Player::updatePosition() {
@@ -141,7 +143,7 @@ void Player::updatePosition() {
 		Player::glidingSpeed = 0;
 		Player::glidingNow = false;
 		if (ydam - (ypos + ya) > 0) {
-			Player::health -= (ydam - (ypos + ya)) * Player::dropDamagePerBlock;
+			if(Player::gamemode==Player::Survival) Player::health -= (ydam - (ypos + ya)) * Player::dropDamagePerBlock;
 			ydam = 0;
 		}
 	}
@@ -199,6 +201,7 @@ bool Player::save(string worldn) {
 	isave.write((char*)&CrossWall, sizeof(CrossWall));
 	isave.write((char*)&indexInHand, sizeof(indexInHand));
 	isave.write((char*)&health, sizeof(health));
+	isave.write((char*)&gamemode, sizeof(gamemode));
 	isave.write((char*)inventory, sizeof(inventory));
 	isave.write((char*)inventoryAmount, sizeof(inventoryAmount));
 	isave.close();
@@ -226,6 +229,7 @@ bool Player::load(string worldn) {
 	iload.read((char*)&CrossWall, sizeof(CrossWall));
 	iload.read((char*)&indexInHand, sizeof(indexInHand));
 	iload.read((char*)&health, sizeof(health));
+	iload.read((char*)&gamemode, sizeof(gamemode));
 	iload.read((char*)inventory, sizeof(inventory));
 	iload.read((char*)inventoryAmount, sizeof(inventoryAmount));
 	iload.close();
@@ -267,6 +271,22 @@ bool Player::addItem(item itemname, short amount) {
 		}
 	}
 	return false;
+}
+
+void Player::changeGameMode(int gamemode){
+	Player::gamemode = gamemode;
+	switch (gamemode) {
+	case Survival:
+		Flying = false;
+		Player::jump = 0.0;
+		CrossWall = false;
+		break;
+
+	case Creative:
+		Flying = true;
+		Player::jump = 0.0;
+		break;
+	}
 }
 
 PlayerPacket Player::convertToPlayerPacket()
