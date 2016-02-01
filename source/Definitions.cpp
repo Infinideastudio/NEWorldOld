@@ -13,7 +13,7 @@ int MaxAirJumps = 3 - 1;        //空中N段连跳
 bool SmoothLighting = true;     //平滑光照
 bool NiceGrass = true;          //草地材质连接
 bool MergeFace = false;         //合并面渲染
-bool GUIScreenBlur = true;      //GUI背景模糊
+bool GUIScreenBlur = false;      //GUI背景模糊  Void:这个算法慢死了，我关掉了
 int linelength = 10;            //跟F3的准星有关。。。
 int linedist = 30;              //跟F3的准星有关。。。
 float skycolorR = 0.7f;         //天空颜色Red
@@ -21,8 +21,10 @@ float skycolorG = 1.0f;         //天空颜色Green
 float skycolorB = 1.0f;         //天空颜色Blue
 float FOVyRunning = 8.0f;
 float FOVyExt;
+double stretch = 1.0f;          //ppi缩放比例（供gui绘制使用）
 int Multisample = 0;            //多重采样抗锯齿
 bool vsync = false;             //垂直同步
+bool reentry = false;
 
 int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度
@@ -129,4 +131,11 @@ vector<string> split(string str, string pattern)
 	if (!str.substr(start).empty())
 		ret.push_back(str.substr(start));
 	return ret;
+}
+
+void UITrans(int x, int y) {
+	glTranslated((static_cast<double>(x))*stretch, (static_cast<double>(y))*stretch, 0);
+}
+void UIVertex(int x, int y) {
+	glVertex2i((static_cast<double>(x))*stretch, (static_cast<double>(y))*stretch);
 }

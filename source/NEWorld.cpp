@@ -105,6 +105,10 @@ int main() {
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
 	createwindow();
+
+	//Before Spashing anything Onto the Screen , get
+	//the screen ppi so that the game will display normally on 4k high definition screens
+	GUI::InitStretch();
 	setupscreen();
 	glDisable(GL_CULL_FACE);
 	splashscreen();
@@ -119,6 +123,10 @@ main_menu:
 	glDisable(GL_LINE_SMOOTH);
 	GUI::clearTransition();
 	Menus::mainmenu();
+	if (reentry) {
+		reentry = false;
+		goto main_menu;
+	}
 	glEnable(GL_LINE_SMOOTH);
 	glEnable(GL_TEXTURE_2D);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1031,7 +1039,8 @@ void Render() {
 
 	mxl = mx; myl = my;
 	glfwGetCursorPos(MainWindow, &mx, &my);
-	
+	mx /= stretch;
+	my /= stretch;
 	if (Player::Running) {
 		if (FOVyExt < 9.8) {
 			TimeDelta = curtime - SpeedupAnimTimer;

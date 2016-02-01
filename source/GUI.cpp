@@ -6,6 +6,8 @@ extern string inputstr;
 
 //图形界面系统。。。正宗OOP！！！
 namespace GUI {
+
+	int nScreenWidth, nScreenHeight;
 	float linewidth = 1.0f;
 	float linealpha = 0.9f;
 	float FgR = 0.2f;
@@ -16,7 +18,6 @@ namespace GUI {
 	float BgG = 0.2f;
 	float BgB = 0.2f;
 	float BgA = 0.3f;
-
 	unsigned int transitionList;
 	unsigned int lastdisplaylist;
 	double transitionTimer;
@@ -172,12 +173,27 @@ namespace GUI {
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 		glEnd();
 	}
+	double stdppmm = 4;
+	void InitStretch()
+	{
+		//Get the Screen Physical Size and set stretch
+		//NEVER　CALL THIS FUNCTION BEFORE THE CONTEXT IS CREATED
+		glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth, 
+			  &nScreenHeight);
+		const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+		double ppmm = (mode->width) / nScreenWidth;
+		stretch = ppmm / stdppmm;
+		//Compute the stretch and reset the window size
+		windowwidth *= stretch;
+		windowheight *= stretch;
+		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
+	}
 
 	void controls::updatepos() {
-		xmin = (int)(windowwidth*_xmin_b) + _xmin_r;
-		ymin = (int)(windowheight*_ymin_b) + _ymin_r;
-		xmax = (int)(windowwidth*_xmax_b) + _xmax_r;
-		ymax = (int)(windowheight*_ymax_b) + _ymax_r;
+		xmin = (int)(windowwidth*_xmin_b / stretch) + _xmin_r;
+		ymin = (int)(windowheight*_ymin_b / stretch) + _ymin_r;
+		xmax = (int)(windowwidth*_xmax_b / stretch) + _xmax_r;
+		ymax = (int)(windowheight*_ymax_b / stretch) + _ymax_r;
 	}
 
 	void controls::resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
@@ -208,13 +224,13 @@ namespace GUI {
 			glColor4f(FgR*0.6f, FgG*0.6f, FgB*0.6f, linealpha);
 			glLineWidth(linewidth);
 			//glBegin(GL_POINTS)
-			//glVertex2i(xmin - 1, ymin)
+			//UIVertex(xmin - 1, ymin)
 			//glEnd()
 			glBegin(GL_LINE_LOOP);
-			glVertex2i(xmin, ymin);
-			glVertex2i(xmin, ymax);
-			glVertex2i(xmax, ymax);
-			glVertex2i(xmax, ymin);
+			UIVertex(xmin, ymin);
+			UIVertex(xmin, ymax);
+			UIVertex(xmax, ymax);
+			UIVertex(xmax, ymin);
 			glEnd();
 		}
 		glEnable(GL_TEXTURE_2D);
@@ -265,39 +281,39 @@ namespace GUI {
 
 		glDisable(GL_TEXTURE_2D);    //Button
 		glBegin(GL_QUADS);
-		glVertex2i(xmin, ymin);
-		glVertex2i(xmin, ymax);
-		glVertex2i(xmax, ymax);
-		glVertex2i(xmax, ymin);
+		UIVertex(xmin, ymin);
+		UIVertex(xmin, ymax);
+		UIVertex(xmax, ymax);
+		UIVertex(xmax, ymin);
 		glEnd();
 		glColor4f(FgR*0.9f, FgG*0.9f, FgB*0.9f, linealpha);
 
 		if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 		glLineWidth(linewidth);
 		glBegin(GL_LINE_LOOP);
-		glVertex2i(xmin, ymin);
-		glVertex2i(xmin, ymax);
-		glVertex2i(xmax, ymax);
-		glVertex2i(xmax, ymin);
+		UIVertex(xmin, ymin);
+		UIVertex(xmin, ymax);
+		UIVertex(xmax, ymax);
+		UIVertex(xmax, ymin);
 		glEnd();
 
 		glBegin(GL_LINE_LOOP);
 
 		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-		glVertex2i(xmin + 1, ymin + 1);
+		UIVertex(xmin + 1, ymin + 1);
 
 		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-		glVertex2i(xmin + 1, ymax - 1);
+		UIVertex(xmin + 1, ymax - 1);
 
 		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-		glVertex2i(xmax - 1, ymax - 1);
+		UIVertex(xmax - 1, ymax - 1);
 
 		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-		glVertex2i(xmax - 1, ymin + 1);
+		UIVertex(xmax - 1, ymin + 1);
 
 		glEnd();
 
@@ -354,27 +370,27 @@ namespace GUI {
 		glColor4f(bcR, bcG, bcB, bcA);
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
-		glVertex2i(xmin, ymin);
-		glVertex2i(xmax, ymin);
-		glVertex2i(xmax, ymax);
-		glVertex2i(xmin, ymax);
+		UIVertex(xmin, ymin);
+		UIVertex(xmax, ymin);
+		UIVertex(xmax, ymax);
+		UIVertex(xmin, ymax);
 		glEnd();
 		glDisable(GL_TEXTURE_2D);
 		glColor4f(fcR, fcG, fcB, fcA);
 		glBegin(GL_QUADS);
-		glVertex2i(xmin + barpos, ymin);
-		glVertex2i(xmin + barpos + barwidth, ymin);
-		glVertex2i(xmin + barpos + barwidth, ymax);
-		glVertex2i(xmin + barpos, ymax);
+		UIVertex(xmin + barpos, ymin);
+		UIVertex(xmin + barpos + barwidth, ymin);
+		UIVertex(xmin + barpos + barwidth, ymax);
+		UIVertex(xmin + barpos, ymax);
 		glEnd();
 		glColor4f(FgR*0.9f, FgG*0.9f, FgB*0.9f, linealpha);
 
 		if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 		glBegin(GL_LINE_LOOP);
-		glVertex2i(xmin, ymin);
-		glVertex2i(xmin, ymax);
-		glVertex2i(xmax, ymax);
-		glVertex2i(xmax, ymin);
+		UIVertex(xmin, ymin);
+		UIVertex(xmin, ymax);
+		UIVertex(xmax, ymax);
+		UIVertex(xmax, ymin);
 		glEnd();
 
 		if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
@@ -386,25 +402,25 @@ namespace GUI {
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-		glVertex2i(xmin + 1, ymin + 1);
+		UIVertex(xmin + 1, ymin + 1);
 
 		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-		glVertex2i(xmin + 1, ymax - 1);
+		UIVertex(xmin + 1, ymax - 1);
 
 		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-		glVertex2i(xmax - 1, ymax - 1);
+		UIVertex(xmax - 1, ymax - 1);
 
 		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-		glVertex2i(xmax - 1, ymin + 1);
+		UIVertex(xmax - 1, ymin + 1);
 
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
@@ -459,20 +475,20 @@ namespace GUI {
 
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
-		glVertex2i(xmin, ymin);
-		glVertex2i(xmin, ymax);
-		glVertex2i(xmax, ymax);
-		glVertex2i(xmax, ymin);
+		UIVertex(xmin, ymin);
+		UIVertex(xmin, ymax);
+		UIVertex(xmax, ymax);
+		UIVertex(xmax, ymin);
 		glEnd();
 		glColor4f(FgR*0.9f, FgG*0.9f, FgB*0.9f, linealpha);
 
 		if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 		glLineWidth(linewidth);
 		glBegin(GL_LINE_LOOP);
-		glVertex2i(xmin, ymin);
-		glVertex2i(xmin, ymax);
-		glVertex2i(xmax, ymax);
-		glVertex2i(xmax, ymin);
+		UIVertex(xmin, ymin);
+		UIVertex(xmin, ymax);
+		UIVertex(xmax, ymax);
+		UIVertex(xmax, ymin);
 		glEnd();
 
 		glBegin(GL_LINE_LOOP);
@@ -481,25 +497,25 @@ namespace GUI {
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-		glVertex2i(xmin + 1, ymin + 1);
+		UIVertex(xmin + 1, ymin + 1);
 
 		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-		glVertex2i(xmin + 1, ymax - 1);
+		UIVertex(xmin + 1, ymax - 1);
 
 		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-		glVertex2i(xmax - 1, ymax - 1);
+		UIVertex(xmax - 1, ymax - 1);
 
 		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-		glVertex2i(xmax - 1, ymin + 1);
+		UIVertex(xmax - 1, ymin + 1);
 
 		glEnd();
 
@@ -584,48 +600,48 @@ namespace GUI {
 		glColor4f(bcR, bcG, bcB, bcA);                                              //Track
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
-		glVertex2i(xmin, ymin);
-		glVertex2i(xmax, ymin);
-		glVertex2i(xmax, ymax);
-		glVertex2i(xmin, ymax);
+		UIVertex(xmin, ymin);
+		UIVertex(xmax, ymin);
+		UIVertex(xmax, ymax);
+		UIVertex(xmin, ymax);
 		glEnd();
 		glDisable(GL_TEXTURE_2D);                                                //Bar
 		glColor4f(fcR, fcG, fcB, fcA);
 		glBegin(GL_QUADS);
-		glVertex2i(xmin, ymin + barpos + 20);
-		glVertex2i(xmin, ymin + barpos + barheight + 20);
-		glVertex2i(xmax, ymin + barpos + barheight + 20);
-		glVertex2i(xmax, ymin + barpos + 20);
+		UIVertex(xmin, ymin + barpos + 20);
+		UIVertex(xmin, ymin + barpos + barheight + 20);
+		UIVertex(xmax, ymin + barpos + barheight + 20);
+		UIVertex(xmax, ymin + barpos + 20);
 		glEnd();
 
 		if (msup) {
 			glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
 			if (psup) glColor4f(FgR, FgG, FgB, 0.9f);
 			glBegin(GL_QUADS);
-			glVertex2i(xmin, ymin);
-			glVertex2i(xmin, ymin + 20);
-			glVertex2i(xmax, ymin + 20);
-			glVertex2i(xmax, ymin);
+			UIVertex(xmin, ymin);
+			UIVertex(xmin, ymin + 20);
+			UIVertex(xmax, ymin + 20);
+			UIVertex(xmax, ymin);
 			glEnd();
 		}
 		if (msdown) {
 			glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
 			if (psdown) glColor4f(FgR, FgG, FgB, 0.9f);
 			glBegin(GL_QUADS);
-			glVertex2i(xmin, ymax - 20);
-			glVertex2i(xmin, ymax);
-			glVertex2i(xmax, ymax);
-			glVertex2i(xmax, ymax - 20);
+			UIVertex(xmin, ymax - 20);
+			UIVertex(xmin, ymax);
+			UIVertex(xmax, ymax);
+			UIVertex(xmax, ymax - 20);
 			glEnd();
 		}
 
 		glColor4f(FgR*0.9f, FgG*0.9f, FgB*0.9f, linealpha);
 		if (!enabled)  glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 		glBegin(GL_LINE_LOOP);
-		glVertex2i(xmin, ymin);
-		glVertex2i(xmin, ymax);
-		glVertex2i(xmax, ymax);
-		glVertex2i(xmax, ymin);
+		UIVertex(xmin, ymin);
+		UIVertex(xmin, ymax);
+		UIVertex(xmax, ymax);
+		UIVertex(xmax, ymin);
 		glEnd();
 
 		glBegin(GL_LINE_LOOP);
@@ -634,25 +650,25 @@ namespace GUI {
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-		glVertex2i(xmin + 1, ymin + 1);
+		UIVertex(xmin + 1, ymin + 1);
 
 		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-		glVertex2i(xmin + 1, ymax - 1);
+		UIVertex(xmin + 1, ymax - 1);
 
 		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-		glVertex2i(xmax - 1, ymax - 1);
+		UIVertex(xmax - 1, ymax - 1);
 
 		if (focused)
 			glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 		else
 			glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-		glVertex2i(xmax - 1, ymin + 1);
+		UIVertex(xmax - 1, ymin + 1);
 
 		glEnd();
 
@@ -660,16 +676,16 @@ namespace GUI {
 		glBegin(GL_LINES);
 		glColor4f(FgR, FgG, FgB, 1.0);
 		if (psup) glColor4f(1.0f - FgR, 1.0f - FgG, 1.0f - FgB, 1.0f);
-		glVertex2i((xmin + xmax) / 2, ymin + 8);
-		glVertex2i((xmin + xmax) / 2 - 4, ymin + 12);
-		glVertex2i((xmin + xmax) / 2, ymin + 8);
-		glVertex2i((xmin + xmax) / 2 + 4, ymin + 12);
+		UIVertex((xmin + xmax) / 2, ymin + 8);
+		UIVertex((xmin + xmax) / 2 - 4, ymin + 12);
+		UIVertex((xmin + xmax) / 2, ymin + 8);
+		UIVertex((xmin + xmax) / 2 + 4, ymin + 12);
 		glColor4f(FgR, FgG, FgB, 1.0);
 		if (psdown) glColor4f(1.0f - FgR, 1.0f - FgG, 1.0f - FgB, 1.0f);
-		glVertex2i((xmin + xmax) / 2, ymax - 8);
-		glVertex2i((xmin + xmax) / 2 - 4, ymax - 12);
-		glVertex2i((xmin + xmax) / 2, ymax - 8);
-		glVertex2i((xmin + xmax) / 2 + 4, ymax - 12);
+		UIVertex((xmin + xmax) / 2, ymax - 8);
+		UIVertex((xmin + xmax) / 2 - 4, ymax - 12);
+		UIVertex((xmin + xmax) / 2, ymax - 8);
+		UIVertex((xmin + xmax) / 2 + 4, ymax - 12);
 		glEnd();
 	}
 
@@ -681,10 +697,10 @@ namespace GUI {
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, imageid);
 		glBegin(GL_QUADS);
-		glTexCoord2f(txmin, tymax); glVertex2i(xmin, ymin);
-		glTexCoord2f(txmin, tymin); glVertex2i(xmin, ymax);
-		glTexCoord2f(txmax, tymin); glVertex2i(xmax, ymax);
-		glTexCoord2f(txmax, tymax); glVertex2i(xmax, ymin);
+		glTexCoord2f(txmin, tymax); UIVertex(xmin, ymin);
+		glTexCoord2f(txmin, tymin); UIVertex(xmin, ymax);
+		glTexCoord2f(txmax, tymin); UIVertex(xmax, ymax);
+		glTexCoord2f(txmax, tymax); UIVertex(xmax, ymin);
 		glEnd();
 	}
 
@@ -823,7 +839,7 @@ namespace GUI {
 			glCallList(transitionList);
 			glLoadIdentity();
 			if (transitionForward) glTranslatef(windowwidth - transitionAnim * windowwidth, 0.0f, 0.0f);
-			else glTranslatef(transitionAnim * windowwidth - windowwidth, 0.0f, 0.0f);
+			else glTranslatef(transitionAnim * windowwidth- windowwidth, 0.0f, 0.0f);
 		}
 		else if (transitionList != 0) {
 			glDeleteLists(transitionList, 1);
@@ -905,19 +921,26 @@ namespace GUI {
 		return nullptr;
 	}
 
+	//Glitch : The crusor doesn't showup on some Windows8 Computers
 	Form::Form() { memset(this, 0, sizeof(Form)); Init(); }
 	void Form::start() {
 		double dmx, dmy;
+		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);//Added to fix the glitch
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		glfwSetCursor(MainWindow, Cursor);
+		
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glDisable(GL_CULL_FACE);
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 		onLoad();
 		do {
+			if (reentry) { ExitSignal = true; }
 			mxl = mx; myl = my; mwl = mw; mbl = mb;
 			mb = getMouseButton();
 			mw = getMouseScroll();
 			glfwGetCursorPos(MainWindow, &dmx, &dmy);
+			dmx /= stretch;
+			dmy /= stretch;
 			mx = (int)dmx, my = (int)dmy;
 			update();
 			render();
@@ -928,6 +951,7 @@ namespace GUI {
 			if (glfwWindowShouldClose(MainWindow)) exit(0);
 		} while (!ExitSignal);
 		onLeave();
+		glfwDestroyCursor(Cursor); //Added to fix the glitch
 	}
 	Form::~Form() { cleanup(); }
 
