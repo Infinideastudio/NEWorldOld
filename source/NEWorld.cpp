@@ -105,7 +105,7 @@ int main() {
 	glLoadIdentity();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	Mod::ModLoader::loadMods();
+	//Mod::ModLoader::loadMods();
 main_menu:
 	gamebegin = gameexit = false;
 	glDisable(GL_LINE_SMOOTH);
@@ -220,7 +220,7 @@ main_menu:
 	MutexDestroy(Mutex);
 
 	//结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
-	//不对啊这不是FB！！！这是正宗的VC++！！！！！！
+	//不对啊这不是FB！！！这是正宗的C++！！！！！！
 	//楼上的楼上在瞎说！！！别信他的！！！
 	glfwTerminate();
 	return 0;
