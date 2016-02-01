@@ -129,7 +129,7 @@ namespace Renderer {
 			glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)((ac + tc) * sizeof(float)));
 			glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((ac + tc + cc) * sizeof(float)));
 		}
-		
+
 		//这个框是不是很装逼2333 --qiaozhanrong
 		//====================================================================================================//
 		/**/																								/**/
@@ -141,6 +141,7 @@ namespace Renderer {
 	}
 
 	void initShaders() {
+		ShaderAttribLoc = 1;
 		std::set<string> defines;
 		defines.insert("MergeFace");
 
@@ -165,6 +166,10 @@ namespace Renderer {
 				glBindAttribLocationARB(shaderPrograms[i], ShaderAttribLoc, "VertexAttrib");
 			}
 			glLinkProgramARB(shaderPrograms[i]);
+			int st = GL_TRUE;
+			glGetObjectParameterivARB(shaderPrograms[i], GL_LINK_STATUS, &st);
+			printInfoLog(shaderPrograms[i]);
+			if (st == GL_FALSE) DebugWarning("Shader linking error!");
 		}
 
 		glGenTextures(1, &DepthTexture);
@@ -192,9 +197,9 @@ namespace Renderer {
 		
 		for (int i = 0; i < 2; i++) {
 			bindShader(i);
-			setUniform1i("Tex", 0);
+			if (i == 0) setUniform1i("Tex", 0);
+			else setUniform1i("Tex3D", 0);
 			setUniform1i("DepthTex", 1);
-			setUniform1i("Tex3D", 0);
 			setUniform4f("SkyColor", skycolorR, skycolorG, skycolorB, 1.0f);
 		}
 		unbindShader();
@@ -225,27 +230,25 @@ namespace Renderer {
 		std::ifstream filein(filename);
 		if (!filein.is_open()) return 0;
 		while (!filein.eof()) {
-			lines++;
 			std::getline(filein, cur);
+			if (!cur.size()) continue;
 			ss.str(cur);
 			macro = "";
 			ss >> macro;
 			if (macro == "##NEWORLD_SHADER_DEFINES") {
-				cout << "233" << endl;
 				ss >> var >> macro;
 				if (defines != nullptr) {
 					std::set<string>::iterator it = defines->find(var);
 					if (it != defines->end()) cur = "#define " + macro;
-					else cur = "";
+					else continue;
 				}
-				else cur = "";
+				else continue;
 			}
-			else cout << "[" << macro << "]\n";
 			cur += '\n';
-			cout << cur;
 			curlen = cur.size();
 			curline = new char[curlen];
 			memcpy(curline, cur.c_str(), curlen);
+			lines++;
 			source.push_back(curline);
 			length.push_back(curlen);
 		}
@@ -256,7 +259,8 @@ namespace Renderer {
 		for (int i = 0; i < lines; i++) delete[] source[i];
 		int st = GL_TRUE;
 		glGetObjectParameterivARB(res, GL_COMPILE_STATUS, &st);
-		if (st == GL_FALSE) printInfoLog(res);
+		printInfoLog(res);
+		if (st == GL_FALSE) DebugWarning("Shader compilation error!");
 		return res;
 	}
 
@@ -321,6 +325,7 @@ namespace Renderer {
 
 	bool setUniform1f(const char * uniform, float value) {
 		int loc = getUniformLocation(uniform);
+		assert(loc != -1);
 		if (loc == -1) return false;
 		glUniform1fARB(loc, value);
 		return true;
@@ -328,6 +333,7 @@ namespace Renderer {
 
 	bool setUniform1i(const char * uniform, int value) {
 		int loc = getUniformLocation(uniform);
+		assert(loc != -1);
 		if (loc == -1) return false;
 		glUniform1iARB(loc, value);
 		return true;
@@ -335,6 +341,7 @@ namespace Renderer {
 
 	bool setUniform4f(const char * uniform, float v0, float v1, float v2, float v3) {
 		int loc = getUniformLocation(uniform);
+		assert(loc != -1);
 		if (loc == -1) return false;
 		glUniform4fARB(loc, v0, v1, v2, v3);
 		return true;
@@ -342,6 +349,7 @@ namespace Renderer {
 
 	bool setUniformMatrix4fv(const char * uniform, float * value) {
 		int loc = getUniformLocation(uniform);
+		assert(loc != -1);
 		if (loc == -1) return false;
 		glUniformMatrix4fvARB(loc, 1, GL_FALSE, value);
 		return true;
