@@ -301,6 +301,7 @@
     <ClInclude Include="source\Player.h" />
     <ClInclude Include="source\PlayerPacket.h" />
     <ClInclude Include="source\Renderer.h" />
+    <ClInclude Include="source\Setup.h" />
     <ClInclude Include="source\ShadowMaps.h" />
     <ClInclude Include="source\StdInclude.h" />
     <ClInclude Include="source\TextRenderer.h" />
@@ -345,6 +346,7 @@
     <ClCompile Include="source\Player.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="source\RenderOptionsMenu.cpp" />
+    <ClCompile Include="source\Setup.cpp" />
     <ClCompile Include="source\ShaderOptionsMenu.cpp" />
     <ClCompile Include="source\ShadowMaps.cpp" />
     <ClCompile Include="source\TextRenderer.cpp" />

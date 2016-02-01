@@ -1,6 +1,6 @@
 #include "Menus.h"
 
-void saveoptions();
+void saveOptions();
 
 namespace Menus {
 	class OptionsMenu :public GUI::Form {
@@ -26,7 +26,7 @@ namespace Menus {
 			if (rdstbtn.clicked) Renderoptions();
 			if (gistbtn.clicked) GUIoptions();
 			if (backbtn.clicked) ExitSignal = true;
-			if (savebtn.clicked) saveoptions();
+			if (savebtn.clicked) saveOptions();
 			FOVyBar.text = strWithVar(GetStrbyKey("NEWorld.options.fov"), FOVyNormal);
 			mmsBar.text = strWithVar(GetStrbyKey("NEWorld.options.sensitivity"), mousemove);
 			viewdistBar.text = strWithVar(GetStrbyKey("NEWorld.options.distance"), viewdistance);
