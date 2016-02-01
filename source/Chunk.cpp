@@ -214,8 +214,8 @@ namespace World {
 		file.read((char*)pbrightness, 4096 * sizeof(brightness));
 		file.close();
 
-		file.open(getObjectsPath(), std::ios::in | std::ios::binary);
-		file.close();
+		//file.open(getObjectsPath(), std::ios::in | std::ios::binary);
+		//file.close();
 		return openChunkFile;
 	}
 
