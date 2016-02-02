@@ -295,7 +295,6 @@ namespace Renderer {
 		setUniform1f("renderdist", viewdistance * 16.0f);
 		setUniformMatrix4fv("Depth_proj", frus.getProjMatrix());
 		setUniformMatrix4fv("Depth_modl", frus.getModlMatrix());
-		setUniform1f("daylight", daylight);
 		
 		//Enable arrays for additional vertex attributes
 		glEnableVertexAttribArrayARB(ShaderAttribLoc);
