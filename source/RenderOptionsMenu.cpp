@@ -18,16 +18,11 @@ namespace Menus {
 			vsyncbtn = GUI::button("", 10, 250, 132, 156, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button(GetStrbyKey("NEWorld.render.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(8, &title, &smoothlightingbtn, &fancygrassbtn, &mergefacebtn, &msaabar, &shaderbtn, &vsyncbtn, &backbtn);
-			if (MergeFace) SmoothLighting = smoothlightingbtn.enabled = NiceGrass = fancygrassbtn.enabled = false;
 		}
 		void onUpdate() {
 			if (smoothlightingbtn.clicked) SmoothLighting = !SmoothLighting;
 			if (fancygrassbtn.clicked) NiceGrass = !NiceGrass;
-			if (mergefacebtn.clicked) {
-				MergeFace = !MergeFace;
-				if (MergeFace) SmoothLighting = smoothlightingbtn.enabled = NiceGrass = fancygrassbtn.enabled = false;
-				else SmoothLighting = smoothlightingbtn.enabled = NiceGrass = fancygrassbtn.enabled = true;
-			}
+			if (mergefacebtn.clicked) MergeFace = !MergeFace;
 			if (msaabar.barpos == 0) Multisample = 0;
 			else Multisample = 1 << ((msaabar.barpos + 1) / 30 + 1);
 			if (shaderbtn.clicked) Shaderoptions();

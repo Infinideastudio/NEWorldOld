@@ -21,10 +21,10 @@ namespace ChunkRenderer {
 	|curr|    |   ...
 	|face|    |   (j++)
 	0----1----+--
-	
-	    --qiaozhanrong
+
+	--qiaozhanrong
 	*/
-	
+
 	void RenderPrimitive(QuadPrimitive& p) {
 		float col0 = (float)p.col0 * 0.25f / World::BRIGHTNESSMAX;
 		float col1 = (float)p.col1 * 0.25f / World::BRIGHTNESSMAX;
@@ -107,73 +107,73 @@ namespace ChunkRenderer {
 		float T3d = (Textures::getTextureIndex(p.block, face) - 0.5) / 64.0;
 		switch (p.direction)
 		{
-			case 0: {
-				if (p.block != Blocks::GLOWSTONE) color *= 0.7;
-				float geomentry[] = {
-					0.0, 0.0, T3d, color, color, color, x + 0.5, y - 0.5, z - 0.5,
-					0.0, 1.0, T3d, color, color, color, x + 0.5, y + 0.5, z - 0.5,
-					length + 1.0, 1.0, T3d, color, color, color, x + 0.5, y + 0.5, z + length + 0.5,
-					length + 1.0, 0.0, T3d, color, color, color, x + 0.5, y - 0.5, z + length + 0.5
-				};
-				Renderer::Quad(geomentry);
-			}
-			break;
-			case 1: {
-				if (p.block != Blocks::GLOWSTONE) color *= 0.7;
-				float geomentry[] = {
-					0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z - 0.5,
-					0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z - 0.5,
-					length + 1.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z + length + 0.5,
-					length + 1.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z + length + 0.5
-				};
-				Renderer::Quad(geomentry);
-			}
-			break;
-			case 2: {
-				float geomentry[] = {
-					0.0, 0.0, T3d, color, color, color, x + 0.5, y + 0.5, z - 0.5,
-					0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z - 0.5,
-					length + 1.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z + length + 0.5,
-					length + 1.0, 0.0, T3d, color, color, color, x + 0.5, y + 0.5, z + length + 0.5
-				};
-				Renderer::Quad(geomentry);
-			}
-			break;
-			case 3: {
-				float geomentry[] = {
-					0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z - 0.5,
-					0.0, 1.0, T3d, color, color, color, x + 0.5, y - 0.5, z - 0.5,
-					length + 1.0, 1.0, T3d, color, color, color, x + 0.5, y - 0.5, z + length + 0.5,
-					length + 1.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z + length + 0.5
-				};
-				Renderer::Quad(geomentry);
-			}
-			break;
-			case 4: {
-				if (p.block != Blocks::GLOWSTONE) color *= 0.5;
-				float geomentry[] = {
-					0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z + 0.5,
-					0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z + 0.5,
-					length + 1.0, 0.0, T3d, color, color, color, x + length + 0.5, y - 0.5, z + 0.5,
-					length + 1.0, 1.0, T3d, color, color, color, x + length + 0.5, y + 0.5, z + 0.5
-				};
-				Renderer::Quad(geomentry);
-			}
-			break;
-			case 5: {
-				if (p.block != Blocks::GLOWSTONE) color *= 0.5;
-				float geomentry[] = {
-					0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z - 0.5,
-					0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z - 0.5,
-					length + 1.0, 1.0, T3d, color, color, color, x + length + 0.5, y + 0.5, z - 0.5,
-					length + 1.0, 0.0, T3d, color, color, color, x + length + 0.5, y - 0.5, z - 0.5
-				};
-				Renderer::Quad(geomentry);
-			}
-			break;
+		case 0: {
+			if (p.block != Blocks::GLOWSTONE) color *= 0.7;
+			float geomentry[] = {
+				0.0, 0.0, T3d, color, color, color, x + 0.5, y - 0.5, z - 0.5,
+				0.0, 1.0, T3d, color, color, color, x + 0.5, y + 0.5, z - 0.5,
+				length + 1.0, 1.0, T3d, color, color, color, x + 0.5, y + 0.5, z + length + 0.5,
+				length + 1.0, 0.0, T3d, color, color, color, x + 0.5, y - 0.5, z + length + 0.5
+			};
+			Renderer::Quad(geomentry);
+		}
+				break;
+		case 1: {
+			if (p.block != Blocks::GLOWSTONE) color *= 0.7;
+			float geomentry[] = {
+				0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z - 0.5,
+				0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z - 0.5,
+				length + 1.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z + length + 0.5,
+				length + 1.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z + length + 0.5
+			};
+			Renderer::Quad(geomentry);
+		}
+				break;
+		case 2: {
+			float geomentry[] = {
+				0.0, 0.0, T3d, color, color, color, x + 0.5, y + 0.5, z - 0.5,
+				0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z - 0.5,
+				length + 1.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z + length + 0.5,
+				length + 1.0, 0.0, T3d, color, color, color, x + 0.5, y + 0.5, z + length + 0.5
+			};
+			Renderer::Quad(geomentry);
+		}
+				break;
+		case 3: {
+			float geomentry[] = {
+				0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z - 0.5,
+				0.0, 1.0, T3d, color, color, color, x + 0.5, y - 0.5, z - 0.5,
+				length + 1.0, 1.0, T3d, color, color, color, x + 0.5, y - 0.5, z + length + 0.5,
+				length + 1.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z + length + 0.5
+			};
+			Renderer::Quad(geomentry);
+		}
+				break;
+		case 4: {
+			if (p.block != Blocks::GLOWSTONE) color *= 0.5;
+			float geomentry[] = {
+				0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z + 0.5,
+				0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z + 0.5,
+				length + 1.0, 0.0, T3d, color, color, color, x + length + 0.5, y - 0.5, z + 0.5,
+				length + 1.0, 1.0, T3d, color, color, color, x + length + 0.5, y + 0.5, z + 0.5
+			};
+			Renderer::Quad(geomentry);
+		}
+				break;
+		case 5: {
+			if (p.block != Blocks::GLOWSTONE) color *= 0.5;
+			float geomentry[] = {
+				0.0, 0.0, T3d, color, color, color, x - 0.5, y - 0.5, z - 0.5,
+				0.0, 1.0, T3d, color, color, color, x - 0.5, y + 0.5, z - 0.5,
+				length + 1.0, 1.0, T3d, color, color, color, x + length + 0.5, y + 0.5, z - 0.5,
+				length + 1.0, 0.0, T3d, color, color, color, x + length + 0.5, y - 0.5, z - 0.5
+			};
+			Renderer::Quad(geomentry);
+		}
+				break;
 		}
 #endif // NERDMODE1
-		
+
 	}
 
 	void RenderPrimitive_Depth(QuadPrimitive_Depth& p) {
@@ -257,7 +257,7 @@ namespace ChunkRenderer {
 	void MergeFaceRender(World::chunk* c) {
 		//话说我注释一会中文一会英文是不是有点奇怪。。。
 		// -- qiaozhanrong
-		
+
 		int cx = c->cx, cy = c->cy, cz = c->cz;
 		int gx = 0, gy = 0, gz = 0;
 		int x = 0, y = 0, z = 0, cur_l_mx, br;
@@ -285,61 +285,79 @@ namespace ChunkRenderer {
 							x = i, y = j, z = k;
 							gx = cx * 16 + x; gy = cy * 16 + y; gz = cz * 16 + z;
 							br = getbrightness(gx + 1, gy, gz, c);
-							col0 = br + getbrightness(gx + 1, gy - 1, gz, c) + getbrightness(gx + 1, gy, gz - 1, c) + getbrightness(gx + 1, gy - 1, gz - 1, c);
-							col1 = br + getbrightness(gx + 1, gy + 1, gz, c) + getbrightness(gx + 1, gy, gz - 1, c) + getbrightness(gx + 1, gy + 1, gz - 1, c);
-							col2 = br + getbrightness(gx + 1, gy + 1, gz, c) + getbrightness(gx + 1, gy, gz + 1, c) + getbrightness(gx + 1, gy + 1, gz + 1, c);
-							col3 = br + getbrightness(gx + 1, gy - 1, gz, c) + getbrightness(gx + 1, gy, gz + 1, c) + getbrightness(gx + 1, gy - 1, gz + 1, c);
+							if (SmoothLighting) {
+								col0 = br + getbrightness(gx + 1, gy - 1, gz, c) + getbrightness(gx + 1, gy, gz - 1, c) + getbrightness(gx + 1, gy - 1, gz - 1, c);
+								col1 = br + getbrightness(gx + 1, gy + 1, gz, c) + getbrightness(gx + 1, gy, gz - 1, c) + getbrightness(gx + 1, gy + 1, gz - 1, c);
+								col2 = br + getbrightness(gx + 1, gy + 1, gz, c) + getbrightness(gx + 1, gy, gz + 1, c) + getbrightness(gx + 1, gy + 1, gz + 1, c);
+								col3 = br + getbrightness(gx + 1, gy - 1, gz, c) + getbrightness(gx + 1, gy, gz + 1, c) + getbrightness(gx + 1, gy - 1, gz + 1, c);
+							}
+							else col0 = col1 = col2 = col3 = br * 4;
 						}
 						else if (d == 1) { //x-
 							x = i, y = j, z = k;
 							gx = cx * 16 + x; gy = cy * 16 + y; gz = cz * 16 + z;
 							br = getbrightness(gx - 1, gy, gz, c);
-							col0 = br + getbrightness(gx - 1, gy + 1, gz, c) + getbrightness(gx - 1, gy, gz - 1, c) + getbrightness(gx - 1, gy + 1, gz - 1, c);
-							col1 = br + getbrightness(gx - 1, gy - 1, gz, c) + getbrightness(gx - 1, gy, gz - 1, c) + getbrightness(gx - 1, gy - 1, gz - 1, c);
-							col2 = br + getbrightness(gx - 1, gy - 1, gz, c) + getbrightness(gx - 1, gy, gz + 1, c) + getbrightness(gx - 1, gy - 1, gz + 1, c);
-							col3 = br + getbrightness(gx - 1, gy + 1, gz, c) + getbrightness(gx - 1, gy, gz + 1, c) + getbrightness(gx - 1, gy + 1, gz + 1, c);
+							if (SmoothLighting) {
+								col0 = br + getbrightness(gx - 1, gy + 1, gz, c) + getbrightness(gx - 1, gy, gz - 1, c) + getbrightness(gx - 1, gy + 1, gz - 1, c);
+								col1 = br + getbrightness(gx - 1, gy - 1, gz, c) + getbrightness(gx - 1, gy, gz - 1, c) + getbrightness(gx - 1, gy - 1, gz - 1, c);
+								col2 = br + getbrightness(gx - 1, gy - 1, gz, c) + getbrightness(gx - 1, gy, gz + 1, c) + getbrightness(gx - 1, gy - 1, gz + 1, c);
+								col3 = br + getbrightness(gx - 1, gy + 1, gz, c) + getbrightness(gx - 1, gy, gz + 1, c) + getbrightness(gx - 1, gy + 1, gz + 1, c);
+							}
+							else col0 = col1 = col2 = col3 = br * 4;
 						}
 						else if (d == 2) { //y+
 							x = j, y = i, z = k;
 							gx = cx * 16 + x; gy = cy * 16 + y; gz = cz * 16 + z;
 							br = getbrightness(gx, gy + 1, gz, c);
-							col0 = br + getbrightness(gx + 1, gy + 1, gz, c) + getbrightness(gx, gy + 1, gz - 1, c) + getbrightness(gx + 1, gy + 1, gz - 1, c);
-							col1 = br + getbrightness(gx - 1, gy + 1, gz, c) + getbrightness(gx, gy + 1, gz - 1, c) + getbrightness(gx - 1, gy + 1, gz - 1, c);
-							col2 = br + getbrightness(gx - 1, gy + 1, gz, c) + getbrightness(gx, gy + 1, gz + 1, c) + getbrightness(gx - 1, gy + 1, gz + 1, c);
-							col3 = br + getbrightness(gx + 1, gy + 1, gz, c) + getbrightness(gx, gy + 1, gz + 1, c) + getbrightness(gx + 1, gy + 1, gz + 1, c);
+							if (SmoothLighting) {
+								col0 = br + getbrightness(gx + 1, gy + 1, gz, c) + getbrightness(gx, gy + 1, gz - 1, c) + getbrightness(gx + 1, gy + 1, gz - 1, c);
+								col1 = br + getbrightness(gx - 1, gy + 1, gz, c) + getbrightness(gx, gy + 1, gz - 1, c) + getbrightness(gx - 1, gy + 1, gz - 1, c);
+								col2 = br + getbrightness(gx - 1, gy + 1, gz, c) + getbrightness(gx, gy + 1, gz + 1, c) + getbrightness(gx - 1, gy + 1, gz + 1, c);
+								col3 = br + getbrightness(gx + 1, gy + 1, gz, c) + getbrightness(gx, gy + 1, gz + 1, c) + getbrightness(gx + 1, gy + 1, gz + 1, c);
+							}
+							else col0 = col1 = col2 = col3 = br * 4;
 						}
 						else if (d == 3) { //y-
 							x = j, y = i, z = k;
 							gx = cx * 16 + x; gy = cy * 16 + y; gz = cz * 16 + z;
 							br = getbrightness(gx, gy - 1, gz, c);
-							col0 = br + getbrightness(gx - 1, gy - 1, gz, c) + getbrightness(gx, gy - 1, gz - 1, c) + getbrightness(gx - 1, gy - 1, gz - 1, c);
-							col1 = br + getbrightness(gx + 1, gy - 1, gz, c) + getbrightness(gx, gy - 1, gz - 1, c) + getbrightness(gx + 1, gy - 1, gz - 1, c);
-							col2 = br + getbrightness(gx + 1, gy - 1, gz, c) + getbrightness(gx, gy - 1, gz + 1, c) + getbrightness(gx + 1, gy - 1, gz + 1, c);
-							col3 = br + getbrightness(gx - 1, gy - 1, gz, c) + getbrightness(gx, gy - 1, gz + 1, c) + getbrightness(gx - 1, gy - 1, gz + 1, c);
+							if (SmoothLighting) {
+								col0 = br + getbrightness(gx - 1, gy - 1, gz, c) + getbrightness(gx, gy - 1, gz - 1, c) + getbrightness(gx - 1, gy - 1, gz - 1, c);
+								col1 = br + getbrightness(gx + 1, gy - 1, gz, c) + getbrightness(gx, gy - 1, gz - 1, c) + getbrightness(gx + 1, gy - 1, gz - 1, c);
+								col2 = br + getbrightness(gx + 1, gy - 1, gz, c) + getbrightness(gx, gy - 1, gz + 1, c) + getbrightness(gx + 1, gy - 1, gz + 1, c);
+								col3 = br + getbrightness(gx - 1, gy - 1, gz, c) + getbrightness(gx, gy - 1, gz + 1, c) + getbrightness(gx - 1, gy - 1, gz + 1, c);
+							}
+							else col0 = col1 = col2 = col3 = br * 4;
 						}
 						else if (d == 4) { //z+
 							x = k, y = j, z = i;
 							gx = cx * 16 + x; gy = cy * 16 + y; gz = cz * 16 + z;
 							br = getbrightness(gx, gy, gz + 1, c);
-							col0 = br + getbrightness(gx - 1, gy, gz + 1, c) + getbrightness(gx, gy + 1, gz + 1, c) + getbrightness(gx - 1, gy + 1, gz + 1, c);
-							col1 = br + getbrightness(gx - 1, gy, gz + 1, c) + getbrightness(gx, gy - 1, gz + 1, c) + getbrightness(gx - 1, gy - 1, gz + 1, c);
-							col2 = br + getbrightness(gx + 1, gy, gz + 1, c) + getbrightness(gx, gy - 1, gz + 1, c) + getbrightness(gx + 1, gy - 1, gz + 1, c);
-							col3 = br + getbrightness(gx + 1, gy, gz + 1, c) + getbrightness(gx, gy + 1, gz + 1, c) + getbrightness(gx + 1, gy + 1, gz + 1, c);
+							if (SmoothLighting) {
+								col0 = br + getbrightness(gx - 1, gy, gz + 1, c) + getbrightness(gx, gy + 1, gz + 1, c) + getbrightness(gx - 1, gy + 1, gz + 1, c);
+								col1 = br + getbrightness(gx - 1, gy, gz + 1, c) + getbrightness(gx, gy - 1, gz + 1, c) + getbrightness(gx - 1, gy - 1, gz + 1, c);
+								col2 = br + getbrightness(gx + 1, gy, gz + 1, c) + getbrightness(gx, gy - 1, gz + 1, c) + getbrightness(gx + 1, gy - 1, gz + 1, c);
+								col3 = br + getbrightness(gx + 1, gy, gz + 1, c) + getbrightness(gx, gy + 1, gz + 1, c) + getbrightness(gx + 1, gy + 1, gz + 1, c);
+							}
+							else col0 = col1 = col2 = col3 = br * 4;
 						}
 						else if (d == 5) { //z-
 							x = k, y = j, z = i;
 							gx = cx * 16 + x; gy = cy * 16 + y; gz = cz * 16 + z;
 							br = getbrightness(gx, gy, gz - 1, c);
-							col0 = br + getbrightness(gx - 1, gy, gz - 1, c) + getbrightness(gx, gy - 1, gz - 1, c) + getbrightness(gx - 1, gy - 1, gz - 1, c);
-							col1 = br + getbrightness(gx - 1, gy, gz - 1, c) + getbrightness(gx, gy + 1, gz - 1, c) + getbrightness(gx - 1, gy + 1, gz - 1, c);
-							col2 = br + getbrightness(gx + 1, gy, gz - 1, c) + getbrightness(gx, gy + 1, gz - 1, c) + getbrightness(gx + 1, gy + 1, gz - 1, c);
-							col3 = br + getbrightness(gx + 1, gy, gz - 1, c) + getbrightness(gx, gy - 1, gz - 1, c) + getbrightness(gx + 1, gy - 1, gz - 1, c);
+							if (SmoothLighting) {
+								col0 = br + getbrightness(gx - 1, gy, gz - 1, c) + getbrightness(gx, gy - 1, gz - 1, c) + getbrightness(gx - 1, gy - 1, gz - 1, c);
+								col1 = br + getbrightness(gx - 1, gy, gz - 1, c) + getbrightness(gx, gy + 1, gz - 1, c) + getbrightness(gx - 1, gy + 1, gz - 1, c);
+								col2 = br + getbrightness(gx + 1, gy, gz - 1, c) + getbrightness(gx, gy + 1, gz - 1, c) + getbrightness(gx + 1, gy + 1, gz - 1, c);
+								col3 = br + getbrightness(gx + 1, gy, gz - 1, c) + getbrightness(gx, gy - 1, gz - 1, c) + getbrightness(gx + 1, gy - 1, gz - 1, c);
+							}
+							else col0 = col1 = col2 = col3 = br * 4;
 						}
 						//Get block ID
 						bl = c->getblock(x, y, z);
 						tex = Textures::getTextureIndex(bl, face);
 						neighbour = World::getblock(gx + delta[d][0], gy + delta[d][1], gz + delta[d][2], Blocks::ROCK, c);
-						if (bl == Blocks::GRASS) {
+						if (NiceGrass && bl == Blocks::GRASS) {
 							if (d == 0 && getblock(gx + 1, gy - 1, gz, Blocks::ROCK, c) == Blocks::GRASS) tex = Textures::getTextureIndex(bl, 1);
 							else if (d == 1 && getblock(gx - 1, gy - 1, gz, Blocks::ROCK, c) == Blocks::GRASS) tex = Textures::getTextureIndex(bl, 1);
 							else if (d == 4 && getblock(gx, gy - 1, gz + 1, Blocks::ROCK, c) == Blocks::GRASS) tex = Textures::getTextureIndex(bl, 1);
