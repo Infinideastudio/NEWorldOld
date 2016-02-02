@@ -77,6 +77,9 @@ extern float FOVyExt;
 extern int Multisample;
 extern bool vsync;
 extern double stretch;
+extern int gametime;
+const int gameTimeMax = 43200;
+extern float daylight;
 
 extern int windowwidth;
 extern int windowheight;
@@ -137,6 +140,12 @@ inline int fastrand() {
 vector<string> split(string str, string pattern);
 inline string boolstr(bool b){ return b ? "True" : "False"; }
 inline double rnd() { return (double)fastrand() / (RAND_MAX + 1); }
+template<class T>
+inline T clamp(T x, T min, T max) {
+	if (x < min) return min;
+	if (x > max) return max;
+	return x;
+}
 #ifdef NEWORLD_USE_WINAPI
 inline double timer(){
 	static LARGE_INTEGER counterFreq;
