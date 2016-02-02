@@ -274,6 +274,10 @@ ThreadFunc updateThreadFunc(void*){
 	return 0;
 }
 
+std::shared_ptr<char> getMap() {
+
+}
+
 void saveGame(){
 	World::saveAllChunks();
 	if (!Player::save(World::worldname)) {
@@ -384,6 +388,11 @@ void updategame(){
 		if (Player::health > Player::healthMax) Player::health = Player::healthMax;
 	}
 	else Player::spawn();
+
+	//时间
+	gametime++;
+	if (glfwGetKey(MainWindow, GLFW_KEY_F8)) gametime += 30;
+	if (gametime > gameTimeMax) gametime = 0;
 
 	//World::unloadedChunks=0
 	World::rebuiltChunks = 0;
@@ -958,8 +967,8 @@ void render() {
 		if (!DebugShadow) ShadowMaps::BuildShadowMap(xpos, ypos, zpos, curtime);
 		else ShadowMaps::RenderShadowMap(xpos, ypos, zpos, curtime);
 	}
-
-	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
+	daylight = clamp((1.0 - cos((double)gametime / gameTimeMax * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
+	glClearColor(skycolorR*daylight, skycolorG*daylight, skycolorB*daylight, 1.0);
 	if (!DebugShadow) glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_TEXTURE_2D);
 
@@ -1447,6 +1456,15 @@ void drawGUI(){
 		ss << "Near wall:" << boolstr(Player::NearWall);
 		debugText(ss.str()); ss.str("");
 		ss << "In water:" << boolstr(Player::inWater);
+		debugText(ss.str()); ss.str("");
+		int h = gametime / (30 * 60);
+		int m = gametime % (30 * 60) / 30;
+		int s = gametime % 30 * 2;
+		ss << "Time: "
+			<< (h < 10 ? "0" : "") << h << ":"
+			<< (m < 10 ? "0" : "") << m << ":"
+			<< (s < 10 ? "0" : "") << s
+			<< " (" << gametime << "/" << gameTimeMax << ")";
 		debugText(ss.str()); ss.str("");
 
 		ss << "Gliding:" << boolstr(Player::glidingNow);
