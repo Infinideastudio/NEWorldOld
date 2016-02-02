@@ -201,10 +201,6 @@ main_menu:
 			MutexDestroy(Mutex);
 			saveGame();
 			World::destroyAllChunks();
-			//printf("[Console][Game]");
-			//printf("Threads terminated\n");
-			//printf("[Console][Game]");
-			//printf("Returned to main menu\n");
 			if (multiplayer) Network::cleanUp();
 			goto main_menu;
 		}
