@@ -87,24 +87,6 @@ void Player::spawn() {
 	health = healthMax;
 	memset(inventory, 0, sizeof(inventory));
 	memset(inventoryAmount, 0, sizeof(inventoryAmount));
-	//inventory[0][0] = 1; inventoryAmount[0][0] = 255;
-	//inventory[0][1] = 2; inventoryAmount[0][1] = 255;
-	//inventory[0][2] = 3; inventoryAmount[0][2] = 255;
-	//inventory[0][3] = 4; inventoryAmount[0][3] = 255;
-	//inventory[0][4] = 5; inventoryAmount[0][4] = 255;
-	//inventory[0][5] = 6; inventoryAmount[0][5] = 255;
-	//inventory[0][6] = 7; inventoryAmount[0][6] = 255;
-	//inventory[0][7] = 8; inventoryAmount[0][7] = 255;
-	//inventory[0][8] = 9; inventoryAmount[0][8] = 255;
-	//inventory[0][9] = 10; inventoryAmount[0][9] = 255;
-	//inventory[1][0] = 11; inventoryAmount[1][0] = 255;
-	//inventory[1][1] = 12; inventoryAmount[1][1] = 255;
-	//inventory[1][2] = 13; inventoryAmount[1][2] = 255;
-	//inventory[1][3] = 14; inventoryAmount[1][3] = 255;
-	//inventory[1][4] = 15; inventoryAmount[1][4] = 255;
-	//inventory[1][5] = 16; inventoryAmount[1][5] = 255;
-	//inventory[1][6] = 17; inventoryAmount[1][6] = 255;
-	//inventory[1][7] = 18; inventoryAmount[1][7] = 255;
 }
 
 void Player::updatePosition() {

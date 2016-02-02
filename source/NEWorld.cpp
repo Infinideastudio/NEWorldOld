@@ -67,6 +67,7 @@ int selbx, selby, selbz, selcx, selcy, selcz;
 string chatword;
 bool chatmode = false;
 vector<Command> commands;
+vector<string> chatMessages;
 
 #if 0
 	woca, 这样注释都行？！
@@ -360,6 +361,35 @@ void registerCommands() {
 		Player::changeGameMode(mode);
 		return true;
 	}));
+	commands.push_back(Command("/kit", [](const vector<string>& command) {
+		if (command.size() != 1) return false;
+		Player::inventory[0][0] = 1; Player::inventoryAmount[0][0] = 255;
+		Player::inventory[0][1] = 2; Player::inventoryAmount[0][1] = 255;
+		Player::inventory[0][2] = 3; Player::inventoryAmount[0][2] = 255;
+		Player::inventory[0][3] = 4; Player::inventoryAmount[0][3] = 255;
+		Player::inventory[0][4] = 5; Player::inventoryAmount[0][4] = 255;
+		Player::inventory[0][5] = 6; Player::inventoryAmount[0][5] = 255;
+		Player::inventory[0][6] = 7; Player::inventoryAmount[0][6] = 255;
+		Player::inventory[0][7] = 8; Player::inventoryAmount[0][7] = 255;
+		Player::inventory[0][8] = 9; Player::inventoryAmount[0][8] = 255;
+		Player::inventory[0][9] = 10; Player::inventoryAmount[0][9] = 255;
+		Player::inventory[1][0] = 11; Player::inventoryAmount[1][0] = 255;
+		Player::inventory[1][1] = 12; Player::inventoryAmount[1][1] = 255;
+		Player::inventory[1][2] = 13; Player::inventoryAmount[1][2] = 255;
+		Player::inventory[1][3] = 14; Player::inventoryAmount[1][3] = 255;
+		Player::inventory[1][4] = 15; Player::inventoryAmount[1][4] = 255;
+		Player::inventory[1][5] = 16; Player::inventoryAmount[1][5] = 255;
+		Player::inventory[1][6] = 17; Player::inventoryAmount[1][6] = 255;
+		Player::inventory[1][7] = 18; Player::inventoryAmount[1][7] = 255;
+		return true;
+	}));
+	commands.push_back(Command("/time", [](const vector<string>& command) {
+		if (command.size() != 2) return false;
+		int time; conv(command[1], time);
+		if (time<0 || time>gameTimeMax) return false;
+		gametime = time;
+		return true;
+	}));
 }
 
 bool doCommand(const vector<string>& command) {
@@ -515,9 +545,9 @@ void updategame(){
 					selb = cp->getblock(selbx, selby, selbz);
 				}
 				selbr = World::getbrightness(xl, yl, zl);
-
+				block selb = World::getblock(x, y, z);
 				if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
-					Particles::throwParticle(World::getblock(x, y, z),
+					Particles::throwParticle(selb,
 						float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 						float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 						float(rnd()*0.01f + 0.02f), int(rnd() * 30) + 30);
@@ -525,10 +555,11 @@ void updategame(){
 					if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
 					else seldes += 5.0;
 
-					if (seldes >= 100.0) {
-						Player::addItem(World::getblock(x, y, z));
+					if (seldes >= 100.0 || Player::gamemode==Player::Creative) {
+
+						Player::addItem(selb);
 						for (int j = 1; j <= 25; j++) {
-							Particles::throwParticle(World::getblock(x, y, z),
+							Particles::throwParticle(selb,
 								float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 								float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 								float(rnd()*0.02 + 0.03), int(rnd() * 60) + 30);
@@ -731,10 +762,11 @@ void updategame(){
 					vector<string> command = split(chatword, " ");
 					if (!doCommand(command)) { //执行失败
 						DebugWarning("Fail to execute the command: " + chatword);
+						chatMessages.push_back("Fail to execute the command: " + chatword);
 					}
 				}
 				else {
-
+					chatMessages.push_back(chatword);
 				}
 			}
 			chatword = "";
@@ -1404,6 +1436,13 @@ void drawGUI(){
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
 		TextRenderer::renderString(0, windowheight - 50, chatword);
+	}
+	int posy = 0;
+	int size = chatMessages.size();
+	if (size != 0) {
+		for (int i = size - 1; i >= (size - 10 > 0 ? size - 10 : 0); --i) {
+			TextRenderer::renderString(0, windowheight - 80 - 18 * posy++, chatMessages[i]);
+		}
 	}
 
 	//if (DebugShadow) ShadowMaps::DrawShadowMap(windowwidth / 2, windowheight / 2, windowwidth, windowheight);
