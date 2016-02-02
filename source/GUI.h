@@ -14,6 +14,10 @@ template<typename T>
 inline string strWithVar(string str, T var) {
 	std::stringstream ss; ss << str << var; return ss.str();
 }
+template<typename T>
+inline string Var2Str(T var) {
+	std::stringstream ss; ss << var; return ss.str();
+}
 
 //图形界面系统。。。正宗OOP！！！
 namespace GUI {
@@ -28,6 +32,8 @@ namespace GUI {
 	extern float BgB;
 	extern float BgA;
 
+	extern int nScreenWidth;
+	extern int nScreenHeight;
 	extern unsigned int transitionList;
 	extern unsigned int lastdisplaylist;
 	extern double transitionTimer;
@@ -37,6 +43,7 @@ namespace GUI {
 	void screenBlur();
 	void drawBackground();
 	void InitStretch();
+	void EndStretch();
 
 	class Form;
 	class controls {
