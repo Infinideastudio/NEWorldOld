@@ -274,10 +274,6 @@ ThreadFunc updateThreadFunc(void*){
 	return 0;
 }
 
-std::shared_ptr<char> getMap() {
-
-}
-
 void saveGame(){
 	World::saveAllChunks();
 	if (!Player::save(World::worldname)) {
@@ -961,14 +957,15 @@ void render() {
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	
+
+	//daylight = clamp((1.0 - cos((double)gametime / gameTimeMax * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
+	//Renderer::sunlightXrot = 90 * daylight;
 	if (Renderer::AdvancedRender) {
 		//Build shadow map
 		if (!DebugShadow) ShadowMaps::BuildShadowMap(xpos, ypos, zpos, curtime);
 		else ShadowMaps::RenderShadowMap(xpos, ypos, zpos, curtime);
 	}
-	daylight = clamp((1.0 - cos((double)gametime / gameTimeMax * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
-	glClearColor(skycolorR*daylight, skycolorG*daylight, skycolorB*daylight, 1.0);
+	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	if (!DebugShadow) glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_TEXTURE_2D);
 
