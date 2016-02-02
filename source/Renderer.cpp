@@ -260,7 +260,7 @@ namespace Renderer {
 		int st = GL_TRUE;
 		glGetObjectParameterivARB(res, GL_COMPILE_STATUS, &st);
 		printInfoLog(res);
-		if (st == GL_FALSE) DebugWarning("Shader compilation error!");
+		if (st == GL_FALSE) DebugWarning("Shader compilation error! In file " + filename);
 		return res;
 	}
 
@@ -295,7 +295,8 @@ namespace Renderer {
 		setUniform1f("renderdist", viewdistance * 16.0f);
 		setUniformMatrix4fv("Depth_proj", frus.getProjMatrix());
 		setUniformMatrix4fv("Depth_modl", frus.getModlMatrix());
-
+		setUniform1f("daylight", daylight);
+		
 		//Enable arrays for additional vertex attributes
 		glEnableVertexAttribArrayARB(ShaderAttribLoc);
 	}

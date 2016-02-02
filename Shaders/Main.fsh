@@ -2,6 +2,7 @@
 
 ##NEWORLD_SHADER_DEFINES MergeFace MERGE_FACE
 #define SMOOTH_SHADOW
+#define PI 3.1415926536
 
 const mat4 normalize = mat4(
 	0.5, 0.0, 0.0, 0.0,
@@ -17,6 +18,7 @@ uniform mat4 Depth_proj;
 uniform mat4 Depth_modl;
 uniform mat4 TransMat;
 uniform vec4 SkyColor;
+uniform float daylight;
 uniform float renderdist;
 
 varying vec4 VertCoords;
@@ -84,7 +86,7 @@ void main() {
 #else
 	vec4 texel = texture2D(Tex, gl_TexCoord[0].st);
 #endif
-	vec4 color = vec4(texel.rgb * shadow, texel.a) * gl_Color;
+	vec4 color = vec4(texel.rgb * shadow, texel.a) * gl_Color * daylight;
 	
 	//Fog calculation & Final color
 	//if (color.a < 0.99) color = vec4(color.rgb, mix(1.0, 0.3, clamp((renderdist * 0.5 - dist) / 64.0, 0.0, 1.0)));
