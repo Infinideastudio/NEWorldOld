@@ -202,6 +202,7 @@ bool Player::save(string worldn) {
 	isave.write((char*)&indexInHand, sizeof(indexInHand));
 	isave.write((char*)&health, sizeof(health));
 	isave.write((char*)&gamemode, sizeof(gamemode));
+	isave.write((char*)&gametime, sizeof(gametime));
 	isave.write((char*)inventory, sizeof(inventory));
 	isave.write((char*)inventoryAmount, sizeof(inventoryAmount));
 	isave.close();
@@ -230,6 +231,7 @@ bool Player::load(string worldn) {
 	iload.read((char*)&indexInHand, sizeof(indexInHand));
 	iload.read((char*)&health, sizeof(health));
 	iload.read((char*)&gamemode, sizeof(gamemode));
+	iload.read((char*)&gametime, sizeof(gametime));
 	iload.read((char*)inventory, sizeof(inventory));
 	iload.read((char*)inventoryAmount, sizeof(inventoryAmount));
 	iload.close();
