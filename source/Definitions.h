@@ -79,7 +79,7 @@ extern bool vsync;
 extern double stretch;
 extern int gametime;
 const int gameTimeMax = 43200;
-extern float daylight;
+//extern float daylight;
 
 extern int windowwidth;
 extern int windowheight;
