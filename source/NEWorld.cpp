@@ -410,6 +410,7 @@ void updategame(){
 	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 	//生命值相关
 	if (Player::health > 0 || Player::gamemode==Player::Creative) {
+		if (Player::ypos < -100) Player::health -= ((-100) - Player::ypos) / 100;
 		if (Player::health < Player::healthMax) Player::health += Player::healSpeed;
 		if (Player::health > Player::healthMax) Player::health = Player::healthMax;
 	}
