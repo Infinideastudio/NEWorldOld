@@ -54,7 +54,6 @@ namespace Renderer {
 	int index = 0, size = 0;
 	unsigned int ShadowFBO, DepthTexture;
 	unsigned int ShaderAttribLoc = 0;
-	int curShader;
 
 	void Init(int tc, int cc, int ac) {
 		Texcoordc = tc; Colorc = cc; Attribc = ac;

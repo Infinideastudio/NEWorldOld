@@ -24,7 +24,6 @@ namespace Renderer{
 	extern unsigned int DepthTexture;
 	extern vector<Shader> shaders;
 	extern int ActiveShader;
-	extern int curShader;
 
 	void Init(int tc, int cc, int ac = 0);
 	void Vertex3f(float x, float y, float z);
@@ -52,7 +51,7 @@ namespace Renderer{
 	void initShaders();
 	inline void bindShader(int shaderID) {
 		shaders[shaderID].bind();
-		curShader = shaderID;
+		ActiveShader = shaderID;
 	}
 	void destroyShaders();
 	void EnableShaders();
