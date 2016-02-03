@@ -735,7 +735,7 @@ void updategame(){
 			if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
 			if (isPressed(GLFW_KEY_H) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
 				DebugHitbox = !DebugHitbox;
-				DebugMode = true;
+				DebugMode = true; 
 			}
 			if (Renderer::AdvancedRender) {
 				if (isPressed(GLFW_KEY_M) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
