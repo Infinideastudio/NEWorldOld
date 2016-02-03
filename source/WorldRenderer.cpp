@@ -37,7 +37,7 @@ namespace WorldRenderer {
 				m[12] = cr.cx * 16.0f - (float)x;
 				m[13] = cr.cy * 16.0f - (float)cr.loadAnim - (float)y;
 				m[14] = cr.cz * 16.0f - (float)z;
-				Renderer::setUniformMatrix4fv("TransMat", m);
+				Renderer::shaders[Renderer::curShader].setUniform("TransMat", m);
 				Renderer::renderbuffer(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount, 1);
 			}
 			else Renderer::renderbuffer(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount);

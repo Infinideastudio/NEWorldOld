@@ -2,14 +2,15 @@
 #include "Definitions.h"
 #include "GLProc.h"
 #include "Frustum.h"
+#include "Shader.h"
 
 namespace Renderer{
 	//我猜你肯定不敢看Renderer.cpp  --qiaozhanrong
-	
-	const unsigned int MainShader = 0;
-	const unsigned int MergeFaceShader = 1;
-	const unsigned int ShadowShader = 2;
-	const unsigned int DepthShader = 3;
+	//猜对了  --Null
+
+	enum {
+		MainShader, MergeFaceShader, ShadowShader, DepthShader
+	};
 
 	const int ArraySize = 2621440;
 	extern float* VA;
@@ -21,9 +22,9 @@ namespace Renderer{
 	extern int shadowdist;
 	extern float sunlightXrot, sunlightYrot;
 	extern unsigned int DepthTexture;
-	extern GLhandleARB shaders[16];
-	extern GLhandleARB shaderPrograms[16];
+	extern vector<Shader> shaders;
 	extern int ActiveShader;
+	extern int curShader;
 
 	void Init(int tc, int cc, int ac = 0);
 	void Vertex3f(float x, float y, float z);
@@ -49,19 +50,13 @@ namespace Renderer{
 	void renderbuffer(VBOID buffer, vtxCount vtxs, int tc, int cc, int ac = 0);
 
 	void initShaders();
+	inline void bindShader(int shaderID) {
+		shaders[shaderID].bind();
+		curShader = shaderID;
+	}
 	void destroyShaders();
-	GLhandleARB loadShader(string filename, unsigned int mode, std::set<string>* defines = nullptr);
-	void printInfoLog(GLhandleARB obj);
 	void EnableShaders();
 	void DisableShaders();
 	void StartShadowPass();
 	void EndShadowPass();
-	inline GLhandleARB getCurrentShader() { return shaderPrograms[ActiveShader]; }
-	inline void bindShader(int s) { ActiveShader = s; glUseProgramObjectARB(shaderPrograms[s]); }
-	inline void unbindShader() { ActiveShader = -1; glUseProgramObjectARB(0); }
-	inline int getUniformLocation(const char* uniform) { return glGetUniformLocationARB(shaderPrograms[ActiveShader], uniform); }
-	bool setUniform1f(const char* uniform, float value);
-	bool setUniform1i(const char* uniform, int value);
-	bool setUniform4f(const char* uniform, float v0, float v1, float v2, float v3);
-	bool setUniformMatrix4fv(const char* uniform, float* value);
 }
