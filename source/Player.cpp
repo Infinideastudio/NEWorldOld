@@ -124,7 +124,7 @@ void Player::updatePosition() {
 		Player::glidingEnergy = 0;
 		Player::glidingSpeed = 0;
 		Player::glidingNow = false;
-		if (ydam - (ypos + ya) > 0) {
+		if (ydam - (ypos + ya) > 5) {
 			if(Player::gamemode==Player::Survival) Player::health -= (ydam - (ypos + ya)) * Player::dropDamagePerBlock;
 			ydam = 0;
 		}
