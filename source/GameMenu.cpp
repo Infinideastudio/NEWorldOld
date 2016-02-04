@@ -1,5 +1,6 @@
 #include "Menus.h"
 #include "TextRenderer.h"
+#include "World.h"
 
 namespace Menus {
 	class GameMenu :public GUI::Form {
@@ -18,6 +19,10 @@ namespace Menus {
 			MutexLock(Mutex);
 			if (resumebtn.clicked) ExitSignal = true;
 			if (exitbtn.clicked) gameexit = ExitSignal = true;
+		}
+		void onLeave() {
+			World::saveAllChunks();
+			World::destroyAllChunks();
 		}
 	};
 	void gamemenu() { GameMenu Menu; Menu.start(); }
