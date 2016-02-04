@@ -852,7 +852,7 @@ namespace GUI {
 
 		if (displaylist == 0) displaylist = glGenLists(1);
 		glNewList(displaylist, GL_COMPILE_AND_EXECUTE);
-		for (int i = 0; i != children.size(); i++) {
+		for (size_t i = 0; i != children.size(); i++) {
 			children[i]->render();
 		}
 		onRender();
@@ -944,7 +944,7 @@ namespace GUI {
 		if (glfwWindowShouldClose(MainWindow)) exit(0);
 	}
 	void Form::start() {
-		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);//Added to fix the glitch
+		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		glfwSetCursor(MainWindow, Cursor);
 		glClearColor(0.0, 0.0, 0.0, 1.0);
