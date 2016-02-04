@@ -137,11 +137,12 @@ namespace GUI {
 		void render();
 	};
 
+	typedef void(*UIVoidF)();
+
 	// ´°Ìå / ÈÝÆ÷
 	class Form {
-	protected:
-		vector<controls*> children;
 	public:
+		vector<controls*> children;
 		bool tabp, shiftp, enterp, enterpl;
 		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, backspacep, backspacepl, updated;
 		int maxid, currentid, focusid, childrenCount, mx, my, mw, mb, mxl, myl, mwl, mbl;
@@ -156,12 +157,13 @@ namespace GUI {
 		void cleanup();
 		virtual void onLoad() {}
 		virtual void onUpdate() {}
-		virtual void Background() { drawBackground(); }
+		UIVoidF Background;
 		virtual void onRender() {}
 		virtual void onLeaving() {}
 		virtual void onLeave() {}
 		Form();
 		void start();
-		virtual ~Form();
+		void singleloop();
+		~Form();
 	};
 }
