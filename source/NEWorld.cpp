@@ -67,6 +67,7 @@ int selbx, selby, selbz, selcx, selcy, selcz;
 string chatword;
 bool chatmode = false;
 vector<Command> commands;
+vector<string> chatMessages;
 
 #if 0
 	woca, 这样注释都行？！
@@ -121,7 +122,7 @@ main_menu:
 	MutexLock(Mutex);
 	updateThread = ThreadCreate(&updateThreadFunc, NULL);
 	if (multiplayer) {
-		fast_srand((unsigned int)time(NULL));
+		fastSrand((unsigned int)time(NULL));
 		Player::name = "";
 		Player::onlineID = rand();
 		Network::init(serverip, port);
@@ -201,10 +202,6 @@ main_menu:
 			MutexDestroy(Mutex);
 			saveGame();
 			World::destroyAllChunks();
-			//printf("[Console][Game]");
-			//printf("Threads terminated\n");
-			//printf("[Console][Game]");
-			//printf("Returned to main menu\n");
 			if (multiplayer) Network::cleanUp();
 			goto main_menu;
 		}
@@ -364,6 +361,35 @@ void registerCommands() {
 		Player::changeGameMode(mode);
 		return true;
 	}));
+	commands.push_back(Command("/kit", [](const vector<string>& command) {
+		if (command.size() != 1) return false;
+		Player::inventory[0][0] = 1; Player::inventoryAmount[0][0] = 255;
+		Player::inventory[0][1] = 2; Player::inventoryAmount[0][1] = 255;
+		Player::inventory[0][2] = 3; Player::inventoryAmount[0][2] = 255;
+		Player::inventory[0][3] = 4; Player::inventoryAmount[0][3] = 255;
+		Player::inventory[0][4] = 5; Player::inventoryAmount[0][4] = 255;
+		Player::inventory[0][5] = 6; Player::inventoryAmount[0][5] = 255;
+		Player::inventory[0][6] = 7; Player::inventoryAmount[0][6] = 255;
+		Player::inventory[0][7] = 8; Player::inventoryAmount[0][7] = 255;
+		Player::inventory[0][8] = 9; Player::inventoryAmount[0][8] = 255;
+		Player::inventory[0][9] = 10; Player::inventoryAmount[0][9] = 255;
+		Player::inventory[1][0] = 11; Player::inventoryAmount[1][0] = 255;
+		Player::inventory[1][1] = 12; Player::inventoryAmount[1][1] = 255;
+		Player::inventory[1][2] = 13; Player::inventoryAmount[1][2] = 255;
+		Player::inventory[1][3] = 14; Player::inventoryAmount[1][3] = 255;
+		Player::inventory[1][4] = 15; Player::inventoryAmount[1][4] = 255;
+		Player::inventory[1][5] = 16; Player::inventoryAmount[1][5] = 255;
+		Player::inventory[1][6] = 17; Player::inventoryAmount[1][6] = 255;
+		Player::inventory[1][7] = 18; Player::inventoryAmount[1][7] = 255;
+		return true;
+	}));
+	commands.push_back(Command("/time", [](const vector<string>& command) {
+		if (command.size() != 2) return false;
+		int time; conv(command[1], time);
+		if (time<0 || time>gameTimeMax) return false;
+		gametime = time;
+		return true;
+	}));
 }
 
 bool doCommand(const vector<string>& command) {
@@ -384,10 +410,16 @@ void updategame(){
 	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 	//生命值相关
 	if (Player::health > 0 || Player::gamemode==Player::Creative) {
+		if (Player::ypos < -100) Player::health -= ((-100) - Player::ypos) / 100;
 		if (Player::health < Player::healthMax) Player::health += Player::healSpeed;
 		if (Player::health > Player::healthMax) Player::health = Player::healthMax;
 	}
 	else Player::spawn();
+
+	//时间
+	gametime++;
+	if (glfwGetKey(MainWindow, GLFW_KEY_F8)) gametime += 30;
+	if (gametime > gameTimeMax) gametime = 0;
 
 	//World::unloadedChunks=0
 	World::rebuiltChunks = 0;
@@ -514,9 +546,9 @@ void updategame(){
 					selb = cp->getblock(selbx, selby, selbz);
 				}
 				selbr = World::getbrightness(xl, yl, zl);
-
+				block selb = World::getblock(x, y, z);
 				if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
-					Particles::throwParticle(World::getblock(x, y, z),
+					Particles::throwParticle(selb,
 						float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 						float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 						float(rnd()*0.01f + 0.02f), int(rnd() * 30) + 30);
@@ -524,10 +556,11 @@ void updategame(){
 					if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
 					else seldes += 5.0;
 
-					if (seldes >= 100.0) {
-						Player::addItem(World::getblock(x, y, z));
+					if (seldes >= 100.0 || Player::gamemode==Player::Creative) {
+
+						Player::addItem(selb);
 						for (int j = 1; j <= 25; j++) {
-							Particles::throwParticle(World::getblock(x, y, z),
+							Particles::throwParticle(selb,
 								float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 								float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
 								float(rnd()*0.02 + 0.03), int(rnd() * 60) + 30);
@@ -703,7 +736,7 @@ void updategame(){
 			if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
 			if (isPressed(GLFW_KEY_H) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
 				DebugHitbox = !DebugHitbox;
-				DebugMode = true;
+				DebugMode = true; 
 			}
 			if (Renderer::AdvancedRender) {
 				if (isPressed(GLFW_KEY_M) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
@@ -730,10 +763,11 @@ void updategame(){
 					vector<string> command = split(chatword, " ");
 					if (!doCommand(command)) { //执行失败
 						DebugWarning("Fail to execute the command: " + chatword);
+						chatMessages.push_back("Fail to execute the command: " + chatword);
 					}
 				}
 				else {
-
+					chatMessages.push_back(chatword);
 				}
 			}
 			chatword = "";
@@ -956,13 +990,14 @@ void render() {
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	
+
+	//daylight = clamp((1.0 - cos((double)gametime / gameTimeMax * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
+	//Renderer::sunlightXrot = 90 * daylight;
 	if (Renderer::AdvancedRender) {
 		//Build shadow map
 		if (!DebugShadow) ShadowMaps::BuildShadowMap(xpos, ypos, zpos, curtime);
 		else ShadowMaps::RenderShadowMap(xpos, ypos, zpos, curtime);
 	}
-
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	if (!DebugShadow) glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_TEXTURE_2D);
@@ -1403,6 +1438,13 @@ void drawGUI(){
 		glEnable(GL_TEXTURE_2D);
 		TextRenderer::renderString(0, windowheight - 50, chatword);
 	}
+	int posy = 0;
+	int size = chatMessages.size();
+	if (size != 0) {
+		for (int i = size - 1; i >= (size - 10 > 0 ? size - 10 : 0); --i) {
+			TextRenderer::renderString(0, windowheight - 80 - 18 * posy++, chatMessages[i]);
+		}
+	}
 
 	//if (DebugShadow) ShadowMaps::DrawShadowMap(windowwidth / 2, windowheight / 2, windowwidth, windowheight);
 
@@ -1447,6 +1489,15 @@ void drawGUI(){
 		ss << "Near wall:" << boolstr(Player::NearWall);
 		debugText(ss.str()); ss.str("");
 		ss << "In water:" << boolstr(Player::inWater);
+		debugText(ss.str()); ss.str("");
+		int h = gametime / (30 * 60);
+		int m = gametime % (30 * 60) / 30;
+		int s = gametime % 30 * 2;
+		ss << "Time: "
+			<< (h < 10 ? "0" : "") << h << ":"
+			<< (m < 10 ? "0" : "") << m << ":"
+			<< (s < 10 ? "0" : "") << s
+			<< " (" << gametime << "/" << gameTimeMax << ")";
 		debugText(ss.str()); ss.str("");
 
 		ss << "Gliding:" << boolstr(Player::glidingNow);
