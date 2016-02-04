@@ -257,9 +257,9 @@ bool Player::addItem(item itemname, short amount) {
 	return false;
 }
 
-void Player::changeGameMode(int gamemode){
-	Player::gamemode = gamemode;
-	switch (gamemode) {
+void Player::changeGameMode(int _gamemode){
+	Player::gamemode = _gamemode;
+	switch (_gamemode) {
 	case Survival:
 		Flying = false;
 		Player::jump = 0.0;

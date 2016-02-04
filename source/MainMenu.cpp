@@ -16,7 +16,12 @@ namespace Menus {
 		void onUpdate() {
 			if (startbtn.clicked) worldmenu();
 			if (gamebegin) ExitSignal = true;
-			if (optionsbtn.clicked) options();
+			if (optionsbtn.clicked) {
+				options();
+				startbtn.text = GetStrbyKey("NEWorld.main.start");
+				optionsbtn.text = GetStrbyKey("NEWorld.main.options");
+				quitbtn.text = GetStrbyKey("NEWorld.main.exit");
+			}
 			if (quitbtn.clicked) exit(0);
 		}
 	};
