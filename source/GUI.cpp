@@ -956,7 +956,10 @@ namespace GUI {
 			glfwSwapBuffers(MainWindow);
 			glfwPollEvents();
 			if (ExitSignal) onLeaving();
-			if (glfwWindowShouldClose(MainWindow)) exit(0);
+			if (glfwWindowShouldClose(MainWindow)) {
+				onLeave();
+				exit(0);
+			}
 		} while (!ExitSignal);
 		onLeave();
 		glfwDestroyCursor(Cursor); //Added to fix the glitch
