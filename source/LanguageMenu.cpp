@@ -23,33 +23,37 @@ namespace Menus {
 			Langinfo Info;
 			for (int i = 0; i < count; i++) {
 				index >> Info.Symbol;
-				std::ifstream LF("Lang/"+Info.Symbol+".lang");
+				std::ifstream LF("Lang/" + Info.Symbol + ".lang");
 				getline(LF, Info.EngSymbol);
 				getline(LF, Info.Name);
 				LF.close();
 				Info.Button = new GUI::button(Info.EngSymbol + "--" + Info.Name, -200, 200, i * 36 + 42, i * 36 + 72, 0.5, 0.5, 0.0, 0.0);
 				registerControls(1, Info.Button);
 				Langs.push_back(Info);
-
 			}
 			index.close();
 		}
 
 		void onUpdate() {
 			if (backbtn.clicked) ExitSignal = true;
-			for (int i = 0; i < Langs.size(); i++) {
+			for (size_t i = 0; i < Langs.size(); i++) {
 				if (Langs[i].Button->clicked){
 					ExitSignal = true;
 					if (Globalization::Cur_Lang != Langs[i].Symbol) {
 						Globalization::LoadLang(Langs[i].Symbol);
-						reentry = true;
 					}
+					break;
 				}
 			}
 		}
 
 		void onLeave() {
-			for (int i = 0; i < Langs.size(); i++) {
+			for (size_t i = 0; i < Langs.size(); i++) {
+				for (vector<GUI::controls*>::iterator iter = children.begin(); iter != children.end(); ) {
+					if ((*iter)->id == Langs[i].Button->id) iter = children.erase(iter);
+					else ++iter;
+				}
+				Langs[i].Button->destroy();
 				delete Langs[i].Button;
 			}
 		}
