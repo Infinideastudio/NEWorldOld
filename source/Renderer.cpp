@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "Shader.h"
 
 namespace Renderer {
 	
@@ -30,7 +31,9 @@ namespace Renderer {
 
 	1楼. qiaozhanrong: 自己抢个沙发先
 
-	2楼. [请输入姓名]: [请输入回复内容]
+	2楼. Null: 这就是你在源码里写这么一长串的理由？23333333333
+
+	3楼. [请输入姓名]: [请输入回复内容]
 
 	[回复]
 	====================================================
@@ -46,14 +49,12 @@ namespace Renderer {
 	int MaxShadowDist = 2;
 	int shadowdist;
 	float sunlightXrot, sunlightYrot;
-	GLhandleARB shaders[16];
-	GLhandleARB shaderPrograms[16];
+	vector<Shader> shaders;
 	int ActiveShader;
-	int shadercount = 0;
 	int index = 0, size = 0;
 	unsigned int ShadowFBO, DepthTexture;
 	unsigned int ShaderAttribLoc = 0;
-	
+
 	void Init(int tc, int cc, int ac) {
 		Texcoordc = tc; Colorc = cc; Attribc = ac;
 		if (VertexArray == nullptr) VertexArray = new float[ArraySize];
@@ -148,34 +149,14 @@ namespace Renderer {
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
 		shadowdist = min(MaxShadowDist, viewdistance);
-
-		shadercount = 4;
-		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[1] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB);
-		shaders[2] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB, &defines);
-		shaders[3] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB, &defines);
-		shaders[4] = loadShader("Shaders/Shadow.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[5] = loadShader("Shaders/Shadow.fsh", GL_FRAGMENT_SHADER_ARB);
-		shaders[6] = loadShader("Shaders/Depth.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[7] = loadShader("Shaders/Depth.fsh", GL_FRAGMENT_SHADER_ARB);
-		for (int i = 0; i != shadercount; i++) {
-			shaderPrograms[i] = glCreateProgramObjectARB();
-			glAttachObjectARB(shaderPrograms[i], shaders[i * 2]);
-			glAttachObjectARB(shaderPrograms[i], shaders[i * 2 + 1]);
-			if (i == MainShader || i == MergeFaceShader) {
-				glBindAttribLocationARB(shaderPrograms[i], ShaderAttribLoc, "VertexAttrib");
-			}
-			glLinkProgramARB(shaderPrograms[i]);
-			int st = GL_TRUE;
-			glGetObjectParameterivARB(shaderPrograms[i], GL_LINK_STATUS, &st);
-			printInfoLog(shaderPrograms[i]);
-			if (st == GL_FALSE) DebugWarning("Shader linking error!");
-		}
+		shaders.reserve(4);
+		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true));
+		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true, defines));
+		shaders.push_back(Shader("Shaders/Shadow.vsh", "Shaders/Shadow.fsh", false));
+		shaders.push_back(Shader("Shaders/Depth.vsh", "Shaders/Depth.fsh", false, defines));
 
 		glGenTextures(1, &DepthTexture);
 		glBindTexture(GL_TEXTURE_2D, DepthTexture);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
@@ -196,90 +177,28 @@ namespace Renderer {
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		
 		for (int i = 0; i < 2; i++) {
-			bindShader(i);
-			if (i == 0) setUniform1i("Tex", 0);
-			else setUniform1i("Tex3D", 0);
-			setUniform1i("DepthTex", 1);
-			setUniform4f("SkyColor", skycolorR, skycolorG, skycolorB, 1.0f);
+			shaders[i].bind();
+			if (i == 0) shaders[i].setUniform("Tex", 0);
+			else shaders[i].setUniform("Tex3D", 0);
+			shaders[i].setUniform("DepthTex", 1);
+			shaders[i].setUniform("SkyColor", skycolorR, skycolorG, skycolorB, 1.0f);
 		}
-		unbindShader();
-		
+		Shader::unbind();
 	}
 
 	void destroyShaders() {
-		for (int i = 0; i != shadercount; i++) {
-			glDetachObjectARB(shaderPrograms[i], shaders[i * 2]);
-			glDetachObjectARB(shaderPrograms[i], shaders[i * 2 + 1]);
-			glDeleteObjectARB(shaders[i * 2]);
-			glDeleteObjectARB(shaders[i * 2 + 1]);
-			glDeleteObjectARB(shaderPrograms[i]);
-		}
+		for (int i = 0; i != shaders.size(); i++)
+			shaders[i].release();
+		shaders.clear();
 		glDeleteTextures(1, &DepthTexture);
-		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		glDeleteFramebuffersEXT(1, &ShadowFBO);
-	}
-
-	GLhandleARB loadShader(string filename, unsigned int mode, std::set<string>* defines) {
-		std::stringstream ss;
-		GLhandleARB res;
-		string cur, var, macro;
-		int lines = 0, curlen;
-		char* curline;
-		std::vector<char*> source;
-		std::vector<int> length;
-		std::ifstream filein(filename);
-		if (!filein.is_open()) return 0;
-		while (!filein.eof()) {
-			std::getline(filein, cur);
-			if (!cur.size()) continue;
-			ss.str(cur);
-			macro = "";
-			ss >> macro;
-			if (macro == "##NEWORLD_SHADER_DEFINES") {
-				ss >> var >> macro;
-				if (defines != nullptr) {
-					std::set<string>::iterator it = defines->find(var);
-					if (it != defines->end()) cur = "#define " + macro;
-					else continue;
-				}
-				else continue;
-			}
-			cur += '\n';
-			curlen = cur.size();
-			curline = new char[curlen];
-			memcpy(curline, cur.c_str(), curlen);
-			lines++;
-			source.push_back(curline);
-			length.push_back(curlen);
-		}
-		filein.close();
-		res = glCreateShaderObjectARB(mode);
-		glShaderSourceARB(res, lines, (const GLchar**)source.data(), length.data());
-		glCompileShaderARB(res);
-		for (int i = 0; i < lines; i++) delete[] source[i];
-		int st = GL_TRUE;
-		glGetObjectParameterivARB(res, GL_COMPILE_STATUS, &st);
-		printInfoLog(res);
-		if (st == GL_FALSE) DebugWarning("Shader compilation error!");
-		return res;
-	}
-
-	void printInfoLog(GLhandleARB obj) {
-		int infologLength, charsWritten;
-		char* infoLog;
-		glGetObjectParameterivARB(obj, GL_OBJECT_INFO_LOG_LENGTH_ARB, &infologLength);
-		if (infologLength != 0) {
-			infoLog = new char[infologLength];
-			glGetInfoLogARB(obj, infologLength, &charsWritten, infoLog);
-			cout << infoLog << endl;
-			delete[] infoLog;
-		}
 	}
 
 	void EnableShaders() {
 		shadowdist = min(MaxShadowDist, viewdistance);
 
 		//Enable shader
+		Shader& shader = shaders[MergeFace ? MergeFaceShader : MainShader];
 		bindShader(MergeFace ? MergeFaceShader : MainShader);
 
 		//Calc matrix
@@ -292,17 +211,17 @@ namespace Renderer {
 		frus.MultRotate(sunlightYrot, 0.0f, 1.0f, 0.0f);
 
 		//Set uniform
-		setUniform1f("renderdist", viewdistance * 16.0f);
-		setUniformMatrix4fv("Depth_proj", frus.getProjMatrix());
-		setUniformMatrix4fv("Depth_modl", frus.getModlMatrix());
-
+		shader.setUniform("renderdist", viewdistance * 16.0f);
+		shader.setUniform("Depth_proj", frus.getProjMatrix());
+		shader.setUniform("Depth_modl", frus.getModlMatrix());
+		
 		//Enable arrays for additional vertex attributes
 		glEnableVertexAttribArrayARB(ShaderAttribLoc);
 	}
 
 	void DisableShaders() {
 		//Disable shader
-		unbindShader();
+		Shader::unbind();
 
 		//Disable arrays for additional vertex attributes
 		glDisableVertexAttribArrayARB(ShaderAttribLoc);
@@ -319,39 +238,8 @@ namespace Renderer {
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		glDrawBuffer(GL_BACK); glReadBuffer(GL_BACK);
-		unbindShader();
+		Shader::unbind();
 		glViewport(0, 0, windowwidth, windowheight);
 	}
 
-	bool setUniform1f(const char * uniform, float value) {
-		int loc = getUniformLocation(uniform);
-		assert(loc != -1);
-		if (loc == -1) return false;
-		glUniform1fARB(loc, value);
-		return true;
-	}
-
-	bool setUniform1i(const char * uniform, int value) {
-		int loc = getUniformLocation(uniform);
-		assert(loc != -1);
-		if (loc == -1) return false;
-		glUniform1iARB(loc, value);
-		return true;
-	}
-
-	bool setUniform4f(const char * uniform, float v0, float v1, float v2, float v3) {
-		int loc = getUniformLocation(uniform);
-		assert(loc != -1);
-		if (loc == -1) return false;
-		glUniform4fARB(loc, v0, v1, v2, v3);
-		return true;
-	}
-
-	bool setUniformMatrix4fv(const char * uniform, float * value) {
-		int loc = getUniformLocation(uniform);
-		assert(loc != -1);
-		if (loc == -1) return false;
-		glUniformMatrix4fvARB(loc, 1, GL_FALSE, value);
-		return true;
-	}
 }

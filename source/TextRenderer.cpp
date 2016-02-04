@@ -131,7 +131,7 @@ namespace TextRenderer {
 		UnicodeChar c;
 		unsigned int i = 0;
 		int uc;
-		double span = 0;
+		int span = 0;
 		wchar_t* wstr = nullptr;
 		MBToWC(glstring.c_str(), wstr, 128);
 
@@ -166,26 +166,26 @@ namespace TextRenderer {
 			glColor4f(0.5, 0.5, 0.5, a);
 			glBegin(GL_QUADS);
 			glTexCoord2d(0.0, 0.0);
-			UIVertex(c.xpos, 15.0 - c.ypos);
+			UIVertex(c.xpos, 15 - c.ypos);
 			glTexCoord2d(c.width / 32.0, 0.0);
-			UIVertex(c.xpos + c.width, 15.0 - c.ypos);
+			UIVertex(c.xpos + c.width, 15- c.ypos);
 			glTexCoord2d(c.width / 32.0, c.height / 32.0);
-			UIVertex(c.xpos + c.width, 15.0 + c.height - c.ypos);
+			UIVertex(c.xpos + c.width, 15 + c.height - c.ypos);
 			glTexCoord2d(0.0, c.height / 32.0);
-			UIVertex(c.xpos, 15.0 + c.height - c.ypos);
+			UIVertex(c.xpos, 15 + c.height - c.ypos);
 			glEnd();
 
 			UITrans(-1, -1);
 			glColor4f(r, g, b, a);
 			glBegin(GL_QUADS);
 			glTexCoord2d(0.0, 0.0);
-			UIVertex(c.xpos, 15.0 - c.ypos);
+			UIVertex(c.xpos, 15 - c.ypos);
 			glTexCoord2d(c.width / 32.0, 0.0);
-			UIVertex(c.xpos + c.width, 15.0 - c.ypos);
+			UIVertex(c.xpos + c.width, 15 - c.ypos);
 			glTexCoord2d(c.width / 32.0, c.height / 32.0);
-			UIVertex(c.xpos + c.width, 15.0 + c.height - c.ypos);
+			UIVertex(c.xpos + c.width, 15 + c.height - c.ypos);
 			glTexCoord2d(0.0, c.height / 32.0);
-			UIVertex(c.xpos, 15.0 + c.height - c.ypos);
+			UIVertex(c.xpos, 15 + c.height - c.ypos);
 			glEnd();
 
 			/*
