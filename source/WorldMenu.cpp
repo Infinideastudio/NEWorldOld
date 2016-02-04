@@ -68,7 +68,7 @@ namespace Menus {
 			}
 			if (enterbtn.clicked) {
 				World::worldname = chosenWorldName;
-				GameViewDeligate();
+				gamebegin = true;
 			}
 			if (deletebtn.clicked) {
 				//删除世界文件
