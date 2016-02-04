@@ -22,7 +22,7 @@ Hitbox::AABB Player::playerbox;
 vector<Hitbox::AABB> Player::Hitboxes;
 
 double Player::xa, Player::ya, Player::za, Player::xd, Player::yd, Player::zd;
-double Player::health = 20, Player::healthMax = 20, Player::healSpeed = 0.01, Player::dropDamagePerBlock = 0.5;
+double Player::health = 20, Player::healthMax = 20, Player::healSpeed = 0.01, Player::dropDamage = 5.0;
 onlineid Player::onlineID;
 string Player::name;
 Frustum Player::ViewFrustum;
@@ -95,7 +95,6 @@ void Player::updatePosition() {
 		xa *= 0.6; ya *= 0.6; za *= 0.6;
 	}
 	double xal = xa, yal = ya, zal = za;
-	static double ydam = 0;
 
 	if (!CrossWall) {
 		Hitboxes.clear();
@@ -116,17 +115,13 @@ void Player::updatePosition() {
 			Hitbox::Move(playerbox, 0.0, 0.0, za);
 		}
 	}
-	if (!Flying && !CrossWall) {
-		if (ypos + ya > ydam) ydam = ypos + ya;
-	}
 	if (ya != yal && yal < 0.0) {
 		OnGround = true;
 		Player::glidingEnergy = 0;
 		Player::glidingSpeed = 0;
 		Player::glidingNow = false;
-		if (ydam - (ypos + ya) > 5) {
-			if(Player::gamemode==Player::Survival) Player::health -= (ydam - (ypos + ya)) * Player::dropDamagePerBlock;
-			ydam = 0;
+		if (yal < -0.4 && Player::gamemode == Player::Survival) {
+			Player::health += yal * Player::dropDamage;
 		}
 	}
 	else OnGround = false;
@@ -134,6 +129,7 @@ void Player::updatePosition() {
 	if (xa != xal || za != zal) NearWall = true; else NearWall = false;
 
 	//消除浮点数精度带来的影响（查了好久的穿墙bug才发现是在这里有问题(╯‵□′)╯︵┻━┻）
+	//  --qiaozhanrong
 	xa = (double)((int)(xa * 100000)) / 100000.0;
 	ya = (double)((int)(ya * 100000)) / 100000.0;
 	za = (double)((int)(za * 100000)) / 100000.0;
