@@ -21,7 +21,7 @@ struct PlayerData {
 	Hitbox::AABB playerbox;
 	//std::vector<Hitbox::AABB> Hitboxes;
 	double xa, ya, za, xd, yd, zd;
-	double health, healthMax, healSpeed, dropDamagePerBlock;
+	double health, healthMax, healSpeed, dropDamage;
 	onlineid onlineID;
 	//std::string name;
 	Frustum ViewFrustum;
