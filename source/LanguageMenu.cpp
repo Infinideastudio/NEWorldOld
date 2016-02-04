@@ -30,7 +30,6 @@ namespace Menus {
 				Info.Button = new GUI::button(Info.EngSymbol + "--" + Info.Name, -200, 200, i * 36 + 42, i * 36 + 72, 0.5, 0.5, 0.0, 0.0);
 				registerControls(1, Info.Button);
 				Langs.push_back(Info);
-
 			}
 			index.close();
 		}
