@@ -28,18 +28,18 @@ std::vector<std::string> findFolders(std::string path) {
 
 void Mod::ModLoader::loadMods()
 {
-	std::vector<std::string> modLoadList = findFolders("Mods\\"); //获得Mods/下所有的文件夹
+	std::vector<std::string> modLoadList = findFolders("Mods/"); //获得Mods/下所有的文件夹
 	bool successAtLeastOne = false; 
 	do { //循环加载Mod，直到某一次循环一个成功加载的都没有为止（因为依赖项）
 		successAtLeastOne = false;
 		for (std::vector<std::string>::iterator iter = modLoadList.begin(); iter != modLoadList.end();) {
-			ModLoadStatus status = loadSingleMod("Mods\\" + *iter + "\\entry.dll");
+			ModLoadStatus status = loadSingleMod("Mods/" + *iter + "/entry.dll");
 			if (status == Success) successAtLeastOne = true;
 			if (status != MissDependence) iter = modLoadList.erase(iter); //只要不是因缺少依赖而失败就删掉记录
 			else ++iter;
 		}
 	} while (successAtLeastOne);
-	std::cout << "[Console][Game]Load completely! "
+	std::cout << "[Console][Game]Load complete! "
 		<< mods.size() << " mod" << (mods.size() > 1 ? "s" : "") << " loaded." << std::endl;
 }
 

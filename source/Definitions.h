@@ -50,7 +50,7 @@ const int gameTimeMax = 43200;
 
 extern int windowwidth;
 extern int windowheight;
-extern bool gamebegin, gameexit, bagOpened, reentry;
+extern bool gamebegin, gameexit, bagOpened;
 
 extern TextureID BlockTextures, BlockTextures3D;
 extern TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];

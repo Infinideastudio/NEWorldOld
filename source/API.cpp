@@ -40,7 +40,7 @@ APIPackage Mod::getPackage() {
 		player.cytl = Player::cytl;
 		player.czt = Player::czt;
 		player.cztl = Player::cztl;
-		player.dropDamagePerBlock = Player::dropDamagePerBlock;
+		player.dropDamage = Player::dropDamage;
 		player.Flying = Player::Flying;
 		player.Glide = Player::Glide;
 		player.glidingEnergy = Player::glidingEnergy;
@@ -84,7 +84,7 @@ APIPackage Mod::getPackage() {
 		player.zposold = Player::zposold;
 		return player;
 	};
-	api.updateBlock= std::bind(World::updateblock, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, 0);
+	api.updateBlock = std::bind(World::updateblock, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, 0);
 	api.setChunkUpdated = World::setChunkUpdated;
 	init = true;
 	return api;

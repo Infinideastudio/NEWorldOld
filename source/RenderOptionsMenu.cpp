@@ -6,8 +6,8 @@
 namespace Menus {
 	class RenderOptionsMenu :public GUI::Form {
 	private:
-		GUI::label title, ppistat;
-		GUI::button smoothlightingbtn, fancygrassbtn, mergefacebtn, shaderbtn, vsyncbtn, ppistretchbtn, backbtn;
+		GUI::label title;
+		GUI::button smoothlightingbtn, fancygrassbtn, mergefacebtn, shaderbtn, vsyncbtn, backbtn;
 		GUI::trackbar msaabar;
 		void onLoad() {
 			title = GUI::label(GetStrbyKey("NEWorld.render.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
@@ -17,10 +17,8 @@ namespace Menus {
 			msaabar = GUI::trackbar("", 120, Multisample == 0 ? 0 : (int)(log2(Multisample) - 1) * 30 - 1, 10, 250, 96, 120, 0.5, 0.5, 0.0, 0.0);
 			shaderbtn = GUI::button(GetStrbyKey("NEWorld.render.shaders"), -250, -10, 132, 156, 0.5, 0.5, 0.0, 0.0);
 			vsyncbtn = GUI::button("", 10, 250, 132, 156, 0.5, 0.5, 0.0, 0.0);
-			ppistretchbtn = GUI::button("PPIStretch(Exprimental)", -250, -10, 168, 192, 0.5, 0.5, 0.0, 0.0);
-			ppistat = GUI::label("", -250, 250, 192, 216, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button(GetStrbyKey("NEWorld.render.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-			registerControls(10, &title, &smoothlightingbtn, &fancygrassbtn, &mergefacebtn, &msaabar, &shaderbtn, &vsyncbtn, &backbtn, &ppistretchbtn, &ppistat);
+			registerControls(8, &title, &smoothlightingbtn, &fancygrassbtn, &mergefacebtn, &msaabar, &shaderbtn, &vsyncbtn, &backbtn);
 		}
 		void onUpdate() {
 			glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &GUI::nScreenWidth,
@@ -31,10 +29,6 @@ namespace Menus {
 			if (msaabar.barpos == 0) Multisample = 0;
 			else Multisample = 1 << ((msaabar.barpos + 1) / 30 + 1);
 			if (shaderbtn.clicked) Shaderoptions();
-			if (ppistretchbtn.clicked) {
-				if (stretch == 1.0) GUI::InitStretch();
-				else GUI::EndStretch();
-			}
 			if (vsyncbtn.clicked) {
 				vsync = !vsync;
 				if (vsync) glfwSwapInterval(1);
@@ -47,13 +41,7 @@ namespace Menus {
 			mergefacebtn.text = GetStrbyKey("NEWorld.render.merge") + BoolEnabled(MergeFace);
 			msaabar.text = GetStrbyKey("NEWorld.render.multisample") + (Multisample != 0 ? ss.str() + "x" : BoolEnabled(false));
 			vsyncbtn.text = GetStrbyKey("NEWorld.render.vsync") + BoolEnabled(vsync);
-			int vmc;
-			const GLFWvidmode* m = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
-			ppistat.text = "phy:" + Var2Str(GUI::nScreenWidth) + "x" + Var2Str(GUI::nScreenHeight) + 
-				"scr:" + Var2Str(m[vmc-1].width) + "x" + Var2Str(m[vmc-1].height) +
-				"win:" + Var2Str(windowwidth) + "x" + Var2Str(windowheight);
 		}
-		
 	};
 	void Renderoptions() { RenderOptionsMenu Menu; Menu.start(); }
 }
