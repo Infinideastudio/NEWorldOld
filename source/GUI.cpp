@@ -930,33 +930,36 @@ namespace GUI {
 	}
 
 	//Glitch : The crusor doesn't showup on some Windows8 Computers
-	Form::Form() { memset(this, 0, sizeof(Form)); Init(); }
-	void Form::start() {
+	Form::Form() { memset(this, 0, sizeof(Form)); Init(); Background = &drawBackground; }
+
+	void Form::singleloop() {
 		double dmx, dmy;
+		if (reentry) { ExitSignal = true; }
+		mxl = mx; myl = my; mwl = mw; mbl = mb;
+		mb = getMouseButton();
+		mw = getMouseScroll();
+		glfwGetCursorPos(MainWindow, &dmx, &dmy);
+		dmx /= stretch;
+		dmy /= stretch;
+		mx = (int)dmx, my = (int)dmy;
+		update();
+		render();
+		glFinish();
+		glfwSwapBuffers(MainWindow);
+		glfwPollEvents();
+		if (ExitSignal) onLeaving();
+		if (glfwWindowShouldClose(MainWindow)) exit(0);
+	}
+	void Form::start() {
 		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);//Added to fix the glitch
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		glfwSetCursor(MainWindow, Cursor);
-		
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glDisable(GL_CULL_FACE);
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 		onLoad();
 		do {
-			if (reentry) { ExitSignal = true; }
-			mxl = mx; myl = my; mwl = mw; mbl = mb;
-			mb = getMouseButton();
-			mw = getMouseScroll();
-			glfwGetCursorPos(MainWindow, &dmx, &dmy);
-			dmx /= stretch;
-			dmy /= stretch;
-			mx = (int)dmx, my = (int)dmy;
-			update();
-			render();
-			glFinish();
-			glfwSwapBuffers(MainWindow);
-			glfwPollEvents();
-			if (ExitSignal) onLeaving();
-			if (glfwWindowShouldClose(MainWindow)) exit(0);
+			singleloop();
 		} while (!ExitSignal);
 		onLeave();
 		glfwDestroyCursor(Cursor); //Added to fix the glitch
