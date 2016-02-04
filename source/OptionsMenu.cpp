@@ -28,7 +28,15 @@ namespace Menus {
 			if (gistbtn.clicked) GUIoptions();
 			if (backbtn.clicked) ExitSignal = true;
 			if (savebtn.clicked) saveOptions();
-			if (langbtn.clicked) languagemenu();
+			if (langbtn.clicked) {
+				languagemenu();
+				title.text = GetStrbyKey("NEWorld.options.caption");
+				rdstbtn.text = GetStrbyKey("NEWorld.options.rendermenu");
+				gistbtn.text = GetStrbyKey("NEWorld.options.guimenu");
+				langbtn.text = GetStrbyKey("NEWorld.options.languagemenu");
+				backbtn.text = GetStrbyKey("NEWorld.options.back");
+				savebtn.text = GetStrbyKey("NEWorld.options.save");
+			}
 			FOVyBar.text = strWithVar(GetStrbyKey("NEWorld.options.fov"), FOVyNormal);
 			mmsBar.text = strWithVar(GetStrbyKey("NEWorld.options.sensitivity"), mousemove);
 			viewdistBar.text = strWithVar(GetStrbyKey("NEWorld.options.distance"), viewdistance);

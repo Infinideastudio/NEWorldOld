@@ -187,7 +187,7 @@ namespace Renderer {
 	}
 
 	void destroyShaders() {
-		for (int i = 0; i != shaders.size(); i++)
+		for (size_t i = 0; i != shaders.size(); i++)
 			shaders[i].release();
 		shaders.clear();
 		glDeleteTextures(1, &DepthTexture);
