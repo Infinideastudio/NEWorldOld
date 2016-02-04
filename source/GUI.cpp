@@ -173,19 +173,27 @@ namespace GUI {
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 		glEnd();
 	}
-	double stdppmm = 4;
+	double stdppi = 96.0f;
 	void InitStretch()
 	{
 		//Get the Screen Physical Size and set stretch
 		//NEVER¡¡CALL THIS FUNCTION BEFORE THE CONTEXT IS CREATED
 		glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth, 
 			  &nScreenHeight);
-		const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-		double ppmm = (mode->width) / nScreenWidth;
-		stretch = ppmm / stdppmm;
+		int vmc;
+		const GLFWvidmode* mode = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
+		double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth)/25.4f);
+		stretch = ppi / stdppi;
 		//Compute the stretch and reset the window size
 		windowwidth *= stretch;
 		windowheight *= stretch;
+		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
+	}
+
+	void EndStretch() {
+		windowwidth /= stretch;
+		windowheight /= stretch;
+		stretch = 1.0;
 		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
 	}
 

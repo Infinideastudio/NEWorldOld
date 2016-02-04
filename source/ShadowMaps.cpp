@@ -59,7 +59,7 @@ namespace ShadowMaps {
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 		glDisableClientState(GL_VERTEX_ARRAY);
-		Renderer::unbindShader();
+		Shader::unbind();
 
 		glEnable(GL_FOG);
 		glEnable(GL_BLEND);
