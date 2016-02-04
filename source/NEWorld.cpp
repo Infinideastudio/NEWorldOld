@@ -1436,10 +1436,6 @@ void drawGUI(){
 		debugText(ss.str()); ss.str("");
 		ss << "Zpos:" << Player::zpos;
 		debugText(ss.str()); ss.str("");
-		ss << "Yadd:" << Player::ya;
-		debugText(ss.str()); ss.str("");
-		ss << "Ydel:" << Player::yd;
-		debugText(ss.str()); ss.str("");
 		ss << "Direction:" << Player::heading;
 		debugText(ss.str()); ss.str("");
 		ss << "Head:" << Player::lookupdown;
