@@ -29,7 +29,7 @@ public:
 	static Hitbox::AABB playerbox;
 	static vector<Hitbox::AABB> Hitboxes;
 	static double xa, ya, za, xd, yd, zd;
-	static double health, healthMax, healSpeed, dropDamagePerBlock;
+	static double health, healthMax, healSpeed, dropDamage;
 	static onlineid onlineID;
 	static string name;
 	static Frustum ViewFrustum;

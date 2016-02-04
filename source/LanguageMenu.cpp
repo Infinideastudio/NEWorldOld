@@ -23,7 +23,7 @@ namespace Menus {
 			Langinfo Info;
 			for (int i = 0; i < count; i++) {
 				index >> Info.Symbol;
-				std::ifstream LF("Lang/"+Info.Symbol+".lang");
+				std::ifstream LF("Lang/" + Info.Symbol + ".lang");
 				getline(LF, Info.EngSymbol);
 				getline(LF, Info.Name);
 				LF.close();
