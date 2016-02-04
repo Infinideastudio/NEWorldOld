@@ -180,7 +180,6 @@ void Crusorpos() {
 				saveGame();
 				World::destroyAllChunks();
 				if (multiplayer) Network::cleanUp();
-				reentry = true;
 			}
 		}
 	};

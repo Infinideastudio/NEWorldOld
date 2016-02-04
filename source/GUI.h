@@ -145,7 +145,7 @@ namespace GUI {
 		vector<controls*> children;
 		bool tabp, shiftp, enterp, enterpl;
 		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, backspacep, backspacepl, updated;
-		int maxid, currentid, focusid, childrenCount, mx, my, mw, mb, mxl, myl, mwl, mbl;
+		int maxid, currentid, focusid, mx, my, mw, mb, mxl, myl, mwl, mbl;
 		unsigned int displaylist;
 		bool ExitSignal, MouseOnTextbox;
 		void Init();
