@@ -139,8 +139,9 @@ namespace GUI {
 
 	// ´°Ìå / ÈÝÆ÷
 	class Form {
-	public:
+	protected:
 		vector<controls*> children;
+	public:
 		bool tabp, shiftp, enterp, enterpl;
 		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, backspacep, backspacepl, updated;
 		int maxid, currentid, focusid, childrenCount, mx, my, mw, mb, mxl, myl, mwl, mbl;
@@ -161,6 +162,6 @@ namespace GUI {
 		virtual void onLeave() {}
 		Form();
 		void start();
-		~Form();
+		virtual ~Form();
 	};
 }

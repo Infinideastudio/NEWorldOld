@@ -185,14 +185,14 @@ namespace GUI {
 		double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth)/25.4f);
 		stretch = ppi / stdppi;
 		//Compute the stretch and reset the window size
-		windowwidth *= stretch;
-		windowheight *= stretch;
+		windowwidth = static_cast<int>(windowwidth * stretch);
+		windowheight = static_cast<int>(windowheight * stretch);
 		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
 	}
 
 	void EndStretch() {
-		windowwidth /= stretch;
-		windowheight /= stretch;
+		windowwidth = static_cast<int>(windowwidth / stretch);
+		windowheight = static_cast<int>(windowheight / stretch);
 		stretch = 1.0;
 		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
 	}
@@ -942,7 +942,6 @@ namespace GUI {
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 		onLoad();
 		do {
-			if (reentry) { ExitSignal = true; }
 			mxl = mx; myl = my; mwl = mw; mbl = mb;
 			mb = getMouseButton();
 			mw = getMouseScroll();

@@ -546,7 +546,7 @@ void updategame(){
 					selb = cp->getblock(selbx, selby, selbz);
 				}
 				selbr = World::getbrightness(xl, yl, zl);
-				block selb = World::getblock(x, y, z);
+				selb = World::getblock(x, y, z);
 				if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
 					Particles::throwParticle(selb,
 						float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
