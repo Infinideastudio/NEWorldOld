@@ -929,12 +929,12 @@ namespace GUI {
 		return nullptr;
 	}
 
-	//Glitch : The crusor doesn't showup on some Windows8 Computers
+	//Glitch : The cursor doesn't showup on some Windows8 Computers
 	Form::Form() { memset(this, 0, sizeof(Form)); Init(); Background = &drawBackground; }
 
 	void Form::singleloop() {
 		double dmx, dmy;
-		if (reentry) { ExitSignal = true; }
+		//if (reentry) { ExitSignal = true; }
 		mxl = mx; myl = my; mwl = mw; mbl = mb;
 		mb = getMouseButton();
 		mw = getMouseScroll();
@@ -948,10 +948,13 @@ namespace GUI {
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
 		if (ExitSignal) onLeaving();
-		if (glfwWindowShouldClose(MainWindow)) exit(0);
+		if (glfwWindowShouldClose(MainWindow)) {
+			onLeave();
+			exit(0);
+		}
 	}
 	void Form::start() {
-		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);//Added to fix the glitch
+		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		glfwSetCursor(MainWindow, Cursor);
 		glClearColor(0.0, 0.0, 0.0, 1.0);
