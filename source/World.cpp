@@ -640,7 +640,7 @@ namespace World {
 				cp->Empty = false;
 				i = cp;
 			}
-			if (i != nullptr && i != EmptyChunkPtr) {
+			if (i != nullptr) {
 				i->setblock(bx, by, bz, Blockname);
 				updateblock(x, y, z, true);
 			}
@@ -664,7 +664,7 @@ namespace World {
 				cp->Empty = false;
 				i = cp;
 			}
-			if (i != nullptr && i != EmptyChunkPtr) {
+			if (i != nullptr) {
 				i->setbrightness(bx, by, bz, Brightness);
 			}
 		}
@@ -859,15 +859,15 @@ namespace World {
 
 		for (ubyte xt = 0; xt != 5; xt++) {
 			for (ubyte zt = 0; zt != 5; zt++) {
-				for (ubyte yt = 0; yt != 1; yt++) {
-					if (getblock(x + xt - 2, y + th - 2 - yt, z + zt - 2) == Blocks::AIR) setblock(x + xt - 2, y + th - 2 - yt, z + zt - 2, Blocks::LEAF);
+				for (ubyte yt = 0; yt != 2; yt++) {
+					if (getblock(x + xt - 2, y + th - 3 + yt, z + zt - 2) == Blocks::AIR) setblock(x + xt - 2, y + th - 3 + yt, z + zt - 2, Blocks::LEAF);
 				}
 			}
 		}
 
 		for (ubyte xt = 0; xt != 3; xt++) {
 			for (ubyte zt = 0; zt != 3; zt++) {
-				for (ubyte yt = 0; yt != 1; yt++) {
+				for (ubyte yt = 0; yt != 2; yt++) {
 					if (getblock(x + xt - 1, y + th - 1 + yt, z + zt - 1) == Blocks::AIR && abs(xt - 1) != abs(zt - 1)) setblock(x + xt - 1, y + th - 1 + yt, z + zt - 1, Blocks::LEAF);
 				}
 			}

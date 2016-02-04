@@ -1,4 +1,4 @@
-47
+48
 NEWorld.yes
 NEWorld.no
 NEWorld.enabled
@@ -31,6 +31,7 @@ NEWorld.shaders.back
 NEWorld.gui.caption
 NEWorld.gui.unicode
 NEWorld.gui.blur
+NEWorld.gui.stretch
 NEWorld.gui.back
 NEWorld.worlds.caption
 NEWorld.worlds.enter

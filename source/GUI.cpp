@@ -22,6 +22,7 @@ namespace GUI {
 	unsigned int lastdisplaylist;
 	double transitionTimer;
 	bool transitionForward;
+	double stdppi = 96.0f;
 
 	void clearTransition() {
 		if (transitionList != 0) {
@@ -173,9 +174,8 @@ namespace GUI {
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 		glEnd();
 	}
-	double stdppi = 96.0f;
-	void InitStretch()
-	{
+
+	void InitStretch() {
 		//Get the Screen Physical Size and set stretch
 		//NEVER¡¡CALL THIS FUNCTION BEFORE THE CONTEXT IS CREATED
 		glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth, 
@@ -955,7 +955,10 @@ namespace GUI {
 			glfwSwapBuffers(MainWindow);
 			glfwPollEvents();
 			if (ExitSignal) onLeaving();
-			if (glfwWindowShouldClose(MainWindow)) exit(0);
+			if (glfwWindowShouldClose(MainWindow)) {
+				onLeave();
+				exit(0);
+			}
 		} while (!ExitSignal);
 		onLeave();
 		glfwDestroyCursor(Cursor); //Added to fix the glitch
