@@ -22,7 +22,6 @@ namespace GUI {
 	unsigned int lastdisplaylist;
 	double transitionTimer;
 	bool transitionForward;
-	double stdppi = 96.0f;
 
 	void clearTransition() {
 		if (transitionList != 0) {
@@ -174,8 +173,9 @@ namespace GUI {
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 		glEnd();
 	}
-
-	void InitStretch() {
+	double stdppi = 96.0f;
+	void InitStretch()
+	{
 		//Get the Screen Physical Size and set stretch
 		//NEVER¡¡CALL THIS FUNCTION BEFORE THE CONTEXT IS CREATED
 		glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth, 
@@ -185,14 +185,14 @@ namespace GUI {
 		double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth)/25.4f);
 		stretch = ppi / stdppi;
 		//Compute the stretch and reset the window size
-		windowwidth = static_cast<int>(windowwidth * stretch);
-		windowheight = static_cast<int>(windowheight * stretch);
+		windowwidth *= stretch;
+		windowheight *= stretch;
 		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
 	}
 
 	void EndStretch() {
-		windowwidth = static_cast<int>(windowwidth / stretch);
-		windowheight = static_cast<int>(windowheight / stretch);
+		windowwidth /= stretch;
+		windowheight /= stretch;
 		stretch = 1.0;
 		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
 	}
@@ -929,35 +929,35 @@ namespace GUI {
 		return nullptr;
 	}
 
-	Form::Form() { Init(); }
-	void Form::start() {
+	Form::Form() { Init(); Background = &drawBackground; }
+
+	void Form::singleloop() {
 		double dmx, dmy;
-		GLFWcursor* Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);//Added to fix the glitch
+		mxl = mx; myl = my; mwl = mw; mbl = mb;
+		mb = getMouseButton();
+		mw = getMouseScroll();
+		glfwGetCursorPos(MainWindow, &dmx, &dmy);
+		dmx /= stretch;
+		dmy /= stretch;
+		mx = (int)dmx, my = (int)dmy;
+		update();
+		render();
+		glFinish();
+		glfwSwapBuffers(MainWindow);
+		glfwPollEvents();
+		if (ExitSignal) onLeaving();
+		if (glfwWindowShouldClose(MainWindow)) exit(0);
+	}
+	void Form::start() {
+		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);//Added to fix the glitch
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		glfwSetCursor(MainWindow, Cursor);
-		
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glDisable(GL_CULL_FACE);
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 		onLoad();
 		do {
-			mxl = mx; myl = my; mwl = mw; mbl = mb;
-			mb = getMouseButton();
-			mw = getMouseScroll();
-			glfwGetCursorPos(MainWindow, &dmx, &dmy);
-			dmx /= stretch;
-			dmy /= stretch;
-			mx = (int)dmx, my = (int)dmy;
-			update();
-			render();
-			glFinish();
-			glfwSwapBuffers(MainWindow);
-			glfwPollEvents();
-			if (ExitSignal) onLeaving();
-			if (glfwWindowShouldClose(MainWindow)) {
-				onLeave();
-				exit(0);
-			}
+			singleloop();
 		} while (!ExitSignal);
 		onLeave();
 		glfwDestroyCursor(Cursor); //Added to fix the glitch
