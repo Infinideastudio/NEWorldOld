@@ -928,6 +928,7 @@ namespace GUI {
 
 	void Form::singleloop() {
 		double dmx, dmy;
+		//if (reentry) { ExitSignal = true; }
 		mxl = mx; myl = my; mwl = mw; mbl = mb;
 		mb = getMouseButton();
 		mw = getMouseScroll();
@@ -941,7 +942,10 @@ namespace GUI {
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
 		if (ExitSignal) onLeaving();
-		if (glfwWindowShouldClose(MainWindow)) exit(0);
+		if (glfwWindowShouldClose(MainWindow)) {
+			onLeave();
+			exit(0);
+		}
 	}
 	void Form::start() {
 		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
