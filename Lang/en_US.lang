@@ -13,7 +13,7 @@ Mouse sensitivity:
 Render distance: 
 >> Render options...
 >> GUI options...
->> Globalization...
+>> Select language...
 << Back to main menu
 Save options
 =============< Render options >===============
@@ -46,5 +46,5 @@ Continue game
 Input world name
 OK
 << Back to world menu
-==============< Globalization >===============
+================< Languages >=================
 << Back to options menu
