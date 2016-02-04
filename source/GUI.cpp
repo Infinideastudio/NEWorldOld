@@ -929,11 +929,10 @@ namespace GUI {
 		return nullptr;
 	}
 
-	//Glitch : The crusor doesn't showup on some Windows8 Computers
-	Form::Form() { memset(this, 0, sizeof(Form)); Init(); }
+	Form::Form() { Init(); }
 	void Form::start() {
 		double dmx, dmy;
-		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);//Added to fix the glitch
+		GLFWcursor* Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);//Added to fix the glitch
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		glfwSetCursor(MainWindow, Cursor);
 		
