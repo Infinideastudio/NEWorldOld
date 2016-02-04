@@ -11,6 +11,6 @@ For client:
 - Source code is in 'source'. (Maybe there are some encoding problems...)  
   
 For server:  
-(Null你来写这些东西吧)  
+Just compile it and run!
 --------------------------------------------------  
 Welcome to develop with us!  
