@@ -6,10 +6,10 @@
 namespace Menus {
 	class WorldMenu :public GUI::Form {
 	private:
-		int leftp = windowwidth / 2 / stretch  - 200;
-		int midp = windowwidth / 2 / stretch;
-		int rightp = windowwidth / 2 / stretch+ 200;
-		int downp = windowheight / stretch - 20;
+		int leftp = static_cast<int>(windowwidth / 2.0 / stretch  - 200);
+		int midp = static_cast<int>(windowwidth / 2.0 / stretch);
+		int rightp = static_cast<int>(windowwidth / 2.0 / stretch+ 200);
+		int downp = static_cast<int>(windowheight / stretch - 20);
 		bool refresh = true;
 		int selected = 0, mouseon;
 		int worldcount;
@@ -34,10 +34,10 @@ namespace Menus {
 		}
 		void onUpdate() {
 			worldcount = (int)worldnames.size();
-			leftp = windowwidth / 2 / stretch - 250;
-			midp = windowwidth / 2 / stretch;
-			rightp = windowwidth / 2 / stretch + 250;
-			downp = windowheight /stretch  - 20;
+			leftp = static_cast<int>(windowwidth / 2.0 / stretch - 250);
+			midp = static_cast<int>(windowwidth / 2.0 / stretch);
+			rightp = static_cast<int>(windowwidth / 2.0 / stretch + 250);
+			downp = static_cast<int>(windowheight / stretch - 20);
 
 			vscroll.barheight = (downp - 72 - 48)*(downp - 36 - 40) / (64 * worldcount + 64);
 			if (vscroll.barheight > downp - 36 - 40) {
@@ -128,7 +128,7 @@ namespace Menus {
 		}
 		void onRender() {
 			glEnable(GL_SCISSOR_TEST);
-			glScissor(0, windowheight - (downp - 72) * stretch, windowwidth, (downp - 72 - 48 + 1) * stretch);
+			glScissor(0, windowheight - static_cast<int>((downp - 72) * stretch), windowwidth, static_cast<int>((downp - 72 - 48 + 1) * stretch));
 			glTranslatef(0.0f, (float)-trs, 0.0f);
 			for (int i = 0; i < worldcount; i++) {
 				int xmin, xmax, ymin, ymax;
@@ -188,7 +188,7 @@ namespace Menus {
 					UIVertex(midp - 250, 48 + i * 64 + 60);
 					glEnd();
 				}
-				TextRenderer::renderString((windowwidth / stretch - TextRenderer::getStrWidth(worldnames[i])) / 2, (140 + i * 128) / 2, worldnames[i]);
+				TextRenderer::renderString(static_cast<int>(windowwidth / stretch - TextRenderer::getStrWidth(worldnames[i])) / 2, (140 + i * 128) / 2, worldnames[i]);
 			}
 			int i = worldcount;
 			glDisable(GL_TEXTURE_2D);
@@ -208,7 +208,7 @@ namespace Menus {
 			UIVertex(midp + 250, 48 + i * 64 + 60);
 			UIVertex(midp - 250, 48 + i * 64 + 60);
 			glEnd();
-			TextRenderer::renderString((windowwidth / stretch - TextRenderer::getStrWidth(GetStrbyKey("NEWorld.worlds.new"))) / 2,
+			TextRenderer::renderString(static_cast<int>(windowwidth / stretch - TextRenderer::getStrWidth(GetStrbyKey("NEWorld.worlds.new"))) / 2,
 				(140 + i * 128) / 2, GetStrbyKey("NEWorld.worlds.new"));
 			glDisable(GL_SCISSOR_TEST);
 		}

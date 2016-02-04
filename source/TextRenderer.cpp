@@ -81,8 +81,8 @@ namespace TextRenderer {
 		}
 		glGenTextures(1, &chars[uc].tex);
 		glBindTexture(GL_TEXTURE_2D, chars[uc].tex);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, Tex);
 		delete[] Tex;
 		chars[uc].aval = true;
@@ -107,14 +107,7 @@ namespace TextRenderer {
 		wchar_t* wstr = nullptr;
 		MBToWC(s.c_str(), wstr, 128);
 		for (unsigned int k = 0; k < wstrlen(wstr); k++){
-			if (s[i] >= 0 && s[i] <= 127){
-				i += 1;
-				//res += 10;
-			}
-			else{
-				i += 2;
-				//res += 16;
-			}
+			if (s[i] >= 0 && s[i] <= 127) i++; else i += 2;
 			uc = wstr[k];
 			c = chars[uc];
 			if (!c.aval) {
