@@ -79,6 +79,112 @@ vector<string> chatMessages;
 
 //==============================  Main Program  ================================//
 //==============================     主程序     ================================//
+
+void Crusorpos() {
+	glfwGetCursorPos(MainWindow, &mx, &my);
+	mxl = mx; myl = my;
+}
+
+	void Render() { render(); }
+
+	class GameView :public GUI::Form {
+	private:
+		static void MainForward() {
+			//主循环，被简化成这样，惨不忍睹啊！
+			MutexUnlock(Mutex);
+			MutexLock(Mutex);
+			if ((timer() - uctime) >= 1.0) {
+				uctime = timer();
+				ups = upsc;
+				upsc = 0;
+			}
+		}
+
+		void onLoad() {
+			Background = &MainForward;
+			glEnable(GL_LINE_SMOOTH);
+			glEnable(GL_TEXTURE_2D);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glfwSwapBuffers(MainWindow);
+			glfwPollEvents();
+
+			Mutex = MutexCreate();
+			MutexLock(Mutex);
+			updateThread = ThreadCreate(&updateThreadFunc, NULL);
+			if (multiplayer) {
+				fastSrand((unsigned int)time(NULL));
+				Player::name = "";
+				Player::onlineID = rand();
+				Network::init(serverip, port);
+			}
+			//初始化游戏状态
+			printf("[Console][Game]");
+			printf("Init player...\n");
+			if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
+			else Player::spawn();
+			printf("[Console][Game]");
+			printf("Init world...\n");
+			World::Init();
+			registerCommands();
+			printf("[Console][Game]");
+			printf("Loading Mods...\n");
+
+			GUIrenderswitch = true;
+			glDepthFunc(GL_LEQUAL);
+			glEnable(GL_CULL_FACE);
+			setupNormalFog();
+
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glfwSwapBuffers(MainWindow);
+			glfwPollEvents();
+			printf("[Console][Game]");
+			printf("Game start!\n");
+			//这才是游戏开始!
+			glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			mxl = mx; myl = my;
+			printf("[Console][Game]");
+			printf("Main loop started\n");
+			updateThreadRun = true;
+			fctime = uctime = lastupdate = timer();
+		}
+		
+		void onUpdate() {
+			Render();
+			if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1) {
+				updateThreadPaused = true;
+				createThumbnail();
+				GUI::clearTransition();
+				Menus::gamemenu();
+				if (!gameexit) {
+					glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+					glDepthFunc(GL_LEQUAL);
+					glEnable(GL_CULL_FACE);
+					setupNormalFog();
+					Crusorpos();
+				}
+				updateThreadPaused = false;
+			}
+			if (gameexit) {
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
+				TextRenderer::renderString(0, 0, "Saving world...");
+				glfwSwapBuffers(MainWindow);
+				glfwPollEvents();
+				printf("[Console][Game]");
+				printf("Terminate threads\n");
+				updateThreadRun = false;
+				MutexUnlock(Mutex);
+				ThreadWait(updateThread);
+				ThreadDestroy(updateThread);
+				MutexDestroy(Mutex);
+				saveGame();
+				World::destroyAllChunks();
+				if (multiplayer) Network::cleanUp();
+				reentry = true;
+			}
+		}
+	};
+	void Menus::GameViewDeligate() { GameView Menu; Menu.start(); }
 int main() {
 	//终于进入main函数了！激动人心的一刻！！！
 	
@@ -112,101 +218,7 @@ main_menu:
 	glDisable(GL_LINE_SMOOTH);
 	GUI::clearTransition();
 	Menus::mainmenu();
-	glEnable(GL_LINE_SMOOTH);
-	glEnable(GL_TEXTURE_2D);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glfwSwapBuffers(MainWindow);
-	glfwPollEvents();
-	
-	Mutex = MutexCreate();
-	MutexLock(Mutex);
-	updateThread = ThreadCreate(&updateThreadFunc, NULL);
-	if (multiplayer) {
-		fastSrand((unsigned int)time(NULL));
-		Player::name = "";
-		Player::onlineID = rand();
-		Network::init(serverip, port);
-	}
-	//初始化游戏状态
-	printf("[Console][Game]");
-	printf("Init player...\n");
-	if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
-	else Player::spawn();
-	printf("[Console][Game]");
-	printf("Init world...\n");
-	World::Init();
-	registerCommands();
-	printf("[Console][Game]");
-	printf("Loading Mods...\n");
 
-	GUIrenderswitch = true;
-	glDepthFunc(GL_LEQUAL);
-	glEnable(GL_CULL_FACE);
-	setupNormalFog();
-
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glfwSwapBuffers(MainWindow);
-	glfwPollEvents();
-	printf("[Console][Game]");
-	printf("Game start!\n");
-	
-	//这才是游戏开始!
-	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	mxl = mx; myl = my;
-	printf("[Console][Game]");
-	printf("Main loop started\n");
-	updateThreadRun = true;
-	fctime = uctime = lastupdate = timer();
-
-	do {
-		//主循环，被简化成这样，惨不忍睹啊！
-		
-		MutexUnlock(Mutex);
-		MutexLock(Mutex);
-
-		if ((timer() - uctime) >= 1.0) {
-			uctime = timer();
-			ups = upsc;
-			upsc = 0;
-		}
-
-		render();
-
-		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1) {
-			updateThreadPaused = true;
-			createThumbnail();
-			GUI::clearTransition();
-			Menus::gamemenu();
-			if (!gameexit) {
-				glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-				glDepthFunc(GL_LEQUAL);
-				glEnable(GL_CULL_FACE);
-				setupNormalFog();
-				glfwGetCursorPos(MainWindow, &mx, &my);
-				mxl = mx; myl = my;
-			}
-			updateThreadPaused = false;
-		}
-		if (gameexit){
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-			TextRenderer::renderString(0, 0, "Saving world...");
-			glfwSwapBuffers(MainWindow);
-			glfwPollEvents();
-			printf("[Console][Game]");
-			printf("Terminate threads\n");
-			updateThreadRun = false;
-			MutexUnlock(Mutex);
-			ThreadWait(updateThread);
-			ThreadDestroy(updateThread);
-			MutexDestroy(Mutex);
-			saveGame();
-			World::destroyAllChunks();
-			if (multiplayer) Network::cleanUp();
-			goto main_menu;
-		}
-		
-	} while (!glfwWindowShouldClose(MainWindow));
 	saveGame();
 	Mod::ModLoader::unloadMods();
 
@@ -1211,11 +1223,8 @@ void render() {
 
 	//屏幕刷新，千万别删，后果自负！！！
 	//====refresh====//
-	MutexUnlock(Mutex);
-	glFinish();
-	glfwSwapBuffers(MainWindow);
-	glfwPollEvents();
-	MutexLock(Mutex);
+	//MutexUnlock(Mutex);
+	//MutexLock(Mutex);
 	//==refresh end==//
 
 	//检测帧速率

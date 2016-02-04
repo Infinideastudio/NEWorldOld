@@ -137,6 +137,8 @@ namespace GUI {
 		void render();
 	};
 
+	typedef void(*UIVoidF)();
+
 	// ´°Ìå / ÈÝÆ÷
 	class Form {
 	public:
@@ -155,12 +157,13 @@ namespace GUI {
 		void cleanup();
 		virtual void onLoad() {}
 		virtual void onUpdate() {}
-		virtual void Background() { drawBackground(); }
+		UIVoidF Background;
 		virtual void onRender() {}
 		virtual void onLeaving() {}
 		virtual void onLeave() {}
 		Form();
 		void start();
+		void singleloop();
 		~Form();
 	};
 }
