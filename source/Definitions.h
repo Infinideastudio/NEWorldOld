@@ -13,7 +13,7 @@
 //#endif
 
 //Global Vars
-const unsigned int VERSION = 38;
+const unsigned int VERSION = 39;
 const string MAJOR_VERSION = "Alpha 0.";
 const string MINOR_VERSION = "5";
 const string EXT_VERSION = " [In Development]";

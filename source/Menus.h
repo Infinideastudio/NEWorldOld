@@ -13,5 +13,4 @@ namespace Menus {
 	void gamemenu();
 	void multiplayermenu();
 	void languagemenu();
-	void GameViewDeligate();
 }
