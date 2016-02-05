@@ -1690,7 +1690,8 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 			glEnd();
 			std::stringstream ss;
 			ss << (int)Player::inventoryAmount[row][i];
-			TextRenderer::renderString(xbase + i * (32 + spac), ybase, ss.str());
+			glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
+			TextRenderer::renderASCIIString(xbase + i * (32 + spac), ybase, ss.str());
 		}
 	}
 }
@@ -1787,11 +1788,13 @@ void drawBag() {
 			glEnd();
 			std::stringstream ss;
 			ss << Amountselected;
-			TextRenderer::renderString((int)mx - 16, (int)my - 16, ss.str());
+			glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
+			TextRenderer::renderASCIIString((int)mx - 16, (int)my - 16, ss.str());
 		}
 		if (Player::inventory[si][sj] != 0 && sf == 1) {
 			glColor4f(1.0, 1.0, 0.0, 1.0);
-			TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(Player::inventory[si][sj]).getBlockName());
+			glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
+			TextRenderer::renderASCIIString((int)mx, (int)my - 16, BlockInfo(Player::inventory[si][sj]).getBlockName());
 		}
 
 		int xbase = 0, ybase = 0, spac = 0;
