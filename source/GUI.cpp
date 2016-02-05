@@ -934,7 +934,7 @@ namespace GUI {
 
 	void Form::singleloop() {
 		double dmx, dmy;
-		if (reentry) { ExitSignal = true; }
+		//if (reentry) { ExitSignal = true; }
 		mxl = mx; myl = my; mwl = mw; mbl = mb;
 		mb = getMouseButton();
 		mw = getMouseScroll();
