@@ -185,14 +185,14 @@ namespace GUI {
 		double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth)/25.4f);
 		stretch = ppi / stdppi;
 		//Compute the stretch and reset the window size
-		windowwidth *= stretch;
-		windowheight *= stretch;
+		windowwidth = static_cast<int>(windowwidth * stretch);
+		windowheight = static_cast<int>(windowheight * stretch);
 		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
 	}
 
 	void EndStretch() {
-		windowwidth /= stretch;
-		windowheight /= stretch;
+		windowwidth =static_cast<int>(windowwidth/stretch);
+		windowheight = static_cast<int>(windowheight/stretch);
 		stretch = 1.0;
 		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
 	}
@@ -716,7 +716,6 @@ namespace GUI {
 		maxid = 0;
 		currentid = 0;
 		focusid = -1;
-		childrenCount = 0;
 		//Transition forward
 		if (transitionList != 0) glDeleteLists(transitionList, 1);
 		transitionList = lastdisplaylist;
@@ -730,7 +729,6 @@ namespace GUI {
 		children.push_back(c);
 		currentid++;
 		maxid++;
-		childrenCount++;
 	}
 
 	void Form::registerControls(int count, controls* c, ...) {
@@ -745,8 +743,6 @@ namespace GUI {
 	}
 
 	void Form::update() {
-
-		int i;
 		updated = false;
 		bool lMouseOnTextbox = MouseOnTextbox;
 		MouseOnTextbox = false;
@@ -806,7 +802,7 @@ namespace GUI {
 
 		if (mb == 1 && mbl == 0) focusid = -1;                                   //空点击时使焦点清空
 
-		for (i = 0; i != childrenCount; i++) {
+		for (size_t i = 0; i != children.size(); i++) {
 			children[i]->updatepos();
 			children[i]->update();                                               //更新子控件
 		}
@@ -856,7 +852,7 @@ namespace GUI {
 
 		if (displaylist == 0) displaylist = glGenLists(1);
 		glNewList(displaylist, GL_COMPILE_AND_EXECUTE);
-		for (int i = 0; i != childrenCount; i++) {
+		for (size_t i = 0; i != children.size(); i++) {
 			children[i]->render();
 		}
 		onRender();
@@ -916,21 +912,19 @@ namespace GUI {
 		transitionList = displaylist;
 		transitionForward = false;
 		transitionTimer = timer();
-		for (int i = 0; i != childrenCount; i++) {
+		for (size_t i = 0; i != children.size(); i++) {
 			children[i]->destroy();
 		}
-		childrenCount = 0;
 	}
 
 	controls* Form::getControlByID(int cid) {
-		for (int i = 0; i != childrenCount; i++) {
+		for (size_t i = 0; i != children.size(); i++) {
 			if (children[i]->id == cid) return children[i];
 		}
 		return nullptr;
 	}
 
-	//Glitch : The crusor doesn't showup on some Windows8 Computers
-	Form::Form() { memset(this, 0, sizeof(Form)); Init(); Background = &drawBackground; }
+	Form::Form() { Init(); Background = &drawBackground; }
 
 	void Form::singleloop() {
 		double dmx, dmy;
@@ -948,10 +942,13 @@ namespace GUI {
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
 		if (ExitSignal) onLeaving();
-		if (glfwWindowShouldClose(MainWindow)) exit(0);
+		if (glfwWindowShouldClose(MainWindow)) {
+			onLeave();
+			exit(0);
+		}
 	}
 	void Form::start() {
-		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);//Added to fix the glitch
+		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		glfwSetCursor(MainWindow, Cursor);
 		glClearColor(0.0, 0.0, 0.0, 1.0);

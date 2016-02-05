@@ -30,10 +30,10 @@ namespace Renderer {
 	留言板：
 
 	1楼. qiaozhanrong: 自己抢个沙发先
-
 	2楼. Null: 这就是你在源码里写这么一长串的理由？23333333333
+	3楼. qiaozhanrong: 无聊啊233333333333
 
-	3楼. [请输入姓名]: [请输入回复内容]
+	4楼. [请输入姓名]: [请输入回复内容]
 
 	[回复]
 	====================================================
@@ -46,7 +46,7 @@ namespace Renderer {
 	//unsigned int Buffers[3];
 	bool AdvancedRender;
 	int ShadowRes = 4096;
-	int MaxShadowDist = 2;
+	int MaxShadowDist = 4;
 	int shadowdist;
 	float sunlightXrot, sunlightYrot;
 	vector<Shader> shaders;

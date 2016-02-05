@@ -32,8 +32,8 @@ void drawCloud(double px, double pz);
 void updategame();
 void debugText(string s, bool init = false);
 void render();
-void drawBorder(int x,int y,int z);
-void renderDestroy(float level,int x,int y,int z);
+void drawBorder(int x, int y, int z);
+void renderDestroy(float level, int x, int y, int z);
 void drawGUI();
 void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha);
 void drawBag();
@@ -70,131 +70,37 @@ vector<Command> commands;
 vector<string> chatMessages;
 
 #if 0
-	woca, 这样注释都行？！
-	(这儿编译不过去的童鞋，你的FB编译器版本貌似和我的不一样，把这几行注释掉吧。。。)
-	=======================================
-	等等不对啊！！！明明都改成c++了。。。还说是FB。。。
-	正常点的C++编译器都应该不会在这儿报错吧23333333
+woca, 这样注释都行？！
+(这儿编译不过去的童鞋，你的FB编译器版本貌似和我的不一样，把这几行注释掉吧。。。)
+== == == == == == == == == == == == == == == == == == ==
+等等不对啊！！！明明都改成c++了。。。还说是FB。。。
+正常点的C++编译器都应该不会在这儿报错吧23333333
 #endif
 
 //==============================  Main Program  ================================//
 //==============================     主程序     ================================//
 
-void Crusorpos() {
-	glfwGetCursorPos(MainWindow, &mx, &my);
-	mxl = mx; myl = my;
-}
-
-	void Render() { render(); }
-
-	class GameView :public GUI::Form {
-	private:
-		static void MainForward() {
-			//主循环，被简化成这样，惨不忍睹啊！
-			MutexUnlock(Mutex);
-			MutexLock(Mutex);
-			if ((timer() - uctime) >= 1.0) {
-				uctime = timer();
-				ups = upsc;
-				upsc = 0;
-			}
-		}
-
-		void onLoad() {
-			Background = &MainForward;
-			glEnable(GL_LINE_SMOOTH);
-			glEnable(GL_TEXTURE_2D);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glfwSwapBuffers(MainWindow);
-			glfwPollEvents();
-
-			Mutex = MutexCreate();
-			MutexLock(Mutex);
-			updateThread = ThreadCreate(&updateThreadFunc, NULL);
-			if (multiplayer) {
-				fastSrand((unsigned int)time(NULL));
-				Player::name = "";
-				Player::onlineID = rand();
-				Network::init(serverip, port);
-			}
-			//初始化游戏状态
-			printf("[Console][Game]");
-			printf("Init player...\n");
-			if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
-			else Player::spawn();
-			printf("[Console][Game]");
-			printf("Init world...\n");
-			World::Init();
-			registerCommands();
-			printf("[Console][Game]");
-			printf("Loading Mods...\n");
-
-			GUIrenderswitch = true;
-			glDepthFunc(GL_LEQUAL);
-			glEnable(GL_CULL_FACE);
-			setupNormalFog();
-
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glfwSwapBuffers(MainWindow);
-			glfwPollEvents();
-			printf("[Console][Game]");
-			printf("Game start!\n");
-			//这才是游戏开始!
-			glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-			mxl = mx; myl = my;
-			printf("[Console][Game]");
-			printf("Main loop started\n");
-			updateThreadRun = true;
-			fctime = uctime = lastupdate = timer();
-		}
-		
-		void onUpdate() {
-			Render();
-			if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1) {
-				updateThreadPaused = true;
-				createThumbnail();
-				GUI::clearTransition();
-				Menus::gamemenu();
-				if (!gameexit) {
-					glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-					glDepthFunc(GL_LEQUAL);
-					glEnable(GL_CULL_FACE);
-					setupNormalFog();
-					Crusorpos();
-				}
-				updateThreadPaused = false;
-			}
-			if (gameexit) {
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-				TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-				TextRenderer::renderString(0, 0, "Saving world...");
-				glfwSwapBuffers(MainWindow);
-				glfwPollEvents();
-				printf("[Console][Game]");
-				printf("Terminate threads\n");
-				updateThreadRun = false;
-				MutexUnlock(Mutex);
-				ThreadWait(updateThread);
-				ThreadDestroy(updateThread);
-				MutexDestroy(Mutex);
-				saveGame();
-				World::destroyAllChunks();
-				if (multiplayer) Network::cleanUp();
-				ExitSignal = true;
-			}
-		}
-	};
-	void Menus::GameViewDeligate() { GameView Menu; Menu.start(); }
 int main() {
 	//终于进入main函数了！激动人心的一刻！！！
-	
+
 #ifndef NEWORLD_USE_WINAPI
 	setlocale(LC_ALL, "zh_CN.UTF-8");
+#else
+	//提交OpenGL信息
+	{
+		std::ifstream postexe("Post.exe");
+		if (postexe.is_open()) {
+			postexe.close();
+			WinExec("Post.exe", SW_SHOWDEFAULT);
+			Sleep(3000);
+		}
+		else postexe.close();
+	}
 #endif
 
 	loadOptions();
 	Globalization::Load();
-	
+
 	_mkdir("Configs");
 	_mkdir("Worlds");
 	_mkdir("Screenshots");
@@ -212,13 +118,107 @@ int main() {
 	glLoadIdentity();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	//Mod::ModLoader::loadMods();
+	Mod::ModLoader::loadMods();
 main_menu:
 	gamebegin = gameexit = false;
 	glDisable(GL_LINE_SMOOTH);
 	GUI::clearTransition();
 	Menus::mainmenu();
+	glEnable(GL_LINE_SMOOTH);
+	glEnable(GL_TEXTURE_2D);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glfwSwapBuffers(MainWindow);
+	glfwPollEvents();
 
+	Mutex = MutexCreate();
+	MutexLock(Mutex);
+	updateThread = ThreadCreate(&updateThreadFunc, NULL);
+	if (multiplayer) {
+		fastSrand((unsigned int)time(NULL));
+		Player::name = "";
+		Player::onlineID = rand();
+		Network::init(serverip, port);
+	}
+	//初始化游戏状态
+	printf("[Console][Game]");
+	printf("Init player...\n");
+	if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
+	else Player::spawn();
+	printf("[Console][Game]");
+	printf("Init world...\n");
+	World::Init();
+	registerCommands();
+	printf("[Console][Game]");
+	printf("Loading Mods...\n");
+
+	GUIrenderswitch = true;
+	glDepthFunc(GL_LEQUAL);
+	glEnable(GL_CULL_FACE);
+	setupNormalFog();
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glfwSwapBuffers(MainWindow);
+	glfwPollEvents();
+	printf("[Console][Game]");
+	printf("Game start!\n");
+
+	//这才是游戏开始!
+	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	mxl = mx; myl = my;
+	printf("[Console][Game]");
+	printf("Main loop started\n");
+	updateThreadRun = true;
+	fctime = uctime = lastupdate = timer();
+
+	do {
+		//主循环，被简化成这样，惨不忍睹啊！
+
+		MutexUnlock(Mutex);
+		MutexLock(Mutex);
+
+		if ((timer() - uctime) >= 1.0) {
+			uctime = timer();
+			ups = upsc;
+			upsc = 0;
+		}
+
+		render();
+
+		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1) {
+			updateThreadPaused = true;
+			createThumbnail();
+			GUI::clearTransition();
+			Menus::gamemenu();
+			if (!gameexit) {
+				glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+				glDepthFunc(GL_LEQUAL);
+				glEnable(GL_CULL_FACE);
+				setupNormalFog();
+				glfwGetCursorPos(MainWindow, &mx, &my);
+				mxl = mx; myl = my;
+			}
+			updateThreadPaused = false;
+		}
+		if (gameexit) {
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
+			TextRenderer::renderString(0, 0, "Saving world...");
+			glfwSwapBuffers(MainWindow);
+			glfwPollEvents();
+			printf("[Console][Game]");
+			printf("Terminate threads\n");
+			updateThreadRun = false;
+			MutexUnlock(Mutex);
+			ThreadWait(updateThread);
+			ThreadDestroy(updateThread);
+			MutexDestroy(Mutex);
+			saveGame();
+			World::destroyAllChunks();
+			if (multiplayer) Network::cleanUp();
+			goto main_menu;
+		}
+
+	} while (!glfwWindowShouldClose(MainWindow));
 	saveGame();
 	Mod::ModLoader::unloadMods();
 
@@ -236,11 +236,11 @@ main_menu:
 	//This is the END of the program!
 }
 
-ThreadFunc updateThreadFunc(void*){
+ThreadFunc updateThreadFunc(void*) {
 
 	//Wait until start...
 	MutexLock(Mutex);
-	while (!updateThreadRun){
+	while (!updateThreadRun) {
 		MutexUnlock(Mutex);
 		Sleep(1);
 		MutexLock(Mutex);
@@ -251,24 +251,24 @@ ThreadFunc updateThreadFunc(void*){
 	MutexLock(Mutex);
 	lastupdate = timer();
 
-	while (updateThreadRun){
+	while (updateThreadRun) {
 
 		MutexUnlock(Mutex);
 		Sleep(1); //Don't make it always busy
 		MutexLock(Mutex);
 
-		while (updateThreadPaused){
+		while (updateThreadPaused) {
 			MutexUnlock(Mutex);
 			Sleep(1); //Same as before
 			MutexLock(Mutex);
 			lastupdate = updateTimer = timer();
 		}
-		
+
 		FirstUpdateThisFrame = true;
 		updateTimer = timer();
 		if (updateTimer - lastupdate >= 5.0) lastupdate = updateTimer;
 
-		while ((updateTimer - lastupdate) >= 1.0 / 30.0 && upsc < 60){
+		while ((updateTimer - lastupdate) >= 1.0 / 30.0 && upsc < 60) {
 			lastupdate += 1.0 / 30.0;
 			upsc++;
 			updategame();
@@ -283,11 +283,11 @@ ThreadFunc updateThreadFunc(void*){
 
 	}
 	MutexUnlock(Mutex);
-	
+
 	return 0;
 }
 
-void saveGame(){
+void saveGame() {
 	World::saveAllChunks();
 	if (!Player::save(World::worldname)) {
 #ifdef NEWORLD_CONSOLE_OUTPUT
@@ -296,7 +296,7 @@ void saveGame(){
 	}
 }
 
-bool loadGame(){
+bool loadGame() {
 	if (!Player::load(World::worldname)) {
 #ifdef NEWORLD_CONSOLE_OUTPUT
 		DebugWarning("Failed loading player info!");
@@ -413,15 +413,15 @@ bool doCommand(const vector<string>& command) {
 	return false;
 }
 
-void updategame(){
+void updategame() {
 	//Time_updategame_ = timer();
 	static double Wprstm;
 	static bool WP;
 	//bool chunkupdated = false;
-	
+
 	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 	//生命值相关
-	if (Player::health > 0 || Player::gamemode==Player::Creative) {
+	if (Player::health > 0 || Player::gamemode == Player::Creative) {
 		if (Player::ypos < -100) Player::health -= ((-100) - Player::ypos) / 100;
 		if (Player::health < Player::healthMax) Player::health += Player::healSpeed;
 		if (Player::health > Player::healthMax) Player::health = Player::healthMax;
@@ -438,15 +438,15 @@ void updategame(){
 	World::updatedChunks = 0;
 
 	//cpArray move
-	if (World::cpArray.originX != Player::cxt - viewdistance - 2 || World::cpArray.originY != Player::cyt - viewdistance - 2 || World::cpArray.originZ != Player::czt - viewdistance - 2){
+	if (World::cpArray.originX != Player::cxt - viewdistance - 2 || World::cpArray.originY != Player::cyt - viewdistance - 2 || World::cpArray.originZ != Player::czt - viewdistance - 2) {
 		World::cpArray.moveTo(Player::cxt - viewdistance - 2, Player::cyt - viewdistance - 2, Player::czt - viewdistance - 2);
 	}
 	//HeightMap move
-	if (World::HMap.originX != (Player::cxt - viewdistance - 2) * 16 || World::HMap.originZ != (Player::czt - viewdistance - 2) * 16){
+	if (World::HMap.originX != (Player::cxt - viewdistance - 2) * 16 || World::HMap.originZ != (Player::czt - viewdistance - 2) * 16) {
 		World::HMap.moveTo((Player::cxt - viewdistance - 2) * 16, (Player::czt - viewdistance - 2) * 16);
 	}
 
-	if (FirstUpdateThisFrame){
+	if (FirstUpdateThisFrame) {
 		World::sortChunkLoadUnloadList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
 
 		//卸载区块(Unload chunks)
@@ -465,7 +465,7 @@ void updategame(){
 		//加载区块(Load chunks)
 		int sumLoad;
 		sumLoad = World::chunkLoads > World::MaxChunkLoads ? World::MaxChunkLoads : World::chunkLoads;
-		for (int i = 0; i < sumLoad; i++){
+		for (int i = 0; i < sumLoad; i++) {
 			int cx = World::chunkLoadList[i][1];
 			int cy = World::chunkLoadList[i][2];
 			int cz = World::chunkLoadList[i][3];
@@ -476,18 +476,18 @@ void updategame(){
 				World::cpArray.setChunkPtr(cx, cy, cz, World::EmptyChunkPtr);
 			}
 		}
-		
+
 	}
-	
+
 	//加载动画
-	for (int i = 0; i < World::loadedChunks; i++){
+	for (int i = 0; i < World::loadedChunks; i++) {
 		World::chunk* cp = World::chunks[i];
 		if (cp->loadAnim <= 0.3f) cp->loadAnim = 0.0f;
 		else cp->loadAnim *= 0.6f;
 	}
 
 	//随机状态更新
-	for (int i = 0; i < World::loadedChunks; i++){
+	for (int i = 0; i < World::loadedChunks; i++) {
 		int x, y, z, gx, gy, gz;
 		int cx = World::chunks[i]->cx;
 		int cy = World::chunks[i]->cy;
@@ -497,18 +497,18 @@ void updategame(){
 		z = int(rnd() * 16); gz = z + cz * 16;
 		if (World::chunks[i]->getblock(x, y, z) == Blocks::DIRT &&
 			World::getblock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR && (
-			World::getblock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx, gy, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx, gy, gz - 1, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx + 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx - 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx, gy + 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx, gy + 1, gz - 1, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx + 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-			World::getblock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)){
+				World::getblock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx, gy, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx, gy, gz - 1, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx + 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx - 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx, gy + 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx, gy + 1, gz - 1, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx + 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+				World::getblock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)) {
 			//长草
 			World::chunks[i]->setblock(x, y, z, Blocks::GRASS);
 			World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
@@ -520,14 +520,14 @@ void updategame(){
 			World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
 		}
 	}
-	
+
 	//判断选中的方块
 	double lx, ly, lz, lxl, lyl, lzl;
 	lx = Player::xpos; ly = Player::ypos + Player::height + Player::heightExt; lz = Player::zpos;
-	
+
 	sel = false;
 	selx = sely = selz = selbx = selby = selbz = selcx = selcy = selcz = selb = selbr = 0;
-	
+
 	if (!bagOpened) {
 
 		//从玩家位置发射一条线段
@@ -568,8 +568,7 @@ void updategame(){
 					if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
 					else seldes += 5.0;
 
-					if (seldes >= 100.0 || Player::gamemode==Player::Creative) {
-
+					if (seldes >= 100.0/* || Player::gamemode == Player::Creative*/) {
 						Player::addItem(selb);
 						for (int j = 1; j <= 25; j++) {
 							Particles::throwParticle(selb,
@@ -601,7 +600,7 @@ void updategame(){
 		oldselx = selx;
 		oldsely = sely;
 		oldselz = selz;
-		
+
 		Player::intxpos = RoundInt(Player::xpos);
 		Player::intypos = RoundInt(Player::ypos);
 		Player::intzpos = RoundInt(Player::zpos);
@@ -610,7 +609,7 @@ void updategame(){
 		Player::heading += Player::xlookspeed;
 		Player::lookupdown += Player::ylookspeed;
 		Player::xlookspeed = Player::ylookspeed = 0.0;
-	
+
 		if (!chatmode) {
 			//移动！(生命在于运动)
 			if (glfwGetKey(MainWindow, GLFW_KEY_W) || Player::glidingNow) {
@@ -748,7 +747,7 @@ void updategame(){
 			if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
 			if (isPressed(GLFW_KEY_H) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
 				DebugHitbox = !DebugHitbox;
-				DebugMode = true; 
+				DebugMode = true;
 			}
 			if (Renderer::AdvancedRender) {
 				if (isPressed(GLFW_KEY_M) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
@@ -767,7 +766,7 @@ void updategame(){
 			if (isPressed(GLFW_KEY_F7)) Player::spawn();
 			if (isPressed(GLFW_KEY_SLASH)) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
 		}
-		
+
 		if (isPressed(GLFW_KEY_ENTER) == GLFW_PRESS) {
 			chatmode = !chatmode;
 			if (chatword != "") { //指令的执行，或发出聊天文本
@@ -808,7 +807,7 @@ void updategame(){
 
 	inputstr = "";
 
-	if (isPressed(GLFW_KEY_E) && GUIrenderswitch && !chatmode){
+	if (isPressed(GLFW_KEY_E) && GUIrenderswitch && !chatmode) {
 		bagOpened = !bagOpened;
 		bagAnimTimer = timer();
 		if (!bagOpened) {
@@ -821,8 +820,8 @@ void updategame(){
 			Player::xlookspeed = Player::ylookspeed = 0.0;
 		}
 	}
-	
-	if (!bagOpened && !chatmode){
+
+	if (!bagOpened && !chatmode) {
 		if (isPressed(GLFW_KEY_L))World::saveAllChunks();
 	}
 
@@ -852,7 +851,7 @@ void updategame(){
 			Player::AirJumps = MaxAirJumps;
 			isPressed(GLFW_KEY_SPACE, true);
 			if (Player::ya <= 0.001 && !Player::Flying && !Player::CrossWall) {
-				Player::ya =- 0.001;
+				Player::ya = -0.001;
 				if (!Player::OnGround) Player::ya -= 0.1;
 			}
 		}
@@ -863,7 +862,7 @@ void updategame(){
 	//	Player::ya += walkspeed
 	//	Player::jump = 0.0
 	//}
-	
+
 	if (Player::glidingNow) {
 		double& E = Player::glidingEnergy;
 		double oldh = Player::ypos + Player::height + Player::heightExt + Player::ya;
@@ -916,14 +915,14 @@ void render() {
 	static vector<GLint> multiDrawArrays[3];
 	static vector<GLsizei> multiDrawCounts[3];
 	for (int i = 0; i < 3; i++) {
-		multiDrawArrays[i].clear();
-		multiDrawCounts[i].clear();
+	multiDrawArrays[i].clear();
+	multiDrawCounts[i].clear();
 	}
 	*/
 
 	mxl = mx; myl = my;
 	glfwGetCursorPos(MainWindow, &mx, &my);
-	
+
 	if (Player::Running) {
 		if (FOVyExt < 9.8) {
 			TimeDelta = curtime - SpeedupAnimTimer;
@@ -962,7 +961,7 @@ void render() {
 	xpos = Player::xpos - Player::xd + (curtime - lastupdate) * 30.0 * Player::xd;
 	ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + (curtime - lastupdate) * 30.0 * Player::yd;
 	zpos = Player::zpos - Player::zd + (curtime - lastupdate) * 30.0 * Player::zd;
-	
+
 	if (!bagOpened) {
 		//转头！你治好了我多年的颈椎病！
 		if (mx != mxl) Player::xlookspeed -= (mx - mxl)*mousemove;
@@ -1032,7 +1031,7 @@ void render() {
 	renderedChunk = WorldRenderer::ListRenderChunks(Player::cxt, Player::cyt, Player::czt, viewdistance, curtime);
 
 	MutexUnlock(Mutex);
-	
+
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
 		glEnable(GL_TEXTURE_3D);
@@ -1100,7 +1099,7 @@ void render() {
 	glEnableClientState(GL_VERTEX_ARRAY);
 
 	if (Renderer::AdvancedRender) Renderer::EnableShaders();
-	
+
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
 		glEnable(GL_TEXTURE_3D);
@@ -1137,7 +1136,7 @@ void render() {
 	glRotated(plookupdown, 1, 0, 0);
 	glRotated(360.0 - pheading, 0, 1, 0);
 	glTranslated(-xpos, -ypos, -zpos);
-	
+
 	MutexLock(Mutex);
 
 	if (DebugHitbox) {
@@ -1197,7 +1196,7 @@ void render() {
 		glEnd();
 	}
 	glEnable(GL_TEXTURE_2D);
-	
+
 	if (shouldGetScreenshot) {
 		shouldGetScreenshot = false;
 		screenshotAnimTimer = curtime;
@@ -1223,8 +1222,11 @@ void render() {
 
 	//屏幕刷新，千万别删，后果自负！！！
 	//====refresh====//
-	//MutexUnlock(Mutex);
-	//MutexLock(Mutex);
+	MutexUnlock(Mutex);
+	glFinish();
+	glfwSwapBuffers(MainWindow);
+	glfwPollEvents();
+	MutexLock(Mutex);
 	//==refresh end==//
 
 	//检测帧速率
@@ -1318,7 +1320,7 @@ void drawBorder(int x, int y, int z) {
 	glDisable(GL_LINE_SMOOTH);
 }
 
-void drawGUI(){
+void drawGUI() {
 
 	glDepthFunc(GL_ALWAYS);
 	glDisable(GL_TEXTURE_2D);
@@ -1331,11 +1333,11 @@ void drawGUI(){
 		if (selb != Blocks::AIR) {
 			glLineWidth(1);
 			glBegin(GL_LINES);
-				glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, 0.8f);
-				glVertex2i(windowwidth / 2, windowheight / 2);
-				glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
-				glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
-				glVertex2i(windowwidth / 2 + 250, windowheight / 2 + 50);
+			glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, 0.8f);
+			glVertex2i(windowwidth / 2, windowheight / 2);
+			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
+			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
+			glVertex2i(windowwidth / 2 + 250, windowheight / 2 + 50);
 			glEnd();
 			TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
 			glEnable(GL_TEXTURE_2D);
@@ -1382,33 +1384,33 @@ void drawGUI(){
 
 	glLineWidth(4);
 	glBegin(GL_LINES);
-		glColor4f(0.0, 0.0, 0.0, 1.0);
-		glVertex2i(windowwidth / 2 - 16, windowheight / 2);
-		glVertex2i(windowwidth / 2 + 16, windowheight / 2);
-		glVertex2i(windowwidth / 2, windowheight / 2 - 16);
-		glVertex2i(windowwidth / 2, windowheight / 2 + 16);
+	glColor4f(0.0, 0.0, 0.0, 1.0);
+	glVertex2i(windowwidth / 2 - 16, windowheight / 2);
+	glVertex2i(windowwidth / 2 + 16, windowheight / 2);
+	glVertex2i(windowwidth / 2, windowheight / 2 - 16);
+	glVertex2i(windowwidth / 2, windowheight / 2 + 16);
 	glEnd();
 	glLineWidth(2);
 	glBegin(GL_LINES);
-		glColor4f(1.0, 1.0, 1.0, 1.0);
-		glVertex2i(windowwidth / 2 - 15, windowheight / 2);
-		glVertex2i(windowwidth / 2 + 15, windowheight / 2);
-		glVertex2i(windowwidth / 2, windowheight / 2 - 15);
-		glVertex2i(windowwidth / 2, windowheight / 2 + 15);
+	glColor4f(1.0, 1.0, 1.0, 1.0);
+	glVertex2i(windowwidth / 2 - 15, windowheight / 2);
+	glVertex2i(windowwidth / 2 + 15, windowheight / 2);
+	glVertex2i(windowwidth / 2, windowheight / 2 - 15);
+	glVertex2i(windowwidth / 2, windowheight / 2 + 15);
 	glEnd();
 
 	if (seldes > 0.0) {
 
 		glBegin(GL_LINES);
-			glColor4f(0.5, 0.5, 0.5, 1.0);
-			glVertex2i(windowwidth / 2 - 15, windowheight / 2);
-			glVertex2i(windowwidth / 2 - 15 + (int)(seldes_100 * 15), windowheight / 2);
-			glVertex2i(windowwidth / 2 + 15, windowheight / 2);
-			glVertex2i(windowwidth / 2 + 15 - (int)(seldes_100 * 15), windowheight / 2);
-			glVertex2i(windowwidth / 2, windowheight / 2 - 15);
-			glVertex2i(windowwidth / 2, windowheight / 2 - 15 + (int)(seldes_100 * 15));
-			glVertex2i(windowwidth / 2, windowheight / 2 + 15);
-			glVertex2i(windowwidth / 2, windowheight / 2 + 15 - (int)(seldes_100 * 15));
+		glColor4f(0.5, 0.5, 0.5, 1.0);
+		glVertex2i(windowwidth / 2 - 15, windowheight / 2);
+		glVertex2i(windowwidth / 2 - 15 + (int)(seldes_100 * 15), windowheight / 2);
+		glVertex2i(windowwidth / 2 + 15, windowheight / 2);
+		glVertex2i(windowwidth / 2 + 15 - (int)(seldes_100 * 15), windowheight / 2);
+		glVertex2i(windowwidth / 2, windowheight / 2 - 15);
+		glVertex2i(windowwidth / 2, windowheight / 2 - 15 + (int)(seldes_100 * 15));
+		glVertex2i(windowwidth / 2, windowheight / 2 + 15);
+		glVertex2i(windowwidth / 2, windowheight / 2 + 15 - (int)(seldes_100 * 15));
 		glEnd();
 
 	}
@@ -1586,7 +1588,7 @@ void drawCloud(double px, double pz) {
 		for (int i = 0; i != 128; i++) {
 			Renderer::Init(0, 0);
 			for (int j = 0; j != 128; j++) {
-				if (World::cloud[i][j]!=0) {
+				if (World::cloud[i][j] != 0) {
 					Renderer::Vertex3d(j*cloudwidth, 128.0, 0.0);
 					Renderer::Vertex3d(j*cloudwidth, 128.0, cloudwidth);
 					Renderer::Vertex3d((j + 1)*cloudwidth, 128.0, cloudwidth);
@@ -1666,10 +1668,10 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 		else glBindTexture(GL_TEXTURE_2D, tex_unselect);
 		glColor4f(1.0f, 1.0f, 1.0f, alpha);
 		glBegin(GL_QUADS);
-			glTexCoord2f(0.0, 1.0);glVertex2d(xbase + i * (32 + spac), ybase);
-			glTexCoord2f(0.0, 0.0);glVertex2d(xbase + i * (32 + spac) + 32, ybase);
-			glTexCoord2f(1.0, 0.0);glVertex2d(xbase + i * (32 + spac) + 32, ybase + 32);
-			glTexCoord2f(1.0, 1.0);glVertex2d(xbase + i * (32 + spac), ybase + 32);
+		glTexCoord2f(0.0, 1.0); glVertex2d(xbase + i * (32 + spac), ybase);
+		glTexCoord2f(0.0, 0.0); glVertex2d(xbase + i * (32 + spac) + 32, ybase);
+		glTexCoord2f(1.0, 0.0); glVertex2d(xbase + i * (32 + spac) + 32, ybase + 32);
+		glTexCoord2f(1.0, 1.0); glVertex2d(xbase + i * (32 + spac), ybase + 32);
 		glEnd();
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		if (Player::inventory[row][i] != Blocks::AIR) {
@@ -1677,14 +1679,14 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 			double tcX = Textures::getTexcoordX(Player::inventory[row][i], 1);
 			double tcY = Textures::getTexcoordY(Player::inventory[row][i], 1);
 			glBegin(GL_QUADS);
-				glTexCoord2d(tcX, tcY + 1 / 8.0);
-				glVertex2d(xbase + i * (32 + spac) + 2, ybase + 2);
-				glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-				glVertex2d(xbase + i * (32 + spac) + 30, ybase + 2);
-				glTexCoord2d(tcX + 1 / 8.0, tcY);
-				glVertex2d(xbase + i * (32 + spac) + 30, ybase + 30);
-				glTexCoord2d(tcX, tcY);
-				glVertex2d(xbase + i * (32 + spac) + 2, ybase + 30);
+			glTexCoord2d(tcX, tcY + 1 / 8.0);
+			glVertex2d(xbase + i * (32 + spac) + 2, ybase + 2);
+			glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
+			glVertex2d(xbase + i * (32 + spac) + 30, ybase + 2);
+			glTexCoord2d(tcX + 1 / 8.0, tcY);
+			glVertex2d(xbase + i * (32 + spac) + 30, ybase + 30);
+			glTexCoord2d(tcX, tcY);
+			glVertex2d(xbase + i * (32 + spac) + 2, ybase + 30);
 			glEnd();
 			std::stringstream ss;
 			ss << (int)Player::inventoryAmount[row][i];
@@ -1846,19 +1848,19 @@ void drawBag() {
 	glFlush();
 }
 
-void saveScreenshot(int x, int y, int w, int h, string filename){
+void saveScreenshot(int x, int y, int w, int h, string filename) {
 	Textures::TEXTURE_RGB scrBuffer;
 	int bufw = w, bufh = h;
-	while (bufw % 4 != 0){ bufw += 1; }
-	while (bufh % 4 != 0){ bufh += 1; }
+	while (bufw % 4 != 0) { bufw += 1; }
+	while (bufh % 4 != 0) { bufh += 1; }
 	scrBuffer.sizeX = bufw;
 	scrBuffer.sizeY = bufh;
 	scrBuffer.buffer = unique_ptr<ubyte[]>(new ubyte[bufw*bufh * 3]);
-	glReadPixels(x, y, bufw, bufh, GL_RGB , GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
+	glReadPixels(x, y, bufw, bufh, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
 	Textures::SaveRGBImage(filename, scrBuffer);
 }
 
-void createThumbnail(){
+void createThumbnail() {
 	std::stringstream ss;
 	ss << "Worlds/" << World::worldname << "/Thumbnail.bmp";
 	saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
