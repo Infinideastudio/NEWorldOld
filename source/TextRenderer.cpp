@@ -50,7 +50,7 @@ namespace TextRenderer {
 		if (FT_New_Face(library, "Fonts/Font.ttf", 0, &fontface)) {
 			//assert(false);
 		}
-		if (FT_Set_Pixel_Sizes(fontface, 16, 16)) {
+		if (FT_Set_Pixel_Sizes(fontface, 16 * stretch, 16 * stretch)) {
 			//assert(false);
 		}
 		slot = fontface->glyph;
@@ -65,25 +65,26 @@ namespace TextRenderer {
 		FT_Bitmap* bitmap;
 		unsigned int index;
 		ubyte *Tex, *Texsrc;
+		int wid = 32 * stretch;
 
 		index = FT_Get_Char_Index(fontface, uc);
 		FT_Load_Glyph(fontface, index, FT_LOAD_DEFAULT);
 		FT_Render_Glyph(slot, FT_RENDER_MODE_NORMAL);
 		bitmap = &(slot->bitmap);
 		Texsrc = bitmap->buffer;
-		Tex = new ubyte[32 * 32 * 4];
-		memset(Tex, 0, 32 * 32 * 4 * sizeof(ubyte));
+		Tex = new ubyte[wid * wid * 4];
+		memset(Tex, 0, wid * wid * 4 * sizeof(ubyte));
 		for (unsigned int i = 0; i < bitmap->rows; i++) {
 			for (unsigned int j = 0; j < bitmap->width; j++) {
-				Tex[(i * 32 + j) * 4 + 0] = Tex[(i * 32 + j) * 4 + 1] = Tex[(i * 32 + j) * 4 + 2] = 255U;
-				Tex[(i * 32 + j) * 4 + 3] = *Texsrc; Texsrc++;
+				Tex[(i * wid + j) * 4 + 0] = Tex[(i * wid + j) * 4 + 1] = Tex[(i * wid + j) * 4 + 2] = 255U;
+				Tex[(i * wid + j) * 4 + 3] = *Texsrc; Texsrc++;
 			}
 		}
 		glGenTextures(1, &chars[uc].tex);
 		glBindTexture(GL_TEXTURE_2D, chars[uc].tex);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, Tex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, wid, wid, 0, GL_RGBA, GL_UNSIGNED_BYTE, Tex);
 		delete[] Tex;
 		chars[uc].aval = true;
 		chars[uc].width = bitmap->width;
@@ -114,7 +115,7 @@ namespace TextRenderer {
 				loadchar(uc);
 				c = chars[uc];
 			}
-			res += c.advance;
+			res += c.advance / stretch;
 		}
 		free(wstr);
 		return res;
@@ -125,26 +126,12 @@ namespace TextRenderer {
 		unsigned int i = 0;
 		int uc;
 		int span = 0;
+		double wid = 32.0 * stretch;
 		wchar_t* wstr = nullptr;
 		MBToWC(glstring.c_str(), wstr, 128);
 
 		glEnable(GL_TEXTURE_2D);
 		for (unsigned int k = 0; k < wstrlen(wstr); k++) {
-			//glLoadIdentity();
-			//glColor4f(r, g, b, a);
-			/*
-			if (!useUnicodeASCIIFont && glstring[i] >= 0 && glstring[i] <= 127) ftex = Font;
-			else {
-				if (!unicodeTexAval[uc / 256]) {
-					std::stringstream ss;
-					ss << "Textures/Fonts/unicode/unicode_glyph_" << uc / 256 << ".bmp";
-					ftex = Textures::LoadFontTexture(ss.str());
-					unicodeTex[uc / 256] = ftex;
-					unicodeTexAval[uc / 256] = true;
-				}
-				else ftex = unicodeTex[uc / 256];
-			}
-			*/
 
 			uc = wstr[k];
 			c = chars[uc];
@@ -159,26 +146,26 @@ namespace TextRenderer {
 			glColor4f(0.5, 0.5, 0.5, a);
 			glBegin(GL_QUADS);
 			glTexCoord2d(0.0, 0.0);
-			UIVertex(c.xpos, 15 - c.ypos);
-			glTexCoord2d(c.width / 32.0, 0.0);
-			UIVertex(c.xpos + c.width, 15- c.ypos);
-			glTexCoord2d(c.width / 32.0, c.height / 32.0);
-			UIVertex(c.xpos + c.width, 15 + c.height - c.ypos);
-			glTexCoord2d(0.0, c.height / 32.0);
-			UIVertex(c.xpos, 15 + c.height - c.ypos);
+			UIVertex(c.xpos / stretch, 15 - c.ypos / stretch);
+			glTexCoord2d(c.width / wid, 0.0);
+			UIVertex(c.xpos / stretch + c.width / stretch, 15- c.ypos / stretch);
+			glTexCoord2d(c.width / wid, c.height / wid);
+			UIVertex(c.xpos / stretch + c.width / stretch, 15 + c.height / stretch - c.ypos / stretch);
+			glTexCoord2d(0.0, c.height / wid);
+			UIVertex(c.xpos / stretch, 15 + c.height / stretch - c.ypos / stretch);
 			glEnd();
 
 			UITrans(-1, -1);
 			glColor4f(r, g, b, a);
 			glBegin(GL_QUADS);
 			glTexCoord2d(0.0, 0.0);
-			UIVertex(c.xpos, 15 - c.ypos);
-			glTexCoord2d(c.width / 32.0, 0.0);
-			UIVertex(c.xpos + c.width, 15 - c.ypos);
-			glTexCoord2d(c.width / 32.0, c.height / 32.0);
-			UIVertex(c.xpos + c.width, 15 + c.height - c.ypos);
-			glTexCoord2d(0.0, c.height / 32.0);
-			UIVertex(c.xpos, 15 + c.height - c.ypos);
+			UIVertex(c.xpos / stretch, 15 - c.ypos / stretch);
+			glTexCoord2d(c.width / wid, 0.0);
+			UIVertex(c.xpos / stretch + c.width / stretch, 15 - c.ypos / stretch);
+			glTexCoord2d(c.width / wid, c.height / wid);
+			UIVertex(c.xpos / stretch + c.width / stretch, 15 + c.height / stretch - c.ypos / stretch);
+			glTexCoord2d(0.0, c.height / wid);
+			UIVertex(c.xpos / stretch, 15 + c.height / stretch - c.ypos / stretch);
 			glEnd();
 
 			/*
@@ -209,7 +196,7 @@ namespace TextRenderer {
 			*/
 
 			UITrans(-x - span, -y);
-			span += c.advance;
+			span += c.advance / stretch;
 
 			if (glstring[i] >= 0 && glstring[i] <= 127) i++;
 			else i += 2;

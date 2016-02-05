@@ -1897,6 +1897,7 @@ void loadOptions() {
 	loadoption(options, "ShadowDistance", Renderer::MaxShadowDist);
 	loadoption(options, "VerticalSync", vsync);
 	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
+	loadoption(options, "ppistretch", ppistretch);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 }
 
@@ -1923,6 +1924,7 @@ void saveOptions() {
 	saveoption(fileout, "ShadowDistance", Renderer::MaxShadowDist);
 	saveoption(fileout, "VerticalSync", vsync);
 	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
+	saveoption(fileout, "ppistretch", ppistretch);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 	fileout.close();
 }
