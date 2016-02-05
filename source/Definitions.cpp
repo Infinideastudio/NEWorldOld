@@ -13,7 +13,7 @@ int MaxAirJumps = 3 - 1;        //空中N段连跳
 bool SmoothLighting = true;     //平滑光照
 bool NiceGrass = true;          //草地材质连接
 bool MergeFace = false;         //合并面渲染
-bool GUIScreenBlur = true;      //GUI背景模糊
+bool GUIScreenBlur = false;      //GUI背景模糊  Void:这个算法慢死了，我关掉了
 int linelength = 10;            //跟F3的准星有关。。。
 int linedist = 30;              //跟F3的准星有关。。。
 float skycolorR = 0.7f;         //天空颜色Red
@@ -21,8 +21,11 @@ float skycolorG = 1.0f;         //天空颜色Green
 float skycolorB = 1.0f;         //天空颜色Blue
 float FOVyRunning = 8.0f;
 float FOVyExt;
+double stretch = 1.0f;          //ppi缩放比例（供gui绘制使用）
 int Multisample = 0;            //多重采样抗锯齿
 bool vsync = false;             //垂直同步
+int gametime = 0;				//游戏时间 0~2592000
+//float daylight;
 
 int windowwidth;     //窗口宽度
 int windowheight;    //窗口宽度
@@ -74,59 +77,3 @@ int c_getChunkPtrFromSearch;
 int c_getHeightFromHMap;
 int c_getHeightFromWorldGen;
 #endif
-
-#ifdef NEWORLD_USE_WINAPI
-unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n){
-	int res = MultiByteToWideChar(CP_ACP, 0, src, n, dst, n);
-	return res;
-}
-unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n){
-	return WideCharToMultiByte(CP_ACP, 0, src, n, dst, n * 2, NULL, NULL);
-}
-#else
-void Sleep(unsigned int ms){
-	unsigned int fr = clock();
-	while (clock() - fr <= ms);
-	return;
-}
-#endif
-
-void DebugWarning(string msg){
-#ifdef NEWORLD_USE_WINAPI
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
-	printf("[Debug][Warning]");
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-	printf("%s\n", msg.c_str());
-#else
-	printf("[Debug][Warning]%s\n", msg.c_str());
-#endif
-}
-
-void DebugError(string msg){
-#ifdef NEWORLD_USE_WINAPI
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
-	printf("[Debug][Error]");
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-	printf("%s\n", msg.c_str());
-#else
-	printf("[Debug][Error]%s\n", msg.c_str());
-#endif
-}
-
-//常用函数
-vector<string> split(string str, string pattern)
-{
-	vector<string> ret;
-	if (pattern.empty()) return ret;
-	size_t start = 0, index = str.find_first_of(pattern, 0);
-	while (index != str.npos)
-	{
-		if (start != index)
-			ret.push_back(str.substr(start, index - start));
-		start = index + 1;
-		index = str.find_first_of(pattern, start);
-	}
-	if (!str.substr(start).empty())
-		ret.push_back(str.substr(start));
-	return ret;
-}

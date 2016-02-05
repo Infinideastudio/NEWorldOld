@@ -26,11 +26,13 @@
 #include <iomanip>
 #include <fstream>
 #include <map>
+#include <set>
 #include <queue>
 #include <functional>
 #include <algorithm>
 #include <cassert>
 #include <stdarg.h>
+#include <direct.h>
 
 using std::string;
 using std::vector;
@@ -42,10 +44,15 @@ using std::endl;
 using std::max;
 using std::min;
 
-#ifndef NEWORLD_SERVER
+#ifdef NEWORLD_GAME
+
 //GLFW
 #define GLFW_DLL
 #include <GLFW/glfw3.h>
 //GLEXT
 #include <GL/glext.h>
+//FREETYPE
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
 #endif

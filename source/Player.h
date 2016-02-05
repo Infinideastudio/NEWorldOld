@@ -19,17 +19,23 @@ public:
 	static bool save(string worldn);
 	static bool load(string worldn);
 
-	static void addItem(item itemname, short amount = 1);
+	static bool addItem(item itemname, short amount = 1);
 	static bool putBlock(int x, int y, int z, block blockname);
+
+	//修改游戏模式
+	static void changeGameMode(int gamemode);
 
 	static PlayerPacket convertToPlayerPacket();
 	static Hitbox::AABB playerbox;
+	static vector<Hitbox::AABB> Hitboxes;
 	static double xa, ya, za, xd, yd, zd;
-	static double health, healthMax, healSpeed, dropDamagePerBlock;
+	static double health, healthMax, healSpeed, dropDamage;
 	static onlineid onlineID;
 	static string name;
 	static Frustum ViewFrustum;
 
+	enum GameMode { Survival, Creative };
+	static int gamemode;
 	static bool Glide;
 	static bool Flying;
 	static bool CrossWall;

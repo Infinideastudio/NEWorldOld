@@ -14,6 +14,10 @@ template<typename T>
 inline string strWithVar(string str, T var) {
 	std::stringstream ss; ss << str << var; return ss.str();
 }
+template<typename T>
+inline string Var2Str(T var) {
+	std::stringstream ss; ss << var; return ss.str();
+}
 
 //图形界面系统。。。正宗OOP！！！
 namespace GUI {
@@ -28,6 +32,8 @@ namespace GUI {
 	extern float BgB;
 	extern float BgA;
 
+	extern int nScreenWidth;
+	extern int nScreenHeight;
 	extern unsigned int transitionList;
 	extern unsigned int lastdisplaylist;
 	extern double transitionTimer;
@@ -36,6 +42,8 @@ namespace GUI {
 	void clearTransition();
 	void screenBlur();
 	void drawBackground();
+	void InitStretch();
+	void EndStretch();
 
 	class Form;
 	class controls {
@@ -129,13 +137,15 @@ namespace GUI {
 		void render();
 	};
 
+	typedef void(*UIVoidF)();
+
 	// 窗体 / 容器
 	class Form {
 	public:
 		vector<controls*> children;
 		bool tabp, shiftp, enterp, enterpl;
 		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, backspacep, backspacepl, updated;
-		int maxid, currentid, focusid, childrenCount, mx, my, mw, mb, mxl, myl, mwl, mbl;
+		int maxid, currentid, focusid, mx, my, mw, mb, mxl, myl, mwl, mbl;
 		unsigned int displaylist;
 		bool ExitSignal, MouseOnTextbox;
 		void Init();
@@ -147,12 +157,13 @@ namespace GUI {
 		void cleanup();
 		virtual void onLoad() {}
 		virtual void onUpdate() {}
-		virtual void Background() { drawBackground(); }
+		UIVoidF Background;
 		virtual void onRender() {}
 		virtual void onLeaving() {}
 		virtual void onLeave() {}
 		Form();
 		void start();
+		void singleloop();
 		~Form();
 	};
 }

@@ -2,9 +2,15 @@
 #include "Definitions.h"
 #include "GLProc.h"
 #include "Frustum.h"
+#include "Shader.h"
 
 namespace Renderer{
 	//我猜你肯定不敢看Renderer.cpp  --qiaozhanrong
+	//猜对了  --Null
+
+	enum {
+		MainShader, MergeFaceShader, ShadowShader, DepthShader
+	};
 
 	const int ArraySize = 2621440;
 	extern float* VA;
@@ -16,8 +22,7 @@ namespace Renderer{
 	extern int shadowdist;
 	extern float sunlightXrot, sunlightYrot;
 	extern unsigned int DepthTexture;
-	extern GLhandleARB shaders[16];
-	extern GLhandleARB shaderPrograms[16];
+	extern vector<Shader> shaders;
 	extern int ActiveShader;
 
 	void Init(int tc, int cc, int ac = 0);
@@ -44,9 +49,11 @@ namespace Renderer{
 	void renderbuffer(VBOID buffer, vtxCount vtxs, int tc, int cc, int ac = 0);
 
 	void initShaders();
+	inline void bindShader(int shaderID) {
+		shaders[shaderID].bind();
+		ActiveShader = shaderID;
+	}
 	void destroyShaders();
-	GLhandleARB loadShader(string filename, unsigned int mode);
-	void printInfoLog(GLhandleARB obj);
 	void EnableShaders();
 	void DisableShaders();
 	void StartShadowPass();
