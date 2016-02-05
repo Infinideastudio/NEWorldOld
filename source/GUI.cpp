@@ -178,6 +178,7 @@ namespace GUI {
 	{
 		//Get the Screen Physical Size and set stretch
 		//NEVER¡¡CALL THIS FUNCTION BEFORE THE CONTEXT IS CREATED
+		ppistretch = true;
 		glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth, 
 			  &nScreenHeight);
 		int vmc;
@@ -191,6 +192,7 @@ namespace GUI {
 	}
 
 	void EndStretch() {
+		ppistretch = false;
 		windowwidth =static_cast<int>(windowwidth/stretch);
 		windowheight = static_cast<int>(windowheight/stretch);
 		stretch = 1.0;
