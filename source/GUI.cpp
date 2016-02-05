@@ -7,6 +7,7 @@ extern string inputstr;
 //图形界面系统。。。正宗OOP！！！
 namespace GUI {
 
+	double stdppi = 96.0f;
 	int nScreenWidth, nScreenHeight;
 	float linewidth = 1.0f;
 	float linealpha = 0.9f;
@@ -173,11 +174,10 @@ namespace GUI {
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 		glEnd();
 	}
-	double stdppi = 96.0f;
-	void InitStretch()
-	{
-		//Get the Screen Physical Size and set stretch
-		//NEVER　CALL THIS FUNCTION BEFORE THE CONTEXT IS CREATED
+	
+	//Get the Screen Physical Size and set stretch
+	//NEVER CALL THIS FUNCTION BEFORE THE CONTEXT IS CREATED
+	void InitStretch() {
 		ppistretch = true;
 		glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth, 
 			  &nScreenHeight);
@@ -185,10 +185,11 @@ namespace GUI {
 		const GLFWvidmode* mode = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
 		double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth)/25.4f);
 		stretch = ppi / stdppi;
-		//Compute the stretch and reset the window size
+		//Calaulate the scale and resize the window
 		windowwidth = static_cast<int>(windowwidth * stretch);
 		windowheight = static_cast<int>(windowheight * stretch);
 		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
+		TextRenderer::resize();
 	}
 
 	void EndStretch() {
@@ -197,6 +198,7 @@ namespace GUI {
 		windowheight = static_cast<int>(windowheight/stretch);
 		stretch = 1.0;
 		glfwSetWindowSize(MainWindow, windowwidth, windowheight);
+		TextRenderer::resize();
 	}
 
 	void controls::updatepos() {

@@ -57,6 +57,16 @@ namespace TextRenderer {
 
 	}
 
+	void resize() {
+		if (FT_Set_Pixel_Sizes(fontface, 16 * stretch, 16 * stretch)) {
+			//assert(false);
+		}
+		for (int i = 0; i < 63356; i++) if (chars[i].aval) {
+			chars[i].aval = false;
+			glDeleteTextures(1, &chars[i].tex);
+		}
+	}
+
 	void setFontColor(float r_, float g_, float b_, float a_){
 		r = r_; g = g_; b = b_; a = a_;
 	}
@@ -65,7 +75,7 @@ namespace TextRenderer {
 		FT_Bitmap* bitmap;
 		unsigned int index;
 		ubyte *Tex, *Texsrc;
-		int wid = 32 * stretch;
+		int wid = (int)pow(2, ceil(log2(32 * stretch)));
 
 		index = FT_Get_Char_Index(fontface, uc);
 		FT_Load_Glyph(fontface, index, FT_LOAD_DEFAULT);
@@ -126,7 +136,7 @@ namespace TextRenderer {
 		unsigned int i = 0;
 		int uc;
 		int span = 0;
-		double wid = 32.0 * stretch;
+		double wid = pow(2, ceil(log2(32 * stretch)));
 		wchar_t* wstr = nullptr;
 		MBToWC(glstring.c_str(), wstr, 128);
 
