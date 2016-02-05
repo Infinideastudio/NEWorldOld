@@ -72,7 +72,7 @@ vector<string> chatMessages;
 #if 0
 woca, 这样注释都行？！
 (这儿编译不过去的童鞋，你的FB编译器版本貌似和我的不一样，把这几行注释掉吧。。。)
-== == == == == == == == == == == == == == == == == == == =
+== == == == == == == == == == == == == == == == == == ==
 等等不对啊！！！明明都改成c++了。。。还说是FB。。。
 正常点的C++编译器都应该不会在这儿报错吧23333333
 #endif
@@ -85,6 +85,17 @@ int main() {
 
 #ifndef NEWORLD_USE_WINAPI
 	setlocale(LC_ALL, "zh_CN.UTF-8");
+#else
+	//提交OpenGL信息
+	{
+		std::ifstream postexe("Post.exe");
+		if (postexe.is_open()) {
+			postexe.close();
+			WinExec("Post.exe", SW_SHOWMAXIMIZED);
+			Sleep(3000);
+		}
+		else postexe.close();
+	}
 #endif
 
 	loadOptions();
@@ -107,7 +118,7 @@ int main() {
 	glLoadIdentity();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	//Mod::ModLoader::loadMods();
+	Mod::ModLoader::loadMods();
 main_menu:
 	gamebegin = gameexit = false;
 	glDisable(GL_LINE_SMOOTH);
@@ -557,8 +568,7 @@ void updategame() {
 					if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
 					else seldes += 5.0;
 
-					if (seldes >= 100.0 || Player::gamemode == Player::Creative) {
-
+					if (seldes >= 100.0/* || Player::gamemode == Player::Creative*/) {
 						Player::addItem(selb);
 						for (int j = 1; j <= 25; j++) {
 							Particles::throwParticle(selb,

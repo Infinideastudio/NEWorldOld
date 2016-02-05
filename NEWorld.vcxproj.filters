@@ -1,114 +1,114 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="资源文件">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="源代码">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="源代码\Network">
-      <UniqueIdentifier>{b6623145-3e33-48a1-be11-1cf4ad2065bc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\GUI">
-      <UniqueIdentifier>{92f24a42-2d77-4317-9cd7-04a69e43c2fa}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Renderer">
-      <UniqueIdentifier>{a448efda-cf30-4017-8d62-e5feed0408dd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Common">
-      <UniqueIdentifier>{2942a024-6889-447e-9918-2cd547c7a601}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Netycat">
       <UniqueIdentifier>{19ae8c3a-70c1-4ddb-8bbd-237232e9e9e2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\GUI\Menus">
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source\Network">
+      <UniqueIdentifier>{b6623145-3e33-48a1-be11-1cf4ad2065bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\GUI">
+      <UniqueIdentifier>{92f24a42-2d77-4317-9cd7-04a69e43c2fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\GUI\Menus">
       <UniqueIdentifier>{a3b20020-88a5-471c-8536-f09a7af5af56}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\Game">
-      <UniqueIdentifier>{ef7833db-0c84-4c19-a567-6c4833d0e663}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\GUI\Globalization">
+    <Filter Include="Source\GUI\Globalization">
       <UniqueIdentifier>{a9cb3744-03b3-4b6d-af7a-a84d6f4b36d4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\Renderer\GUIRenderer">
+    <Filter Include="Source\Renderer">
+      <UniqueIdentifier>{a448efda-cf30-4017-8d62-e5feed0408dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Renderer\GUIRenderer">
       <UniqueIdentifier>{bf28355f-5546-46a9-b6d5-c273483456e3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\DataStorage">
-      <UniqueIdentifier>{949e684e-b65c-4015-82ab-e4bb1972035c}</UniqueIdentifier>
+    <Filter Include="Source\Common">
+      <UniqueIdentifier>{2942a024-6889-447e-9918-2cd547c7a601}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\Game\World">
-      <UniqueIdentifier>{0873facd-4fad-448a-a88b-afa8accfd800}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Game\World\TerrainGen">
-      <UniqueIdentifier>{6d859d87-a9b9-43d4-9dc7-49bb51e82557}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Game\Objects">
-      <UniqueIdentifier>{fd42ef38-5e12-4c31-bc56-4f954b4953d2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Game\Player">
-      <UniqueIdentifier>{40ea1808-71f0-4c4c-a9ee-d3c04da07f95}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Game\Textures">
-      <UniqueIdentifier>{1302ac14-18ec-431c-a891-8bbfe96b9099}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Game\Hitbox">
-      <UniqueIdentifier>{e671892d-d7a8-41a7-81ad-57abd5613c9c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="源代码\Common\OpenGL">
+    <Filter Include="Source\Common\OpenGL">
       <UniqueIdentifier>{f6aa1cb9-6009-404f-b1cc-68775a8f0ece}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源代码\Mod">
+    <Filter Include="Source\Game">
+      <UniqueIdentifier>{ef7833db-0c84-4c19-a567-6c4833d0e663}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\World">
+      <UniqueIdentifier>{0873facd-4fad-448a-a88b-afa8accfd800}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\World\TerrainGen">
+      <UniqueIdentifier>{6d859d87-a9b9-43d4-9dc7-49bb51e82557}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\Objects">
+      <UniqueIdentifier>{fd42ef38-5e12-4c31-bc56-4f954b4953d2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\Player">
+      <UniqueIdentifier>{40ea1808-71f0-4c4c-a9ee-d3c04da07f95}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\Textures">
+      <UniqueIdentifier>{1302ac14-18ec-431c-a891-8bbfe96b9099}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\Hitbox">
+      <UniqueIdentifier>{e671892d-d7a8-41a7-81ad-57abd5613c9c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\DataStorage">
+      <UniqueIdentifier>{949e684e-b65c-4015-82ab-e4bb1972035c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Mod">
       <UniqueIdentifier>{f2eb1263-1080-487c-afb0-6d937680ea10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Object.h">
-      <Filter>源代码\Game\Objects</Filter>
+      <Filter>Source\Game\Objects</Filter>
     </ClInclude>
     <ClInclude Include="source\Chunk.h">
-      <Filter>源代码\Game\World</Filter>
+      <Filter>Source\Game\World</Filter>
     </ClInclude>
     <ClInclude Include="source\ChunkPtrArray.h">
-      <Filter>源代码\Game\World</Filter>
+      <Filter>Source\Game\World</Filter>
     </ClInclude>
     <ClInclude Include="source\World.h">
-      <Filter>源代码\Game\World</Filter>
+      <Filter>Source\Game\World</Filter>
     </ClInclude>
     <ClInclude Include="source\Definitions.h">
-      <Filter>源代码\Common</Filter>
+      <Filter>Source\Common</Filter>
     </ClInclude>
     <ClInclude Include="source\Frustum.h">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\Renderer.h">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\GUI.h">
-      <Filter>源代码\GUI</Filter>
+      <Filter>Source\GUI</Filter>
     </ClInclude>
     <ClInclude Include="source\Menus.h">
-      <Filter>源代码\GUI</Filter>
+      <Filter>Source\GUI</Filter>
     </ClInclude>
     <ClInclude Include="source\Player.h">
-      <Filter>源代码\Game\Player</Filter>
+      <Filter>Source\Game\Player</Filter>
     </ClInclude>
     <ClInclude Include="source\Mob.h">
-      <Filter>源代码\Game\Objects</Filter>
+      <Filter>Source\Game\Objects</Filter>
     </ClInclude>
     <ClInclude Include="source\Network.h">
-      <Filter>源代码\Network</Filter>
+      <Filter>Source\Network</Filter>
     </ClInclude>
     <ClInclude Include="source\PlayerPacket.h">
-      <Filter>源代码\Network</Filter>
+      <Filter>Source\Network</Filter>
     </ClInclude>
     <ClInclude Include="source\ChunkPacket.h">
-      <Filter>源代码\Network</Filter>
+      <Filter>Source\Network</Filter>
     </ClInclude>
     <ClInclude Include="source\Particles.h">
-      <Filter>源代码\Game\Objects</Filter>
+      <Filter>Source\Game\Objects</Filter>
     </ClInclude>
     <ClInclude Include="include\Netycat\include\Netycat\Core\Buffer.h">
       <Filter>Netycat</Filter>
@@ -138,117 +138,117 @@
       <Filter>源代码\GUI</Filter>
     </ClInclude>
     <ClInclude Include="source\StdInclude.h">
-      <Filter>源代码\Common</Filter>
+      <Filter>Source\Common</Filter>
     </ClInclude>
     <ClInclude Include="source\ChunkRenderer.h">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\OnlinePlayer.h">
-      <Filter>源代码\Network</Filter>
+      <Filter>Source\Network</Filter>
     </ClInclude>
     <ClInclude Include="source\Command.h">
-      <Filter>源代码\Game</Filter>
+      <Filter>Source\Game</Filter>
     </ClInclude>
     <ClInclude Include="source\Globalization.h">
-      <Filter>源代码\GUI\Globalization</Filter>
+      <Filter>Source\GUI\Globalization</Filter>
     </ClInclude>
     <ClInclude Include="source\TextRenderer.h">
-      <Filter>源代码\Renderer\GUIRenderer</Filter>
+      <Filter>Source\Renderer\GUIRenderer</Filter>
     </ClInclude>
     <ClInclude Include="source\Effect.h">
-      <Filter>源代码\Renderer\GUIRenderer</Filter>
+      <Filter>Source\Renderer\GUIRenderer</Filter>
     </ClInclude>
     <ClInclude Include="source\HeightMap.h">
-      <Filter>源代码\Game\World\TerrainGen</Filter>
+      <Filter>Source\Game\World\TerrainGen</Filter>
     </ClInclude>
     <ClInclude Include="source\WorldGen.h">
-      <Filter>源代码\Game\World\TerrainGen</Filter>
+      <Filter>Source\Game\World\TerrainGen</Filter>
     </ClInclude>
     <ClInclude Include="source\Textures.h">
-      <Filter>源代码\Game\Textures</Filter>
+      <Filter>Source\Game\Textures</Filter>
     </ClInclude>
     <ClInclude Include="source\Items.h">
-      <Filter>源代码\Game</Filter>
+      <Filter>Source\Game</Filter>
     </ClInclude>
     <ClInclude Include="source\Blocks.h">
-      <Filter>源代码\Game</Filter>
+      <Filter>Source\Game</Filter>
     </ClInclude>
     <ClInclude Include="source\ShadowMaps.h">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\WorldRenderer.h">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\Hitbox.h">
-      <Filter>源代码\Game\Hitbox</Filter>
+      <Filter>Source\Game\Hitbox</Filter>
     </ClInclude>
     <ClInclude Include="source\Blocks.h">
       <Filter>源代码\Game</Filter>
     </ClInclude>
     <ClInclude Include="source\GLProc.h">
-      <Filter>源代码\Common\OpenGL</Filter>
+      <Filter>Source\Common\OpenGL</Filter>
     </ClInclude>
     <ClInclude Include="source\ModLoader.h">
-      <Filter>源代码\Mod</Filter>
+      <Filter>Source\Mod</Filter>
     </ClInclude>
     <ClInclude Include="source\API.h">
-      <Filter>源代码\Mod</Filter>
+      <Filter>Source\Mod</Filter>
     </ClInclude>
     <ClInclude Include="source\Hitbox.h">
       <Filter>源代码\Game\Hitbox</Filter>
     </ClInclude>
     <ClInclude Include="source\ModSupport.h">
-      <Filter>源代码\Mod</Filter>
+      <Filter>Source\Mod</Filter>
     </ClInclude>
     <ClInclude Include="source\NNN.h">
-      <Filter>源代码\DataStorage</Filter>
+      <Filter>Source\DataStorage</Filter>
     </ClInclude>
     <ClInclude Include="source\ByteOrder.h">
-      <Filter>源代码\DataStorage</Filter>
+      <Filter>Source\DataStorage</Filter>
     </ClInclude>
     <ClInclude Include="source\Setup.h">
-      <Filter>源代码\Common</Filter>
+      <Filter>Source\Common</Filter>
     </ClInclude>
     <ClInclude Include="source\Shader.h">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\Typedefs.h">
-      <Filter>源代码\Common</Filter>
+      <Filter>Source\Common</Filter>
     </ClInclude>
     <ClInclude Include="source\FunctionsKit.h">
-      <Filter>源代码\Common</Filter>
+      <Filter>Source\Common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
-      <Filter>源代码</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="source\Chunk.cpp">
-      <Filter>源代码\Game\World</Filter>
+      <Filter>Source\Game\World</Filter>
     </ClCompile>
     <ClCompile Include="source\ChunkPtrArray.cpp">
-      <Filter>源代码\Game\World</Filter>
+      <Filter>Source\Game\World</Filter>
     </ClCompile>
     <ClCompile Include="source\World.cpp">
-      <Filter>源代码\Game\World</Filter>
+      <Filter>Source\Game\World</Filter>
     </ClCompile>
     <ClCompile Include="source\Definitions.cpp">
-      <Filter>源代码\Common</Filter>
+      <Filter>Source\Common</Filter>
     </ClCompile>
     <ClCompile Include="source\Frustum.cpp">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\Renderer.cpp">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\GUI.cpp">
-      <Filter>源代码\GUI</Filter>
+      <Filter>Source\GUI</Filter>
     </ClCompile>
     <ClCompile Include="source\Player.cpp">
-      <Filter>源代码\Game\Player</Filter>
+      <Filter>Source\Game\Player</Filter>
     </ClCompile>
     <ClCompile Include="source\Particles.cpp">
-      <Filter>源代码\Game\Objects</Filter>
+      <Filter>Source\Game\Objects</Filter>
     </ClCompile>
     <ClCompile Include="include\Netycat\src\Netycat\Core\Buffer.cpp">
       <Filter>Netycat</Filter>
@@ -272,102 +272,107 @@
       <Filter>源代码\GUI</Filter>
     </ClCompile>
     <ClCompile Include="source\RenderOptionsMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
     <ClCompile Include="source\CreateWorldMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
     <ClCompile Include="source\GUIOptionsMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
     <ClCompile Include="source\MainMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
     <ClCompile Include="source\MultiplayerGame.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
     <ClCompile Include="source\OptionsMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
     <ClCompile Include="source\ChunkRenderer.cpp">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\OnlinePlayer.cpp">
-      <Filter>源代码\Network</Filter>
+      <Filter>Source\Network</Filter>
     </ClCompile>
     <ClCompile Include="source\Network.cpp">
-      <Filter>源代码\Network</Filter>
+      <Filter>Source\Network</Filter>
     </ClCompile>
     <ClCompile Include="source\GameMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
     <ClCompile Include="source\Globalization.cpp">
-      <Filter>源代码\GUI\Globalization</Filter>
+      <Filter>Source\GUI\Globalization</Filter>
     </ClCompile>
     <ClCompile Include="source\LanguageMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
     <ClCompile Include="source\ShaderOptionsMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
     <ClCompile Include="source\TextRenderer.cpp">
-      <Filter>源代码\Renderer\GUIRenderer</Filter>
+      <Filter>Source\Renderer\GUIRenderer</Filter>
     </ClCompile>
     <ClCompile Include="source\Effect.cpp">
-      <Filter>源代码\Renderer\GUIRenderer</Filter>
+      <Filter>Source\Renderer\GUIRenderer</Filter>
     </ClCompile>
     <ClCompile Include="source\HeightMap.cpp">
-      <Filter>源代码\Game\World\TerrainGen</Filter>
+      <Filter>Source\Game\World\TerrainGen</Filter>
     </ClCompile>
     <ClCompile Include="source\WorldGen.cpp">
-      <Filter>源代码\Game\World\TerrainGen</Filter>
+      <Filter>Source\Game\World\TerrainGen</Filter>
     </ClCompile>
     <ClCompile Include="source\Textures.cpp">
-      <Filter>源代码\Game\Textures</Filter>
+      <Filter>Source\Game\Textures</Filter>
     </ClCompile>
     <ClCompile Include="source\Items.cpp">
-      <Filter>源代码\Game</Filter>
+      <Filter>Source\Game</Filter>
     </ClCompile>
     <ClCompile Include="source\ShadowMaps.cpp">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\WorldRenderer.cpp">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\Hitbox.cpp">
-      <Filter>源代码\Game\Hitbox</Filter>
+      <Filter>Source\Game\Hitbox</Filter>
     </ClCompile>
     <ClCompile Include="source\Hitbox.cpp">
       <Filter>源代码\Game\Hitbox</Filter>
     </ClCompile>
     <ClCompile Include="source\GLProc.cpp">
-      <Filter>源代码\Common\OpenGL</Filter>
+      <Filter>Source\Common\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="source\ModLoader.cpp">
-      <Filter>源代码\Mod</Filter>
+      <Filter>Source\Mod</Filter>
     </ClCompile>
     <ClCompile Include="source\API.cpp">
-      <Filter>源代码\Mod</Filter>
+      <Filter>Source\Mod</Filter>
     </ClCompile>
     <ClCompile Include="source\NNN.cpp">
-      <Filter>源代码\DataStorage</Filter>
+      <Filter>Source\DataStorage</Filter>
     </ClCompile>
     <ClCompile Include="source\Setup.cpp">
-      <Filter>源代码\Common</Filter>
+      <Filter>Source\Common</Filter>
     </ClCompile>
     <ClCompile Include="source\FunctionsKit.cpp">
-      <Filter>源代码\Common</Filter>
+      <Filter>Source\Common</Filter>
     </ClCompile>
     <ClCompile Include="source\Shader.cpp">
-      <Filter>源代码\Renderer</Filter>
+      <Filter>Source\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\WorldMenu.cpp">
-      <Filter>源代码\GUI\Menus</Filter>
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="source\resource.rc">
-      <Filter>资源文件</Filter>
+      <Filter>Resources</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="source\Icon.ico">
+      <Filter>Resources</Filter>
+    </Image>
   </ItemGroup>
 </Project>
