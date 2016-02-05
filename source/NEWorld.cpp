@@ -745,6 +745,7 @@ void updategame() {
 			}
 			if (isPressed(GLFW_KEY_F2)) shouldGetScreenshot = true;
 			if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
+			if (isPressed(GLFW_KEY_F4)) Player::CrossWall = !Player::CrossWall;
 			if (isPressed(GLFW_KEY_H) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
 				DebugHitbox = !DebugHitbox;
 				DebugMode = true;
