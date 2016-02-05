@@ -28,16 +28,12 @@ namespace World {
 		//竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻ --Null
 		//2333 --qiaozhanrong
 		chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi),
-			Modified(false), Empty(false), updated(false), renderBuilt(false), loadAnim(0.0) {
-			memset(vertexes, 0, sizeof(vertexes));
-			memset(vbuffer, 0, sizeof(vbuffer));
+			Modified(false), Empty(false), updated(false), renderBuilt(false), DetailGenerated(false), loadAnim(0.0) {
+			memset(vertexes, 0, sizeof(vertexes)); memset(vbuffer, 0, sizeof(vbuffer));
 		}
 		int cx, cy, cz;
 		Hitbox::AABB aabb;
-		bool Empty = false;
-		bool updated = false;
-		bool renderBuilt = false;
-		bool Modified = false;
+		bool Empty, updated, renderBuilt, Modified, DetailGenerated;
 		chunkid id;
 		vtxCount vertexes[4];
 		VBOID vbuffer[4];
@@ -46,9 +42,11 @@ namespace World {
 
 		void create();
 		void destroy();
-		void Load();
+		void Load(bool initIfEmpty = true);
 		void Unload();
-		void build();
+		void buildTerrain(bool initIfEmpty = true);
+		void buildDetail();
+		void build(bool initIfEmpty = true);
 		inline string getChunkPath() {
 			//assert(Empty == false);
 			std::stringstream ss;

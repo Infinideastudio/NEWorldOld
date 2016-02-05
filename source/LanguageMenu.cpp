@@ -1,33 +1,61 @@
 #include "Menus.h"
+#include <deque>
+struct Langinfo {
+	string Symbol, EngSymbol, Name;
+	GUI::button * Button;
+};
 
 namespace Menus {
 	class Language :public GUI::Form {
 	private:
-		vector<string> name, idtf;
+		std::deque<Langinfo> Langs;
 		GUI::label title;
-		GUI::button resumebtn, exitbtn;
+		GUI::button backbtn;
 
 		void onLoad() {
-			title = GUI::label("==============<  " + GetStrbyKey("gui:caption:Multilanguage") + "  >==============", -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
-			resumebtn = GUI::button("继续游戏", -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
-			exitbtn = GUI::button("<<  "+ GetStrbyKey("gui:Back") , -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
-			registerControls(3, &title, &resumebtn, &exitbtn); 
-			//查找所有世界存档
-			long hFile = 0;
-			_finddata_t fileinfo;
-			if ((hFile = _findfirst(string("Worlds\\*").c_str(), &fileinfo)) != -1) {
-				do {
-					if ((fileinfo.attrib & _A_NORMAL)) {
-						
-					}
-				} while (_findnext(hFile, &fileinfo) == 0);
-				_findclose(hFile);
+			Langs.clear();
+			title = GUI::label(GetStrbyKey("NEWorld.language.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			backbtn = GUI::button(GetStrbyKey("NEWorld.language.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+			registerControls(2, &title, &backbtn); 
+			std::ifstream index("Lang/Langs.txt");
+			int count;
+			index >> count;
+			Langinfo Info;
+			for (int i = 0; i < count; i++) {
+				index >> Info.Symbol;
+				std::ifstream LF("Lang/" + Info.Symbol + ".lang");
+				getline(LF, Info.EngSymbol);
+				getline(LF, Info.Name);
+				LF.close();
+				Info.Button = new GUI::button(Info.EngSymbol + "--" + Info.Name, -200, 200, i * 36 + 42, i * 36 + 72, 0.5, 0.5, 0.0, 0.0);
+				registerControls(1, Info.Button);
+				Langs.push_back(Info);
 			}
-
+			index.close();
 		}
+
 		void onUpdate() {
-			if (resumebtn.clicked) ExitSignal = true;
-			if (exitbtn.clicked) gameexit = ExitSignal = true;
+			if (backbtn.clicked) ExitSignal = true;
+			for (size_t i = 0; i < Langs.size(); i++) {
+				if (Langs[i].Button->clicked){
+					ExitSignal = true;
+					if (Globalization::Cur_Lang != Langs[i].Symbol) {
+						Globalization::LoadLang(Langs[i].Symbol);
+					}
+					break;
+				}
+			}
+		}
+
+		void onLeave() {
+			for (size_t i = 0; i < Langs.size(); i++) {
+				for (vector<GUI::controls*>::iterator iter = children.begin(); iter != children.end(); ) {
+					if ((*iter)->id == Langs[i].Button->id) iter = children.erase(iter);
+					else ++iter;
+				}
+				Langs[i].Button->destroy();
+				delete Langs[i].Button;
+			}
 		}
 	};
 	void languagemenu() { Language Menu; Menu.start(); }

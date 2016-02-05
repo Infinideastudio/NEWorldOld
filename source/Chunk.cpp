@@ -9,6 +9,10 @@ namespace ChunkRenderer {
 	void RenderDepthModel(World::chunk* c);
 }
 
+namespace Renderer {
+	extern bool AdvancedRender;
+}
+
 namespace World {
 
 	struct HMapManager {
@@ -63,7 +67,7 @@ namespace World {
 	double chunk::relBaseX, chunk::relBaseY, chunk::relBaseZ;
 	Frustum chunk::TestFrustum;
 
-	void chunk::create(){
+	void chunk::create() {
 		aabb = getBaseAABB();
 		pblocks = new block[4096];
 		pbrightness = new brightness[4096];
@@ -76,7 +80,7 @@ namespace World {
 #endif
 	}
 
-	void chunk::destroy(){
+	void chunk::destroy() {
 		//HMapExclude(cx, cz);
 		delete[] pblocks;
 		delete[] pbrightness;
@@ -86,7 +90,7 @@ namespace World {
 		unloadedChunks++;
 	}
 
-	void chunk::build() {
+	void chunk::buildTerrain(bool initIfEmpty) {
 		//Éú³ÉµØÐÎ
 		//assert(Empty == false);
 
@@ -100,22 +104,28 @@ namespace World {
 		//Fast generate parts
 		//Part1 out of the terrain bound
 		if (cy > 4) {
+			Empty = true;
+			if (!initIfEmpty) return;
 			memset(pblocks, 0, 4096 * sizeof(block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
-			Empty = true; return;
+			return;
 		}
 		if (cy < 0) {
+			Empty = true;
+			if (!initIfEmpty) return;
 			memset(pblocks, 0, 4096 * sizeof(block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = BRIGHTNESSMIN;
-			Empty = true; return;
+			return;
 		}
 
 		//Part2 out of geomentry area
 		HMapManager cur = HMapManager(cx, cz);
 		if (cy > cur.high) {
+			Empty = true;
+			if (!initIfEmpty) return;
 			memset(pblocks, 0, 4096 * sizeof(block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
-			Empty = true; return;
+			return;
 		}
 		if (cy < cur.low) {
 			for (int i = 0; i < 4096; i++) pblocks[i] = Blocks::ROCK;
@@ -126,8 +136,8 @@ namespace World {
 
 		//Normal Calc
 		//Init
-		memset(pblocks, 0, 4096 * sizeof(block));//Empty the chunk
-		memset(pbrightness, 0, 4096 * sizeof(brightness));//Set All Brightness to 0
+		memset(pblocks, 0, 4096 * sizeof(block)); //Empty the chunk
+		memset(pbrightness, 0, 4096 * sizeof(brightness)); //Set All Brightness to 0
 
 		int x, z, h = 0, sh = 0, wh = 0;
 		int minh, maxh, cur_br;
@@ -176,14 +186,34 @@ namespace World {
 		}
 	}
 
-	void chunk::Load() {
+	void chunk::buildDetail() {
+		int index = 0;
+		for (int x = 0; x < 16; x++) {
+			for (int y = 0; y < 16; y++) {
+				for (int z = 0; z < 16; z++) {
+					//Tree
+					if (pblocks[index] == Blocks::GRASS && rnd() < 0.005) {
+						buildtree(cx * 16 + x, cy * 16 + y, cz * 16 + z);
+					}
+					index++;
+				}
+			}
+		}
+	}
+
+	void chunk::build(bool initIfEmpty) {
+		buildTerrain(initIfEmpty);
+		//if (!Empty) buildDetail();
+	}
+
+	void chunk::Load(bool initIfEmpty) {
 		//assert(Empty == false);
 
 		create();
 #ifndef NEWORLD_DEBUG_NO_FILEIO
-		if (!LoadFromFile()) build();
+		if (!LoadFromFile()) build(initIfEmpty);
 #else
-		build();
+		build(initIfEmpty);
 #endif
 		if (!Empty) updated = true;
 	}
@@ -202,10 +232,11 @@ namespace World {
 		bool openChunkFile = file.is_open();
 		file.read((char*)pblocks, 4096 * sizeof(block));
 		file.read((char*)pbrightness, 4096 * sizeof(brightness));
+		file.read((char*)&DetailGenerated, sizeof(bool));
 		file.close();
 
-		file.open(getObjectsPath(), std::ios::in | std::ios::binary);
-		file.close();
+		//file.open(getObjectsPath(), std::ios::in | std::ios::binary);
+		//file.close();
 		return openChunkFile;
 	}
 
@@ -214,6 +245,7 @@ namespace World {
 			std::ofstream file(getChunkPath(), std::ios::out | std::ios::binary);
 			file.write((char*)pblocks, 4096 * sizeof(block));
 			file.write((char*)pbrightness, 4096 * sizeof(brightness));
+			file.write((char*)&DetailGenerated, sizeof(bool));
 			file.close();
 		}
 		if (objects.size() != 0) {
@@ -252,7 +284,7 @@ namespace World {
 		
 		if (MergeFace) ChunkRenderer::MergeFaceRender(this);
 		else ChunkRenderer::RenderChunk(this);
-		ChunkRenderer::RenderDepthModel(this);
+		if (Renderer::AdvancedRender) ChunkRenderer::RenderDepthModel(this);
 
 		updated = false;
 
@@ -263,7 +295,8 @@ namespace World {
 		if (vbuffer[0] != 0) vbuffersShouldDelete.push_back(vbuffer[0]);
 		if (vbuffer[1] != 0) vbuffersShouldDelete.push_back(vbuffer[1]);
 		if (vbuffer[2] != 0) vbuffersShouldDelete.push_back(vbuffer[2]);
-		vbuffer[0] = vbuffer[1] = vbuffer[2] = 0;
+		if (vbuffer[3] != 0) vbuffersShouldDelete.push_back(vbuffer[3]);
+		vbuffer[0] = vbuffer[1] = vbuffer[2] = vbuffer[3] = 0;
 		renderBuilt = false;
 	}
 

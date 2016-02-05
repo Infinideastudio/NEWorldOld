@@ -97,7 +97,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>$(ProjectDir)include\Netycat\include;$(ProjectDir)include\Netycat\src;$(ProjectDir)include;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)libraries;$(LibraryPath)</LibraryPath>
-    <CodeAnalysisRuleSet>GlobalizationRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(ProjectDir)include;$(IncludePath)</IncludePath>
@@ -127,10 +127,13 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>false</TreatWarningAsError>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
+      <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glfw3dll.lib;ws2_32.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <SubSystem>Console</SubSystem>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
@@ -167,12 +170,14 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glfw3dll.lib;ws2_32.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
@@ -220,12 +225,13 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
+      <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glfw3dll.lib;ws2_32.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
       <SubSystem>NotSet</SubSystem>
       <AssemblyDebug>true</AssemblyDebug>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
@@ -266,13 +272,16 @@
     <ClInclude Include="include\Netycat\include\Netycat\Core\InetAddress.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Socket.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Netycat.h" />
+    <ClInclude Include="source\API.h" />
     <ClInclude Include="source\Blocks.h" />
+    <ClInclude Include="source\ByteOrder.h" />
     <ClInclude Include="source\Chunk.h" />
     <ClInclude Include="source\ChunkPacket.h" />
     <ClInclude Include="source\ChunkPtrArray.h" />
     <ClInclude Include="source\Command.h" />
     <ClInclude Include="source\Effect.h" />
     <ClInclude Include="source\ChunkRenderer.h" />
+    <ClInclude Include="source\FunctionsKit.h" />
     <ClInclude Include="source\GLProc.h" />
     <ClInclude Include="source\HeightMap.h" />
     <ClInclude Include="source\Definitions.h" />
@@ -283,6 +292,8 @@
     <ClInclude Include="source\Items.h" />
     <ClInclude Include="source\Menus.h" />
     <ClInclude Include="source\Mob.h" />
+    <ClInclude Include="source\ModSupport.h" />
+    <ClInclude Include="source\ModLoader.h" />
     <ClInclude Include="source\Network.h" />
     <ClInclude Include="source\NNN.h" />
     <ClInclude Include="source\Object.h" />
@@ -291,11 +302,13 @@
     <ClInclude Include="source\Player.h" />
     <ClInclude Include="source\PlayerPacket.h" />
     <ClInclude Include="source\Renderer.h" />
+    <ClInclude Include="source\Setup.h" />
+    <ClInclude Include="source\Shader.h" />
     <ClInclude Include="source\ShadowMaps.h" />
     <ClInclude Include="source\StdInclude.h" />
     <ClInclude Include="source\TextRenderer.h" />
     <ClInclude Include="source\Textures.h" />
-    <ClInclude Include="source\vduio.h" />
+    <ClInclude Include="source\Typedefs.h" />
     <ClInclude Include="source\World.h" />
     <ClInclude Include="source\WorldGen.h" />
     <ClInclude Include="source\WorldRenderer.h" />
@@ -307,11 +320,13 @@
     <ClCompile Include="include\Netycat\src\Netycat\Core\Exception.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\InetAddress.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\Socket.cpp" />
+    <ClCompile Include="source\API.cpp" />
     <ClCompile Include="source\Chunk.cpp" />
     <ClCompile Include="source\ChunkPtrArray.cpp" />
     <ClCompile Include="source\ChunkRenderer.cpp" />
     <ClCompile Include="source\CreateWorldMenu.cpp" />
     <ClCompile Include="source\Effect.cpp" />
+    <ClCompile Include="source\FunctionsKit.cpp" />
     <ClCompile Include="source\GameMenu.cpp" />
     <ClCompile Include="source\GLProc.cpp" />
     <ClCompile Include="source\GUIOptionsMenu.cpp" />
@@ -324,6 +339,7 @@
     <ClCompile Include="source\Items.cpp" />
     <ClCompile Include="source\LanguageMenu.cpp" />
     <ClCompile Include="source\MainMenu.cpp" />
+    <ClCompile Include="source\ModLoader.cpp" />
     <ClCompile Include="source\MultiplayerGame.cpp" />
     <ClCompile Include="source\Network.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
@@ -334,15 +350,22 @@
     <ClCompile Include="source\Player.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="source\RenderOptionsMenu.cpp" />
+    <ClCompile Include="source\Setup.cpp" />
+    <ClCompile Include="source\Shader.cpp" />
     <ClCompile Include="source\ShaderOptionsMenu.cpp" />
     <ClCompile Include="source\ShadowMaps.cpp" />
     <ClCompile Include="source\TextRenderer.cpp" />
     <ClCompile Include="source\Textures.cpp" />
-    <ClCompile Include="source\vduio.cpp" />
     <ClCompile Include="source\World.cpp" />
     <ClCompile Include="source\WorldGen.cpp" />
     <ClCompile Include="source\WorldMenu.cpp" />
     <ClCompile Include="source\WorldRenderer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="source\resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="source\Icon.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,4 +1,6 @@
 #include "Renderer.h"
+#include "Shader.h"
+
 namespace Renderer {
 	
 	/*
@@ -28,8 +30,10 @@ namespace Renderer {
 	留言板：
 
 	1楼. qiaozhanrong: 自己抢个沙发先
+	2楼. Null: 这就是你在源码里写这么一长串的理由？23333333333
+	3楼. qiaozhanrong: 无聊啊233333333333
 
-	2楼. [请输入姓名]: [请输入回复内容]
+	4楼. [请输入姓名]: [请输入回复内容]
 
 	[回复]
 	====================================================
@@ -42,16 +46,15 @@ namespace Renderer {
 	//unsigned int Buffers[3];
 	bool AdvancedRender;
 	int ShadowRes = 4096;
-	int MaxShadowDist = 2;
+	int MaxShadowDist = 4;
 	int shadowdist;
 	float sunlightXrot, sunlightYrot;
-	GLhandleARB shaders[16];
-	GLhandleARB shaderPrograms[16];
-	int shadercount = 0, ActiveShader = -1;
+	vector<Shader> shaders;
+	int ActiveShader;
 	int index = 0, size = 0;
 	unsigned int ShadowFBO, DepthTexture;
-	unsigned int ShaderAttribLoc;
-	
+	unsigned int ShaderAttribLoc = 0;
+
 	void Init(int tc, int cc, int ac) {
 		Texcoordc = tc; Colorc = cc; Attribc = ac;
 		if (VertexArray == nullptr) VertexArray = new float[ArraySize];
@@ -127,7 +130,7 @@ namespace Renderer {
 			glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)((ac + tc) * sizeof(float)));
 			glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((ac + tc + cc) * sizeof(float)));
 		}
-		
+
 		//这个框是不是很装逼2333 --qiaozhanrong
 		//====================================================================================================//
 		/**/																								/**/
@@ -136,31 +139,24 @@ namespace Renderer {
 		/**/																								/**/
 		/**/																								/**/
 		//====================================================================================================//
-
 	}
 
 	void initShaders() {
+		ShaderAttribLoc = 1;
+		std::set<string> defines;
+		defines.insert("MergeFace");
+
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
-
-		shadercount = 3;
-		shaders[0] = loadShader("Shaders/Main.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[1] = loadShader("Shaders/Main.fsh", GL_FRAGMENT_SHADER_ARB);
-		shaders[2] = loadShader("Shaders/Shadow.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[3] = loadShader("Shaders/Shadow.fsh", GL_FRAGMENT_SHADER_ARB);
-		shaders[4] = loadShader("Shaders/RenderShadowMap.vsh", GL_VERTEX_SHADER_ARB);
-		shaders[5] = loadShader("Shaders/RenderShadowMap.fsh", GL_FRAGMENT_SHADER_ARB);
-		for (int i = 0; i != shadercount; i++) {
-			shaderPrograms[i] = glCreateProgramObjectARB();
-			glAttachObjectARB(shaderPrograms[i], shaders[i * 2]);
-			glAttachObjectARB(shaderPrograms[i], shaders[i * 2 + 1]);
-			glLinkProgramARB(shaderPrograms[i]);
-		}
+		shadowdist = min(MaxShadowDist, viewdistance);
+		shaders.reserve(4);
+		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true));
+		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true, defines));
+		shaders.push_back(Shader("Shaders/Shadow.vsh", "Shaders/Shadow.fsh", false));
+		shaders.push_back(Shader("Shaders/Depth.vsh", "Shaders/Depth.fsh", false, defines));
 
 		glGenTextures(1, &DepthTexture);
 		glBindTexture(GL_TEXTURE_2D, DepthTexture);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
@@ -180,75 +176,30 @@ namespace Renderer {
 		}
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		
-		glUseProgramObjectARB(shaderPrograms[0]);
-		glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "Tex"), 0);
-		glUniform1iARB(glGetUniformLocationARB(shaderPrograms[0], "DepthTex"), 1);
-		ShaderAttribLoc = glGetAttribLocationARB(shaderPrograms[0], "VertexAttrib");
-		glUseProgramObjectARB(0);
-		
+		for (int i = 0; i < 2; i++) {
+			shaders[i].bind();
+			if (i == 0) shaders[i].setUniform("Tex", 0);
+			else shaders[i].setUniform("Tex3D", 0);
+			shaders[i].setUniform("DepthTex", 1);
+			shaders[i].setUniform("SkyColor", skycolorR, skycolorG, skycolorB, 1.0f);
+		}
+		Shader::unbind();
 	}
 
 	void destroyShaders() {
-		for (int i = 0; i != shadercount; i++) {
-			glDetachObjectARB(shaderPrograms[i], shaders[i * 2]);
-			glDetachObjectARB(shaderPrograms[i], shaders[i * 2 + 1]);
-			glDeleteObjectARB(shaders[i * 2]);
-			glDeleteObjectARB(shaders[i * 2 + 1]);
-			glDeleteObjectARB(shaderPrograms[i]);
-		}
+		for (size_t i = 0; i != shaders.size(); i++)
+			shaders[i].release();
+		shaders.clear();
 		glDeleteTextures(1, &DepthTexture);
-		//glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		glDeleteFramebuffersEXT(1, &ShadowFBO);
-	}
-
-	GLhandleARB loadShader(string filename, unsigned int mode) {
-		GLhandleARB res;
-		string cur;
-		int lines = 0, curlen;;
-		char* curline;
-		std::vector<char*> source;
-		std::vector<int> length;
-		std::ifstream filein(filename);
-		if (!filein.is_open()) return 0;
-		while (!filein.eof()) {
-			lines++;
-			std::getline(filein, cur);
-			cur += '\n';
-			curlen = cur.size();
-			curline = new char[curlen];
-			memcpy(curline, cur.c_str(), curlen);
-			source.push_back(curline);
-			length.push_back(curlen);
-		}
-		filein.close();
-		res = glCreateShaderObjectARB(mode);
-		glShaderSourceARB(res, lines, (const GLchar**)source.data(), length.data());
-		glCompileShaderARB(res);
-		for (int i = 0; i < lines; i++) delete[] source[i];
-		int st = GL_TRUE;
-		glGetObjectParameterivARB(res, GL_COMPILE_STATUS, &st);
-		if (st == GL_FALSE) printInfoLog(res);
-		return res;
-	}
-
-	void printInfoLog(GLhandleARB obj) {
-		int infologLength, charsWritten;
-		char* infoLog;
-		glGetObjectParameterivARB(obj, GL_OBJECT_INFO_LOG_LENGTH_ARB, &infologLength);
-		if (infologLength != 0) {
-			infoLog = new char[infologLength];
-			glGetInfoLogARB(obj, infologLength, &charsWritten, infoLog);
-			cout << infoLog << endl;
-			delete[] infoLog;
-		}
 	}
 
 	void EnableShaders() {
 		shadowdist = min(MaxShadowDist, viewdistance);
-		ActiveShader = 0;
 
 		//Enable shader
-		glUseProgramObjectARB(shaderPrograms[ActiveShader]);
+		Shader& shader = shaders[MergeFace ? MergeFaceShader : MainShader];
+		bindShader(MergeFace ? MergeFaceShader : MainShader);
 
 		//Calc matrix
 		float scale = 16.0f * sqrt(3.0f);
@@ -260,17 +211,17 @@ namespace Renderer {
 		frus.MultRotate(sunlightYrot, 0.0f, 1.0f, 0.0f);
 
 		//Set uniform
-		glUniform1fARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "renderdist"), viewdistance * 16.0f);
-		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_proj"), 1, GL_FALSE, frus.getProjMatrix());
-		glUniformMatrix4fvARB(glGetUniformLocationARB(shaderPrograms[ActiveShader], "Depth_modl"), 1, GL_FALSE, frus.getModlMatrix());
-
+		shader.setUniform("renderdist", viewdistance * 16.0f);
+		shader.setUniform("Depth_proj", frus.getProjMatrix());
+		shader.setUniform("Depth_modl", frus.getModlMatrix());
+		
 		//Enable arrays for additional vertex attributes
 		glEnableVertexAttribArrayARB(ShaderAttribLoc);
 	}
 
 	void DisableShaders() {
 		//Disable shader
-		glUseProgramObjectARB(0);
+		Shader::unbind();
 
 		//Disable arrays for additional vertex attributes
 		glDisableVertexAttribArrayARB(ShaderAttribLoc);
@@ -279,8 +230,7 @@ namespace Renderer {
 	void StartShadowPass() {
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, ShadowFBO);
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
-		ActiveShader = 1;
-		glUseProgramObjectARB(shaderPrograms[1]);
+		bindShader(ShadowShader);
 		glViewport(0, 0, ShadowRes, ShadowRes);
 	}
 
@@ -288,8 +238,8 @@ namespace Renderer {
 		glDrawBuffer(GL_NONE); glReadBuffer(GL_NONE);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		glDrawBuffer(GL_BACK); glReadBuffer(GL_BACK);
-		ActiveShader = -1;
-		glUseProgramObjectARB(0);
+		Shader::unbind();
 		glViewport(0, 0, windowwidth, windowheight);
 	}
+
 }
