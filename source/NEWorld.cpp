@@ -566,9 +566,9 @@ void updategame() {
 						float(rnd()*0.01f + 0.02f), int(rnd() * 30) + 30);
 
 					if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
-					else seldes += 5.0;
+					else seldes += BlockInfo(selb).getHardness()*Player::gamemode == Player::Creative ? 2 : 1;
 
-					if (seldes >= 100.0/* || Player::gamemode == Player::Creative*/) {
+					if (seldes >= 100.0) {
 						Player::addItem(selb);
 						for (int j = 1; j <= 25; j++) {
 							Particles::throwParticle(selb,
