@@ -24,6 +24,7 @@ void splashScreen() {
 		glEnd();
 		Sleep(10);
 	}
+	glDeleteTextures(1, &splTex);
 	glfwSwapBuffers(MainWindow);
 	glfwPollEvents();
 }
