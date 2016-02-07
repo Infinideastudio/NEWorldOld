@@ -923,6 +923,7 @@ void render() {
 
 	mxl = mx; myl = my;
 	glfwGetCursorPos(MainWindow, &mx, &my);
+	mx /= stretch; my /= stretch;
 
 	if (Player::Running) {
 		if (FOVyExt < 9.8) {
@@ -1322,7 +1323,7 @@ void drawBorder(int x, int y, int z) {
 }
 
 void drawGUI() {
-
+	int windowuswidth = windowwidth / stretch, windowusheight = windowheight / stretch;
 	glDepthFunc(GL_ALWAYS);
 	glDisable(GL_TEXTURE_2D);
 	glEnable(GL_LINE_SMOOTH);
@@ -1335,18 +1336,17 @@ void drawGUI() {
 			glLineWidth(1);
 			glBegin(GL_LINES);
 			glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, 0.8f);
-			glVertex2i(windowwidth / 2, windowheight / 2);
-			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
-			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
-			glVertex2i(windowwidth / 2 + 250, windowheight / 2 + 50);
+			UIVertex(windowuswidth / 2, windowusheight / 2);
+			UIVertex(windowuswidth / 2 + 50, windowusheight / 2 + 50);
+			UIVertex(windowuswidth / 2 + 50, windowusheight / 2 + 50);
+			UIVertex(windowuswidth / 2 + 250, windowusheight / 2 + 50);
 			glEnd();
 			TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
 			glEnable(GL_TEXTURE_2D);
 			glDisable(GL_CULL_FACE);
 			std::stringstream ss;
 			ss << BlockInfo(selb).getBlockName() << " (ID " << (int)selb << ")";
-			glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
-			TextRenderer::renderASCIIString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, ss.str());
+			TextRenderer::renderString(windowuswidth / 2 + 50, windowusheight / 2 + 50 - 16, ss.str());
 			glDisable(GL_TEXTURE_2D);
 			glEnable(GL_CULL_FACE);
 			glColor4f(0.0f, 0.0f, 0.0f, 0.9f);
@@ -1358,46 +1358,45 @@ void drawGUI() {
 		glLineWidth(2);
 
 		glBegin(GL_LINES);
+		UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 - linedist + disti);
+		UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 - linedist + linelength + disti);
+		UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 - linedist + disti);
+		UIVertex(windowuswidth / 2 - linedist + linelength + disti, windowusheight / 2 - linedist + disti);
 
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 - linedist + disti);
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 - linedist + linelength + disti);
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 - linedist + disti);
-		glVertex2i(windowwidth / 2 - linedist + linelength + disti, windowheight / 2 - linedist + disti);
+		UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 - linedist + disti);
+		UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 - linedist + linelength + disti);
+		UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 - linedist + disti);
+		UIVertex(windowuswidth / 2 + linedist - linelength - disti, windowusheight / 2 - linedist + disti);
 
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 - linedist + disti);
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 - linedist + linelength + disti);
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 - linedist + disti);
-		glVertex2i(windowwidth / 2 + linedist - linelength - disti, windowheight / 2 - linedist + disti);
+		UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 + linedist - disti);
+		UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 + linedist - linelength - disti);
+		UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 + linedist - disti);
+		UIVertex(windowuswidth / 2 - linedist + linelength + disti, windowusheight / 2 + linedist - disti);
 
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 + linedist - disti);
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 + linedist - linelength - disti);
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 + linedist - disti);
-		glVertex2i(windowwidth / 2 - linedist + linelength + disti, windowheight / 2 + linedist - disti);
-
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 + linedist - disti);
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 + linedist - linelength - disti);
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 + linedist - disti);
-		glVertex2i(windowwidth / 2 + linedist - linelength - disti, windowheight / 2 + linedist - disti);
+		UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 + linedist - disti);
+		UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 + linedist - linelength - disti);
+		UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 + linedist - disti);
+		UIVertex(windowuswidth / 2 + linedist - linelength - disti, windowusheight / 2 + linedist - disti);
 
 		glEnd();
 
 	}
 
-	glLineWidth(4);
+	glLineWidth(4 * stretch);
 	glBegin(GL_LINES);
 	glColor4f(0.0, 0.0, 0.0, 1.0);
-	glVertex2i(windowwidth / 2 - 16, windowheight / 2);
-	glVertex2i(windowwidth / 2 + 16, windowheight / 2);
-	glVertex2i(windowwidth / 2, windowheight / 2 - 16);
-	glVertex2i(windowwidth / 2, windowheight / 2 + 16);
+	UIVertex(windowuswidth / 2 - 16, windowusheight / 2);
+	UIVertex(windowuswidth / 2 + 16, windowusheight / 2);
+	UIVertex(windowuswidth / 2, windowusheight / 2 - 16);
+	UIVertex(windowuswidth / 2, windowusheight / 2 + 16);
 	glEnd();
-	glLineWidth(2);
+	glLineWidth(2 * stretch);
 	glBegin(GL_LINES);
 	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex2i(windowwidth / 2 - 15, windowheight / 2);
-	glVertex2i(windowwidth / 2 + 15, windowheight / 2);
-	glVertex2i(windowwidth / 2, windowheight / 2 - 15);
-	glVertex2i(windowwidth / 2, windowheight / 2 + 15);
+	UIVertex(windowuswidth / 2 - 15, windowusheight / 2);
+	UIVertex(windowuswidth / 2 + 15, windowusheight / 2);
+	UIVertex(windowuswidth / 2, windowusheight / 2 - 15);
+	UIVertex(windowuswidth / 2, windowusheight / 2 + 15);
 	glEnd();
 
 	if (seldes > 0.0) {
@@ -1421,19 +1420,19 @@ void drawGUI() {
 	if (Player::gamemode == Player::Survival) {
 		glColor4d(0.8, 0.0, 0.0, 0.3);
 		glBegin(GL_QUADS);
-		glVertex2d(10, 10);
-		glVertex2d(200, 10);
-		glVertex2d(200, 30);
-		glVertex2d(10, 30);
+		UIVertex(10, 10);
+		UIVertex(200, 10);
+		UIVertex(200, 30);
+		UIVertex(10, 30);
 		glEnd();
 
 		double healthPercent = (double)Player::health / Player::healthMax;
 		glColor4d(1.0, 0.0, 0.0, 0.5);
 		glBegin(GL_QUADS);
-		glVertex2d(20, 15);
-		glVertex2d(20 + healthPercent * 170, 15);
-		glVertex2d(20 + healthPercent * 170, 25);
-		glVertex2d(20, 25);
+		UIVertex(20, 15);
+		UIVertex(static_cast<int>(20 + healthPercent * 170), 15);
+		UIVertex(static_cast<int>(20 + healthPercent * 170), 25);
+		UIVertex(20, 25);
 		glEnd();
 	}
 
@@ -1550,12 +1549,8 @@ void drawGUI() {
 	else {
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 		std::stringstream ss;
-		ss << "v" << VERSION;
-		TextRenderer::renderASCIIString(0, 0, ss.str());
-		ss.clear();
-		ss.str("");
-		ss << "Fps:" << fps;
-		TextRenderer::renderASCIIString(0, 16, ss.str());
+		ss << "v" << VERSION << "  Fps:" << fps;
+		TextRenderer::renderString(10, 30, ss.str());
 	}
 	glFlush();
 }
@@ -1669,10 +1664,10 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 		else glBindTexture(GL_TEXTURE_2D, tex_unselect);
 		glColor4f(1.0f, 1.0f, 1.0f, alpha);
 		glBegin(GL_QUADS);
-		glTexCoord2f(0.0, 1.0); glVertex2d(xbase + i * (32 + spac), ybase);
-		glTexCoord2f(0.0, 0.0); glVertex2d(xbase + i * (32 + spac) + 32, ybase);
-		glTexCoord2f(1.0, 0.0); glVertex2d(xbase + i * (32 + spac) + 32, ybase + 32);
-		glTexCoord2f(1.0, 1.0); glVertex2d(xbase + i * (32 + spac), ybase + 32);
+		glTexCoord2f(0.0, 1.0); UIVertex(xbase + i * (32 + spac), ybase);
+		glTexCoord2f(0.0, 0.0); UIVertex(xbase + i * (32 + spac) + 32, ybase);
+		glTexCoord2f(1.0, 0.0); UIVertex(xbase + i * (32 + spac) + 32, ybase + 32);
+		glTexCoord2f(1.0, 1.0); UIVertex(xbase + i * (32 + spac), ybase + 32);
 		glEnd();
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		if (Player::inventory[row][i] != Blocks::AIR) {
@@ -1681,18 +1676,17 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 			double tcY = Textures::getTexcoordY(Player::inventory[row][i], 1);
 			glBegin(GL_QUADS);
 			glTexCoord2d(tcX, tcY + 1 / 8.0);
-			glVertex2d(xbase + i * (32 + spac) + 2, ybase + 2);
+			UIVertex(xbase + i * (32 + spac) + 2, ybase + 2);
 			glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-			glVertex2d(xbase + i * (32 + spac) + 30, ybase + 2);
+			UIVertex(xbase + i * (32 + spac) + 30, ybase + 2);
 			glTexCoord2d(tcX + 1 / 8.0, tcY);
-			glVertex2d(xbase + i * (32 + spac) + 30, ybase + 30);
+			UIVertex(xbase + i * (32 + spac) + 30, ybase + 30);
 			glTexCoord2d(tcX, tcY);
-			glVertex2d(xbase + i * (32 + spac) + 2, ybase + 30);
+			UIVertex(xbase + i * (32 + spac) + 2, ybase + 30);
 			glEnd();
 			std::stringstream ss;
 			ss << (int)Player::inventoryAmount[row][i];
-			glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
-			TextRenderer::renderASCIIString(xbase + i * (32 + spac), ybase, ss.str());
+			TextRenderer::renderString(xbase + i * (32 + spac), ybase, ss.str());
 		}
 	}
 }
@@ -1701,8 +1695,8 @@ void drawBag() {
 	//背包界面与更新
 	static int si, sj, sf;
 	int csi = -1, csj = -1;
-	int leftp = (windowwidth - 392) / 2;
-	int upp = windowheight - 152 - 16;
+	int leftp = (windowwidth / stretch - 392) / 2;
+	int upp = windowheight / stretch - 152 - 16;
 	static int mousew, mouseb, mousebl;
 	static block indexselected = Blocks::AIR;
 	static short Amountselected = 0;
@@ -1722,10 +1716,10 @@ void drawBag() {
 		if (curtime - bagAnimTimer > bagAnimDuration) glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
 		else glColor4f(0.2f, 0.2f, 0.2f, 0.6f*bagAnim);
 		glBegin(GL_QUADS);
-		glVertex2i(0, 0);
-		glVertex2i(windowwidth, 0);
-		glVertex2i(windowwidth, windowheight);
-		glVertex2i(0, windowheight);
+		UIVertex(0, 0);
+		UIVertex((int)(windowwidth / stretch), 0);
+		UIVertex((int)(windowwidth / stretch), (int)(windowheight / stretch));
+		UIVertex(0, (int)(windowheight / stretch));
 		glEnd();
 
 		glEnable(GL_TEXTURE_2D);
@@ -1736,8 +1730,8 @@ void drawBag() {
 		if (curtime - bagAnimTimer > bagAnimDuration) {
 			for (int i = 0; i < 4; i++) {
 				for (int j = 0; j < 10; j++) {
-					if (mx >= j*(32 + 8) + leftp && mx <= j*(32 + 8) + 32 + leftp &&
-						my >= i*(32 + 8) + upp && my <= i*(32 + 8) + 32 + upp) {
+					if (mx >= j * 40 + leftp && mx <= j * 40 + 32 + leftp &&
+						my >= i * 40 + upp && my <= i * 40 + 32 + upp) {
 						csi = si = i; csj = sj = j; sf = 1;
 						if (mousebl == 0 && mouseb == 1 && indexselected == Player::inventory[i][j]) {
 							if (Player::inventoryAmount[i][j] + Amountselected <= 255) {
@@ -1770,7 +1764,7 @@ void drawBag() {
 						if (Player::inventory[i][j] == Blocks::AIR) Player::inventoryAmount[i][j] = 0;
 					}
 				}
-				drawBagRow(i, (csi == i ? csj : -1), (windowwidth - 392) / 2, windowheight - 152 - 16 + i * 40, 8, 1.0f);
+				drawBagRow(i, (csi == i ? csj : -1), (windowwidth / stretch - 392) / 2, windowheight / stretch - 152 - 16 + i * 40, 8, 1.0f);
 			}
 		}
 		if (indexselected != Blocks::AIR) {
@@ -1779,34 +1773,32 @@ void drawBag() {
 			double tcY = Textures::getTexcoordY(indexselected, 1);
 			glBegin(GL_QUADS);
 			glTexCoord2d(tcX, tcY + 1 / 8.0);
-			glVertex2d(mx - 16, my - 16);
+			UIVertex(mx - 16, my - 16);
 			glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-			glVertex2d(mx + 16, my - 16);
+			UIVertex(mx + 16, my - 16);
 			glTexCoord2d(tcX + 1 / 8.0, tcY);
-			glVertex2d(mx + 16, my + 16);
+			UIVertex(mx + 16, my + 16);
 			glTexCoord2d(tcX, tcY);
-			glVertex2d(mx - 16, my + 16);
+			UIVertex(mx - 16, my + 16);
 			glEnd();
 			std::stringstream ss;
 			ss << Amountselected;
-			glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
-			TextRenderer::renderASCIIString((int)mx - 16, (int)my - 16, ss.str());
+			TextRenderer::renderString((int)mx - 16, (int)my - 16, ss.str());
 		}
 		if (Player::inventory[si][sj] != 0 && sf == 1) {
 			glColor4f(1.0, 1.0, 0.0, 1.0);
-			glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
-			TextRenderer::renderASCIIString((int)mx, (int)my - 16, BlockInfo(Player::inventory[si][sj]).getBlockName());
+			TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(Player::inventory[si][sj]).getBlockName());
 		}
 
 		int xbase = 0, ybase = 0, spac = 0;
 		float alpha = 0.5f + 0.5f*bagAnim;
 		if (curtime - bagAnimTimer <= bagAnimDuration) {
-			xbase = (int)round(((windowwidth - 392) / 2)*bagAnim);
-			ybase = (int)round((windowheight - 152 - 16 + 120 - (windowheight - 32))*bagAnim + (windowheight - 32));
+			xbase = (int)round(((windowwidth / stretch - 392) / 2)*bagAnim);
+			ybase = (int)round((windowheight / stretch - 152 - 16 + 120 - (windowheight / stretch - 32))*bagAnim + (windowheight / stretch - 32));
 			spac = (int)round(8 * bagAnim);
 			drawBagRow(3, -1, xbase, ybase, spac, alpha);
-			xbase = (int)round(((windowwidth - 392) / 2 - windowwidth)*bagAnim + windowwidth);
-			ybase = (int)round((windowheight - 152 - 16 - (windowheight - 32))*bagAnim + (windowheight - 32));
+			xbase = (int)round(((windowwidth / stretch - 392) / 2 - windowwidth / stretch)*bagAnim + windowwidth / stretch);
+			ybase = (int)round((windowheight / stretch - 152 - 16 - (windowheight / stretch - 32))*bagAnim + (windowheight / stretch - 32));
 			for (int i = 0; i < 3; i++) {
 				glColor4f(1.0f, 1.0f, 1.0f, bagAnim);
 				drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
@@ -1835,19 +1827,19 @@ void drawBag() {
 			glEnable(GL_TEXTURE_2D);
 			int xbase = 0, ybase = 0, spac = 0;
 			float alpha = 1.0f - 0.5f*bagAnim;
-			xbase = (int)round(((windowwidth - 392) / 2) - ((windowwidth - 392) / 2)*bagAnim);
-			ybase = (int)round((windowheight - 152 - 16 + 120 - (windowheight - 32)) - (windowheight - 152 - 16 + 120 - (windowheight - 32))*bagAnim + (windowheight - 32));
+			xbase = (int)round(((windowwidth / stretch - 392) / 2) - ((windowwidth / stretch - 392) / 2)*bagAnim);
+			ybase = (int)round((windowheight / stretch - 152 - 16 + 120 - (windowheight / stretch - 32)) - (windowheight / stretch - 152 - 16 + 120 - (windowheight - 32))*bagAnim + (windowheight / stretch - 32));
 			spac = (int)round(8 - 8 * bagAnim);
 			glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 			drawBagRow(3, Player::indexInHand, xbase, ybase, spac, alpha);
-			xbase = (int)round(((windowwidth - 392) / 2 - windowwidth) - ((windowwidth - 392) / 2 - windowwidth)*bagAnim + windowwidth);
-			ybase = (int)round((windowheight - 152 - 16 - (windowheight - 32)) - (windowheight - 152 - 16 - (windowheight - 32))*bagAnim + (windowheight - 32));
+			xbase = (int)round(((windowwidth / stretch - 392) / 2 - windowwidth / stretch) - ((windowwidth / stretch - 392) / 2 - windowwidth / stretch)*bagAnim + windowwidth / stretch);
+			ybase = (int)round((windowheight / stretch - 152 - 16 - (windowheight / stretch - 32)) - (windowheight / stretch - 152 - 16 - (windowheight / stretch - 32))*bagAnim + (windowheight / stretch - 32));
 			for (int i = 0; i < 3; i++) {
 				glColor4f(1.0f, 1.0f, 1.0f, 1.0f - bagAnim);
 				drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
 			}
 		}
-		else drawBagRow(3, Player::indexInHand, 0, windowheight - 32, 0, 0.5f);
+		else drawBagRow(3, Player::indexInHand, 0, windowheight / stretch - 32, 0, 0.5f);
 	}
 	glFlush();
 }

@@ -1,8 +1,28 @@
-48
+68
 NEWorld.yes
 NEWorld.no
 NEWorld.enabled
 NEWorld.disabled
+NEWorld.Blocks.Air
+NEWorld.Blocks.Rock
+NEWorld.Blocks.Grass
+NEWorld.Blocks.Dirt
+NEWorld.Blocks.Stone
+NEWorld.Blocks.Plank
+NEWorld.Blocks.Wood
+NEWorld.Blocks.Bedrock
+NEWorld.Blocks.Leaf
+NEWorld.Blocks.Glass
+NEWorld.Blocks.Water
+NEWorld.Blocks.Lava
+NEWorld.Blocks.GlowStone
+NEWorld.Blocks.Sand
+NEWorld.Blocks.Cement
+NEWorld.Blocks.Ice
+NEWorld.Blocks.Coal Block
+NEWorld.Blocks.Iron Block
+NEWorld.Blocks.TNT
+NEWorld.Blocks.Null Block
 NEWorld.main.start
 NEWorld.main.options
 NEWorld.main.exit
