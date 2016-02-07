@@ -231,6 +231,7 @@ main_menu:
 	//结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
 	//不对啊这不是FB！！！这是正宗的C++！！！！！！
 	//楼上的楼上在瞎说！！！别信他的！！！
+	//……所以你是不是应该说“吐槽C艹”中？——地鼠
 	glfwTerminate();
 	return 0;
 	//This is the END of the program!
