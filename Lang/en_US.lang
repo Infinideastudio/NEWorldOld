@@ -4,16 +4,36 @@ Yes
 No
 Enabled
 Disabled
+Air
+Rock
+Grass
+Dirt
+Stone
+Plank
+Wood
+Bedrock
+Leaf
+Glass
+Water
+Lava
+GlowStone
+Sand
+Cement
+Ice
+Coal Block
+Iron Block
+TNT
+Null Block
 Start game
->> Options...
+>> Options
 Exit
 =================< Options >==================
 Field of view: 
 Mouse sensitivity: 
 Render distance: 
->> Render options...
->> GUI options...
->> Select language...
+>> Render options
+>> GUI options
+>> Select language
 << Back to main menu
 Save options
 =============< Render options >===============
@@ -21,7 +41,7 @@ Smooth lighting:
 Connect grass texture: 
 Merge face rendering: 
 Multi-sample AA: 
->> Advanced rendering ...
+>> Advanced rendering 
 Vertical sync: 
 << Back to options menu
 ============< Advanced rendering >============
@@ -37,7 +57,7 @@ PPI stretch (EXPERIMENTAL)
 ==============< Select world >================
 Enter this world
 Delete this world
->> Create a new world ...
+>> Create a new world 
 << Back to main menu
 ================< Game menu >=================
 Continue game
