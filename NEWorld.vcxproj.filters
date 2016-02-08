@@ -218,6 +218,9 @@
     <ClInclude Include="source\FunctionsKit.h">
       <Filter>Source\Common</Filter>
     </ClInclude>
+    <ClInclude Include="source\WindowUtil.h">
+      <Filter>Source\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -363,6 +366,9 @@
     </ClCompile>
     <ClCompile Include="source\WorldMenu.cpp">
       <Filter>Source\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\WindowUtil.cpp">
+      <Filter>Source\Common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

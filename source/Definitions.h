@@ -34,6 +34,7 @@ extern bool SmoothLighting;
 extern bool NiceGrass;
 extern bool MergeFace;
 extern bool GUIScreenBlur;
+extern bool ppistretch;
 extern int linelength;
 extern int linedist;
 extern float skycolorR;
