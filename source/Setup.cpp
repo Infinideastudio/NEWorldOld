@@ -1,4 +1,5 @@
 #include "Setup.h"
+#include "GUI.h"
 #include "Definitions.h"
 #include "Textures.h"
 #include "TextRenderer.h"
@@ -23,6 +24,7 @@ void splashScreen() {
 		glEnd();
 		Sleep(10);
 	}
+	glDeleteTextures(1, &splTex);
 	glfwSwapBuffers(MainWindow);
 	glfwPollEvents();
 }
@@ -41,6 +43,7 @@ void createWindow() {
 	glfwSetMouseButtonCallback(MainWindow, &MouseButtonFunc);
 	glfwSetScrollCallback(MainWindow, &MouseScrollFunc);
 	glfwSetCharCallback(MainWindow, &CharInputFunc);
+	if (ppistretch) GUI::InitStretch();
 }
 
 void setupScreen() {
