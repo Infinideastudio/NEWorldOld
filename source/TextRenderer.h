@@ -29,6 +29,7 @@ namespace TextRenderer {
 	extern bool useUnicodeASCIIFont;
 
 	void BuildFont(int w, int h);
+	void resize();
 	void setFontColor(float r, float g, float b, float a);
 	void loadchar(unsigned int uc);
 	int getStrWidth(string s);
