@@ -92,6 +92,7 @@ int main() {
 		if (postexe.is_open()) {
 			postexe.close();
 			WinExec("Post.exe", SW_SHOWDEFAULT);
+			// There is no `Post.exe` present
 			Sleep(3000);
 		}
 		else postexe.close();
