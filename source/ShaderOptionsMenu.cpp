@@ -26,7 +26,7 @@ namespace Menus {
 			Renderer::ShadowRes = (int)pow(2, (shadowresbar.barpos + 1) / 40 + 10);
 			Renderer::MaxShadowDist = (shadowdistbar.barpos + 1) / 4 + 2;
 			if (backbtn.clicked) {
-				ExitSignal = true;
+				GUI::PopPage();
 				if (Renderer::AdvancedRender) Renderer::initShaders();
 			}
 			enablebtn.text = GetStrbyKey("NEWorld.shaders.enable") + BoolYesNo(Renderer::AdvancedRender);
@@ -36,5 +36,5 @@ namespace Menus {
 			shadowdistbar.text = GetStrbyKey("NEWorld.shaders.distance") + ss.str();
 		}
 	};
-	void Shaderoptions() { ShaderOptionsMenu Menu; Menu.start(); }
+	void Shaderoptions() { GUI::PushPage(new ShaderOptionsMenu); }
 }

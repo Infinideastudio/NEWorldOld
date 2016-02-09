@@ -23,7 +23,7 @@ namespace Menus {
 				if (stretch == 1.0) GUI::InitStretch();
 				else GUI::EndStretch();
 			}
-			if (backbtn.clicked) ExitSignal = true;
+			if (backbtn.clicked) GUI::PopPage();
 			//fontbtn.text = GetStrbyKey("NEWorld.gui.unicode") + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
 			fontbtn.text = GetStrbyKey("NEWorld.gui.unicode") + BoolYesNo(true);
 			blurbtn.text = GetStrbyKey("NEWorld.gui.blur") + BoolEnabled(GUIScreenBlur);
@@ -34,5 +34,5 @@ namespace Menus {
 				" win:" + Var2Str(windowwidth) + "x" + Var2Str(windowheight);
 		}
 	};
-	void GUIoptions() { GUIOptionsMenu Menu; Menu.start(); }
+	void GUIoptions() { GUI::PushPage(new GUIOptionsMenu); }
 }

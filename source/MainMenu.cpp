@@ -15,7 +15,7 @@ namespace Menus {
 		}
 		void onUpdate() {
 			if (startbtn.clicked) worldmenu();
-			if (gamebegin) ExitSignal = true;
+			if (gamebegin) GUI::PopPage();
 			if (optionsbtn.clicked) {
 				options();
 				startbtn.text = GetStrbyKey("NEWorld.main.start");
@@ -25,5 +25,5 @@ namespace Menus {
 			if (quitbtn.clicked) exit(0);
 		}
 	};
-	void mainmenu() { MainMenu Menu; Menu.start(); }
+	void mainmenu() { GUI::PushPage(new MainMenu); GUI::AppStart(); }
 }

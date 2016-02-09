@@ -17,9 +17,11 @@ namespace Menus {
 			MutexUnlock(Mutex);
 			//Make update thread realize that it should pause
 			MutexLock(Mutex);
-			if (resumebtn.clicked) ExitSignal = true;
-			if (exitbtn.clicked) gameexit = ExitSignal = true;
+			if (resumebtn.clicked) GUI::PopPage();
+			if (exitbtn.clicked) {
+				gameexit = true;  GUI::PopPage();
+			}
 		}
 	};
-	void gamemenu() { GameMenu Menu; Menu.start(); }
+	void gamemenu() { GUI::PushPage(new GameMenu); GUI::AppStart(); }
 }

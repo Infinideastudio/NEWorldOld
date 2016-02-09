@@ -28,7 +28,7 @@ namespace Menus {
 			viewdistance = (viewdistBar.barpos + 1) / 4 + 2;
 			if (rdstbtn.clicked) Renderoptions();
 			if (gistbtn.clicked) GUIoptions();
-			if (backbtn.clicked) ExitSignal = true;
+			if (backbtn.clicked) GUI::PopPage();
 			if (savebtn.clicked) saveOptions();
 			if (langbtn.clicked) {
 				languagemenu();
@@ -44,5 +44,5 @@ namespace Menus {
 			viewdistBar.text = strWithVar(GetStrbyKey("NEWorld.options.distance"), viewdistance);
 		}
 	};
-	void options() { OptionsMenu Menu; Menu.start(); }
+	void options() { GUI::PushPage(new OptionsMenu); }
 }

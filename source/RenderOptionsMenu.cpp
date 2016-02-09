@@ -34,7 +34,7 @@ namespace Menus {
 				if (vsync) glfwSwapInterval(1);
 				else glfwSwapInterval(0);
 			}
-			if (backbtn.clicked) ExitSignal = true;
+			if (backbtn.clicked) GUI::PopPage();
 			std::stringstream ss; ss << Multisample;
 			smoothlightingbtn.text = GetStrbyKey("NEWorld.render.smooth") + BoolEnabled(SmoothLighting);
 			fancygrassbtn.text = GetStrbyKey("NEWorld.render.grasstex") + BoolYesNo(NiceGrass);
@@ -43,5 +43,5 @@ namespace Menus {
 			vsyncbtn.text = GetStrbyKey("NEWorld.render.vsync") + BoolEnabled(vsync);
 		}
 	};
-	void Renderoptions() { RenderOptionsMenu Menu; Menu.start(); }
+	void Renderoptions() { GUI::PushPage(new RenderOptionsMenu); }
 }
