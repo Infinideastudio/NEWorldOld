@@ -12,11 +12,11 @@ Stone
 Plank
 Wood
 Bedrock
-Leaf
+Leaves
 Glass
 Water
 Lava
-GlowStone
+Glowstone
 Sand
 Cement
 Ice
@@ -40,7 +40,7 @@ Save options
 Smooth lighting: 
 Connect grass texture: 
 Merge face rendering: 
-Multi-sample AA: 
+MSAA: 
 >> Advanced rendering 
 Vertical sync: 
 << Back to options menu
