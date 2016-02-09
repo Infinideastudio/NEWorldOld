@@ -46,7 +46,7 @@ Vertical sync:
 << Back to options menu
 ============< Advanced rendering >============
 Enabled: 
-ShadowMap resolution: 
+Shadow map resolution: 
 Max shadow distance:
 << Back to render options
 ===============< GUI options >================
@@ -60,10 +60,10 @@ Delete this world
 >> Create a new world 
 << Back to main menu
 ================< Game menu >=================
-Resume game
+Continue game
 << Back to main menu
 ==============< Create a world >==============
-World name
+Input world name
 OK
 << Back to world menu
 ================< Languages >=================
