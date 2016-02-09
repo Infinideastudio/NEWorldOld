@@ -30,11 +30,11 @@ namespace Menus {
 					World::worldname = worldnametb.text;
 					gamebegin = true;
 				}
-				ExitSignal = true;
+				GUI::PopPage();
 			}
-			if (backbtn.clicked) ExitSignal = true;
+			if (backbtn.clicked) GUI::PopPage();
 			inputstr = "";
 		}
 	};
-	void createworldmenu() { CreateWorldMenu Menu; Menu.start(); }
+	void createworldmenu() { GUI::PushPage(new CreateWorldMenu); }
 }

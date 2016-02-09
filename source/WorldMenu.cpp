@@ -123,8 +123,8 @@ namespace Menus {
 			}
 			enterbtn.enabled = chosenWorldName != "";
 			deletebtn.enabled = chosenWorldName != "";
-			if (backbtn.clicked) ExitSignal = true;
-			if (gamebegin) ExitSignal = true;
+			if (backbtn.clicked) GUI::PopPage();
+			if (gamebegin) GUI::PopPage();
 		}
 		void onRender() {
 			glEnable(GL_SCISSOR_TEST);
@@ -213,5 +213,5 @@ namespace Menus {
 			glDisable(GL_SCISSOR_TEST);
 		}
 	};
-	void worldmenu() { WorldMenu Menu; Menu.start(); }
+	void worldmenu() { GUI::PushPage(new WorldMenu); }
 }

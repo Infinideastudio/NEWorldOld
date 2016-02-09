@@ -162,8 +162,11 @@ namespace GUI {
 		virtual void onLeaving() {}
 		virtual void onLeave() {}
 		Form();
-		void start();
 		void singleloop();
 		~Form();
 	};
+	void AppStart();
+	void PushPage(Form* View);
+	void PopPage();
+	void BackToMain();
 }

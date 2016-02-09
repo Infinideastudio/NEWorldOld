@@ -929,10 +929,11 @@ namespace GUI {
 	}
 
 	Form::Form() { Init(); Background = &drawBackground; }
-
+	GLFWcursor *Cursor;
 	void Form::singleloop() {
 		double dmx, dmy;
-		//if (reentry) { ExitSignal = true; }
+		Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
+		glfwSetCursor(MainWindow, Cursor);
 		mxl = mx; myl = my; mwl = mw; mbl = mb;
 		mb = getMouseButton();
 		mw = getMouseScroll();
@@ -945,27 +946,68 @@ namespace GUI {
 		glFinish();
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
-		if (ExitSignal) onLeaving();
-		if (glfwWindowShouldClose(MainWindow)) {
-			onLeave();
-			AppCleanUp();
-			exit(0);
-		}
 	}
-	void Form::start() {
-		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
+
+	struct PageOpRq
+	{
+		int Op; //1 is push ,2 is pop ,3 is back to main;
+		Form* Page;
+	};
+	std::deque<Form*> ViewStack;
+	std::deque<PageOpRq> ViewOps = {};
+
+	void PushPage(Form* View) {
+		ViewOps.push_back({ 1, View });
+	}
+
+	void PopPage() {
+		ViewOps.push_back({ 2, nullptr });
+	}
+
+	void BackToMain() {
+		ViewOps.push_back({ 3, nullptr });
+	}
+
+	void PopView() {
+		ViewStack[0]->onLeaving();
+		ViewStack[0]->onLeave();
+		delete ViewStack[0];
+		ViewStack[0] = nullptr;
+		ViewStack.pop_front();
+	}
+
+	void AppStart() {
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-		glfwSetCursor(MainWindow, Cursor);
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glDisable(GL_CULL_FACE);
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-		onLoad();
 		do {
-			singleloop();
-		} while (!ExitSignal);
-		onLeave();
+			if (ViewStack.size() > 0) ViewStack[0]->singleloop();
+			if (glfwWindowShouldClose(MainWindow)) {
+				while (ViewStack.size() > 0) PopView();
+				AppCleanUp();
+				exit(0);
+			}
+			//Process the op deque
+			for (std::deque<PageOpRq>::iterator i = ViewOps.begin(); i != ViewOps.end();  i++) {
+				switch (i->Op) {
+				case 1:
+					ViewStack.push_front(i->Page);
+					ViewStack[0]->onLoad();
+					break;
+				case 2:
+					PopView();
+					break;
+				case 3:
+					while (ViewStack.size() > 1) PopView();
+					break;
+				default:
+					break;//it should never reach here
+				}
+			}
+			ViewOps.clear();
+		} while (ViewStack.size() > 0);
 		glfwDestroyCursor(Cursor); //Added to fix the glitch
 	}
 	Form::~Form() { cleanup(); }
-
 }

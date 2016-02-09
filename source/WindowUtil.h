@@ -32,7 +32,6 @@ public:
 	FT_Face fontface;
 	FT_GlyphSlot slot;
 	UnicodeChar chars[65536];
-
 	float r, g, b, a;
 
 	Font();
