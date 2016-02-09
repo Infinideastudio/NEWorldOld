@@ -219,8 +219,7 @@ main_menu:
 		}
 
 	} while (!glfwWindowShouldClose(MainWindow));
-	saveGame();
-	Mod::ModLoader::unloadMods();
+	AppCleanUp();
 
 	updateThreadRun = false;
 	MutexUnlock(Mutex);
@@ -235,6 +234,13 @@ main_menu:
 	glfwTerminate();
 	return 0;
 	//This is the END of the program!
+}
+
+void AppCleanUp()
+{
+	World::saveAllChunks();
+	World::destroyAllChunks();
+	Mod::ModLoader::unloadMods();
 }
 
 ThreadFunc updateThreadFunc(void*) {
