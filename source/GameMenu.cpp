@@ -18,11 +18,7 @@ namespace Menus {
 			//Make update thread realize that it should pause
 			MutexLock(Mutex);
 			if (resumebtn.clicked) ExitSignal = true;
-			if (exitbtn.clicked) {
-				gameexit = ExitSignal = true;
-				World::saveAllChunks();
-				World::destroyAllChunks();
-			}
+			if (exitbtn.clicked) gameexit = ExitSignal = true;
 		}
 	};
 	void gamemenu() { GameMenu Menu; Menu.start(); }

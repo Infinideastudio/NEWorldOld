@@ -948,6 +948,7 @@ namespace GUI {
 		if (ExitSignal) onLeaving();
 		if (glfwWindowShouldClose(MainWindow)) {
 			onLeave();
+			AppCleanUp();
 			exit(0);
 		}
 	}
