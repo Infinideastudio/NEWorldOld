@@ -16,7 +16,7 @@
 const unsigned int VERSION = 39;
 const string MAJOR_VERSION = "Alpha 0.";
 const string MINOR_VERSION = "5";
-const string EXT_VERSION = " [In Development]";
+const string EXT_VERSION = " Technical Perview";
 const int defaultwindowwidth = 852; //默认窗口宽度
 const int defaultwindowheight = 480; //默认窗口高度
 const int networkRequestFrequency = 3; //请求频率
