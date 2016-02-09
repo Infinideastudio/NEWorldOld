@@ -11,8 +11,6 @@ namespace TextRenderer {
 	int gloop;
 	int ww, wh;
 	float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
-	unsigned int unicodeTex[256];
-	bool unicodeTexAval[256];
 	bool useUnicodeASCIIFont;
 
 	void BuildFont(int w, int h){
@@ -133,7 +131,6 @@ namespace TextRenderer {
 
 	void renderString(int x, int y, string glstring){
 		UnicodeChar c;
-		unsigned int i = 0;
 		int uc;
 		int span = 0;
 		double wid = pow(2, ceil(log2(32 * stretch)));
@@ -178,46 +175,9 @@ namespace TextRenderer {
 			UIVertex(c.xpos / stretch, 15 + c.height / stretch - c.ypos / stretch);
 			glEnd();
 
-			/*
-			tx = ((uc % 256) % 16) / 16.0;
-			ty = 1 - ((uc % 256) / 16) / 16.0;
-			glBindTexture(GL_TEXTURE_2D, ftex);
-			glBegin(GL_QUADS);
-				glColor4f(0.5, 0.5, 0.5, a);
-				glTexCoord2d(tx, ty);
-				glVertex2i(1, 1);
-				glTexCoord2d(tx + 0.0625, ty);
-				glVertex2i(17, 1);
-				glTexCoord2d(tx + 0.0625, ty - 0.0625);
-				glVertex2i(17, 17);
-				glTexCoord2d(tx, ty - 0.0625);
-				glVertex2i(1, 17);
-				glColor4f(r, g, b, a);
-				glTexCoord2d(tx, ty);
-				glVertex2i(0, 0);
-				glTexCoord2d(tx + 0.0625, ty);
-				glVertex2i(16, 0);
-				glTexCoord2d(tx + 0.0625, ty - 0.0625);
-				glVertex2i(16, 16);
-				glTexCoord2d(tx, ty - 0.0625);
-				glVertex2i(0, 16);
-			glEnd();
-			glTranslated(-x - 1 - span, -y - 1, 0);
-			*/
-
 			UITrans(-x - span, -y);
 			span += c.advance / stretch;
-
-			if (glstring[i] >= 0 && glstring[i] <= 127) i++;
-			else i += 2;
 		}
-		/*
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
-		glPopMatrix();
-		*/
-
 		glColor4f(1.0, 1.0, 1.0, 1.0);
 		free(wstr);
 	}
