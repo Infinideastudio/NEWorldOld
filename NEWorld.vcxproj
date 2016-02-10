@@ -282,6 +282,7 @@
     <ClInclude Include="source\Effect.h" />
     <ClInclude Include="source\ChunkRenderer.h" />
     <ClInclude Include="source\FunctionsKit.h" />
+    <ClInclude Include="source\GameView.h" />
     <ClInclude Include="source\GLProc.h" />
     <ClInclude Include="source\HeightMap.h" />
     <ClInclude Include="source\Definitions.h" />
@@ -329,6 +330,7 @@
     <ClCompile Include="source\Effect.cpp" />
     <ClCompile Include="source\FunctionsKit.cpp" />
     <ClCompile Include="source\GameMenu.cpp" />
+    <ClCompile Include="source\GameView.cpp" />
     <ClCompile Include="source\GLProc.cpp" />
     <ClCompile Include="source\GUIOptionsMenu.cpp" />
     <ClCompile Include="source\HeightMap.cpp" />

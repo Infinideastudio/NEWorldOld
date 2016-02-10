@@ -818,6 +818,7 @@ namespace World {
 			if (!chunks[i]->Empty) {
 				chunks[i]->destroyRender();
 				chunks[i]->destroy();
+				delete chunks[i];
 			}
 		}
 		free(chunks);
