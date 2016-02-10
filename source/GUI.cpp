@@ -970,10 +970,14 @@ namespace GUI {
 	}
 
 	void PopView() {
-		(*ViewStack.begin())->onLeaving();
 		(*ViewStack.begin())->onLeave();
 		delete ViewStack[0];
 		ViewStack.pop_front();
+	}
+
+	void ClearStack() {
+		ViewOps.push_back({ 4, nullptr });
+		HaveRequest = true;
 	}
 
 	void ProcessRequests() {	//Process the op deque
@@ -987,8 +991,14 @@ namespace GUI {
 				PopView();
 				break;
 			case 3:
-				while (ViewStack.size() > 1) PopView();
+				while (ViewStack.size() > 0) PopView();
+				ViewStack.push_front(GetMain());
+				(*ViewStack.begin())->onLoad();
 				break;
+			case 4:
+				while (ViewStack.size() > 0) PopView();
+				break;
+
 			}
 		}
 		ViewOps.clear();

@@ -29,7 +29,7 @@ namespace Menus {
 			if (okbtn.clicked) {
 				if (worldnametb.text != "") {
 					World::worldname = worldnametb.text;
-					GUI::BackToMain();
+					GUI::ClearStack();
 					GameView();
 				}
 				else {

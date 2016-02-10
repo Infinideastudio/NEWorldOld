@@ -69,7 +69,7 @@ namespace Menus {
 			}
 			if (enterbtn.clicked) {
 				World::worldname = chosenWorldName;
-				GUI::BackToMain();
+				GUI::ClearStack();
 				GameView();
 			}
 			if (deletebtn.clicked) {

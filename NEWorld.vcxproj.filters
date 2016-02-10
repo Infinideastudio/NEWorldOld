@@ -63,6 +63,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source\Common\BaseEngine">
+      <UniqueIdentifier>{514ad253-19e5-49bd-910a-f07db8e67836}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Object.h">
@@ -218,12 +221,13 @@
     <ClInclude Include="source\FunctionsKit.h">
       <Filter>Source\Common</Filter>
     </ClInclude>
-    <ClInclude Include="source\WindowUtil.h">
-      <Filter>Source\Common</Filter>
-    </ClInclude>
     <ClInclude Include="source\GameView.h">
       <Filter>Source\Game</Filter>
     </ClInclude>
+    <ClInclude Include="Foundation.h">
+      <Filter>Source\Common\BaseEngine</Filter>
+    </ClInclude>
+    <ClInclude Include="source\resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -370,11 +374,14 @@
     <ClCompile Include="source\WorldMenu.cpp">
       <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
-    <ClCompile Include="source\WindowUtil.cpp">
-      <Filter>Source\Common</Filter>
-    </ClCompile>
     <ClCompile Include="source\GameView.cpp">
       <Filter>Source\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Foundation.cpp">
+      <Filter>Source\Common\BaseEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Information.cpp">
+      <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -384,6 +391,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="source\Icon.ico">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="source\neworld.ico">
       <Filter>Resources</Filter>
     </Image>
   </ItemGroup>

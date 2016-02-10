@@ -112,11 +112,9 @@ namespace TextRenderer {
 	int getStrWidth(string s){
 		UnicodeChar c;
 		int uc, res = 0;
-		unsigned int i = 0;
 		wchar_t* wstr = nullptr;
-		MBToWC(s.c_str(), wstr, 128);
+		MBToWC(s.c_str(), wstr, s.length()+128);
 		for (unsigned int k = 0; k < wstrlen(wstr); k++){
-			if (s[i] >= 0 && s[i] <= 127) i++; else i += 2;
 			uc = wstr[k];
 			c = chars[uc];
 			if (!c.aval) {
@@ -135,13 +133,18 @@ namespace TextRenderer {
 		int span = 0;
 		double wid = pow(2, ceil(log2(32 * stretch)));
 		wchar_t* wstr = nullptr;
-		MBToWC(glstring.c_str(), wstr, 128);
+		MBToWC(glstring.c_str(), wstr, glstring.length()+128);
 
 		glEnable(GL_TEXTURE_2D);
 		for (unsigned int k = 0; k < wstrlen(wstr); k++) {
 
 			uc = wstr[k];
 			c = chars[uc];
+			if (uc == (int)'\n') {
+				UITrans(0, 20);
+				span = 0;
+				continue;
+			}
 			if (!c.aval) {
 				loadchar(uc);
 				c = chars[uc];

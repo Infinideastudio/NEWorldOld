@@ -41,6 +41,7 @@ namespace Menus {
 					GUI::PopPage();
 					if (Globalization::Cur_Lang != Langs[i].Symbol) {
 						Globalization::LoadLang(Langs[i].Symbol);
+						GUI::BackToMain();
 					}
 					break;
 				}

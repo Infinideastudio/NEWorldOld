@@ -5,7 +5,6 @@ namespace Globalization {
 	struct Line {
 		string str;
 		int id;
-		GLuint PerRender;
 	};
 	
 	extern int count;
