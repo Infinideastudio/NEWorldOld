@@ -826,7 +826,7 @@ namespace GUI {
 	}
 
 	void Form::render() {
-		Background();
+		if (Background) Background();
 
 		double TimeDelta = timer() - transitionTimer;
 		float transitionAnim = (float)(1.0 - pow(0.8, TimeDelta*60.0) + pow(0.8, 0.3*60.0) / 0.3 * TimeDelta);
@@ -862,7 +862,6 @@ namespace GUI {
 		onRender();
 		glEndList();
 		lastdisplaylist = displaylist;
-
 	}
 
 	label::label(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
@@ -938,9 +937,7 @@ namespace GUI {
 		mb = getMouseButton();
 		mw = getMouseScroll();
 		glfwGetCursorPos(MainWindow, &dmx, &dmy);
-		dmx /= stretch;
-		dmy /= stretch;
-		mx = (int)dmx, my = (int)dmy;
+		mx = (int)(dmx / stretch), my = (int)(dmy / stretch);
 		update();
 		render();
 		glFinish();
@@ -953,60 +950,66 @@ namespace GUI {
 		int Op; //1 is push ,2 is pop ,3 is back to main;
 		Form* Page;
 	};
+
 	std::deque<Form*> ViewStack;
 	std::deque<PageOpRq> ViewOps = {};
-
+	bool HaveRequest = false;
 	void PushPage(Form* View) {
 		ViewOps.push_back({ 1, View });
+		HaveRequest = true;
 	}
 
 	void PopPage() {
 		ViewOps.push_back({ 2, nullptr });
+		HaveRequest = true;
 	}
 
 	void BackToMain() {
 		ViewOps.push_back({ 3, nullptr });
+		HaveRequest = true;
 	}
 
 	void PopView() {
-		ViewStack[0]->onLeaving();
-		ViewStack[0]->onLeave();
+		(*ViewStack.begin())->onLeaving();
+		(*ViewStack.begin())->onLeave();
 		delete ViewStack[0];
-		ViewStack[0] = nullptr;
 		ViewStack.pop_front();
+	}
+
+	void ProcessRequests() {	//Process the op deque
+		for (std::deque<PageOpRq>::iterator i = ViewOps.begin(); i != ViewOps.end(); i++) {
+			switch (i->Op) {
+			case 1:
+				ViewStack.push_front(i->Page);
+				(*ViewStack.begin())->onLoad();
+				break;
+			case 2:
+				PopView();
+				break;
+			case 3:
+				while (ViewStack.size() > 1) PopView();
+				break;
+			}
+		}
+		ViewOps.clear();
+		HaveRequest = false;
 	}
 
 	void AppStart() {
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glDisable(GL_CULL_FACE);
+		ProcessRequests();
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-		do {
-			if (ViewStack.size() > 0) ViewStack[0]->singleloop();
+		while (ViewStack.size() > 0) {
+			(*ViewStack.begin())->singleloop();
 			if (glfwWindowShouldClose(MainWindow)) {
 				while (ViewStack.size() > 0) PopView();
 				AppCleanUp();
 				exit(0);
 			}
-			//Process the op deque
-			for (std::deque<PageOpRq>::iterator i = ViewOps.begin(); i != ViewOps.end();  i++) {
-				switch (i->Op) {
-				case 1:
-					ViewStack.push_front(i->Page);
-					ViewStack[0]->onLoad();
-					break;
-				case 2:
-					PopView();
-					break;
-				case 3:
-					while (ViewStack.size() > 1) PopView();
-					break;
-				default:
-					break;//it should never reach here
-				}
-			}
-			ViewOps.clear();
-		} while (ViewStack.size() > 0);
+			if (HaveRequest) ProcessRequests();
+		} 
 		glfwDestroyCursor(Cursor); //Added to fix the glitch
 	}
 	Form::~Form() { cleanup(); }

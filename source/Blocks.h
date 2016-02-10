@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "stdinclude.h"
+#include "Definitions.h"
 #include "Globalization.h"
 namespace Blocks {
 	enum BlockID {

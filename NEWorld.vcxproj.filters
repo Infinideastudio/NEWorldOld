@@ -221,6 +221,9 @@
     <ClInclude Include="source\WindowUtil.h">
       <Filter>Source\Common</Filter>
     </ClInclude>
+    <ClInclude Include="source\GameView.h">
+      <Filter>Source\Game</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -369,6 +372,9 @@
     </ClCompile>
     <ClCompile Include="source\WindowUtil.cpp">
       <Filter>Source\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GameView.cpp">
+      <Filter>Source\Game</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

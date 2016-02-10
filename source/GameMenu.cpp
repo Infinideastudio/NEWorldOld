@@ -1,6 +1,7 @@
 #include "Menus.h"
 #include "TextRenderer.h"
 #include "World.h"
+#include "Setup.h"
 
 namespace Menus {
 	class GameMenu :public GUI::Form {
@@ -8,6 +9,7 @@ namespace Menus {
 		GUI::label title;
 		GUI::button resumebtn, exitbtn;
 		void onLoad() {
+			glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			title = GUI::label(GetStrbyKey("NEWorld.pause.caption"), -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
 			resumebtn = GUI::button(GetStrbyKey("NEWorld.pause.continue"), -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
 			exitbtn = GUI::button(GetStrbyKey("NEWorld.pause.back"), -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
@@ -17,11 +19,22 @@ namespace Menus {
 			MutexUnlock(Mutex);
 			//Make update thread realize that it should pause
 			MutexLock(Mutex);
-			if (resumebtn.clicked) GUI::PopPage();
+			if (resumebtn.clicked) {
+				GUI::PopPage();
+				glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+				glDepthFunc(GL_LEQUAL);
+				glEnable(GL_CULL_FACE);
+				setupNormalFog();
+				double dmx, dmy;
+				glfwGetCursorPos(MainWindow, &dmx, &dmy);
+				mx = (int)(dmx / stretch), my = (int)(dmy / stretch);
+				updateThreadPaused = false;
+			}
 			if (exitbtn.clicked) {
-				gameexit = true;  GUI::PopPage();
+				GUI::BackToMain();
+				updateThreadPaused = false;
 			}
 		}
 	};
-	void gamemenu() { GUI::PushPage(new GameMenu); GUI::AppStart(); }
+	void gamemenu() { GUI::PushPage(new GameMenu);}
 }
