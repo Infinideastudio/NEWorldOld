@@ -265,6 +265,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Foundation.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Buffer.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\BufferCondition.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Core.h" />
@@ -303,6 +304,7 @@
     <ClInclude Include="source\Player.h" />
     <ClInclude Include="source\PlayerPacket.h" />
     <ClInclude Include="source\Renderer.h" />
+    <ClInclude Include="source\resource.h" />
     <ClInclude Include="source\Setup.h" />
     <ClInclude Include="source\Shader.h" />
     <ClInclude Include="source\ShadowMaps.h" />
@@ -310,12 +312,12 @@
     <ClInclude Include="source\TextRenderer.h" />
     <ClInclude Include="source\Textures.h" />
     <ClInclude Include="source\Typedefs.h" />
-    <ClInclude Include="source\WindowUtil.h" />
     <ClInclude Include="source\World.h" />
     <ClInclude Include="source\WorldGen.h" />
     <ClInclude Include="source\WorldRenderer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Foundation.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\Buffer.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\BufferCondition.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\Core.cpp" />
@@ -339,6 +341,7 @@
     <ClCompile Include="source\GUI.cpp" />
     <ClCompile Include="source\Hitbox.cpp" />
     <ClCompile Include="source\Globalization.cpp" />
+    <ClCompile Include="source\Information.cpp" />
     <ClCompile Include="source\Items.cpp" />
     <ClCompile Include="source\LanguageMenu.cpp" />
     <ClCompile Include="source\MainMenu.cpp" />
@@ -359,7 +362,6 @@
     <ClCompile Include="source\ShadowMaps.cpp" />
     <ClCompile Include="source\TextRenderer.cpp" />
     <ClCompile Include="source\Textures.cpp" />
-    <ClCompile Include="source\WindowUtil.cpp" />
     <ClCompile Include="source\World.cpp" />
     <ClCompile Include="source\WorldGen.cpp" />
     <ClCompile Include="source\WorldMenu.cpp" />
@@ -370,6 +372,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="source\Icon.ico" />
+    <Image Include="source\neworld.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

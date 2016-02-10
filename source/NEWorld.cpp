@@ -26,35 +26,23 @@
 #include "Setup.h"
 void loadOptions();
 void saveOptions();
-#if 0
-woca, 这样注释都行？！
-(这儿编译不过去的童鞋，你的FB编译器版本貌似和我的不一样，把这几行注释掉吧。。。)
-== == == == == == == == == == == == == == == == == == ==
-等等不对啊！！！明明都改成c++了。。。还说是FB。。。
-正常点的C++编译器都应该不会在这儿报错吧23333333
-#endif
 
 //==============================  Main Program  ================================//
 //==============================     主程序     ================================//
 
-int main() {
-	//终于进入main函数了！激动人心的一刻！！！
-
+void ApplicationBeforeLaunch() {
 #ifndef NEWORLD_USE_WINAPI
 	setlocale(LC_ALL, "zh_CN.UTF-8");
 #else
 	//提交OpenGL信息
-	{
-		std::ifstream postexe("Post.exe");
-		if (postexe.is_open()) {
-			postexe.close();
-			WinExec("Post.exe", SW_SHOWDEFAULT);
-			Sleep(3000);
-		}
-		else postexe.close();
+	std::ifstream postexe("Post.exe");
+	if (postexe.is_open()) {
+		postexe.close();
+		WinExec("Post.exe", SW_SHOWDEFAULT);
+		Sleep(3000);
 	}
+	else postexe.close();
 #endif
-
 	loadOptions();
 	Globalization::Load();
 
@@ -62,7 +50,15 @@ int main() {
 	_mkdir("Worlds");
 	_mkdir("Screenshots");
 	_mkdir("Mods");
+}
 
+void ApplicationAfterLaunch() {
+	loadTextures();
+	Mod::ModLoader::loadMods();
+}
+
+int main() {
+	ApplicationBeforeLaunch();
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
@@ -70,23 +66,23 @@ int main() {
 	setupScreen();
 	glDisable(GL_CULL_FACE);
 	splashScreen();
-	loadTextures();
+	ApplicationAfterLaunch();
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	Mod::ModLoader::loadMods();
 
 	glDisable(GL_LINE_SMOOTH);
 	GUI::clearTransition();
-	Menus::mainmenu();
+	//App Entrance
+	GUI::BackToMain();
+	GUI::AppStart();
 	//结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
 	//不对啊这不是FB！！！这是正宗的C++！！！！！！
 	//楼上的楼上在瞎说！！！别信他的！！！
 	//……所以你是不是应该说“吐槽C艹”中？——地鼠
 	glfwTerminate();
 	return 0;
-	//This is the END of the program!
 }
 
 void AppCleanUp()
