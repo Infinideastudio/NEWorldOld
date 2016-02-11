@@ -224,9 +224,6 @@
     <ClInclude Include="source\GameView.h">
       <Filter>Source\Game</Filter>
     </ClInclude>
-    <ClInclude Include="Foundation.h">
-      <Filter>Source\Common\BaseEngine</Filter>
-    </ClInclude>
     <ClInclude Include="source\resource.h" />
   </ItemGroup>
   <ItemGroup>
@@ -376,9 +373,6 @@
     </ClCompile>
     <ClCompile Include="source\GameView.cpp">
       <Filter>Source\Game</Filter>
-    </ClCompile>
-    <ClCompile Include="Foundation.cpp">
-      <Filter>Source\Common\BaseEngine</Filter>
     </ClCompile>
     <ClCompile Include="source\Information.cpp">
       <Filter>Source\GUI\Menus</Filter>
