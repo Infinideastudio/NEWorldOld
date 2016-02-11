@@ -265,7 +265,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Foundation.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Buffer.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\BufferCondition.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Core.h" />
@@ -317,7 +316,6 @@
     <ClInclude Include="source\WorldRenderer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Foundation.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\Buffer.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\BufferCondition.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\Core.cpp" />
