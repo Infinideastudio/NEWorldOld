@@ -172,6 +172,7 @@
       </PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
       <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>/libraries/OpenAL 1.1 SDK;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
