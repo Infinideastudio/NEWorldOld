@@ -1156,23 +1156,24 @@ public:
 			}
 			ss << "X:" << Player::xpos << " Y:" << Player::ypos << " Z:" << Player::zpos;
 			debugText(ss.str(), false); ss.str("");
-			ss << "Direction:" << Player::heading;
+			ss << "Direction:" << Player::heading << " Head:" << Player::lookupdown << "Jump speed:" << Player::jump;
 			debugText(ss.str(), false); ss.str("");
-			ss << "Head:" << Player::lookupdown;
-			debugText(ss.str(), false); ss.str("");
-			ss << "Jump speed:" << Player::jump;
-			debugText(ss.str(), false); 
-			
-			ss.str("Stats:");
 
+			ss << "Stats:";
 			if (Player::Flying) ss << " Flying";
 			if (Player::OnGround) ss << " On_ground";
 			if (Player::NearWall) ss << " Near_wall";
 			if (Player::inWater) ss << " In_water";
 			if (Player::CrossWall) ss << " Cross_Wall";
-			if (Player::Glide) ss << " Gliding";
+			if (Player::Glide) ss << " Gliding_enabled";
+			if (Player::glidingNow) ss << "Gliding";
 			debugText(ss.str(), false); ss.str("");
 			
+			ss << "Energy:" << Player::glidingEnergy;
+			debugText(ss.str(), false); ss.str("");
+			ss << "Speed:" << Player::glidingSpeed;
+			debugText(ss.str(), false); ss.str("");
+
 			int h = gametime / (30 * 60);
 			int m = gametime % (30 * 60) / 30;
 			int s = gametime % 30 * 2;
@@ -1181,13 +1182,6 @@ public:
 				<< (m < 10 ? "0" : "") << m << ":"
 				<< (s < 10 ? "0" : "") << s
 				<< " (" << gametime << "/" << gameTimeMax << ")";
-			debugText(ss.str(), false); ss.str("");
-
-			ss << "Gliding:" << boolstr(Player::glidingNow);
-			debugText(ss.str(), false); ss.str("");
-			ss << "Energy:" << Player::glidingEnergy;
-			debugText(ss.str(), false); ss.str("");
-			ss << "Speed:" << Player::glidingSpeed;
 			debugText(ss.str(), false); ss.str("");
 
 			ss << "load:" << World::loadedChunks << " unload:" << World::unloadedChunks 
@@ -1615,7 +1609,6 @@ public:
 		return false;
 	}
 
-
 	void onLoad() {
 		Background = nullptr;
 
@@ -1660,7 +1653,8 @@ public:
 		updateThreadRun = true;
 		fctime = uctime = lastupdate = timer();
 	}
-	void onUpdate() {//主循环，被简化成这样，惨不忍睹啊！
+
+	void onUpdate() {
 
 		MutexUnlock(Mutex);
 		MutexLock(Mutex);
@@ -1694,8 +1688,13 @@ public:
 		MutexDestroy(Mutex);
 		saveGame();
 		World::destroyAllChunks();
+		if (World::vbuffersShouldDelete.size() > 0) {
+			glDeleteBuffersARB(World::vbuffersShouldDelete.size(), World::vbuffersShouldDelete.data());
+			World::vbuffersShouldDelete.clear();
+		}
 		if (multiplayer) Network::cleanUp();
 		commands.clear();
+		chatMessages.clear();
 		GUI::BackToMain();
 	}
 };
