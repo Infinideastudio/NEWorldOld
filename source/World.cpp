@@ -34,20 +34,23 @@ namespace World {
 	int chunkBuildRenders, chunkLoads, chunkUnloads;
 	//bool* loadedChunkArray = nullptr; //Accelerate sortings
 
-	void Init(){
-		
+	void Init() {
+
 		std::stringstream ss;
 		ss << "Worlds/" << worldname << "/";
 		_mkdir(ss.str().c_str());
 		ss.clear(); ss.str("");
 		ss << "Worlds/" << worldname << "/chunks";
 		_mkdir(ss.str().c_str());
-		
+
 		//EmptyChunkPtr = new chunk(0, 0, 0, getChunkID(0, 0, 0));
 		//EmptyChunkPtr->Empty = true;
 		EmptyChunkPtr = (chunk*)~0;
-
-		WorldGen::perlinNoiseInit(3404);
+		//固定种子->随机种子
+		//WorldGen::perlinNoiseInit(3404);
+		//算了，保存还是不行
+		//WorldGen::perlinNoiseInit(GetTickCount());
+		WorldGen::perlinNoiseInit(20160219);
 		cpCachePtr = nullptr;
 		cpCacheID = 0;
 
@@ -58,10 +61,10 @@ namespace World {
 
 		HMap.setSize((viewdistance + 2) * 2 * 16);
 		HMap.create();
-		
+
 	}
 
-	inline pair<int,int> binary_search_chunks(chunk** target, int len, chunkid cid) {
+	inline pair<int, int> binary_search_chunks(chunk** target, int len, chunkid cid) {
 		//¶þ·Ö²éÕÒ,GO!
 		int first = 0;
 		int last = len - 1;
@@ -91,7 +94,7 @@ namespace World {
 		chunks[pos.first] = new chunk(x, y, z, cid);
 		cpCacheID = cid;
 		cpCachePtr = chunks[pos.first];
-		cpArray.AddChunk(chunks[pos.first],x,y,z);
+		cpArray.AddChunk(chunks[pos.first], x, y, z);
 		return chunks[pos.first];
 	}
 
@@ -123,7 +126,7 @@ namespace World {
 		return -1;
 	}
 
-	chunk* getChunkPtr(int x, int y, int z){
+	chunk* getChunkPtr(int x, int y, int z) {
 		chunkid cid = getChunkID(x, y, z);
 		if (cpCacheID == cid && cpCachePtr != nullptr) return cpCachePtr;
 		else {
@@ -133,7 +136,7 @@ namespace World {
 				cpCachePtr = ret;
 				return ret;
 			}
-			if (loadedChunks > 0){
+			if (loadedChunks > 0) {
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 				c_getChunkPtrFromSearch++;
 #endif
@@ -142,7 +145,7 @@ namespace World {
 					ret = chunks[pos.second];
 					cpCacheID = cid;
 					cpCachePtr = ret;
-					if (cpArray.elementExists(x - cpArray.originX, y - cpArray.originY, z - cpArray.originZ)){
+					if (cpArray.elementExists(x - cpArray.originX, y - cpArray.originY, z - cpArray.originZ)) {
 						cpArray.array[(x - cpArray.originX)*cpArray.size2 + (y - cpArray.originY)*cpArray.size + (z - cpArray.originZ)] = chunks[pos.second];
 					}
 					return ret;
@@ -197,7 +200,7 @@ namespace World {
 			y>0 ? chunkptr->getbrightness(x,y - 1,z) : getbrightness(gx,gy - 1,gz) };
 
 		size = 1 / 8.0f - EPS;
-		
+
 		if (NiceGrass && blk[0] == Blocks::GRASS && getblock(gx, gy - 1, gz + 1, Blocks::ROCK, chunkptr) == Blocks::GRASS) {
 			tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 			tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
@@ -669,7 +672,7 @@ namespace World {
 			}
 		}
 	}
-	
+
 	bool chunkUpdated(int x, int y, int z) {
 		chunk* i = getChunkPtr(x, y, z);
 		if (i == nullptr || i == EmptyChunkPtr) return false;
@@ -771,7 +774,7 @@ namespace World {
 						yd = cy * 16 + 7 - ypos;
 						zd = cz * 16 + 7 - zpos;
 						distsqr = xd*xd + yd*yd + zd*zd;
-						
+
 						first = 0; last = pu - 1;
 						while (first <= last) {
 							middle = (first + last) / 2;
@@ -818,7 +821,6 @@ namespace World {
 			if (!chunks[i]->Empty) {
 				chunks[i]->destroyRender();
 				chunks[i]->destroy();
-				delete chunks[i];
 			}
 		}
 		free(chunks);
@@ -847,10 +849,11 @@ namespace World {
 	}
 
 	void buildtree(int x, int y, int z) {
-
-		//block trblock = getblock(x, y, z), tublock = getblock(x, y - 1, z);
+		//废除原来的不科学的代码
+		/*
+		block trblock = getblock(x, y+1, z), tublock = getblock(x, y , z);
 		ubyte th = ubyte(rnd() * 3) + 4;
-		//if (trblock != Blocks::AIR || tublock != Blocks::GRASS) { return; }
+		if (trblock != Blocks::AIR || tublock != Blocks::GRASS) { return; }
 
 		for (ubyte yt = 0; yt != th; yt++) {
 			setblock(x, y + yt, z, Blocks::WOOD);
@@ -878,6 +881,96 @@ namespace World {
 
 	}
 
+
+	*/
+	//对生成条件进行更严格的检测
+		//一：正上方五格必须为空气
+		for (int i = y + 1; i < y + 6; i++)
+		{
+			if (getblock(x, i, z) != Blocks::AIR)return;
+		}
+		//二：周围五格不能有树
+		for (int ix = x - 4; ix < x + 4; ix++)
+		{
+			for (int iy = y - 4; iy < y + 4; iy++)
+			{
+				for (int iz = z - 4; iz < z + 4; iz++)
+				{
+					if (getblock(ix, iy, iz) == Blocks::WOOD || getblock(ix, iy, iz) == Blocks::LEAF)return;
+				}
+			}
+		}
+		//终于可以开始生成了
+			//设置泥土
+		setblock(x, y, z, Blocks::DIRT);
+		//设置树干
+		int h = 0;//高度
+		//测算泥土数量
+		int Dirt = 0;//泥土数
+		for (int ix = x - 4; ix < x + 4; ix++)
+		{
+			for (int iy = y - 4; iy < y; iy++)
+			{
+				for (int iz = z - 4; iz < z + 4; iz++)
+				{
+					if (getblock(ix, iy, iz) == Blocks::DIRT)Dirt++;
+				}
+			}
+		}
+		//测算最高高度
+		for (int i = y + 1; i < y + 16; i++)
+		{
+			if (getblock(x, i, z) == Blocks::AIR) { h++; }
+			else { break; };
+		}
+		//取最小值
+		h = min(h, Dirt * 15 / 268*max(rnd(),0.8));
+		if (h < 7)return;
+		//开始生成树干
+		for (int i = y + 1; i < y + h + 1; i++)
+		{
+			setblock(x, i, z, Blocks::WOOD);
+		}
+		//设置树叶及枝杈
+		//计算树叶起始生成高度
+		int leafh = int(double(h)*0.618)+1;//黄金分割比大法好！！！
+		int distancen2 = int(double((h-leafh+1)*(h - leafh+1))) + 1;
+		for (int iy = y + leafh; iy < y +int(double( h)*1.382)+2; iy++)
+		{
+			for (int ix = x - 6; ix < x + 6; ix++)
+			{
+				for (int iz = z - 6; iz < z + 6; iz++)
+				{
+					int distancen = Distancen(ix, iy, iz, x, y+leafh+1, z);
+					if ((getblock(ix, iy, iz) == Blocks::AIR) && (distancen <distancen2)) {
+						if ((distancen <= distancen2 / 9) && (rnd()>0.3))//生成枝杈
+						{
+							setblock(ix, iy, iz, Blocks::WOOD);
+						}
+						else//生成树叶
+						{
+							//鉴于残缺树叶的bug,不考虑树叶密度
+							/*
+							if (rnd() < (double)Dirt / 250.0)//树叶密度
+							{
+								setblock(ix, iy, iz, Blocks::LEAF);
+							}
+							*/
+							setblock(ix, iy, iz, Blocks::LEAF);
+						}
+					}
+				}
+			}
+		}
+
+		//调试数据
+		/*
+		char a[100];
+		sprintf_s(a, "buildtree: h:%d leafh:%d endh:%d distancen2:%d\n", h, leafh, int(double(h)*1.382) + 2,distancen2);
+		OutputDebugString(a);
+		*/
+	}
+
 	void explode(int x, int y, int z, int r, chunk* c) {
 		double maxdistsqr = r*r;
 		for (int fx = x - r - 1; fx < x + r + 1; fx++) {
@@ -887,7 +980,7 @@ namespace World {
 					if (distsqr <= maxdistsqr*0.75 ||
 						distsqr <= maxdistsqr && rnd() > (distsqr - maxdistsqr*0.6) / (maxdistsqr*0.4)) {
 						block e = World::getblock(fx, fy, fz);
-						if (e == Blocks::AIR) continue;
+						if ((e == Blocks::AIR)||(e==Blocks::BEDROCK)|| (e == Blocks::WATER) || (e == Blocks::LAVA)) continue;
 						for (int j = 1; j <= 12; j++) {
 							Particles::throwParticle(e,
 								float(fx + rnd() - 0.5f), float(fy + rnd() - 0.2f), float(fz + rnd() - 0.5f),
@@ -900,4 +993,5 @@ namespace World {
 			}
 		}
 	}
+
 }

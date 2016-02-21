@@ -35,13 +35,12 @@ namespace Menus {
 		}
 
 		void onUpdate() {
-			if (backbtn.clicked) GUI::PopPage();
+			if (backbtn.clicked) ExitSignal = true;
 			for (size_t i = 0; i < Langs.size(); i++) {
 				if (Langs[i].Button->clicked){
-					GUI::PopPage();
+					ExitSignal = true;
 					if (Globalization::Cur_Lang != Langs[i].Symbol) {
 						Globalization::LoadLang(Langs[i].Symbol);
-						GUI::BackToMain();
 					}
 					break;
 				}
@@ -59,5 +58,5 @@ namespace Menus {
 			}
 		}
 	};
-	void languagemenu() { GUI::PushPage(new Language); }
+	void languagemenu() { Language Menu; Menu.start(); }
 }

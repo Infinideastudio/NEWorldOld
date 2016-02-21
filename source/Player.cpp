@@ -41,6 +41,8 @@ short Player::inventoryAmount[4][10];
 
 double Player::glidingEnergy, Player::glidingSpeed;
 
+INT64 Player::t = 0;//自由落体用，先别删
+
 void InitHitbox(Hitbox::AABB& playerbox) {
 	playerbox.xmin = -0.3;
 	playerbox.xmax = 0.3;
@@ -87,6 +89,29 @@ void Player::spawn() {
 	health = healthMax;
 	memset(inventory, 0, sizeof(inventory));
 	memset(inventoryAmount, 0, sizeof(inventoryAmount));
+
+	//总得加点物品吧
+	for (size_t i = 0; i < 255; i++)
+	{
+		addItem(Blocks::ROCK);
+		addItem(Blocks::GRASS);
+		addItem(Blocks::DIRT);
+		addItem(Blocks::STONE);
+		addItem(Blocks::PLANK);
+		addItem(Blocks::WOOD);
+		//addItem(Blocks::BEDROCK);TMD这个是基岩
+		addItem(Blocks::LEAF);
+		addItem(Blocks::GLASS);
+		addItem(Blocks::WATER);
+		addItem(Blocks::LAVA);
+		addItem(Blocks::GLOWSTONE);
+		addItem(Blocks::SAND);
+		addItem(Blocks::CEMENT);
+		addItem(Blocks::ICE);
+		addItem(Blocks::COAL);
+		addItem(Blocks::IRON);
+		addItem(Blocks::TNT);
+	}
 }
 
 void Player::updatePosition() {
@@ -183,6 +208,8 @@ bool Player::save(string worldn) {
 	isave.write((char*)&gametime, sizeof(gametime));
 	isave.write((char*)inventory, sizeof(inventory));
 	isave.write((char*)inventoryAmount, sizeof(inventoryAmount));
+	//新增保存Seed
+	isave.write((char*)&g_seed,sizeof(g_seed));
 	isave.close();
 	return true;
 }
@@ -212,6 +239,8 @@ bool Player::load(string worldn) {
 	iload.read((char*)&gametime, sizeof(gametime));
 	iload.read((char*)inventory, sizeof(inventory));
 	iload.read((char*)inventoryAmount, sizeof(inventoryAmount));
+	//新增读取Seed
+	iload.read((char*)&g_seed, sizeof(g_seed));
 	iload.close();
 	return true;
 }

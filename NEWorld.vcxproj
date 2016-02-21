@@ -47,7 +47,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140_xp</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -107,6 +107,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <IncludePath>$(ProjectDir)include;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)libraries;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>$(ProjectDir)include;$(IncludePath)</IncludePath>
@@ -155,44 +156,48 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointModel>Precise</FloatingPointModel>
       <OmitFramePointers>true</OmitFramePointers>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
-      <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
       <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>/libraries/OpenAL 1.1 SDK;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <OpenMPSupport>true</OpenMPSupport>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib;OpenAL32.lib;EFX-Util.lib</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointModel>Precise</FloatingPointModel>
       <OmitFramePointers>false</OmitFramePointers>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
@@ -200,6 +205,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
+      <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -266,6 +272,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\AL\AL-EFX.h" />
+    <ClInclude Include="include\AL\ALDevice.h" />
+    <ClInclude Include="include\AL\aldlist.h" />
+    <ClInclude Include="include\AL\CWaves.h" />
+    <ClInclude Include="include\AL\Framework.h" />
+    <ClInclude Include="include\AL\LoadOAL.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Buffer.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\BufferCondition.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Core.h" />
@@ -274,6 +286,7 @@
     <ClInclude Include="include\Netycat\include\Netycat\Core\Socket.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Netycat.h" />
     <ClInclude Include="source\API.h" />
+    <ClInclude Include="source\AudioSystem.h" />
     <ClInclude Include="source\Blocks.h" />
     <ClInclude Include="source\ByteOrder.h" />
     <ClInclude Include="source\Chunk.h" />
@@ -283,7 +296,6 @@
     <ClInclude Include="source\Effect.h" />
     <ClInclude Include="source\ChunkRenderer.h" />
     <ClInclude Include="source\FunctionsKit.h" />
-    <ClInclude Include="source\GameView.h" />
     <ClInclude Include="source\GLProc.h" />
     <ClInclude Include="source\HeightMap.h" />
     <ClInclude Include="source\Definitions.h" />
@@ -304,7 +316,6 @@
     <ClInclude Include="source\Player.h" />
     <ClInclude Include="source\PlayerPacket.h" />
     <ClInclude Include="source\Renderer.h" />
-    <ClInclude Include="source\resource.h" />
     <ClInclude Include="source\Setup.h" />
     <ClInclude Include="source\Shader.h" />
     <ClInclude Include="source\ShadowMaps.h" />
@@ -317,6 +328,12 @@
     <ClInclude Include="source\WorldRenderer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="include\AL\AL-EFX.cpp" />
+    <ClCompile Include="include\AL\ALDevice.cpp" />
+    <ClCompile Include="include\AL\aldlist.cpp" />
+    <ClCompile Include="include\AL\CWaves.cpp" />
+    <ClCompile Include="include\AL\Framework.cpp" />
+    <ClCompile Include="include\AL\LoadOAL.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\Buffer.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\BufferCondition.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\Core.cpp" />
@@ -324,6 +341,7 @@
     <ClCompile Include="include\Netycat\src\Netycat\Core\InetAddress.cpp" />
     <ClCompile Include="include\Netycat\src\Netycat\Core\Socket.cpp" />
     <ClCompile Include="source\API.cpp" />
+    <ClCompile Include="source\AudioSystem.cpp" />
     <ClCompile Include="source\Chunk.cpp" />
     <ClCompile Include="source\ChunkPtrArray.cpp" />
     <ClCompile Include="source\ChunkRenderer.cpp" />
@@ -331,7 +349,6 @@
     <ClCompile Include="source\Effect.cpp" />
     <ClCompile Include="source\FunctionsKit.cpp" />
     <ClCompile Include="source\GameMenu.cpp" />
-    <ClCompile Include="source\GameView.cpp" />
     <ClCompile Include="source\GLProc.cpp" />
     <ClCompile Include="source\GUIOptionsMenu.cpp" />
     <ClCompile Include="source\HeightMap.cpp" />
@@ -340,7 +357,6 @@
     <ClCompile Include="source\GUI.cpp" />
     <ClCompile Include="source\Hitbox.cpp" />
     <ClCompile Include="source\Globalization.cpp" />
-    <ClCompile Include="source\Information.cpp" />
     <ClCompile Include="source\Items.cpp" />
     <ClCompile Include="source\LanguageMenu.cpp" />
     <ClCompile Include="source\MainMenu.cpp" />
@@ -371,7 +387,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="source\Icon.ico" />
-    <Image Include="source\neworld.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

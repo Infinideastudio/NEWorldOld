@@ -64,4 +64,5 @@ public:
 
 	static double glidingEnergy, glidingSpeed;
 
+	static INT64 t;//自由落体用，先别删
 };

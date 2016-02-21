@@ -98,6 +98,10 @@ inline double timer() {
 	QueryPerformanceCounter(&now);
 	return (double)now.QuadPart / counterFreq.QuadPart;
 }
+inline int Distancen(int ix,int iy,int iz, int x, int y, int z)//计算距离的平方
+{
+	return (ix - x)*(ix - x) + (iy - y)*(iy - y) + (iz - z)*(iz - z);
+}
 #else
 inline Mutex_t MutexCreate() { return new std::mutex; }
 inline void MutexDestroy(Mutex_t _hMutex) { delete _hMutex; }

@@ -2,6 +2,7 @@
 #include "Definitions.h"
 #include "Globalization.h"
 
+
 extern int getMouseButton();
 extern int getMouseScroll();
 inline string BoolYesNo(bool b) {
@@ -147,7 +148,7 @@ namespace GUI {
 		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, backspacep, backspacepl, updated;
 		int maxid, currentid, focusid, mx, my, mw, mb, mxl, myl, mwl, mbl;
 		unsigned int displaylist;
-		bool MouseOnTextbox;
+		bool ExitSignal, MouseOnTextbox;
 		void Init();
 		void registerControl(controls* c);
 		void registerControls(int count, controls* c, ...);
@@ -159,15 +160,11 @@ namespace GUI {
 		virtual void onUpdate() {}
 		UIVoidF Background;
 		virtual void onRender() {}
+		virtual void onLeaving() {}
 		virtual void onLeave() {}
 		Form();
+		void start();
 		void singleloop();
 		~Form();
 	};
-	void AppStart();
-	void PushPage(Form* View);
-	void PopPage();
-	void BackToMain();
-	void ClearStack();
-	Form* GetMain();
 }

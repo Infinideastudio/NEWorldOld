@@ -1,7 +1,6 @@
 #include "Menus.h"
 #include "World.h"
 #include "Textures.h"
-#include "GameView.h"
 #include "TextRenderer.h"
 
 namespace Menus {
@@ -69,8 +68,7 @@ namespace Menus {
 			}
 			if (enterbtn.clicked) {
 				World::worldname = chosenWorldName;
-				GUI::ClearStack();
-				GameView();
+				gamebegin = true;
 			}
 			if (deletebtn.clicked) {
 				//删除世界文件
@@ -125,7 +123,8 @@ namespace Menus {
 			}
 			enterbtn.enabled = chosenWorldName != "";
 			deletebtn.enabled = chosenWorldName != "";
-			if (backbtn.clicked) GUI::PopPage();
+			if (backbtn.clicked) ExitSignal = true;
+			if (gamebegin) ExitSignal = true;
 		}
 		void onRender() {
 			glEnable(GL_SCISSOR_TEST);
@@ -214,5 +213,5 @@ namespace Menus {
 			glDisable(GL_SCISSOR_TEST);
 		}
 	};
-	void worldmenu() { GUI::PushPage(new WorldMenu); }
+	void worldmenu() { WorldMenu Menu; Menu.start(); }
 }

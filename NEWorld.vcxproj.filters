@@ -63,8 +63,8 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source\Common\BaseEngine">
-      <UniqueIdentifier>{514ad253-19e5-49bd-910a-f07db8e67836}</UniqueIdentifier>
+    <Filter Include="OpenAL">
+      <UniqueIdentifier>{64b1bf43-f01a-41a5-a88e-2ea8f0ee494f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -221,10 +221,27 @@
     <ClInclude Include="source\FunctionsKit.h">
       <Filter>Source\Common</Filter>
     </ClInclude>
-    <ClInclude Include="source\GameView.h">
+    <ClInclude Include="include\AL\ALDevice.h">
+      <Filter>OpenAL</Filter>
+    </ClInclude>
+    <ClInclude Include="include\AL\aldlist.h">
+      <Filter>OpenAL</Filter>
+    </ClInclude>
+    <ClInclude Include="include\AL\CWaves.h">
+      <Filter>OpenAL</Filter>
+    </ClInclude>
+    <ClInclude Include="include\AL\LoadOAL.h">
+      <Filter>OpenAL</Filter>
+    </ClInclude>
+    <ClInclude Include="source\AudioSystem.h">
       <Filter>Source\Game</Filter>
     </ClInclude>
-    <ClInclude Include="source\resource.h" />
+    <ClInclude Include="include\AL\AL-EFX.h">
+      <Filter>OpenAL</Filter>
+    </ClInclude>
+    <ClInclude Include="include\AL\Framework.h">
+      <Filter>OpenAL</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -371,11 +388,26 @@
     <ClCompile Include="source\WorldMenu.cpp">
       <Filter>Source\GUI\Menus</Filter>
     </ClCompile>
-    <ClCompile Include="source\GameView.cpp">
+    <ClCompile Include="include\AL\ALDevice.cpp">
+      <Filter>OpenAL</Filter>
+    </ClCompile>
+    <ClCompile Include="include\AL\aldlist.cpp">
+      <Filter>OpenAL</Filter>
+    </ClCompile>
+    <ClCompile Include="include\AL\CWaves.cpp">
+      <Filter>OpenAL</Filter>
+    </ClCompile>
+    <ClCompile Include="include\AL\LoadOAL.cpp">
+      <Filter>OpenAL</Filter>
+    </ClCompile>
+    <ClCompile Include="source\AudioSystem.cpp">
       <Filter>Source\Game</Filter>
     </ClCompile>
-    <ClCompile Include="source\Information.cpp">
-      <Filter>Source\GUI\Menus</Filter>
+    <ClCompile Include="include\AL\AL-EFX.cpp">
+      <Filter>OpenAL</Filter>
+    </ClCompile>
+    <ClCompile Include="include\AL\Framework.cpp">
+      <Filter>OpenAL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -385,9 +417,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="source\Icon.ico">
-      <Filter>Resources</Filter>
-    </Image>
-    <Image Include="source\neworld.ico">
       <Filter>Resources</Filter>
     </Image>
   </ItemGroup>

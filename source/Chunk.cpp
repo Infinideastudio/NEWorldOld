@@ -187,15 +187,69 @@ namespace World {
 	}
 
 	void chunk::buildDetail() {
-		int index = 0;
-		for (int x = 0; x < 16; x++) {
-			for (int y = 0; y < 16; y++) {
+		bool build = true;
+		int ux = -6;
+		int uz = -6;
+		int Num = 0;
+		for (int y = 1; y < 16; y++) {//y=1是为了防止3*3判定越界
+									  //三：树的最佳生成高度：45，计算概率
+			if ((cy * 16 + y - 45)*(cy * 16 + y - 45) >= 9)continue;
+			for (int x = 0; x < 16; x++) {
 				for (int z = 0; z < 16; z++) {
-					//Tree
-					if (pblocks[index] == Blocks::GRASS && rnd() < 0.005) {
-						buildtree(cx * 16 + x, cy * 16 + y, cz * 16 + z);
+					ux = -6;
+					uz = -6;
+					build = true;
+					//判定树生成
+					//一：树之间的距离必须大于5
+					if ((x-ux)*(x - ux)+(z - uz)*(z - uz) <= 25)continue;
+					//二：生成的树地区必须要有泥土或草方块5*5(上)和3*3(下)
+					//5*5
+					for (size_t i = x-2; i < 3+x; i++)
+					{
+						for (size_t j = z-2; j < 3+z; j++)
+						{
+							if (i>=0 && j>=0 && i<16 && j<16)//判断越界
+							{
+								if (pblocks[i*256+y*16+j] != Blocks::GRASS || pblocks[i * 256 + y * 16 + j] != Blocks::DIRT)
+								{
+									build = false;
+									break;
+								}
+							}
+							else { break; }
+						}
+						if (!build)break;
 					}
-					index++;
+					if (!build)continue;
+					//3*3
+					for (size_t k = x - 1; k < 2 + x; k++)
+					{
+						for (size_t l = z - 1; l < 2 + z; l++)
+						{
+							if (k >= 0 && l >= 0 && k<16 && l<16)//判断越界
+							{
+								if (pblocks[k * 256 +( y-1) * 16 + l] != Blocks::GRASS || pblocks[k * 256 +( y-1) * 16 + l] != Blocks::DIRT)
+								{
+									build = false;
+									break;
+								}
+							}else { break; }
+						}
+						if (!build)break;
+					}
+					if (!build)continue;
+					//四：判定
+					if (pblocks[x * 256 + y * 16 + z]== Blocks::GRASS || pblocks[x * 256 + y * 16 + z] == Blocks::DIRT) {
+						if (rnd()*9.0>= (cy * 16 + y - 45)*(cy * 16 + y - 45))
+						{
+							buildtree(cx * 16 + x, cy * 16 + y, cz * 16 + z);
+							ux = x; 
+							uz = z;
+							Num++;
+							//五：一个区块最多有4颗树
+							if (Num > 3)return;
+						}
+					}
 				}
 			}
 		}
@@ -203,7 +257,9 @@ namespace World {
 
 	void chunk::build(bool initIfEmpty) {
 		buildTerrain(initIfEmpty);
-		//if (!Empty) buildDetail();
+		//树生成已开启
+		//OutputDebugString("tree!\n");
+		if (!Empty) buildDetail();
 	}
 
 	void chunk::Load(bool initIfEmpty) {

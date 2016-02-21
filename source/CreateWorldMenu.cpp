@@ -1,6 +1,5 @@
 #include "Menus.h"
 #include "World.h"
-#include "GameView.h"
 
 namespace Menus {
 	class CreateWorldMenu :public GUI::Form {
@@ -29,16 +28,13 @@ namespace Menus {
 			if (okbtn.clicked) {
 				if (worldnametb.text != "") {
 					World::worldname = worldnametb.text;
-					GUI::ClearStack();
-					GameView();
+					gamebegin = true;
 				}
-				else {
-					GUI::PopPage();
-				}
+				ExitSignal = true;
 			}
-			if (backbtn.clicked) GUI::PopPage();
+			if (backbtn.clicked) ExitSignal = true;
 			inputstr = "";
 		}
 	};
-	void createworldmenu() { GUI::PushPage(new CreateWorldMenu); }
+	void createworldmenu() { CreateWorldMenu Menu; Menu.start(); }
 }

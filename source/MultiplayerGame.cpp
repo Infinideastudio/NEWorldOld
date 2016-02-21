@@ -33,7 +33,7 @@ namespace Menus {
 				gamebegin = true;
 				multiplayer = true;
 			}
-			if (backbtn.clicked) GUI::PopPage();
+			if (backbtn.clicked) ExitSignal = true;
 			if (serveriptb.pressed && !serveripChanged) {
 				serveriptb.text = "";
 				serveripChanged = true;
@@ -43,5 +43,5 @@ namespace Menus {
 			inputstr = "";
 		}
 	};
-	void multiplayermenu() { GUI::PushPage(new MultiplayerMenu); }
+	void multiplayermenu() { MultiplayerMenu Menu; Menu.start(); }
 }

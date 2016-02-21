@@ -3,6 +3,7 @@
 #include "Globalization.h"
 using Globalization::GetStrbyKey;
 namespace Menus {
+	void mainmenu();
 	void options();
 	void Renderoptions();
 	void Shaderoptions();
@@ -12,5 +13,4 @@ namespace Menus {
 	void gamemenu();
 	void multiplayermenu();
 	void languagemenu();
-	void Information();
 }

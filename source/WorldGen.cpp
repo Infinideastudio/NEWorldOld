@@ -14,6 +14,13 @@ namespace WorldGen{
 		fastSrand(mapseed);
 		for (int i = 0; i < 256; i++){
 			perm[i] = rnd() * 256.0;
+			//极为科学的随机数算法大法好
+			//灵感来源自RSA算法
+			//D=7 E=31 P=7 Q=37 N=259
+			//UINT c = mapseed*256 + i+2;
+			//perm[i] = ((((((c*c*c) % 259)*c*c) % 259 *c*c) % 259 - 2) % 32768)/256.0;
+			//要种子有用的话这句就不用了
+			//perm[i] *= (GetTickCount() % 1000)*0.256;
 		}
 		seed = mapseed;
 	}

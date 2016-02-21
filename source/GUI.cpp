@@ -1,6 +1,8 @@
 #include "GUI.h"
 #include "TextRenderer.h"
 #include "Frustum.h"
+#include"AudioSystem.h"
+
 
 extern string inputstr;
 
@@ -273,6 +275,8 @@ namespace GUI {
 		clicked = (parent->mb == 0 && parent->mbl == 1 && mouseon || parent->enterpl && parent->enterp == false) && focused;
 		//clicked = lp&&!pressed
 
+		//µ¥»÷Éù
+		if (clicked)AudioSystem::ClickEvent();
 	}
 
 	void button::render() {
@@ -826,7 +830,7 @@ namespace GUI {
 	}
 
 	void Form::render() {
-		if (Background) Background();
+		Background();
 
 		double TimeDelta = timer() - transitionTimer;
 		float transitionAnim = (float)(1.0 - pow(0.8, TimeDelta*60.0) + pow(0.8, 0.3*60.0) / 0.3 * TimeDelta);
@@ -862,6 +866,7 @@ namespace GUI {
 		onRender();
 		glEndList();
 		lastdisplaylist = displaylist;
+
 	}
 
 	label::label(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
@@ -928,99 +933,42 @@ namespace GUI {
 	}
 
 	Form::Form() { Init(); Background = &drawBackground; }
-	GLFWcursor *Cursor;
+
 	void Form::singleloop() {
 		double dmx, dmy;
-		Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
-		glfwSetCursor(MainWindow, Cursor);
+		//if (reentry) { ExitSignal = true; }
 		mxl = mx; myl = my; mwl = mw; mbl = mb;
 		mb = getMouseButton();
 		mw = getMouseScroll();
 		glfwGetCursorPos(MainWindow, &dmx, &dmy);
-		mx = (int)(dmx / stretch), my = (int)(dmy / stretch);
+		dmx /= stretch;
+		dmy /= stretch;
+		mx = (int)dmx, my = (int)dmy;
 		update();
 		render();
 		glFinish();
 		glfwSwapBuffers(MainWindow);
 		glfwPollEvents();
-	}
-
-	struct PageOpRq
-	{
-		int Op; //1 is push ,2 is pop ,3 is back to main;
-		Form* Page;
-	};
-
-	std::deque<Form*> ViewStack;
-	std::deque<PageOpRq> ViewOps = {};
-	bool HaveRequest = false;
-	void PushPage(Form* View) {
-		ViewOps.push_back({ 1, View });
-		HaveRequest = true;
-	}
-
-	void PopPage() {
-		ViewOps.push_back({ 2, nullptr });
-		HaveRequest = true;
-	}
-
-	void BackToMain() {
-		ViewOps.push_back({ 3, nullptr });
-		HaveRequest = true;
-	}
-
-	void PopView() {
-		(*ViewStack.begin())->onLeave();
-		delete ViewStack[0];
-		ViewStack.pop_front();
-	}
-
-	void ClearStack() {
-		ViewOps.push_back({ 4, nullptr });
-		HaveRequest = true;
-	}
-
-	void ProcessRequests() {	//Process the op deque
-		for (std::deque<PageOpRq>::iterator i = ViewOps.begin(); i != ViewOps.end(); i++) {
-			switch (i->Op) {
-			case 1:
-				ViewStack.push_front(i->Page);
-				(*ViewStack.begin())->onLoad();
-				break;
-			case 2:
-				PopView();
-				break;
-			case 3:
-				while (ViewStack.size() > 0) PopView();
-				ViewStack.push_front(GetMain());
-				(*ViewStack.begin())->onLoad();
-				break;
-			case 4:
-				while (ViewStack.size() > 0) PopView();
-				break;
-
-			}
+		if (ExitSignal) onLeaving();
+		if (glfwWindowShouldClose(MainWindow)) {
+			onLeave();
+			exit(0);
 		}
-		ViewOps.clear();
-		HaveRequest = false;
 	}
-
-	void AppStart() {
+	void Form::start() {
+		GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		glfwSetCursor(MainWindow, Cursor);
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glDisable(GL_CULL_FACE);
-		ProcessRequests();
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-		while (ViewStack.size() > 0) {
-			(*ViewStack.begin())->singleloop();
-			if (glfwWindowShouldClose(MainWindow)) {
-				while (ViewStack.size() > 0) PopView();
-				AppCleanUp();
-				exit(0);
-			}
-			if (HaveRequest) ProcessRequests();
-		} 
+		onLoad();
+		do {
+			singleloop();
+		} while (!ExitSignal);
+		onLeave();
 		glfwDestroyCursor(Cursor); //Added to fix the glitch
 	}
 	Form::~Form() { cleanup(); }
+
 }
