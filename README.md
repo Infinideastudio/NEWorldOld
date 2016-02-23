@@ -9,3 +9,7 @@ There is a Visual Studio (2015) solution & project. You can also compile it with
 Paths and compiler options can be found in the VS project. (Normally, you can compile it without editing.)
 
 Welcome to develop with us!
+
+The newest updates are in the 0.5.0 branch!
+
+最新更新在0.5.0 branch!
