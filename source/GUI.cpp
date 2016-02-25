@@ -1,6 +1,7 @@
 #include "GUI.h"
 #include "TextRenderer.h"
 #include "Frustum.h"
+#include "AudioSystem.h"
 
 extern string inputstr;
 
@@ -272,6 +273,8 @@ namespace GUI {
 
 		clicked = (parent->mb == 0 && parent->mbl == 1 && mouseon || parent->enterpl && parent->enterp == false) && focused;
 		//clicked = lp&&!pressed
+  		//µ¥»÷Éù
+ 		if (clicked)AudioSystem::ClickEvent();  
 
 	}
 

@@ -21,6 +21,7 @@
 #include "Command.h"
 #include "ModLoader.h"
 #include "Setup.h"
+#include "AudioSystem.h"
 
 
 ThreadFunc updateThreadFunc(void*);
@@ -144,6 +145,10 @@ public:
 		static double Wprstm;
 		static bool WP;
 		//bool chunkupdated = false;
+		//用于音效更新 
+		
+		bool BlockClick=false; 
+		ALfloat BlockPos[3]; 
 
 		Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 		//生命值相关
@@ -246,6 +251,32 @@ public:
 				World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
 			}
 		}
+		
+			//起跳！ 
+ 		if (isPressed(GLFW_KEY_SPACE)) { 
+	 		if (!Player::inWater) { 
+ 			if ((Player::OnGround || Player::AirJumps < MaxAirJumps) && Player::Flying == false && Player::CrossWall == false) { 
+ 				if (Player::OnGround == false) { 
+ 					//这是个什么破速度 
+ 					Player::jump = 0.5; 
+ 					Player::AirJumps++; 
+ 				} 
+ 				else { 
+ 					Player::jump = 0.3; 
+ 					Player::OnGround = false; 
+ 				} 
+ 			} 
+ 			if (Player::Flying || Player::CrossWall) { 
+ 				Player::ya += walkspeed / 2; 
+ 				isPressed(GLFW_KEY_SPACE, true); 
+ 			} 
+ 			Wprstm = 0.0; 
+		} 
+ 		else { 
+ 			Player::ya = walkspeed; 
+ 			isPressed(GLFW_KEY_SPACE, true); 
+ 		} 
+ 	} 
 
 		//判断选中的方块
 		double lx, ly, lz, lxl, lyl, lzl;
@@ -311,6 +342,10 @@ public:
 							if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
 								Player::inventoryAmount[3][Player::indexInHand]--;
 								if (Player::inventoryAmount[3][Player::indexInHand] == 0) Player::inventory[3][Player::indexInHand] = Blocks::AIR;
+ 
+ 							BlockClick = true; 
+ 							BlockPos[0] = xl; BlockPos[1] = yl; BlockPos[2] = zl; 
+
 							}
 						}
 						else {
@@ -581,6 +616,37 @@ public:
 				}
 			}
 		}
+
+		//音效更新 
+	 	int Run = 0; 
+	 	if (WP)Run = Player::Running ? 2 : 1; 
+	 	ALfloat PlayerPos[3]; 
+	 	PlayerPos[0] = Player::xpos; 
+	 	PlayerPos[1] = Player::ypos; 
+	 	PlayerPos[2] = Player::zpos; 
+	 	bool Fall = Player::OnGround 
+	 		&& (!Player::inWater) 
+	 		&& (Player::jump == 0); 
+	 	//更新声速 
+	 	AudioSystem::SpeedOfSound = Player::inWater ? AudioSystem::Water_SpeedOfSound : AudioSystem::Air_SpeedOfSound; 
+	 	//更新环境 
+	 	if (Player::inWater) 
+	 	{ 
+	 		EFX::EAXprop = UnderWater; 
+	 	} 
+	 	else { 
+	 		if (Player::OnGround) 
+	 		{ 
+	 			EFX::EAXprop = Plain; 
+	 		} 
+	 		else { 
+	 			EFX::EAXprop = Generic; 
+	 		} 
+	 	} 
+	 	EFX::UpdateEAXprop(); 
+	 	AudioSystem::Update(PlayerPos, Fall, BlockClick, BlockPos, Run,Player::inWater); 
+
+
 
 		//爬墙
 		//if (Player::NearWall && Player::Flying == false && Player::CrossWall == false){
