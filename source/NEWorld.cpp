@@ -1,5 +1,5 @@
-//==============================   Initialize   ================================//
-//==============================³õÊ¼»¯(°üÀ¨ÉÁÆÁ)================================//
+ï»¿//==============================   Initialize   ================================//
+//==============================åˆå§‹åŒ–(åŒ…æ‹¬é—ªå±)================================//
 
 #include "Definitions.h"
 #include "Blocks.h"
@@ -24,20 +24,17 @@
 #include "Command.h"
 #include "ModLoader.h"
 #include "Setup.h"
-#include"AudioSystem.h" 
-#include<AL\AL-EFX.h> 
-
 void loadOptions();
 void saveOptions();
 
 //==============================  Main Program  ================================//
-//==============================     Ö÷³ÌĞò     ================================//
+//==============================     ä¸»ç¨‹åº     ================================//
 
 void ApplicationBeforeLaunch() {
 #ifndef NEWORLD_USE_WINAPI
 	setlocale(LC_ALL, "zh_CN.UTF-8");
 #else
-	//Ìá½»OpenGLĞÅÏ¢
+	//æäº¤OpenGLä¿¡æ¯
 	std::ifstream postexe("Post.exe");
 	if (postexe.is_open()) {
 		postexe.close();
@@ -53,9 +50,6 @@ void ApplicationBeforeLaunch() {
 	_mkdir("Worlds");
 	_mkdir("Screenshots");
 	_mkdir("Mods");
- 
-	//³õÊ¼»¯ÒôÆµÏµÍ³ 
-	AudioSystem::Init(); 
 }
 
 void ApplicationAfterLaunch() {
@@ -83,10 +77,10 @@ int main() {
 	//App Entrance
 	GUI::BackToMain();
 	GUI::AppStart();
-	//½áÊø³ÌĞò£¬É¾ÁËÒ²Ã»¹ØÏµ ¡û_¡û£¨ÍÂ²ÛFBºÍglfwÖĞ£©
-	//²»¶Ô°¡Õâ²»ÊÇFB£¡£¡£¡ÕâÊÇÕı×ÚµÄC++£¡£¡£¡£¡£¡£¡
-	//Â¥ÉÏµÄÂ¥ÉÏÔÚÏ¹Ëµ£¡£¡£¡±ğĞÅËûµÄ£¡£¡£¡
-	//¡­¡­ËùÒÔÄãÊÇ²»ÊÇÓ¦¸ÃËµ¡°ÍÂ²ÛCÜ³¡±ÖĞ£¿¡ª¡ªµØÊó
+	//ç»“æŸç¨‹åºï¼Œåˆ äº†ä¹Ÿæ²¡å…³ç³» â†_â†ï¼ˆåæ§½FBå’Œglfwä¸­ï¼‰
+	//ä¸å¯¹å•Šè¿™ä¸æ˜¯FBï¼ï¼ï¼è¿™æ˜¯æ­£å®—çš„C++ï¼ï¼ï¼ï¼ï¼ï¼
+	//æ¥¼ä¸Šçš„æ¥¼ä¸Šåœ¨çè¯´ï¼ï¼ï¼åˆ«ä¿¡ä»–çš„ï¼ï¼ï¼
+	//â€¦â€¦æ‰€ä»¥ä½ æ˜¯ä¸æ˜¯åº”è¯¥è¯´â€œåæ§½Cè‰¹â€ä¸­ï¼Ÿâ€”â€”åœ°é¼ 
 	glfwTerminate();
 	return 0;
 }

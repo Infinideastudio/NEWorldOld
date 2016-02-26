@@ -225,9 +225,6 @@
       <Filter>Source\Game</Filter>
     </ClInclude>
     <ClInclude Include="source\resource.h" />
-    <ClInclude Include="source\AudioSystem.h">
-      <Filter>Source\Common</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -379,9 +376,6 @@
     </ClCompile>
     <ClCompile Include="source\Information.cpp">
       <Filter>Source\GUI\Menus</Filter>
-    </ClCompile>
-    <ClCompile Include="source\AudioSystem.cpp">
-      <Filter>Source\Common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
