@@ -24,6 +24,7 @@
 #include "Command.h"
 #include "ModLoader.h"
 #include "Setup.h"
+#include"AudioSystem.h"
 void loadOptions();
 void saveOptions();
 
@@ -55,6 +56,8 @@ void ApplicationBeforeLaunch() {
 void ApplicationAfterLaunch() {
 	loadTextures();
 	Mod::ModLoader::loadMods();
+	//初始化音频系统
+	AudioSystem::Init();
 }
 
 int main() {
@@ -82,6 +85,8 @@ int main() {
 	//楼上的楼上在瞎说！！！别信他的！！！
 	//……所以你是不是应该说“吐槽C艹”中？——地鼠
 	glfwTerminate();
+	//反初始化音频系统
+	AudioSystem::UnInit();
 	return 0;
 }
 
