@@ -930,11 +930,8 @@ namespace GUI {
 	}
 
 	Form::Form() { Init(); Background = &drawBackground; }
-	GLFWcursor *Cursor;
 	void Form::singleloop() {
 		double dmx, dmy;
-		Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
-		glfwSetCursor(MainWindow, Cursor);
 		mxl = mx; myl = my; mwl = mw; mbl = mb;
 		mb = getMouseButton();
 		mw = getMouseScroll();
@@ -1015,14 +1012,12 @@ namespace GUI {
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 		while (ViewStack.size() > 0) {
 			(*ViewStack.begin())->singleloop();
+			if (HaveRequest) ProcessRequests();
 			if (glfwWindowShouldClose(MainWindow)) {
 				while (ViewStack.size() > 0) PopView();
-				AppCleanUp();
-				exit(0);
 			}
-			if (HaveRequest) ProcessRequests();
-		} 
-		glfwDestroyCursor(Cursor); //Added to fix the glitch
+		}
+		AppCleanUp();
 	}
 	Form::~Form() { cleanup(); }
 }
