@@ -21,6 +21,7 @@
 #include "Command.h"
 #include "ModLoader.h"
 #include "Setup.h"
+#include"AudioSystem.h"
 
 
 ThreadFunc updateThreadFunc(void*);
@@ -144,6 +145,10 @@ public:
 		static double Wprstm;
 		static bool WP;
 		//bool chunkupdated = false;
+
+		//用于音效更新
+		bool BlockClick = false;
+		ALfloat BlockPos[3];
 
 		Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 		//生命值相关
@@ -292,7 +297,12 @@ public:
 							float(rnd()*0.01f + 0.02f), int(rnd() * 30) + 30);
 
 						if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
-						else seldes += BlockInfo(selb).getHardness()*Player::gamemode == Player::Creative ? 2 : 1;
+						else { 
+							seldes += BlockInfo(selb).getHardness()*Player::gamemode == Player::Creative ? 2 : 1; 
+							BlockClick = true;
+							BlockPos[0] = x; BlockPos[1] = y; BlockPos[2] = z;
+						
+						}
 
 						if (seldes >= 100.0) {
 							Player::addItem(selb);
@@ -303,6 +313,8 @@ public:
 									float(rnd()*0.02 + 0.03), int(rnd() * 60) + 30);
 							}
 							World::pickblock(x, y, z);
+							BlockClick = true;
+							BlockPos[0] = x; BlockPos[1] = y; BlockPos[2] = z;
 						}
 					}
 					if (((mb == 2 && mbp == false) || (!chatmode&&isPressed(GLFW_KEY_TAB)))) { //鼠标右键
@@ -311,6 +323,9 @@ public:
 							if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
 								Player::inventoryAmount[3][Player::indexInHand]--;
 								if (Player::inventoryAmount[3][Player::indexInHand] == 0) Player::inventory[3][Player::indexInHand] = Blocks::AIR;
+
+								BlockClick = true;
+								BlockPos[0] = x; BlockPos[1] = y; BlockPos[2] = z;
 							}
 						}
 						else {
@@ -599,6 +614,37 @@ public:
 			E -= EDrop;
 			Player::ya += h - oldh;
 		}
+
+
+		//音效更新
+		int Run = 0;
+		if (WP)Run = Player::Running ? 2 : 1;
+		ALfloat PlayerPos[3];
+		PlayerPos[0] = Player::xpos;
+		PlayerPos[1] = Player::ypos;
+		PlayerPos[2] = Player::zpos;
+		bool Fall = Player::OnGround
+			&& (!Player::inWater)
+			&& (Player::jump == 0);
+		//更新声速
+		AudioSystem::SpeedOfSound = Player::inWater ? AudioSystem::Water_SpeedOfSound : AudioSystem::Air_SpeedOfSound;
+		//更新环境
+		if (Player::inWater)
+		{
+			EFX::EAXprop = UnderWater;
+		}
+		else {
+			if (Player::OnGround)
+			{
+				EFX::EAXprop = Plain;
+			}
+			else {
+				EFX::EAXprop = Generic;
+			}
+		}
+		EFX::UpdateEAXprop();
+		AudioSystem::Update(PlayerPos, Fall, BlockClick, BlockPos, Run, Player::inWater);
+
 
 		mbp = mb;
 		FirstFrameThisUpdate = true;
