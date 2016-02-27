@@ -112,3 +112,7 @@ inline unsigned int wstrlen(const wchar_t* wstr) { return wcslen(wstr); }
 inline void Sleep(unsigned int ms) { unsigned int fr = clock(); while (clock() - fr <= ms); }
 inline double timer() { return (double)clock() / CLOCKS_PER_SEC; }
 #endif
+inline int Distancen(int ix, int iy, int iz, int x, int y, int z)//计算距离的平方
+{
+	return (ix - x)*(ix - x) + (iy - y)*(iy - y) + (iz - z)*(iz - z);
+}
