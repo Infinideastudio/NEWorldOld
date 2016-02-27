@@ -847,35 +847,127 @@ namespace World {
 	}
 
 	void buildtree(int x, int y, int z) {
-
-		//block trblock = getblock(x, y, z), tublock = getblock(x, y - 1, z);
+		
+		//废除原来的不科学的代码
+		/*
+		block trblock = getblock(x, y+1, z), tublock = getblock(x, y , z);
 		ubyte th = ubyte(rnd() * 3) + 4;
-		//if (trblock != Blocks::AIR || tublock != Blocks::GRASS) { return; }
+		if (trblock != Blocks::AIR || tublock != Blocks::GRASS) { return; }
 
 		for (ubyte yt = 0; yt != th; yt++) {
-			setblock(x, y + yt, z, Blocks::WOOD);
+		setblock(x, y + yt, z, Blocks::WOOD);
 		}
 
 		setblock(x, y - 1, z, Blocks::DIRT);
 
 		for (ubyte xt = 0; xt != 5; xt++) {
-			for (ubyte zt = 0; zt != 5; zt++) {
-				for (ubyte yt = 0; yt != 2; yt++) {
-					if (getblock(x + xt - 2, y + th - 3 + yt, z + zt - 2) == Blocks::AIR) setblock(x + xt - 2, y + th - 3 + yt, z + zt - 2, Blocks::LEAF);
-				}
-			}
+		for (ubyte zt = 0; zt != 5; zt++) {
+		for (ubyte yt = 0; yt != 2; yt++) {
+		if (getblock(x + xt - 2, y + th - 3 + yt, z + zt - 2) == Blocks::AIR) setblock(x + xt - 2, y + th - 3 + yt, z + zt - 2, Blocks::LEAF);
+		}
+		}
 		}
 
 		for (ubyte xt = 0; xt != 3; xt++) {
-			for (ubyte zt = 0; zt != 3; zt++) {
-				for (ubyte yt = 0; yt != 2; yt++) {
-					if (getblock(x + xt - 1, y + th - 1 + yt, z + zt - 1) == Blocks::AIR && abs(xt - 1) != abs(zt - 1)) setblock(x + xt - 1, y + th - 1 + yt, z + zt - 1, Blocks::LEAF);
-				}
-			}
+		for (ubyte zt = 0; zt != 3; zt++) {
+		for (ubyte yt = 0; yt != 2; yt++) {
+		if (getblock(x + xt - 1, y + th - 1 + yt, z + zt - 1) == Blocks::AIR && abs(xt - 1) != abs(zt - 1)) setblock(x + xt - 1, y + th - 1 + yt, z + zt - 1, Blocks::LEAF);
+		}
+		}
 		}
 
 		setblock(x, y + th, z, Blocks::LEAF);
 
+		}
+
+
+		*/
+		//对生成条件进行更严格的检测
+		//一：正上方五格必须为空气
+		for (int i = y + 1; i < y + 6; i++)
+		{
+			if (getblock(x, i, z) != Blocks::AIR)return;
+		}
+		//二：周围五格不能有树
+		for (int ix = x - 4; ix < x + 4; ix++)
+		{
+			for (int iy = y - 4; iy < y + 4; iy++)
+			{
+				for (int iz = z - 4; iz < z + 4; iz++)
+				{
+					if (getblock(ix, iy, iz) == Blocks::WOOD || getblock(ix, iy, iz) == Blocks::LEAF)return;
+				}
+			}
+		}
+		//终于可以开始生成了
+		//设置泥土
+		setblock(x, y, z, Blocks::DIRT);
+		//设置树干
+		int h = 0;//高度
+				  //测算泥土数量
+		int Dirt = 0;//泥土数
+		for (int ix = x - 4; ix < x + 4; ix++)
+		{
+			for (int iy = y - 4; iy < y; iy++)
+			{
+				for (int iz = z - 4; iz < z + 4; iz++)
+				{
+					if (getblock(ix, iy, iz) == Blocks::DIRT)Dirt++;
+				}
+			}
+		}
+		//测算最高高度
+		for (int i = y + 1; i < y + 16; i++)
+		{
+			if (getblock(x, i, z) == Blocks::AIR) { h++; }
+			else { break; };
+		}
+		//取最小值
+		h = min(h, Dirt * 15 / 268 * max(rnd(), 0.8));
+		if (h < 7)return;
+		//开始生成树干
+		for (int i = y + 1; i < y + h + 1; i++)
+		{
+			setblock(x, i, z, Blocks::WOOD);
+		}
+		//设置树叶及枝杈
+		//计算树叶起始生成高度
+		int leafh = int(double(h)*0.618) + 1;//黄金分割比大法好！！！
+		int distancen2 = int(double((h - leafh + 1)*(h - leafh + 1))) + 1;
+		for (int iy = y + leafh; iy < y + int(double(h)*1.382) + 2; iy++)
+		{
+			for (int ix = x - 6; ix < x + 6; ix++)
+			{
+				for (int iz = z - 6; iz < z + 6; iz++)
+				{
+					int distancen = Distancen(ix, iy, iz, x, y + leafh + 1, z);
+					if ((getblock(ix, iy, iz) == Blocks::AIR) && (distancen <distancen2)) {
+						if ((distancen <= distancen2 / 9) && (rnd()>0.3))//生成枝杈
+						{
+							setblock(ix, iy, iz, Blocks::WOOD);
+						}
+						else//生成树叶
+						{
+							//鉴于残缺树叶的bug,不考虑树叶密度
+							/*
+							if (rnd() < (double)Dirt / 250.0)//树叶密度
+							{
+							setblock(ix, iy, iz, Blocks::LEAF);
+							}
+							*/
+							setblock(ix, iy, iz, Blocks::LEAF);
+						}
+					}
+				}
+			}
+		}
+
+		//调试数据
+		/*
+		char a[100];
+		sprintf_s(a, "buildtree: h:%d leafh:%d endh:%d distancen2:%d\n", h, leafh, int(double(h)*1.382) + 2,distancen2);
+		OutputDebugString(a);
+		*/
 	}
 
 	void explode(int x, int y, int z, int r, chunk* c) {

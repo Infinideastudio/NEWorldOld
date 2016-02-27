@@ -203,7 +203,7 @@ namespace World {
 
 	void chunk::build(bool initIfEmpty) {
 		buildTerrain(initIfEmpty);
-		//if (!Empty) buildDetail();
+		if (!Empty) buildDetail();
 	}
 
 	void chunk::Load(bool initIfEmpty) {
