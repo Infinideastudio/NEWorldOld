@@ -7,7 +7,7 @@ namespace Menus {
 	private:
 		GUI::label title;
 		GUI::trackbar FOVyBar, mmsBar, viewdistBar;
-		GUI::button rdstbtn, langbtn, gistbtn, backbtn, savebtn;
+		GUI::button rdstbtn, langbtn, gistbtn, backbtn, savebtn, sounbtn;
 		//GUI::button rdstbtn, gistbtn, backbtn, savebtn;
 		void onLoad() {
 			title = GUI::label(GetStrbyKey("NEWorld.options.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
@@ -17,9 +17,10 @@ namespace Menus {
 			rdstbtn = GUI::button(GetStrbyKey("NEWorld.options.rendermenu"), -250, -10, 204, 228, 0.5, 0.5, 0.0, 0.0);
 			gistbtn = GUI::button(GetStrbyKey("NEWorld.options.guimenu"), 10, 250, 204, 228, 0.5, 0.5, 0.0, 0.0);
 			langbtn = GUI::button(GetStrbyKey("NEWorld.options.languagemenu"), -250, -10, 240, 264, 0.5, 0.5, 0.0, 0.0);
+			sounbtn = GUI::button(string(">>Sound..."), 10, 250, 240, 264, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button(GetStrbyKey("NEWorld.options.back"), -250, -10, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			savebtn = GUI::button(GetStrbyKey("NEWorld.options.save"), 10, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-			registerControls(9, &title, &FOVyBar, &mmsBar, &viewdistBar, &rdstbtn, &gistbtn, &backbtn, &savebtn, &langbtn);
+			registerControls(10, &title, &FOVyBar, &mmsBar, &viewdistBar, &rdstbtn, &gistbtn, &backbtn, &savebtn, &langbtn,&sounbtn);
 			//registerControls(8, &title, &FOVyBar, &mmsBar, &viewdistBar, &rdstbtn, &gistbtn, &backbtn, &savebtn);
 		}
 		void onUpdate() {
@@ -39,6 +40,13 @@ namespace Menus {
 				backbtn.text = GetStrbyKey("NEWorld.options.back");
 				savebtn.text = GetStrbyKey("NEWorld.options.save");
 			}
+			if (sounbtn.clicked)Soundmenu();
+
+			AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
+			EFX::EAXprop = Generic;
+			EFX::UpdateEAXprop();
+			float Pos[] = { 0.0f,0.0f,0.0f };
+			AudioSystem::Update(Pos, false, false, Pos, false, false);
 			FOVyBar.text = strWithVar(GetStrbyKey("NEWorld.options.fov"), FOVyNormal);
 			mmsBar.text = strWithVar(GetStrbyKey("NEWorld.options.sensitivity"), mousemove);
 			viewdistBar.text = strWithVar(GetStrbyKey("NEWorld.options.distance"), viewdistance);

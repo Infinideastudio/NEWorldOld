@@ -69,6 +69,9 @@
     <Filter Include="Source\Common\OpenAL">
       <UniqueIdentifier>{756831cf-7167-4c1f-9d20-e33d38861d08}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Renderer\Shader">
+      <UniqueIdentifier>{033d1b67-aa91-4782-ac09-87d8bffaafd4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Object.h">
@@ -440,6 +443,9 @@
     <ClCompile Include="source\AudioSystem.cpp">
       <Filter>Source\Game</Filter>
     </ClCompile>
+    <ClCompile Include="source\SoundMenu.cpp">
+      <Filter>Source\GUI\Menus</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="source\resource.rc">
@@ -453,5 +459,25 @@
     <Image Include="source\neworld.ico">
       <Filter>Resources</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Depth.fsh">
+      <Filter>Source\Renderer\Shader</Filter>
+    </None>
+    <None Include="Shaders\Main.fsh">
+      <Filter>Source\Renderer\Shader</Filter>
+    </None>
+    <None Include="Shaders\Shadow.fsh">
+      <Filter>Source\Renderer\Shader</Filter>
+    </None>
+    <None Include="Shaders\Depth.vsh">
+      <Filter>Source\Renderer\Shader</Filter>
+    </None>
+    <None Include="Shaders\Main.vsh">
+      <Filter>Source\Renderer\Shader</Filter>
+    </None>
+    <None Include="Shaders\Shadow.vsh">
+      <Filter>Source\Renderer\Shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

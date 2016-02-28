@@ -41,6 +41,12 @@ namespace Menus {
 			mergefacebtn.text = GetStrbyKey("NEWorld.render.merge") + BoolEnabled(MergeFace);
 			msaabar.text = GetStrbyKey("NEWorld.render.multisample") + (Multisample != 0 ? ss.str() + "x" : BoolEnabled(false));
 			vsyncbtn.text = GetStrbyKey("NEWorld.render.vsync") + BoolEnabled(vsync);
+
+			AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
+			EFX::EAXprop = Generic;
+			EFX::UpdateEAXprop();
+			float Pos[] = { 0.0f,0.0f,0.0f };
+			AudioSystem::Update(Pos, false, false, Pos, false, false);
 		}
 	};
 	void Renderoptions() { GUI::PushPage(new RenderOptionsMenu); }

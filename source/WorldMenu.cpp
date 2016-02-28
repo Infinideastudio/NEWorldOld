@@ -34,6 +34,14 @@ namespace Menus {
 			vscroll.defaultv = true;
 		}
 		void onUpdate() {
+
+			AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
+			EFX::EAXprop = Generic;
+			EFX::UpdateEAXprop();
+			float Pos[] = { 0.0f,0.0f,0.0f };
+			AudioSystem::Update(Pos, false, false, Pos, false, false);
+
+
 			worldcount = (int)worldnames.size();
 			leftp = static_cast<int>(windowwidth / 2.0 / stretch - 250);
 			midp = static_cast<int>(windowwidth / 2.0 / stretch);
