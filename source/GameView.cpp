@@ -298,7 +298,7 @@ public:
 
 						if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
 						else { 
-							seldes += BlockInfo(selb).getHardness()*Player::gamemode == Player::Creative ? 2 : 1; 
+							seldes += BlockInfo(selb).getHardness()*((Player::gamemode == Player::Creative) ? 10.0f : 0.3f); 
 							BlockClick = true;
 							BlockPos[0] = x; BlockPos[1] = y; BlockPos[2] = z;
 						

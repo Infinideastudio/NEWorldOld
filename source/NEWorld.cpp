@@ -130,6 +130,8 @@ void loadOptions() {
 	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
 	loadoption(options, "ppistretch", ppistretch);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
+	loadoption(options, "GainOfBGM", AudioSystem::BGMGain);
+	loadoption(options, "GainOfSound", AudioSystem::SoundGain);
 }
 
 template<typename T>
@@ -157,5 +159,7 @@ void saveOptions() {
 	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
 	saveoption(fileout, "ppistretch", ppistretch);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
+	saveoption(fileout, "GainOfBGM", AudioSystem::BGMGain);
+	saveoption(fileout, "GainOfSound", AudioSystem::SoundGain);
 	fileout.close();
 }

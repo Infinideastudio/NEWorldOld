@@ -84,6 +84,7 @@ void main() {
 #else
 	vec4 texel = texture2D(Tex, gl_TexCoord[0].st);
 #endif
+
 	vec4 color = vec4(texel.rgb * shadow, texel.a) * gl_Color;
 	
 	//Fog calculation & Final color

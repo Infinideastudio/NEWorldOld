@@ -2,7 +2,7 @@
 namespace AudioSystem {
 	ALDevice Device;
 	//Gain
-	ALfloat BGMGain = 0.1f;//背景音乐
+	ALfloat BGMGain =0.1f;//背景音乐
 	ALfloat SoundGain = 0.17f;//音效
 	//Set
 	ALenum DopplerModel = AL_INVERSE_DISTANCE_CLAMPED;//设置OpenAL的距离模型
@@ -70,12 +70,12 @@ namespace AudioSystem {
 		alDistanceModel(DopplerModel);
 		alSpeedOfSound(SpeedOfSound);
 		//更新音量
-		if (SBGM != -1)alSourcei(SBGM,AL_GAIN,BGMGain);
-		if (SRun != -1)alSourcei(SRun, AL_GAIN, SoundGain);
-		if (SClick != -1)alSourcei(SClick, AL_GAIN, SoundGain);
-		if (SFall != -1)alSourcei(SFall, AL_GAIN, SoundGain);
-		if (SBlockClick != -1)alSourcei(SBlockClick, AL_GAIN, SoundGain);
-		if (SDownWater != -1)alSourcei(SDownWater, AL_GAIN, SoundGain);
+		if (SBGM != -1)alSourcef(SBGM,AL_GAIN,BGMGain);
+		if (SRun != -1)alSourcef(SRun, AL_GAIN, SoundGain);
+		if (SClick != -1)alSourcef(SClick, AL_GAIN, SoundGain);
+		if (SFall != -1)alSourcef(SFall, AL_GAIN, SoundGain);
+		if (SBlockClick != -1)alSourcef(SBlockClick, AL_GAIN, SoundGain);
+		if (SDownWater != -1)alSourcef(SDownWater, AL_GAIN, SoundGain);
 		//更新环境
 		if (SBGM != -1)EFX::set(SBGM);
 		if (SRun != -1)EFX::set(SRun);

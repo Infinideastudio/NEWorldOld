@@ -1,6 +1,7 @@
 #pragma once
 #include "GUI.h"
 #include "Globalization.h"
+#include"AudioSystem.h"
 using Globalization::GetStrbyKey;
 namespace Menus {
 	void options();
@@ -13,4 +14,5 @@ namespace Menus {
 	void multiplayermenu();
 	void languagemenu();
 	void Information();
+	void Soundmenu();
 }

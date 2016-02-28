@@ -385,6 +385,7 @@
     <ClCompile Include="source\Shader.cpp" />
     <ClCompile Include="source\ShaderOptionsMenu.cpp" />
     <ClCompile Include="source\ShadowMaps.cpp" />
+    <ClCompile Include="source\SoundMenu.cpp" />
     <ClCompile Include="source\TextRenderer.cpp" />
     <ClCompile Include="source\Textures.cpp" />
     <ClCompile Include="source\World.cpp" />
@@ -398,6 +399,22 @@
   <ItemGroup>
     <Image Include="source\Icon.ico" />
     <Image Include="source\neworld.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Depth.fsh" />
+    <None Include="Shaders\Main.fsh" />
+    <None Include="Shaders\Shadow.fsh" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Depth.vsh">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Shaders\Main.vsh">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Shaders\Shadow.vsh">
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
