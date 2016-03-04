@@ -87,6 +87,29 @@ void Player::spawn() {
 	health = healthMax;
 	memset(inventory, 0, sizeof(inventory));
 	memset(inventoryAmount, 0, sizeof(inventoryAmount));
+	
+	//总得加点物品吧
+	for (size_t i = 0; i < 255; i++)
+	{
+		addItem(Blocks::ROCK);
+		addItem(Blocks::GRASS);
+		addItem(Blocks::DIRT);
+		addItem(Blocks::STONE);
+		addItem(Blocks::PLANK);
+		addItem(Blocks::WOOD);
+		//addItem(Blocks::BEDROCK);TMD这个是基岩
+		addItem(Blocks::LEAF);
+		addItem(Blocks::GLASS);
+		addItem(Blocks::WATER);
+		addItem(Blocks::LAVA);
+		addItem(Blocks::GLOWSTONE);
+		addItem(Blocks::SAND);
+		addItem(Blocks::CEMENT);
+		addItem(Blocks::ICE);
+		addItem(Blocks::COAL);
+		addItem(Blocks::IRON);
+		addItem(Blocks::TNT);
+	}
 }
 
 void Player::updatePosition() {

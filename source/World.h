@@ -5,6 +5,8 @@
 #include "Chunk.h"
 #include "Hitbox.h"
 #include "Blocks.h"
+#include"Player.h"
+#include"Particles.h"
 
 extern int viewdistance;
 class Frsutum;
@@ -78,7 +80,31 @@ namespace World {
 	void setblock(int x, int y, int z, block Block, chunk* cptr = nullptr);
 	void setbrightness(int x, int y, int z, brightness Brightness, chunk* cptr = nullptr);
 	inline void putblock(int x, int y, int z, block Block) { setblock(x, y, z, Block); }
-	inline void pickblock(int x, int y, int z) { setblock(x, y, z, Blocks::AIR); }
+	inline void picktree(int x, int y, int z) {
+		Player::addItem(getblock(x, y, z));
+		for (int j = 1; j <= 25; j++) {
+			Particles::throwParticle(getblock(x, y, z),
+				float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
+				float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
+				float(rnd()*0.02 + 0.03), int(rnd() * 60) + 30);
+		}
+		setblock(x, y, z, Blocks::AIR);
+		//上
+		if ((getblock(x, y + 1, z) == Blocks::WOOD) || (getblock(x, y + 1, z) == Blocks::LEAF))picktree(x, y + 1, z);
+		//前
+		if ((getblock(x, y , z + 1) == Blocks::WOOD) || (getblock(x, y , z + 1) == Blocks::LEAF))picktree(x, y, z + 1); 
+		//后
+		if ((getblock(x, y, z - 1) == Blocks::WOOD) || (getblock(x, y, z - 1) == Blocks::LEAF))picktree(x, y, z - 1); 
+		//左
+		if ((getblock(x+1, y, z) == Blocks::WOOD) || (getblock(x+1, y, z) == Blocks::LEAF))picktree(x+1, y, z); 
+		//右
+		if ((getblock(x - 1, y, z) == Blocks::WOOD) || (getblock(x - 1, y, z) == Blocks::LEAF))picktree(x - 1, y, z);
+	}
+	inline void pickblock(int x, int y, int z) {
+		if (getblock(x, y, z) == Blocks::WOOD && ((getblock(x, y+1, z) == Blocks::WOOD)|| (getblock(x, y + 1, z) == Blocks::LEAF))) { picktree(x, y + 1, z); }//触发砍树模式
+		setblock(x, y, z, Blocks::AIR); 
+	}
+
 
 	inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
 		//检测给出的chunk坐标是否在渲染范围内
