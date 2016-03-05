@@ -1,4 +1,4 @@
-68
+72
 NEWorld.yes
 NEWorld.no
 NEWorld.enabled
@@ -33,6 +33,7 @@ NEWorld.options.distance
 NEWorld.options.rendermenu
 NEWorld.options.guimenu
 NEWorld.options.languagemenu
+NEWorld.options.soundmenu
 NEWorld.options.back
 NEWorld.options.save
 NEWorld.render.caption
@@ -67,3 +68,6 @@ NEWorld.create.ok
 NEWorld.create.back
 NEWorld.language.caption
 NEWorld.language.back
+NEWorld.Sound.caption
+NEWorld.Sound.MusicGain
+NEWorld.Sound.SoundGain

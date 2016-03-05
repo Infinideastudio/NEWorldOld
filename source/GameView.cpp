@@ -298,14 +298,18 @@ public:
 
 						if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
 						else { 
-							seldes += BlockInfo(selb).getHardness()*((Player::gamemode == Player::Creative) ? 10.0f : 0.3f); 
+							float Factor=1.0;
+							if (Player::inventory[3][Player::indexInHand] == STICK)Factor = 4;
+							else Factor = 30.0 / (BlockInfo(Player::inventory[3][Player::indexInHand]).getHardness() + 0.1);
+							if (Factor < 1.0)Factor = 1.0;
+							if (Factor > 1.7)Factor = 1.7;
+							seldes += BlockInfo(selb).getHardness()*((Player::gamemode == Player::Creative) ? 10.0f : 0.3f)*Factor; 
 							BlockClick = true;
 							BlockPos[0] = x; BlockPos[1] = y; BlockPos[2] = z;
 						
 						}
 
 						if (seldes >= 100.0) {
-							Player::addItem(selb);
 							for (int j = 1; j <= 25; j++) {
 								Particles::throwParticle(selb,
 									float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
@@ -330,7 +334,11 @@ public:
 						}
 						else {
 							//使用物品
-
+							if (Player::inventory[3][Player::indexInHand] == APPLE) {
+								Player::inventoryAmount[3][Player::indexInHand]--;
+								if (Player::inventoryAmount[3][Player::indexInHand] == 0) Player::inventory[3][Player::indexInHand] = Blocks::AIR;
+								Player::health = Player::healthMax;
+							}
 						}
 					}
 					break;
