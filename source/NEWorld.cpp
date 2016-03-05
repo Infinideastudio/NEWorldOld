@@ -32,6 +32,10 @@ void saveOptions();
 //==============================     主程序     ================================//
 
 void ApplicationBeforeLaunch() {
+#ifdef NEWORLD_X64
+	SetDllDirectoryA("");
+	SetDllDirectoryA("Dllx64");
+#endif
 #ifndef NEWORLD_USE_WINAPI
 	setlocale(LC_ALL, "zh_CN.UTF-8");
 #else
