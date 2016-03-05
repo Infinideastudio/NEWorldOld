@@ -4,12 +4,8 @@ NEWorld is an open-source game, its game rule is just like Minecraft.
 
 ---
 
-There is a Visual Studio (2015) solution & project. You can also compile it with any C++ compiler which supports the C++11 standards.
+*该Repository已经废弃！！！*请挪步至[https://github.com/Infinideastudio/NEWorld](https://github.com/Infinideastudio/NEWorld)，对此带来的不便敬请谅解
 
-Paths and compiler options can be found in the VS project. (Normally, you can compile it without editing.)
+*This Repository is stop updating*, to view new updates, go to [https://github.com/Infinideastudio/NEWorld](https://github.com/Infinideastudio/NEWorld)
 
-Welcome to develop with us!
-
-The newest updates are in the 0.5.0 branch!
-
-最新更新在0.5.0 branch!
+Sorry if it make worried to you.
