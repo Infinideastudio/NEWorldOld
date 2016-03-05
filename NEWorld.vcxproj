@@ -134,7 +134,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib;OpenAL32.lib;EFX-Util.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <SubSystem>Console</SubSystem>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
