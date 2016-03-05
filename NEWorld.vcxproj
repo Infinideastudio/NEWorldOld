@@ -208,7 +208,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>NEWORLD_GAME;NEWORLD_X64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NEWORLD_GAME;NEWORLD_X64;NEWORLD_RTRTR;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <FloatingPointExceptions>true</FloatingPointExceptions>
       <OpenMPSupport>true</OpenMPSupport>
@@ -301,6 +301,18 @@
     <ClInclude Include="include\Netycat\include\Netycat\Core\InetAddress.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Socket.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Netycat.h" />
+    <ClInclude Include="include\OptiX\optix.h" />
+    <ClInclude Include="include\OptiX\optix_cuda.h" />
+    <ClInclude Include="include\OptiX\optix_cuda_interop.h" />
+    <ClInclude Include="include\OptiX\optix_d3d10_interop.h" />
+    <ClInclude Include="include\OptiX\optix_d3d11_interop.h" />
+    <ClInclude Include="include\OptiX\optix_d3d9_interop.h" />
+    <ClInclude Include="include\OptiX\optix_device.h" />
+    <ClInclude Include="include\OptiX\optix_gl_interop.h" />
+    <ClInclude Include="include\OptiX\optix_host.h" />
+    <ClInclude Include="include\OptiX\optix_math.h" />
+    <ClInclude Include="include\OptiX\optix_sizet.h" />
+    <ClInclude Include="include\OptiX\optix_world.h" />
     <ClInclude Include="source\API.h" />
     <ClInclude Include="source\AudioSystem.h" />
     <ClInclude Include="source\Blocks.h" />
@@ -334,6 +346,7 @@
     <ClInclude Include="source\PlayerPacket.h" />
     <ClInclude Include="source\Renderer.h" />
     <ClInclude Include="source\resource.h" />
+    <ClInclude Include="source\RTDevice.h" />
     <ClInclude Include="source\Setup.h" />
     <ClInclude Include="source\Shader.h" />
     <ClInclude Include="source\ShadowMaps.h" />
@@ -391,6 +404,7 @@
     <ClCompile Include="source\Player.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="source\RenderOptionsMenu.cpp" />
+    <ClCompile Include="source\RTDevice.cpp" />
     <ClCompile Include="source\Setup.cpp" />
     <ClCompile Include="source\Shader.cpp" />
     <ClCompile Include="source\ShaderOptionsMenu.cpp" />

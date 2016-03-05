@@ -34,6 +34,7 @@ Render distance:
 >> Render options
 >> GUI options
 >> Select language
+>> Sound options
 << Back to main menu
 Save options
 =============< Render options >===============
@@ -68,3 +69,6 @@ OK
 << Back to world menu
 ================< Languages >=================
 << Back to options menu
+==================< Sound >===================
+MusicGain
+SoundGain

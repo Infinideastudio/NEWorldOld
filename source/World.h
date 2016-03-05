@@ -7,6 +7,7 @@
 #include "Blocks.h"
 #include"Player.h"
 #include"Particles.h"
+#include"Items.h"
 
 extern int viewdistance;
 class Frsutum;
@@ -80,9 +81,19 @@ namespace World {
 	void setblock(int x, int y, int z, block Block, chunk* cptr = nullptr);
 	void setbrightness(int x, int y, int z, brightness Brightness, chunk* cptr = nullptr);
 	inline void putblock(int x, int y, int z, block Block) { setblock(x, y, z, Block); }
+	inline void pickleaf(){
+		if (rnd() < 0.2) {
+			if (rnd() < 0.5)Player::addItem(APPLE);
+			else Player::addItem(STICK);
+		}
+		else {
+			Player::addItem(Blocks::LEAF);
+		}
+	}
 	inline void picktree(int x, int y, int z) {
-		Player::addItem(getblock(x, y, z));
-		for (int j = 1; j <= 25; j++) {
+		if (getblock(x, y, z) != Blocks::LEAF)Player::addItem(getblock(x, y, z));
+		else pickleaf();
+		for (int j = 1; j <=10; j++) {
 			Particles::throwParticle(getblock(x, y, z),
 				float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
 				float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f), float(rnd()*0.2f - 0.1f),
@@ -101,7 +112,16 @@ namespace World {
 		if ((getblock(x - 1, y, z) == Blocks::WOOD) || (getblock(x - 1, y, z) == Blocks::LEAF))picktree(x - 1, y, z);
 	}
 	inline void pickblock(int x, int y, int z) {
-		if (getblock(x, y, z) == Blocks::WOOD && ((getblock(x, y+1, z) == Blocks::WOOD)|| (getblock(x, y + 1, z) == Blocks::LEAF))) { picktree(x, y + 1, z); }//触发砍树模式
+		if (getblock(x, y, z) == Blocks::WOOD && 
+			((getblock(x, y+1, z) == Blocks::WOOD)|| (getblock(x, y + 1, z) == Blocks::LEAF)) &&
+			(getblock(x, y, z + 1) == Blocks::AIR) && (getblock(x, y, z - 1) == Blocks::AIR) &&
+			(getblock(x + 1, y, z) == Blocks::AIR) && (getblock(x - 1, y, z) == Blocks::AIR) &&
+			(getblock(x, y - 1, z) != Blocks::AIR)
+			) { picktree(x, y + 1, z); }//触发砍树模式
+		//击打树叶
+		if (getblock(x, y, z)!=Blocks::LEAF)Player::addItem(getblock(x, y, z));
+		else pickleaf();
+
 		setblock(x, y, z, Blocks::AIR); 
 	}
 
