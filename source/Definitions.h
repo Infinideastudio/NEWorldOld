@@ -105,22 +105,6 @@ extern double mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
 extern double mxdelta, mydelta;
 extern string inputstr;
-extern PFNGLGENBUFFERSARBPROC glGenBuffersARB;
-extern PFNGLBINDBUFFERARBPROC glBindBufferARB;
-extern PFNGLBUFFERDATAARBPROC glBufferDataARB;
-extern PFNGLDELETEBUFFERSARBPROC glDeleteBuffersARB;
-extern PFNGLCREATESHADEROBJECTARBPROC glCreateShaderObjectARB;
-extern PFNGLSHADERSOURCEARBPROC glShaderSourceARB;
-extern PFNGLCOMPILESHADERARBPROC glCompileShaderARB;
-extern PFNGLCREATEPROGRAMOBJECTARBPROC glCreateProgramObjectARB;
-extern PFNGLATTACHOBJECTARBPROC glAttachObjectARB;
-extern PFNGLLINKPROGRAMARBPROC glLinkProgramARB;
-extern PFNGLUSEPROGRAMOBJECTARBPROC glUseProgramObjectARB;
-extern PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB;
-extern PFNGLGETINFOLOGARBPROC glGetInfoLogARB;
-extern PFNGLDETACHOBJECTARBPROC glDetachObjectARB;
-extern PFNGLDELETEOBJECTARBPROC glDeleteObjectARB;
-extern PFNGLTEXIMAGE3DPROC glTexImage3D;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 extern int c_getChunkPtrFromCPA;
