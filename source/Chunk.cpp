@@ -10,40 +10,11 @@ namespace ChunkRenderer {
 
 namespace world{
 
-	void chunk::create(){
-		//assert(Empty == false);
-
-		pblocks = new block[4096];
-		pbrightness = new brightness[4096];
-		//memset(pblocks, 0, sizeof(pblocks));
-		//memset(pbrightness, 0, sizeof(pbrightness));
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-		if (pblocks == nullptr || pbrightness == nullptr){
-			DebugError("Allocate memory failed!");
-		}
-#endif
-	}
-
-	void chunk::destroy(){
-		delete[] pblocks;
-		delete[] pbrightness;
-		pblocks = nullptr;
-		pbrightness = nullptr;
-		updated = false;
-		unloadedChunks++;
-	}
-
-	void chunk::build() {
+	void chunk::build() 
+    {
 		//生成地形
-		//assert(Empty == false);
-		
 		int x, y, z, height, h = 0, sh = 0;
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-		if (pblocks == nullptr || pbrightness == nullptr) {
-			DebugWarning("Empty pointer when chunk generating!");
-			return;
-		}
-#endif
+
 		Empty = true;
 
 		if (cy > 8) {
@@ -105,38 +76,41 @@ namespace world{
 		
 	}
 
-	void chunk::Load() {
-		//assert(Empty == false);
-
-		create();
-#ifndef NEWORLD_DEBUG_NO_FILEIO
-		if (fileExist()) LoadFromFile();
-		else build();
-#else
-		build();
-#endif
-		if (!Empty) updated = true;
+	void chunk::Load()
+    {
+	    pblocks = new block[4096];
+		pbrightness = new brightness[4096];
+		if (fileExist()) 
+            LoadFromFile();
+		else 
+            build();
+		if (!Empty)
+            updated = true;
 	}
 
-	void chunk::Unload() {
+	void chunk::Unload() 
+    {
 		unloadedChunksCount++;
-#ifndef NEWORLD_DEBUG_NO_FILEIO
 		SaveToFile();
-#endif
 		destroyRender();
-		destroy();
+        delete[] pblocks;
+        delete[] pbrightness;
+        pblocks = nullptr;
+        pbrightness = nullptr;
+        updated = false;
+        unloadedChunks++;
 	}
 
-	void chunk::LoadFromFile() {
-		//assert(Empty == false);
-
+	void chunk::LoadFromFile()
+    {
 		std::ifstream file(getFileName().c_str(), std::ios::in | std::ios::binary);
 		file.read((char*)pblocks, 4096 * sizeof(block));
 		file.read((char*)pbrightness, 4096 * sizeof(brightness));
 		file.close();
 	}
 
-	void chunk::SaveToFile() {
+	void chunk::SaveToFile()
+    {
 		if (!Modified) return;
 		std::ofstream file(getFileName().c_str(), std::ios::out | std::ios::binary);
 		file.write((char*)pblocks, 4096 * sizeof(block));
@@ -144,15 +118,8 @@ namespace world{
 		file.close();
 	}
 
-	void chunk::buildRender() {
-		//assert(Empty == false);
-
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-		if (pblocks == nullptr || pbrightness == nullptr){
-			DebugWarning("Empty pointer when building vertex buffers!");
-			return;
-		}
-#endif
+	void chunk::buildRender()
+    {
 		//建立chunk显示列表
 		int x, y, z;
 		for (x = -1; x <= 1; x++) {
@@ -180,7 +147,8 @@ namespace world{
 
 	}
 
-	void chunk::destroyRender() {
+	void chunk::destroyRender()
+    {
 		if (!renderBuilt) return;
 		if (vbuffer[0] != 0) vbuffersShouldDelete.push_back(vbuffer[0]);
 		if (vbuffer[1] != 0) vbuffersShouldDelete.push_back(vbuffer[1]);
@@ -189,9 +157,8 @@ namespace world{
 		renderBuilt = false;
 	}
 
-	Hitbox::AABB chunk::getChunkAABB() {
-		//assert(Empty == false);
-
+	Hitbox::AABB chunk::getChunkAABB()
+    {
 		Hitbox::AABB ret;
 		ret.xmin = cx * 16 - 0.5;
 		ret.ymin = cy * 16 - loadAnim - 0.5;
@@ -202,9 +169,8 @@ namespace world{
 		return ret;
 	}
 
-	Hitbox::AABB chunk::getRelativeAABB(double& x, double& y, double& z) {
-		//assert(Empty == false);
-
+	Hitbox::AABB chunk::getRelativeAABB(double& x, double& y, double& z) 
+    {
 		Hitbox::AABB ret;
 		ret.xmin = cx * 16 - 0.5 - x;
 		ret.xmax = cx * 16 + 16 - 0.5 - x;
