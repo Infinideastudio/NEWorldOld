@@ -25,7 +25,7 @@ namespace world{
 	extern chunk* cpCachePtr;
 	extern chunkid cpCacheID;
 	extern HeightMap HMap;
-	extern chunkPtrArray cpArray;
+	extern ChunkArrayCache cpArray;
 
 	extern int cloud[128][128];
 	extern int rebuiltChunks, rebuiltChunksCount;

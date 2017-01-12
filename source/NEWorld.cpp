@@ -106,7 +106,7 @@ int main(){
 	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
 	std::stringstream title;
 	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
-	MainWindow = glfwCreateWindow(windowwidth, windowheight, title.str().c_str(), NULL, NULL);
+	MainWindow = glfwCreateWindow(windowwidth, windowheight, title.str().c_str(), nullptr, nullptr);
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwMakeContextCurrent(MainWindow);
 	InitGL();
@@ -138,7 +138,7 @@ main_menu:
 	
 	Mutex = MutexCreate();
 	MutexLock(Mutex);
-	updateThread = ThreadCreate(&updateThreadFunc, NULL);
+	updateThread = ThreadCreate(&updateThreadFunc, nullptr);
 
 	//初始化游戏状态
 	printf("[Console][Game]");
@@ -521,7 +521,7 @@ void updategame(){
 			c->Load();
 			if (c->Empty) {
 				c->Unload(); world::DeleteChunk(cx, cy, cz);
-				world::cpArray.setChunkPtr(cx, cy, cz, world::EmptyChunkPtr);
+				world::cpArray.set(world::EmptyChunkPtr, cx, cy, cz);
 			}
 		}
 		
