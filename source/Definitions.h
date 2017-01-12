@@ -128,11 +128,11 @@ inline double timer() { return (double)clock() / CLOCKS_PER_SEC; }
 #endif
 
 #ifdef NEWORLD_USE_WINAPI
-inline Mutex_t MutexCreate(){return CreateMutex(NULL, FALSE, "");}
+inline Mutex_t MutexCreate(){return CreateMutex(nullptr, FALSE, "");}
 inline void MutexDestroy(Mutex_t _hMutex){CloseHandle(_hMutex);}
 inline void MutexLock(Mutex_t _hMutex){WaitForSingleObject(_hMutex, INFINITE);}
 inline void MutexUnlock(Mutex_t _hMutex){ReleaseMutex(_hMutex);}
-inline Thread_t ThreadCreate(ThreadFunc_t func, void* param){return CreateThread(NULL, 0, func, param, 0, NULL);}
+inline Thread_t ThreadCreate(ThreadFunc_t func, void* param){return CreateThread(nullptr, 0, func, param, 0, nullptr);}
 inline void ThreadWait(Thread_t _hThread){WaitForSingleObject(_hThread, INFINITE);}
 inline void ThreadDestroy(Thread_t _hThread){CloseHandle(_hThread);}
 unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n);

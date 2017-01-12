@@ -971,6 +971,7 @@ namespace gui{
 		glDisable(GL_CULL_FACE);
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 		onLoad();
+        ExitSignal = false;
 		do {
 			mxl = mx; myl = my; mwl = mw; mbl = mb;
 			mb = getMouseButton();

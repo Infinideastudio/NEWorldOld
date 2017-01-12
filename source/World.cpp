@@ -22,7 +22,7 @@ namespace world {
 	int loadedChunks, chunkArraySize;
 	chunk* cpCachePtr = nullptr;
 	chunkid cpCacheID = 0;
-	chunkPtrArray cpArray;
+	ChunkArrayCache cpArray;
 	HeightMap HMap;
 	int cloud[128][128];
 	int rebuiltChunks, rebuiltChunksCount;
@@ -52,10 +52,7 @@ namespace world {
 		cpCachePtr = nullptr;
 		cpCacheID = 0;
 
-		cpArray.setSize((viewdistance + 2) * 2);
-		if (!cpArray.create()) {
-			DebugError("Chunk Pointer Array not avaliable because it couldn't be created.");
-		}
+        cpArray = ChunkArrayCache((viewdistance + 2) * 2);
 
 		HMap.setSize((viewdistance + 2) * 2 * 16);
 		HMap.create();
@@ -91,7 +88,7 @@ namespace world {
 		chunks[pos.first] = new chunk(x, y, z, cid);
 		cpCacheID = cid;
 		cpCachePtr = chunks[pos.first];
-		cpArray.AddChunk(chunks[pos.first],x,y,z);
+		cpArray.set(chunks[pos.first],x,y,z);
 		return chunks[pos.first];
 	}
 
@@ -105,7 +102,7 @@ namespace world {
 			cpCacheID = 0;
 			cpCachePtr = nullptr;
 		}
-		cpArray.DeleteChunk(x, y, z);
+		cpArray.erase(x, y, z);
 		chunks[loadedChunks - 1] = nullptr;
 		ReduceChunkArray(1);
 	}
@@ -127,7 +124,7 @@ namespace world {
 		chunkid cid = getChunkID(x, y, z);
 		if (cpCacheID == cid && cpCachePtr != nullptr) return cpCachePtr;
 		else {
-			chunk* ret = cpArray.getChunkPtr(x, y, z);
+			chunk* ret = cpArray.get(x, y, z);
 			if (ret != nullptr) {
 				cpCacheID = cid;
 				cpCachePtr = ret;
@@ -142,8 +139,8 @@ namespace world {
 					ret = chunks[pos.second];
 					cpCacheID = cid;
 					cpCachePtr = ret;
-					if (cpArray.elementExists(x - cpArray.originX, y - cpArray.originY, z - cpArray.originZ)){
-						cpArray.array[(x - cpArray.originX)*cpArray.size2 + (y - cpArray.originY)*cpArray.size + (z - cpArray.originZ)] = chunks[pos.second];
+					if (cpArray.exists(x - cpArray.originX, y - cpArray.originY, z - cpArray.originZ)){
+                        cpArray.set(chunks[pos.second], x, y, z);
 					}
 					return ret;
 				}
@@ -778,7 +775,7 @@ namespace world {
 			for (cy = cyp - viewdistance - 1; cy <= cyp + viewdistance; cy++) {
 				for (cz = czp - viewdistance - 1; cz <= czp + viewdistance; cz++) {
 					if (chunkOutOfBound(cx, cy, cz)) continue;
-					if (cpArray.getChunkPtr(cx, cy, cz) == nullptr) {
+					if (cpArray.get(cx, cy, cz) == nullptr) {
 						xd = cx * 16 + 7 - xpos;
 						yd = cy * 16 + 7 - ypos;
 						zd = cz * 16 + 7 - zpos;
@@ -832,7 +829,6 @@ namespace world {
 		chunks = nullptr;
 		loadedChunks = 0;
 		chunkArraySize = 0;
-		cpArray.destroy();
 		HMap.destroy();
 
 		rebuiltChunks = 0; rebuiltChunksCount = 0;

@@ -198,3 +198,4 @@ FakesAssemblies/
 # NEWorld saved world
 *.NEWorldPlayer
 *.NEWorldChunk
+/Textures
