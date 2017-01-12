@@ -1,16 +1,13 @@
 #pragma once
 #include "Definitions.h"
+#include "math/vector.h"
 
-namespace Hitbox {
-
-	struct AABB{
-		//Axis Aligned Bounding Box
-		double xmin;
-		double ymin;
-		double zmin;
-		double xmax;
-		double ymax;
-		double zmax;
+namespace Hitbox
+{
+    //Axis Aligned Bounding Box
+	struct AABB
+    {
+        Vec3d min, max;
 	};
 
 	extern AABB Emptybox;
@@ -29,5 +26,4 @@ namespace Hitbox {
 	AABB Expand(const AABB& box, double xe, double ye, double ze);
 	void Move(AABB &box, double xa, double ya, double za);
 	void MoveTo(AABB &box, double x, double y, double z);
-	void renderAABB(const AABB& box, float colR, float colG, float colB, int mode);
 }

@@ -4,6 +4,7 @@
 #include "HeightMap.h"
 #include "Chunk.h"
 #include "Hitbox.h"
+#include "math/vector.h"
 
 namespace world{
 
@@ -41,12 +42,7 @@ namespace world{
 
 	chunk* AddChunk(int x, int y, int z);
 	void DeleteChunk(int x, int y, int z);
-	inline chunkid getChunkID(int x, int y, int z) {
-		if (y == -128) y = 0; if (y <= 0) y = abs(y) + (1LL << 7);
-		if (x == -134217728) x = 0; if (x <= 0) x = abs(x) + (1LL << 27);
-		if (z == -134217728) z = 0; if (z <= 0) z = abs(z) + (1LL << 27);
-		return (chunkid(y) << 56) + (chunkid(x) << 28) + z;
-	}
+    constexpr size_t getChunkID(const Vec3i& t) noexcept { return static_cast<size_t>(t.x * 23947293731 + t.z * 3296467037 + t.y * 1234577); }
 	int getChunkPtrIndex(int x, int y, int z);
 	chunk* getChunkPtr(int x, int y, int z);
 	void ExpandChunkArray(int cc);

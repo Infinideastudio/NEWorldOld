@@ -44,8 +44,6 @@ namespace world {
 		ss << "md \"Worlds/" << worldname << "/chunks\"";
 		system(ss.str().c_str());
 
-		//EmptyChunkPtr = new chunk(0, 0, 0, getChunkID(0, 0, 0));
-		//EmptyChunkPtr->Empty = true;
 		EmptyChunkPtr = (chunk*)~0;
 
 		WorldGen::perlinNoiseInit(3404);
@@ -73,7 +71,7 @@ namespace world {
 
 	chunk* AddChunk(int x, int y, int z){
 		chunkid cid;
-		cid = getChunkID(x, y, z);                                                   //Chunk ID
+        cid = getChunkID({ x, y, z });                                                   //Chunk ID
 		pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
 		if (loadedChunks > 0 && chunks[pos.second]->id == cid) {
 			printf("[Console][Error]");
@@ -111,7 +109,7 @@ namespace world {
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		c_getChunkPtrFromSearch++;
 #endif
-		chunkid cid = getChunkID(x, y, z);
+        chunkid cid = getChunkID({ x, y, z });
 		pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
 		if (chunks[pos.second]->id == cid) return pos.second;
 #ifdef NEWORLD_DEBUG
@@ -120,8 +118,8 @@ namespace world {
 		return -1;
 	}
 
-	chunk* getChunkPtr(int x, int y, int z){
-		chunkid cid = getChunkID(x, y, z);
+    chunk* getChunkPtr(int x, int y, int z) {
+        chunkid cid = getChunkID({ x, y, z });
 		if (cpCacheID == cid && cpCachePtr != nullptr) return cpCachePtr;
 		else {
 			chunk* ret = cpArray.get(x, y, z);

@@ -502,9 +502,6 @@ void updategame(){
 		sumUnload = world::chunkUnloads > world::MaxChunkUnloads ? world::MaxChunkUnloads : world::chunkUnloads;
 		for (int i = 0; i < sumUnload; i++) {
 			world::chunk* cp = world::chunkUnloadList[i].first;
-#ifdef NEWORLD_DEBUG
-			if (cp == nullptr)DebugError("Unload error!");
-#endif
 			int cx = cp->cx, cy = cp->cy, cz = cp->cz;
 			cp->Unload();
 			world::DeleteChunk(cx, cy, cz);
@@ -1261,78 +1258,73 @@ void Render() {
 
 }
 
-void drawBorder(int x, int y, int z) {
-	//绘制选择边框，建议用GL_LINE_LOOP，别学我QAQ
-	static float extrize = 0.002f; //实际上这个边框应该比方块大一些，否则很难看
-	glEnable(GL_LINE_SMOOTH);
-	glLineWidth(1.0f);
-	glColor3f(0.2f, 0.2f, 0.2f);
-	// Top Face
-	glBegin(GL_LINES);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glEnd();
-	// Bottom Face
-	glBegin(GL_LINES);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glEnd();
-	// Left Face
-	glBegin(GL_LINES);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glEnd();
-	// Right Face
-	glBegin(GL_LINES);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glEnd();
-	// Front Face
-	glBegin(GL_LINES);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z);
-	glEnd();
-	// Back Face
-	glBegin(GL_LINES);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f(-(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glVertex3f((0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z);
-	glEnd();
+void drawBorder(int x, int y, int z) 
+{
+	constexpr float extrize = 0.002f; //实际上这个边框应该比方块大一些，否则很难看
+    float geomentry[] =
+    {
+	    // Top Face
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        // Bottom Face
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        // Left Face
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        // Right Face
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        // Front Face
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, (0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, (0.5f + extrize) + z,
+        // Back Face
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        -(0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, (0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        -(0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z,
+        (0.5f + extrize) + x, -(0.5f + extrize) + y, -(0.5f + extrize) + z
+    };
+    glEnable(GL_LINE_SMOOTH);
+    glLineWidth(1.0f);
+    glColor3f(0.2f, 0.2f, 0.2f);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_FLOAT, 0, geomentry);
+    glDrawArrays(GL_LINES, 0, 48);
+    glDisableClientState(GL_VERTEX_ARRAY);
 	glLineWidth(1);
 	glDisable(GL_LINE_SMOOTH);
 }
@@ -1487,17 +1479,6 @@ void drawGUI(){
 		debugText(ss.str()); ss.str("");
 		ss << world::updatedChunks << " chunks updated";
 		debugText(ss.str()); ss.str("");
-
-#ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-		ss << c_getChunkPtrFromCPA << " CPA requests";
-		debugText(ss.str()); ss.str("");
-		ss << c_getChunkPtrFromSearch << " search requests";
-		debugText(ss.str()); ss.str("");
-		ss << c_getHeightFromHMap << " heightmap requests";
-		debugText(ss.str()); ss.str("");
-		ss << c_getHeightFromWorldGen << " worldgen requests";
-		debugText(ss.str()); ss.str("");
-#endif
 		
 		debugText("", true);
 	}
@@ -1575,61 +1556,51 @@ void drawCloud(double px, double pz) {
 	//setupNormalFog();
 }
 
-void renderDestroy(float level, int x, int y, int z) {
+void renderDestroy(float level, int x, int y, int z)
+{
+    constexpr float ES = 0.002f;
 
-	//float colors
-	static float ES = 0.002f;
+    float geomentry[] =
+    {
+        0.0f, 0.0f,-(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z,
+        1.0f, 0.0f,(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z,
+        1.0f, 1.0f,(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z,
+        0.0f, 1.0f,-(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z,
 
-	glColor4f(1.0, 1.0, 1.0, 1.0);
+        1.0f, 0.0f,-(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z,
+        1.0f, 1.0f,-(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z,
+        0.0f, 1.0f,(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z,
+        0.0f, 0.0f,(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z,
 
-	if (level < 100.0) {
-		glBindTexture(GL_TEXTURE_2D, DestroyImage[int(level / 10) + 1]);
-	}
-	else {
-		glBindTexture(GL_TEXTURE_2D, DestroyImage[10]);
-	}
+        1.0f, 0.0f,(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z,
+        1.0f, 1.0f,(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z,
+        0.0f, 1.0f,(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z,
+        0.0f, 0.0f,(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z,
 
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glEnd();
+        0.0f, 0.0f,-(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z,
+        1.0f, 0.0f,-(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z,
+        1.0f, 1.0f,-(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z,
+        0.0f, 1.0f,-(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z,
 
-	glBegin(GL_QUADS);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glEnd();
+        0.0f, 1.0f,-(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z,
+        0.0f, 0.0f,-(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z,
+        1.0f, 0.0f,(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z,
+        1.0f, 1.0f,(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z,
 
-	glBegin(GL_QUADS);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + ES) + x, (0.5f + ES) + y, -(0.5f + ES) + z);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z);
-	glEnd();
+        1.0f, 1.0f,-(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z,
+        0.0f, 1.0f,(0.5f + ES) + x, -(0.5f + ES) + y, -(0.5f + ES) + z,
+        0.0f, 0.0f,(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z,
+        1.0f, 0.0f,-(0.5f + ES) + x, -(0.5f + ES) + y, (0.5f + ES) + z
+    };
+    glColor4f(1.0, 1.0, 1.0, 1.0);
+    glBindTexture(GL_TEXTURE_2D, DestroyImage[(level < 100.0) ? int(level / 10) + 1 : 10]);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, sizeof(float) * 5, geomentry);
+    glVertexPointer(3, GL_FLOAT, sizeof(float) * 5, geomentry + 2);
+    glDrawArrays(GL_QUADS, 0, 24);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 }
 
 void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha) {

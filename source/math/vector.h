@@ -13,7 +13,7 @@ constexpr T abs(T arg) noexcept
 template <size_t d, class T> union Vec;
 
 template <class T>
-union alignas(1) Vec<2, T> final
+union alignas(4) Vec<2, T> final
 {
     T data[2];
     struct { T x, y; };
@@ -116,7 +116,7 @@ union alignas(1) Vec<2, T> final
 };
 
 template <class T>
-union alignas(1) Vec<3, T> final
+union alignas(4) Vec<3, T> final
 {
     T data[3];
     struct { T x, y, z; };
@@ -238,7 +238,7 @@ union alignas(1) Vec<3, T> final
 };
 
 template <class T>
-union alignas(1) Vec<4, T> final
+union alignas(4) Vec<4, T> final
 {
     T data[4];
     struct { T x, y, z, t; };
