@@ -15,11 +15,10 @@ namespace world
     brightness BRIGHTNESSDEC = 1;     //Brightness decrease
     chunk *EmptyChunkPtr;
     unsigned int EmptyBuffer;
-    int MaxChunkLoads = 64;
-    int MaxChunkUnloads = 64;
-    int MaxChunkRenders = 64;
 
     chunk **chunks;
+    World mWorld;
+
     int loadedChunks, chunkArraySize;
     chunk *cpCachePtr = nullptr;
     chunkid cpCacheID = 0;
@@ -29,12 +28,20 @@ namespace world
     int rebuiltChunks, rebuiltChunksCount;
     int updatedChunks, updatedChunksCount;
     int unloadedChunks, unloadedChunksCount;
-    int chunkBuildRenderList[256][2];
-    int chunkLoadList[256][4];
-    pair<chunk *, int> chunkUnloadList[256];
+    OrderedList<int, Vec3i, MaxChunkLoads> chunkLoadList;
+    OrderedList<int, chunk*, MaxChunkRenders> chunkBuildRenderList;
+    OrderedList<int, chunk*, MaxChunkUnloads, std::greater> chunkUnloadList;
     vector<unsigned int> vbuffersShouldDelete;
-    int chunkBuildRenders, chunkLoads, chunkUnloads;
-    //bool* loadedChunkArray = nullptr; //Accelerate sortings
+
+    World::Iterator World::begin() noexcept
+    {
+        return chunks;
+    }
+
+    World::Iterator World::end() noexcept
+    {
+        return chunks + loadedChunks;
+    }
 
     void Init()
     {
@@ -134,9 +141,6 @@ namespace world
 
     int getChunkPtrIndex(int x, int y, int z)
     {
-#ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-        c_getChunkPtrFromSearch++;
-#endif
         chunkid cid = getChunkID({ x, y, z });
         pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
 
@@ -144,10 +148,6 @@ namespace world
         {
             return pos.second;
         }
-
-#ifdef NEWORLD_DEBUG
-        DebugError("getChunkPtrIndex Error!");
-#endif
         return -1;
     }
 
@@ -172,9 +172,6 @@ namespace world
 
             if (loadedChunks > 0)
             {
-#ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-                c_getChunkPtrFromSearch++;
-#endif
                 pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
 
                 if (chunks[pos.second]->id == cid)
@@ -1033,39 +1030,14 @@ namespace world
                 yd = cy * 16 + 7 - ypos;
                 zd = cz * 16 + 7 - zpos;
                 distsqr = xd * xd + yd * yd + zd * zd;
-
-                for (int i = 0; i < MaxChunkRenders; i++)
-                {
-                    if (distsqr < chunkBuildRenderList[i][0] || p <= i)
-                    {
-                        for (int j = MaxChunkRenders - 1; j >= i + 1; j--)
-                        {
-                            chunkBuildRenderList[j][0] = chunkBuildRenderList[j - 1][0];
-                            chunkBuildRenderList[j][1] = chunkBuildRenderList[j - 1][1];
-                        }
-
-                        chunkBuildRenderList[i][0] = distsqr;
-                        chunkBuildRenderList[i][1] = ci;
-                        break;
-                    }
-                }
-
-                if (p < MaxChunkRenders)
-                {
-                    p++;
-                }
+                chunkBuildRenderList.insert(distsqr, chunks[ci]);
             }
         }
-
-        chunkBuildRenders = p;
     }
 
     void sortChunkLoadUnloadList(int xpos, int ypos, int zpos)
     {
-
-        int cxp, cyp, czp, cx, cy, cz, pl = 0, pu = 0, i;
-        int xd, yd, zd, distsqr, first, middle, last;
-        //memset(loadedChunkArray, false, lcasize*lcasize*lcasize*sizeof(bool));
+        int cxp, cyp, czp, cx, cy, cz;
 
         cxp = getchunkpos(xpos);
         cyp = getchunkpos(ypos);
@@ -1076,146 +1048,29 @@ namespace world
             cx = chunks[ci]->cx;
             cy = chunks[ci]->cy;
             cz = chunks[ci]->cz;
-
             if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance + 1))
-            {
-                xd = cx * 16 + 7 - xpos;
-                yd = cy * 16 + 7 - ypos;
-                zd = cz * 16 + 7 - zpos;
-                distsqr = xd * xd + yd * yd + zd * zd;
-
-                first = 0;
-                last = pl - 1;
-
-                while (first <= last)
-                {
-                    middle = (first + last) / 2;
-
-                    if (distsqr > chunkUnloadList[middle].second)
-                    {
-                        last = middle - 1;
-                    }
-                    else
-                    {
-                        first = middle + 1;
-                    }
-                }
-
-                if (first > pl || first >= MaxChunkUnloads)
-                {
-                    continue;
-                }
-
-                i = first;
-
-                for (int j = MaxChunkUnloads - 1; j > i; j--)
-                {
-                    chunkUnloadList[j].first = chunkUnloadList[j - 1].first;
-                    chunkUnloadList[j].second = chunkUnloadList[j - 1].second;
-                }
-
-                chunkUnloadList[i].first = chunks[ci];
-                chunkUnloadList[i].second = distsqr;
-
-                if (pl < MaxChunkUnloads)
-                {
-                    pl++;
-                }
-            }
+                chunkUnloadList.insert((Vec3i{ cx + 7, cy + 7, cz + 7 } * 16 - Vec3i{xpos, ypos, zpos}).lengthSqr(), chunks[ci]);
         }
-
-        chunkUnloads = pl;
 
         for (cx = cxp - viewdistance - 1; cx <= cxp + viewdistance; cx++)
-        {
             for (cy = cyp - viewdistance - 1; cy <= cyp + viewdistance; cy++)
-            {
                 for (cz = czp - viewdistance - 1; cz <= czp + viewdistance; cz++)
-                {
-                    if (chunkOutOfBound(cx, cy, cz))
-                    {
-                        continue;
-                    }
+                    if (!chunkOutOfBound(cx, cy, cz) && (cpArray.get(cx, cy, cz) == nullptr))
+                        chunkLoadList.insert((Vec3i{ cx + 7, cy + 7, cz + 7 } *16 - Vec3i{ xpos, ypos, zpos }).lengthSqr(), Vec3i{ cx, cy, cz });
 
-                    if (cpArray.get(cx, cy, cz) == nullptr)
-                    {
-                        xd = cx * 16 + 7 - xpos;
-                        yd = cy * 16 + 7 - ypos;
-                        zd = cz * 16 + 7 - zpos;
-                        distsqr = xd * xd + yd * yd + zd * zd;
-
-                        first = 0;
-                        last = pu - 1;
-
-                        while (first <= last)
-                        {
-                            middle = (first + last) / 2;
-
-                            if (distsqr < chunkLoadList[middle][0])
-                            {
-                                last = middle - 1;
-                            }
-                            else
-                            {
-                                first = middle + 1;
-                            }
-                        }
-
-                        if (first > pu || first >= MaxChunkLoads)
-                        {
-                            continue;
-                        }
-
-                        i = first;
-
-                        for (int j = MaxChunkLoads - 1; j > i; j--)
-                        {
-                            chunkLoadList[j][0] = chunkLoadList[j - 1][0];
-                            chunkLoadList[j][1] = chunkLoadList[j - 1][1];
-                            chunkLoadList[j][2] = chunkLoadList[j - 1][2];
-                            chunkLoadList[j][3] = chunkLoadList[j - 1][3];
-                        }
-
-                        chunkLoadList[i][0] = distsqr;
-                        chunkLoadList[i][1] = cx;
-                        chunkLoadList[i][2] = cy;
-                        chunkLoadList[i][3] = cz;
-
-                        if (pu < MaxChunkLoads)
-                        {
-                            pu++;
-                        }
-                    }
-                }
-            }
-        }
-
-        chunkLoads = pu;
     }
 
     void saveAllChunks()
     {
-#ifndef NEWORLD_DEBUG_NO_FILEIO
-        int i;
-
-        for (i = 0; i != loadedChunks ; i++)
-        {
-            chunks[i]->SaveToFile();
-        }
-
-#endif
+        for (auto&& iter : mWorld)
+            iter->SaveToFile();
     }
 
     void destroyAllChunks()
     {
-
-        for (int i = 0; i != loadedChunks ; i++)
-        {
-            if (!chunks[i]->Empty)
-            {
-                chunks[i]->destroyRender();
-            }
-        }
+        for (auto&& iter : mWorld)
+            if (!iter->Empty)
+                iter->destroyRender();
 
         free(chunks);
         chunks = nullptr;
@@ -1229,12 +1084,6 @@ namespace world
         updatedChunksCount = 0;
         unloadedChunks = 0;
         unloadedChunksCount = 0;
-        memset(chunkBuildRenderList, 0, 256 * 2 * sizeof(int));
-        memset(chunkLoadList, 0, 256 * 4 * sizeof(int));
-        chunkBuildRenders = 0;
-        chunkLoads = 0;
-        chunkUnloads = 0;
-
     }
 
     void buildtree(int x, int y, int z)

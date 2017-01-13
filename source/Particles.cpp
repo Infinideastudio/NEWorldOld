@@ -6,15 +6,11 @@
 
 namespace particles
 {
-    vector<particle> ptcs;
-    int ptcsrendered;
+    vector<Particle> ptcs;
     double pxpos, pypos, pzpos;
 
-    void update(particle &ptc)
+    void update(Particle &ptc)
     {
-
-        //if (ptc.lasts < 30) ptc.psize *= 0.9f;
-
         double dx, dy, dz;
         float psz = ptc.psize;
 
@@ -30,27 +26,20 @@ namespace particles
         dz = ptc.zsp;
 
         vector<Hitbox::AABB> Hitboxes = world::getHitboxes(ptc.hb.Expand(dx, dy, dz));
-        int hitnum = Hitboxes.size();
-
-        for (int i = 0; i < hitnum; i++)
-        {
-            dy = Hitbox::maxMoveOnYclip(ptc.hb, Hitboxes[i], dy);
-        }
+       
+        for (const auto& box : Hitboxes)
+            dy = Hitbox::maxMoveOnYclip(ptc.hb, box, dy);
 
         ptc.hb.Move(0.0, dy, 0.0);
 
-        for (int i = 0; i < hitnum; i++)
-        {
-            dx = Hitbox::maxMoveOnXclip(ptc.hb, Hitboxes[i], dx);
-        }
+        for (const auto& box : Hitboxes)
+            dx = Hitbox::maxMoveOnXclip(ptc.hb, box, dx);
 
         ptc.hb.Move(dx, 0.0, 0.0);
 
-        for (int i = 0; i < hitnum; i++)
-        {
-            dz = Hitbox::maxMoveOnZclip(ptc.hb, Hitboxes[i], dz);
-        }
-
+        for (const auto& box : Hitboxes)
+            dz = Hitbox::maxMoveOnZclip(ptc.hb, box, dz);
+        
         ptc.hb.Move(0.0, 0.0, dz);
 
         ptc.xpos += dx;
@@ -70,31 +59,18 @@ namespace particles
 
     void updateall()
     {
-        for (vector<particle>::iterator iter = ptcs.begin(); iter < ptcs.end();)
+        for (auto iter = ptcs.begin(); iter < ptcs.end();)
         {
-            if (!iter->exist)
-            {
-                continue;
-            }
-
             update(*iter);
-
             if (iter->lasts <= 0)
-            {
-                iter->exist = false;
                 iter = ptcs.erase(iter);
-            }
             else
-            {
-                iter++;
-            }
+                ++iter;
         }
     }
 
-    void render(particle &ptc)
+    void render(Particle &ptc)
     {
-        //if (!Frustum::aabbInFrustum(ptc.hb)) return
-        ptcsrendered++;
         float size = (float)BLOCKTEXTURE_UNITSIZE / BLOCKTEXTURE_SIZE * ptc.psize;
         float col = world::getbrightness(RoundInt(ptc.xpos), RoundInt(ptc.ypos), RoundInt(ptc.zpos)) / (float)world::BRIGHTNESSMAX;
         float col1 = col * 0.5f;
@@ -175,8 +151,6 @@ namespace particles
         pxpos = xpos;
         pypos = ypos;
         pzpos = zpos;
-        ptcsrendered = 0;
-
         for (unsigned int i = 0; i != ptcs.size(); i++)
         {
             if (!ptcs[i].exist)
@@ -192,7 +166,7 @@ namespace particles
     {
         float tcX1 = (float)Textures::getTexcoordX(pt, 2);
         float tcY1 = (float)Textures::getTexcoordY(pt, 2);
-        particle ptc;
+        Particle ptc;
         ptc.exist = true;
         ptc.xpos = x;
         ptc.ypos = y;

@@ -609,61 +609,50 @@ void updategame()
         world::sortChunkLoadUnloadList(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos));
 
         //卸载区块(Unload chunks)
-        int sumUnload;
-        sumUnload = world::chunkUnloads > world::MaxChunkUnloads ? world::MaxChunkUnloads : world::chunkUnloads;
-
-        for (int i = 0; i < sumUnload; i++)
+        for (auto&& iter : world::chunkUnloadList)
         {
-            world::chunk *cp = world::chunkUnloadList[i].first;
-            int cx = cp->cx, cy = cp->cy, cz = cp->cz;
-            cp->Unload();
+            int cx = iter.second->cx, cy = iter.second->cy, cz = iter.second->cz;
+            iter.second->Unload();
             world::DeleteChunk(cx, cy, cz);
         }
+        world::chunkUnloadList.clear();
 
         //加载区块(Load chunks)
-        int sumLoad;
-        sumLoad = world::chunkLoads > world::MaxChunkLoads ? world::MaxChunkLoads : world::chunkLoads;
-
-        for (int i = 0; i < sumLoad; i++)
+        for (auto&& iter : world::chunkLoadList)
         {
-            int cx = world::chunkLoadList[i][1];
-            int cy = world::chunkLoadList[i][2];
-            int cz = world::chunkLoadList[i][3];
-            world::chunk *c = world::AddChunk(cx, cy, cz);
-            c->Load();
-
-            if (c->Empty)
+            auto *chk = world::AddChunk(iter.second.x, iter.second.y, iter.second.z);
+            chk->Load();
+            if (chk->Empty)
             {
-                c->Unload();
-                world::DeleteChunk(cx, cy, cz);
-                world::cpArray.set(world::EmptyChunkPtr, cx, cy, cz);
+                chk->Unload();
+                world::DeleteChunk(iter.second.x, iter.second.y, iter.second.z);
+                world::cpArray.set(world::EmptyChunkPtr, iter.second.x, iter.second.y, iter.second.z);
             }
         }
+        world::chunkLoadList.clear();
 
     }
 
     //加载动画
-    for (int i = 0; i < world::loadedChunks; i++)
+    for (auto&& chk : world::mWorld)
     {
-        world::chunk *cp = world::chunks[i];
-
-        if (cp->loadAnim <= 0.3f)
+        if (chk->loadAnim <= 0.3f)
         {
-            cp->loadAnim = 0.0f;
+            chk->loadAnim = 0.0f;
         }
         else
         {
-            cp->loadAnim *= 0.6f;
+            chk->loadAnim *= 0.6f;
         }
     }
 
     //随机状态更新
-    for (int i = 0; i < world::loadedChunks; i++)
+    for (auto&& chk : world::mWorld)
     {
         int x, y, z, gx, gy, gz;
-        int cx = world::chunks[i]->cx;
-        int cy = world::chunks[i]->cy;
-        int cz = world::chunks[i]->cz;
+        int cx = chk->cx;
+        int cy = chk->cy;
+        int cz = chk->cz;
         x = int(rnd() * 16);
         gx = x + cx * 16;
         y = int(rnd() * 16);
@@ -671,7 +660,7 @@ void updategame()
         z = int(rnd() * 16);
         gz = z + cz * 16;
 
-        if (world::chunks[i]->getblock(x, y, z) == blocks::DIRT &&
+        if (chk->getblock(x, y, z) == blocks::DIRT &&
             world::getblock(gx, gy + 1, gz, blocks::NONEMPTY) == blocks::AIR && (
                 world::getblock(gx + 1, gy, gz, blocks::AIR) == blocks::GRASS ||
                 world::getblock(gx - 1, gy, gz, blocks::AIR) == blocks::GRASS ||
@@ -687,15 +676,15 @@ void updategame()
                 world::getblock(gx, gy - 1, gz - 1, blocks::AIR) == blocks::GRASS))
         {
             //长草
-            world::chunks[i]->setblock(x, y, z, blocks::GRASS);
+            chk->setblock(x, y, z, blocks::GRASS);
             world::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
             world::setChunkUpdated(cx, cy, cz, true);
         }
 
-        if (world::chunks[i]->getblock(x, y, z) == blocks::GRASS && world::getblock(gx, gy + 1, gz, blocks::AIR) != blocks::AIR)
+        if (chk->getblock(x, y, z) == blocks::GRASS && world::getblock(gx, gy + 1, gz, blocks::AIR) != blocks::AIR)
         {
             //草被覆盖
-            world::chunks[i]->setblock(x, y, z, blocks::DIRT);
+            chk->setblock(x, y, z, blocks::DIRT);
             world::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
         }
     }
@@ -1446,13 +1435,10 @@ void Render()
 
     //更新区块显示列表
     world::sortChunkBuildRenderList(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos));
-    int brl = world::chunkBuildRenders > world::MaxChunkRenders ? world::MaxChunkRenders : world::chunkBuildRenders;
 
-    for (int i = 0; i < brl; i++)
-    {
-        int ci = world::chunkBuildRenderList[i][1];
-        world::chunks[ci]->buildRender();
-    }
+    for (auto&& iter : world::chunkBuildRenderList)
+       iter.second->buildRender();
+    world::chunkBuildRenderList.clear();
 
     //删除已卸载区块的VBO
     if (world::vbuffersShouldDelete.size() > 0)
@@ -1474,28 +1460,20 @@ void Render()
     Frustum::calc();
 
     displayChunks.clear();
-
-    for (int i = 0; i < world::loadedChunks; i++)
+    
+    for (auto&& chk : world::mWorld)
     {
-        if (!world::chunks[i]->renderBuilt || world::chunks[i]->Empty)
+        if (!chk->renderBuilt || chk->Empty)
         {
             continue;
         }
 
-        if (world::chunkInRange(world::chunks[i]->cx, world::chunks[i]->cy, world::chunks[i]->cz,
+        if (world::chunkInRange(chk->cx, chk->cy, chk->cz,
                                 player::cxt, player::cyt, player::czt, viewdistance))
         {
-            if (Frustum::AABBInFrustum(world::chunks[i]->getRelativeAABB(xpos, ypos, zpos)))
+            if (Frustum::AABBInFrustum(chk->getRelativeAABB(xpos, ypos, zpos)))
             {
-                displayChunks.push_back(RenderChunk(world::chunks[i], (curtime - lastupdate) * 30.0));
-                /*
-                multiDrawArrays[0].push_back(world::chunks[i]->vbuffer[0]);
-                multiDrawCounts[0].push_back(world::chunks[i]->vertexes[0]);
-                multiDrawArrays[1].push_back(world::chunks[i]->vbuffer[1]);
-                multiDrawCounts[1].push_back(world::chunks[i]->vertexes[1]);
-                multiDrawArrays[2].push_back(world::chunks[i]->vbuffer[2]);
-                multiDrawCounts[2].push_back(world::chunks[i]->vertexes[2]);
-                */
+                displayChunks.push_back(RenderChunk(chk, (curtime - lastupdate) * 30.0));
             }
         }
     }
