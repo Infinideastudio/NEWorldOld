@@ -8,7 +8,6 @@
 #include <unordered_map>
 namespace world
 {
-
     template <class Tk, class Td, size_t size, template<class>class Compare = std::less>
     class OrderedList
     {
@@ -59,41 +58,35 @@ namespace world
         auto begin() const noexcept { return mChunks.begin(); }
         auto end() const noexcept { return mChunks.end(); }
 
-        friend chunk *AddChunk(int x, int y, int z);
-        friend void DeleteChunk(int x, int y, int z);
+        chunk *insertChunk(int x, int y, int z);
+        void eraseChunk(int x, int y, int z);
         friend chunk *getChunkPtr(int x, int y, int z);
+        void tryLoadUnloadChunks(const Vec3i& centre);
+        void tryUpdateRenderers(const Vec3i& centre);
     private:
+        constexpr static int MaxChunkLoads = 64;
+        constexpr static int MaxChunkUnloads = 64;
+        constexpr static int MaxChunkRenders = 4;
         struct ChunkHash
         {
             constexpr size_t operator()(const Vec3i &t) const noexcept { return getChunkID(t); }
         };
+        std::string mName;
         std::unordered_map<Vec3i, chunk, ChunkHash> mChunks;
     };
     extern World mWorld;
     extern string worldname;
-    const int worldsize = 134217728;
-    const int worldheight = 128;
     extern brightness skylight;         //Sky light level
     extern brightness BRIGHTNESSMAX;    //Maximum brightness
     extern brightness BRIGHTNESSMIN;    //Mimimum brightness
-    extern brightness BRIGHTNESSDEC;    //Brightness decree
-    extern unsigned int EmptyBuffer;
-    constexpr int MaxChunkLoads = 64;
-    constexpr int MaxChunkUnloads = 64;
-    constexpr int MaxChunkRenders = 4;
+    extern brightness BRIGHTNESSDEC;    //Brightness degree
 
     extern HeightMap HMap;
 
-    extern int cloud[128][128];
-    extern OrderedList<int, Vec3i, MaxChunkLoads> chunkLoadList;
-    extern OrderedList<int, chunk*, MaxChunkRenders> chunkBuildRenderList;
-    extern OrderedList<int, chunk*, MaxChunkUnloads, std::greater> chunkUnloadList;
     extern vector<unsigned int> vbuffersShouldDelete;
 
     void Init();
 
-    chunk *AddChunk(int x, int y, int z);
-    void DeleteChunk(int x, int y, int z);
     chunk *getChunkPtr(int x, int y, int z);
 
 #define getchunkpos(n) ((n)>>4)
@@ -112,15 +105,6 @@ namespace world
     brightness getbrightness(int x, int y, int z, chunk *cptr = nullptr);
     void setblock(int x, int y, int z, block Block);
     void setbrightness(int x, int y, int z, brightness Brightness);
-    inline void putblock(int x, int y, int z, block Block)
-    {
-        setblock(x, y, z, Block);
-    }
-    inline void pickblock(int x, int y, int z)
-    {
-        setblock(x, y, z, blocks::AIR);
-    }
-
     //检测给出的chunk坐标是否在渲染范围内
     inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist)
     {
@@ -128,9 +112,6 @@ namespace world
     }
     bool chunkUpdated(int x, int y, int z);
     void setChunkUpdated(int x, int y, int z, bool value);
-    void sortChunkBuildRenderList(int xpos, int ypos, int zpos);
-    void sortChunkLoadUnloadList(int xpos, int ypos, int zpos);
-
     void saveAllChunks();
     void destroyAllChunks();
 

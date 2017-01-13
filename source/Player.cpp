@@ -186,7 +186,7 @@ namespace player
 
         if (((Hitbox::hit(playerbox, blockbox) == false) || CROSS || BlockInfo(blockname).isSolid() == false) && BlockInfo(world::getblock(x, y, z)).isSolid() == false)
         {
-            world::putblock(x, y, z, blockname);
+            world::setblock(x, y, z, blockname);
             success = true;
         }
 

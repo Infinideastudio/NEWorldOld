@@ -489,8 +489,6 @@ void setupscreen()
     TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClearDepth(1.0);
-    glGenBuffersARB(1, &world::EmptyBuffer);
-
 }
 
 void InitGL()
@@ -593,41 +591,15 @@ void updategame()
     }
 
     if (FirstUpdateThisFrame)
-    {
-        world::sortChunkLoadUnloadList(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos));
-
-        //卸载区块(Unload chunks)
-        for (auto&& iter : world::chunkUnloadList)
-        {
-            int cx = iter.second->cx, cy = iter.second->cy, cz = iter.second->cz;
-            iter.second->Unload();
-            world::DeleteChunk(cx, cy, cz);
-        }
-        world::chunkUnloadList.clear();
-
-        //加载区块(Load chunks)
-        for (auto&& iter : world::chunkLoadList)
-        {
-            auto *chk = world::AddChunk(iter.second.x, iter.second.y, iter.second.z);
-            chk->Load();
-            if (chk->Empty)
-                chk->Unload();
-        }
-        world::chunkLoadList.clear();
-
-    }
+        world::mWorld.tryLoadUnloadChunks(Vec3i(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos)));
 
     //加载动画
     for (auto&& chk : world::mWorld)
     {
         if (chk.second.loadAnim <= 0.3f)
-        {
             chk.second.loadAnim = 0.0f;
-        }
         else
-        {
             chk.second.loadAnim *= 0.6f;
-        }
     }
 
     //随机状态更新
@@ -785,7 +757,7 @@ void updategame()
                                                      float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
                         }
 
-                        world::pickblock(x, y, z);
+                        world::setblock(x, y, z, blocks::AIR);
                     }
                 }
 
@@ -1383,11 +1355,8 @@ void Render()
     player::czt = getchunkpos((int)player::zpos);
 
     //更新区块显示列表
-    world::sortChunkBuildRenderList(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos));
+    world::mWorld.tryUpdateRenderers(Vec3i(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos)));
 
-    for (auto&& iter : world::chunkBuildRenderList)
-       iter.second->buildRender();
-    world::chunkBuildRenderList.clear();
 
     //删除已卸载区块的VBO
     if (world::vbuffersShouldDelete.size() > 0)
@@ -1890,7 +1859,7 @@ void drawGUI()
     fpsc++;
 }
 
-void drawCloud(double px, double pz)
+/*void drawCloud(double px, double pz)
 {
     //glFogf(GL_FOG_START, 100.0);
     //glFogf(GL_FOG_END, 300.0);
@@ -1962,7 +1931,7 @@ void drawCloud(double px, double pz)
     }
 
     //setupNormalFog();
-}
+}*/
 
 void renderDestroy(float level, int x, int y, int z)
 {
