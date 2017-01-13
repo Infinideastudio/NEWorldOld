@@ -51,8 +51,8 @@ double bagAnimDuration = 0.5;
 //OpenGL
 int GLVersionMajor, GLVersionMinor, GLVersionRev;
 //GLFW
-GLFWwindow* MainWindow;
-GLFWcursor* MouseCursor;
+GLFWwindow *MainWindow;
+GLFWcursor *MouseCursor;
 
 //鼠标输入数据
 double mx, my, mxl, myl;
@@ -69,31 +69,38 @@ int c_getHeightFromWorldGen;
 #endif
 
 #ifdef NEWORLD_USE_WINAPI
-unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n){
-	int res = MultiByteToWideChar(CP_ACP, 0, src, n, dst, n);
-	return res;
+unsigned int MByteToWChar(wchar_t *dst, const char *src, unsigned int n)
+{
+    int res = MultiByteToWideChar(CP_ACP, 0, src, n, dst, n);
+    return res;
 }
-unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n){
-	return WideCharToMultiByte(CP_ACP, 0, src, n, dst, n * 2, NULL, NULL);
+unsigned int WCharToMByte(char *dst, const wchar_t *src, unsigned int n)
+{
+    return WideCharToMultiByte(CP_ACP, 0, src, n, dst, n * 2, NULL, NULL);
 }
 #else
-void Sleep(unsigned int ms){
-	unsigned int fr = clock();
-	while (clock() - fr <= ms);
-	return;
+void Sleep(unsigned int ms)
+{
+    unsigned int fr = clock();
+
+    while (clock() - fr <= ms);
+
+    return;
 }
 #endif
 
-void DebugWarning(string msg){
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
-	printf("[Debug][Warning]");
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-	printf("%s\n", msg.c_str());
+void DebugWarning(string msg)
+{
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
+    printf("[Debug][Warning]");
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+    printf("%s\n", msg.c_str());
 }
 
-void DebugError(string msg){
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
-	printf("[Debug][Error]");
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-	printf("%s\n",msg.c_str());
+void DebugError(string msg)
+{
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+    printf("[Debug][Error]");
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+    printf("%s\n", msg.c_str());
 }

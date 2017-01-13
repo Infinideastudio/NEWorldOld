@@ -38,9 +38,9 @@ typedef HANDLE Thread_t;
 typedef PTHREAD_START_ROUTINE ThreadFunc_t;
 #define ThreadFunc DWORD WINAPI
 #else
-typedef std::mutex* Mutex_t;
-typedef std::thread* Thread_t;
-typedef unsigned int(*ThreadFunc_t)(void* param);
+typedef std::mutex *Mutex_t;
+typedef std::thread *Thread_t;
+typedef unsigned int(*ThreadFunc_t)(void *param);
 #define ThreadFunc unsigned int
 #endif
 
@@ -99,8 +99,8 @@ extern double bagAnimTimer;
 extern double bagAnimDuration;
 
 extern int GLVersionMajor, GLVersionMinor, GLVersionRev;
-extern GLFWwindow* MainWindow;
-extern GLFWcursor* MouseCursor;
+extern GLFWwindow *MainWindow;
+extern GLFWcursor *MouseCursor;
 extern double mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
 extern double mxdelta, mydelta;
@@ -113,54 +113,131 @@ extern int c_getHeightFromHMap;
 extern int c_getHeightFromWorldGen;
 #endif
 
-inline string boolstr(bool b){ return b ? "True" : "False"; }
-inline double rnd() { return (double)rand() / (RAND_MAX + 1); }
+inline string boolstr(bool b)
+{
+    return b ? "True" : "False";
+}
+inline double rnd()
+{
+    return (double)rand() / (RAND_MAX + 1);
+}
 #ifdef NEWORLD_USE_WINAPI
-inline double timer(){
-	static LARGE_INTEGER counterFreq;
-	if (counterFreq.QuadPart == 0) QueryPerformanceFrequency(&counterFreq);
-	LARGE_INTEGER now;
-	QueryPerformanceCounter(&now);
-	return (double)now.QuadPart / counterFreq.QuadPart;
+inline double timer()
+{
+    static LARGE_INTEGER counterFreq;
+
+    if (counterFreq.QuadPart == 0)
+    {
+        QueryPerformanceFrequency(&counterFreq);
+    }
+
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    return (double)now.QuadPart / counterFreq.QuadPart;
 }
 #else
-inline double timer() { return (double)clock() / CLOCKS_PER_SEC; }
+inline double timer()
+{
+    return (double)clock() / CLOCKS_PER_SEC;
+}
 #endif
 
 #ifdef NEWORLD_USE_WINAPI
-inline Mutex_t MutexCreate(){return CreateMutex(nullptr, FALSE, "");}
-inline void MutexDestroy(Mutex_t _hMutex){CloseHandle(_hMutex);}
-inline void MutexLock(Mutex_t _hMutex){WaitForSingleObject(_hMutex, INFINITE);}
-inline void MutexUnlock(Mutex_t _hMutex){ReleaseMutex(_hMutex);}
-inline Thread_t ThreadCreate(ThreadFunc_t func, void* param){return CreateThread(nullptr, 0, func, param, 0, nullptr);}
-inline void ThreadWait(Thread_t _hThread){WaitForSingleObject(_hThread, INFINITE);}
-inline void ThreadDestroy(Thread_t _hThread){CloseHandle(_hThread);}
-unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n);
-unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n);
-inline unsigned int wstrlen(const wchar_t* wstr){ return lstrlenW(wstr); }
+inline Mutex_t MutexCreate()
+{
+    return CreateMutex(nullptr, FALSE, "");
+}
+inline void MutexDestroy(Mutex_t _hMutex)
+{
+    CloseHandle(_hMutex);
+}
+inline void MutexLock(Mutex_t _hMutex)
+{
+    WaitForSingleObject(_hMutex, INFINITE);
+}
+inline void MutexUnlock(Mutex_t _hMutex)
+{
+    ReleaseMutex(_hMutex);
+}
+inline Thread_t ThreadCreate(ThreadFunc_t func, void *param)
+{
+    return CreateThread(nullptr, 0, func, param, 0, nullptr);
+}
+inline void ThreadWait(Thread_t _hThread)
+{
+    WaitForSingleObject(_hThread, INFINITE);
+}
+inline void ThreadDestroy(Thread_t _hThread)
+{
+    CloseHandle(_hThread);
+}
+unsigned int MByteToWChar(wchar_t *dst, const char *src, unsigned int n);
+unsigned int WCharToMByte(char *dst, const wchar_t *src, unsigned int n);
+inline unsigned int wstrlen(const wchar_t *wstr)
+{
+    return lstrlenW(wstr);
+}
 #else
-inline Mutex_t MutexCreate(){return new std::mutex;}
-inline void MutexDestroy(Mutex_t _hMutex){delete _hMutex;}
-inline void MutexLock(Mutex_t _hMutex){_hMutex->lock();}
-inline void MutexUnlock(Mutex_t _hMutex){_hMutex->unlock();}
-inline Thread_t ThreadCreate(ThreadFunc_t func, void* param){return new std::thread(func, param);}
-inline void ThreadWait(Thread_t _hThread){_hThread->join();}
-inline void ThreadDestroy(Thread_t _hThread){delete _hThread;}
-inline unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n){ size_t res; mbstowcs_s(&res, dst, n, src, _TRUNCATE); return res; }
-inline unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n){ size_t res; wcstombs_s(&res, dst, n, src, _TRUNCATE); return res; }
-inline unsigned int wstrlen(const wchar_t* wstr){ return wcslen(wstr); }
+inline Mutex_t MutexCreate()
+{
+    return new std::mutex;
+}
+inline void MutexDestroy(Mutex_t _hMutex)
+{
+    delete _hMutex;
+}
+inline void MutexLock(Mutex_t _hMutex)
+{
+    _hMutex->lock();
+}
+inline void MutexUnlock(Mutex_t _hMutex)
+{
+    _hMutex->unlock();
+}
+inline Thread_t ThreadCreate(ThreadFunc_t func, void *param)
+{
+    return new std::thread(func, param);
+}
+inline void ThreadWait(Thread_t _hThread)
+{
+    _hThread->join();
+}
+inline void ThreadDestroy(Thread_t _hThread)
+{
+    delete _hThread;
+}
+inline unsigned int MByteToWChar(wchar_t *dst, const char *src, unsigned int n)
+{
+    size_t res;
+    mbstowcs_s(&res, dst, n, src, _TRUNCATE);
+    return res;
+}
+inline unsigned int WCharToMByte(char *dst, const wchar_t *src, unsigned int n)
+{
+    size_t res;
+    wcstombs_s(&res, dst, n, src, _TRUNCATE);
+    return res;
+}
+inline unsigned int wstrlen(const wchar_t *wstr)
+{
+    return wcslen(wstr);
+}
 void Sleep(unsigned int ms);
 #endif
 
-inline int RoundInt(double d){ return int(floor(d + 0.5)); }
-inline string itos(int i){
-	char a[12];
+inline int RoundInt(double d)
+{
+    return int(floor(d + 0.5));
+}
+inline string itos(int i)
+{
+    char a[12];
 #ifdef NEWORLD_COMPILE_DISABLE_SECURE
-	_itoa(i, a, 10);
+    _itoa(i, a, 10);
 #else
-	_itoa_s(i, a, 12, 10);
+    _itoa_s(i, a, 12, 10);
 #endif
-	return string(a);
+    return string(a);
 }
 
 void DebugWarning(string msg);
