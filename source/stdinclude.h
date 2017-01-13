@@ -3,20 +3,6 @@
 //#pragma warning(disable:4350) //忽略STL高发警告：行为更改
 //#pragma warning(push,0) //忽略头文件的警告
 
-//#define NEWORLD_USE_WINAPI
-#ifdef NEWORLD_USE_WINAPI
-#ifdef NEWORLD_SERVER
-#include <thread>
-#include <mutex>
-using std::thread;
-using std::mutex;
-#endif
-#include <WinSock2.h>
-#include <Windows.h>
-#else
-#include <thread>
-#include <mutex>
-#endif
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <time.h>
@@ -32,6 +18,8 @@ using std::mutex;
 #include <queue>
 #include <functional>
 #include <cassert>
+#include <thread>
+#include <mutex>
 
 using std::string;
 using std::vector;

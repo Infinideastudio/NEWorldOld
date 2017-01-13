@@ -1265,11 +1265,11 @@ namespace gui
         transitionTimer = timer();
     }
 
-    void Form::registerControl(controls *c)
+    void Form::registerControl(controls &c)
     {
-        c->id = currentid;
-        c->parent = this;
-        children.push_back(c);
+        c.id = currentid;
+        c.parent = this;
+        children.push_back(&c);
         currentid++;
         maxid++;
         childrenCount++;

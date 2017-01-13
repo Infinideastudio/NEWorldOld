@@ -2,7 +2,6 @@
 #include "World.h"
 #include "Textures.h"
 #include "TextRenderer.h"
-//#include <shellapi.h>
 
 string BoolYesNo(bool b)
 {
@@ -48,7 +47,7 @@ private:
         startbtn = gui::button("开始游戏", -200, 200, 280, 312, 0.5, 0.5, 0.0, 0.0);
         optionsbtn = gui::button(">> 选项...", -200, -3, 318, 352, 0.5, 0.5, 0.0, 0.0);
         quitbtn = gui::button("退出", 3, 200, 318, 352, 0.5, 0.5, 0.0, 0.0);
-        registerControls(4, &title, &startbtn, &optionsbtn, &quitbtn);
+        registerControls(title, startbtn, optionsbtn, quitbtn);
     }
     void onUpdate()
     {
@@ -95,7 +94,7 @@ private:
         gistbtn = gui::button(">> 图形界面选项...", 10, 250, 204, 228, 0.5, 0.5, 0.0, 0.0);
         backbtn = gui::button("<< 返回主菜单", -250, -10, -44, -20, 0.5, 0.5, 1.0, 1.0);
         savebtn = gui::button("保存设置", 10, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-        registerControls(8, &title, &FOVyBar, &mmsBar, &viewdistBar, &rdstbtn, &gistbtn, &backbtn, &savebtn);
+        registerControls(title, FOVyBar, mmsBar, viewdistBar, rdstbtn, gistbtn, backbtn, savebtn);
     }
     void onUpdate()
     {
@@ -146,7 +145,7 @@ private:
         fancygrassbtn = gui::button("草方块材质连接：", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
         mergefacebtn = gui::button("合并面渲染：", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
         backbtn = gui::button("<< 返回选项菜单", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-        registerControls(5, &title, &smoothlightingbtn, &fancygrassbtn, &mergefacebtn, &backbtn);
+        registerControls(title, smoothlightingbtn, fancygrassbtn, mergefacebtn, backbtn);
 
         if (MergeFace)
         {
@@ -206,7 +205,7 @@ private:
         fontbtn = gui::button("全部使用Unicode字体：", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
         blurbtn = gui::button("背景模糊：", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
         backbtn = gui::button("<< 返回选项菜单", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-        registerControls(4, &title, &fontbtn, &blurbtn, &backbtn);
+        registerControls(title, fontbtn, blurbtn, backbtn);
     }
     void onUpdate()
     {
@@ -259,7 +258,7 @@ private:
         enterbtn = gui::button("进入选定的世界", -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
         deletebtn = gui::button("删除选定的世界", 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
         backbtn = gui::button("<< 返回主菜单", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-        registerControls(5, &title, &vscroll, &enterbtn, &deletebtn, &backbtn);
+        registerControls(title, vscroll, enterbtn, deletebtn, backbtn);
         world::worldname = "";
         enterbtn.enabled = false;
         deletebtn.enabled = false;
@@ -546,7 +545,7 @@ private:
         worldnametb = gui::textbox("输入世界名称", -250, 250, 48, 72, 0.5, 0.5, 0.0, 0.0);
         okbtn = gui::button("确定", -250, 250, 84, 120, 0.5, 0.5, 0.0, 0.0);
         backbtn = gui::button("<< 返回世界菜单", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-        registerControls(4, &title, &worldnametb, &okbtn, &backbtn);
+        registerControls(title, worldnametb, okbtn, backbtn);
         inputstr = "";
         okbtn.enabled = false;
         worldnametbChanged = false;
@@ -603,7 +602,7 @@ private:
         title = gui::label("==============<  游 戏 菜 单  >==============", -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
         resumebtn = gui::button("继续游戏", -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
         exitbtn = gui::button("<< 返回主菜单", -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
-        registerControls(3, &title, &resumebtn, &exitbtn);
+        registerControls(title, resumebtn, exitbtn);
     }
     void onUpdate()
     {
