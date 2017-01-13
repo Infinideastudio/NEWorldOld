@@ -147,6 +147,7 @@ main_menu:
 
     Mutex = MutexCreate();
     MutexLock(Mutex);
+    updateThreadRun = false;
     updateThread = ThreadCreate(&updateThreadFunc, nullptr);
 
     //初始化游戏状态
@@ -581,22 +582,9 @@ bool isPressed(int key, bool setFalse = false)
 
 void updategame()
 {
-    //Time_updategame_ = timer();
     static double Wprstm;
     static bool WP;
-    //static double mxl, myl;
-    //glfwGetCursorPos(MainWindow, &mx, &my);
     player::BlockInHand = player::inventorybox[3][player::itemInHand];
-
-    //world::unloadedChunks=0
-    world::rebuiltChunks = 0;
-    world::updatedChunks = 0;
-
-    //ciArray move
-    if (world::cpArray.originX != player::cxt - viewdistance - 2 || world::cpArray.originY != player::cyt - viewdistance - 2 || world::cpArray.originZ != player::czt - viewdistance - 2)
-    {
-        world::cpArray.moveTo(player::cxt - viewdistance - 2, player::cyt - viewdistance - 2, player::czt - viewdistance - 2);
-    }
 
     //HeightMap move
     if (world::HMap.originX != (player::cxt - viewdistance - 2) * 16 || world::HMap.originZ != (player::czt - viewdistance - 2) * 16)
@@ -623,11 +611,7 @@ void updategame()
             auto *chk = world::AddChunk(iter.second.x, iter.second.y, iter.second.z);
             chk->Load();
             if (chk->Empty)
-            {
                 chk->Unload();
-                world::DeleteChunk(iter.second.x, iter.second.y, iter.second.z);
-                world::cpArray.set(world::EmptyChunkPtr, iter.second.x, iter.second.y, iter.second.z);
-            }
         }
         world::chunkLoadList.clear();
 
@@ -636,13 +620,13 @@ void updategame()
     //加载动画
     for (auto&& chk : world::mWorld)
     {
-        if (chk->loadAnim <= 0.3f)
+        if (chk.second.loadAnim <= 0.3f)
         {
-            chk->loadAnim = 0.0f;
+            chk.second.loadAnim = 0.0f;
         }
         else
         {
-            chk->loadAnim *= 0.6f;
+            chk.second.loadAnim *= 0.6f;
         }
     }
 
@@ -650,9 +634,9 @@ void updategame()
     for (auto&& chk : world::mWorld)
     {
         int x, y, z, gx, gy, gz;
-        int cx = chk->cx;
-        int cy = chk->cy;
-        int cz = chk->cz;
+        int cx = chk.second.cx;
+        int cy = chk.second.cy;
+        int cz = chk.second.cz;
         x = int(rnd() * 16);
         gx = x + cx * 16;
         y = int(rnd() * 16);
@@ -660,7 +644,7 @@ void updategame()
         z = int(rnd() * 16);
         gz = z + cz * 16;
 
-        if (chk->getblock(x, y, z) == blocks::DIRT &&
+        if (chk.second.getblock(x, y, z) == blocks::DIRT &&
             world::getblock(gx, gy + 1, gz, blocks::NONEMPTY) == blocks::AIR && (
                 world::getblock(gx + 1, gy, gz, blocks::AIR) == blocks::GRASS ||
                 world::getblock(gx - 1, gy, gz, blocks::AIR) == blocks::GRASS ||
@@ -676,15 +660,15 @@ void updategame()
                 world::getblock(gx, gy - 1, gz - 1, blocks::AIR) == blocks::GRASS))
         {
             //长草
-            chk->setblock(x, y, z, blocks::GRASS);
+            chk.second.setblock(x, y, z, blocks::GRASS);
             world::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
             world::setChunkUpdated(cx, cy, cz, true);
         }
 
-        if (chk->getblock(x, y, z) == blocks::GRASS && world::getblock(gx, gy + 1, gz, blocks::AIR) != blocks::AIR)
+        if (chk.second.getblock(x, y, z) == blocks::GRASS && world::getblock(gx, gy + 1, gz, blocks::AIR) != blocks::AIR)
         {
             //草被覆盖
-            chk->setblock(x, y, z, blocks::DIRT);
+            chk.second.setblock(x, y, z, blocks::DIRT);
             world::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
         }
     }
@@ -745,67 +729,32 @@ void updategame()
                     }
                 }
 
-                if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
                 {
                     world::chunk *cp = world::getChunkPtr(selcx, selcy, selcz);
-
-                    if (cp == nullptr || cp == world::EmptyChunkPtr)
-                    {
-                        continue;
-                    }
-
-                    selb = cp->getblock(selbx, selby, selbz);
+                    if (cp != nullptr)
+                        selb = cp->getblock(selbx, selby, selbz);
                 }
 
                 switch (sidedistmin)
                 {
-                    case 1:
-                        if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-                        {
-                            selbr = world::getbrightness(selx, sely + 1, selz);
-                        }
-
-                        break;
-
-                    case 2:
-                        if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-                        {
-                            selbr = world::getbrightness(selx, sely - 1, selz);
-                        }
-
-                        break;
-
-                    case 3:
-                        if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-                        {
-                            selbr = world::getbrightness(selx + 1, sely, selz);
-                        }
-
-                        break;
-
-                    case 4:
-                        if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-                        {
-                            selbr = world::getbrightness(selx - 1, sely, selz);
-                        }
-
-                        break;
-
-                    case 5:
-                        if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-                        {
-                            selbr = world::getbrightness(selx, sely, selz + 1);
-                        }
-
-                        break;
-
-                    case 6:
-                        if (world::chunkOutOfBound(selcx, selcy, selcz) == false)
-                        {
-                            selbr = world::getbrightness(selx, sely, selz - 1);
-                        }
-
-                        break;
+                case 1:
+                    selbr = world::getbrightness(selx, sely + 1, selz);
+                    break;
+                case 2:
+                    selbr = world::getbrightness(selx, sely - 1, selz);
+                    break;
+                case 3:
+                    selbr = world::getbrightness(selx + 1, sely, selz);
+                    break;
+                case 4:
+                    selbr = world::getbrightness(selx - 1, sely, selz);
+                    break;
+                case 5:
+                    selbr = world::getbrightness(selx, sely, selz + 1);
+                    break;
+                case 6:
+                    selbr = world::getbrightness(selx, sely, selz - 1);
+                    break;
                 }
 
                 if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS)
@@ -1463,17 +1412,17 @@ void Render()
     
     for (auto&& chk : world::mWorld)
     {
-        if (!chk->renderBuilt || chk->Empty)
+        if (!chk.second.renderBuilt || chk.second.Empty)
         {
             continue;
         }
 
-        if (world::chunkInRange(chk->cx, chk->cy, chk->cz,
+        if (world::chunkInRange(chk.second.cx, chk.second.cy, chk.second.cz,
                                 player::cxt, player::cyt, player::czt, viewdistance))
         {
-            if (Frustum::AABBInFrustum(chk->getRelativeAABB(xpos, ypos, zpos)))
+            if (Frustum::AABBInFrustum(chk.second.getRelativeAABB(xpos, ypos, zpos)))
             {
-                displayChunks.push_back(RenderChunk(chk, (curtime - lastupdate) * 30.0));
+                displayChunks.push_back(RenderChunk(&chk.second, (curtime - lastupdate) * 30.0));
             }
         }
     }
@@ -1911,19 +1860,6 @@ void drawGUI()
         debugText(ss.str());
         ss.str("");
         ss << "In water:" << boolstr(player::inWater);
-        debugText(ss.str());
-        ss.str("");
-
-        ss << world::loadedChunks << " chunks loaded";
-        debugText(ss.str());
-        ss.str("");
-        ss << displayChunks.size() << " chunks rendered";
-        debugText(ss.str());
-        ss.str("");
-        ss << world::unloadedChunks << " chunks unloaded";
-        debugText(ss.str());
-        ss.str("");
-        ss << world::updatedChunks << " chunks updated";
         debugText(ss.str());
         ss.str("");
 

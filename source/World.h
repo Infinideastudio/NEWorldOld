@@ -1,11 +1,11 @@
 #pragma once
 #include "Definitions.h"
-#include "chunkPtrArray.h"
 #include "HeightMap.h"
 #include "Chunk.h"
 #include "Hitbox.h"
 #include "math/vector.h"
 #include <array>
+#include <unordered_map>
 namespace world
 {
 
@@ -47,14 +47,27 @@ namespace world
         Compare<Tk> mComp;
     };
 
+    constexpr size_t getChunkID(const Vec3i &t) noexcept
+    {
+        return static_cast<size_t>(t.x * 23947293731 + t.z * 3296467037 + t.y * 1234577);
+    }
     class World
     {
     public:
-        using Iterator = chunk**;
-        Iterator begin() noexcept;
-        Iterator end() noexcept;
+        auto begin() noexcept { return mChunks.begin(); }
+        auto end() noexcept { return mChunks.end(); }
+        auto begin() const noexcept { return mChunks.begin(); }
+        auto end() const noexcept { return mChunks.end(); }
+
+        friend chunk *AddChunk(int x, int y, int z);
+        friend void DeleteChunk(int x, int y, int z);
+        friend chunk *getChunkPtr(int x, int y, int z);
     private:
-            //chunk **chunks;
+        struct ChunkHash
+        {
+            constexpr size_t operator()(const Vec3i &t) const noexcept { return getChunkID(t); }
+        };
+        std::unordered_map<Vec3i, chunk, ChunkHash> mChunks;
     };
     extern World mWorld;
     extern string worldname;
@@ -64,62 +77,30 @@ namespace world
     extern brightness BRIGHTNESSMAX;    //Maximum brightness
     extern brightness BRIGHTNESSMIN;    //Mimimum brightness
     extern brightness BRIGHTNESSDEC;    //Brightness decree
-    extern chunk *EmptyChunkPtr;
     extern unsigned int EmptyBuffer;
-    constexpr int MaxChunkLoads = 16;
-    constexpr int MaxChunkUnloads = 16;
-    constexpr int MaxChunkRenders =16;
+    constexpr int MaxChunkLoads = 64;
+    constexpr int MaxChunkUnloads = 64;
+    constexpr int MaxChunkRenders = 4;
 
-    //extern chunk **chunks;
-    extern int loadedChunks, chunkArraySize;
-    extern chunk *cpCachePtr;
-    extern chunkid cpCacheID;
     extern HeightMap HMap;
-    extern ChunkArrayCache cpArray;
 
     extern int cloud[128][128];
-    extern int rebuiltChunks, rebuiltChunksCount;
-    extern int updatedChunks, updatedChunksCount;
-    extern int unloadedChunks, unloadedChunksCount;
     extern OrderedList<int, Vec3i, MaxChunkLoads> chunkLoadList;
     extern OrderedList<int, chunk*, MaxChunkRenders> chunkBuildRenderList;
     extern OrderedList<int, chunk*, MaxChunkUnloads, std::greater> chunkUnloadList;
     extern vector<unsigned int> vbuffersShouldDelete;
-    extern int chunkLoads;
 
     void Init();
 
     chunk *AddChunk(int x, int y, int z);
     void DeleteChunk(int x, int y, int z);
-    constexpr size_t getChunkID(const Vec3i &t) noexcept
-    {
-        return static_cast<size_t>(t.x * 23947293731 + t.z * 3296467037 + t.y * 1234577);
-    }
-    int getChunkPtrIndex(int x, int y, int z);
     chunk *getChunkPtr(int x, int y, int z);
-    void ExpandChunkArray(int cc);
-    void ReduceChunkArray(int cc);
 
 #define getchunkpos(n) ((n)>>4)
 #define getblockpos(n) ((n)&15)
-    inline bool chunkOutOfBound(int x, int y, int z)
-    {
-        return y < -world::worldheight || y > world::worldheight - 1 ||
-               x < -134217728 || x > 134217727 || z < -134217728 || z > 134217727;
-    }
     inline bool chunkLoaded(int x, int y, int z)
     {
-        if (chunkOutOfBound(x, y, z))
-        {
-            return false;
-        }
-
-        if (getChunkPtr(x, y, z) != nullptr)
-        {
-            return true;
-        }
-
-        return false;
+        return getChunkPtr(x, y, z) != nullptr;
     }
 
     vector<Hitbox::AABB> getHitboxes(Hitbox::AABB box);
@@ -127,7 +108,7 @@ namespace world
 
     void renderblock(int x, int y, int z, chunk *chunkptr);
     void updateblock(int x, int y, int z, bool blockchanged);
-    block getblock(int x, int y, int z, block mask = blocks::AIR, chunk *cptr = nullptr);
+    block getblock(int x, int y, int z, block mask = blocks::NONEMPTY, chunk *cptr = nullptr);
     brightness getbrightness(int x, int y, int z, chunk *cptr = nullptr);
     void setblock(int x, int y, int z, block Block);
     void setbrightness(int x, int y, int z, brightness Brightness);
@@ -140,15 +121,10 @@ namespace world
         setblock(x, y, z, blocks::AIR);
     }
 
+    //检测给出的chunk坐标是否在渲染范围内
     inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist)
     {
-        //检测给出的chunk坐标是否在渲染范围内
-        if (x < px - dist || x > px + dist - 1 || y < py - dist || y > py + dist - 1 || z < pz - dist || z > pz + dist - 1)
-        {
-            return false;
-        }
-
-        return true;
+        return (x <= px + dist && x >= px - dist && y <= py + dist && y >= py - dist && z <= pz + dist && z >= pz - dist);
     }
     bool chunkUpdated(int x, int y, int z);
     void setChunkUpdated(int x, int y, int z, bool value);
