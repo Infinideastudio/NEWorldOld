@@ -3,7 +3,7 @@
 #include <cmath>
 #include <utility>
 #include <type_traits>
-
+#pragma pack(push, 1)
 template <typename T>
 constexpr T abs(T arg) noexcept
 {
@@ -13,7 +13,7 @@ constexpr T abs(T arg) noexcept
 template <size_t d, class T> union Vec;
 
 template <class T>
-union alignas(4) Vec<2, T> final
+union Vec<2, T> final
 {
     T data[2];
     struct
@@ -136,7 +136,7 @@ union alignas(4) Vec<2, T> final
 };
 
 template <class T>
-union alignas(4) Vec<3, T> final
+union Vec<3, T> final
 {
     T data[3];
     struct
@@ -281,7 +281,7 @@ union alignas(4) Vec<3, T> final
 };
 
 template <class T>
-union alignas(4) Vec<4, T> final
+union Vec<4, T> final
 {
     T data[4];
     struct
@@ -557,3 +557,4 @@ union Vec final
         return less.manhattanDistance(rhs.less) + abs(last - rhs.last);
     }
 };
+#pragma pack(pop)
