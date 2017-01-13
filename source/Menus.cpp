@@ -2,7 +2,7 @@
 #include "World.h"
 #include "Textures.h"
 #include "TextRenderer.h"
-#include <shellapi.h>
+//#include <shellapi.h>
 
 string BoolYesNo(bool b)
 {

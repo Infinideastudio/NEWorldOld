@@ -101,7 +101,7 @@ woca, 这样注释都行？！
     //终于进入main函数了！激动人心的一刻！！！
 
 #ifndef NEWORLD_USE_WINAPI
-    setlocale(LC_ALL, "zh_CN.UTF-8");
+    setlocale(LC_ALL, "");
 #endif
 
     loadoptions();
@@ -294,6 +294,7 @@ main_menu:
     //不对啊这不是FB！！！这是正宗的VC++！！！！！！
     //楼上的楼上在瞎说！！！别信他的！！！
     glfwTerminate();
+    saveoptions();
     return 0;
     //This is the END of the program!
 }
@@ -984,7 +985,7 @@ void updategame()
         }
         else
         {
-            player::itemInHand += (byte)(mwl - mw);
+            player::itemInHand += static_cast<unsigned char>(mwl - mw);
         }
 
         mwl = mw;
@@ -2254,7 +2255,7 @@ void saveScreenshot(int x, int y, int w, int h, string filename)
 
     scrBuffer.sizeX = bufw;
     scrBuffer.sizeY = bufh;
-    scrBuffer.buffer = unique_ptr<ubyte[]>(new byte[bufw * bufh * 3]);
+    scrBuffer.buffer = unique_ptr<ubyte[]>(new ubyte[bufw * bufh * 3]);
     glReadPixels(x, y, bufw, bufh, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
     Textures::SaveRGBImage(filename, scrBuffer);
 }

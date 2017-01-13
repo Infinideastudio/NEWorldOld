@@ -1275,21 +1275,6 @@ namespace gui
         childrenCount++;
     }
 
-    void Form::registerControls(int count, controls *c, ...)
-    {
-        va_list arg_ptr;
-        controls *cur = c;
-        va_start(arg_ptr, c);
-
-        for (int i = 0; i < count; i++)
-        {
-            registerControl(cur);
-            cur = va_arg(arg_ptr, controls *);
-        }
-
-        va_end(arg_ptr);
-    }
-
     void Form::update()
     {
 

@@ -3,7 +3,7 @@
 //#pragma warning(disable:4350) //忽略STL高发警告：行为更改
 //#pragma warning(push,0) //忽略头文件的警告
 
-#define NEWORLD_USE_WINAPI
+//#define NEWORLD_USE_WINAPI
 #ifdef NEWORLD_USE_WINAPI
 #ifdef NEWORLD_SERVER
 #include <thread>
