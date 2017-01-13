@@ -12,15 +12,76 @@ namespace world
     brightness BRIGHTNESSMAX = 15;    //Maximum brightness
     brightness BRIGHTNESSMIN = 2;     //Mimimum brightness
     brightness BRIGHTNESSDEC = 1;     //Brightness decrease
-    unsigned int EmptyBuffer;
     World mWorld;
 
     HeightMap HMap;
-    int cloud[128][128];
-    OrderedList<int, Vec3i, MaxChunkLoads> chunkLoadList;
-    OrderedList<int, chunk*, MaxChunkRenders> chunkBuildRenderList;
-    OrderedList<int, chunk*, MaxChunkUnloads, std::greater> chunkUnloadList;
     vector<unsigned int> vbuffersShouldDelete;
+
+    void World::tryLoadUnloadChunks(const Vec3i& centre)
+    {
+        OrderedList<int, Vec3i, MaxChunkLoads> chunkLoadList;
+        OrderedList<int, chunk*, MaxChunkUnloads, std::greater> chunkUnloadList;
+        Vec3i ccentre = centre / 16, c;
+
+        for (auto&& chk : mWorld)
+        {
+            c = Vec3i{ chk.second.cx, chk.second.cy, chk.second.cz };
+            if (!chunkInRange(c.x, c.y, c.z, ccentre.x, ccentre.y, ccentre.z ,viewdistance + 1))
+                chunkUnloadList.insert(((c + Vec3i{ 7, 7, 7 }) *16 - centre).lengthSqr(), &chk.second);
+        }
+
+        for (c.x = ccentre.x - viewdistance - 1; c.x <= ccentre.x + viewdistance; c.x++)
+            for (c.y = ccentre.y - viewdistance - 1; c.y <= ccentre.y + viewdistance; c.y++)
+                for (c.z = ccentre.z - viewdistance - 1; c.z <= ccentre.z + viewdistance; c.z++)
+                    if (!chunkLoaded(c.x, c.y, c.z))
+                        chunkLoadList.insert(((c + Vec3i{ 7, 7, 7 }) *16 - centre).lengthSqr(), c);
+
+        // Unload chunks
+        for (auto&& iter : chunkUnloadList)
+        {
+            int cx = iter.second->cx, cy = iter.second->cy, cz = iter.second->cz;
+            iter.second->Unload();
+            eraseChunk(cx, cy, cz);
+        }
+
+        // Load chunks
+        for (auto&& iter : chunkLoadList)
+        {
+            auto *chk = insertChunk(iter.second.x, iter.second.y, iter.second.z);
+            chk->Load();
+            if (chk->Empty)
+                chk->Unload();
+        }
+    }
+
+    void World::tryUpdateRenderers(const Vec3i& centre)
+    {
+        OrderedList<int, chunk*, MaxChunkRenders> chunkBuildRenderList;
+        Vec3i ccentre = centre / 16, c;
+        for (auto&& chk : mWorld)
+        {
+            if (chk.second.updated)
+            {
+                c = Vec3i{ chk.second.cx, chk.second.cy, chk.second.cz };
+                if (chunkInRange(c.x, c.y, c.z, ccentre.x, ccentre.y, ccentre.z, viewdistance))
+                    chunkBuildRenderList.insert(((c + Vec3i{ 7, 7, 7 }) * 16 - centre).lengthSqr(), &chk.second);
+            }
+        }
+        for (auto&& iter : chunkBuildRenderList)
+            iter.second->buildRender();
+    }
+
+    chunk *World::insertChunk(int x, int y, int z)
+    {
+        mChunks[{x, y, z}] = chunk(x, y, z, getChunkID({ x, y, z }));
+        return &mChunks[{x, y, z}];
+    }
+
+    void World::eraseChunk(int x, int y, int z)
+    {
+        mChunks.erase({ x, y, z });
+    }
+
 
     void Init()
     {
@@ -36,20 +97,6 @@ namespace world
 
         HMap.setSize((viewdistance + 2) * 2 * 16);
         HMap.create();
-        chunkLoadList.clear();
-        chunkBuildRenderList.clear();
-        chunkUnloadList.clear();
-    }
-
-    chunk *AddChunk(int x, int y, int z)
-    {
-        mWorld.mChunks[{x, y, z}] = chunk(x, y, z, getChunkID({ x, y, z }));
-        return &mWorld.mChunks[{x, y, z}];
-    }
-
-    void DeleteChunk(int x, int y, int z)
-    {
-        mWorld.mChunks.erase({ x, y, z });
     }
 
     chunk *getChunkPtr(int x, int y, int z)
@@ -607,32 +654,32 @@ namespace world
 
             setChunkUpdated(cx, cy, cz, true);
 
-            if (bx == 15 && cx < worldsize - 1)
+            if (bx == 15)
             {
                 setChunkUpdated(cx + 1, cy, cz, true);
             }
 
-            if (bx == 0 && cx > -worldsize)
+            if (bx == 0)
             {
                 setChunkUpdated(cx - 1, cy, cz, true);
             }
 
-            if (by == 15 && cy < worldheight - 1)
+            if (by == 15)
             {
                 setChunkUpdated(cx, cy + 1, cz, true);
             }
 
-            if (by == 0 && cy > -worldheight)
+            if (by == 0)
             {
                 setChunkUpdated(cx, cy - 1, cz, true);
             }
 
-            if (bz == 15 && cz < worldsize - 1)
+            if (bz == 15)
             {
                 setChunkUpdated(cx, cy, cz + 1, true);
             }
 
-            if (bz == 0 && cz > -worldsize)
+            if (bz == 0)
             {
                 setChunkUpdated(cx, cy, cz - 1, true);
             }
@@ -752,60 +799,6 @@ namespace world
         {
             i->updated = value;
         }
-    }
-
-    void sortChunkBuildRenderList(int xpos, int ypos, int zpos)
-    {
-        int cxp, cyp, czp, cx, cy, cz, p = 0;
-        int xd, yd, zd, distsqr;
-
-        cxp = getchunkpos(xpos);
-        cyp = getchunkpos(ypos);
-        czp = getchunkpos(zpos);
-
-        for (auto&& chk : mWorld)
-        {
-            if (chk.second.updated)
-            {
-                cx = chk.second.cx;
-                cy = chk.second.cy;
-                cz = chk.second.cz;
-
-                if (chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance))
-                {
-                    xd = cx * 16 + 7 - xpos;
-                    yd = cy * 16 + 7 - ypos;
-                    zd = cz * 16 + 7 - zpos;
-                    distsqr = xd * xd + yd * yd + zd * zd;
-                    chunkBuildRenderList.insert(distsqr, &chk.second);
-                }
-            }
-        }
-    }
-
-    void sortChunkLoadUnloadList(int xpos, int ypos, int zpos)
-    {
-        int cxp, cyp, czp, cx, cy, cz;
-
-        cxp = getchunkpos(xpos);
-        cyp = getchunkpos(ypos);
-        czp = getchunkpos(zpos);
-
-        for (auto&& chk : mWorld)
-        {
-            cx = chk.second.cx;
-            cy = chk.second.cy;
-            cz = chk.second.cz;
-            if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance + 1))
-                chunkUnloadList.insert((Vec3i{ cx + 7, cy + 7, cz + 7 } * 16 - Vec3i{xpos, ypos, zpos}).lengthSqr(), &chk.second);
-        }
-
-        for (cx = cxp - viewdistance - 1; cx <= cxp + viewdistance; cx++)
-            for (cy = cyp - viewdistance - 1; cy <= cyp + viewdistance; cy++)
-                for (cz = czp - viewdistance - 1; cz <= czp + viewdistance; cz++)
-                    if (!chunkLoaded(cx, cy, cz))
-                        chunkLoadList.insert((Vec3i{ cx + 7, cy + 7, cz + 7 } *16 - Vec3i{ xpos, ypos, zpos }).lengthSqr(), Vec3i{ cx, cy, cz });
-
     }
 
     void saveAllChunks()
