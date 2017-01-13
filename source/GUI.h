@@ -139,14 +139,13 @@ namespace gui
         unsigned int displaylist;
         bool ExitSignal, MouseOnTextbox;
         void Init();
-        void registerControl(controls *c);
-        void registerControls(int count)
-        {};
+        void registerControl(controls &c);
+        void registerControls(){};
         template<typename... T>
-        void registerControls(int count, controls* c,T*... cs)
+        void registerControls(controls& c,T&... cs)
         {
             registerControl(c);
-            registerControls(count, cs...);
+            registerControls(cs...);
         }
         void update();
         void render();

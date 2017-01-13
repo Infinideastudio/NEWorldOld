@@ -110,10 +110,6 @@ namespace TextRenderer
     std::wstring c2w(string str) noexcept
     {
         size_t destlen = mbstowcs(nullptr, str.data(), 0);
-
-        if (destlen == static_cast<size_t>(-1))
-            return L"";
-
         std::wstring val(destlen, L' ');
         mbstowcs(const_cast<wchar_t*>(val.c_str()), str.data(), destlen + 1);
         return val;
