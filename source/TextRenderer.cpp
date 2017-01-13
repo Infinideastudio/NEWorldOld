@@ -53,22 +53,12 @@ namespace TextRenderer
         a = a_;
     }
 
-    void MBToWC(const char *lpcszStr, wchar_t *&lpwszStr, int dwSize)
-    {
-        lpwszStr = (wchar_t *)malloc(dwSize);
-        memset(lpwszStr, 0, dwSize);
-        int iSize = (MByteToWChar(lpwszStr, lpcszStr, strlen(lpcszStr)) + 1) * sizeof(wchar_t);
-        lpwszStr = (wchar_t *)realloc(lpwszStr, iSize);
-    }
-
     int getStrWidth(string s)
     {
         int ret = 0;
         unsigned int i = 0;
-        wchar_t *wstr = nullptr;
-        MBToWC(s.c_str(), wstr, 128);
 
-        for (unsigned int k = 0; k < wstrlen(wstr); k++)
+        while(i<s.size())
         {
             if (s[i] >= 0 && s[i] <= 127)
             {
@@ -82,7 +72,6 @@ namespace TextRenderer
             }
         }
 
-        free(wstr);
         return ret;
     }
 
@@ -118,19 +107,28 @@ namespace TextRenderer
         glEnable(GL_DEPTH_TEST);
         glColor4f(1.0, 1.0, 1.0, 1.0);
     }
+    std::wstring c2w(string str) noexcept
+    {
+        size_t destlen = mbstowcs(nullptr, str.data(), 0);
 
+        if (destlen == static_cast<size_t>(-1))
+            return L"";
+
+        std::wstring val(destlen, L' ');
+        mbstowcs(const_cast<wchar_t*>(val.c_str()), str.data(), destlen + 1);
+        return val;
+    }
     void renderString(int x, int y, string glstring)
     {
         double tx, ty, span = 0;
         TextureID ftex;
 
-        wchar_t *wstr = nullptr;
-        MBToWC(glstring.c_str(), wstr, 128);
+        auto wstr = c2w(glstring);
 
         glEnable(GL_TEXTURE_2D);
         glTranslated(x + 1, y + 1, 0);
 
-        for (unsigned int k = 0; k < wstrlen(wstr); k++)
+        for (unsigned int k = 0; k < wstr.size(); k++)
         {
             int hbit = wstr[k] / 256, lbit = wstr[k] % 256;
 
@@ -186,6 +184,5 @@ namespace TextRenderer
 
         glTranslated(-x - 1, -y - 1, 0);
         glColor4f(1.0, 1.0, 1.0, 1.0);
-        free(wstr);
     }
 }

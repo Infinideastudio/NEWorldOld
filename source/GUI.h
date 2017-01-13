@@ -140,7 +140,14 @@ namespace gui
         bool ExitSignal, MouseOnTextbox;
         void Init();
         void registerControl(controls *c);
-        void registerControls(int count, controls *c, ...);
+        void registerControls(int count)
+        {};
+        template<typename... T>
+        void registerControls(int count, controls* c,T*... cs)
+        {
+            registerControl(c);
+            registerControls(count, cs...);
+        }
         void update();
         void render();
         controls *getControlByID(int cid);
