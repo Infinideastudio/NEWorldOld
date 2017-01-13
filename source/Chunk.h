@@ -15,6 +15,7 @@ namespace world
     public:
         //竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻
         //2333 --qiaozhanrong
+        chunk() = default;
         chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi),
             Modified(false), Empty(false), updated(false), renderBuilt(false), loadAnim(0.0)
         {
@@ -52,22 +53,30 @@ namespace world
         block getblock(int x, int y, int z)
         {
             //获取区块内的方块
-            return pblocks[(x << 8) + (y << 4) + z];
+            return !Empty ? pblocks[(x << 8) + (y << 4) + z] : blocks::AIR;
         }
         brightness getbrightness(int x, int y, int z)
         {
             //获取区块内的亮度
-            return pbrightness[(x << 8) + (y << 4) + z];
+            return !Empty ? pbrightness[(x << 8) + (y << 4) + z] : skylight;
         }
         void setblock(int x, int y, int z, block iblock)
         {
             //设置方块
+            if (Empty)
+            {
+                Load(); Empty = false;
+            }
             pblocks[(x << 8) + (y << 4) + z] = iblock;
             Modified = true;
         }
         void setbrightness(int x, int y, int z, brightness ibrightness)
         {
             //设置亮度
+            if (Empty) 
+            {
+                Load(); Empty = false;
+            }
             pbrightness[(x << 8) + (y << 4) + z] = ibrightness;
             Modified = true;
         }

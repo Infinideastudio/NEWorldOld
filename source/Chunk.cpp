@@ -21,21 +21,13 @@ namespace world
 
         if (cy > 8)
         {
-            memset(pblocks, 0, 4096 * sizeof(block));
-
-            for (int index = 0; index < 4096; index++)
-            {
-                pbrightness[index] = skylight;
-            }
+            std::fill(pblocks, pblocks + 4096, blocks::AIR);
+            std::fill(pbrightness, pbrightness + 4096, skylight);
         }
         else if (cy < 0)
         {
-            memset(pblocks, 0, 4096 * sizeof(block));
-
-            for (int index = 0; index < 4096; index++)
-            {
-                pbrightness[index] = BRIGHTNESSMIN;
-            }
+            std::fill(pblocks, pblocks + 4096, blocks::ROCK);
+            std::fill(pbrightness, pbrightness + 4096, BRIGHTNESSMIN);
         }
         else
         {
@@ -143,7 +135,6 @@ namespace world
 
     void chunk::Unload()
     {
-        unloadedChunksCount++;
         SaveToFile();
         destroyRender();
         delete[] pblocks;
@@ -151,7 +142,6 @@ namespace world
         pblocks = nullptr;
         pbrightness = nullptr;
         updated = false;
-        unloadedChunks++;
     }
 
     void chunk::LoadFromFile()
@@ -191,11 +181,6 @@ namespace world
                         continue;
                     }
 
-                    if (chunkOutOfBound(cx + x, cy + y, cz + z))
-                    {
-                        continue;
-                    }
-
                     if (!chunkLoaded(cx + x, cy + y, cz + z))
                     {
                         return;
@@ -203,9 +188,6 @@ namespace world
                 }
             }
         }
-
-        rebuiltChunks++;
-        updatedChunks++;
 
         if (renderBuilt == false)
         {
