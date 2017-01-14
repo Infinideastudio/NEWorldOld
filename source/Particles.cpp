@@ -85,63 +85,63 @@ namespace particles
 
         glBegin(GL_QUADS);
         glColor4d(col1, col1, col1, palpha);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
+        glTexCoord2d(tcx, tcy);
         glVertex3d(xpos - psize, ypos - psize, zpos + psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
+        glTexCoord2d(tcx + size, tcy);
         glVertex3d(xpos + psize, ypos - psize, zpos + psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
+        glTexCoord2d(tcx + size, tcy + size);
         glVertex3d(xpos + psize, ypos + psize, zpos + psize);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
+        glTexCoord2d(tcx, tcy + size);
         glVertex3d(xpos - psize, ypos + psize, zpos + psize);
 
         glColor4d(col1, col1, col1, palpha);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
+        glTexCoord2d(tcx, tcy);
         glVertex3d(xpos - psize, ypos + psize, zpos - psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
+        glTexCoord2d(tcx + size, tcy);
         glVertex3d(xpos + psize, ypos + psize, zpos - psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
+        glTexCoord2d(tcx + size, tcy + size);
         glVertex3d(xpos + psize, ypos - psize, zpos - psize);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
+        glTexCoord2d(tcx, tcy + size);
         glVertex3d(xpos - psize, ypos - psize, zpos - psize);
 
         glColor4d(col, col, col, palpha);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
+        glTexCoord2d(tcx, tcy);
         glVertex3d(xpos + psize, ypos + psize, zpos - psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
+        glTexCoord2d(tcx + size, tcy);
         glVertex3d(xpos - psize, ypos + psize, zpos - psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
+        glTexCoord2d(tcx + size, tcy + size);
         glVertex3d(xpos - psize, ypos + psize, zpos + psize);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
+        glTexCoord2d(tcx, tcy + size);
         glVertex3d(xpos + psize, ypos + psize, zpos + psize);
 
         glColor4d(col, col, col, palpha);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
+        glTexCoord2d(tcx, tcy);
         glVertex3d(xpos - psize, ypos - psize, zpos - psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
+        glTexCoord2d(tcx + size, tcy);
         glVertex3d(xpos + psize, ypos - psize, zpos - psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
+        glTexCoord2d(tcx + size, tcy + size);
         glVertex3d(xpos + psize, ypos - psize, zpos + psize);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
+        glTexCoord2d(tcx, tcy + size);
         glVertex3d(xpos - psize, ypos - psize, zpos + psize);
 
         glColor4d(col2, col2, col2, palpha);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
+        glTexCoord2d(tcx, tcy);
         glVertex3d(xpos + psize, ypos + psize, zpos - psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
+        glTexCoord2d(tcx + size, tcy);
         glVertex3d(xpos + psize, ypos + psize, zpos + psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
+        glTexCoord2d(tcx + size, tcy + size);
         glVertex3d(xpos + psize, ypos - psize, zpos + psize);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
+        glTexCoord2d(tcx, tcy + size);
         glVertex3d(xpos + psize, ypos - psize, zpos - psize);
 
         glColor4d(col2, col2, col2, palpha);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
+        glTexCoord2d(tcx, tcy);
         glVertex3d(xpos - psize, ypos - psize, zpos - psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
+        glTexCoord2d(tcx + size, tcy);
         glVertex3d(xpos - psize, ypos - psize, zpos + psize);
-        glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
+        glTexCoord2d(tcx + size, tcy + size);
         glVertex3d(xpos - psize, ypos + psize, zpos + psize);
-        glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
+        glTexCoord2d(tcx, tcy + size);
         glVertex3d(xpos - psize, ypos + psize, zpos - psize);
         glEnd();
     }

@@ -1,29 +1,29 @@
 #include "Definitions.h"
 
 //Global Vars
-float FOVyNormal = 60.0f;       //ÊÓÒ°½Ç¶È
-float mousemove = 0.2f;         //Êó±êÁéÃô¶È
-int viewdistance = 8;           //ÊÓÒ°¾àÀë
-int cloudwidth = 10;            //ÔÆµÄ¿í¶È
-int selectPrecision = 100;      //Ñ¡Ôñ·½¿éµÄ¾«¶È
-int selectDistance = 5;         //Ñ¡Ôñ·½¿éµÄ¾àÀë
-float walkspeed = 0.15f;        //Íæ¼ÒÇ°½øËÙ¶È
-float runspeed = 0.3f;          //Íæ¼ÒÅÜ²½ËÙ¶È
-int MaxAirJumps = 3 - 1;        //¿ÕÖĞN¶ÎÁ¬Ìø
-bool SmoothLighting = true;     //Æ½»¬¹âÕÕ
-bool NiceGrass = true;          //²İµØ²ÄÖÊÁ¬½Ó
-bool MergeFace = false;         //ºÏ²¢ÃæäÖÈ¾
-bool GUIScreenBlur = true;      //GUI±³¾°Ä£ºı
-int linelength = 10;            //¸úF3µÄ×¼ĞÇÓĞ¹Ø¡£¡£¡£
-int linedist = 30;              //¸úF3µÄ×¼ĞÇÓĞ¹Ø¡£¡£¡£
-float skycolorR = 0.7f;         //Ìì¿ÕÑÕÉ«Red
-float skycolorG = 1.0f;         //Ìì¿ÕÑÕÉ«Green
-float skycolorB = 1.0f;         //Ìì¿ÕÑÕÉ«Blue
+float FOVyNormal = 60.0f;       //è§†é‡è§’åº¦
+float mousemove = 0.2f;         //é¼ æ ‡çµæ•åº¦
+int viewdistance = 8;           //è§†é‡è·ç¦»
+int cloudwidth = 10;            //äº‘çš„å®½åº¦
+int selectPrecision = 100;      //é€‰æ‹©æ–¹å—çš„ç²¾åº¦
+int selectDistance = 5;         //é€‰æ‹©æ–¹å—çš„è·ç¦»
+float walkspeed = 0.15f;        //ç©å®¶å‰è¿›é€Ÿåº¦
+float runspeed = 0.3f;          //ç©å®¶è·‘æ­¥é€Ÿåº¦
+int MaxAirJumps = 3 - 1;        //ç©ºä¸­Næ®µè¿è·³
+bool SmoothLighting = true;     //å¹³æ»‘å…‰ç…§
+bool NiceGrass = true;          //è‰åœ°æè´¨è¿æ¥
+bool MergeFace = false;         //åˆå¹¶é¢æ¸²æŸ“
+bool GUIScreenBlur = true;      //GUIèƒŒæ™¯æ¨¡ç³Š
+int linelength = 10;            //è·ŸF3çš„å‡†æ˜Ÿæœ‰å…³ã€‚ã€‚ã€‚
+int linedist = 30;              //è·ŸF3çš„å‡†æ˜Ÿæœ‰å…³ã€‚ã€‚ã€‚
+float skycolorR = 0.7f;         //å¤©ç©ºé¢œè‰²Red
+float skycolorG = 1.0f;         //å¤©ç©ºé¢œè‰²Green
+float skycolorB = 1.0f;         //å¤©ç©ºé¢œè‰²Blue
 float FOVyRunning = 8.0f;
 float FOVyExt;
 
-int windowwidth;     //´°¿Ú¿í¶È
-int windowheight;    //´°¿Ú¿í¶È
+int windowwidth;     //çª—å£å®½åº¦
+int windowheight;    //çª—å£å®½åº¦
 bool gamebegin, gameexit, bagOpened;
 
 TextureID BlockTextures, BlockTextures3D;
@@ -31,12 +31,10 @@ TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
 TextureID DestroyImage[11];
 TextureID DefaultSkin;
 
-//Ïß³Ì
+//çº¿ç¨‹
 std::mutex Mutex;
-std::unique_ptr<std::thread> updateThread;
 double lastupdate, updateTimer;
 double lastframe;
-bool updateThreadRun, updateThreadPaused;
 
 bool shouldGetScreenshot;
 bool shouldGetThumbnail;
@@ -54,11 +52,11 @@ int GLVersionMajor, GLVersionMinor, GLVersionRev;
 GLFWwindow *MainWindow;
 GLFWcursor *MouseCursor;
 
-//Êó±êÊäÈëÊı¾İ
+//é¼ æ ‡è¾“å…¥æ•°æ®
 double mx, my, mxl, myl;
 int mw, mb, mbp, mbl, mwl;
 double mxdelta, mydelta;
-//¼üÅÌÊäÈëÊı¾İ
+//é”®ç›˜è¾“å…¥æ•°æ®
 string inputstr;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC

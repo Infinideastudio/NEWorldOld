@@ -38,8 +38,8 @@ const unsigned int VERSION = 37;
 const string MAJOR_VERSION = "Alpha 0.";
 const string MINOR_VERSION = "4.10";
 const string EXT_VERSION = "";
-const int defaultwindowwidth = 852; //Ä¬ÈÏ´°¿Ú¿í¶È
-const int defaultwindowheight = 480; //Ä¬ÈÏ´°¿Ú¸ß¶È
+const int defaultwindowwidth = 852; //Ä¬ï¿½Ï´ï¿½ï¿½Ú¿ï¿½ï¿½
+const int defaultwindowheight = 480; //Ä¬ï¿½Ï´ï¿½ï¿½Ú¸ß¶ï¿½
 extern float FOVyNormal;
 extern float mousemove;
 extern int viewdistance;
@@ -71,10 +71,8 @@ extern TextureID DestroyImage[11];
 extern TextureID DefaultSkin;
 
 extern std::mutex Mutex;
-extern std::unique_ptr<std::thread> updateThread;
 extern double lastupdate, updateTimer;
 extern double lastframe;
-extern bool updateThreadRun, updateThreadPaused;
 
 extern bool mpclient, mpserver;
 extern bool shouldGetScreenshot;
@@ -118,9 +116,7 @@ inline double rnd()
 
 inline unsigned int WCharToMByte(char *dst, const wchar_t *src, unsigned int n)
 {
-    size_t res;
-    wcstombs_s(&res, dst, n, src, _TRUNCATE);
-    return res;
+    return wcstombs(dst, src, n);
 }
 
 void Sleep(unsigned int ms);

@@ -2,6 +2,7 @@
 #include "Textures.h"
 #include "Renderer.h"
 #include "WorldGen.h"
+#include "utils/filesystem.h"
 
 extern int viewdistance;
 
@@ -30,7 +31,7 @@ namespace world
         static OrderedList<int, chunk*, MaxChunkUnloads, std::greater> chunkUnloadList;
         Vec3i ccentre = centre / 16, c,sub =Vec3i{ 7, 7, 7 }-centre;
 
-        for (auto&& chk : mWorld)
+        for (auto&& chk : mChunks)
         {
             c = Vec3i{ chk.second.cx, chk.second.cy, chk.second.cz };
             if (!chunkInRange(c.x, c.y, c.z, ccentre.x, ccentre.y, ccentre.z, viewdistance + 1))
@@ -90,7 +91,7 @@ namespace world
     {
         OrderedList<int, chunk*, MaxChunkRenders> chunkBuildRenderList;
         Vec3i ccentre = centre / 16, c, sub = Vec3i{ 7, 7, 7 }-centre;
-        for (auto&& chk : mWorld)
+        for (auto&& chk : mChunks)
         {
             if (chk.second.updated)
             {
@@ -117,13 +118,8 @@ namespace world
 
     void Init()
     {
-        std::stringstream ss;
-        ss << "md \"Worlds/" << worldname << "\"";
-        system(ss.str().c_str());
-        ss.clear();
-        ss.str("");
-        ss << "md \"Worlds/" << worldname << "/chunks\"";
-        system(ss.str().c_str());
+        FileSystem::createDirectory(std::string("./Worlds/") + worldname);
+        FileSystem::createDirectory(std::string("./Worlds/") + worldname + std::string("/chunks"));
 
         WorldGen::perlinNoiseInit(3404);
 
@@ -476,7 +472,7 @@ namespace world
 
     vector<Hitbox::AABB> getHitboxes(Hitbox::AABB box)
     {
-        //·µ»ØÓëboxÏà½»µÄËùÓÐ·½¿éAABB
+        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½boxï¿½à½»ï¿½ï¿½ï¿½ï¿½ï¿½Ð·ï¿½ï¿½ï¿½AABB
 
         Hitbox::AABB blockbox;
         vector<Hitbox::AABB> hitBoxes;
@@ -720,7 +716,6 @@ namespace world
 
     block getblock(int x, int y, int z, block mask, chunk *cptr)
     {
-        //»ñÈ¡XYZµÄ·½¿é
         int cx, cy, cz;
         cx = getchunkpos(x);
         cy = getchunkpos(y);
@@ -747,7 +742,6 @@ namespace world
 
     brightness getbrightness(int x, int y, int z, chunk *cptr)
     {
-        //»ñÈ¡XYZµÄÁÁ¶È
         int cx, cy, cz;
         cx = getchunkpos(x);
         cy = getchunkpos(y);
@@ -776,7 +770,6 @@ namespace world
     void setblock(int x, int y, int z, block Blockname)
     {
 
-        //ÉèÖÃ·½¿é
         int cx, cy, cz, bx, by, bz;
 
         cx = getchunkpos(x);
@@ -799,7 +792,7 @@ namespace world
     void setbrightness(int x, int y, int z, brightness Brightness)
     {
 
-        //ÉèÖÃXYZµÄÁÁ¶È
+        //ï¿½ï¿½ï¿½ï¿½XYZï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         int cx, cy, cz, bx, by, bz;
 
         cx = getchunkpos(x);

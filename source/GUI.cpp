@@ -3,7 +3,7 @@
 
 extern string inputstr;
 
-//Í¼ĞÎ½çÃæÏµÍ³¡£¡£¡£Õı×ÚOOP£¡£¡£¡
+//å›¾å½¢ç•Œé¢ç³»ç»Ÿã€‚ã€‚ã€‚æ­£å®—OOPï¼ï¼ï¼
 namespace gui
 {
     float linewidth = 1.0f;
@@ -42,11 +42,11 @@ namespace gui
         /*
         int w = windowwidth; //Width
         int h = windowheight; //Height
-        int r = 8; //·¶Î§
+        int r = 8; //èŒƒå›´
         int psw = w + 2 * r, psh = h + 2 * r;
-        ubyte *scr; //ÆÁÄ»ÏñËØ»º´æ
-        int *cps; //ÁĞÇ°×ººÍ
-        int *rps; //ĞĞÇ°×ººÍ
+        ubyte *scr; //å±å¹•åƒç´ ç¼“å­˜
+        int *cps; //åˆ—å‰ç¼€å’Œ
+        int *rps; //è¡Œå‰ç¼€å’Œ
         int* sum;
         scr = new ubyte[w*h * 3];
         cps = new int[psw*psh * 3];
@@ -55,7 +55,7 @@ namespace gui
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, scr);
-        //´¦ÀíÇ°×ººÍ
+        //å¤„ç†å‰ç¼€å’Œ
         for (int col = 0; col < 3; col++) {
             for (int x = 0; x < psw; x++) {
                 for (int y = 0; y < psh; y++) {
@@ -68,8 +68,8 @@ namespace gui
                 }
             }
         }
-        //Ä£ºı¼ÆËã
-        int cursum; //µ±Ç°ÑÕÉ«Ö®ºÍ
+        //æ¨¡ç³Šè®¡ç®—
+        int cursum; //å½“å‰é¢œè‰²ä¹‹å’Œ
         for (int col = 0; col < 3; col++) {
             cursum = 0;
             for (int y = 0; y <= 2 * r; y++) cursum += rps[(y*psw + 2 * r) * 3 + col];
@@ -103,11 +103,11 @@ namespace gui
         */
         static int szl = 0, rl = 0;
         static float *mat = nullptr;
-        static ubyte *scr; //ÆÁÄ»ÏñËØ»º´æ
+        static ubyte *scr; //å±å¹•åƒç´ ç¼“å­˜
 
         int w = windowwidth; //Width
         int h = windowheight; //Height
-        int r = 2; //·¶Î§
+        int r = 2; //èŒƒå›´
         int sz = 1;
         float scale = 2;
         TextureID bgTex;
@@ -302,8 +302,8 @@ namespace gui
 
     void label::update()
     {
-        //¸üĞÂ±êÇ©×´Ì¬
-        if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)               //Êó±êĞüÍ£
+        //æ›´æ–°æ ‡ç­¾çŠ¶æ€
+        if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)               //é¼ æ ‡æ‚¬åœ
         {
             mouseon = true;
         }
@@ -314,15 +314,15 @@ namespace gui
 
         if (parent->mb == 1 && parent->mbl == 0 && mouseon)
         {
-            parent->focusid = id;    //½¹µãÔÚ´Ë
+            parent->focusid = id;    //ç„¦ç‚¹åœ¨æ­¤
         }
 
-        focused = parent->focusid == id;   //½¹µã
+        focused = parent->focusid == id;   //ç„¦ç‚¹
     }
 
     void label::render()
     {
-        //äÖÈ¾±êÇ©
+        //æ¸²æŸ“æ ‡ç­¾
         float fcR, fcG, fcB, fcA;
         fcR = FgR;
         fcG = FgG;
@@ -366,7 +366,7 @@ namespace gui
             return;
         }
 
-        //¸üĞÂ°´Å¥×´Ì¬
+        //æ›´æ–°æŒ‰é’®çŠ¶æ€
         if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
         {
             mouseon = true;
@@ -407,7 +407,7 @@ namespace gui
     void button::render()
     {
 
-        //äÖÈ¾°´Å¥
+        //æ¸²æŸ“æŒ‰é’®
         float fcR, fcG, fcB, fcA;
         fcR = FgR;
         fcG = FgG;
@@ -529,7 +529,7 @@ namespace gui
             return;
         }
 
-        //¸üĞÂTrackBar£¨µ½µ×¸ÃÔõÃ´·­ÒëÄØ£¿£©×´Ì¬
+        //æ›´æ–°TrackBarï¼ˆåˆ°åº•è¯¥æ€ä¹ˆç¿»è¯‘å‘¢ï¼Ÿï¼‰çŠ¶æ€
         if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax && parent->mb == 1)
         {
             parent->focusid = id;
@@ -603,7 +603,7 @@ namespace gui
     void trackbar::render()
     {
 
-        //äÖÈ¾TrackBar£¨How can I translate it?£©
+        //æ¸²æŸ“TrackBarï¼ˆHow can I translate it?ï¼‰
         float fcR, fcG, fcB, fcA;
         float bcR, bcG, bcB, bcA;
         fcR = FgR;
@@ -758,7 +758,7 @@ namespace gui
             delt = 0;
         }
 
-        //¸üĞÂÎÄ±¾¿ò×´Ì¬
+        //æ›´æ–°æ–‡æœ¬æ¡†çŠ¶æ€
         if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
         {
             mouseon = true, parent->MouseOnTextbox = true;
@@ -779,7 +779,7 @@ namespace gui
 
         if (parent->mb == 1 && parent->mbl == 0 && mouseon)
         {
-            parent->focusid = id;    //½¹µãÔÚ´Ë
+            parent->focusid = id;    //ç„¦ç‚¹åœ¨æ­¤
         }
 
         if (parent->focusid == id)
@@ -788,7 +788,7 @@ namespace gui
         }
         else
         {
-            focused = false;    //½¹µã
+            focused = false;    //ç„¦ç‚¹
         }
 
         if (focused && inputstr != "")
@@ -817,7 +817,7 @@ namespace gui
     void textbox::render()
     {
 
-        //äÖÈ¾ÎÄ±¾¿ò
+        //æ¸²æŸ“æ–‡æœ¬æ¡†
         float bcR, bcG, bcB, bcA;
         bcR = BgR;
         bcG = BgG;
@@ -930,8 +930,8 @@ namespace gui
         psup = false;
         psdown = false;
 
-        //¸üĞÂ¹ö¶¯Ìõ×´Ì¬
-        //Êó±êĞüÍ£
+        //æ›´æ–°æ»šåŠ¨æ¡çŠ¶æ€
+        //é¼ æ ‡æ‚¬åœ
         mouseon = (parent->my >= ymin + barpos + 20 && parent->my <= ymin + barpos + barheight + 20 && parent->mx >= xmin && parent->mx <= xmax);
 
         if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
@@ -985,7 +985,7 @@ namespace gui
             }
         }
 
-        if (parent->mb == 1 && mouseon && focused)  //Êó±ê°´×¡
+        if (parent->mb == 1 && mouseon && focused)  //é¼ æ ‡æŒ‰ä½
         {
             pressed = true;
         }
@@ -999,14 +999,14 @@ namespace gui
 
         if (parent->mb == 1 && parent->mbl == 0 && mouseon)
         {
-            parent->focusid = id;    //½¹µãÔÚ´Ë
+            parent->focusid = id;    //ç„¦ç‚¹åœ¨æ­¤
         }
 
-        focused = (parent->focusid == id);   //½¹µã
+        focused = (parent->focusid == id);   //ç„¦ç‚¹
 
         if (pressed)
         {
-            barpos += parent->my - parent->myl;    //ÍÏ¶¯
+            barpos += parent->my - parent->myl;    //æ‹–åŠ¨
         }
 
         if (focused)
@@ -1039,7 +1039,7 @@ namespace gui
 
         if (barpos < 0)
         {
-            barpos = 0;    //ÈÃÍÏ¶¯Ìõ²»Ô½½ç
+            barpos = 0;    //è®©æ‹–åŠ¨æ¡ä¸è¶Šç•Œ
         }
 
         if (barpos >= ymax - ymin - barheight - 40)
@@ -1050,7 +1050,7 @@ namespace gui
 
     void vscroll::render()
     {
-        //äÖÈ¾¹ö¶¯Ìõ
+        //æ¸²æŸ“æ»šåŠ¨æ¡
         float fcR, fcG, fcB, fcA;
         float bcR, bcG, bcB, bcA;
         fcR = FgR;
@@ -1283,7 +1283,7 @@ namespace gui
         bool lMouseOnTextbox = MouseOnTextbox;
         MouseOnTextbox = false;
 
-        if (glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS)                              //TAB¼üÇĞ»»½¹µã
+        if (glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS)                              //TABé”®åˆ‡æ¢ç„¦ç‚¹
         {
             if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)    //Shift+Tab
             {
@@ -1296,7 +1296,7 @@ namespace gui
 
                 if (focusid == -2)
                 {
-                    focusid = maxid - 1;    //µ½ÁË×îÇ°Ò»¸öID
+                    focusid = maxid - 1;    //åˆ°äº†æœ€å‰ä¸€ä¸ªID
                 }
             }
             else
@@ -1310,7 +1310,7 @@ namespace gui
 
                 if (focusid == maxid + 1)
                 {
-                    focusid = -1;    //µ½ÁË×îºóÒ»¸öID
+                    focusid = -1;    //åˆ°äº†æœ€åä¸€ä¸ªID
                 }
             }
 
@@ -1340,7 +1340,7 @@ namespace gui
             enterp = false;
         }
 
-        upkpl = upkp;                                                              //·½Ïò¼üÉÏ
+        upkpl = upkp;                                                              //æ–¹å‘é”®ä¸Š
 
         if (glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS)
         {
@@ -1353,7 +1353,7 @@ namespace gui
             upkp = false;
         }
 
-        downkpl = downkp;                                                          //·½Ïò¼üÏÂ
+        downkpl = downkp;                                                          //æ–¹å‘é”®ä¸‹
 
         if (glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS)
         {
@@ -1365,7 +1365,7 @@ namespace gui
             downkp = false;
         }
 
-        leftkpl = leftkp;                                                          //·½Ïò¼ü×ó
+        leftkpl = leftkp;                                                          //æ–¹å‘é”®å·¦
 
         if (glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS)
         {
@@ -1377,7 +1377,7 @@ namespace gui
             leftkp = false;
         }
 
-        rightkpl = rightkp;                                                        //·½Ïò¼üÓÒ
+        rightkpl = rightkp;                                                        //æ–¹å‘é”®å³
 
         if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == GLFW_PRESS)
         {
@@ -1402,13 +1402,13 @@ namespace gui
 
         if (mb == 1 && mbl == 0)
         {
-            focusid = -1;    //¿Õµã»÷Ê±Ê¹½¹µãÇå¿Õ
+            focusid = -1;    //ç©ºç‚¹å‡»æ—¶ä½¿ç„¦ç‚¹æ¸…ç©º
         }
 
         for (i = 0; i != childrenCount; i++)
         {
             children[i]->updatepos();
-            children[i]->update();                                               //¸üĞÂ×Ó¿Ø¼ş
+            children[i]->update();                                               //æ›´æ–°å­æ§ä»¶
         }
 
         if (!lMouseOnTextbox && MouseOnTextbox)
