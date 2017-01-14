@@ -29,10 +29,10 @@ namespace world
             if (!chunkInRange(c.x, c.y, c.z, ccentre.x, ccentre.y, ccentre.z ,viewdistance + 1))
                 chunkUnloadList.insert(((c + Vec3i{ 7, 7, 7 }) *16 - centre).lengthSqr(), &chk.second);
         }
-
-        for (c.x = ccentre.x - viewdistance - 1; c.x <= ccentre.x + viewdistance; c.x++)
-            for (c.y = ccentre.y - viewdistance - 1; c.y <= ccentre.y + viewdistance; c.y++)
-                for (c.z = ccentre.z - viewdistance - 1; c.z <= ccentre.z + viewdistance; c.z++)
+        
+        for (c.x = ccentre.x - viewdistance - 1; c.x <= ccentre.x + viewdistance; ++c.x)
+            for (c.y = ccentre.y - viewdistance - 1; c.y <= ccentre.y + viewdistance; ++c.y)
+                for (c.z = ccentre.z - viewdistance - 1; c.z <= ccentre.z + viewdistance; ++c.z)
                     if (!chunkLoaded(c.x, c.y, c.z))
                         chunkLoadList.insert(((c + Vec3i{ 7, 7, 7 }) *16 - centre).lengthSqr(), c);
 

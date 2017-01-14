@@ -63,9 +63,9 @@ namespace world
         void tryLoadUnloadChunks(const Vec3i& centre);
         void tryUpdateRenderers(const Vec3i& centre);
     private:
-        constexpr static int MaxChunkLoads = 64;
-        constexpr static int MaxChunkUnloads = 64;
-        constexpr static int MaxChunkRenders = 4;
+        constexpr static size_t MaxChunkLoads = 128;
+        constexpr static size_t MaxChunkUnloads = 128;
+        constexpr static size_t MaxChunkRenders = 4;
         struct ChunkHash
         {
             constexpr size_t operator()(const Vec3i &t) const noexcept { return getChunkID(t); }

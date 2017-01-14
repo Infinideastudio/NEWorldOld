@@ -50,13 +50,13 @@ namespace Textures
     ubyte getTextureIndex(block blockname, ubyte side);
     double getTexcoordX(block iblock, ubyte side);
     double getTexcoordY(block iblock, ubyte side);
-    void LoadRGBImage(TEXTURE_RGB &tex, string Filename);
-    void LoadRGBAImage(TEXTURE_RGBA &tex, string Filename, string MkFilename);
-    TextureID LoadRGBTexture(string Filename);
-    TextureID LoadRGBATexture(string Filename, string MkFilename);
-    TextureID LoadFontTexture(string filename);
+    void LoadRGBImage(TEXTURE_RGB &tex,const string& Filename);
+    void LoadRGBAImage(TEXTURE_RGBA &tex,const string& Filename, const string& MkFilename);
+    TextureID LoadRGBTexture(const string& Filename);
+    TextureID LoadRGBATexture(const string& Filename, const string& MkFilename);
+    TextureID LoadFontTexture(const string& filename);
     TextureID LoadFontTexture(int id);
-    TextureID LoadBlock3DTexture(string Filename, string MkFilename);
-    void SaveRGBImage(string filename, TEXTURE_RGB &image);
+    TextureID LoadBlock3DTexture(const string& Filename, const string& MkFilename);
+    void SaveRGBImage(const string& filename, TEXTURE_RGB &image);
 
 }
