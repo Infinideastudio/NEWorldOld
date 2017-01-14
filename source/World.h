@@ -34,8 +34,7 @@ namespace world
             if (first <= mSize && first < size)
             {
                 mSize = std::min(size, mSize + 1);
-                for (int j = size - 1; j > first; j--)
-                    mList[j] = mList[j - 1];
+                std::move_backward(mList.begin() + first, mList.begin() +size-1, mList.begin()+size);
                 mList[first] = std::pair<Tk, Td>(key, data);
             }
         }

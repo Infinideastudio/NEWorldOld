@@ -2,7 +2,6 @@
 //==============================初始化(包括闪屏)================================//
 
 #include "Definitions.h"
-#include <thread>
 void WindowSizeFunc(GLFWwindow *win, int width, int height);
 void MouseButtonFunc(GLFWwindow *, int button, int action, int);
 void CharInputFunc(GLFWwindow *, unsigned int c);
@@ -15,7 +14,7 @@ void setupNormalFog();
 void LoadTextures();
 void loadGame();
 void saveGame();
-ThreadFunc updateThreadFunc(void *);
+void updateThreadFunc();
 void drawCloud(double px, double pz);
 void updategame();
 void debugText(string s, bool init = false);
@@ -143,10 +142,9 @@ main_menu:
     glfwSwapBuffers(MainWindow);
     glfwPollEvents();
 
-    Mutex = MutexCreate();
-    MutexLock(Mutex);
+    Mutex.lock();
     updateThreadRun = false;
-    updateThread = ThreadCreate(&updateThreadFunc, nullptr);
+    updateThread = std::make_unique<std::thread>(updateThreadFunc);
 
     //初始化游戏状态
     printf("[Console][Game]");
@@ -221,8 +219,8 @@ main_menu:
     {
         //主循环，被简化成这样，惨不忍睹啊！
 
-        MutexUnlock(Mutex);
-        MutexLock(Mutex);
+        Mutex.unlock();
+        Mutex.lock();
 
         if ((timer() - uctime) >= 1.0)
         {
@@ -264,10 +262,8 @@ main_menu:
             printf("[Console][Game]");
             printf("Terminate threads\n");
             updateThreadRun = false;
-            MutexUnlock(Mutex);
-            ThreadWait(updateThread);
-            ThreadDestroy(updateThread);
-            MutexDestroy(Mutex);
+            Mutex.unlock();
+            updateThread->join();
             saveGame();
             world::destroyAllChunks();
             printf("[Console][Game]");
@@ -283,10 +279,8 @@ main_menu:
     saveGame();
 
     updateThreadRun = false;
-    MutexUnlock(Mutex);
-    ThreadWait(updateThread);
-    ThreadDestroy(updateThread);
-    MutexDestroy(Mutex);
+    Mutex.unlock();
+    updateThread->join();
 
     //结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
     //不对啊这不是FB！！！这是正宗的VC++！！！！！！
@@ -297,37 +291,37 @@ main_menu:
     //This is the END of the program!
 }
 
-ThreadFunc updateThreadFunc(void *)
+void updateThreadFunc()
 {
 
     //Wait until start...
-    MutexLock(Mutex);
+    Mutex.lock();
 
     while (!updateThreadRun)
     {
-        MutexUnlock(Mutex);
+        Mutex.unlock();
         std::this_thread::yield();
-        MutexLock(Mutex);
+        Mutex.lock();
     }
 
-    MutexUnlock(Mutex);
+    Mutex.unlock();
 
     //Thread start
-    MutexLock(Mutex);
+    Mutex.lock();
     lastupdate = timer();
 
     while (updateThreadRun)
     {
 
-        MutexUnlock(Mutex);
+        Mutex.unlock();
         std::this_thread::yield(); //Don't make it always busy
-        MutexLock(Mutex);
+        Mutex.lock();
 
         while (updateThreadPaused)
         {
-            MutexUnlock(Mutex);
+            Mutex.unlock();
             std::this_thread::yield(); //Same as before
-            MutexLock(Mutex);
+            Mutex.lock();
             lastupdate = updateTimer = timer();
         }
 
@@ -356,9 +350,7 @@ ThreadFunc updateThreadFunc(void *)
 
     }
 
-    MutexUnlock(Mutex);
-
-    return 0;
+    Mutex.unlock();
 }
 
 void WindowSizeFunc(GLFWwindow *win, int width, int height)
@@ -1395,7 +1387,7 @@ void Render()
         }
     }
 
-    MutexUnlock(Mutex);
+    Mutex.unlock();
     renderedChunk = displayChunks.size();
 
     if (MergeFace)
@@ -1442,7 +1434,7 @@ void Render()
 
     glEnable(GL_BLEND);
 
-    MutexLock(Mutex);
+    Mutex.lock();
 
     if (seldes > 0.0)
     {
@@ -1463,7 +1455,7 @@ void Render()
         glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
     }
 
-    MutexUnlock(Mutex);
+    Mutex.unlock();
 
     glLoadIdentity();
     glRotated(plookupdown, 1, 0, 0);
@@ -1536,7 +1528,7 @@ void Render()
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_CULL_FACE);
 
-    MutexLock(Mutex);
+    Mutex.lock();
 
     //Time_renderscene = timer() - Time_renderscene;
     //Time_renderGUI_ = timer();
@@ -1613,10 +1605,10 @@ void Render()
 
     //屏幕刷新，千万别删，后果自负！！！
     //====refresh====//
-    MutexUnlock(Mutex);
+    Mutex.unlock();
     glfwSwapBuffers(MainWindow);
     glfwPollEvents();
-    MutexLock(Mutex);
+    Mutex.lock();
     //==refresh end==//
 
     lastframe = curtime;
