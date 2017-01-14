@@ -2,14 +2,15 @@
 #include "World.h"
 #include "Textures.h"
 #include "TextRenderer.h"
+#include "utils/filesystem.h"
 
 string BoolYesNo(bool b)
 {
-    return b ? "ÊÇ" : "·ñ";
+    return b ? "æ˜¯" : "å¦";
 }
 string BoolEnabled(bool b)
 {
-    return b ? "¿ªÆô" : "¹Ø±Õ";
+    return b ? "å¼€å¯" : "å…³é—­";
 }
 
 extern bool gamebegin;
@@ -44,9 +45,9 @@ private:
     void onLoad()
     {
         title = gui::imagebox(0.0f, 1.0f, 0.5f, 1.0f, tex_title, -256, 256, 20, 276, 0.5, 0.5, 0.0, 0.0);
-        startbtn = gui::button("¿ªÊ¼ÓÎÏ·", -200, 200, 280, 312, 0.5, 0.5, 0.0, 0.0);
-        optionsbtn = gui::button(">> Ñ¡Ïî...", -200, -3, 318, 352, 0.5, 0.5, 0.0, 0.0);
-        quitbtn = gui::button("ÍË³ö", 3, 200, 318, 352, 0.5, 0.5, 0.0, 0.0);
+        startbtn = gui::button("å¼€å§‹æ¸¸æˆ", -200, 200, 280, 312, 0.5, 0.5, 0.0, 0.0);
+        optionsbtn = gui::button(">> é€‰é¡¹...", -200, -3, 318, 352, 0.5, 0.5, 0.0, 0.0);
+        quitbtn = gui::button("é€€å‡º", 3, 200, 318, 352, 0.5, 0.5, 0.0, 0.0);
         registerControls(title, startbtn, optionsbtn, quitbtn);
     }
     void onUpdate()
@@ -86,14 +87,14 @@ private:
     gui::button rdstbtn, gistbtn, backbtn, savebtn;
     void onLoad()
     {
-        title = gui::label("=================<  Ñ¡ Ïî  >=================", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-        FOVyBar = gui::trackbar(strWithVar("ÊÓÒ°½Ç¶È£º", FOVyNormal), 120, (int)(FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        mmsBar = gui::trackbar(strWithVar("Êó±êÁéÃô¶È£º", mousemove), 120, (int)(mousemove * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        viewdistBar = gui::trackbar(strWithVar("äÖÈ¾¾àÀë£º", viewdistance), 120, (viewdistance - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
-        rdstbtn = gui::button(">> äÖÈ¾Ñ¡Ïî...", -250, -10, 204, 228, 0.5, 0.5, 0.0, 0.0);
-        gistbtn = gui::button(">> Í¼ĞÎ½çÃæÑ¡Ïî...", 10, 250, 204, 228, 0.5, 0.5, 0.0, 0.0);
-        backbtn = gui::button("<< ·µ»ØÖ÷²Ëµ¥", -250, -10, -44, -20, 0.5, 0.5, 1.0, 1.0);
-        savebtn = gui::button("±£´æÉèÖÃ", 10, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        title = gui::label("=================<  é€‰ é¡¹  >=================", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+        FOVyBar = gui::trackbar(strWithVar("è§†é‡è§’åº¦ï¼š", FOVyNormal), 120, (int)(FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        mmsBar = gui::trackbar(strWithVar("é¼ æ ‡çµæ•åº¦ï¼š", mousemove), 120, (int)(mousemove * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        viewdistBar = gui::trackbar(strWithVar("æ¸²æŸ“è·ç¦»ï¼š", viewdistance), 120, (viewdistance - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
+        rdstbtn = gui::button(">> æ¸²æŸ“é€‰é¡¹...", -250, -10, 204, 228, 0.5, 0.5, 0.0, 0.0);
+        gistbtn = gui::button(">> å›¾å½¢ç•Œé¢é€‰é¡¹...", 10, 250, 204, 228, 0.5, 0.5, 0.0, 0.0);
+        backbtn = gui::button("<< è¿”å›ä¸»èœå•", -250, -10, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        savebtn = gui::button("ä¿å­˜è®¾ç½®", 10, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
         registerControls(title, FOVyBar, mmsBar, viewdistBar, rdstbtn, gistbtn, backbtn, savebtn);
     }
     void onUpdate()
@@ -122,9 +123,9 @@ private:
             saveoptions();
         }
 
-        FOVyBar.text = strWithVar("ÊÓÒ°½Ç¶È£º", FOVyNormal);
-        mmsBar.text = strWithVar("Êó±êÁéÃô¶È£º", mousemove);
-        viewdistBar.text = strWithVar("äÖÈ¾¾àÀë£º", viewdistance);
+        FOVyBar.text = strWithVar("è§†é‡è§’åº¦ï¼š", FOVyNormal);
+        mmsBar.text = strWithVar("é¼ æ ‡çµæ•åº¦ï¼š", mousemove);
+        viewdistBar.text = strWithVar("æ¸²æŸ“è·ç¦»ï¼š", viewdistance);
     }
 };
 void options()
@@ -140,11 +141,11 @@ private:
     gui::button smoothlightingbtn, fancygrassbtn, mergefacebtn, backbtn;
     void onLoad()
     {
-        title = gui::label("==============<  äÖ È¾ Ñ¡ Ïî  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-        smoothlightingbtn = gui::button("Æ½»¬¹âÕÕ£º", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        fancygrassbtn = gui::button("²İ·½¿é²ÄÖÊÁ¬½Ó£º", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        mergefacebtn = gui::button("ºÏ²¢ÃæäÖÈ¾£º", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
-        backbtn = gui::button("<< ·µ»ØÑ¡Ïî²Ëµ¥", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        title = gui::label("==============<  æ¸² æŸ“ é€‰ é¡¹  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+        smoothlightingbtn = gui::button("å¹³æ»‘å…‰ç…§ï¼š", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        fancygrassbtn = gui::button("è‰æ–¹å—æè´¨è¿æ¥ï¼š", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        mergefacebtn = gui::button("åˆå¹¶é¢æ¸²æŸ“ï¼š", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
+        backbtn = gui::button("<< è¿”å›é€‰é¡¹èœå•", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
         registerControls(title, smoothlightingbtn, fancygrassbtn, mergefacebtn, backbtn);
 
         if (MergeFace)
@@ -183,9 +184,9 @@ private:
             ExitSignal = true;
         }
 
-        smoothlightingbtn.text = "Æ½»¬¹âÕÕ£º" + BoolEnabled(SmoothLighting);
-        fancygrassbtn.text = "²İ·½¿é²ÄÖÊÁ¬½Ó£º" + BoolEnabled(NiceGrass);
-        mergefacebtn.text = "ºÏ²¢ÃæäÖÈ¾£º" + BoolEnabled(MergeFace);
+        smoothlightingbtn.text = "å¹³æ»‘å…‰ç…§ï¼š" + BoolEnabled(SmoothLighting);
+        fancygrassbtn.text = "è‰æ–¹å—æè´¨è¿æ¥ï¼š" + BoolEnabled(NiceGrass);
+        mergefacebtn.text = "åˆå¹¶é¢æ¸²æŸ“ï¼š" + BoolEnabled(MergeFace);
     }
 };
 void Renderoptions()
@@ -201,10 +202,10 @@ private:
     gui::button fontbtn, blurbtn, backbtn;
     void onLoad()
     {
-        title = gui::label("===============< Í¼ĞÎ½çÃæÑ¡Ïî >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-        fontbtn = gui::button("È«²¿Ê¹ÓÃUnicode×ÖÌå£º", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        blurbtn = gui::button("±³¾°Ä£ºı£º", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        backbtn = gui::button("<< ·µ»ØÑ¡Ïî²Ëµ¥", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        title = gui::label("===============< å›¾å½¢ç•Œé¢é€‰é¡¹ >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+        fontbtn = gui::button("å…¨éƒ¨ä½¿ç”¨Unicodeå­—ä½“ï¼š", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        blurbtn = gui::button("èƒŒæ™¯æ¨¡ç³Šï¼š", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        backbtn = gui::button("<< è¿”å›é€‰é¡¹èœå•", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
         registerControls(title, fontbtn, blurbtn, backbtn);
     }
     void onUpdate()
@@ -224,8 +225,8 @@ private:
             ExitSignal = true;
         }
 
-        fontbtn.text = "È«²¿Ê¹ÓÃUnicode×ÖÌå£º" + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
-        blurbtn.text = "±³¾°Ä£ºı£º" + BoolEnabled(GUIScreenBlur);
+        fontbtn.text = "å…¨éƒ¨ä½¿ç”¨Unicodeå­—ä½“ï¼š" + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
+        blurbtn.text = "èƒŒæ™¯æ¨¡ç³Šï¼š" + BoolEnabled(GUIScreenBlur);
     }
 };
 void GUIoptions()
@@ -253,11 +254,11 @@ private:
     gui::button enterbtn, deletebtn, backbtn;
     void onLoad()
     {
-        title = gui::label("==============<  Ñ¡ Ôñ ÊÀ ½ç  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+        title = gui::label("==============<  é€‰ æ‹© ä¸– ç•Œ  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
         vscroll = gui::vscroll(100, 0, 275, 295, 36, -20, 0.5, 0.5, 0.0, 1.0);
-        enterbtn = gui::button("½øÈëÑ¡¶¨µÄÊÀ½ç", -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
-        deletebtn = gui::button("É¾³ıÑ¡¶¨µÄÊÀ½ç", 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
-        backbtn = gui::button("<< ·µ»ØÖ÷²Ëµ¥", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        enterbtn = gui::button("è¿›å…¥é€‰å®šçš„ä¸–ç•Œ", -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
+        deletebtn = gui::button("åˆ é™¤é€‰å®šçš„ä¸–ç•Œ", 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
+        backbtn = gui::button("<< è¿”å›ä¸»èœå•", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
         registerControls(title, vscroll, enterbtn, deletebtn, backbtn);
         world::worldname = "";
         enterbtn.enabled = false;
@@ -323,7 +324,7 @@ private:
 
         if (deletebtn.clicked)
         {
-            //É¾³ıÊÀ½çÎÄ¼ş
+            //åˆ é™¤ä¸–ç•Œæ–‡ä»¶
             system((string("rd /s/q Worlds\\") + chosenWorldName).c_str());
             deletebtn.clicked = false;
             world::worldname = "";
@@ -343,46 +344,35 @@ private:
             mouseon = -1;
             vscroll.barpos = 0;
             chosenWorldName = "";
-            //²éÕÒËùÓĞÊÀ½ç´æµµ
-            Textures::TEXTURE_RGB tmb;
-            long hFile = 0;
-            _finddata_t fileinfo;
-
-            if ((hFile = _findfirst(string("Worlds\\*").c_str(), &fileinfo)) != -1)
+            //æŸ¥æ‰¾æ‰€æœ‰ä¸–ç•Œå­˜æ¡£
+            FileSystem::forInDirectory("./Worlds", [this](bool isDir, std::string path)
             {
-                do
+                if (isDir && path != "." && path != "..")
                 {
-                    if ((fileinfo.attrib &  _A_SUBDIR))
+                    Textures::TEXTURE_RGB tmb;
+                    worldnames.push_back(path);
+                    std::fstream file;
+                    file.open((std::string("./Worlds") + path + std::string("/Thumbnail.bmp")).c_str(), std::ios::in);
+                    thumbnails.push_back(0);
+                    texSizeX.push_back(0);
+                    texSizeY.push_back(0);
+
+                    if (file.is_open())
                     {
-                        if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0)
-                        {
-                            worldnames.push_back(fileinfo.name);
-                            std::fstream file;
-                            file.open(("Worlds\\" + string(fileinfo.name) + "\\Thumbnail.bmp").c_str(), std::ios::in);
-                            thumbnails.push_back(0);
-                            texSizeX.push_back(0);
-                            texSizeY.push_back(0);
-
-                            if (file.is_open())
-                            {
-                                Textures::LoadRGBImage(tmb, "Worlds\\" + string(fileinfo.name) + "\\Thumbnail.bmp");
-                                glGenTextures(1, &thumbnails[thumbnails.size() - 1]);
-                                glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size() - 1]);
-                                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb.sizeX, tmb.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, tmb.buffer.get());
-                                texSizeX[texSizeX.size() - 1] = tmb.sizeX;
-                                texSizeY[texSizeY.size() - 1] = tmb.sizeY;
-                            }
-
-                            file.close();
-                        }
+                        Textures::LoadRGBImage(tmb, std::string("./Worlds") + path + std::string("/Thumbnail.bmp"));
+                        glGenTextures(1, &thumbnails[thumbnails.size() - 1]);
+                        glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size() - 1]);
+                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb.sizeX, tmb.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                                     tmb.buffer.get());
+                        texSizeX[texSizeX.size() - 1] = tmb.sizeX;
+                        texSizeY[texSizeY.size() - 1] = tmb.sizeY;
                     }
-                }
-                while (_findnext(hFile, &fileinfo) == 0);
 
-                _findclose(hFile);
-            }
+                    file.close();
+                }
+            });
 
             refresh = false;
         }
@@ -437,7 +427,7 @@ private:
                 bool marginOnSides;
                 float w, h;
 
-                //¼ÆËã²ÄÖÊ×ø±ê£¬±£³Ö¸ß¿í±È£¨°´Å¥´óĞ¡Îª500x60£©£¬ÓĞĞ¡Ñ§ÊıÑ§»ù´¡µÄÈË×ĞÏ¸ÏëÒ»ÏëÓ¦¸ÃÄÜ¶®QAQ
+                //è®¡ç®—æè´¨åæ ‡ï¼Œä¿æŒé«˜å®½æ¯”ï¼ˆæŒ‰é’®å¤§å°ä¸º500x60ï¼‰ï¼Œæœ‰å°å­¦æ•°å­¦åŸºç¡€çš„äººä»”ç»†æƒ³ä¸€æƒ³åº”è¯¥èƒ½æ‡‚QAQ
                 if (texSizeX[i] * 60 / 500 < texSizeY[i])
                 {
                     marginOnSides = true;
@@ -522,7 +512,7 @@ private:
         glVertex2i(midp + 250, 48 + i * 64 + 60);
         glVertex2i(midp - 250, 48 + i * 64 + 60);
         glEnd();
-        TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(">>´´½¨ĞÂµÄÊÀ½ç")) / 2, (140 + i * 128) / 2, ">>´´½¨ĞÂµÄÊÀ½ç");
+        TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(">>åˆ›å»ºæ–°çš„ä¸–ç•Œ")) / 2, (140 + i * 128) / 2, ">>åˆ›å»ºæ–°çš„ä¸–ç•Œ");
         glDisable(GL_SCISSOR_TEST);
     }
 };
@@ -541,10 +531,10 @@ private:
     gui::button okbtn, backbtn;
     void onLoad()
     {
-        title = gui::label("==============<  ĞÂ ½¨ ÊÀ ½ç  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-        worldnametb = gui::textbox("ÊäÈëÊÀ½çÃû³Æ", -250, 250, 48, 72, 0.5, 0.5, 0.0, 0.0);
-        okbtn = gui::button("È·¶¨", -250, 250, 84, 120, 0.5, 0.5, 0.0, 0.0);
-        backbtn = gui::button("<< ·µ»ØÊÀ½ç²Ëµ¥", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        title = gui::label("==============<  æ–° å»º ä¸– ç•Œ  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+        worldnametb = gui::textbox("è¾“å…¥ä¸–ç•Œåç§°", -250, 250, 48, 72, 0.5, 0.5, 0.0, 0.0);
+        okbtn = gui::button("ç¡®å®š", -250, 250, 84, 120, 0.5, 0.5, 0.0, 0.0);
+        backbtn = gui::button("<< è¿”å›ä¸–ç•Œèœå•", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
         registerControls(title, worldnametb, okbtn, backbtn);
         inputstr = "";
         okbtn.enabled = false;
@@ -599,9 +589,9 @@ private:
     gui::button resumebtn, exitbtn;
     void onLoad()
     {
-        title = gui::label("==============<  ÓÎ Ï· ²Ë µ¥  >==============", -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
-        resumebtn = gui::button("¼ÌĞøÓÎÏ·", -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
-        exitbtn = gui::button("<< ·µ»ØÖ÷²Ëµ¥", -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
+        title = gui::label("==============<  æ¸¸ æˆ èœ å•  >==============", -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
+        resumebtn = gui::button("ç»§ç»­æ¸¸æˆ", -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
+        exitbtn = gui::button("<< è¿”å›ä¸»èœå•", -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
         registerControls(title, resumebtn, exitbtn);
     }
     void onUpdate()

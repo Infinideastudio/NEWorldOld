@@ -84,6 +84,8 @@ brightness selbr;
 bool selce;
 int selbx, selby, selbz, selcx, selcy, selcz;
 
+bool updateThreadRun = false, updateThreadPaused;
+std::thread updateThread;
 #if 0
 woca, 这样注释都行？！
 (这儿编译不过去的童鞋，你的FB编译器版本貌似和我的不一样，把这几行注释掉吧。。。)
@@ -144,7 +146,7 @@ main_menu:
 
     Mutex.lock();
     updateThreadRun = false;
-    updateThread = std::make_unique<std::thread>(updateThreadFunc);
+    updateThread = std::move(std::thread(updateThreadFunc));
 
     //初始化游戏状态
     printf("[Console][Game]");
@@ -213,6 +215,7 @@ main_menu:
     printf("[Console][Game]");
     printf("Main loop started\n");
     updateThreadRun = true;
+    updateThreadPaused = false;
     fctime = uctime = lastupdate = timer();
 
     do
@@ -221,13 +224,6 @@ main_menu:
 
         Mutex.unlock();
         Mutex.lock();
-
-        if ((timer() - uctime) >= 1.0)
-        {
-            uctime = timer();
-            ups = upsc;
-            upsc = 0;
-        }
 
         Render();
 
@@ -263,7 +259,7 @@ main_menu:
             printf("Terminate threads\n");
             updateThreadRun = false;
             Mutex.unlock();
-            updateThread->join();
+            updateThread.join();
             saveGame();
             world::destroyAllChunks();
             printf("[Console][Game]");
@@ -280,7 +276,7 @@ main_menu:
 
     updateThreadRun = false;
     Mutex.unlock();
-    updateThread->join();
+    updateThread.join();
 
     //结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
     //不对啊这不是FB！！！这是正宗的VC++！！！！！！
@@ -290,7 +286,6 @@ main_menu:
     return 0;
     //This is the END of the program!
 }
-
 void updateThreadFunc()
 {
 
@@ -352,6 +347,49 @@ void updateThreadFunc()
 
     Mutex.unlock();
 }
+/*void updateThreadFunc()
+{
+    using namespace std::chrono;
+    using namespace std::chrono_literals;
+    steady_clock::time_point lastSecond = steady_clock::now(), next;
+
+    while (!updateThreadRun)
+    {
+        std::this_thread::yield(); //Same as before
+    }
+
+    while (updateThreadRun)
+    {
+        Mutex.lock();
+
+        while (updateThreadPaused)
+        {
+            Mutex.unlock();
+            std::this_thread::yield(); //Same as before
+            Mutex.lock();
+            lastupdate = updateTimer = timer();
+        }
+
+        FirstUpdateThisFrame = true;
+        updateTimer = timer();
+
+        next = steady_clock::now() + 33ms;
+        updategame();
+        Mutex.unlock();
+
+        if (steady_clock::now() - lastSecond >= 1s)
+        {
+            ups = upsc;
+            upsc = 0;
+        }
+        else
+        {
+            upsc++;
+        }
+        std::this_thread::sleep_until(next);
+    }
+
+}*/
 
 void WindowSizeFunc(GLFWwindow *win, int width, int height)
 {

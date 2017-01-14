@@ -1,12 +1,12 @@
-//#pragma warning(disable:4710) //ºöÂÔSTL¸ß·¢¾¯¸æ£ºº¯ÊýÎ´ÄÚÁª
-//#pragma warning(disable:4514) //ºöÂÔSTL¸ß·¢¾¯¸æ£ºÎ´Ê¹ÓÃµÄÄÚÁªº¯ÊýÒÑÒÆ³ý
-//#pragma warning(disable:4350) //ºöÂÔSTL¸ß·¢¾¯¸æ£ºÐÐÎª¸ü¸Ä
-//#pragma warning(push,0) //ºöÂÔÍ·ÎÄ¼þµÄ¾¯¸æ
+//#pragma warning(disable:4710) //ï¿½ï¿½ï¿½ï¿½STLï¿½ß·ï¿½ï¿½ï¿½ï¿½æ£ºï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½
+//#pragma warning(disable:4514) //ï¿½ï¿½ï¿½ï¿½STLï¿½ß·ï¿½ï¿½ï¿½ï¿½æ£ºÎ´Ê¹ï¿½Ãµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ³ï¿½
+//#pragma warning(disable:4350) //ï¿½ï¿½ï¿½ï¿½STLï¿½ß·ï¿½ï¿½ï¿½ï¿½æ£ºï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½
+//#pragma warning(push,0) //ï¿½ï¿½ï¿½ï¿½Í·ï¿½Ä¼ï¿½ï¿½Ä¾ï¿½ï¿½ï¿½
 
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <time.h>
-#include <io.h>
+//#include <io.h>
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -37,5 +37,5 @@ using std::endl;
 #include <GLFW/glfw3.h>
 
 //#pragma warning(pop)
-//#pragma warning(disable:4820) //ºöÂÔ²»±ØÒªµÄ¾¯¸æ£ºÊý¾Ý½á¹¹¶ÔÆë
-//#pragma warning(disable:4365) //ºöÂÔ²»±ØÒªµÄ¾¯¸æ£ºÓÐ·ûºÅ/ÎÞ·ûºÅ²»Æ¥Åä
+//#pragma warning(disable:4820) //ï¿½ï¿½ï¿½Ô²ï¿½ï¿½ï¿½Òªï¿½Ä¾ï¿½ï¿½æ£ºï¿½ï¿½ï¿½Ý½á¹¹ï¿½ï¿½ï¿½ï¿½
+//#pragma warning(disable:4365) //ï¿½ï¿½ï¿½Ô²ï¿½ï¿½ï¿½Òªï¿½Ä¾ï¿½ï¿½æ£ºï¿½Ð·ï¿½ï¿½ï¿½/ï¿½Þ·ï¿½ï¿½Å²ï¿½Æ¥ï¿½ï¿½

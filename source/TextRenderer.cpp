@@ -16,7 +16,7 @@ namespace TextRenderer
     {
         ww = w;
         wh = h;
-        Font = Textures::LoadFontTexture("Textures\\Fonts\\ASCII.bmp");
+        Font = Textures::LoadFontTexture("./Textures/Fonts/ASCII.bmp");
 
         float cx, cy;
         gbe = glGenLists(256);

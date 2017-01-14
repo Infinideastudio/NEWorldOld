@@ -114,7 +114,7 @@ namespace world
     brightness getbrightness(int x, int y, int z, chunk *cptr = nullptr);
     void setblock(int x, int y, int z, block Block);
     void setbrightness(int x, int y, int z, brightness Brightness);
-    //检测给出的chunk坐标是否在渲染范围内
+    //妫�娴嬬粰鍑虹殑chunk鍧愭爣鏄惁鍦ㄦ覆鏌撹寖鍥村唴
     inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist)
     {
         return (x <= px + dist && x >= px - dist && y <= py + dist && y >= py - dist && z <= pz + dist && z >= pz - dist);
