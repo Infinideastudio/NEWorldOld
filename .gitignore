@@ -199,3 +199,6 @@ FakesAssemblies/
 *.NEWorldPlayer
 *.NEWorldChunk
 /Textures
+NEWorld/NEWorld.sln
+*.filters
+NEWorld/NEWorld/NEWorld.vcxproj
