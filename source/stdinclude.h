@@ -21,6 +21,7 @@
 #include <thread>
 #include <mutex>
 #include <random>
+#include <unordered_set>
 
 using std::string;
 using std::vector;
