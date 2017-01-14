@@ -129,12 +129,6 @@ inline int RoundInt(double d)
 {
     return int(floor(d + 0.5));
 }
-inline string itos(int i)
-{
-    std::stringstream ss;
-    ss << i;
-    return ss.str();
-}
 
 void DebugWarning(string msg);
 void DebugError(string msg);

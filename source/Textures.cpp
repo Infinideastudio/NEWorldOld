@@ -105,7 +105,7 @@ namespace Textures
         return ((getTextureIndex(iblock, side) - 1) >> 3) / 8.0;
     }
 
-    void LoadRGBImage(TEXTURE_RGB &tex, string Filename)
+    void LoadRGBImage(TEXTURE_RGB &tex, const string& Filename)
     {
         unsigned int ind = 0;
         TEXTURE_RGB &bitmap = tex; //·µ»ØÎ»Í¼
@@ -144,7 +144,7 @@ namespace Textures
         }
     }
 
-    void LoadRGBAImage(TEXTURE_RGBA &tex, string Filename, string MkFilename)
+    void LoadRGBAImage(TEXTURE_RGBA &tex,const string& Filename,const string& MkFilename)
     {
         unsigned char *rgb = nullptr, *a = nullptr;
         unsigned int ind = 0;
@@ -225,7 +225,7 @@ namespace Textures
         }
     }
 
-    TextureID LoadRGBTexture(string Filename)
+    TextureID LoadRGBTexture(const string& Filename)
     {
         TEXTURE_RGB image;
         TextureID ret;
@@ -240,7 +240,7 @@ namespace Textures
         return ret;
     }
 
-    TextureID LoadFontTexture(string Filename)
+    TextureID LoadFontTexture(const string& Filename)
     {
         TEXTURE_RGBA Texture;
         TEXTURE_RGB image;
@@ -322,7 +322,7 @@ namespace Textures
         return ret;
     }
 
-    TextureID LoadRGBATexture(string Filename, string MkFilename)
+    TextureID LoadRGBATexture(const string& Filename,const string& MkFilename)
     {
         TextureID ret;
         TEXTURE_RGBA image;
@@ -337,7 +337,7 @@ namespace Textures
         return ret;
     }
 
-    TextureID LoadBlock3DTexture(string Filename, string MkFilename)
+    TextureID LoadBlock3DTexture(const string& Filename, const string& MkFilename)
     {
         int sz = BLOCKTEXTURE_UNITSIZE, cnt = BLOCKTEXTURE_UNITS * BLOCKTEXTURE_UNITS;
         //int mipmapLevel = (int)log(BLOCKTEXTURE_UNITSIZE), sum = 0, cursize = 0, scale = 1;
@@ -386,7 +386,7 @@ namespace Textures
         return ret;
     }
 
-    void SaveRGBImage(string filename, TEXTURE_RGB &image)
+    void SaveRGBImage(const string& filename, TEXTURE_RGB &image)
     {
         BITMAPFILEHEADER bitmapfileheader;
         BITMAPINFOHEADER bitmapinfoheader;
