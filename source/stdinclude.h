@@ -20,6 +20,7 @@
 #include <cassert>
 #include <thread>
 #include <mutex>
+#include <random>
 
 using std::string;
 using std::vector;

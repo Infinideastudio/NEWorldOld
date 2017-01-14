@@ -606,9 +606,9 @@ private:
     }
     void onUpdate()
     {
-        MutexUnlock(Mutex);
+        Mutex.unlock();
         //Make update thread realize that it should pause
-        MutexLock(Mutex);
+        Mutex.lock();
 
         if (resumebtn.clicked)
         {

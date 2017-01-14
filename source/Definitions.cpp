@@ -32,8 +32,8 @@ TextureID DestroyImage[11];
 TextureID DefaultSkin;
 
 //Ïß³Ì
-Mutex_t Mutex;
-Thread_t updateThread;
+std::mutex Mutex;
+std::unique_ptr<std::thread> updateThread;
 double lastupdate, updateTimer;
 double lastframe;
 bool updateThreadRun, updateThreadPaused;
