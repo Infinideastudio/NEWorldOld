@@ -19,52 +19,84 @@ namespace world
 
     void World::tryLoadUnloadChunks(const Vec3i& centre)
     {
-        OrderedList<int, Vec3i, MaxChunkLoads> chunkLoadList;
-        OrderedList<int, chunk*, MaxChunkUnloads, std::greater> chunkUnloadList;
-        Vec3i ccentre = centre / 16, c;
+        //lazy load
+        static Vec3i lastUpdatePos;
+        static bool finish = false;
+        static double time = 0;
+        if (finish && (timer() - time <LazyUpdateMaxTime) && (lastUpdatePos - centre).lengthSqr() < LazyUpdateDistanceSquare)
+            return;
+        lastUpdatePos = centre;
+        static OrderedList<int, Vec3i, MaxChunkLoads> chunkLoadList;
+        static OrderedList<int, chunk*, MaxChunkUnloads, std::greater> chunkUnloadList;
+        Vec3i ccentre = centre / 16, c,sub =Vec3i{ 7, 7, 7 }-centre;
 
         for (auto&& chk : mWorld)
         {
             c = Vec3i{ chk.second.cx, chk.second.cy, chk.second.cz };
-            if (!chunkInRange(c.x, c.y, c.z, ccentre.x, ccentre.y, ccentre.z ,viewdistance + 1))
-                chunkUnloadList.insert(((c + Vec3i{ 7, 7, 7 }) *16 - centre).lengthSqr(), &chk.second);
+            if (!chunkInRange(c.x, c.y, c.z, ccentre.x, ccentre.y, ccentre.z, viewdistance + 1))
+                chunkUnloadList.insert((c * 16 + sub).lengthSqr(), &chk.second);
         }
-        
+        static auto hash = [](const Vec3i v) {return getChunkID(v); };
+        static std::unordered_set<Vec3i,decltype(hash)> emptyChunks(0,hash);
         for (c.x = ccentre.x - viewdistance - 1; c.x <= ccentre.x + viewdistance; ++c.x)
             for (c.y = ccentre.y - viewdistance - 1; c.y <= ccentre.y + viewdistance; ++c.y)
                 for (c.z = ccentre.z - viewdistance - 1; c.z <= ccentre.z + viewdistance; ++c.z)
-                    if (!chunkLoaded(c.x, c.y, c.z))
-                        chunkLoadList.insert(((c + Vec3i{ 7, 7, 7 }) *16 - centre).lengthSqr(), c);
+                    if ((!chunkLoaded(c.x, c.y, c.z)) && (emptyChunks.find(c)==emptyChunks.end()))
+                        chunkLoadList.insert((c * 16 + sub).lengthSqr(), c);
 
+        finish = (chunkLoadList.size() < MaxChunkLoads) && (chunkUnloadList.size() < MaxChunkUnloads);
+
+        time = timer();
         // Unload chunks
-        for (auto&& iter : chunkUnloadList)
+        for (auto iter= chunkUnloadList.begin();iter!= chunkUnloadList.end();++iter)
         {
-            int cx = iter.second->cx, cy = iter.second->cy, cz = iter.second->cz;
-            iter.second->Unload();
+            if (timer() - time > UpdateMaxTime)
+            {
+                chunkUnloadList.move_forward(iter);
+                finish = false;
+                return;
+            }
+            int cx = iter->second->cx, cy = iter->second->cy, cz = iter->second->cz;
+            iter->second->Unload();
             eraseChunk(cx, cy, cz);
         }
-
+        chunkUnloadList.clear();
+        
         // Load chunks
-        for (auto&& iter : chunkLoadList)
+        for (auto iter = chunkLoadList.begin(); iter != chunkLoadList.end(); ++iter)
         {
-            auto *chk = insertChunk(iter.second.x, iter.second.y, iter.second.z);
+            
+            if (timer() - time > UpdateMaxTime)
+            {
+                chunkLoadList.move_forward(iter);
+                finish = false;
+                return;
+            }
+            auto *chk = insertChunk(iter->second.x, iter->second.y, iter->second.z);
             chk->Load();
             if (chk->Empty)
+            {
+                emptyChunks.insert(iter->second);
                 chk->Unload();
+            }
         }
+        chunkLoadList.clear();
+
+        if (emptyChunks.size() > EmptyChunkCacheSize)
+            emptyChunks.clear();
     }
 
     void World::tryUpdateRenderers(const Vec3i& centre)
     {
         OrderedList<int, chunk*, MaxChunkRenders> chunkBuildRenderList;
-        Vec3i ccentre = centre / 16, c;
+        Vec3i ccentre = centre / 16, c, sub = Vec3i{ 7, 7, 7 }-centre;
         for (auto&& chk : mWorld)
         {
             if (chk.second.updated)
             {
                 c = Vec3i{ chk.second.cx, chk.second.cy, chk.second.cz };
                 if (chunkInRange(c.x, c.y, c.z, ccentre.x, ccentre.y, ccentre.z, viewdistance))
-                    chunkBuildRenderList.insert(((c + Vec3i{ 7, 7, 7 }) * 16 - centre).lengthSqr(), &chk.second);
+                    chunkBuildRenderList.insert((c*16-sub).lengthSqr(), &chk.second);
             }
         }
         for (auto&& iter : chunkBuildRenderList)

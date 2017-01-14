@@ -8,12 +8,12 @@
 #include <unordered_map>
 namespace world
 {
-    template <class Tk, class Td, size_t size, template<class>class Compare = std::less>
+    template <class Tk, class Td, size_t Size, template<class>class Compare = std::less>
     class OrderedList
     {
     public:
         OrderedList() noexcept : mComp(), mSize(0) {}
-        using ArrayType = std::array<std::pair<Tk, Td>, size>;
+        using ArrayType = std::array<std::pair<Tk, Td>, Size>;
         using Iterator = typename ArrayType::iterator;
         using ConstIterator = typename ArrayType::const_iterator;
         Iterator begin() noexcept { return mList.begin(); }
@@ -31,14 +31,20 @@ namespace world
                 else
                     first = middle + 1;
             }
-            if (first <= mSize && first < size)
+            if (first <= mSize && first < Size)
             {
-                mSize = std::min(size, mSize + 1);
-                std::move_backward(mList.begin() + first, mList.begin() +size-1, mList.begin()+size);
+                mSize = std::min(Size, mSize + 1);
+                std::move_backward(mList.begin() + first, mList.begin() +Size-1, mList.begin()+Size);
                 mList[first] = std::pair<Tk, Td>(key, data);
             }
         }
         void clear() noexcept { mSize = 0; }
+        void move_forward(Iterator iter)
+        {
+            std::move(iter, end(), begin());
+            mSize -= iter-begin();
+        }
+        size_t size() noexcept {return mSize; }
     private:
         size_t mSize;
         ArrayType mList;
@@ -63,9 +69,13 @@ namespace world
         void tryLoadUnloadChunks(const Vec3i& centre);
         void tryUpdateRenderers(const Vec3i& centre);
     private:
+        constexpr static size_t LazyUpdateDistanceSquare = 256;
+        constexpr static size_t EmptyChunkCacheSize = 1024;
+        constexpr static double LazyUpdateMaxTime = 3.0;
+        constexpr static double UpdateMaxTime = 0.02;
         constexpr static size_t MaxChunkLoads = 128;
         constexpr static size_t MaxChunkUnloads = 128;
-        constexpr static size_t MaxChunkRenders = 4;
+        constexpr static size_t MaxChunkRenders = 64;
         struct ChunkHash
         {
             constexpr size_t operator()(const Vec3i &t) const noexcept { return getChunkID(t); }
