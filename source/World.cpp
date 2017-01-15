@@ -121,7 +121,8 @@ namespace world
         FileSystem::createDirectory(std::string("./Worlds/") + worldname);
         FileSystem::createDirectory(std::string("./Worlds/") + worldname + std::string("/chunks"));
 
-        WorldGen::perlinNoiseInit(3404);
+        //WorldGen::perlinNoiseInit(3404);
+		WorldGen::perlinNoiseInit(WorldGen::seed);
 
         HMap.setSize((viewdistance + 2) * 2 * 16);
         HMap.create();

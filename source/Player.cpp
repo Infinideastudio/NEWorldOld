@@ -1,5 +1,6 @@
 #include "Player.h"
 #include "World.h"
+#include "WorldGen.h"
 
 bool canGliding = false; //»¬Ïè
 bool FLY;      //·ÉÐÐ
@@ -205,6 +206,7 @@ namespace player
             return false;
         }
 
+		isave.write((char*)&WorldGen::seed, sizeof(WorldGen::seed));
         isave.write((char *)&curversion, sizeof(curversion));
         isave.write((char *)&xpos, sizeof(xpos));
         isave.write((char *)&ypos, sizeof(ypos));
@@ -243,6 +245,8 @@ namespace player
             return false;
         }
 
+		iload.read((char*)&WorldGen::seed, sizeof(WorldGen::seed));
+		printf("[xxx]:WorldSeed:%d", WorldGen::seed);
         iload.read((char *)&xpos, sizeof(xpos));
         iload.read((char *)&ypos, sizeof(ypos));
         iload.read((char *)&zpos, sizeof(zpos));
