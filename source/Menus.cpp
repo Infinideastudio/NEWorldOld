@@ -214,7 +214,7 @@ private:
             ExitSignal = true;
         }
 
-        fontbtn.text = locale["neworld.menus.guioptions.caption"] + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
+        fontbtn.text = locale["neworld.menus.guioptions.font"] + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
         blurbtn.text = locale["neworld.menus.guioptions.blur"] + BoolEnabled(GUIScreenBlur);
     }
 };

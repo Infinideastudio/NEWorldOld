@@ -433,20 +433,7 @@ void MouseButtonFunc(GLFWwindow *, int button, int action, int)
 
 void CharInputFunc(GLFWwindow *, unsigned int c)
 {
-    if (c >= 128)
-    {
-        wchar_t *pwszUnicode = new wchar_t[2];
-        pwszUnicode[0] = (wchar_t)c;
-        pwszUnicode[1] = '\0';
-        char *pszMultiByte;
-        pszMultiByte = (char *)malloc((unsigned int)4);
-        pszMultiByte = (char *)realloc(pszMultiByte, WCharToMByte(pszMultiByte, pwszUnicode, 4));
-        inputstr += pszMultiByte;
-        free(pszMultiByte);
-        delete[] pwszUnicode;
-    }
-
-    inputstr += (char)c;
+    inputstr += w2cUtf8(std::wstring(1, static_cast<wchar_t>(c)));
 }
 
 void MouseScrollFunc(GLFWwindow *, double, double yoffset)
