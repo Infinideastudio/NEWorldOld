@@ -107,18 +107,12 @@ namespace TextRenderer
         glEnable(GL_DEPTH_TEST);
         glColor4f(1.0, 1.0, 1.0, 1.0);
     }
-    std::wstring c2w(string str) noexcept
-    {
-        std::unique_ptr<wchar_t[]> pool{new wchar_t[str.length()]};
-        auto length = mbstowcs(pool.get(), str.data(), str.length());
-        return std::wstring(pool.get(), length);
-    }
     void renderString(int x, int y, string glstring)
     {
         double tx, ty, span = 0;
         TextureID ftex;
 
-        auto wstr = c2w(glstring);
+        auto wstr = c2wUtf8(glstring);
 
         glEnable(GL_TEXTURE_2D);
         glTranslated(x + 1, y + 1, 0);
