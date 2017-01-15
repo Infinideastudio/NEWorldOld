@@ -2,6 +2,7 @@
 //==============================初始化(包括闪屏)================================//
 
 #include "Definitions.h"
+#include "utils/jsonhelper.h"
 void WindowSizeFunc(GLFWwindow *win, int width, int height);
 void MouseButtonFunc(GLFWwindow *, int button, int action, int);
 void CharInputFunc(GLFWwindow *, unsigned int c);
@@ -50,6 +51,7 @@ int getMouseButton()
 #include "Menus.h"
 #include "Frustum.h"
 #include "utils/filesystem.h"
+#include "utils/jsonhelper.h"
 
 struct RenderChunk
 {
@@ -102,7 +104,7 @@ int main()
     //终于进入main函数了！激动人心的一刻！！！
 
     locale.setActiveLang("zh_CN");
-    setlocale(LC_ALL, "");
+    setlocale(LC_ALL, "zh_CN.UTF-8");
 
     loadoptions();
     
@@ -394,16 +396,8 @@ void updateThreadFunc()
 
 void WindowSizeFunc(GLFWwindow *win, int width, int height)
 {
-    if (width < 650)
-    {
-        width = 650;
-    }
-
-    if (height < 400)
-    {
-        height = 400;
-    }
-
+    width = std::max(width, 640);
+    height = std::max(height, 400);
     windowwidth = width;
     windowheight = height > 0 ? height : 1;
     glfwSetWindowSize(win, width, height);
@@ -560,9 +554,7 @@ void LoadTextures()
 
     for (int gloop = 1; gloop <= 10; gloop++)
     {
-        std::stringstream ss;
-        ss<< "Textures/blocks/destroy_" << gloop<<".bmp";
-        auto path = ss.str();
+        auto path = StringUtils::FormatString("./Textures/blocks/destroy_%d.bmp", gloop);
         DestroyImage[gloop] = Textures::LoadRGBATexture(path, path);
     }
 
@@ -1242,27 +1234,183 @@ void debugText(string s, bool init)
     pos++;
 }
 
-void Render()
+
+double curtime;
+double TimeDelta;
+double xpos, ypos, zpos;
+int renderedChunk;
+int TexcoordCount;
+
+void renderWorld()
 {
-    //画场景
-    double curtime = timer();
-    double TimeDelta;
-    double xpos, ypos, zpos;
-    int renderedChunk = 0;
-    int TexcoordCount = MergeFace ? 3 : 2;
-    /*
-    static vector<GLint> multiDrawArrays[3];
-    static vector<GLsizei> multiDrawCounts[3];
-    for (int i = 0; i < 3; i++) {
-        multiDrawArrays[i].clear();
-        multiDrawCounts[i].clear();
+    if (MergeFace)
+    {
+        glDisable(GL_TEXTURE_2D);
+        glEnable(GL_TEXTURE_3D);
+        glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
     }
-    */
+    else
+    {
+        glBindTexture(GL_TEXTURE_2D, BlockTextures);
+    }
 
-    mxl = mx;
-    myl = my;
-    glfwGetCursorPos(MainWindow, &mx, &my);
+    glDisable(GL_BLEND);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
 
+    for (int i = 0; i < renderedChunk; i++)
+    {
+        RenderChunk cr = displayChunks[i];
+
+        if (cr.vtxs[0] == 0)
+        {
+            continue;
+        }
+
+        glPushMatrix();
+        glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
+        renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
+        glPopMatrix();
+    }
+
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+
+    if (MergeFace)
+    {
+        glDisable(GL_TEXTURE_3D);
+        glEnable(GL_TEXTURE_2D);
+    }
+
+    glEnable(GL_BLEND);
+}
+
+void sortDisplayChunks()
+{
+    //更新区块显示列表
+    world::mWorld.tryUpdateRenderers(Vec3i(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos)));
+
+
+    //删除已卸载区块的VBO
+    if (world::vbuffersShouldDelete.size() > 0)
+    {
+        glDeleteBuffersARB(world::vbuffersShouldDelete.size(), world::vbuffersShouldDelete.data());
+        world::vbuffersShouldDelete.clear();
+    }
+
+    double plookupdown = player::lookupdown + player::ylookspeed;
+    double pheading = player::heading + player::xlookspeed;
+
+    glLoadIdentity();
+    glRotated(plookupdown, 1, 0, 0);
+    glRotated(360.0 - pheading, 0, 1, 0);
+    Frustum::LoadIdentity();
+    Frustum::setPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
+    Frustum::multRotate((float)plookupdown, 1, 0, 0);
+    Frustum::multRotate(360.0f - (float)pheading, 0, 1, 0);
+    Frustum::calc();
+
+    displayChunks.clear();
+
+    for (auto&& chk : world::mWorld)
+    {
+        if (!chk.second.renderBuilt || chk.second.Empty)
+        {
+            continue;
+        }
+
+        if (world::chunkInRange(chk.second.cx, chk.second.cy, chk.second.cz,
+                                player::cxt, player::cyt, player::czt, viewdistance))
+        {
+            if (Frustum::AABBInFrustum(chk.second.getRelativeAABB(xpos, ypos, zpos)))
+            {
+                displayChunks.push_back(RenderChunk(&chk.second, (curtime - lastupdate) * 30.0));
+            }
+        }
+    }
+}
+
+void renderWorldTransparent()
+{
+    double plookupdown = player::lookupdown + player::ylookspeed;
+    double pheading = player::heading + player::xlookspeed;
+    glLoadIdentity();
+    glRotated(plookupdown, 1, 0, 0);
+    glRotated(360.0 - pheading, 0, 1, 0);
+    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_CULL_FACE);
+
+    glEnableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+
+    if (MergeFace)
+    {
+        glDisable(GL_TEXTURE_2D);
+        glEnable(GL_TEXTURE_3D);
+        glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
+    }
+    else
+    {
+        glBindTexture(GL_TEXTURE_2D, BlockTextures);
+    }
+
+    for (int i = 0; i < renderedChunk; i++)
+    {
+        RenderChunk cr = displayChunks[i];
+
+        if (cr.vtxs[1] == 0)
+        {
+            continue;
+        }
+
+        glPushMatrix();
+        glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
+        renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3);
+        glPopMatrix();
+    }
+
+    glDisable(GL_CULL_FACE);
+
+    for (int i = 0; i < renderedChunk; i++)
+    {
+        RenderChunk cr = displayChunks[i];
+
+        if (cr.vtxs[2] == 0)
+        {
+            continue;
+        }
+
+        glPushMatrix();
+        glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
+        renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3);
+        glPopMatrix();
+    }
+
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+
+    if (MergeFace)
+    {
+        glDisable(GL_TEXTURE_3D);
+        glEnable(GL_TEXTURE_2D);
+    }
+
+    glLoadIdentity();
+    glRotated(plookupdown, 1, 0, 0);
+    glRotated(360.0 - pheading, 0, 1, 0);
+    glTranslated(-xpos, -ypos, -zpos);
+    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_CULL_FACE);
+}
+
+void updatePlayer()
+{
     if (player::Running)
     {
         if (FOVyExt < 9.8)
@@ -1366,6 +1514,20 @@ void Render()
             player::ylookspeed = 90.0 - player::lookupdown;
         }
     }
+}
+
+void Render()
+{
+    //画场景
+    curtime = timer();
+    renderedChunk = 0;
+    TexcoordCount = MergeFace ? 3 : 2;
+
+    mxl = mx;
+    myl = my;
+    glfwGetCursorPos(MainWindow, &mx, &my);
+
+    updatePlayer();
 
     glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1386,94 +1548,11 @@ void Render()
     player::cyt = getchunkpos((int)player::ypos);
     player::czt = getchunkpos((int)player::zpos);
 
-    //更新区块显示列表
-    world::mWorld.tryUpdateRenderers(Vec3i(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos)));
-
-
-    //删除已卸载区块的VBO
-    if (world::vbuffersShouldDelete.size() > 0)
-    {
-        glDeleteBuffersARB(world::vbuffersShouldDelete.size(), world::vbuffersShouldDelete.data());
-        world::vbuffersShouldDelete.clear();
-    }
-
-    double plookupdown = player::lookupdown + player::ylookspeed;
-    double pheading = player::heading + player::xlookspeed;
-
-    glLoadIdentity();
-    glRotated(plookupdown, 1, 0, 0);
-    glRotated(360.0 - pheading, 0, 1, 0);
-    Frustum::LoadIdentity();
-    Frustum::setPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
-    Frustum::multRotate((float)plookupdown, 1, 0, 0);
-    Frustum::multRotate(360.0f - (float)pheading, 0, 1, 0);
-    Frustum::calc();
-
-    displayChunks.clear();
-    
-    for (auto&& chk : world::mWorld)
-    {
-        if (!chk.second.renderBuilt || chk.second.Empty)
-        {
-            continue;
-        }
-
-        if (world::chunkInRange(chk.second.cx, chk.second.cy, chk.second.cz,
-                                player::cxt, player::cyt, player::czt, viewdistance))
-        {
-            if (Frustum::AABBInFrustum(chk.second.getRelativeAABB(xpos, ypos, zpos)))
-            {
-                displayChunks.push_back(RenderChunk(&chk.second, (curtime - lastupdate) * 30.0));
-            }
-        }
-    }
-
+    sortDisplayChunks();
     Mutex.unlock();
     renderedChunk = displayChunks.size();
 
-    if (MergeFace)
-    {
-        glDisable(GL_TEXTURE_2D);
-        glEnable(GL_TEXTURE_3D);
-        glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
-    }
-    else
-    {
-        glBindTexture(GL_TEXTURE_2D, BlockTextures);
-    }
-
-    glDisable(GL_BLEND);
-    glEnableClientState(GL_COLOR_ARRAY);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glEnableClientState(GL_VERTEX_ARRAY);
-
-    for (int i = 0; i < renderedChunk; i++)
-    {
-        RenderChunk cr = displayChunks[i];
-
-        if (cr.vtxs[0] == 0)
-        {
-            continue;
-        }
-
-        glPushMatrix();
-        glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-        renderer::renderbuffer(cr.vbuffers[0], cr.vtxs[0], TexcoordCount, 3);
-        glPopMatrix();
-    }
-
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-    glDisableClientState(GL_COLOR_ARRAY);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glDisableClientState(GL_VERTEX_ARRAY);
-
-    if (MergeFace)
-    {
-        glDisable(GL_TEXTURE_3D);
-        glEnable(GL_TEXTURE_2D);
-    }
-
-    glEnable(GL_BLEND);
+    renderWorld();
 
     Mutex.lock();
 
@@ -1497,78 +1576,7 @@ void Render()
     }
 
     Mutex.unlock();
-
-    glLoadIdentity();
-    glRotated(plookupdown, 1, 0, 0);
-    glRotated(360.0 - pheading, 0, 1, 0);
-    glEnable(GL_TEXTURE_2D);
-    glEnable(GL_CULL_FACE);
-
-    glEnableClientState(GL_COLOR_ARRAY);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glEnableClientState(GL_VERTEX_ARRAY);
-
-    if (MergeFace)
-    {
-        glDisable(GL_TEXTURE_2D);
-        glEnable(GL_TEXTURE_3D);
-        glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
-    }
-    else
-    {
-        glBindTexture(GL_TEXTURE_2D, BlockTextures);
-    }
-
-    for (int i = 0; i < renderedChunk; i++)
-    {
-        RenderChunk cr = displayChunks[i];
-
-        if (cr.vtxs[1] == 0)
-        {
-            continue;
-        }
-
-        glPushMatrix();
-        glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-        renderer::renderbuffer(cr.vbuffers[1], cr.vtxs[1], TexcoordCount, 3);
-        glPopMatrix();
-    }
-
-    glDisable(GL_CULL_FACE);
-
-    for (int i = 0; i < renderedChunk; i++)
-    {
-        RenderChunk cr = displayChunks[i];
-
-        if (cr.vtxs[2] == 0)
-        {
-            continue;
-        }
-
-        glPushMatrix();
-        glTranslated(cr.cx * 16.0 - xpos, cr.cy * 16.0 - cr.loadAnim - ypos, cr.cz * 16.0 - zpos);
-        renderer::renderbuffer(cr.vbuffers[2], cr.vtxs[2], TexcoordCount, 3);
-        glPopMatrix();
-    }
-
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-    glDisableClientState(GL_COLOR_ARRAY);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glDisableClientState(GL_VERTEX_ARRAY);
-
-    if (MergeFace)
-    {
-        glDisable(GL_TEXTURE_3D);
-        glEnable(GL_TEXTURE_2D);
-    }
-
-    glLoadIdentity();
-    glRotated(plookupdown, 1, 0, 0);
-    glRotated(360.0 - pheading, 0, 1, 0);
-    glTranslated(-xpos, -ypos, -zpos);
-    glEnable(GL_TEXTURE_2D);
-    glEnable(GL_CULL_FACE);
-
+    renderWorldTransparent();
     Mutex.lock();
 
     //Time_renderscene = timer() - Time_renderscene;
@@ -1633,9 +1641,7 @@ void Render()
         localtime_s(timeinfo, &t);
 #endif
         strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", timeinfo);
-        std::stringstream ss;
-        ss << "Screenshots/" << tmp << ".bmp";
-        saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
+        saveScreenshot(0, 0, windowwidth, windowheight, StringUtils::FormatString("Screenshots/%s.bmp", tmp));
     }
 
     if (shouldGetThumbnail)
@@ -1720,9 +1726,8 @@ void drawGUI()
             TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
             glEnable(GL_TEXTURE_2D);
             glDisable(GL_CULL_FACE);
-            std::stringstream ss;
-            ss << BlockInfo(selb).getBlockName() << " (ID " << (int)selb << ")";
-            TextRenderer::renderString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, ss.str());
+            TextRenderer::renderString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16,
+                                       StringUtils::FormatString("%s (ID:%d)", BlockInfo(selb).getBlockName(), (int)selb));
             glDisable(GL_TEXTURE_2D);
             glEnable(GL_CULL_FACE);
             glColor4f(0.0f, 0.0f, 0.0f, 0.9f);
@@ -1799,85 +1804,35 @@ void drawGUI()
 
     if (DebugMode)
     {
+        using namespace StringUtils;
         TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
-        std::stringstream ss;
-        ss << std::fixed << std::setprecision(4);
-        ss << "NEWorld v" << VERSION << " [OpenGL " << GLVersionMajor << "." << GLVersionMinor << "|" << GLVersionRev << "]";
-        debugText(ss.str());
-        ss.str("");
-        ss << "Flying:" << boolstr(FLY);
-        debugText(ss.str());
-        ss.str("");
-        ss << "Can Gliding:" << boolstr(canGliding);
-        debugText(ss.str());
-        ss.str("");
-        ss << "Gliding:" << boolstr(player::gliding());
-        debugText(ss.str());
-        ss.str("");
-        ss << "Energy:" << player::glidingEnergy;
-        debugText(ss.str());
-        ss.str("");
-        ss << "Speed:" << player::glidingSpeed;
-        debugText(ss.str());
-        ss.str("");
-        ss << "Debug Mode:" << boolstr(DebugMode);
-        debugText(ss.str());
-        ss.str("");
-        ss << "Crosswall:" << boolstr(CROSS);
-        debugText(ss.str());
-        ss.str("");
-        ss << "Block:" << BlockInfo(player::BlockInHand).getBlockName() << " (ID" << (int)player::BlockInHand << ")";
-        debugText(ss.str());
-        ss.str("");
-        ss << "Fps:" << fps;
-        debugText(ss.str());
-        ss.str("");
-        ss << "Ups(Tps):" << ups;
-        debugText(ss.str());
-        ss.str("");
+        debugText(FormatString("NEWorld v%d [OpenGL %d.%d|%d]", VERSION, GLVersionMajor, GLVersionMinor, GLVersionRev));
+        debugText("Flying:" + boolstr(FLY));
+        debugText("Can Gliding:" + boolstr(canGliding));
+        debugText("Gliding:" + boolstr(player::gliding()));
+        debugText(FormatString("Energy: %f", player::glidingEnergy));
+        debugText(FormatString("Speed: %f", player::glidingSpeed));
+        debugText("Debug Mode:" + boolstr(DebugMode));
+        debugText("Crosswall:" + boolstr(CROSS));
+        debugText(FormatString("Block: %s (ID:%d)", BlockInfo(player::BlockInHand).getBlockName(), (int)player::BlockInHand));
+        debugText(FormatString("Fps:%d Ups(Tps):%d", fps, ups));
 
-        ss << "Xpos:" << player::xpos;
-        debugText(ss.str());
-        ss.str("");
-        ss << "Ypos:" << player::ypos;
-        debugText(ss.str());
-        ss.str("");
-        ss << "Zpos:" << player::zpos;
-        debugText(ss.str());
-        ss.str("");
-        ss << "Direction:" << player::heading;
-        debugText(ss.str());
-        ss.str("");
-        ss << "Head:" << player::lookupdown;
-        debugText(ss.str());
-        ss.str("");
-        ss << "On ground:" << boolstr(player::OnGround);
-        debugText(ss.str());
-        ss.str("");
-        ss << "Jump speed:" << player::jump;
-        debugText(ss.str());
-        ss.str("");
-        ss << "Near wall:" << boolstr(player::NearWall);
-        debugText(ss.str());
-        ss.str("");
-        ss << "In water:" << boolstr(player::inWater);
-        debugText(ss.str());
-        ss.str("");
+        debugText(FormatString("X: %f Y: %f Z: %f", player::xpos, player::ypos, player::zpos));
+        debugText(FormatString("Direction: %f", player::heading));
+        debugText(FormatString("Head: %f", player::lookupdown));
+        debugText("On ground:" + boolstr(player::OnGround));
+        debugText(FormatString("Jump speed: %f", player::jump));
+        debugText("Near wall:" + boolstr(player::NearWall));
+        debugText("In water:" + boolstr(player::inWater));
 
         debugText("", true);
     }
     else
     {
-
+        using namespace StringUtils;
         TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
-        std::stringstream ss;
-        ss << "v" << VERSION;
-        TextRenderer::renderString(0, 0, ss.str());
-        ss.clear();
-        ss.str("");
-        ss << "Fps:" << fps;
-        TextRenderer::renderString(0, 16, ss.str());
-
+        TextRenderer::renderString(0, 0, FormatString("v%d", VERSION));
+        TextRenderer::renderString(0, 16, FormatString("Fps:%d", fps));
     }
 
     //检测帧速率
@@ -2272,22 +2227,12 @@ void drawBag()
 void saveScreenshot(int x, int y, int w, int h, string filename)
 {
     Textures::TEXTURE_RGB scrBuffer;
-    int bufw = w, bufh = h;
-
-    while (bufw % 4 != 0)
-    {
-        bufw += 1;
-    }
-
-    while (bufh % 4 != 0)
-    {
-        bufh += 1;
-    }
-
-    scrBuffer.sizeX = bufw;
-    scrBuffer.sizeY = bufh;
-    scrBuffer.buffer = unique_ptr<ubyte[]>(new ubyte[bufw * bufh * 3]);
-    glReadPixels(x, y, bufw, bufh, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
+    w = static_cast<int>(ceil(static_cast<float>(w) / 4.0f)) * 4;
+    h = static_cast<int>(ceil(static_cast<float>(h) / 4.0f)) * 4;
+    scrBuffer.sizeX = w;
+    scrBuffer.sizeY = h;
+    scrBuffer.buffer = unique_ptr<ubyte[]>(new ubyte[w * h * 3]);
+    glReadPixels(x, y, w, h, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
     Textures::SaveRGBImage(filename, scrBuffer);
 }
 
@@ -2298,73 +2243,31 @@ void createThumbnail()
     saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
 }
 
-template<typename T>
-void loadoption(std::map<string, string> &m, char *name, T &value)
-{
-    if (m.find(name) == m.end())
-    {
-        return;
-    }
-
-    std::stringstream ss;
-    ss << m[name];
-    ss >> value;
-}
-
 void loadoptions()
 {
-    std::map<string, string> options;
-    std::ifstream filein("Configs/options.ini", std::ios::in);
-
-    if (!filein.is_open())
-    {
-        return;
-    }
-
-    string name, value;
-
-    while (!filein.eof())
-    {
-        filein >> name >> value;
-        options[name] = value;
-    }
-
-    filein.close();
-    loadoption(options, "FOV", FOVyNormal);
-    loadoption(options, "RenderDistance", viewdistance);
-    loadoption(options, "Sensitivity", mousemove);
-    loadoption(options, "CloudWidth", cloudwidth);
-    loadoption(options, "SmoothLighting", SmoothLighting);
-    loadoption(options, "FancyGrass", NiceGrass);
-    loadoption(options, "MergeFaceRendering", MergeFace);
-    loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
-    loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
-}
-
-template<typename T>
-void saveoption(std::ofstream &out, char *name, T &value)
-{
-    out << string(name) << " " << value << endl;
+    Json file = readJsonFromFile("./Configs/options.json");
+    FOVyNormal = getJsonValue<float>(file["FOV"], 60.0f);
+    viewdistance = getJsonValue<int>(file["RenderDistance"], 8);
+    mousemove = getJsonValue<float>(file["Sensitivity"], 0.2f);
+    cloudwidth = getJsonValue<int>(file["CloudWidth"], 10);
+    SmoothLighting = getJsonValue<bool>(file["SmoothLighting"], true);
+    NiceGrass = getJsonValue<bool>(file["FancyGrass"], true);
+    MergeFace = getJsonValue<bool>(file["MergeFaceRendering"], false);
+    GUIScreenBlur = getJsonValue<bool>(file["GUIBackgroundBlur"], true);
+    TextRenderer::useUnicodeASCIIFont = getJsonValue<bool>(file["ForceUnicodeFont"], false);
 }
 
 void saveoptions()
 {
-    std::map<string, string> options;
-    std::ofstream fileout("Configs/options.ini", std::ios::out);
-
-    if (!fileout.is_open())
-    {
-        return;
-    }
-
-    saveoption(fileout, "FOV", FOVyNormal);
-    saveoption(fileout, "RenderDistance", viewdistance);
-    saveoption(fileout, "Sensitivity", mousemove);
-    saveoption(fileout, "CloudWidth", cloudwidth);
-    saveoption(fileout, "SmoothLighting", SmoothLighting);
-    saveoption(fileout, "FancyGrass", NiceGrass);
-    saveoption(fileout, "MergeFaceRendering", MergeFace);
-    saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
-    saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
-    fileout.close();
+    Json file;
+    file["FOV"] = FOVyNormal;
+    file["RenderDistance"] = viewdistance;
+    file["Sensitivity"] = mousemove;
+    file["CloudWidth"] = cloudwidth;
+    file["SmoothLighting"] = SmoothLighting;
+    file["FancyGrass"] = NiceGrass;
+    file["MergeFaceRendering"] = MergeFace;
+    file["GUIBackgroundBlur"] = GUIScreenBlur;
+    file["ForceUnicodeFont"] = TextRenderer::useUnicodeASCIIFont;
+    writeJsonToFile("./Configs/options.json", file);
 }
