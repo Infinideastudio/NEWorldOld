@@ -49,6 +49,7 @@ int getMouseButton()
 #include "GUI.h"
 #include "Menus.h"
 #include "Frustum.h"
+#include "utils/filesystem.h"
 
 struct RenderChunk
 {
@@ -96,18 +97,18 @@ woca, 这样注释都行？！
 
     //==============================  Main Program  ================================//
     //==============================     主程序     ================================//
-
 int main()
 {
     //终于进入main函数了！激动人心的一刻！！！
 
+    locale.setActiveLang("zh_CN");
     setlocale(LC_ALL, "");
 
     loadoptions();
     
-    system("md Configs");
-    system("md Worlds");
-    system("md Screenshots");
+    FileSystem::createDirectory("./Configs");
+    FileSystem::createDirectory("./Worlds");
+    FileSystem::createDirectory("./Screenshots");
 
     windowwidth = defaultwindowwidth;
     windowheight = defaultwindowheight;
