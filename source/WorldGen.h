@@ -14,7 +14,7 @@ namespace WorldGen
     void perlinNoiseInit(int mapseed);
     inline double Noise(int x, int y)
     {
-        long long xx = x + y * 13258953287;
+		long long xx = x + y * 13258953287 * perm[y];
         xx = (xx >> 13) ^ xx;
         return ((xx * (xx * xx * 15731 + 789221) + 1376312589) & 0x7fffffff) / 16777216.0;
     }
