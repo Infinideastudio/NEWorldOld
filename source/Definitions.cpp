@@ -1,19 +1,19 @@
 #include "Definitions.h"
 
 //Global Vars
-float FOVyNormal = 60.0f;       //视野角度
-float mousemove = 0.2f;         //鼠标灵敏度
-int viewdistance = 8;           //视野距离
-int cloudwidth = 10;            //云的宽度
+float FOVyNormal;               //视野角度
+float mousemove;                //鼠标灵敏度
+int viewdistance;               //视野距离
+int cloudwidth;                 //云的宽度
 int selectPrecision = 100;      //选择方块的精度
 int selectDistance = 5;         //选择方块的距离
 float walkspeed = 0.15f;        //玩家前进速度
 float runspeed = 0.3f;          //玩家跑步速度
 int MaxAirJumps = 3 - 1;        //空中N段连跳
-bool SmoothLighting = true;     //平滑光照
-bool NiceGrass = true;          //草地材质连接
-bool MergeFace = false;         //合并面渲染
-bool GUIScreenBlur = true;      //GUI背景模糊
+bool SmoothLighting;            //平滑光照
+bool NiceGrass;                 //草地材质连接
+bool MergeFace;                 //合并面渲染
+bool GUIScreenBlur;             //GUI背景模糊
 int linelength = 10;            //跟F3的准星有关。。。
 int linedist = 30;              //跟F3的准星有关。。。
 float skycolorR = 0.7f;         //天空颜色Red
