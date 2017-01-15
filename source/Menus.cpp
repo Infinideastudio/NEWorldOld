@@ -8,11 +8,11 @@
 
 string BoolYesNo(bool b)
 {
-    return b ? "ÊÇ" : "·ñ";
+    return b ? locale["yes"] : locale["no"];
 }
 string BoolEnabled(bool b)
 {
-    return b ? "¿ªÆô" : "¹Ø±Õ";
+    return b ? locale["on"] : locale["off"];
 }
 
 extern bool gamebegin;
@@ -34,9 +34,9 @@ private:
     void onLoad()
     {
         title = gui::imagebox(0.0f, 1.0f, 0.5f, 1.0f, tex_title, -256, 256, 20, 276, 0.5, 0.5, 0.0, 0.0);
-        startbtn = gui::button("¿ªÊ¼ÓÎÏ·", -200, 200, 280, 312, 0.5, 0.5, 0.0, 0.0);
-        optionsbtn = gui::button(">> Ñ¡Ïî...", -200, -3, 318, 352, 0.5, 0.5, 0.0, 0.0);
-        quitbtn = gui::button("ÍË³ö", 3, 200, 318, 352, 0.5, 0.5, 0.0, 0.0);
+        startbtn = gui::button(locale["neworld.menus.main.start"], -200, 200, 280, 312, 0.5, 0.5, 0.0, 0.0);
+        optionsbtn = gui::button(locale["neworld.menus.main.options"], -200, -3, 318, 352, 0.5, 0.5, 0.0, 0.0);
+        quitbtn = gui::button(locale["neworld.menus.main.quit"], 3, 200, 318, 352, 0.5, 0.5, 0.0, 0.0);
         registerControls(title, startbtn, optionsbtn, quitbtn);
     }
     void onUpdate()
@@ -76,14 +76,14 @@ private:
     gui::button rdstbtn, gistbtn, backbtn, savebtn;
     void onLoad()
     {
-        title = gui::label("=================<  Ñ¡ Ïî  >=================", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-        FOVyBar = gui::trackbar(strWithVar("ÊÓÒ°½Ç¶È£º", FOVyNormal), 120, (int)(FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        mmsBar = gui::trackbar(strWithVar("Êó±êÁéÃô¶È£º", mousemove), 120, (int)(mousemove * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        viewdistBar = gui::trackbar(strWithVar("äÖÈ¾¾àÀë£º", viewdistance), 120, (viewdistance - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
-        rdstbtn = gui::button(">> äÖÈ¾Ñ¡Ïî...", -250, -10, 204, 228, 0.5, 0.5, 0.0, 0.0);
-        gistbtn = gui::button(">> Í¼ÐÎ½çÃæÑ¡Ïî...", 10, 250, 204, 228, 0.5, 0.5, 0.0, 0.0);
-        backbtn = gui::button("<< ·µ»ØÖ÷²Ëµ¥", -250, -10, -44, -20, 0.5, 0.5, 1.0, 1.0);
-        savebtn = gui::button("±£´æÉèÖÃ", 10, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        title = gui::label(locale["neworld.menus.options.caption"], -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+        FOVyBar = gui::trackbar(strWithVar(locale["neworld.menus.options.fov"], FOVyNormal), 120, (int)(FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        mmsBar = gui::trackbar(strWithVar(locale["neworld.menus.options.mms"], mousemove), 120, (int)(mousemove * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        viewdistBar = gui::trackbar(strWithVar(locale["neworld.menus.options.dist"], viewdistance), 120, (viewdistance - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
+        rdstbtn = gui::button(locale["neworld.menus.options.rdst"], -250, -10, 204, 228, 0.5, 0.5, 0.0, 0.0);
+        gistbtn = gui::button(locale["neworld.menus.options.gist"], 10, 250, 204, 228, 0.5, 0.5, 0.0, 0.0);
+        backbtn = gui::button(locale["neworld.menus.options.back"], -250, -10, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        savebtn = gui::button(locale["neworld.menus.options.save"], 10, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
         registerControls(title, FOVyBar, mmsBar, viewdistBar, rdstbtn, gistbtn, backbtn, savebtn);
     }
     void onUpdate()
@@ -112,9 +112,9 @@ private:
             saveoptions();
         }
 
-        FOVyBar.text = strWithVar("ÊÓÒ°½Ç¶È£º", FOVyNormal);
-        mmsBar.text = strWithVar("Êó±êÁéÃô¶È£º", mousemove);
-        viewdistBar.text = strWithVar("äÖÈ¾¾àÀë£º", viewdistance);
+        FOVyBar.text = strWithVar(locale["neworld.menus.options.fov"], FOVyNormal);
+        mmsBar.text = strWithVar(locale["neworld.menus.options.mms"], mousemove);
+        viewdistBar.text = strWithVar(locale["neworld.menus.options.dist"], viewdistance);
     }
 };
 void options()
@@ -130,11 +130,11 @@ private:
     gui::button smoothlightingbtn, fancygrassbtn, mergefacebtn, backbtn;
     void onLoad()
     {
-        title = gui::label("==============<  äÖ È¾ Ñ¡ Ïî  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-        smoothlightingbtn = gui::button("Æ½»¬¹âÕÕ£º", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        fancygrassbtn = gui::button("²Ý·½¿é²ÄÖÊÁ¬½Ó£º", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        mergefacebtn = gui::button("ºÏ²¢ÃæäÖÈ¾£º", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
-        backbtn = gui::button("<< ·µ»ØÑ¡Ïî²Ëµ¥", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        title = gui::label(locale["neworld.menus.roptions.caption"], -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+        smoothlightingbtn = gui::button(locale["neworld.menus.roptions.slight"], -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        fancygrassbtn = gui::button(locale["neworld.menus.roptions.fgrass"], 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        mergefacebtn = gui::button(locale["neworld.menus.roptions.merge"], -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
+        backbtn = gui::button(locale["neworld.menus.roptions.back"], -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
         registerControls(title, smoothlightingbtn, fancygrassbtn, mergefacebtn, backbtn);
 
         if (MergeFace)
@@ -173,9 +173,9 @@ private:
             ExitSignal = true;
         }
 
-        smoothlightingbtn.text = "Æ½»¬¹âÕÕ£º" + BoolEnabled(SmoothLighting);
-        fancygrassbtn.text = "²Ý·½¿é²ÄÖÊÁ¬½Ó£º" + BoolEnabled(NiceGrass);
-        mergefacebtn.text = "ºÏ²¢ÃæäÖÈ¾£º" + BoolEnabled(MergeFace);
+        smoothlightingbtn.text = locale["neworld.menus.roptions.slight"] + BoolEnabled(SmoothLighting);
+        fancygrassbtn.text = locale["neworld.menus.roptions.fgrass"] + BoolEnabled(NiceGrass);
+        mergefacebtn.text = locale["neworld.menus.roptions.merge"] + BoolEnabled(MergeFace);
     }
 };
 void Renderoptions()
@@ -315,7 +315,7 @@ private:
 
         if (deletebtn.clicked)
         {
-            //É¾³ýÊÀ½çÎÄ¼þ
+            //åˆ é™¤ä¸–ç•Œæ–‡ä»¶
             system((string("rd /s/q Worlds\\") + chosenWorldName).c_str());
             deletebtn.clicked = false;
             world::worldname = "";
@@ -335,7 +335,7 @@ private:
             mouseon = -1;
             vscroll.barpos = 0;
             chosenWorldName = "";
-            //²éÕÒËùÓÐÊÀ½ç´æµµ
+            //æŸ¥æ‰¾æ‰€æœ‰ä¸–ç•Œå­˜æ¡£
             FileSystem::forInDirectory("./Worlds", [this](bool isDir, std::string path)
             {
                 if (isDir && path != "." && path != "..")
@@ -418,7 +418,7 @@ private:
                 bool marginOnSides;
                 float w, h;
 
-                //¼ÆËã²ÄÖÊ×ø±ê£¬±£³Ö¸ß¿í±È£¨°´Å¥´óÐ¡Îª500x60£©£¬ÓÐÐ¡Ñ§ÊýÑ§»ù´¡µÄÈË×ÐÏ¸ÏëÒ»ÏëÓ¦¸ÃÄÜ¶®QAQ
+                //è®¡ç®—æè´¨åæ ‡ï¼Œä¿æŒé«˜å®½æ¯”ï¼ˆæŒ‰é’®å¤§å°ä¸º500x60ï¼‰ï¼Œæœ‰å°å­¦æ•°å­¦åŸºç¡€çš„äººä»”ç»†æƒ³ä¸€æƒ³åº”è¯¥èƒ½æ‡‚QAQ
                 if (texSizeX[i] * 60 / 500 < texSizeY[i])
                 {
                     marginOnSides = true;
@@ -503,7 +503,7 @@ private:
         glVertex2i(midp + 250, 48 + i * 64 + 60);
         glVertex2i(midp - 250, 48 + i * 64 + 60);
         glEnd();
-        TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(locale["neworld.menus.world.new"])) / 2, (140 + i * 128) / 2, ">>´´½¨ÐÂµÄÊÀ½ç");
+        TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(locale["neworld.menus.world.new"])) / 2, (140 + i * 128) / 2, ">>åˆ›å»ºæ–°çš„ä¸–ç•Œ");
         glDisable(GL_SCISSOR_TEST);
     }
 };
