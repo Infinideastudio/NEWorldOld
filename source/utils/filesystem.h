@@ -1,8 +1,9 @@
 #pragma once
 
 #ifdef NEWORLD_TARGET_WINDOWS
-#include <io.h>
+    #include <io.h>
     #include <direct.h>
+    #include <Windows.h>
 #else
 #include <unistd.h>
 #include <sys/types.h>

@@ -22,7 +22,11 @@
 #include <mutex>
 #include <random>
 #include <unordered_set>
+#include <cstring>
 
+#ifndef _MSC_VCR
+    #define NEWORLD_COMPILE_DISABLE_SECURE
+#endif // _MS_VC_
 using std::string;
 using std::vector;
 using std::pair;
