@@ -3,6 +3,7 @@
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
 #include "StdInclude.h"
+#include "Locale.h"
 
 //#define NEWORLD_DEBUG
 #ifdef NEWORLD_DEBUG
@@ -74,7 +75,6 @@ extern std::mutex Mutex;
 extern double lastupdate, updateTimer;
 extern double lastframe;
 
-extern bool mpclient, mpserver;
 extern bool shouldGetScreenshot;
 extern bool shouldGetThumbnail;
 extern bool FirstUpdateThisFrame;
@@ -84,6 +84,7 @@ extern double TouchdownAnimTimer;
 extern double screenshotAnimTimer;
 extern double bagAnimTimer;
 extern double bagAnimDuration;
+extern Locale::Service locale;
 
 extern int GLVersionMajor, GLVersionMinor, GLVersionRev;
 extern GLFWwindow *MainWindow;
