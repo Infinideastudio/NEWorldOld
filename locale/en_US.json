@@ -1,0 +1,56 @@
+{
+  "yes": "Yes",
+  "no": "No",
+  "on": "On",
+  "off": "Off",
+  "neworld": {
+    "menus": {
+      "main": {
+        "start": "Start!",
+        "options": ">> Options ...",
+        "quit": "Exit"
+      },
+      "guioptions": {
+        "caption": "=============== <GUI options> ==============",
+        "font": "All use Unicode Font:",
+        "blur": "Background Blur:",
+        "back": "<< Back to Options Menu"
+      },
+      "world": {
+        "caption": "============== <Choose world> ==============",
+        "enter": "Enter the selected world",
+        "delete": "Delete the selected world",
+        "back": "<< Back to Main Menu",
+        "new": ">> Create a New World"
+      },
+      "newworld": {
+        "caption": "============== <New World> ==============",
+        "name": "Enter the World Name",
+        "ok": "Confirm",
+        "back": "<< Return to World Menu"
+      },
+      "game": {
+        "caption": "============== <Game Menu> ==============",
+        "resume": "continue the game",
+        "back": "<< Back to the Main Menu"
+      },
+      "options": {
+        "caption": "================= <Options> =================",
+        "fov": "Field of View Angle:",
+        "mms": "Mouse Sensitivity:",
+        "dist": "Rendering Distance:",
+        "rdst": ">> Rendering Options ...",
+        "gist": ">> Graphical Interface Options ...",
+        "back": "<< Back to the Main Menu",
+        "save": "Save Settings"
+      },
+      "roptions": {
+        "caption": "============== <Rendering Options> ==============",
+        "slight": "Smooth Lighting:",
+        "fgrass": "Grass Material Connection:",
+        "merge": "Merge Surface Rendering:",
+        "back": "<< Back to Options Menu"
+      }
+    }
+  }
+}
