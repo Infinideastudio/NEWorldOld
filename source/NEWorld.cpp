@@ -103,7 +103,7 @@ int main()
 {
     //终于进入main函数了！激动人心的一刻！！！
 
-    locale.setActiveLang("zh_CN");
+    locale.setActiveLang("zh_Hans");
     setlocale(LC_ALL, "zh_CN.UTF-8");
 
     loadoptions();
