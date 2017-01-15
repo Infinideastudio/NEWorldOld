@@ -20,10 +20,9 @@
 #pragma once
 
 #include "json.hpp"
+#include <fstream>
 
 using Json = nlohmann::json;
-
-const std::string SettingsFilename = "./settings";
 
 inline Json readJsonFromFile(std::string filename)
 {
@@ -40,7 +39,7 @@ inline Json readJsonFromFile(std::string filename)
             }
             catch(std::invalid_argument& exception)
             {
-                warningstream << "Failed to load json " << filename << ": " << exception.what();
+                std::cerr << "Failed to load json " << filename << ": " << exception.what();
             }
         }
     }
@@ -80,9 +79,3 @@ private:
     std::string mFilename;
 };
 
-inline Json& getSettings()
-{
-    static Json settings = readJsonFromFile(SettingsFilename + ".json");
-    static JsonSaveHelper helper(settings, SettingsFilename + ".json");
-    return settings;
-}
