@@ -1,7 +1,5 @@
 #include "Menus.h"
 #include "World.h"
-#include "Textures.h"
-#include "TextRenderer.h"
 #include "utils/filesystem.h"
 
 string BoolYesNo(bool b)
@@ -15,7 +13,6 @@ string BoolEnabled(bool b)
 
 extern bool gamebegin;
 extern void saveoptions();
-//extern void Render();
 
 template<typename T>
 string strWithVar(string str, T var)
@@ -23,18 +20,6 @@ string strWithVar(string str, T var)
     std::stringstream ss;
     ss << str << var;
     return ss.str();
-}
-int getDotCount(string s)
-{
-    int ret = 0;
-
-    for (unsigned int i = 0; i != s.size(); i++)
-        if (s[i] == '.')
-        {
-            ret++;
-        }
-
-    return ret;
 }
 
 class MainMenu : public gui::Form
@@ -202,10 +187,10 @@ private:
     gui::button fontbtn, blurbtn, backbtn;
     void onLoad()
     {
-        title = gui::label("===============< 图形界面选项 >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-        fontbtn = gui::button("全部使用Unicode字体：", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        blurbtn = gui::button("背景模糊：", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-        backbtn = gui::button("<< 返回选项菜单", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        title = gui::label(locale["neworld.menus.guioptions.caption"], -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+        fontbtn = gui::button(locale["neworld.menus.guioptions.font"], -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        blurbtn = gui::button(locale["neworld.menus.guioptions.blur"], 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+        backbtn = gui::button(locale["neworld.menus.guioptions.back"], -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
         registerControls(title, fontbtn, blurbtn, backbtn);
     }
     void onUpdate()
@@ -225,8 +210,8 @@ private:
             ExitSignal = true;
         }
 
-        fontbtn.text = "全部使用Unicode字体：" + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
-        blurbtn.text = "背景模糊：" + BoolEnabled(GUIScreenBlur);
+        fontbtn.text = locale["neworld.menus.guioptions.caption"] + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
+        blurbtn.text = locale["neworld.menus.guioptions.blur"] + BoolEnabled(GUIScreenBlur);
     }
 };
 void GUIoptions()
@@ -254,11 +239,11 @@ private:
     gui::button enterbtn, deletebtn, backbtn;
     void onLoad()
     {
-        title = gui::label("==============<  选 择 世 界  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+        title = gui::label(locale["neworld.menus.world.caption"], -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
         vscroll = gui::vscroll(100, 0, 275, 295, 36, -20, 0.5, 0.5, 0.0, 1.0);
-        enterbtn = gui::button("进入选定的世界", -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
-        deletebtn = gui::button("删除选定的世界", 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
-        backbtn = gui::button("<< 返回主菜单", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        enterbtn = gui::button(locale["neworld.menus.world.enter"], -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
+        deletebtn = gui::button(locale["neworld.menus.world.delete"], 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
+        backbtn = gui::button(locale["neworld.menus.world.back"], -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
         registerControls(title, vscroll, enterbtn, deletebtn, backbtn);
         world::worldname = "";
         enterbtn.enabled = false;
@@ -512,7 +497,7 @@ private:
         glVertex2i(midp + 250, 48 + i * 64 + 60);
         glVertex2i(midp - 250, 48 + i * 64 + 60);
         glEnd();
-        TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(">>创建新的世界")) / 2, (140 + i * 128) / 2, ">>创建新的世界");
+        TextRenderer::renderString((windowwidth - TextRenderer::getStrWidth(locale["neworld.menus.world.new"])) / 2, (140 + i * 128) / 2, ">>创建新的世界");
         glDisable(GL_SCISSOR_TEST);
     }
 };
@@ -531,10 +516,10 @@ private:
     gui::button okbtn, backbtn;
     void onLoad()
     {
-        title = gui::label("==============<  新 建 世 界  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-        worldnametb = gui::textbox("输入世界名称", -250, 250, 48, 72, 0.5, 0.5, 0.0, 0.0);
-        okbtn = gui::button("确定", -250, 250, 84, 120, 0.5, 0.5, 0.0, 0.0);
-        backbtn = gui::button("<< 返回世界菜单", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+        title = gui::label(locale["neworld.menus.newworld.new"], -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+        worldnametb = gui::textbox(locale["neworld.menus.newworld.name"], -250, 250, 48, 72, 0.5, 0.5, 0.0, 0.0);
+        okbtn = gui::button(locale["neworld.menus.newworld.ok"], -250, 250, 84, 120, 0.5, 0.5, 0.0, 0.0);
+        backbtn = gui::button(locale["neworld.menus.newworld.back"], -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
         registerControls(title, worldnametb, okbtn, backbtn);
         inputstr = "";
         okbtn.enabled = false;
@@ -589,9 +574,9 @@ private:
     gui::button resumebtn, exitbtn;
     void onLoad()
     {
-        title = gui::label("==============<  游 戏 菜 单  >==============", -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
-        resumebtn = gui::button("继续游戏", -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
-        exitbtn = gui::button("<< 返回主菜单", -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
+        title = gui::label(locale["neworld.menus.game.caption"], -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
+        resumebtn = gui::button(locale["neworld.menus.game.resume"], -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
+        exitbtn = gui::button(locale["neworld.menus.game.back"], -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
         registerControls(title, resumebtn, exitbtn);
     }
     void onUpdate()
@@ -610,25 +595,6 @@ private:
             gameexit = ExitSignal = true;
         }
     }
-    /*
-    void Background() {
-        Render();
-        glDisable(GL_TEXTURE_2D);
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
-        glMatrixMode(GL_MODELVIEW);
-        glDepthFunc(GL_ALWAYS);
-        glLoadIdentity();
-        glColor4f(0.0f, 0.0f, 0.0f, 0.5f);
-        glBegin(GL_QUADS);
-            glVertex2i(0, 0);
-            glVertex2i(windowwidth, 0);
-            glVertex2i(windowwidth, windowheight);
-            glVertex2i(0, windowheight);
-        glEnd();
-    }
-    */
 };
 void gamemenu()
 {

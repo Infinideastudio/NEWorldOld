@@ -45,6 +45,7 @@ double TouchdownAnimTimer;
 double screenshotAnimTimer;
 double bagAnimTimer;
 double bagAnimDuration = 0.5;
+Locale::Service locale("./locale");
 
 //OpenGL
 int GLVersionMajor, GLVersionMinor, GLVersionRev;
