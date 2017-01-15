@@ -1,6 +1,5 @@
 #include "GUI.h"
 #include "TextRenderer.h"
-
 extern string inputstr;
 
 //图形界面系统。。。正宗OOP！！！

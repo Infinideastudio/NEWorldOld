@@ -109,9 +109,8 @@ namespace TextRenderer
     }
     std::wstring c2w(string str) noexcept
     {
-        size_t destlen = mbstowcs(nullptr, str.data(), 0);
-        std::wstring val(destlen, L' ');
-        mbstowcs(const_cast<wchar_t*>(val.c_str()), str.data(), destlen + 1);
+        std::wstring val(str.length() + 1, L' ');
+        mbstowcs(const_cast<wchar_t*>(val.c_str()), str.data(), str.length() + 1);
         return val;
     }
     void renderString(int x, int y, string glstring)
