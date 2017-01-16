@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 aux_source_directory(./ SRC)
 if (CMAKE_SYSTEM_NAME MATCHES Windows)
-    link_libraries(opengl32 glu32 glfw3 glew32)
+    link_libraries(opengl32 glu32 glfw3 glew32s)
     add_definitions(-DNOMINMAX -DNEWORLD_TARGET_WINDOWS)
 endif()
 if (CMAKE_SYSTEM_NAME MATCHES Darwin)

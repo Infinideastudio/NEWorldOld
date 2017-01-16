@@ -2,6 +2,7 @@
 #include "utils/jsonhelper.h"
 #include "Locale.h"
 #include <deque>
+#include <codecvt>
 namespace Locale
 {
     namespace
@@ -36,7 +37,9 @@ namespace Locale
                 }
                 return getJsonValue<std::string>(*iter);
             }
+            auto& getConv() { return mConv; }
         private:
+            std::wstring_convert<std::codecvt_utf8<wchar_t>> mConv;
             std::map<std::string, int> mIDTable;
             std::string mActiveLang, mBasePath;
             Json mLang;
@@ -58,5 +61,14 @@ namespace Locale
     std::string Service::operator[](const std::string& key) const
     {
         return mService->getStrByKey(key);
+    }
+    const std::string Service::w2cUtf8(const std::wstring& src)
+    {
+        return mService->getConv().to_bytes(src);
+    }
+
+    const std::wstring Service::c2wUtf8(const std::string& src)
+    {
+        return mService->getConv().from_bytes(src);
     }
 }

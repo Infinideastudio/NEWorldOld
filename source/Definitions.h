@@ -123,18 +123,6 @@ inline int RoundInt(double d)
     return int(floor(d + 0.5));
 }
 
-inline const std::string w2cUtf8(const std::wstring& src)
-{
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
-    return conv.to_bytes(src);
-}
-
-inline const std::wstring c2wUtf8(const std::string& src)
-{
-    std::wstring_convert<std::codecvt_utf8<wchar_t> > conv;
-    return conv.from_bytes(src);
-}
-
 void DebugWarning(string msg);
 void DebugError(string msg);
 #endif
