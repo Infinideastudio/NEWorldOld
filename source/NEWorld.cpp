@@ -433,7 +433,7 @@ void MouseButtonFunc(GLFWwindow *, int button, int action, int)
 
 void CharInputFunc(GLFWwindow *, unsigned int c)
 {
-    inputstr += w2cUtf8(std::wstring(1, static_cast<wchar_t>(c)));
+    inputstr += locale.w2cUtf8(std::wstring(1, static_cast<wchar_t>(c)));
 }
 
 void MouseScrollFunc(GLFWwindow *, double, double yoffset)
@@ -463,7 +463,7 @@ void splashscreen()
         glTexCoord2f(0.0, 1.0 - 480.0f / 1024.0f);
         glVertex2i(-1, -1);
         glEnd();
-        Sleep((DWORD)10);
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
     glfwSwapBuffers(MainWindow);

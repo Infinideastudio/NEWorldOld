@@ -22,6 +22,8 @@ namespace Locale
         {
             return StringUtils::FormatString((*this)[key].c_str(), std::forward<Args>(args)...);
         }
+        const std::string w2cUtf8(const std::wstring& src);
+        const std::wstring c2wUtf8(const std::string& src);
         std::string operator[](const std::string& key) const;
     private:
         std::unique_ptr<ServiceImpl> mService;

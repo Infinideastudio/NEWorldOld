@@ -112,7 +112,7 @@ namespace TextRenderer
         double tx, ty, span = 0;
         TextureID ftex;
 
-        auto wstr = c2wUtf8(glstring);
+        auto wstr = locale.c2wUtf8(glstring);
 
         glEnable(GL_TEXTURE_2D);
         glTranslated(x + 1, y + 1, 0);
