@@ -463,7 +463,7 @@ void splashscreen()
         glTexCoord2f(0.0, 1.0 - 480.0f / 1024.0f);
         glVertex2i(-1, -1);
         glEnd();
-        Sleep(10);
+        Sleep((DWORD)10);
     }
 
     glfwSwapBuffers(MainWindow);
