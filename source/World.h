@@ -70,18 +70,24 @@ namespace world
         void tryUpdateRenderers(const Vec3i& centre);
     private:
         constexpr static size_t LazyUpdateDistanceSquare = 256;
-        constexpr static size_t EmptyChunkCacheSize = 1024;
+        constexpr static size_t EmptyChunkCacheSize = 4096;
         constexpr static double LazyUpdateMaxTime = 3.0;
-        constexpr static double UpdateMaxTime = 0.02;
+        constexpr static double UpdateMaxTime = 0.03;
         constexpr static size_t MaxChunkLoads = 128;
         constexpr static size_t MaxChunkUnloads = 128;
-        constexpr static size_t MaxChunkRenders = 64;
+        constexpr static size_t MaxChunkRenders = 128;
         struct ChunkHash
         {
             constexpr size_t operator()(const Vec3i &t) const noexcept { return getChunkID(t); }
         };
         std::string mName;
         std::unordered_map<Vec3i, chunk, ChunkHash> mChunks;
+
+        OrderedList<int, Vec3i, MaxChunkLoads> chunkLoadList;
+        OrderedList<int, chunk*, MaxChunkUnloads, std::greater> chunkUnloadList;
+        std::unordered_set<Vec3i, ChunkHash> emptyChunks;
+        Vec3i lastUpdatePos;
+        double time = 0;
     };
     extern World mWorld;
     extern string worldname;

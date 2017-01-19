@@ -21,31 +21,9 @@ namespace world
     void World::tryLoadUnloadChunks(const Vec3i& centre)
     {
         //lazy load
-        static Vec3i lastUpdatePos;
-        static bool finish = false;
-        static double time = 0;
-        if (finish && (timer() - time <LazyUpdateMaxTime) && (lastUpdatePos - centre).lengthSqr() < LazyUpdateDistanceSquare)
+        if ((timer() - time <LazyUpdateMaxTime) && (lastUpdatePos - centre).lengthSqr() < LazyUpdateDistanceSquare)
             return;
         lastUpdatePos = centre;
-        static OrderedList<int, Vec3i, MaxChunkLoads> chunkLoadList;
-        static OrderedList<int, chunk*, MaxChunkUnloads, std::greater> chunkUnloadList;
-        Vec3i ccentre = centre / 16, c,sub =Vec3i{ 7, 7, 7 }-centre;
-
-        for (auto&& chk : mChunks)
-        {
-            c = Vec3i{ chk.second.cx, chk.second.cy, chk.second.cz };
-            if (!chunkInRange(c.x, c.y, c.z, ccentre.x, ccentre.y, ccentre.z, viewdistance + 1))
-                chunkUnloadList.insert((c * 16 + sub).lengthSqr(), &chk.second);
-        }
-        static auto hash = [](const Vec3i v) {return getChunkID(v); };
-        static std::unordered_set<Vec3i,decltype(hash)> emptyChunks(0,hash);
-        for (c.x = ccentre.x - viewdistance - 1; c.x <= ccentre.x + viewdistance; ++c.x)
-            for (c.y = ccentre.y - viewdistance - 1; c.y <= ccentre.y + viewdistance; ++c.y)
-                for (c.z = ccentre.z - viewdistance - 1; c.z <= ccentre.z + viewdistance; ++c.z)
-                    if ((!chunkLoaded(c.x, c.y, c.z)) && (emptyChunks.find(c)==emptyChunks.end()))
-                        chunkLoadList.insert((c * 16 + sub).lengthSqr(), c);
-
-        finish = (chunkLoadList.size() < MaxChunkLoads) && (chunkUnloadList.size() < MaxChunkUnloads);
 
         time = timer();
         // Unload chunks
@@ -54,7 +32,6 @@ namespace world
             if (timer() - time > UpdateMaxTime)
             {
                 chunkUnloadList.move_forward(iter);
-                finish = false;
                 return;
             }
             int cx = iter->second->cx, cy = iter->second->cy, cz = iter->second->cz;
@@ -70,7 +47,6 @@ namespace world
             if (timer() - time > UpdateMaxTime)
             {
                 chunkLoadList.move_forward(iter);
-                finish = false;
                 return;
             }
             auto *chk = insertChunk(iter->second.x, iter->second.y, iter->second.z);
@@ -82,6 +58,27 @@ namespace world
             }
         }
         chunkLoadList.clear();
+
+        Vec3i ccentre = centre / 16, c, sub = Vec3i{ 7, 7, 7 }-centre;
+
+        for (auto&& chk : mChunks)
+        {
+            if (timer() - time > UpdateMaxTime)
+                return;
+            c = Vec3i{ chk.second.cx, chk.second.cy, chk.second.cz };
+            if (!chunkInRange(c.x, c.y, c.z, ccentre.x, ccentre.y, ccentre.z, viewdistance + 1))
+                chunkUnloadList.insert((c * 16 + sub).lengthSqr(), &chk.second);
+        }
+
+        for (c.x = ccentre.x - viewdistance - 1; c.x <= ccentre.x + viewdistance; ++c.x)
+            if (timer() - time < UpdateMaxTime)
+            {
+                for (c.y = ccentre.y - viewdistance - 1; c.y <= ccentre.y + viewdistance; ++c.y)
+                    for (c.z = ccentre.z - viewdistance - 1; c.z <= ccentre.z + viewdistance; ++c.z)
+                        if ((!chunkLoaded(c.x, c.y, c.z)) && (emptyChunks.find(c) == emptyChunks.end()))
+                            chunkLoadList.insert((c * 16 + sub).lengthSqr(), c);
+            }
+            else return;
 
         if (emptyChunks.size() > EmptyChunkCacheSize)
             emptyChunks.clear();
@@ -672,12 +669,13 @@ namespace world
 
             if (updated)
             {
-                updateblock(x, y + 1, z, false);
-                updateblock(x, y - 1, z, false);
                 updateblock(x + 1, y, z, false);
                 updateblock(x - 1, y, z, false);
                 updateblock(x, y, z + 1, false);
                 updateblock(x, y, z - 1, false);
+                updateblock(x, y + 1, z, false);
+                if(y>0)
+                    updateblock(x, y - 1, z, false);
             }
 
             setChunkUpdated(cx, cy, cz, true);

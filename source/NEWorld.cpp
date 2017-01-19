@@ -156,7 +156,7 @@ main_menu:
     printf("Init player...\n");
     player::InitHitbox();
     player::xpos = 0.0;
-	player::ypos = (WorldGen::getHeight(player::xpos, player::zpos) + 1);
+	player::ypos = (WorldGen::getHeight(player::xpos, player::zpos) + 2);
     player::zpos = 0.0;
     memset(player::inventorybox, 0, sizeof(player::inventorybox));
     memset(player::inventorypcs, 0, sizeof(player::inventorypcs));
@@ -601,8 +601,7 @@ void updategame()
         world::HMap.moveTo((player::cxt - viewdistance - 2) * 16, (player::czt - viewdistance - 2) * 16);
     }
 
-    if (FirstUpdateThisFrame)
-        world::mWorld.tryLoadUnloadChunks(Vec3i(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos)));
+    world::mWorld.tryLoadUnloadChunks(Vec3i(RoundInt(player::xpos), RoundInt(player::ypos), RoundInt(player::zpos)));
 
     //加载动画
     for (auto&& chk : world::mWorld)
