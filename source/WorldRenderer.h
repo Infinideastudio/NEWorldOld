@@ -4,6 +4,10 @@
 #include "Renderer.h"
 
 namespace WorldRenderer {
+	enum {
+		MainShader, MergeFaceShader, ShadowShader, DepthShader, ShowDepthShader
+	};
+
 	struct RenderChunk {
 		int cx, cy, cz;
 		vtxCount vertexes[4];

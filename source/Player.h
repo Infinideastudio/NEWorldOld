@@ -7,7 +7,7 @@ const double speedCast = 1 / 20.0;
 
 struct PlayerPacket;
 namespace Hitbox { struct AABB; }
-class Frustum;
+class FrustumTest;
 
 class Player {
 public:
@@ -32,7 +32,7 @@ public:
 	static double health, healthMax, healSpeed, dropDamage;
 	static onlineid onlineID;
 	static string name;
-	static Frustum ViewFrustum;
+	static FrustumTest ViewFrustum;
 
 	enum GameMode { Survival, Creative };
 	static int gamemode;

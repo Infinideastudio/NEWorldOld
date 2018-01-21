@@ -25,7 +25,7 @@ double Player::xa, Player::ya, Player::za, Player::xd, Player::yd, Player::zd;
 double Player::health = 20, Player::healthMax = 20, Player::healSpeed = 0.01, Player::dropDamage = 5.0;
 onlineid Player::onlineID;
 string Player::name;
-Frustum Player::ViewFrustum;
+FrustumTest Player::ViewFrustum;
 
 double Player::speed;
 int Player::AirJumps;
@@ -78,7 +78,7 @@ void Player::init(double x, double y, double z) {
 
 void Player::spawn() {
 	xpos = 0.0;
-	ypos = 60.0;
+	ypos = 128.0;
 	zpos = 0.0;
 	jump = 0.0;
 	InitHitbox(Player::playerbox);
@@ -101,17 +101,14 @@ void Player::updatePosition() {
 		Hitboxes = World::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
 		int num = Hitboxes.size();
 		if (num > 0) {
-			for (int i = 0; i < num; i++) {
+			for (int i = 0; i < num; i++)
 				ya = Hitbox::MaxMoveOnYclip(playerbox, Hitboxes[i], ya);
-			}
 			Hitbox::Move(playerbox, 0.0, ya, 0.0);
-			for (int i = 0; i < num; i++) {
+			for (int i = 0; i < num; i++)
 				xa = Hitbox::MaxMoveOnXclip(playerbox, Hitboxes[i], xa);
-			}
 			Hitbox::Move(playerbox, xa, 0.0, 0.0);
-			for (int i = 0; i < num; i++) {
+			for (int i = 0; i < num; i++)
 				za = Hitbox::MaxMoveOnZclip(playerbox, Hitboxes[i], za);
-			}
 			Hitbox::Move(playerbox, 0.0, 0.0, za);
 		}
 	}
@@ -120,11 +117,9 @@ void Player::updatePosition() {
 		Player::glidingEnergy = 0;
 		Player::glidingSpeed = 0;
 		Player::glidingNow = false;
-		if (yal < -0.4 && Player::gamemode == Player::Survival) {
+		if (yal < -0.4 && Player::gamemode == Player::Survival)
 			Player::health += yal * Player::dropDamage;
-		}
-	}
-	else OnGround = false;
+	} else OnGround = false;
 	if (ya != yal && yal > 0.0) jump = 0.0;
 	if (xa != xal || za != zal) NearWall = true; else NearWall = false;
 
@@ -133,14 +128,14 @@ void Player::updatePosition() {
 	xa = (double)((int)(xa * 100000)) / 100000.0;
 	ya = (double)((int)(ya * 100000)) / 100000.0;
 	za = (double)((int)(za * 100000)) / 100000.0;
-	
+
 	xd = xa; yd = ya; zd = za;
 	xpos += xa; ypos += ya; zpos += za;
 	xa *= 0.8; za *= 0.8;
 	if (Flying || CrossWall) ya *= 0.8;
 	if (OnGround) xa *= 0.7, ya = 0.0, za *= 0.7;
 	updateHitbox();
-	
+
 	cxtl = cxt; cytl = cyt; cztl = czt;
 	cxt = getchunkpos((int)xpos); cyt = getchunkpos((int)ypos); czt = getchunkpos((int)zpos);
 }
@@ -152,7 +147,7 @@ bool Player::putBlock(int x, int y, int z, block blockname) {
 	blockbox.xmax = x + 0.5; blockbox.ymax = y + 0.5; blockbox.zmax = z + 0.5;
 	int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
 	if (!World::chunkOutOfBound(cx, cy, cz) && (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall ||
-		BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(x, y, z)).isSolid() == false)) {
+	        BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(x, y, z)).isSolid() == false)) {
 		World::putblock(x, y, z, blockname);
 		success = true;
 	}
@@ -226,8 +221,7 @@ bool Player::addItem(item itemname, short amount) {
 				if (amount + inventoryAmount[i][j] <= InvMaxStack) {
 					inventoryAmount[i][j] += amount;
 					return true;
-				}
-				else {
+				} else {
 					amount -= InvMaxStack - inventoryAmount[i][j];
 					inventoryAmount[i][j] = InvMaxStack;
 				}
@@ -242,8 +236,7 @@ bool Player::addItem(item itemname, short amount) {
 				if (amount <= InvMaxStack) {
 					inventoryAmount[i][j] = amount;
 					return true;
-				}
-				else {
+				} else {
 					inventoryAmount[i][j] = InvMaxStack;
 					amount -= InvMaxStack;
 				}
@@ -253,7 +246,7 @@ bool Player::addItem(item itemname, short amount) {
 	return false;
 }
 
-void Player::changeGameMode(int _gamemode){
+void Player::changeGameMode(int _gamemode) {
 	Player::gamemode = _gamemode;
 	switch (_gamemode) {
 	case Survival:
@@ -269,8 +262,7 @@ void Player::changeGameMode(int _gamemode){
 	}
 }
 
-PlayerPacket Player::convertToPlayerPacket()
-{
+PlayerPacket Player::convertToPlayerPacket() {
 	PlayerPacket p;
 	p.x = xpos;
 	p.y = ypos + height + heightExt;
