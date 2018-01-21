@@ -23,6 +23,7 @@ bld/
 
 # Visual Studio 2015 cache/options directory
 .vs/
+*.VC.db
 
 # MSTest test Results
 [Tt]est[Rr]esult*/
@@ -198,3 +199,8 @@ FakesAssemblies/
 [Ww]orlds/
 [Ss]creen[Ss]hots/
 [Cc]onfigs/
+[Ff]onts/
+[Tt]extures/
+[Ii]nclude/
+*.lib
+*.exe
