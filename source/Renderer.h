@@ -1,15 +1,16 @@
 #pragma once
 #include "Definitions.h"
 #include "GLProc.h"
-#include "Frustum.h"
+#include "FrustumTest.h"
 #include "Shader.h"
+#include "Frustum.h"
 
-namespace Renderer{
+namespace Renderer {
 	//我猜你肯定不敢看Renderer.cpp  --qiaozhanrong
 	//猜对了  --Null
 
 	enum {
-		MainShader, MergeFaceShader, ShadowShader, DepthShader
+		MainShader, MergeFaceShader, ShadowShader, DepthShader, ShowDepthShader
 	};
 
 	const int ArraySize = 2621440;
@@ -21,6 +22,7 @@ namespace Renderer{
 	extern int MaxShadowDist;
 	extern int shadowdist;
 	extern float sunlightXrot, sunlightYrot;
+	extern Frustum playerFrustum;
 	extern unsigned int DepthTexture;
 	extern vector<Shader> shaders;
 	extern int ActiveShader;
@@ -41,7 +43,7 @@ namespace Renderer{
 
 	inline void Quad(float *geomentry) {
 		//这样做貌似提升不了性能吧。。。 --qiaozhanrong
-		memcpy(VA, geomentry, size*sizeof(float)); VA += size;
+		memcpy(VA, geomentry, size * sizeof(float)); VA += size;
 		Vertexes += 4;
 	}
 
@@ -54,7 +56,9 @@ namespace Renderer{
 		ActiveShader = shaderID;
 	}
 	void destroyShaders();
-	void EnableShaders();
+	FrustumTest getLightFrustum();
+	FrustumTest getShadowMapFrustum(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum);
+	void EnableShaders(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum);
 	void DisableShaders();
 	void StartShadowPass();
 	void EndShadowPass();

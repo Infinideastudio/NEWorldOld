@@ -80,9 +80,6 @@
     <ClInclude Include="source\Definitions.h">
       <Filter>Source\Common</Filter>
     </ClInclude>
-    <ClInclude Include="source\Frustum.h">
-      <Filter>Source\Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="source\Renderer.h">
       <Filter>Source\Renderer</Filter>
     </ClInclude>
@@ -218,6 +215,20 @@
     <ClInclude Include="source\FunctionsKit.h">
       <Filter>Source\Common</Filter>
     </ClInclude>
+    <ClInclude Include="source\Mat4.h">
+      <Filter>Source\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Vec3.h">
+      <Filter>Source\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="source\FrustumTest.h">
+      <Filter>Source\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Frustum.h">
+      <Filter>Source\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="source\Camera.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -234,9 +245,6 @@
     </ClCompile>
     <ClCompile Include="source\Definitions.cpp">
       <Filter>Source\Common</Filter>
-    </ClCompile>
-    <ClCompile Include="source\Frustum.cpp">
-      <Filter>Source\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\Renderer.cpp">
       <Filter>Source\Renderer</Filter>
@@ -363,6 +371,12 @@
     </ClCompile>
     <ClCompile Include="source\WorldMenu.cpp">
       <Filter>Source\GUI\Menus</Filter>
+    </ClCompile>
+    <ClCompile Include="source\FrustumTest.cpp">
+      <Filter>Source\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Frustum.cpp">
+      <Filter>Source\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

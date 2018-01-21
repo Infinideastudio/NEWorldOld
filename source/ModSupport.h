@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include "Hitbox.h"
-#include "Frustum.h"
+#include "FrustumTest.h"
 #include "Command.h"
 #include "Chunk.h"
 typedef unsigned char ubyte;
@@ -24,7 +24,7 @@ struct PlayerData {
 	double health, healthMax, healSpeed, dropDamage;
 	onlineid onlineID;
 	//std::string name;
-	Frustum ViewFrustum;
+	FrustumTest ViewFrustum;
 	bool Glide;
 	bool Flying;
 	bool CrossWall;

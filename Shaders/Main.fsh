@@ -1,92 +1,66 @@
 #version 110
 
 ##NEWORLD_SHADER_DEFINES MergeFace MERGE_FACE
-#define SMOOTH_SHADOW
 
-const mat4 normalize = mat4(
+uniform sampler2D Texture;
+uniform sampler2DShadow DepthTexture;
+uniform sampler3D Texture3D;
+uniform mat4 ShadowMapProjection;
+uniform mat4 ShadowMapModelView;
+uniform mat4 Translation;
+uniform vec4 BackgroundColor;
+uniform float RenderDistance;
+uniform float ShadowMapResolution;
+
+varying vec4 vertCoords;
+varying float facingFloat;
+
+const mat4 Normalization = mat4(
 	0.5, 0.0, 0.0, 0.0,
 	0.0, 0.5, 0.0, 0.0,
 	0.0, 0.0, 0.5, 0.0,
-	0.5, 0.5, 0.499, 1.0);
-const float delta = 0.05;
-
-uniform sampler2D Tex;
-uniform sampler2D DepthTex;
-uniform sampler3D Tex3D;
-uniform mat4 Depth_proj;
-uniform mat4 Depth_modl;
-uniform mat4 TransMat;
-uniform vec4 SkyColor;
-uniform float renderdist;
-
-varying vec4 VertCoords;
-varying float facing_float;
+	0.5, 0.5, 0.4995, 1.0);
 
 void main() {
 	
-	mat4 transf = normalize * Depth_proj * Depth_modl * TransMat;
-	vec4 rel = gl_ModelViewMatrix * VertCoords;
-	vec4 ShadowCoords = transf * VertCoords;
-#ifdef SMOOTH_SHADOW
-	vec4 ShadowCoords01;
-	vec4 ShadowCoords21;
-	vec4 ShadowCoords10;
-	vec4 ShadowCoords12;
-#endif
-	int facing = int(facing_float + 0.5);
+	mat4 trans = Normalization * ShadowMapProjection * ShadowMapModelView * Translation;
+	vec4 rel = gl_ModelViewMatrix * vertCoords;
+	vec4 shadowCoords = trans * vertCoords;
+	int facing = int(facingFloat + 0.5);
 	float shadow = 0.0;
 	float dist = length(rel);
 	
-#ifdef SMOOTH_SHADOW
-	//Shadow smoothing (Super-sample)
-	if (dist < 16.0) {
-		if (facing == 0 || facing == 1) {
-			ShadowCoords01 = transf * vec4(VertCoords.x - delta, VertCoords.yzw);
-			ShadowCoords21 = transf * vec4(VertCoords.x + delta, VertCoords.yzw);
-			ShadowCoords10 = transf * vec4(VertCoords.x, VertCoords.y - delta, VertCoords.zw);
-			ShadowCoords12 = transf * vec4(VertCoords.x, VertCoords.y + delta, VertCoords.zw);
-		}
-		else if (facing == 2 || facing == 3) {
-			ShadowCoords01 = transf * vec4(VertCoords.x, VertCoords.y - delta, VertCoords.zw);
-			ShadowCoords21 = transf * vec4(VertCoords.x, VertCoords.y + delta, VertCoords.zw);
-			ShadowCoords10 = transf * vec4(VertCoords.xy, VertCoords.z - delta, VertCoords.w);
-			ShadowCoords12 = transf * vec4(VertCoords.xy, VertCoords.z + delta, VertCoords.w);
-		}
-		else if (facing == 4 || facing == 5) {
-			ShadowCoords01 = transf * vec4(VertCoords.x - delta, VertCoords.yzw);
-			ShadowCoords21 = transf * vec4(VertCoords.x + delta, VertCoords.yzw);
-			ShadowCoords10 = transf * vec4(VertCoords.xy, VertCoords.z - delta, VertCoords.w);
-			ShadowCoords12 = transf * vec4(VertCoords.xy, VertCoords.z + delta, VertCoords.w);
-		}
+	// Shadow calculation
+	if (facing == 1 || facing == 2 || facing == 5) shadow = 0.0;
+	else if (shadowCoords.x >= 0.0 && shadowCoords.x <= 1.0 &&
+			 shadowCoords.y >= 0.0 && shadowCoords.y <= 1.0 && shadowCoords.z <= 1.0) {
+		float xpos = shadowCoords.x * ShadowMapResolution, ypos = shadowCoords.y * ShadowMapResolution, depth = shadowCoords.z;
+		float x0 = float(int(xpos)), y0 = float(int(ypos));
+		float x1 = x0 + 1.0, y1 = y0 + 1.0;
+		float texel00 = shadow2D(DepthTexture, vec3(x0 / ShadowMapResolution, y0 / ShadowMapResolution, depth)).z;
+		float texel01 = shadow2D(DepthTexture, vec3(x0 / ShadowMapResolution, y1 / ShadowMapResolution, depth)).z;
+		float texel10 = shadow2D(DepthTexture, vec3(x1 / ShadowMapResolution, y0 / ShadowMapResolution, depth)).z;
+		float texel11 = shadow2D(DepthTexture, vec3(x1 / ShadowMapResolution, y1 / ShadowMapResolution, depth)).z;
+		float w00 = (x1 - xpos) * (y1 - ypos), w01 = (x1 - xpos) * (ypos - y0), w10 = (xpos - x0) * (y1 - ypos), w11 = (xpos - x0) * (ypos - y0);
+		shadow = texel00 * w00 + texel01 * w01 + texel10 * w10 + texel11 * w11;
 	}
-#endif
+	else shadow = 1.0;
 	
-	//Shadow calculation
-	if (facing == 1 || facing == 2 || facing == 5) shadow = 0.5;
-	else if (ShadowCoords.x >= 0.0 && ShadowCoords.x <= 1.0 &&
-			 ShadowCoords.y >= 0.0 && ShadowCoords.y <= 1.0 && ShadowCoords.z <= 1.0) {
-		if (ShadowCoords.z < texture2D(DepthTex, ShadowCoords.xy).z) shadow += 1.2; else shadow += 0.5;
-#ifdef SMOOTH_SHADOW
-		if (dist < 16.0) {
-			if (ShadowCoords01.z < texture2D(DepthTex, ShadowCoords01.xy).z) shadow += 1.2; else shadow += 0.5;
-			if (ShadowCoords21.z < texture2D(DepthTex, ShadowCoords21.xy).z) shadow += 1.2; else shadow += 0.5;
-			if (ShadowCoords10.z < texture2D(DepthTex, ShadowCoords10.xy).z) shadow += 1.2; else shadow += 0.5;
-			if (ShadowCoords12.z < texture2D(DepthTex, ShadowCoords12.xy).z) shadow += 1.2; else shadow += 0.5;
-			shadow *= 0.2;
-		}
-#endif
-	}
-	else shadow = 1.2;
-	
-	//Texture color
+	// Texture color
 #ifdef MERGE_FACE
-	vec4 texel = texture3D(Tex3D, gl_TexCoord[0].stp);
+	vec4 texel = texture3D(Texture3D, gl_TexCoord[0].stp);
 #else
-	vec4 texel = texture2D(Tex, gl_TexCoord[0].st);
+	vec4 texel = texture2D(Texture, gl_TexCoord[0].st);
 #endif
-	vec4 color = vec4(texel.rgb * shadow, texel.a) * gl_Color;
 	
-	//Fog calculation & Final color
-	//if (color.a < 0.99) color = vec4(color.rgb, mix(1.0, 0.3, clamp((renderdist * 0.5 - dist) / 64.0, 0.0, 1.0)));
-	gl_FragColor = mix(SkyColor, color, clamp((renderdist - dist) / 32.0, 0.0, 1.0));
+	vec4 color = vec4(
+		texel.r * (shadow * 0.3 * 1.8 + 0.7),
+		texel.g * (shadow * 0.3 * 1.8 + 0.7),
+		texel.b * (shadow * 0.3 * 0.8 + 0.7),
+		texel.a
+	) * gl_Color;
+	
+	// Fog calculation & Final color
+//	if (color.a < 0.99) color = vec4(color.rgb, mix(1.0, 0.3, clamp((RenderDistance * 0.5 - dist) / 64.0, 0.0, 1.0)));
+	gl_FragColor = mix(BackgroundColor, color, clamp((RenderDistance - dist) / 32.0, 0.0, 1.0));
 }
