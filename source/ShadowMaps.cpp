@@ -84,7 +84,7 @@ namespace ShadowMaps {
 		glEnd();
 
 		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, Renderer::DepthTexture);
+		Renderer::shadow.bindDepthTexture(0);
 		Renderer::shaders[Renderer::ShowDepthShader].bind();
 		Renderer::shaders[Renderer::ShowDepthShader].setUniform("Tex", 0);
 

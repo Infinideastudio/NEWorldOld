@@ -229,6 +229,9 @@
     </ClInclude>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="source\Camera.h" />
+    <ClInclude Include="source\FrameBuffer.h">
+      <Filter>Source\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -376,6 +379,9 @@
       <Filter>Source\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\Frustum.cpp">
+      <Filter>Source\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="source\FrameBuffer.cpp">
       <Filter>Source\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
