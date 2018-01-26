@@ -32,7 +32,7 @@ namespace WorldRenderer {
             if (cr.vertexes[buffer] == 0) continue;
             glPushMatrix();
             glTranslated(cr.cx * 16.0 - x, cr.cy * 16.0 - cr.loadAnim - y, cr.cz * 16.0 - z);
-            if (Renderer::AdvancedRender && buffer != 3) {
+            if (Renderer::AdvancedRender) {
                 m[12] = cr.cx * 16.0f - (float)x;
                 m[13] = cr.cy * 16.0f - (float)cr.loadAnim - (float)y;
                 m[14] = cr.cz * 16.0f - (float)z;

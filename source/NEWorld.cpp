@@ -978,14 +978,25 @@ void render() {
 
 	//daylight = clamp((1.0 - cos((double)gametime / gameTimeMax * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
 	//Renderer::sunlightXrot = 90 * daylight;
-	if (Renderer::AdvancedRender) {
-		//Build shadow map
-		ShadowMaps::BuildShadowMap(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, curtime);
-		Renderer::ClearBuffer();
-	}
+	
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	glEnable(GL_TEXTURE_2D);
+
+	if (MergeFace) {
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_3D);
+		glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
+	}
+	else glBindTexture(GL_TEXTURE_2D, BlockTextures);
+
+	if (Renderer::AdvancedRender) {
+		// Build shadow map
+		ShadowMaps::BuildShadowMap(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, curtime, gametime);
+		// Clear G-Buffers
+		Renderer::ClearBuffer();
+	}
 
 	Player::ViewFrustum.LoadIdentity();
 	Player::ViewFrustum.SetPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
@@ -1004,25 +1015,19 @@ void render() {
 	World::calcVisible(xpos, ypos, zpos, Player::ViewFrustum);
 	renderedChunk = WorldRenderer::ListRenderChunks(Player::cxt, Player::cyt, Player::czt, viewdistance, curtime);
 
-	MutexUnlock(Mutex);
-
-	if (MergeFace) {
-		glDisable(GL_TEXTURE_2D);
-		glEnable(GL_TEXTURE_3D);
-		glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
-	} else glBindTexture(GL_TEXTURE_2D, BlockTextures);
-
 	if (DebugMergeFace) {
 		glDisable(GL_LINE_SMOOTH);
 		glPolygonMode(GL_FRONT, GL_LINE);
 	}
+
+	MutexUnlock(Mutex);
 
 	glDisable(GL_BLEND);
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
 
-	if (Renderer::AdvancedRender) Renderer::EnableDefferedRendering(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum);
+	if (Renderer::AdvancedRender) Renderer::EnableDefferedRendering(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, gametime);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
 	if (Renderer::AdvancedRender) Renderer::DisableDefferedRendering();
 
@@ -1071,7 +1076,7 @@ void render() {
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
 
-	if (Renderer::AdvancedRender) Renderer::EnableDefferedRendering(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum);
+	if (Renderer::AdvancedRender) Renderer::EnableDefferedRendering(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, gametime);
 
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);

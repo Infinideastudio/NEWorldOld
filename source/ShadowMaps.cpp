@@ -4,12 +4,13 @@
 
 namespace ShadowMaps {
 
-	void BuildShadowMap(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum, double curtime) {
+	void BuildShadowMap(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum, double curtime, float gameTime) {
 		int cx = getchunkpos((int)xpos), cy = getchunkpos((int)ypos), cz = getchunkpos((int)zpos);
 
-		Renderer::StartShadowPass();
+		Renderer::StartShadowPass(gameTime);
 		glEnableClientState(GL_VERTEX_ARRAY);
-		glDisable(GL_TEXTURE_2D);
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+		//glDisable(GL_TEXTURE_2D);
 		glDisable(GL_FOG);
 		glDisable(GL_BLEND);
 		FrustumTest frus = Renderer::getShadowMapFrustum(xpos, ypos, zpos, heading, pitch, playerFrustum);
@@ -21,18 +22,20 @@ namespace ShadowMaps {
 		glLoadIdentity();
 		glMultMatrixf(frus.getModlMatrix());
 
-		WorldRenderer::ListRenderChunks(cx, cy, cz, Renderer::shadowdist + 1, curtime, false);
+		WorldRenderer::ListRenderChunks(cx, cy, cz, Renderer::shadowdist + 2, curtime, false);
+
 		MutexUnlock(Mutex);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		glDisable(GL_CULL_FACE);
-		WorldRenderer::RenderChunks(xpos, ypos, zpos, 3);
-		glEnable(GL_CULL_FACE);
+		//glDisable(GL_CULL_FACE);
+		WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
+		//glEnable(GL_CULL_FACE);
 		MutexLock(Mutex);
 
 		Particles::renderall(xpos, ypos, zpos);
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 		glDisableClientState(GL_VERTEX_ARRAY);
+		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 		Renderer::EndShadowPass();
 
 		glEnable(GL_FOG);
