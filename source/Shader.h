@@ -13,8 +13,9 @@ public:
 
 	bool setUniform(const char* uniform, float value);
 	bool setUniform(const char* uniform, int value);
+	bool setUniform(const char* uniform, float v0, float v1, float v2);
 	bool setUniform(const char* uniform, float v0, float v1, float v2, float v3);
-	bool setUniform(const char* uniform, float* value);
+	bool setUniform(const char* uniform, const float* value);
 
 private:
 	GLhandleARB loadShader(string filename, unsigned int mode, std::set<string> defines);

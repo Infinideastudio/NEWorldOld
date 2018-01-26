@@ -16,8 +16,8 @@ public:
 		float xmax, ymax, zmax;
 	};
 
-	inline float* getProjMatrix() { return proj; }
-	inline float* getModlMatrix() { return modl; }
+	inline const float* getProjMatrix() const { return proj; }
+	inline const float* getModlMatrix() const { return modl; }
 
 	void LoadIdentity();
 	inline void MultMatrixTo(float* sum, float* a, float* b) {

@@ -881,6 +881,9 @@ void debugText(string s, bool init) {
 
 void render() {
 	//画场景
+
+	//Renderer::sunlightXrot = gametime / 10.0;
+
 	double curtime = timer();
 	double TimeDelta;
 	double xpos, ypos, zpos;
@@ -978,6 +981,7 @@ void render() {
 	if (Renderer::AdvancedRender) {
 		//Build shadow map
 		ShadowMaps::BuildShadowMap(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, curtime);
+		Renderer::ClearBuffer();
 	}
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1018,9 +1022,9 @@ void render() {
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
 
-	if (Renderer::AdvancedRender) Renderer::EnableShaders(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum);
+	if (Renderer::AdvancedRender) Renderer::EnableDefferedRendering(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
-	if (Renderer::AdvancedRender) Renderer::DisableShaders();
+	if (Renderer::AdvancedRender) Renderer::DisableDefferedRendering();
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
@@ -1067,7 +1071,7 @@ void render() {
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
 
-	if (Renderer::AdvancedRender) Renderer::EnableShaders(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum);
+	if (Renderer::AdvancedRender) Renderer::EnableDefferedRendering(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum);
 
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_2D);
@@ -1083,7 +1087,7 @@ void render() {
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
 	glDisable(GL_CULL_FACE);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 2);
-	if (Renderer::AdvancedRender) Renderer::DisableShaders();
+	if (Renderer::AdvancedRender) Renderer::DisableDefferedRendering();
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
@@ -1133,6 +1137,12 @@ void render() {
 	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+
+	if (Renderer::AdvancedRender) {
+		Renderer::StartFinalPass(Player::ViewFrustum);
+		Renderer::DrawFullscreen();
+		Renderer::EndFinalPass();
+	}
 
 	if (World::getblock(RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)) == Blocks::WATER) {
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
