@@ -8,8 +8,7 @@ Shader::Shader(string vshPath, string fshPath, bool bindLocation, std::set<strin
     shaderProgram = glCreateProgramObjectARB();
     glAttachObjectARB(shaderProgram, shaderVertex);
     glAttachObjectARB(shaderProgram, shaderFragment);
-    if (bindLocation)
-        glBindAttribLocationARB(shaderProgram, 1, "VertexAttrib");
+    if (bindLocation) glBindAttribLocationARB(shaderProgram, 1, "VertexAttrib");
     glLinkProgramARB(shaderProgram);
 
     //¼ì²é´íÎó
@@ -38,14 +37,21 @@ bool Shader::setUniform(const char* uniform, int value) {
     glUniform1iARB(loc, value);
     return true;
 }
-bool Shader::setUniform(const char* uniform, float v0, float v1, float v2, float v3) {
-    int loc = glGetUniformLocationARB(shaderProgram, uniform);
-//  assert(loc != -1);
-    if (loc == -1) return false;
-    glUniform4fARB(loc, v0, v1, v2, v3);
-    return true;
+bool Shader::setUniform(const char* uniform, float v0, float v1, float v2) {
+	int loc = glGetUniformLocationARB(shaderProgram, uniform);
+	//  assert(loc != -1);
+	if (loc == -1) return false;
+	glUniform3fARB(loc, v0, v1, v2);
+	return true;
 }
-bool Shader::setUniform(const char* uniform, float * value) {
+bool Shader::setUniform(const char* uniform, float v0, float v1, float v2, float v3) {
+	int loc = glGetUniformLocationARB(shaderProgram, uniform);
+	//  assert(loc != -1);
+	if (loc == -1) return false;
+	glUniform4fARB(loc, v0, v1, v2, v3);
+	return true;
+}
+bool Shader::setUniform(const char* uniform, const float * value) {
     int loc = glGetUniformLocationARB(shaderProgram, uniform);
 //  assert(loc != -1);
     if (loc == -1) return false;

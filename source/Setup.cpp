@@ -32,6 +32,9 @@ void createWindow() {
 	std::stringstream title;
 	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
 	if (Multisample != 0) glfwWindowHint(GLFW_SAMPLES, Multisample);
+#ifdef NEWORLD_DEBUG
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+#endif
 	MainWindow = glfwCreateWindow(windowwidth, windowheight, title.str().c_str(), NULL, NULL);
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwMakeContextCurrent(MainWindow);
@@ -43,6 +46,11 @@ void createWindow() {
 	glfwSetCharCallback(MainWindow, &CharInputFunc);
 }
 
+// OpenGL debug callback
+void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* msg, const void* data) {
+	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) cout << "[Debug][OpenGL]" << msg << endl;
+}
+
 void setupScreen() {
 
 	//获取OpenGL版本
@@ -51,6 +59,15 @@ void setupScreen() {
 	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
 	//获取OpenGL函数地址
 	InitGLProc();
+
+#ifdef NEWORLD_DEBUG
+	if (!glDebugMessageCallback) {
+		DebugWarning("Note that you're in debug mode, but GL_KHR_DEBUG is not supported.");
+	} else {
+		glDebugMessageCallback(glDebugCallback, nullptr);
+		DebugInfo("GL_KHR_DEBUG enabled.");
+	}
+#endif
 
 	//渲染参数设置
 	glViewport(0, 0, windowwidth, windowheight);

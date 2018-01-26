@@ -22,6 +22,13 @@ PFNGLBINDFRAMEBUFFEREXTPROC glBindFramebufferEXT;
 PFNGLDELETEFRAMEBUFFERSEXTPROC glDeleteFramebuffersEXT;
 PFNGLFRAMEBUFFERTEXTURE2DEXTPROC glFramebufferTexture2DEXT;
 PFNGLFRAMEBUFFERTEXTURE3DEXTPROC glFramebufferTexture3DEXT;
+PFNGLGENRENDERBUFFERSEXTPROC glGenRenderbuffersEXT;
+PFNGLDELETERENDERBUFFERSEXTPROC glDeleteRenderbuffersEXT;
+PFNGLBINDRENDERBUFFEREXTPROC glBindRenderbufferEXT;
+PFNGLRENDERBUFFERSTORAGEEXTPROC glRenderbufferStorageEXT;
+PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC glFramebufferRenderbufferEXT;
+PFNGLDRAWBUFFERSARBPROC glDrawBuffersARB;
+//PFNGLCLEARBUFFERFVPROC glClearBufferfv;
 PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC glCheckFramebufferStatusEXT;
 
 PFNGLCREATESHADEROBJECTARBPROC glCreateShaderObjectARB;
@@ -59,6 +66,8 @@ PFNGLUNIFORMMATRIX4FVARBPROC glUniformMatrix4fvARB;
 PFNGLGETUNIFORMFVARBPROC glGetUniformfvARB;
 PFNGLGETUNIFORMIVARBPROC glGetUniformivARB;
 
+PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
+
 //获取OpenGL函数地址
 void InitGLProc() {
 
@@ -82,6 +91,12 @@ void InitGLProc() {
 	glDeleteFramebuffersEXT = (PFNGLDELETEFRAMEBUFFERSEXTPROC)glfwGetProcAddress("glDeleteFramebuffersEXT");
 	glFramebufferTexture2DEXT = (PFNGLFRAMEBUFFERTEXTURE2DEXTPROC)glfwGetProcAddress("glFramebufferTexture2DEXT");
 	glFramebufferTexture3DEXT = (PFNGLFRAMEBUFFERTEXTURE3DEXTPROC)glfwGetProcAddress("glFramebufferTexture3DEXT");
+	glGenRenderbuffersEXT = (PFNGLGENRENDERBUFFERSEXTPROC)glfwGetProcAddress("glGenRenderbuffersEXT");
+	glDeleteRenderbuffersEXT = (PFNGLDELETERENDERBUFFERSEXTPROC)glfwGetProcAddress("glDeleteRenderbuffersEXT");
+	glBindRenderbufferEXT = (PFNGLBINDRENDERBUFFEREXTPROC)glfwGetProcAddress("glBindRenderbufferEXT");
+	glRenderbufferStorageEXT = (PFNGLRENDERBUFFERSTORAGEEXTPROC)glfwGetProcAddress("glRenderbufferStorageEXT");
+	glFramebufferRenderbufferEXT = (PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC)glfwGetProcAddress("glFramebufferRenderbufferEXT");
+	glDrawBuffersARB = (PFNGLDRAWBUFFERSARBPROC)glfwGetProcAddress("glDrawBuffersARB");
 	glCheckFramebufferStatusEXT = (PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC)glfwGetProcAddress("glCheckFramebufferStatusEXT");
 
 	glCreateShaderObjectARB = (PFNGLCREATESHADEROBJECTARBPROC)glfwGetProcAddress("glCreateShaderObjectARB");
@@ -118,4 +133,6 @@ void InitGLProc() {
 	glUniformMatrix4fvARB = (PFNGLUNIFORMMATRIX4FVARBPROC)glfwGetProcAddress("glUniformMatrix4fvARB");
 	glGetUniformfvARB = (PFNGLGETUNIFORMFVARBPROC)glfwGetProcAddress("glGetUniformfvARB");
 	glGetUniformivARB = (PFNGLGETUNIFORMIVARBPROC)glfwGetProcAddress("glGetUniformivARB");
+
+	glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKPROC)glfwGetProcAddress("glDebugMessageCallback");
 }

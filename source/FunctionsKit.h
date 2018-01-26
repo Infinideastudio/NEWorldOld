@@ -42,6 +42,17 @@ inline bool beginWith(string str, string begin) {
 	return str.substr(0, begin.size()) == begin;
 }
 
+inline void DebugInfo(string msg) {
+#ifdef NEWORLD_USE_WINAPI
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
+	printf("[Debug][Info]");
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+	printf("%s\n", msg.c_str());
+#else
+	printf("[Debug][Info]%s\n", msg.c_str());
+#endif
+}
+
 inline void DebugWarning(string msg) {
 #ifdef NEWORLD_USE_WINAPI
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);

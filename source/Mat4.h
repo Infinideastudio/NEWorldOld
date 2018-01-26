@@ -43,7 +43,7 @@ public:
         data[0] = data[5] = data[10] = data[15] = x; // Identity matrix
     }
 
-    explicit Mat4(T* src) {
+    explicit Mat4(const T* src) {
         memcpy(data, src, sizeof(data));
     }
 

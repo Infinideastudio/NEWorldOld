@@ -225,7 +225,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NEWORLD_GAME;NEWORLD_DEBUG;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
@@ -254,6 +254,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
+      <PreprocessorDefinitions>NEWORLD_GAME;NEWORLD_DEBUG;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
@@ -283,6 +284,7 @@
     <ClInclude Include="source\Command.h" />
     <ClInclude Include="source\Effect.h" />
     <ClInclude Include="source\ChunkRenderer.h" />
+    <ClInclude Include="source\FrameBuffer.h" />
     <ClInclude Include="source\Frustum.h" />
     <ClInclude Include="source\FunctionsKit.h" />
     <ClInclude Include="source\GLProc.h" />
@@ -331,6 +333,7 @@
     <ClCompile Include="source\ChunkRenderer.cpp" />
     <ClCompile Include="source\CreateWorldMenu.cpp" />
     <ClCompile Include="source\Effect.cpp" />
+    <ClCompile Include="source\FrameBuffer.cpp" />
     <ClCompile Include="source\Frustum.cpp" />
     <ClCompile Include="source\FunctionsKit.cpp" />
     <ClCompile Include="source\GameMenu.cpp" />
