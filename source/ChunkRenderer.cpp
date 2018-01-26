@@ -237,46 +237,6 @@ namespace ChunkRenderer {
 
 	}
 
-	void RenderPrimitive_Depth(QuadPrimitive_Depth& p) {
-		int x = p.x, y = p.y, z = p.z, length = p.length;
-		if (p.direction == 0) {
-			Renderer::Vertex3d(x + 0.5, y - 0.5, z - 0.5);
-			Renderer::Vertex3d(x + 0.5, y + 0.5, z - 0.5);
-			Renderer::Vertex3d(x + 0.5, y + 0.5, z + length + 0.5);
-			Renderer::Vertex3d(x + 0.5, y - 0.5, z + length + 0.5);
-		}
-		else if (p.direction == 1) {
-			Renderer::Vertex3d(x - 0.5, y + 0.5, z - 0.5);
-			Renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
-			Renderer::Vertex3d(x - 0.5, y - 0.5, z + length + 0.5);
-			Renderer::Vertex3d(x - 0.5, y + 0.5, z + length + 0.5);
-		}
-		else if (p.direction == 2) {
-			Renderer::Vertex3d(x + 0.5, y + 0.5, z - 0.5);
-			Renderer::Vertex3d(x - 0.5, y + 0.5, z - 0.5);
-			Renderer::Vertex3d(x - 0.5, y + 0.5, z + length + 0.5);
-			Renderer::Vertex3d(x + 0.5, y + 0.5, z + length + 0.5);
-		}
-		else if (p.direction == 3) {
-			Renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
-			Renderer::Vertex3d(x + 0.5, y - 0.5, z - 0.5);
-			Renderer::Vertex3d(x + 0.5, y - 0.5, z + length + 0.5);
-			Renderer::Vertex3d(x - 0.5, y - 0.5, z + length + 0.5);
-		}
-		else if (p.direction == 4) {
-			Renderer::Vertex3d(x - 0.5, y + 0.5, z + 0.5);
-			Renderer::Vertex3d(x - 0.5, y - 0.5, z + 0.5);
-			Renderer::Vertex3d(x + length + 0.5, y - 0.5, z + 0.5);
-			Renderer::Vertex3d(x + length + 0.5, y + 0.5, z + 0.5);
-		}
-		else if (p.direction == 5) {
-			Renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
-			Renderer::Vertex3d(x - 0.5, y + 0.5, z - 0.5);
-			Renderer::Vertex3d(x + length + 0.5, y + 0.5, z - 0.5);
-			Renderer::Vertex3d(x + length + 0.5, y - 0.5, z - 0.5);
-		}
-	}
-
 	void RenderChunk(World::chunk* c) {
 		int x, y, z;
 		if (Renderer::AdvancedRender) Renderer::Init(2, 3, 3, 1); else Renderer::Init(2, 3);
@@ -465,65 +425,5 @@ namespace ChunkRenderer {
 			}
 			Renderer::Flush(c->vbuffer[steps], c->vertexes[steps]);
 		}
-	}
-
-	void RenderDepthModel(World::chunk* c) {
-		int cx = c->cx, cy = c->cy, cz = c->cz;
-		int x = 0, y = 0, z = 0;
-		QuadPrimitive_Depth cur;
-		int cur_l_mx;
-		block bl, neighbour;
-		bool valid = false;
-		cur_l_mx = bl = neighbour = 0;
-		//Linear merge for depth model
-		Renderer::Init(0, 0);
-		for (int d = 0; d < 6; d++) {
-			cur.direction = d;
-			for (int i = 0; i < 16; i++) for (int j = 0; j < 16; j++) {
-				for (int k = 0; k < 16; k++) {
-					//Get position
-					if (d < 2) x = i, y = j, z = k;
-					else if (d < 4) x = i, y = j, z = k;
-					else x = k, y = i, z = j;
-					//Get block ID
-					bl = c->getblock(x, y, z);
-					//Get neighbour ID
-					int xx = x + delta[d][0], yy = y + delta[d][1], zz = z + delta[d][2];
-					int gx = cx * 16 + xx, gy = cy * 16 + yy, gz = cz * 16 + zz;
-					if (xx < 0 || xx >= 16 || yy < 0 || yy >= 16 || zz < 0 || zz >= 16)
-						neighbour = World::getblock(gx, gy, gz);
-					else neighbour = c->getblock(xx, yy, zz);
-					//Render
-					if (bl == Blocks::AIR || bl == Blocks::GLASS || bl == neighbour && bl != Blocks::LEAF ||
-						BlockInfo(neighbour).isOpaque() || BlockInfo(bl).isTranslucent()) {
-						//Not valid block
-						if (valid) {
-							if (BlockInfo(neighbour).isOpaque()) {
-								if (cur_l_mx < cur.length) cur_l_mx = cur.length;
-								cur_l_mx++;
-							}
-							else {
-								RenderPrimitive_Depth(cur);
-								valid = false;
-							}
-						}
-						continue;
-					}
-					if (valid) {
-						if (cur_l_mx > cur.length) cur.length = cur_l_mx;
-						cur.length++;
-					}
-					else {
-						valid = true;
-						cur.x = x; cur.y = y; cur.z = z; cur.length = cur_l_mx = 0;
-					}
-				}
-				if (valid) {
-					RenderPrimitive_Depth(cur);
-					valid = false;
-				}
-			}
-		}
-		Renderer::Flush(c->vbuffer[3], c->vertexes[3]);
 	}
 }

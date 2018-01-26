@@ -35,8 +35,8 @@ public:
 	Hitbox::AABB aabb;
 	bool Empty, updated, renderBuilt, Modified, DetailGenerated;
 	chunkid id;
-	vtxCount vertexes[4];
-	VBOID vbuffer[4];
+	vtxCount vertexes[3];
+	VBOID vbuffer[3];
 	double loadAnim;
 	bool visible;
 

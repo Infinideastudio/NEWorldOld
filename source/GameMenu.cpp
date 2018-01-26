@@ -21,8 +21,10 @@ namespace Menus {
 			if (exitbtn.clicked) gameexit = ExitSignal = true;
 		}
 		void onLeave() {
-			World::saveAllChunks();
-			World::destroyAllChunks();
+			if (gameexit) {
+				World::saveAllChunks();
+				World::destroyAllChunks();
+			}
 		}
 	};
 	void gamemenu() { GameMenu Menu; Menu.start(); }

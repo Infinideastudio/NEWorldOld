@@ -6,7 +6,6 @@
 namespace ChunkRenderer {
 void RenderChunk(World::chunk* c);
 void MergeFaceRender(World::chunk* c);
-void RenderDepthModel(World::chunk* c);
 }
 
 namespace Renderer {
@@ -281,7 +280,6 @@ void chunk::buildRender() {
 
 	if (MergeFace) ChunkRenderer::MergeFaceRender(this);
 	else ChunkRenderer::RenderChunk(this);
-	if (Renderer::AdvancedRender) ChunkRenderer::RenderDepthModel(this);
 
 	updated = false;
 
@@ -292,8 +290,7 @@ void chunk::destroyRender() {
 	if (vbuffer[0] != 0) vbuffersShouldDelete.push_back(vbuffer[0]);
 	if (vbuffer[1] != 0) vbuffersShouldDelete.push_back(vbuffer[1]);
 	if (vbuffer[2] != 0) vbuffersShouldDelete.push_back(vbuffer[2]);
-	if (vbuffer[3] != 0) vbuffersShouldDelete.push_back(vbuffer[3]);
-	vbuffer[0] = vbuffer[1] = vbuffer[2] = vbuffer[3] = 0;
+	vbuffer[0] = vbuffer[1] = vbuffer[2] = 0;
 	renderBuilt = false;
 }
 

@@ -48,7 +48,7 @@ void createWindow() {
 
 // OpenGL debug callback
 void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* msg, const void* data) {
-	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) cout << "[Debug][OpenGL]" << msg << endl;
+	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) cout << "[Console][OpenGL]" << msg << endl;
 }
 
 void setupScreen() {
@@ -62,10 +62,10 @@ void setupScreen() {
 
 #ifdef NEWORLD_DEBUG
 	if (!glDebugMessageCallback) {
-		DebugWarning("Note that you're in debug mode, but GL_KHR_DEBUG is not supported.");
+		DebugWarning("Note that you're in debug mode, but GL_KHR_debug is not supported.");
 	} else {
 		glDebugMessageCallback(glDebugCallback, nullptr);
-		DebugInfo("GL_KHR_DEBUG enabled.");
+		DebugInfo("GL_KHR_debug enabled.");
 	}
 #endif
 

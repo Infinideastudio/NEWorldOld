@@ -841,11 +841,12 @@ void Form::render() {
 	}
 
 	if (displaylist == 0) displaylist = glGenLists(1);
-	glNewList(displaylist, GL_COMPILE_AND_EXECUTE);
+	glNewList(displaylist, GL_COMPILE);
 	for (size_t i = 0; i != children.size(); i++)
 		children[i]->render();
 	onRender();
 	glEndList();
+	glCallList(displaylist);
 	lastdisplaylist = displaylist;
 
 }

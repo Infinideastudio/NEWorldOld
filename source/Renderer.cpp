@@ -169,12 +169,11 @@ namespace Renderer {
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
 		shadowdist = min(MaxShadowDist, viewdistance);
-		shaders.reserve(6);
+		shaders.reserve(5);
 		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true));
 		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true, defines));
 		shaders.push_back(Shader("Shaders/Final.vsh", "Shaders/Final.fsh", false));
-		shaders.push_back(Shader("Shaders/Shadow.vsh", "Shaders/Shadow.fsh", false));
-		shaders.push_back(Shader("Shaders/Depth.vsh", "Shaders/Depth.fsh", false, defines));
+		shaders.push_back(Shader("Shaders/Shadow.vsh", "Shaders/Shadow.fsh", true));
 		shaders.push_back(Shader("Shaders/ShowDepth.vsh", "Shaders/ShowDepth.fsh", false));
 
 		// framebuffers
@@ -201,6 +200,9 @@ namespace Renderer {
 		shaders[FinalShader].setUniform("Texture4", 4);
 		shaders[FinalShader].setUniform("Texture5", 5);
 		shaders[FinalShader].setUniform("BackgroundColor", skycolorR, skycolorG, skycolorB, 1.0f);
+
+		shaders[ShadowShader].bind();
+		shaders[ShadowShader].setUniform("Texture", 0);
 
 		Shader::unbind();
 	}
@@ -264,7 +266,7 @@ namespace Renderer {
 		*/
 
 		// Original
-		float scale = 16.0f * sqrt(3.0f);
+		float scale = 16.0f;// *sqrt(3.0f);
 		float length = shadowdist * scale;
 		res.SetOrtho(-length, length, -length, length, -1000.0, 1000.0);
 
@@ -283,7 +285,7 @@ namespace Renderer {
 		gBuffers.unbindTarget();
 	}
 
-	void EnableDefferedRendering(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum) {
+	void EnableDefferedRendering(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum, float gameTime) {
 		gBuffers.bindTarget(gWidth, gHeight);
 		
 		shadowdist = min(MaxShadowDist, viewdistance);
@@ -298,16 +300,19 @@ namespace Renderer {
 
 		//Set uniform
 		shader.setUniform("RenderDistance", viewdistance * 16.0f);
+		shader.setUniform("ShadowDistance", shadowdist * 16.0f);
 		shader.setUniform("ShadowMapProjection", frus.getProjMatrix());
 		shader.setUniform("ShadowMapModelView", frus.getModlMatrix());
 		Mat4f trans = Mat4f::rotation(-sunlightXrot, Vec3f(1, 0, 0)) * Mat4f::rotation(-sunlightYrot, Vec3f(0, 1, 0));
 		Vec3f lightdir = trans.transformVec3(Vec3f(0, 0, -1));
 		lightdir.normalize();
 		shader.setUniform("SunlightDirection", lightdir.x, lightdir.y, lightdir.z);
+		shader.setUniform("GameTime", gameTime);
 
 		//Enable arrays for additional vertex attributes
-		glEnable(GL_NORMAL_ARRAY);
+		glEnableClientState(GL_NORMAL_ARRAY);
 		glEnableVertexAttribArrayARB(ShaderAttribLoc);
+		glDisable(GL_FOG);
 	}
 
 	void DisableDefferedRendering() {
@@ -317,18 +322,22 @@ namespace Renderer {
 		Shader::unbind();
 
 		//Disable arrays for additional vertex attributes
-		glDisable(GL_NORMAL_ARRAY);
+		glDisableClientState(GL_NORMAL_ARRAY);
 		glDisableVertexAttribArrayARB(ShaderAttribLoc);
+		glEnable(GL_FOG);
 	}
 
-	void StartShadowPass() {
+	void StartShadowPass(float gameTime) {
 		shadow.bindTarget();
 		bindShader(ShadowShader);
+		shaders[ShadowShader].setUniform("GameTime", gameTime);
+		glEnableVertexAttribArrayARB(ShaderAttribLoc);
 	}
 
 	void EndShadowPass() {
 		shadow.unbindTarget();
 		Shader::unbind();
+		glDisableVertexAttribArrayARB(ShaderAttribLoc);
 	}
 
 	void StartFinalPass(const FrustumTest& viewFrustum) {
@@ -338,7 +347,7 @@ namespace Renderer {
 		shaders[FinalShader].setUniform("ScreenHeight", float(gHeight));
 		shaders[FinalShader].setUniform("BufferSize", float(gSize));
 		shaders[FinalShader].setUniform("ProjectionMatrix", viewFrustum.getProjMatrix());
-		shaders[FinalShader].setUniform("NormalMatrix", viewFrustum.getModlMatrix());
+		shaders[FinalShader].setUniform("ModelViewMatrix", viewFrustum.getModlMatrix());
 		shaders[FinalShader].setUniform("RenderDistance", viewdistance * 16.0f);
 	}
 
