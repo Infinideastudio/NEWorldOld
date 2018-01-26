@@ -11,7 +11,7 @@ namespace Renderer {
 	//²Â¶ÔÁË  --Null
 
 	enum {
-		MainShader, MergeFaceShader, FinalShader, ShadowShader, DepthShader, ShowDepthShader
+		MainShader, MergeFaceShader, FinalShader, ShadowShader, ShowDepthShader
 	};
 
 	const int ArraySize = 4194304;
@@ -64,10 +64,10 @@ namespace Renderer {
 	FrustumTest getShadowMapFrustum(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum);
 	
 	void ClearBuffer();
-	void EnableDefferedRendering(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum);
+	void EnableDefferedRendering(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum, float gametime);
 	void DisableDefferedRendering();
 	
-	void StartShadowPass();
+	void StartShadowPass(float gameTime);
 	void EndShadowPass();
 
 	void StartFinalPass(const FrustumTest& viewFrustum);

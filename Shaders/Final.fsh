@@ -10,13 +10,13 @@ uniform float ScreenWidth;
 uniform float ScreenHeight;
 uniform float BufferSize;
 uniform mat4 ProjectionMatrix;
-uniform mat4 NormalMatrix;
+uniform mat4 ModelViewMatrix;
 uniform float RenderDistance;
 uniform vec4 BackgroundColor;
 
 const float MaxBlockID = 4096.0;
-const int WaterID = 10;
-const int MaxIterations = 200;
+const int GlassID = 9, WaterID = 10, IceID = 15, IronID = 17;
+const int MaxIterations = 200, MaxNearIterations = 20;
 
 float xScale, yScale, xRange, yRange, blockIDf;
 int blockID;
@@ -66,40 +66,46 @@ bool inside(in vec2 v) {
 float distToEdge(in vec2 v) {
 	v.x *= xScale;
 	v.y *= yScale;
-	return min(min(v.x, 1.0 - v.x), min(v.y, 1.0 - v.y) / yRange);
+	return min(min(v.x, 1.0 - v.x), min(v.y, 1.0 - v.y));
 }
 
-vec3 search(in vec3 org, in vec3 dir) {
+vec3 search(in vec3 org, in vec3 dir, in vec3 bgColor) {
 	vec3 curr = org, last = org;
 	bool found = false;
+	float ratio = 1.0, step = clamp(getDist(org) / 10.0, 0.1, 2.0);
 	
-	dir = normalize(dir);// * getDist(org) / 5.0;
+	dir = normalize(dir);
 	
 	curr += dir;
 	
 	for (int i = 0; i < MaxIterations; i++) {
-		
 		vec2 texCoord = cameraSpaceToTextureCoords(curr).xy;
-		
 		if (!inside(texCoord)) break;
 		
+		float currDist = getDist(curr);
 		float pixelDist = getDist(getTexturePosition(texCoord));
 		
-		if (getBlockID(texCoord) != 0 && pixelDist < getDist(curr)) {
+		if (currDist < 0.0 || currDist > RenderDistance) break;
+		
+		if (getBlockID(texCoord) != 0 && getBlockID(texCoord) != WaterID && pixelDist < currDist) {
 			found = true;
 			dir /= 2.0;
 			curr = last;
+			ratio = min(ratio, float(i) / float(MaxIterations));
 		} else last = curr;
 		
-		curr += dir;
+		curr += dir * step;
 		
-		if (found && (length(dir) < 0.02 || i == MaxIterations - 1)) {
-			float factor = clamp(distToEdge(texCoord) * 5.0, 0.0, 1.0);
-			return mix(BackgroundColor.rgb, texture2D(Texture0, texCoord).rgb, factor);
+		if (i > MaxNearIterations) step = max(step, 1.0);
+		
+		if (found && (length(dir) < 0.1 || i == MaxIterations - 1)) {
+			float factor = clamp(min(distToEdge(texCoord) * 5.0, (1.0 - ratio) * 5.0), 0.0, 1.0);
+			//float factor = clamp(distToEdge(texCoord) * 5.0, 0.0, 1.0);
+			return mix(bgColor, texture2D(Texture0, texCoord).rgb, factor);
 		}
 	}
 	
-	return BackgroundColor.rgb;
+	return bgColor;
 }
 
 void main() {
@@ -120,21 +126,24 @@ void main() {
 	vec4 color;
 	
 	cameraSpacePosition = getTexturePosition(texCoord);
+	float dist = getDist(cameraSpacePosition);
 	
-	if (blockID == WaterID) {
-		
-		vec3 normal = (NormalMatrix * vec4(data1.rgb * 2.0 - vec3(1.0, 1.0, 1.0), 0.0)).xyz;
-		
-		//if (normal.y > 0.1) normal = getWavesNormal();
+	if (blockID == WaterID || blockID == IceID || blockID == IronID) {
+		vec3 normal = (ModelViewMatrix * vec4(data1.rgb * 2.0 - vec3(1.0, 1.0, 1.0), 0.0)).xyz;
 		
 		float cosTheta = dot(normalize(-cameraSpacePosition), normalize(normal));
 		
 		vec3 reflectDir = reflect(normalize(cameraSpacePosition), normalize(normal));
 		
-		color = vec4(search(cameraSpacePosition, reflectDir), data0.a);
+		vec3 bgColor = BackgroundColor.rgb;
+		if (cosTheta < -0.01) bgColor = data0.rgb;
+		color = vec4(search(cameraSpacePosition, reflectDir, bgColor), 1.0);
+		
+		if (blockID == WaterID) cosTheta += 0.0;
+		else if (blockID == IceID) cosTheta += 0.6;
+		else if (blockID == IronID) cosTheta += 0.4;
 		
 		color = vec4(mix(color.rgb, data0.rgb, clamp(cosTheta, 0.0, 1.0)), 1.0);
-		
 	} else {
 		color = vec4(data0.rgb, 1.0);
 	}
