@@ -25,14 +25,14 @@ void Shader::release() {
 
 bool Shader::setUniform(const char* uniform, float value) {
     int loc = glGetUniformLocationARB(shaderProgram, uniform);
-//  assert(loc != -1);
+	//  assert(loc != -1);
     if (loc == -1) return false;
     glUniform1fARB(loc, value);
     return true;
 }
 bool Shader::setUniform(const char* uniform, int value) {
     int loc = glGetUniformLocationARB(shaderProgram, uniform);
-//  assert(loc != -1);
+	//  assert(loc != -1);
     if (loc == -1) return false;
     glUniform1iARB(loc, value);
     return true;
@@ -53,10 +53,17 @@ bool Shader::setUniform(const char* uniform, float v0, float v1, float v2, float
 }
 bool Shader::setUniform(const char* uniform, const float * value) {
     int loc = glGetUniformLocationARB(shaderProgram, uniform);
-//  assert(loc != -1);
+	//  assert(loc != -1);
     if (loc == -1) return false;
     glUniformMatrix4fvARB(loc, 1, GL_FALSE, value);
     return true;
+}
+bool Shader::setUniform3i(const char* uniform, int v0, int v1, int v2) {
+	int loc = glGetUniformLocationARB(shaderProgram, uniform);
+	//  assert(loc != -1);
+	if (loc == -1) return false;
+	glUniform3iARB(loc, v0, v1, v2);
+	return true;
 }
 
 GLhandleARB Shader::loadShader(string filename, unsigned int mode, std::set<string> defines) {

@@ -308,6 +308,8 @@ namespace Renderer {
 		lightdir.normalize();
 		shader.setUniform("SunlightDirection", lightdir.x, lightdir.y, lightdir.z);
 		shader.setUniform("GameTime", gameTime);
+		shader.setUniform3i("PlayerPositionInt", int(floor(xpos)), int(floor(ypos)), int(floor(zpos)));
+		shader.setUniform("PlayerPositionFrac", xpos - floor(xpos), ypos - floor(ypos), zpos - floor(zpos));
 
 		//Enable arrays for additional vertex attributes
 		glEnableClientState(GL_NORMAL_ARRAY);
