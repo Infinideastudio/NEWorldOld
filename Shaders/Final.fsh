@@ -72,7 +72,7 @@ float distToEdge(in vec2 v) {
 vec3 search(in vec3 org, in vec3 dir, in vec3 bgColor) {
 	vec3 curr = org, last = org;
 	bool found = false;
-	float ratio = 1.0, step = clamp(getDist(org) / 10.0, 0.1, 2.0);
+	float ratio = 1.0, step = clamp(getDist(org) / 10.0, 0.1, 4.0);
 	
 	dir = normalize(dir);
 	
@@ -130,10 +130,8 @@ void main() {
 	
 	if (blockID == WaterID || blockID == IceID || blockID == IronID) {
 		vec3 normal = (ModelViewMatrix * vec4(data1.rgb * 2.0 - vec3(1.0, 1.0, 1.0), 0.0)).xyz;
-		
-		float cosTheta = dot(normalize(-cameraSpacePosition), normalize(normal));
-		
 		vec3 reflectDir = reflect(normalize(cameraSpacePosition), normalize(normal));
+		float cosTheta = dot(normalize(-cameraSpacePosition), normalize(normal));
 		
 		vec3 bgColor = BackgroundColor.rgb;
 		if (cosTheta < -0.01) bgColor = data0.rgb;
