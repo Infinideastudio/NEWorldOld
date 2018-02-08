@@ -24,7 +24,7 @@ uniform vec3 PlayerPositionFrac;
 const float MaxBlockID = 4096.0;
 const int GlassID = 9, WaterID = 10, IceID = 15, IronID = 17;
 const int MaxIterations = 50, MaxNearIterations = 12;
-const int CloudIterations = 8, WaterCloudIterations = 2;
+const int CloudIterations = 64, WaterCloudIterations = 2;
 const float stepScale = 4.0;
 
 const int RepeatLength = 1024;
@@ -53,6 +53,10 @@ vec3 cameraSpaceToTextureCoords(in vec3 v) {
 	v3.x *= xRange;
 	v3.y *= yRange;
 	return v3;
+}
+
+vec3 getTextureNormal(in vec2 texCoord) {
+	return normalize((ModelViewMatrix * vec4(texture2D(Texture1, texCoord).rgb * 2.0 - vec3(1.0), 0.0)).xyz);
 }
 
 float getTextureDepth(in vec2 texCoord) {
@@ -139,6 +143,10 @@ int iMod(int v, int m) {
 	return res;
 }
 
+float random(in float f) {
+	return fract(sin(f * 233.0) * 43758.5453);
+}
+
 float interpolatedNoise3D(in vec3 x) {
 	const vec2 DefaultOffset = vec2(37.0, 17.0);
 	vec3 p = floor(x);
@@ -204,6 +212,26 @@ vec4 cloud(in vec3 org, in vec3 dir, in float maxDist, in int iterations) {
 	return res;
 }
 
+float edgeDetect(in vec2 texCoord) {
+	const int Samples = 16;
+	const float Radius = 1.0;
+	float res = 0.0;
+	for (int i = 0; i < Samples; i++) {
+		vec2 sp = texCoord + vec2(random(float(i)) * 2.0 - 1.0, random(float(i) + 0.5) * 2.0 - 1.0) * Radius / BufferSize;
+		vec3 normal = getTextureNormal(texCoord);
+		float normalDiff = -dot(normal, getTextureNormal(sp));
+		normal = normalize((ProjectionMatrix * vec4(normal, 0.0)).xyz);
+		float dist = length(getTexturePosition(texCoord));
+		float distDiff = abs(dist - length(getTexturePosition(sp)));
+		//float depthDiff = abs(getTextureDepth(texCoord) - getTextureDepth(sp));
+		if (normalDiff > -0.9 || distDiff > max(0.9, dist * 0.01)) res += 1.0;
+	}
+	return res / float(Samples) * 2.0;
+}
+float sigmoid(float x)
+{
+	return 1.0/(1.0+exp(-1.0*x));
+}
 void main() {
 	xScale = BufferSize / ScreenWidth;
 	yScale = BufferSize / ScreenHeight;
@@ -236,9 +264,9 @@ void main() {
 		dist = RenderDistance * 4.0;
 		color = getSkyColor(viewDir);
 	} else if (blockID == WaterID || blockID == IceID || blockID == IronID) {
-		vec3 normal = (ModelViewMatrix * vec4(data1.rgb * 2.0 - vec3(1.0, 1.0, 1.0), 0.0)).xyz;
-		vec3 reflectDir = reflect(normalize(cameraSpacePosition), normalize(normal));
-		float cosTheta = dot(normalize(-cameraSpacePosition), normalize(normal));
+		vec3 normal = getTextureNormal(texCoord);
+		vec3 reflectDir = reflect(normalize(cameraSpacePosition), normal);
+		float cosTheta = dot(normalize(-cameraSpacePosition), normal);
 		
 		vec3 worldReflectDir = (ModelViewInverse * vec4(reflectDir, 0.0)).xyz;
 #ifdef VOLUMETRIC_CLOUDS
@@ -266,6 +294,18 @@ void main() {
 	vec4 cloud = cloud(vec3(PlayerPositionMod) + PlayerPositionFrac, viewDir, dist, CloudIterations);
 	color = vec4(mix(color.rgb, cloud.rgb, cloud.a), 1.0);
 #endif
+	
+	float gs = 0.2989 * color.r + 0.5870 * color.g + 0.1140 * color.b;//(color.r + color.g + color.b) / 3.0;
+	gs = min(gs, 1.0 - edgeDetect(texCoord));
+	//gs = smoothstep(0.2, 0.8, gs);
+	gs = sigmoid(gs*3.0-1.5);
+	gs = floor(gs * 10.0) / 10.0;
+	if(gs>0.4)gs=1.0;
+	//else if(gs>0.45)gs=0.7;
+	else gs=0.0;
+	//if (random(texCoord.x * 233.0 + texCoord.y * 666.0) > gs) gs = 0.0; else gs = 1.0;
+	
+	color = vec4(vec3(gs,gs,gs), color.a);
 	
 	gl_FragColor = color;//vec4(mix(getSkyColor(viewDir).rgb, color.rgb, clamp((RenderDistance - dist) / 32.0, 0.0, 1.0)), color.a);
 	gl_FragDepth = screenSpacePosition.z * 0.5 + 0.5;
