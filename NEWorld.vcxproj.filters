@@ -83,12 +83,6 @@
     <ClInclude Include="source\Renderer.h">
       <Filter>Source\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="source\GUI.h">
-      <Filter>Source\GUI</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Menus.h">
-      <Filter>Source\GUI</Filter>
-    </ClInclude>
     <ClInclude Include="source\Player.h">
       <Filter>Source\Game\Player</Filter>
     </ClInclude>
@@ -232,6 +226,12 @@
     <ClInclude Include="source\FrameBuffer.h">
       <Filter>Source\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="source\GUI.h">
+      <Filter>Source\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Menus.h">
+      <Filter>Source\GUI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -251,9 +251,6 @@
     </ClCompile>
     <ClCompile Include="source\Renderer.cpp">
       <Filter>Source\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="source\GUI.cpp">
-      <Filter>Source\GUI</Filter>
     </ClCompile>
     <ClCompile Include="source\Player.cpp">
       <Filter>Source\Game\Player</Filter>
@@ -383,6 +380,9 @@
     </ClCompile>
     <ClCompile Include="source\FrameBuffer.cpp">
       <Filter>Source\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GUI.cpp">
+      <Filter>Source\GUI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

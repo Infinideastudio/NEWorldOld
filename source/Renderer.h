@@ -28,6 +28,7 @@ namespace Renderer {
 	extern int ActiveShader;
 
 	extern FrameBuffer shadow;
+	extern bool VolumetricClouds;
 
 	void Init(int tc, int cc, int nc = 0, int ac = 0);
 	void Vertex3f(float x, float y, float z);
@@ -70,7 +71,7 @@ namespace Renderer {
 	void StartShadowPass(float gameTime);
 	void EndShadowPass();
 
-	void StartFinalPass(const FrustumTest& viewFrustum);
+	void StartFinalPass(double xpos, double ypos, double zpos, const FrustumTest& viewFrustum);
 	void EndFinalPass();
 
 	void DrawFullscreen();

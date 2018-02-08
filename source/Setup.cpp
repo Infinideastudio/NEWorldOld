@@ -28,7 +28,7 @@ void splashScreen() {
 }
 
 void createWindow() {
-	glfwSetErrorCallback([](int, const char* desc) { cout << desc << endl; });
+	//glfwSetErrorCallback([](int, const char* desc) { cout << "[Debug][GLFW]" << desc << endl; });
 	std::stringstream title;
 	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
 	if (Multisample != 0) glfwWindowHint(GLFW_SAMPLES, Multisample);
@@ -44,6 +44,27 @@ void createWindow() {
 	glfwSetMouseButtonCallback(MainWindow, &MouseButtonFunc);
 	glfwSetScrollCallback(MainWindow, &MouseScrollFunc);
 	glfwSetCharCallback(MainWindow, &CharInputFunc);
+}
+
+void ToggleFullScreen() {
+	static bool fullscreen = false;
+	static int ww = 0, wh = 0;
+	
+	const GLFWvidmode* mode;
+	mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+
+	fullscreen = !fullscreen;
+	if (fullscreen) {
+		ww = windowwidth, wh = windowheight;
+		windowwidth = mode->width;
+		windowheight = mode->height;
+		glfwSetWindowMonitor(MainWindow, glfwGetPrimaryMonitor(), 0, 0, windowwidth, windowheight, mode->refreshRate);
+	} else {
+		windowwidth = ww, windowheight = wh;
+		glfwSetWindowMonitor(MainWindow, nullptr, (mode->width - ww) / 2, (mode->height - wh) / 2, windowwidth, windowheight, mode->refreshRate);
+	}
+
+	setupScreen();
 }
 
 // OpenGL debug callback

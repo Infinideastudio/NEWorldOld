@@ -81,7 +81,6 @@ namespace Hitbox{
 		//Debug only!
 		//碰撞箱渲染出来很瞎狗眼的QAQ而且又没用QAQ
 		
-		glLineWidth(2.0);
 		glEnable(GL_LINE_SMOOTH);
 		glColor4f(colR, colG, colB, 1.0);
 

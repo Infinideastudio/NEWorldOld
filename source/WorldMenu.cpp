@@ -39,18 +39,18 @@ namespace Menus {
 			rightp = static_cast<int>(windowwidth / 2.0 / stretch + 250);
 			downp = static_cast<int>(windowheight / stretch - 20);
 
-			vscroll.barheight = (downp - 72 - 48)*(downp - 36 - 40) / (64 * worldcount + 64);
+			vscroll.barheight = (downp - 72 - 48)*(downp - 36 - 40) / (70 * worldcount + 70);
 			if (vscroll.barheight > downp - 36 - 40) {
 				vscroll.enabled = false;
 				vscroll.barheight = downp - 36 - 40;
 			}
 			else vscroll.enabled = true;
 
-			trs = vscroll.barpos*(64 * worldcount + 64) / (downp - 36 - 40);
+			trs = vscroll.barpos*(70 * worldcount + 70) / (downp - 36 - 40);
 			mouseon = -1;
 			if (mx >= midp - 250 && mx <= midp + 250 && my >= 48 && my <= downp - 72) {
 				for (int i = 0; i < worldcount; i++) {
-					if (my >= 48 + i * 64 - trs&&my <= 48 + i * 64 + 60 - trs) {
+					if (my >= 48 + i * 70 - trs && my <= 48 + i * 70 + 70 - trs) {
 						if (mb == 1 && mbl == 0) {
 							chosenWorldName = worldnames[i];
 							selected = i;
@@ -58,7 +58,7 @@ namespace Menus {
 						mouseon = i;
 					}
 				}
-				if (my >= 48 + worldcount * 64 - trs&&my <= 48 + worldcount * 64 + 60 - trs) {
+				if (my >= 48 + worldcount * 70 - trs&&my <= 48 + worldcount * 70 + 70 - trs) {
 					if (mb == 0 && mbl == 1) {
 						createworldmenu();
 						refresh = true;
@@ -133,16 +133,26 @@ namespace Menus {
 			for (int i = 0; i < worldcount; i++) {
 				int xmin, xmax, ymin, ymax;
 				xmin = midp - 250, xmax = midp + 250;
-				ymin = 48 + i * 64, ymax = 48 + i * 64 + 60;
+				ymin = 48 + i * 70, ymax = 48 + i * 70 + 70;
+				glDisable(GL_TEXTURE_2D);
+				if (selected == (int)i) {
+					glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
+					glBegin(GL_QUADS);
+					UIVertex(midp + 255, 48 + i * 70 - 5);
+					UIVertex(midp - 255, 48 + i * 70 - 5);
+					UIVertex(midp - 255, 48 + i * 70 + 65);
+					UIVertex(midp + 255, 48 + i * 70 + 65);
+					glEnd();
+				}
 				if (thumbnails[i] == -1) {
 					glDisable(GL_TEXTURE_2D);
 					if (mouseon == i) glColor4f(0.5, 0.5, 0.5, GUI::FgA);
 					else glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
 					glBegin(GL_QUADS);
-					UIVertex(midp - 250, 48 + i * 64);
-					UIVertex(midp + 250, 48 + i * 64);
-					UIVertex(midp + 250, 48 + i * 64 + 60);
-					UIVertex(midp - 250, 48 + i * 64 + 60);
+					UIVertex(midp - 250, 48 + i * 70);
+					UIVertex(midp + 250, 48 + i * 70);
+					UIVertex(midp + 250, 48 + i * 70 + 60);
+					UIVertex(midp - 250, 48 + i * 70 + 60);
 					glEnd();
 				}
 				else {
@@ -163,50 +173,37 @@ namespace Menus {
 					if (mouseon == (int)i) glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 					else glColor4f(0.8f, 0.8f, 0.8f, 0.9f);
 					glBegin(GL_QUADS);
-					glTexCoord2f(0.5f - w / 2, 0.5f + h / 2), UIVertex(midp - 250, 48 + i * 64);
-					glTexCoord2f(0.5f + w / 2, 0.5f + h / 2), UIVertex(midp + 250, 48 + i * 64);
-					glTexCoord2f(0.5f + w / 2, 0.5f - h / 2), UIVertex(midp + 250, 48 + i * 64 + 60);
-					glTexCoord2f(0.5f - w / 2, 0.5f - h / 2), UIVertex(midp - 250, 48 + i * 64 + 60);
+					glTexCoord2f(0.5f - w / 2, 0.5f + h / 2), UIVertex(midp - 250, 48 + i * 70);
+					glTexCoord2f(0.5f + w / 2, 0.5f + h / 2), UIVertex(midp + 250, 48 + i * 70);
+					glTexCoord2f(0.5f + w / 2, 0.5f - h / 2), UIVertex(midp + 250, 48 + i * 70 + 60);
+					glTexCoord2f(0.5f - w / 2, 0.5f - h / 2), UIVertex(midp - 250, 48 + i * 70 + 60);
 					glEnd();
 				}
 				glColor4f(GUI::FgR*0.9f, GUI::FgG*0.9f, GUI::FgB*0.9f, 0.9f);
-				glDisable(GL_TEXTURE_2D);
-				glLineWidth(1.0);
 				glBegin(GL_LINE_LOOP);
 				UIVertex(xmin, ymin);
 				UIVertex(xmin, ymax);
 				UIVertex(xmax, ymax);
 				UIVertex(xmax, ymin);
 				glEnd();
-				if (selected == (int)i) {
-					glLineWidth(2.0);
-					glColor4f(0.0, 0.0, 0.0, 1.0);
-					glBegin(GL_LINE_LOOP);
-					UIVertex(midp - 250, 48 + i * 64);
-					UIVertex(midp + 250, 48 + i * 64);
-					UIVertex(midp + 250, 48 + i * 64 + 60);
-					UIVertex(midp - 250, 48 + i * 64 + 60);
-					glEnd();
-				}
 				TextRenderer::renderString(static_cast<int>(windowwidth / stretch - TextRenderer::getStrWidth(worldnames[i])) / 2, (140 + i * 128) / 2, worldnames[i]);
 			}
 			int i = worldcount;
 			glDisable(GL_TEXTURE_2D);
 			if (mouseon == i) glColor4f(0.5f, 0.5f, 0.5f, GUI::FgA); else glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
 			glBegin(GL_QUADS);
-			UIVertex(midp - 250, 48 + i * 64);
-			UIVertex(midp + 250, 48 + i * 64);
-			UIVertex(midp + 250, 48 + i * 64 + 60);
-			UIVertex(midp - 250, 48 + i * 64 + 60);
+			UIVertex(midp - 250, 48 + i * 70);
+			UIVertex(midp + 250, 48 + i * 70);
+			UIVertex(midp + 250, 48 + i * 70 + 60);
+			UIVertex(midp - 250, 48 + i * 70 + 60);
 			glEnd();
 			glColor4f(GUI::FgR*0.9f, GUI::FgG*0.9f, GUI::FgB*0.9f, 0.9f);
 			glDisable(GL_TEXTURE_2D);
-			glLineWidth(1.0);
 			glBegin(GL_LINE_LOOP);
-			UIVertex(midp - 250, 48 + i * 64);
-			UIVertex(midp + 250, 48 + i * 64);
-			UIVertex(midp + 250, 48 + i * 64 + 60);
-			UIVertex(midp - 250, 48 + i * 64 + 60);
+			UIVertex(midp - 250, 48 + i * 70);
+			UIVertex(midp + 250, 48 + i * 70);
+			UIVertex(midp + 250, 48 + i * 70 + 60);
+			UIVertex(midp - 250, 48 + i * 70 + 60);
 			glEnd();
 			TextRenderer::renderString(static_cast<int>(windowwidth / stretch - TextRenderer::getStrWidth(GetStrbyKey("NEWorld.worlds.new"))) / 2,
 				(140 + i * 128) / 2, GetStrbyKey("NEWorld.worlds.new"));

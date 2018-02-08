@@ -27,6 +27,7 @@ NEWorld.shaders.caption
 NEWorld.shaders.enable
 NEWorld.shaders.shadowres
 NEWorld.shaders.distance
+NEWorld.shaders.clouds
 NEWorld.shaders.back
 NEWorld.gui.caption
 NEWorld.gui.unicode

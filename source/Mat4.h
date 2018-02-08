@@ -97,6 +97,60 @@ public:
         return res;
     }
 
+	// Swap row r1, row r2
+	void swapRows(size_t r1, size_t r2) {
+		assert(r1 < 4 && r2 < 4);
+		std::swap(data[r1 * 4 + 0], data[r2 * 4 + 0]);
+		std::swap(data[r1 * 4 + 1], data[r2 * 4 + 1]);
+		std::swap(data[r1 * 4 + 2], data[r2 * 4 + 2]);
+		std::swap(data[r1 * 4 + 3], data[r2 * 4 + 3]);
+	}
+
+	// Row r *= k
+	void multRow(size_t r, T k) {
+		assert(r < 4);
+		data[r * 4 + 0] *= k;
+		data[r * 4 + 1] *= k;
+		data[r * 4 + 2] *= k;
+		data[r * 4 + 3] *= k;
+	}
+
+	// Row dst += row src * k
+	void multAndAdd(size_t src, size_t dst, T k) {
+		assert(dst < 4 && src < 4);
+		data[dst * 4 + 0] += data[src * 4 + 0] * k;
+		data[dst * 4 + 1] += data[src * 4 + 1] * k;
+		data[dst * 4 + 2] += data[src * 4 + 2] * k;
+		data[dst * 4 + 3] += data[src * 4 + 3] * k;
+	}
+
+	// Inverse matrix
+	Mat4& inverse() {
+		Mat4 res(T(1));
+		for (int i = 0; i<4; i++) {
+			int p = i;
+			for (int j = i + 1; j < 4; j++)
+				if (data[j * 4 + i] != T(0))
+					p = j;
+			res.swapRows(i, p);
+			swapRows(i, p);
+			res.multRow(i, T(1) / data[i * 4 + i]);
+			multRow(i, T(1) / data[i * 4 + i]);
+			for (int j = i + 1; j < 4; j++) {
+				res.multAndAdd(i, j, -data[j * 4 + i]);
+				multAndAdd(i, j, -data[j * 4 + i]);
+			}
+		}
+		for (int i = 3; i >= 0; i--) {
+			for (int j = 0; j < i; j++) {
+				res.multAndAdd(i, j, -data[j * 4 + i]);
+				multAndAdd(i, j, -data[j * 4 + i]);
+			}
+		}
+		(*this) = res;
+		return *this;
+	}
+
     // Construct a translation matrix
     static Mat4 translation(const Vec3<T>& delta) {
         Mat4 res(T(1.0));

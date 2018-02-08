@@ -6,6 +6,8 @@ void splashScreen();
 
 void createWindow();
 
+void ToggleFullScreen();
+
 void setupScreen();
 
 void setupNormalFog();

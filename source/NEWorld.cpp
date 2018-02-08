@@ -77,6 +77,18 @@ woca, 这样注释都行？！
 正常点的C++编译器都应该不会在这儿报错吧23333333
 #endif
 
+bool isPressed(int key, bool setFalse = false) {
+	static bool keyPressed[GLFW_KEY_LAST + 1];
+	if (setFalse) { keyPressed[key] = false; return true; }
+	if (key > GLFW_KEY_LAST || key <= 0) return false;
+	if (!glfwGetKey(MainWindow, key)) keyPressed[key] = false;
+	if (!keyPressed[key] && glfwGetKey(MainWindow, key)) {
+		keyPressed[key] = true;
+		return true;
+	}
+	return false;
+}
+
 //==============================  Main Program  ================================//
 //==============================     主程序     ================================//
 
@@ -174,6 +186,8 @@ main_menu:
 
 		MutexUnlock(Mutex);
 		MutexLock(Mutex);
+
+		if (isPressed(GLFW_KEY_F7)) ToggleFullScreen();
 
 		if ((timer() - uctime) >= 1.0) {
 			uctime = timer();
@@ -303,18 +317,6 @@ bool loadGame() {
 		return false;
 	}
 	return true;
-}
-
-bool isPressed(int key, bool setFalse = false) {
-	static bool keyPressed[GLFW_KEY_LAST + 1];
-	if (setFalse) { keyPressed[key] = false; return true; }
-	if (key > GLFW_KEY_LAST || key <= 0) return false;
-	if (!glfwGetKey(MainWindow, key)) keyPressed[key] = false;
-	if (!keyPressed[key] && glfwGetKey(MainWindow, key)) {
-		keyPressed[key] = true;
-		return true;
-	}
-	return false;
 }
 
 void registerCommands() {
@@ -748,7 +750,6 @@ void updategame() {
 			if (isPressed(GLFW_KEY_F4 && Player::gamemode == Player::Creative)) Player::CrossWall = !Player::CrossWall;
 			if (isPressed(GLFW_KEY_F5)) GUIrenderswitch = !GUIrenderswitch;
 			if (isPressed(GLFW_KEY_F6)) Player::Glide = !Player::Glide;
-			if (isPressed(GLFW_KEY_F7)) Player::spawn();
 			if (isPressed(GLFW_KEY_SLASH)) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
 		}
 
@@ -1029,6 +1030,10 @@ void render() {
 
 	if (Renderer::AdvancedRender) Renderer::EnableDefferedRendering(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, gametime);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
+	glEnable(GL_BLEND);
+	WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
+	glDisable(GL_CULL_FACE);
+	WorldRenderer::RenderChunks(xpos, ypos, zpos, 2);
 	if (Renderer::AdvancedRender) Renderer::DisableDefferedRendering();
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
@@ -1036,18 +1041,37 @@ void render() {
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
 
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	if (Renderer::AdvancedRender) {
+		Renderer::StartFinalPass(xpos, ypos, zpos, Player::ViewFrustum);
+		Renderer::DrawFullscreen();
+		Renderer::EndFinalPass();
+	}
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glMultMatrixf(Player::ViewFrustum.getProjMatrix());
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glRotated(plookupdown, 1, 0, 0);
+	glRotated(360.0 - pheading, 0, 1, 0);
+
+	MutexLock(Mutex);
+
 	if (MergeFace) {
 		glDisable(GL_TEXTURE_3D);
 		glEnable(GL_TEXTURE_2D);
 	}
-	glEnable(GL_BLEND);
-
+	
 	if (DebugMergeFace) {
 		glEnable(GL_LINE_SMOOTH);
 		glPolygonMode(GL_FRONT, GL_FILL);
 	}
-
-	MutexLock(Mutex);
 
 	if (seldes > 0.0) {
 		glTranslated(selx - xpos, sely - ypos, selz - zpos);
@@ -1064,57 +1088,10 @@ void render() {
 		glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
 	}
 
-	MutexUnlock(Mutex);
-
-	glLoadIdentity();
-	glRotated(plookupdown, 1, 0, 0);
-	glRotated(360.0 - pheading, 0, 1, 0);
-	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_CULL_FACE);
-
-	glEnableClientState(GL_COLOR_ARRAY);
-	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-	glEnableClientState(GL_VERTEX_ARRAY);
-
-	if (Renderer::AdvancedRender) Renderer::EnableDefferedRendering(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, gametime);
-
-	if (MergeFace) {
-		glDisable(GL_TEXTURE_2D);
-		glEnable(GL_TEXTURE_3D);
-		glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
-	} else glBindTexture(GL_TEXTURE_2D, BlockTextures);
-
-	if (DebugMergeFace) {
-		glDisable(GL_LINE_SMOOTH);
-		glPolygonMode(GL_FRONT, GL_LINE);
-	}
-
-	WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
-	glDisable(GL_CULL_FACE);
-	WorldRenderer::RenderChunks(xpos, ypos, zpos, 2);
-	if (Renderer::AdvancedRender) Renderer::DisableDefferedRendering();
-
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-	glDisableClientState(GL_COLOR_ARRAY);
-	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-	glDisableClientState(GL_VERTEX_ARRAY);
-
-	if (MergeFace) {
-		glDisable(GL_TEXTURE_3D);
-		glEnable(GL_TEXTURE_2D);
-	}
-
-	if (DebugMergeFace) {
-		glEnable(GL_LINE_SMOOTH);
-		glPolygonMode(GL_FRONT, GL_FILL);
-	}
-
 	glLoadIdentity();
 	glRotated(plookupdown, 1, 0, 0);
 	glRotated(360.0 - pheading, 0, 1, 0);
 	glTranslated(-xpos, -ypos, -zpos);
-
-	MutexLock(Mutex);
 
 	if (DebugHitbox) {
 		glDisable(GL_CULL_FACE);
@@ -1143,11 +1120,7 @@ void render() {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	if (Renderer::AdvancedRender) {
-		Renderer::StartFinalPass(Player::ViewFrustum);
-		Renderer::DrawFullscreen();
-		Renderer::EndFinalPass();
-	}
+	glDepthFunc(GL_ALWAYS);
 
 	if (World::getblock(RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)) == Blocks::WATER) {
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -1280,7 +1253,6 @@ void drawBorder(int x, int y, int z) {
 	//绘制选择边框
 	static float eps = 0.002f; //实际上这个边框应该比方块大一些，否则很难看
 	glEnable(GL_LINE_SMOOTH);
-	glLineWidth(1);
 	glColor3f(0.2f, 0.2f, 0.2f);
 	// Top Face
 	glBegin(GL_LINES);
@@ -1362,7 +1334,6 @@ void drawGUI() {
 	if (DebugMode) {
 
 		if (selb != Blocks::AIR) {
-			glLineWidth(1);
 			glBegin(GL_LINES);
 			glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, 0.8f);
 			glVertex2i(windowwidth / 2, windowheight / 2);
@@ -1382,8 +1353,6 @@ void drawGUI() {
 			glColor4f(0.0f, 0.0f, 0.0f, 0.9f);
 		} else
 			glColor4f(0.0f, 0.0f, 0.0f, 0.6f);
-
-		glLineWidth(2);
 
 		glBegin(GL_LINES);
 
@@ -1411,37 +1380,50 @@ void drawGUI() {
 
 	}
 
-	glLineWidth(4);
-	glBegin(GL_LINES);
-	glColor4f(0.0, 0.0, 0.0, 1.0);
-	glVertex2i(windowwidth / 2 - 16, windowheight / 2);
-	glVertex2i(windowwidth / 2 + 16, windowheight / 2);
-	glVertex2i(windowwidth / 2, windowheight / 2 - 16);
-	glVertex2i(windowwidth / 2, windowheight / 2 + 16);
+	glBegin(GL_QUADS);
+	glColor4f(0.0, 0.0, 0.0, 0.9);
+	glVertex2i(windowwidth / 2 - 16, windowheight / 2 - 2);
+	glVertex2i(windowwidth / 2 - 16, windowheight / 2 + 2);
+	glVertex2i(windowwidth / 2 + 16, windowheight / 2 + 2);
+	glVertex2i(windowwidth / 2 + 16, windowheight / 2 - 2);
+	glVertex2i(windowwidth / 2 + 2, windowheight / 2 - 16);
+	glVertex2i(windowwidth / 2 - 2, windowheight / 2 - 16);
+	glVertex2i(windowwidth / 2 - 2, windowheight / 2 + 16);
+	glVertex2i(windowwidth / 2 + 2, windowheight / 2 + 16);
 	glEnd();
-	glLineWidth(2);
-	glBegin(GL_LINES);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glVertex2i(windowwidth / 2 - 15, windowheight / 2);
-	glVertex2i(windowwidth / 2 + 15, windowheight / 2);
-	glVertex2i(windowwidth / 2, windowheight / 2 - 15);
-	glVertex2i(windowwidth / 2, windowheight / 2 + 15);
+
+	glBegin(GL_QUADS);
+	glColor4f(1.0, 1.0, 1.0, 0.9);
+	glVertex2i(windowwidth / 2 - 15, windowheight / 2 - 1);
+	glVertex2i(windowwidth / 2 - 15, windowheight / 2 + 1);
+	glVertex2i(windowwidth / 2 + 15, windowheight / 2 + 1);
+	glVertex2i(windowwidth / 2 + 15, windowheight / 2 - 1);
+	glVertex2i(windowwidth / 2 + 1, windowheight / 2 - 15);
+	glVertex2i(windowwidth / 2 - 1, windowheight / 2 - 15);
+	glVertex2i(windowwidth / 2 - 1, windowheight / 2 + 15);
+	glVertex2i(windowwidth / 2 + 1, windowheight / 2 + 15);
 	glEnd();
 
 	if (seldes > 0.0) {
-
-		glBegin(GL_LINES);
+		glBegin(GL_QUADS);
 		glColor4f(0.5, 0.5, 0.5, 1.0);
-		glVertex2i(windowwidth / 2 - 15, windowheight / 2);
-		glVertex2i(windowwidth / 2 - 15 + (int)(seldes_100 * 15), windowheight / 2);
-		glVertex2i(windowwidth / 2 + 15, windowheight / 2);
-		glVertex2i(windowwidth / 2 + 15 - (int)(seldes_100 * 15), windowheight / 2);
-		glVertex2i(windowwidth / 2, windowheight / 2 - 15);
-		glVertex2i(windowwidth / 2, windowheight / 2 - 15 + (int)(seldes_100 * 15));
-		glVertex2i(windowwidth / 2, windowheight / 2 + 15);
-		glVertex2i(windowwidth / 2, windowheight / 2 + 15 - (int)(seldes_100 * 15));
+		glVertex2i(windowwidth / 2 - 15, windowheight / 2 - 1);
+		glVertex2i(windowwidth / 2 - 15, windowheight / 2 + 1);
+		glVertex2i(windowwidth / 2 - 15 + (int)(seldes_100 * 15), windowheight / 2 + 1);
+		glVertex2i(windowwidth / 2 - 15 + (int)(seldes_100 * 15), windowheight / 2 - 1);
+		glVertex2i(windowwidth / 2 + 15, windowheight / 2 + 1);
+		glVertex2i(windowwidth / 2 + 15, windowheight / 2 - 1);
+		glVertex2i(windowwidth / 2 + 15 - (int)(seldes_100 * 15), windowheight / 2 - 1);
+		glVertex2i(windowwidth / 2 + 15 - (int)(seldes_100 * 15), windowheight / 2 + 1);
+		glVertex2i(windowwidth / 2 + 1, windowheight / 2 - 15);
+		glVertex2i(windowwidth / 2 - 1, windowheight / 2 - 15);
+		glVertex2i(windowwidth / 2 - 1, windowheight / 2 - 15 + (int)(seldes_100 * 15));
+		glVertex2i(windowwidth / 2 + 1, windowheight / 2 - 15 + (int)(seldes_100 * 15));
+		glVertex2i(windowwidth / 2 - 1, windowheight / 2 + 15);
+		glVertex2i(windowwidth / 2 + 1, windowheight / 2 + 15);
+		glVertex2i(windowwidth / 2 + 1, windowheight / 2 + 15 - (int)(seldes_100 * 15));
+		glVertex2i(windowwidth / 2 - 1, windowheight / 2 + 15 - (int)(seldes_100 * 15));
 		glEnd();
-
 	}
 
 	glDisable(GL_CULL_FACE);
@@ -1920,6 +1902,7 @@ void loadOptions() {
 	loadoption(options, "AdvancedRender", Renderer::AdvancedRender);
 	loadoption(options, "ShadowMapRes", Renderer::ShadowRes);
 	loadoption(options, "ShadowDistance", Renderer::MaxShadowDist);
+	loadoption(options, "VolumetricClouds", Renderer::VolumetricClouds);
 	loadoption(options, "VerticalSync", vsync);
 	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
@@ -1946,6 +1929,7 @@ void saveOptions() {
 	saveoption(fileout, "AdvancedRender", Renderer::AdvancedRender);
 	saveoption(fileout, "ShadowMapRes", Renderer::ShadowRes);
 	saveoption(fileout, "ShadowDistance", Renderer::MaxShadowDist);
+	saveoption(fileout, "VolumetricClouds", Renderer::VolumetricClouds);
 	saveoption(fileout, "VerticalSync", vsync);
 	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);

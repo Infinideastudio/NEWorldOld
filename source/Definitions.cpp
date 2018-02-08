@@ -1,7 +1,7 @@
 #include "Definitions.h"
 
 //Global Vars
-float FOVyNormal = 60.0f;       //视野角度
+float FOVyNormal = 70.0f;       //视野角度
 float mousemove = 0.2f;         //鼠标灵敏度
 int viewdistance = 8;           //视野距离
 int cloudwidth = 10;            //云的宽度
@@ -16,9 +16,9 @@ bool MergeFace = false;         //合并面渲染
 bool GUIScreenBlur = false;      //GUI背景模糊  Void:这个算法慢死了，我关掉了
 int linelength = 10;            //跟F3的准星有关。。。
 int linedist = 30;              //跟F3的准星有关。。。
-float skycolorR = 0.7f;         //天空颜色Red
-float skycolorG = 1.0f;         //天空颜色Green
-float skycolorB = 1.0f;         //天空颜色Blue
+float skycolorR = 0.65f;         //天空颜色Red
+float skycolorG = 0.95f;         //天空颜色Green
+float skycolorB = 0.95f;         //天空颜色Blue
 float FOVyRunning = 8.0f;
 float FOVyExt;
 double stretch = 1.0f;          //ppi缩放比例（供gui绘制使用）
