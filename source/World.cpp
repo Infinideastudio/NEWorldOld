@@ -891,12 +891,14 @@ void explode(int x, int y, int z, int r, chunk* c) {
 				        distsqr <= maxdistsqr && rnd() > (distsqr - maxdistsqr * 0.6) / (maxdistsqr * 0.4)) {
 					block e = World::getblock(fx, fy, fz);
 					if (e == Blocks::AIR) continue;
+					/*
 					for (int j = 1; j <= 12; j++) {
 						Particles::throwParticle(e,
 						                         float(fx + rnd() - 0.5f), float(fy + rnd() - 0.2f), float(fz + rnd() - 0.5f),
 						                         float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
 						                         float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
 					}
+					*/
 					setblock(fx, fy, fz, Blocks::AIR, c);
 				}
 			}

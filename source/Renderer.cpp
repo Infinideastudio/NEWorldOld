@@ -57,9 +57,10 @@ namespace Renderer {
 	int index = 0, size = 0;
 	unsigned int ShaderAttribLoc = 0;
 
-	const int gBufferCount = 6;
+	const int gBufferCount = 4;
 	int gWidth, gHeight, gSize;
 	FrameBuffer shadow, gBuffers;
+	bool VolumetricClouds = false;
 
 	int log2Ceil(int x) {
 		if (x <= 1)return 0;
@@ -161,18 +162,41 @@ namespace Renderer {
 		//====================================================================================================//
 	}
 
+	GLuint getNoiseTexture() {
+		static GLuint noiseTex = 0;
+		if (noiseTex == 0) {
+			unique_ptr<ubyte[]> a(new ubyte[256 * 256 * 4]);
+			for (int i = 0; i < 256 * 256; i++) a[i * 4] = a[i * 4 + 1] = int(rnd() * 256);
+
+			const int OffsetX = 37, OffsetY = 17;
+			for (int x = 0; x < 256; x++) for (int y = 0; y < 256; y++) {
+				int x1 = (x + OffsetX) % 256, y1 = (y + OffsetY) % 256;
+				a[(y * 256 + x) * 4 + 2] = a[(y1 * 256 + x1) * 4];
+				a[(y * 256 + x) * 4 + 3] = a[(y1 * 256 + x1) * 4 + 1];
+			}
+
+			glGenTextures(1, &noiseTex);
+			glBindTexture(GL_TEXTURE_2D, noiseTex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, a.get());
+		}
+		return noiseTex;
+	}
+
 	void initShaders() {
 		ShaderAttribLoc = 1;
-		std::set<string> defines;
-		defines.insert("MergeFace");
+		std::set<string> mgf, defines;
+		mgf.insert("MergeFace");
+		if (VolumetricClouds) defines.insert("VolumetricClouds");
 
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
 		shadowdist = min(MaxShadowDist, viewdistance);
 		shaders.reserve(5);
 		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true));
-		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true, defines));
-		shaders.push_back(Shader("Shaders/Final.vsh", "Shaders/Final.fsh", false));
+		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true, mgf));
+		shaders.push_back(Shader("Shaders/Final.vsh", "Shaders/Final.fsh", false, defines));
 		shaders.push_back(Shader("Shaders/Shadow.vsh", "Shaders/Shadow.fsh", true));
 		shaders.push_back(Shader("Shaders/ShowDepth.vsh", "Shaders/ShowDepth.fsh", false));
 
@@ -188,6 +212,7 @@ namespace Renderer {
 			if (i == 0) shaders[i].setUniform("Texture", 0);
 			else shaders[i].setUniform("Texture3D", 0);
 			shaders[i].setUniform("DepthTexture", 1);
+			shaders[i].setUniform("NoiseTexture", 2);
 			shaders[i].setUniform("BackgroundColor", skycolorR, skycolorG, skycolorB, 1.0f);
 			shaders[i].setUniform("ShadowMapResolution", float(ShadowRes));
 		}
@@ -197,8 +222,7 @@ namespace Renderer {
 		shaders[FinalShader].setUniform("Texture1", 1);
 		shaders[FinalShader].setUniform("Texture2", 2);
 		shaders[FinalShader].setUniform("Texture3", 3);
-		shaders[FinalShader].setUniform("Texture4", 4);
-		shaders[FinalShader].setUniform("Texture5", 5);
+		shaders[FinalShader].setUniform("NoiseTexture", gBufferCount);
 		shaders[FinalShader].setUniform("BackgroundColor", skycolorR, skycolorG, skycolorB, 1.0f);
 
 		shaders[ShadowShader].bind();
@@ -290,7 +314,10 @@ namespace Renderer {
 		
 		shadowdist = min(MaxShadowDist, viewdistance);
 		shadow.bindDepthTexture(1);
-
+		glActiveTextureARB(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, getNoiseTexture());
+		glActiveTextureARB(GL_TEXTURE0);
+		
 		//Enable shader
 		Shader& shader = shaders[MergeFace ? MergeFaceShader : MainShader];
 		bindShader(MergeFace ? MergeFaceShader : MainShader);
@@ -342,15 +369,30 @@ namespace Renderer {
 		glDisableVertexAttribArrayARB(ShaderAttribLoc);
 	}
 
-	void StartFinalPass(const FrustumTest& viewFrustum) {
+	void StartFinalPass(double xpos, double ypos, double zpos, const FrustumTest& viewFrustum) {
 		gBuffers.bindColorTextures(0);
+		glActiveTextureARB(GL_TEXTURE0 + gBufferCount);
+		glBindTexture(GL_TEXTURE_2D, getNoiseTexture());
+		glActiveTextureARB(GL_TEXTURE0);
+
 		bindShader(FinalShader);
 		shaders[FinalShader].setUniform("ScreenWidth", float(gWidth));
 		shaders[FinalShader].setUniform("ScreenHeight", float(gHeight));
 		shaders[FinalShader].setUniform("BufferSize", float(gSize));
 		shaders[FinalShader].setUniform("ProjectionMatrix", viewFrustum.getProjMatrix());
 		shaders[FinalShader].setUniform("ModelViewMatrix", viewFrustum.getModlMatrix());
+		shaders[FinalShader].setUniform("ProjectionInverse", Mat4f(viewFrustum.getProjMatrix()).inverse().data);
+		shaders[FinalShader].setUniform("ModelViewInverse", Mat4f(viewFrustum.getModlMatrix()).inverse().data);
+		//shaders[FinalShader].setUniform("FOVx", viewFrustum.getFOV() * viewFrustum.getAspect());
+		//shaders[FinalShader].setUniform("FOVy", viewFrustum.getFOV());
 		shaders[FinalShader].setUniform("RenderDistance", viewdistance * 16.0f);
+
+		Mat4f trans = Mat4f::rotation(-sunlightXrot, Vec3f(1, 0, 0)) * Mat4f::rotation(-sunlightYrot, Vec3f(0, 1, 0));
+		Vec3f lightdir = trans.transformVec3(Vec3f(0, 0, -1));
+		lightdir.normalize();
+		shaders[FinalShader].setUniform("SunlightDirection", lightdir.x, lightdir.y, lightdir.z);
+		shaders[FinalShader].setUniform3i("PlayerPositionInt", int(floor(xpos)), int(floor(ypos)), int(floor(zpos)));
+		shaders[FinalShader].setUniform("PlayerPositionFrac", xpos - floor(xpos), ypos - floor(ypos), zpos - floor(zpos));
 	}
 
 	void EndFinalPass() {
@@ -358,7 +400,6 @@ namespace Renderer {
 	}
 
 	void DrawFullscreen() {
-		glDepthFunc(GL_ALWAYS);
 		glBegin(GL_QUADS);
 		glTexCoord2f(0.0f, 0.0f); glVertex2i(0, windowheight);
 		glTexCoord2f(1.0f, 0.0f); glVertex2i(windowwidth, windowheight);
