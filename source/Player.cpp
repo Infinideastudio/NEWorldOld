@@ -30,8 +30,9 @@ FrustumTest Player::ViewFrustum;
 double Player::speed;
 int Player::AirJumps;
 int Player::cxt, Player::cyt, Player::czt, Player::cxtl, Player::cytl, Player::cztl;
-double Player::lookupdown, Player::heading, Player::xpos, Player::ypos, Player::zpos;
-double Player::xposold, Player::yposold, Player::zposold, Player::jump;
+double Player::lookupdown, Player::heading;
+Vec3d Player::pos, Player::posold;
+double Player::jump;
 double Player::xlookspeed, Player::ylookspeed;
 int Player::intxpos, Player::intypos, Player::intzpos;
 int Player::intxposold, Player::intyposold, Player::intzposold;
@@ -51,12 +52,10 @@ void InitHitbox(Hitbox::AABB& playerbox) {
 }
 
 void InitPosition() {
-	Player::xposold = Player::xpos;
-	Player::yposold = Player::ypos;
-	Player::zposold = Player::zpos;
-	Player::cxt = getchunkpos((int)Player::xpos); Player::cxtl = Player::cxt;
-	Player::cyt = getchunkpos((int)Player::ypos); Player::cytl = Player::cyt;
-	Player::czt = getchunkpos((int)Player::zpos); Player::cztl = Player::czt;
+	Player::posold = Player::pos;
+	Player::cxt = getchunkpos((int)Player::pos.x); Player::cxtl = Player::cxt;
+	Player::cyt = getchunkpos((int)Player::pos.y); Player::cytl = Player::cyt;
+	Player::czt = getchunkpos((int)Player::pos.z); Player::cztl = Player::czt;
 }
 
 void MoveHitbox(double x, double y, double z) {
@@ -64,22 +63,18 @@ void MoveHitbox(double x, double y, double z) {
 }
 
 void updateHitbox() {
-	MoveHitbox(Player::xpos, Player::ypos, Player::zpos);
+	MoveHitbox(Player::pos.x, Player::pos.y, Player::pos.z);
 }
 
-void Player::init(double x, double y, double z) {
-	xpos = x;
-	ypos = y;
-	zpos = z;
+void Player::init(Vec3d pos_) {
+	pos = pos_;
 	InitHitbox(Player::playerbox);
 	InitPosition();
 	updateHitbox();
 }
 
 void Player::spawn() {
-	xpos = 0.0;
-	ypos = 128.0;
-	zpos = 0.0;
+	pos = Vec3d(0.0,128.0,0.0);
 	jump = 0.0;
 	InitHitbox(Player::playerbox);
 	InitPosition();
@@ -130,25 +125,25 @@ void Player::updatePosition() {
 	za = (double)((int)(za * 100000)) / 100000.0;
 
 	xd = xa; yd = ya; zd = za;
-	xpos += xa; ypos += ya; zpos += za;
+	pos += Vec3d(xa, ya, za);
 	xa *= 0.8; za *= 0.8;
 	if (Flying || CrossWall) ya *= 0.8;
 	if (OnGround) xa *= 0.7, ya = 0.0, za *= 0.7;
 	updateHitbox();
 
 	cxtl = cxt; cytl = cyt; cztl = czt;
-	cxt = getchunkpos((int)xpos); cyt = getchunkpos((int)ypos); czt = getchunkpos((int)zpos);
+	cxt = getchunkpos((int)pos.x); cyt = getchunkpos((int)pos.y); czt = getchunkpos((int)pos.z);
 }
 
-bool Player::putBlock(int x, int y, int z, block blockname) {
+bool Player::putBlock(Vec3i pos, block blockname) {
 	Hitbox::AABB blockbox;
 	bool success = false;
-	blockbox.xmin = x - 0.5; blockbox.ymin = y - 0.5; blockbox.zmin = z - 0.5;
-	blockbox.xmax = x + 0.5; blockbox.ymax = y + 0.5; blockbox.zmax = z + 0.5;
-	int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
+	blockbox.xmin = pos.x - 0.5; blockbox.ymin = pos.y - 0.5; blockbox.zmin = pos.z - 0.5;
+	blockbox.xmax = pos.x + 0.5; blockbox.ymax = pos.y + 0.5; blockbox.zmax = pos.z + 0.5;
+	int cx = getchunkpos(pos.x), cy = getchunkpos(pos.y), cz = getchunkpos(pos.z);
 	if (!World::chunkOutOfBound(cx, cy, cz) && (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall ||
-	        BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(x, y, z)).isSolid() == false)) {
-		World::putblock(x, y, z, blockname);
+	        BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(pos.x, pos.y, pos.z)).isSolid() == false)) {
+		World::putblock(pos.x, pos.y, pos.z, blockname);
 		success = true;
 	}
 	return success;
@@ -161,9 +156,9 @@ bool Player::save(string worldn) {
 	std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
 	if (!isave.is_open()) return false;
 	isave.write((char*)&curversion, sizeof(curversion));
-	isave.write((char*)&xpos, sizeof(xpos));
-	isave.write((char*)&ypos, sizeof(ypos));
-	isave.write((char*)&zpos, sizeof(zpos));
+	isave.write((char*)&pos.x, sizeof(pos.x));
+	isave.write((char*)&pos.y, sizeof(pos.y));
+	isave.write((char*)&pos.z, sizeof(pos.z));
 	isave.write((char*)&lookupdown, sizeof(lookupdown));
 	isave.write((char*)&heading, sizeof(heading));
 	isave.write((char*)&jump, sizeof(jump));
@@ -190,9 +185,9 @@ bool Player::load(string worldn) {
 	if (!iload.is_open()) return false;
 	iload.read((char*)&targetVersion, sizeof(targetVersion));
 	if (targetVersion != VERSION) return false;
-	iload.read((char*)&xpos, sizeof(xpos));
-	iload.read((char*)&ypos, sizeof(ypos));
-	iload.read((char*)&zpos, sizeof(zpos));
+	iload.read((char*)&pos.x, sizeof(pos.x));
+	iload.read((char*)&pos.y, sizeof(pos.y));
+	iload.read((char*)&pos.z, sizeof(pos.z));
 	iload.read((char*)&lookupdown, sizeof(lookupdown));
 	iload.read((char*)&heading, sizeof(heading));
 	iload.read((char*)&jump, sizeof(jump));
@@ -264,9 +259,9 @@ void Player::changeGameMode(int _gamemode) {
 
 PlayerPacket Player::convertToPlayerPacket() {
 	PlayerPacket p;
-	p.x = xpos;
-	p.y = ypos + height + heightExt;
-	p.z = zpos;
+	p.x = pos.x;
+	p.y = pos.y + height + heightExt;
+	p.z = pos.z;
 	p.heading = heading;
 	p.lookupdown = lookupdown;
 	p.onlineID = onlineID;

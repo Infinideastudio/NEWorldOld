@@ -153,7 +153,7 @@ main_menu:
 	//初始化游戏状态
 	printf("[Console][Game]");
 	printf("Init player...\n");
-	if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
+	if (loadGame()) Player::init(Player::pos);
 	else Player::spawn();
 	printf("[Console][Game]");
 	printf("Init world...\n");
@@ -332,9 +332,9 @@ void registerCommands() {
 		double x; conv(command[1], x);
 		double y; conv(command[2], y);
 		double z; conv(command[3], z);
-		Player::xpos = x;
-		Player::ypos = y;
-		Player::zpos = z;
+		Player::pos.x = x;
+		Player::pos.y = y;
+		Player::pos.z = z;
 		return true;
 	}));
 	commands.push_back(Command("/suicide", [](const vector<string>& command) {
@@ -422,7 +422,7 @@ void updategame() {
 	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 	//生命值相关
 	if (Player::health > 0 || Player::gamemode == Player::Creative) {
-		if (Player::ypos < -100) Player::health -= ((-100) - Player::ypos) / 100;
+		if (Player::pos.y < -100) Player::health -= ((-100) - Player::pos.y) / 100;
 		if (Player::health < Player::healthMax) Player::health += Player::healSpeed;
 		if (Player::health > Player::healthMax) Player::health = Player::healthMax;
 	} else Player::spawn();
@@ -444,7 +444,7 @@ void updategame() {
 		World::HMap.moveTo((Player::cxt - viewdistance - 2) * 16, (Player::czt - viewdistance - 2) * 16);
 
 	if (FirstUpdateThisFrame) {
-		World::sortChunkLoadUnloadList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
+		World::sortChunkLoadUnloadList(RoundInt(Player::pos.x), RoundInt(Player::pos.y), RoundInt(Player::pos.z));
 
 		//卸载区块(Unload chunks)
 		int sumUnload;
@@ -520,7 +520,7 @@ void updategame() {
 
 	//判断选中的方块
 	double lx, ly, lz, lxl, lyl, lzl;
-	lx = Player::xpos; ly = Player::ypos + Player::height + Player::heightExt; lz = Player::zpos;
+	lx = Player::pos.x; ly = Player::pos.y + Player::height + Player::heightExt; lz = Player::pos.z;
 
 	sel = false;
 	selx = sely = selz = selbx = selby = selbz = selcx = selcy = selcz = selb = selbr = 0;
@@ -579,7 +579,7 @@ void updategame() {
 				if (((mb == 2 && mbp == false) || (!chatmode && isPressed(GLFW_KEY_TAB)))) { //鼠标右键
 					if (Player::inventoryAmount[3][Player::indexInHand] > 0 && isBlock(Player::inventory[3][Player::indexInHand])) {
 						//放置方块
-						if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
+						if (Player::putBlock(Vec3i(xl, yl, zl), Player::BlockInHand)) {
 							Player::inventoryAmount[3][Player::indexInHand]--;
 							if (Player::inventoryAmount[3][Player::indexInHand] == 0) Player::inventory[3][Player::indexInHand] = Blocks::AIR;
 						}
@@ -597,9 +597,9 @@ void updategame() {
 		oldsely = sely;
 		oldselz = selz;
 
-		Player::intxpos = RoundInt(Player::xpos);
-		Player::intypos = RoundInt(Player::ypos);
-		Player::intzpos = RoundInt(Player::zpos);
+		Player::intxpos = RoundInt(Player::pos.x);
+		Player::intypos = RoundInt(Player::pos.y);
+		Player::intzpos = RoundInt(Player::pos.z);
 
 		//更新方向
 		Player::heading += Player::xlookspeed;
@@ -720,7 +720,7 @@ void updategame() {
 			}
 
 			if (glfwGetKey(MainWindow, GLFW_KEY_K) && Player::Glide && !Player::OnGround && !Player::glidingNow) {
-				double h = Player::ypos + Player::height + Player::heightExt;
+				double h = Player::pos.y + Player::height + Player::heightExt;
 				Player::glidingEnergy = g * h;
 				Player::glidingSpeed = 0;
 				Player::glidingNow = true;
@@ -842,7 +842,7 @@ void updategame() {
 
 	if (Player::glidingNow) {
 		double& E = Player::glidingEnergy;
-		double oldh = Player::ypos + Player::height + Player::heightExt + Player::ya;
+		double oldh = Player::pos.y + Player::height + Player::heightExt + Player::ya;
 		double h = oldh;
 		if (E - Player::glidingMinimumSpeed < h * g)  //小于最小速度
 			h = (E - Player::glidingMinimumSpeed) / g;
@@ -855,16 +855,14 @@ void updategame() {
 	FirstFrameThisUpdate = true;
 	Particles::updateall();
 
-	Player::intxpos = RoundInt(Player::xpos);
-	Player::intypos = RoundInt(Player::ypos);
-	Player::intzpos = RoundInt(Player::zpos);
+	Player::intxpos = RoundInt(Player::pos.x);
+	Player::intypos = RoundInt(Player::pos.y);
+	Player::intzpos = RoundInt(Player::pos.z);
 	Player::updatePosition();
-	Player::xposold = Player::xpos;
-	Player::yposold = Player::ypos;
-	Player::zposold = Player::zpos;
-	Player::intxposold = RoundInt(Player::xpos);
-	Player::intyposold = RoundInt(Player::ypos);
-	Player::intzposold = RoundInt(Player::zpos);
+	Player::posold = Player::pos;
+	Player::intxposold = RoundInt(Player::pos.x);
+	Player::intyposold = RoundInt(Player::pos.y);
+	Player::intzposold = RoundInt(Player::pos.z);
 
 	//  Time_updategame += timer() - Time_updategame;
 
@@ -933,9 +931,9 @@ void render() {
 		}
 	}
 
-	xpos = Player::xpos - Player::xd + (curtime - lastupdate) * 30.0 * Player::xd;
-	ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + (curtime - lastupdate) * 30.0 * Player::yd;
-	zpos = Player::zpos - Player::zd + (curtime - lastupdate) * 30.0 * Player::zd;
+	xpos = Player::pos.x - Player::xd + (curtime - lastupdate) * 30.0 * Player::xd;
+	ypos = Player::pos.y + Player::height + Player::heightExt - Player::yd + (curtime - lastupdate) * 30.0 * Player::yd;
+	zpos = Player::pos.z - Player::zd + (curtime - lastupdate) * 30.0 * Player::zd;
 
 	if (!bagOpened) {
 		//转头！你治好了我多年的颈椎病！
@@ -950,12 +948,12 @@ void render() {
 		if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
 	}
 
-	Player::cxt = getchunkpos((int)Player::xpos);
-	Player::cyt = getchunkpos((int)Player::ypos);
-	Player::czt = getchunkpos((int)Player::zpos);
+	Player::cxt = getchunkpos((int)Player::pos.x);
+	Player::cyt = getchunkpos((int)Player::pos.y);
+	Player::czt = getchunkpos((int)Player::pos.z);
 
 	//更新区块VBO
-	World::sortChunkBuildRenderList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
+	World::sortChunkBuildRenderList(RoundInt(Player::pos.x), RoundInt(Player::pos.y), RoundInt(Player::pos.z));
 	int brl = World::chunkBuildRenders > World::MaxChunkRenders ? World::MaxChunkRenders : World::chunkBuildRenders;
 	for (int i = 0; i < brl; i++) {
 		int ci = World::chunkBuildRenderList[i][1];
@@ -1102,7 +1100,7 @@ void render() {
 		glLoadIdentity();
 		glRotated(plookupdown, 1, 0, 0);
 		glRotated(360.0 - pheading, 0, 1, 0);
-		glTranslated(-Player::xpos, -Player::ypos - Player::height - Player::heightExt, -Player::zpos);
+		glTranslated(-Player::pos.x, -Player::pos.y - Player::height - Player::heightExt, -Player::pos.z);
 
 		Hitbox::renderAABB(Player::playerbox, 1.0f, 1.0f, 1.0f, 1);
 		Hitbox::renderAABB(Hitbox::Expand(Player::playerbox, Player::xd, Player::yd, Player::zd), 1.0f, 1.0f, 1.0f, 1);
@@ -1493,11 +1491,11 @@ void drawGUI() {
 		ss << "Gliding Enabled:" << boolstr(Player::Glide);
 		debugText(ss.str()); ss.str("");
 
-		ss << "Xpos:" << Player::xpos;
+		ss << "Xpos:" << Player::pos.x;
 		debugText(ss.str()); ss.str("");
-		ss << "Ypos:" << Player::ypos;
+		ss << "Ypos:" << Player::pos.y;
 		debugText(ss.str()); ss.str("");
-		ss << "Zpos:" << Player::zpos;
+		ss << "Zpos:" << Player::pos.z;
 		debugText(ss.str()); ss.str("");
 		ss << "Direction:" << Player::heading;
 		debugText(ss.str()); ss.str("");

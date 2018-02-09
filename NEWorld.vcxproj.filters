@@ -63,6 +63,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source\Math">
+      <UniqueIdentifier>{0e8e4308-5ed0-4e43-b52b-c195fe07f303}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Object.h">
@@ -121,12 +124,6 @@
     </ClInclude>
     <ClInclude Include="include\Netycat\include\Netycat\Netycat.h">
       <Filter>Netycat</Filter>
-    </ClInclude>
-    <ClInclude Include="source\GUI.h">
-      <Filter>源代码\GUI</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Menus.h">
-      <Filter>源代码\GUI</Filter>
     </ClInclude>
     <ClInclude Include="source\StdInclude.h">
       <Filter>Source\Common</Filter>
@@ -209,12 +206,6 @@
     <ClInclude Include="source\FunctionsKit.h">
       <Filter>Source\Common</Filter>
     </ClInclude>
-    <ClInclude Include="source\Mat4.h">
-      <Filter>Source\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Vec3.h">
-      <Filter>Source\Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="source\FrustumTest.h">
       <Filter>Source\Renderer</Filter>
     </ClInclude>
@@ -231,6 +222,14 @@
     </ClInclude>
     <ClInclude Include="source\Menus.h">
       <Filter>Source\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="source\GUI.h" />
+    <ClInclude Include="source\Menus.h" />
+    <ClInclude Include="source\Vec3.h">
+      <Filter>Source\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Mat4.h">
+      <Filter>Source\Math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -275,9 +274,6 @@
     </ClCompile>
     <ClCompile Include="include\Netycat\src\Netycat\Core\Socket.cpp">
       <Filter>Netycat</Filter>
-    </ClCompile>
-    <ClCompile Include="source\GUI.cpp">
-      <Filter>源代码\GUI</Filter>
     </ClCompile>
     <ClCompile Include="source\RenderOptionsMenu.cpp">
       <Filter>Source\GUI\Menus</Filter>
@@ -383,6 +379,9 @@
     </ClCompile>
     <ClCompile Include="source\GUI.cpp">
       <Filter>Source\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GUI.cpp">
+      <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

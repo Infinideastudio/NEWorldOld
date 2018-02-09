@@ -8,7 +8,7 @@ extern map<SkinID, pair<VBOID, vtxCount>> playerSkins;
 class OnlinePlayer : public Object {
 public:
 	OnlinePlayer(double x, double y, double z, string name, onlineid onlineID, SkinID skinID, double lookupdown, double heading) :
-		Object(x, y, z), _name(name), _onlineID(onlineID), _skinID(skinID), _lookupdown(lookupdown), _heading(heading) {}
+		Object(Vec3d(x, y, z)), _name(name), _onlineID(onlineID), _skinID(skinID), _lookupdown(lookupdown), _heading(heading) {}
 	
 	OnlinePlayer(PlayerPacket& p) :
 		OnlinePlayer(p.x, p.y, p.z, p.name, p.onlineID, p.skinID, p.lookupdown, p.heading) {}
