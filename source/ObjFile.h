@@ -7,7 +7,7 @@
 
 class Obj {
 public:
-    void loadFromFile(const std::string& filename);
+    void loadFromFile(const std::string& filename, float scale);
     std::pair<VBOID, int> buildRender();
     
 private:

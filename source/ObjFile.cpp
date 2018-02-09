@@ -5,7 +5,7 @@
 #include <utility>
 #include <string.h>
 
-void Obj::loadFromFile(const std::string& filename) {
+void Obj::loadFromFile(const std::string& filename, float scale) {
 	mVertexes.clear();
 	mTexcoords.clear();
 	mNormals.clear();
@@ -39,10 +39,10 @@ void Obj::loadFromFile(const std::string& filename) {
             ss >> vind1 >> tind1 >> nind1 >> vind2 >> tind2 >> nind2 >> vind3 >> tind3 >> nind3;
             vind1--; tind1--; nind1--; vind2--; tind2--; nind2--; vind3--; tind3--; nind3--;
 
-			mVertexes.push_back(vertexes[vind1]);
-			mVertexes.push_back(vertexes[vind2]);
-			mVertexes.push_back(vertexes[vind3]);
-			mVertexes.push_back(vertexes[vind3]);
+			mVertexes.push_back(vertexes[vind1] * scale);
+			mVertexes.push_back(vertexes[vind2] * scale);
+			mVertexes.push_back(vertexes[vind3] * scale);
+			mVertexes.push_back(vertexes[vind3] * scale);
 
 			mTexcoords.push_back(texcoords[tind1]);
 			mTexcoords.push_back(texcoords[tind2]);

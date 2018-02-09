@@ -24,6 +24,7 @@
 #include "Command.h"
 #include "ModLoader.h"
 #include "Setup.h"
+#include "ObjFile.h"
 
 bool loadGame();
 void saveGame();
@@ -1034,6 +1035,28 @@ void render() {
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
 	glDisable(GL_CULL_FACE);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 2);
+
+	// TEMP CODE
+	static bool objLoaded = false;
+	static Obj flan;
+	static TextureID flantex;
+	static std::pair<VBOID, int> vbo;
+
+	if (!objLoaded) {
+		flan.loadFromFile("./Models/FlandreScarlet.obj", 1.0f / 16.0f);
+		flantex = Textures::LoadRGBTexture("./Textures/FlandreScarlet.bmp");
+		vbo = flan.buildRender();
+		objLoaded = true;
+	}
+
+	glBindTexture(GL_TEXTURE_2D, flantex);
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glTranslatef(0.0f - xpos, 160.0f - ypos, 0.0f - zpos);
+	Renderer::renderbuffer(vbo.first, vbo.second, 2, 3, 3, 1);
+	glPopMatrix();
+	// END OF TEMP CODE
+
 	if (Renderer::AdvancedRender) Renderer::DisableDefferedRendering();
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);

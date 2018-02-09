@@ -230,6 +230,9 @@
     <ClInclude Include="source\Mat4.h">
       <Filter>Source\Math</Filter>
     </ClInclude>
+    <ClInclude Include="source\ObjFile.h">
+      <Filter>Source\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -381,6 +384,9 @@
     </ClCompile>
     <ClCompile Include="source\GUI.cpp">
       <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ObjFile.cpp">
+      <Filter>Source\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

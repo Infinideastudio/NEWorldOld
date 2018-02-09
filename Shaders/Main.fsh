@@ -32,7 +32,7 @@ const mat4 Normalization = mat4(
 );
 
 const float MaxBlockID = 4096.0;
-const int WaterID = 10, GlowStoneID = 12;
+const int WaterID = 10, GlowStoneID = 12, FlanID = 233;
 
 const int RepeatLength = 1024;
 
@@ -155,7 +155,7 @@ void main() {
 	
 	vec4 color = gl_Color;
 	
-	if (blockID == GlowStoneID) {
+	if (blockID == GlowStoneID || blockID == FlanID) {
 		luminance = 1.0;
 		color = vec4(1.0);
 	}

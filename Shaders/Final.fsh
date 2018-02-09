@@ -308,5 +308,9 @@ void main() {
 	color = vec4(vec3(gs,gs,gs), color.a);
 	
 	gl_FragColor = color;//vec4(mix(getSkyColor(viewDir).rgb, color.rgb, clamp((RenderDistance - dist) / 32.0, 0.0, 1.0)), color.a);
-	gl_FragDepth = screenSpacePosition.z * 0.5 + 0.5;
+	
+	float finalDepth = screenSpacePosition.z;
+	if (blockID == 0) finalDepth = 1.0;
+	
+	gl_FragDepth = finalDepth * 0.5 + 0.5;
 }
