@@ -212,7 +212,6 @@
     <ClInclude Include="source\Frustum.h">
       <Filter>Source\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h" />
     <ClInclude Include="source\Camera.h" />
     <ClInclude Include="source\FrameBuffer.h">
       <Filter>Source\Renderer</Filter>

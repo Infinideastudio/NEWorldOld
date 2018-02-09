@@ -5,7 +5,7 @@ namespace Blocks {
 	enum BlockID {
 		AIR, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
-		TNT, BLOCK_DEF_END
+		TNT, DOORUP,DOORDOWN, BLOCK_DEF_END
 	};
 	const block NONEMPTY = 1;
 
@@ -35,7 +35,7 @@ namespace Blocks {
 	};
 
 	const SingleBlock blockData[BLOCK_DEF_END + 1] = {
-		//          方块名称          固体     不透明    半透明  可以爆炸
+		//          方块名称         固体     不透明    半透明  可以爆炸
 		SingleBlock("Air", false, false, false, false),
 		SingleBlock("Rock", true, true, false, false),
 		SingleBlock("Grass", true, true, false, false),
@@ -55,6 +55,8 @@ namespace Blocks {
 		SingleBlock("Coal Block", true, true, false, false),
 		SingleBlock("Iron Block", true, true, false, false),
 		SingleBlock("TNT", true, true, false, true),
+		SingleBlock("Door Up", true, true, false, false),
+		SingleBlock("Door Down", true, true, false, false),
 		SingleBlock("Null Block", true, true, false, false)
 	};
 }

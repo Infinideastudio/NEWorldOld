@@ -26,7 +26,9 @@ namespace Textures {
         { ICE,ICE,ICE },
         { COAL,COAL,COAL },
         { IRON,IRON,IRON },
-        { TNT,TNT,TNT }
+        { TNT,TNT,TNT },
+		{ DOORUP,DOORUP,DOORUP },
+		{ DOORDOWN,DOORDOWN,DOORDOWN }
     };
 
     void Init() {

@@ -266,7 +266,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Camera.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Buffer.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\BufferCondition.h" />
     <ClInclude Include="include\Netycat\include\Netycat\Core\Core.h" />

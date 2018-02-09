@@ -394,6 +394,8 @@ void registerCommands() {
 		Player::inventory[1][5] = 16; Player::inventoryAmount[1][5] = 255;
 		Player::inventory[1][6] = 17; Player::inventoryAmount[1][6] = 255;
 		Player::inventory[1][7] = 18; Player::inventoryAmount[1][7] = 255;
+		Player::inventory[1][8] = 19; Player::inventoryAmount[1][8] = 255;
+		Player::inventory[1][9] = 20; Player::inventoryAmount[1][9] = 255;
 		return true;
 	}));
 	commands.push_back(Command("/time", [](const vector<string>& command) {
