@@ -1,14 +1,10 @@
-#version 110
+#version 120
 
 ##NEWORLD_SHADER_DEFINES MergeFace MERGE_FACE
 
-#ifndef MERGE_FACE
 uniform sampler2D Texture;
-#else
-uniform sampler3D Texture3D;
-#endif
 uniform sampler2DShadow DepthTexture;
-uniform sampler2D NoiseTexture;
+uniform sampler3D Texture3D;
 uniform mat4 ShadowMapProjection;
 uniform mat4 ShadowMapModelView;
 uniform mat4 Translation;
@@ -139,7 +135,6 @@ void main() {
 	if (dot(normal, SunlightDirection) > 0.0) sunlight = 0.0;
 	else if (shadowCoords.x >= 0.0 && shadowCoords.x <= 1.0 &&
 			 shadowCoords.y >= 0.0 && shadowCoords.y <= 1.0 && shadowCoords.z <= 1.0) {
-		/*
 		float xpos = shadowCoords.x * ShadowMapResolution, ypos = shadowCoords.y * ShadowMapResolution, depth = shadowCoords.z;
 		float x0 = float(int(xpos)), y0 = float(int(ypos));
 		float x1 = x0 + 1.0, y1 = y0 + 1.0;
@@ -149,9 +144,6 @@ void main() {
 		float texel11 = shadow2D(DepthTexture, vec3(x1 / ShadowMapResolution, y1 / ShadowMapResolution, depth)).z;
 		float w00 = (x1 - xpos) * (y1 - ypos), w01 = (x1 - xpos) * (ypos - y0), w10 = (xpos - x0) * (y1 - ypos), w11 = (xpos - x0) * (ypos - y0);
 		sunlight = texel00 * w00 + texel01 * w01 + texel10 * w10 + texel11 * w11;
-		*/
-		
-		sunlight = shadow2D(DepthTexture, shadowCoords.xyz).z;
 		
 		float factor = clamp(min(distToEdge(shadowCoords.xy) * 10.0, (ShadowDistance - dist) / ShadowDistance * 10.0), 0.0, 1.0);
 		sunlight = mix(0.8, sunlight, factor);
