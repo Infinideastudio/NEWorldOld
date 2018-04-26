@@ -1,4 +1,4 @@
-#version 120
+#version 110
 
 ##NEWORLD_SHADER_DEFINES MergeFace MERGE_FACE
 
@@ -150,9 +150,19 @@ void main() {
 	}
 	else sunlight = 0.8;
 	
-	luminance = clamp((-dot(normal, SunlightDirection) * 0.5 + 0.5) * 0.3 + 0.4 + sunlight * 0.5, 0.0, 1.1);
+	luminance = clamp(-dot(normal, SunlightDirection), 0.0, 1.0) * sunlight * 0.8 + 0.4;
 	
-	vec4 color = gl_Color;
+	// Reinherd tonemap
+	//luminance /= (luminance + 1.0);
+	//luminance *= 1.2;
+	
+	//luminance = 0.0;
+	//vec3 cameraSpaceRevDir = (gl_ModelViewMatrix * vec4(reflect(normalize((Translation * vertCoords).xyz), normal), 0.0)).xyz;
+	//luminance += clamp(dot(cameraSpaceRevDir, vec3(0.0, 0.0, 1.0)) * 1.2, 0.0, 1.2) * 1.0;
+	//vec3 cameraSpaceNormal = (gl_ModelViewMatrix * vec4(normal, 0.0)).xyz;
+	//luminance += clamp(dot(cameraSpaceNormal, vec3(0.0, 0.0, 1.0)) * 1.0, 0.0, 1.0) * 1.0;
+	
+	vec4 color = mix(gl_Color, vec4(1.0), clamp(sunlight - 0.2, 0.0, 1.0));
 	
 	if (blockID == GlowStoneID) {
 		luminance = 1.0;
@@ -167,8 +177,6 @@ void main() {
 #endif
 	
 	color *= vec4(texel.rgb * luminance, texel.a);
-	
-	// Fog calculation & Final color
 	
 	vec3 finalNormal = normal;
 	
