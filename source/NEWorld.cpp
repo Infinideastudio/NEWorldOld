@@ -175,7 +175,8 @@ main_menu:
 
 	//这才是游戏开始!
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	mxl = mx; myl = my;
+	mxl = mx;
+	myl = my;
 	printf("[Console][Game]");
 	printf("Main loop started\n");
 	updateThreadRun = true;
@@ -208,7 +209,8 @@ main_menu:
 				glEnable(GL_CULL_FACE);
 				setupNormalFog();
 				glfwGetCursorPos(MainWindow, &mx, &my);
-				mxl = mx; myl = my;
+				mxl = mx;
+				myl = my;
 			}
 			updateThreadPaused = false;
 		}
@@ -322,16 +324,21 @@ bool loadGame() {
 void registerCommands() {
 	commands.push_back(Command("/give", [](const vector<string>& command) {
 		if (command.size() != 3) return false;
-		item itemid; conv(command[1], itemid);
-		short amount; conv(command[2], amount);
+		item itemid;
+		conv(command[1], itemid);
+		short amount;
+		conv(command[2], amount);
 		Player::addItem(itemid, amount);
 		return true;
 	}));
 	commands.push_back(Command("/tp", [](const vector<string>& command) {
 		if (command.size() != 4) return false;
-		double x; conv(command[1], x);
-		double y; conv(command[2], y);
-		double z; conv(command[3], z);
+		double x;
+		conv(command[1], x);
+		double y;
+		conv(command[2], y);
+		double z;
+		conv(command[3], z);
 		Player::xpos = x;
 		Player::ypos = y;
 		Player::zpos = z;
@@ -344,61 +351,92 @@ void registerCommands() {
 	}));
 	commands.push_back(Command("/setblock", [](const vector<string>& command) {
 		if (command.size() != 5) return false;
-		int x; conv(command[1], x);
-		int y; conv(command[2], y);
-		int z; conv(command[3], z);
-		block b; conv(command[4], b);
+		int x;
+		conv(command[1], x);
+		int y;
+		conv(command[2], y);
+		int z;
+		conv(command[3], z);
+		block b;
+		conv(command[4], b);
 		World::setblock(x, y, z, b);
 		return true;
 	}));
 	commands.push_back(Command("/tree", [](const vector<string>& command) {
 		if (command.size() != 4) return false;
-		int x; conv(command[1], x);
-		int y; conv(command[2], y);
-		int z; conv(command[3], z);
+		int x;
+		conv(command[1], x);
+		int y;
+		conv(command[2], y);
+		int z;
+		conv(command[3], z);
 		World::buildtree(x, y, z);
 		return true;
 	}));
 	commands.push_back(Command("/explode", [](const vector<string>& command) {
 		if (command.size() != 5) return false;
-		int x; conv(command[1], x);
-		int y; conv(command[2], y);
-		int z; conv(command[3], z);
-		int r; conv(command[4], r);
+		int x;
+		conv(command[1], x);
+		int y;
+		conv(command[2], y);
+		int z;
+		conv(command[3], z);
+		int r;
+		conv(command[4], r);
 		World::explode(x, y, z, r);
 		return true;
 	}));
 	commands.push_back(Command("/gamemode", [](const vector<string>& command) {
 		if (command.size() != 2) return false;
-		int mode; conv(command[1], mode);
+		int mode;
+		conv(command[1], mode);
 		Player::changeGameMode(mode);
 		return true;
 	}));
 	commands.push_back(Command("/kit", [](const vector<string>& command) {
 		if (command.size() != 1) return false;
-		Player::inventory[0][0] = 1; Player::inventoryAmount[0][0] = 255;
-		Player::inventory[0][1] = 2; Player::inventoryAmount[0][1] = 255;
-		Player::inventory[0][2] = 3; Player::inventoryAmount[0][2] = 255;
-		Player::inventory[0][3] = 4; Player::inventoryAmount[0][3] = 255;
-		Player::inventory[0][4] = 5; Player::inventoryAmount[0][4] = 255;
-		Player::inventory[0][5] = 6; Player::inventoryAmount[0][5] = 255;
-		Player::inventory[0][6] = 7; Player::inventoryAmount[0][6] = 255;
-		Player::inventory[0][7] = 8; Player::inventoryAmount[0][7] = 255;
-		Player::inventory[0][8] = 9; Player::inventoryAmount[0][8] = 255;
-		Player::inventory[0][9] = 10; Player::inventoryAmount[0][9] = 255;
-		Player::inventory[1][0] = 11; Player::inventoryAmount[1][0] = 255;
-		Player::inventory[1][1] = 12; Player::inventoryAmount[1][1] = 255;
-		Player::inventory[1][2] = 13; Player::inventoryAmount[1][2] = 255;
-		Player::inventory[1][3] = 14; Player::inventoryAmount[1][3] = 255;
-		Player::inventory[1][4] = 15; Player::inventoryAmount[1][4] = 255;
-		Player::inventory[1][5] = 16; Player::inventoryAmount[1][5] = 255;
-		Player::inventory[1][6] = 17; Player::inventoryAmount[1][6] = 255;
-		Player::inventory[1][7] = 18; Player::inventoryAmount[1][7] = 255;
+		Player::inventory[0][0] = 1;
+		Player::inventoryAmount[0][0] = 255;
+		Player::inventory[0][1] = 2;
+		Player::inventoryAmount[0][1] = 255;
+		Player::inventory[0][2] = 3;
+		Player::inventoryAmount[0][2] = 255;
+		Player::inventory[0][3] = 4;
+		Player::inventoryAmount[0][3] = 255;
+		Player::inventory[0][4] = 5;
+		Player::inventoryAmount[0][4] = 255;
+		Player::inventory[0][5] = 6;
+		Player::inventoryAmount[0][5] = 255;
+		Player::inventory[0][6] = 7;
+		Player::inventoryAmount[0][6] = 255;
+		Player::inventory[0][7] = 8;
+		Player::inventoryAmount[0][7] = 255;
+		Player::inventory[0][8] = 9;
+		Player::inventoryAmount[0][8] = 255;
+		Player::inventory[0][9] = 10;
+		Player::inventoryAmount[0][9] = 255;
+		Player::inventory[1][0] = 11;
+		Player::inventoryAmount[1][0] = 255;
+		Player::inventory[1][1] = 12;
+		Player::inventoryAmount[1][1] = 255;
+		Player::inventory[1][2] = 13;
+		Player::inventoryAmount[1][2] = 255;
+		Player::inventory[1][3] = 14;
+		Player::inventoryAmount[1][3] = 255;
+		Player::inventory[1][4] = 15;
+		Player::inventoryAmount[1][4] = 255;
+		Player::inventory[1][5] = 16;
+		Player::inventoryAmount[1][5] = 255;
+		Player::inventory[1][6] = 17;
+		Player::inventoryAmount[1][6] = 255;
+		Player::inventory[1][7] = 18;
+		Player::inventoryAmount[1][7] = 255;
 		return true;
 	}));
 	commands.push_back(Command("/time", [](const vector<string>& command) {
 		if (command.size() != 2) return false;
-		int time; conv(command[1], time);
+		int time;
+		conv(command[1], time);
 		if (time < 0 || time > gameTimeMax) return false;
 		gametime = time;
 		return true;
@@ -469,7 +507,8 @@ void updategame() {
 			World::chunk* c = World::AddChunk(cx, cy, cz);
 			c->Load(false);
 			if (c->Empty) {
-				c->Unload(); World::DeleteChunk(cx, cy, cz);
+				c->Unload();
+				World::DeleteChunk(cx, cy, cz);
 				World::cpArray.setChunkPtr(cx, cy, cz, World::EmptyChunkPtr);
 			}
 		}
@@ -489,23 +528,26 @@ void updategame() {
 		int cx = World::chunks[i]->cx;
 		int cy = World::chunks[i]->cy;
 		int cz = World::chunks[i]->cz;
-		x = int(rnd() * 16); gx = x + cx * 16;
-		y = int(rnd() * 16); gy = y + cy * 16;
-		z = int(rnd() * 16); gz = z + cz * 16;
+		x = int(rnd() * 16);
+		gx = x + cx * 16;
+		y = int(rnd() * 16);
+		gy = y + cy * 16;
+		z = int(rnd() * 16);
+		gz = z + cz * 16;
 		if (World::chunks[i]->getblock(x, y, z) == Blocks::DIRT &&
-		        World::getblock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR && (
-		            World::getblock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx, gy, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx, gy, gz - 1, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx + 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx - 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx, gy + 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx, gy + 1, gz - 1, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx + 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-		            World::getblock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)) {
+				World::getblock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR && (
+					World::getblock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx, gy, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx, gy, gz - 1, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx + 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx - 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx, gy + 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx, gy + 1, gz - 1, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx + 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+					World::getblock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)) {
 			//长草
 			World::chunks[i]->setblock(x, y, z, Blocks::GRASS);
 			World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
@@ -520,7 +562,9 @@ void updategame() {
 
 	//判断选中的方块
 	double lx, ly, lz, lxl, lyl, lzl;
-	lx = Player::xpos; ly = Player::ypos + Player::height + Player::heightExt; lz = Player::zpos;
+	lx = Player::xpos;
+	ly = Player::ypos + Player::height + Player::heightExt;
+	lz = Player::zpos;
 
 	sel = false;
 	selx = sely = selz = selbx = selby = selbz = selcx = selcy = selcz = selb = selbr = 0;
@@ -529,7 +573,9 @@ void updategame() {
 
 		//从玩家位置发射一条线段
 		for (int i = 0; i < selectPrecision * selectDistance; i++) {
-			lxl = lx; lyl = ly; lzl = lz;
+			lxl = lx;
+			lyl = ly;
+			lzl = lz;
 
 			//线段延伸
 			lx += sin(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
@@ -539,15 +585,25 @@ void updategame() {
 			//碰到方块
 			if (BlockInfo(World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
 				int x, y, z, xl, yl, zl;
-				x = RoundInt(lx); y = RoundInt(ly); z = RoundInt(lz);
-				xl = RoundInt(lxl); yl = RoundInt(lyl); zl = RoundInt(lzl);
+				x = RoundInt(lx);
+				y = RoundInt(ly);
+				z = RoundInt(lz);
+				xl = RoundInt(lxl);
+				yl = RoundInt(lyl);
+				zl = RoundInt(lzl);
 
-				selx = x; sely = y; selz = z;
+				selx = x;
+				sely = y;
+				selz = z;
 				sel = true;
 
 				//找方块所在区块及位置
-				selcx = getchunkpos(x); selcy = getchunkpos(y); selcz = getchunkpos(z);
-				selbx = getblockpos(x); selby = getblockpos(y); selbz = getblockpos(z);
+				selcx = getchunkpos(x);
+				selcy = getchunkpos(y);
+				selcz = getchunkpos(z);
+				selbx = getblockpos(x);
+				selby = getblockpos(y);
+				selbz = getblockpos(z);
 
 				if (World::chunkOutOfBound(selcx, selcy, selcz) == false) {
 					World::chunk* cp = World::getChunkPtr(selcx, selcy, selcz);
@@ -558,9 +614,9 @@ void updategame() {
 				selb = World::getblock(x, y, z);
 				if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
 					Particles::throwParticle(selb,
-					                         float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
-					                         float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
-					                         float(rnd() * 0.01f + 0.02f), int(rnd() * 30) + 30);
+											 float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
+											 float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
+											 float(rnd() * 0.01f + 0.02f), int(rnd() * 30) + 30);
 
 					if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
 					else seldes += 5.0;
@@ -569,9 +625,9 @@ void updategame() {
 						Player::addItem(selb);
 						for (int j = 1; j <= 25; j++) {
 							Particles::throwParticle(selb,
-							                         float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
-							                         float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
-							                         float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
+													 float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
+													 float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
+													 float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
 						}
 						World::pickblock(x, y, z);
 					}
@@ -729,7 +785,7 @@ void updategame() {
 			//各种设置切换
 			if (isPressed(GLFW_KEY_F1)) {
 				Player::changeGameMode(Player::gamemode == Player::Creative ?
-				                       Player::Survival : Player::Creative);
+									   Player::Survival : Player::Creative);
 			}
 			if (isPressed(GLFW_KEY_F2)) shouldGetScreenshot = true;
 			if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
@@ -792,9 +848,11 @@ void updategame() {
 		bagOpened = !bagOpened;
 		bagAnimTimer = timer();
 		if (!bagOpened) {
-			glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			glfwGetCursorPos(MainWindow, &mx, &my);
-			mxl = mx; myl = my; mwl = mw; mbl = mb;
+			mxl = mx;
+			myl = my;
+			mwl = mw;
+			mbl = mb;
 		} else {
 			shouldGetThumbnail = true;
 			Player::xlookspeed = Player::ylookspeed = 0.0;
@@ -899,7 +957,8 @@ void render() {
 	}
 	*/
 
-	mxl = mx; myl = my;
+	mxl = mx;
+	myl = my;
 	glfwGetCursorPos(MainWindow, &mx, &my);
 
 	if (Player::Running) {
@@ -979,7 +1038,7 @@ void render() {
 
 	//daylight = clamp((1.0 - cos((double)gametime / gameTimeMax * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
 	//Renderer::sunlightXrot = 90 * daylight;
-	
+
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -989,8 +1048,7 @@ void render() {
 		glDisable(GL_TEXTURE_2D);
 		glEnable(GL_TEXTURE_3D);
 		glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
-	}
-	else glBindTexture(GL_TEXTURE_2D, BlockTextures);
+	} else glBindTexture(GL_TEXTURE_2D, BlockTextures);
 
 	if (Renderer::AdvancedRender) {
 		// Build shadow map
@@ -1067,7 +1125,7 @@ void render() {
 		glDisable(GL_TEXTURE_3D);
 		glEnable(GL_TEXTURE_2D);
 	}
-	
+
 	if (DebugMergeFace) {
 		glEnable(GL_LINE_SMOOTH);
 		glPolygonMode(GL_FRONT, GL_FILL);
@@ -1128,10 +1186,14 @@ void render() {
 		double tcX = Textures::getTexcoordX(Blocks::WATER, 1);
 		double tcY = Textures::getTexcoordY(Blocks::WATER, 1);
 		glBegin(GL_QUADS);
-		glTexCoord2d(tcX, tcY + 1 / 8.0); glVertex2i(0, 0);
-		glTexCoord2d(tcX, tcY); glVertex2i(0, windowheight);
-		glTexCoord2d(tcX + 1 / 8.0, tcY); glVertex2i(windowwidth, windowheight);
-		glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0); glVertex2i(windowwidth, 0);
+		glTexCoord2d(tcX, tcY + 1 / 8.0);
+		glVertex2i(0, 0);
+		glTexCoord2d(tcX, tcY);
+		glVertex2i(0, windowheight);
+		glTexCoord2d(tcX + 1 / 8.0, tcY);
+		glVertex2i(windowwidth, windowheight);
+		glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
+		glVertex2i(windowwidth, 0);
 		glEnd();
 	}
 	if (GUIrenderswitch) {
@@ -1476,41 +1538,57 @@ void drawGUI() {
 		std::stringstream ss;
 		//ss << std::fixed << std::setprecision(4);
 		ss << "NEWorld v" << VERSION << " [OpenGL " << GLVersionMajor << "." << GLVersionMinor << "|" << GLVersionRev << "]";
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Fps:" << fps << "|" << "Ups:" << ups;
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 
 		ss << "Flying:" << boolstr(Player::Flying);
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Debug Mode:" << boolstr(DebugMode);
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		if (Renderer::AdvancedRender) {
 			ss << "Shadow View:" << boolstr(DebugShadow);
-			debugText(ss.str()); ss.str("");
+			debugText(ss.str());
+			ss.str("");
 		}
 		ss << "Cross Wall:" << boolstr(Player::CrossWall);
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Gliding Enabled:" << boolstr(Player::Glide);
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 
 		ss << "Xpos:" << Player::xpos;
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Ypos:" << Player::ypos;
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Zpos:" << Player::zpos;
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Direction:" << Player::heading;
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Head:" << Player::lookupdown;
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "On ground:" << boolstr(Player::OnGround);
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Jump speed:" << Player::jump;
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Near wall:" << boolstr(Player::NearWall);
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "In water:" << boolstr(Player::inWater);
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		int h = gametime / (30 * 60);
 		int m = gametime % (30 * 60) / 30;
 		int s = gametime % 30 * 2;
@@ -1519,43 +1597,57 @@ void drawGUI() {
 		   << (m < 10 ? "0" : "") << m << ":"
 		   << (s < 10 ? "0" : "") << s
 		   << " (" << gametime << "/" << gameTimeMax << ")";
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 
 		ss << "Gliding:" << boolstr(Player::glidingNow);
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Energy:" << Player::glidingEnergy;
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << "Speed:" << Player::glidingSpeed;
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 
 		ss << World::loadedChunks << " chunks loaded";
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << WorldRenderer::RenderChunkList.size() << " chunks rendered";
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << World::unloadedChunks << " chunks unloaded";
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << World::updatedChunks << " chunks updated";
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 
 		if (multiplayer) {
 			MutexLock(Network::mutex);
 			ss << Network::getRequestCount() << "/" << networkRequestMax << " network requests";
-			debugText(ss.str()); ss.str("");
+			debugText(ss.str());
+			ss.str("");
 			MutexUnlock(Network::mutex);
 		}
 
 		ss << "GLError: " << glGetError();
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		ss << c_getChunkPtrFromCPA << " CPA requests";
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << c_getChunkPtrFromSearch << " search requests";
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << c_getHeightFromHMap << " heightmap requests";
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 		ss << c_getHeightFromWorldGen << " worldgen requests";
-		debugText(ss.str()); ss.str("");
+		debugText(ss.str());
+		ss.str("");
 #endif
 		debugText("", true);
 	} else {
@@ -1630,45 +1722,69 @@ void renderDestroy(float level, int x, int y, int z) {
 	else glBindTexture(GL_TEXTURE_2D, DestroyImage[10]);
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(0.0f, 0.0f);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 0.0f);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(1.0f, 0.0f);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 0.0f);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 0.0f);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(0.0f, 0.0f);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 0.0f);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(1.0f, 0.0f);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 0.0f);
+	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 0.0f);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f);
+	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 1.0f);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 1.0f);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
+	glTexCoord2f(0.0f, 0.0f);
+	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
+	glTexCoord2f(1.0f, 0.0f);
+	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
 	glEnd();
 }
 
@@ -1679,10 +1795,14 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 		else glBindTexture(GL_TEXTURE_2D, tex_unselect);
 		glColor4f(1.0f, 1.0f, 1.0f, alpha);
 		glBegin(GL_QUADS);
-		glTexCoord2f(0.0, 1.0); glVertex2d(xbase + i * (32 + spac), ybase);
-		glTexCoord2f(0.0, 0.0); glVertex2d(xbase + i * (32 + spac) + 32, ybase);
-		glTexCoord2f(1.0, 0.0); glVertex2d(xbase + i * (32 + spac) + 32, ybase + 32);
-		glTexCoord2f(1.0, 1.0); glVertex2d(xbase + i * (32 + spac), ybase + 32);
+		glTexCoord2f(0.0, 1.0);
+		glVertex2d(xbase + i * (32 + spac), ybase);
+		glTexCoord2f(0.0, 0.0);
+		glVertex2d(xbase + i * (32 + spac) + 32, ybase);
+		glTexCoord2f(1.0, 0.0);
+		glVertex2d(xbase + i * (32 + spac) + 32, ybase + 32);
+		glTexCoord2f(1.0, 1.0);
+		glVertex2d(xbase + i * (32 + spac), ybase + 32);
 		glEnd();
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		if (Player::inventory[row][i] != Blocks::AIR) {
@@ -1746,8 +1866,10 @@ void drawBag() {
 			for (int i = 0; i < 4; i++) {
 				for (int j = 0; j < 10; j++) {
 					if (mx >= j * (32 + 8) + leftp && mx <= j * (32 + 8) + 32 + leftp &&
-					        my >= i * (32 + 8) + upp && my <= i * (32 + 8) + 32 + upp) {
-						csi = si = i; csj = sj = j; sf = 1;
+							my >= i * (32 + 8) + upp && my <= i * (32 + 8) + 32 + upp) {
+						csi = si = i;
+						csj = sj = j;
+						sf = 1;
 						if (mousebl == 0 && mouseb == 1 && indexselected == Player::inventory[i][j]) {
 							if (Player::inventoryAmount[i][j] + Amountselected <= 255) {
 								Player::inventoryAmount[i][j] += Amountselected;
@@ -1825,6 +1947,8 @@ void drawBag() {
 		mousebl = mouseb;
 	} else {
 
+		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
 		glEnable(GL_TEXTURE_2D);
 		glDisable(GL_CULL_FACE);
 		if (curtime - bagAnimTimer <= bagAnimDuration) {
@@ -1877,7 +2001,8 @@ template<typename T>
 void loadoption(std::map<string, string> &m, const char* name, T &value) {
 	if (m.find(name) == m.end()) return;
 	std::stringstream ss;
-	ss << m[name]; ss >> value;
+	ss << m[name];
+	ss >> value;
 }
 
 void loadOptions() {
