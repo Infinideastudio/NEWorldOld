@@ -49,7 +49,7 @@ namespace Renderer {
 	//unsigned int Buffers[3];
 	bool AdvancedRender;
 	int ShadowRes = 4096;
-	int MaxShadowDist = 4;
+	int MaxShadowDist = 6;
 	int shadowdist;
 	float sunlightXrot, sunlightYrot;
 	vector<Shader> shaders;
@@ -71,7 +71,10 @@ namespace Renderer {
 	}
 
 	void Init(int tc, int cc, int nc, int ac) {
-		Texcoordc = tc; Colorc = cc; Normalc = nc; Attribc = ac;
+		Texcoordc = tc;
+		Colorc = cc;
+		Normalc = nc;
+		Attribc = ac;
 		if (VertexArray == nullptr) VertexArray = new float[ArraySize];
 		index = 0;
 		VA = VertexArray;
@@ -117,8 +120,8 @@ namespace Renderer {
 			if (buffer == 0) glGenBuffersARB(1, &buffer);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
 			glBufferDataARB(GL_ARRAY_BUFFER_ARB,
-			                Vertexes * ((Texcoordc + Colorc + Normalc + Attribc + 3) * sizeof(float)),
-			                VertexArray, GL_STATIC_DRAW_ARB);
+							Vertexes * ((Texcoordc + Colorc + Normalc + Attribc + 3) * sizeof(float)),
+							VertexArray, GL_STATIC_DRAW_ARB);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 		}
 	}
@@ -170,10 +173,10 @@ namespace Renderer {
 
 			const int OffsetX = 37, OffsetY = 17;
 			for (int x = 0; x < 256; x++) for (int y = 0; y < 256; y++) {
-				int x1 = (x + OffsetX) % 256, y1 = (y + OffsetY) % 256;
-				a[(y * 256 + x) * 4 + 2] = a[(y1 * 256 + x1) * 4];
-				a[(y * 256 + x) * 4 + 3] = a[(y1 * 256 + x1) * 4 + 1];
-			}
+					int x1 = (x + OffsetX) % 256, y1 = (y + OffsetY) % 256;
+					a[(y * 256 + x) * 4 + 2] = a[(y1 * 256 + x1) * 4];
+					a[(y * 256 + x) * 4 + 3] = a[(y1 * 256 + x1) * 4 + 1];
+				}
 
 			glGenTextures(1, &noiseTex);
 			glBindTexture(GL_TEXTURE_2D, noiseTex);
@@ -190,7 +193,7 @@ namespace Renderer {
 		mgf.insert("MergeFace");
 		if (VolumetricClouds) defines.insert("VolumetricClouds");
 
-		sunlightXrot = 30.0f;
+		sunlightXrot = 40.0f;
 		sunlightYrot = 60.0f;
 		shadowdist = min(MaxShadowDist, viewdistance);
 		shaders.reserve(5);
@@ -311,13 +314,13 @@ namespace Renderer {
 
 	void EnableDefferedRendering(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum, float gameTime) {
 		gBuffers.bindTarget(gWidth, gHeight);
-		
+
 		shadowdist = min(MaxShadowDist, viewdistance);
 		shadow.bindDepthTexture(1);
 		glActiveTextureARB(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, getNoiseTexture());
 		glActiveTextureARB(GL_TEXTURE0);
-		
+
 		//Enable shader
 		Shader& shader = shaders[MergeFace ? MergeFaceShader : MainShader];
 		bindShader(MergeFace ? MergeFaceShader : MainShader);
@@ -401,10 +404,14 @@ namespace Renderer {
 
 	void DrawFullscreen() {
 		glBegin(GL_QUADS);
-		glTexCoord2f(0.0f, 0.0f); glVertex2i(0, windowheight);
-		glTexCoord2f(1.0f, 0.0f); glVertex2i(windowwidth, windowheight);
-		glTexCoord2f(1.0f, 1.0f); glVertex2i(windowwidth, 0);
-		glTexCoord2f(0.0f, 1.0f); glVertex2i(0, 0);
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex2i(0, windowheight);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex2i(windowwidth, windowheight);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex2i(windowwidth, 0);
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex2i(0, 0);
 		glEnd();
 	}
 }

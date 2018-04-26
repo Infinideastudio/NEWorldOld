@@ -23,12 +23,16 @@ uniform vec3 PlayerPositionFrac;
 
 const float MaxBlockID = 4096.0;
 const int GlassID = 9, WaterID = 10, IceID = 15, IronID = 17;
-const int MaxIterations = 50, MaxNearIterations = 12;
-const float stepScale = 4.0;
-
 const int RepeatLength = 1024;
+
+// Water reflection
+const int MaxIterations = 50, MaxNearIterations = 12;
+const float StepScale = 4.0;
+
+// Volumetric clouds
 const vec3 CloudScale = vec3(100.0, 50.0, 100.0);
-const float CloudBottom = 160.0, CloudTop = 240.0, CloudTransition = 40.0;
+const float CloudBottom = 160.0, CloudTop = 240.0, CloudTransition = 40.0, CloudRangeMult = 2.0;
+const int CloudIterations = 16;
 const float CloudStep = 8.0;
 
 float xScale, yScale, xRange, yRange, blockIDf;
@@ -101,7 +105,7 @@ vec3 ssr(in vec3 org, in vec3 dir, in vec3 bgColor, bool underWater) {
 	
 	dir = normalize(dir);
 	
-	curr += dir * step * stepScale;
+	curr += dir * step * StepScale;
 	
 	for (int i = 0; i < MaxIterations; i++) {
 		vec2 texCoord = cameraSpaceToTextureCoords(curr).xy;
@@ -113,7 +117,7 @@ vec3 ssr(in vec3 org, in vec3 dir, in vec3 bgColor, bool underWater) {
 		if (currDist < 0.0 || currDist > RenderDistance) break;
 		
 		if (getBlockID(texCoord) != 0 && getBlockID(texCoord) != WaterID &&
-				pixelDist < currDist && (currDist - pixelDist < step * stepScale * 2.0 + 1.0 || underWater)) {
+				pixelDist < currDist && (currDist - pixelDist < step * StepScale * 2.0 + 1.0 || underWater)) {
 			found = true;
 			dir /= 2.0;
 			curr = last;
@@ -122,7 +126,7 @@ vec3 ssr(in vec3 org, in vec3 dir, in vec3 bgColor, bool underWater) {
 		
 		if (i >= MaxNearIterations) step = max(step, 1.0);
 		
-		curr += dir * step * stepScale;
+		curr += dir * step * StepScale;
 		
 		if (found && (length(dir) < 0.1 || i == MaxIterations - 1)) {
 			float factor = clamp(min(distToEdge(texCoord) * 5.0, (1.0 - ratio) * 5.0), 0.0, 1.0);
@@ -190,7 +194,7 @@ vec4 cloud(in vec3 org, in vec3 dir, in float stp, in float maxDist) {
 		curr += dir * (CloudTop - curr.y) / dir.y;
 	}
 	
-	for (int i = 0; i < 24; i++) {
+	for (int i = 0; i < CloudIterations; i++) {
 		curr += dir * stp;
 		
 		if (transparency < 0.01) break;
@@ -201,7 +205,7 @@ vec4 cloud(in vec3 org, in vec3 dir, in float stp, in float maxDist) {
 			float opacity = factor * getCloudOpacity(curr) * 0.5;
 			if (opacity > 0.0) {
 				float occulusion = getCloudOpacity(curr - SunlightDirection * stp * 4.0);
-				float col = clamp(1.2 - occulusion * 0.8, 0.2, 1.0);
+				float col = clamp(1.2 - occulusion * 0.8, 0.6, 1.0);
 				res += transparency * opacity * vec3(col);
 				transparency *= 1.0 - opacity;
 			}
@@ -269,11 +273,14 @@ void main() {
 		color = vec4(data0.rgb, 1.0);
 	}
 	
+	// Fog
+	color = vec4(mix(getSkyColor(viewDir).rgb, color.rgb, clamp((RenderDistance - dist) / 32.0, 0.0, 1.0)), color.a);
+	
 #ifdef VOLUMETRIC_CLOUDS
-	vec4 cloudColor = cloud(vec3(PlayerPositionMod) + PlayerPositionFrac, viewDir, CloudStep, min(RenderDistance * 2.0, dist));
+	vec4 cloudColor = cloud(vec3(PlayerPositionMod) + PlayerPositionFrac, viewDir, CloudStep, min(RenderDistance * CloudRangeMult, dist));
 	color = vec4(cloudColor.rgb + (1.0 - cloudColor.a) * color.rgb, 1.0);
 #endif
 	
-	gl_FragColor = color;//vec4(mix(getSkyColor(viewDir).rgb, color.rgb, clamp((RenderDistance - dist) / 32.0, 0.0, 1.0)), color.a);
+	gl_FragColor = color;
 	gl_FragDepth = screenSpacePosition.z * 0.5 + 0.5;
 }

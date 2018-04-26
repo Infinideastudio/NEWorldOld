@@ -27,8 +27,10 @@ namespace ShadowMaps {
 		MutexUnlock(Mutex);
 		glClear(GL_DEPTH_BUFFER_BIT);
 		//glDisable(GL_CULL_FACE);
+		//glCullFace(GL_FRONT);
 		WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
 		//glEnable(GL_CULL_FACE);
+		//glCullFace(GL_BACK);
 		MutexLock(Mutex);
 
 		Particles::renderall(xpos, ypos, zpos);
@@ -93,10 +95,14 @@ namespace ShadowMaps {
 
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		glBegin(GL_QUADS);
-		glTexCoord2f(0.0f, 0.0f); glVertex2i(xi, ya);
-		glTexCoord2f(1.0f, 0.0f); glVertex2i(xa, ya);
-		glTexCoord2f(1.0f, 1.0f); glVertex2i(xa, yi);
-		glTexCoord2f(0.0f, 1.0f); glVertex2i(xi, yi);
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex2i(xi, ya);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex2i(xa, ya);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex2i(xa, yi);
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex2i(xi, yi);
 		glEnd();
 
 		Shader::unbind();
