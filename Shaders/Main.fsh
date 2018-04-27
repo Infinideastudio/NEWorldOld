@@ -1,4 +1,4 @@
-#version 110
+#version 120
 
 ##NEWORLD_SHADER_DEFINES MergeFace MERGE_FACE
 
@@ -28,7 +28,26 @@ const mat4 Normalization = mat4(
 	0.5, 0.0, 0.0, 0.0,
 	0.0, 0.5, 0.0, 0.0,
 	0.0, 0.0, 0.5, 0.0,
-	0.5, 0.5, 0.4999, 1.0
+	0.5, 0.5, 0.5, 1.0
+);
+
+const vec2 poissonDisk[16] = vec2[16](
+    vec2(-0.94201624,-0.39906216),
+    vec2( 0.94558609,-0.76890725),
+    vec2(-0.09418410,-0.92938870),
+    vec2( 0.34495938, 0.29387760),
+    vec2(-0.91588581, 0.45771432),
+    vec2(-0.81544232,-0.87912464),
+    vec2(-0.38277543, 0.27676845),
+    vec2( 0.97484398, 0.75648379),
+    vec2( 0.44323325,-0.97511554),
+    vec2( 0.53742981,-0.47373420),
+    vec2(-0.26496911,-0.41893023),
+    vec2( 0.79197514, 0.19090188),
+    vec2(-0.24188840, 0.99706507),
+    vec2(-0.81409955, 0.91437590),
+    vec2( 0.19984126, 0.78641367),
+    vec2( 0.14383161,-0.14100790)
 );
 
 const float MaxBlockID = 4096.0;
@@ -44,7 +63,7 @@ vec2 encodeFloat16(in float v) {
 	return enc;
 }
 
-vec3 encodeFloat24(in float v) {
+vec3 encodevec34(in float v) {
 	vec3 enc = fract(vec3(1.0 - 1.0 / 1024.0, 255.0, 255.0 * 255.0) * v);
 	enc -= enc.yzz * vec3(1.0 / 255.0, 1.0 / 255.0, 0.0);
 	return enc;
@@ -113,15 +132,20 @@ vec3 getWaveNormal(in vec3 v, in float lod) {
 	return vec3(xd, yd, zd);
 }
 
-float sampleShadow(ivec2 pixel, float depth) {
-	return shadow2D(DepthTexture, vec3(float(pixel.x) / ShadowMapResolution, float(pixel.y) / ShadowMapResolution, depth)).z;
+vec4 FisheyeProjection(vec4 position) {
+	const float FisheyeFactor = 0.85;
+	float dist = length(position.xy);
+    float distortFactor = (1.0 - FisheyeFactor) + dist * FisheyeFactor;
+    position.xy /= distortFactor;
+	return position;
+}
+
+float sampleShadow(in vec2 pixel, in float depth) {
+	return shadow2D(DepthTexture, vec3(pixel.x / ShadowMapResolution, pixel.y / ShadowMapResolution, depth)).z;
 }
 
 void main() {
-	mat4 trans = Normalization * ShadowMapProjection * ShadowMapModelView * Translation;
 	vec4 rel = gl_ModelViewMatrix * vertCoords;
-	vec4 shadowCoords = trans * vertCoords;
-	float luminance = 0.0, sunlight = 0.0;
 	float dist = length(rel);
 	
 	blockID = int(blockIDf + 0.5);
@@ -132,11 +156,19 @@ void main() {
 	);
 	
 	// Shadow calculation
+	
+	vec4 shadowCoords = ShadowMapProjection * ShadowMapModelView * Translation * vertCoords;
+	shadowCoords = Normalization * FisheyeProjection(shadowCoords);
+	float luminance = 0.0, sunlight = 0.0;
+	
 	if (dot(normal, SunlightDirection) > 0.0) sunlight = 0.0;
 	else if (shadowCoords.x >= 0.0 && shadowCoords.x <= 1.0 &&
 			 shadowCoords.y >= 0.0 && shadowCoords.y <= 1.0 && shadowCoords.z <= 1.0) {
-		float xpos = shadowCoords.x * ShadowMapResolution, ypos = shadowCoords.y * ShadowMapResolution, depth = shadowCoords.z;
-		float x0 = float(int(xpos)), y0 = float(int(ypos));
+		float xpos = shadowCoords.x * ShadowMapResolution, ypos = shadowCoords.y * ShadowMapResolution;
+		float bias = (dist / ShadowDistance + 0.1) / ShadowMapResolution;
+		float depth = shadowCoords.z - bias;
+		/*
+		float x0 = floor(xpos), y0 = floor(ypos);
 		float x1 = x0 + 1.0, y1 = y0 + 1.0;
 		float texel00 = shadow2D(DepthTexture, vec3(x0 / ShadowMapResolution, y0 / ShadowMapResolution, depth)).z;
 		float texel01 = shadow2D(DepthTexture, vec3(x0 / ShadowMapResolution, y1 / ShadowMapResolution, depth)).z;
@@ -144,13 +176,23 @@ void main() {
 		float texel11 = shadow2D(DepthTexture, vec3(x1 / ShadowMapResolution, y1 / ShadowMapResolution, depth)).z;
 		float w00 = (x1 - xpos) * (y1 - ypos), w01 = (x1 - xpos) * (ypos - y0), w10 = (xpos - x0) * (y1 - ypos), w11 = (xpos - x0) * (ypos - y0);
 		sunlight = texel00 * w00 + texel01 * w01 + texel10 * w10 + texel11 * w11;
+		*/
+		
+		sunlight = sampleShadow(vec2(xpos, ypos), depth);
+		
+		if (dist < 32.0) {
+			for (int i = 0; i < 16; i++) {
+				sunlight += sampleShadow(vec2(xpos, ypos) + poissonDisk[i] * (32.0 - dist) / 32.0, depth);
+			}
+			sunlight /= 17.0;
+		}
 		
 		float factor = clamp(min(distToEdge(shadowCoords.xy) * 10.0, (ShadowDistance - dist) / ShadowDistance * 10.0), 0.0, 1.0);
 		sunlight = mix(0.8, sunlight, factor);
 	}
 	else sunlight = 0.8;
 	
-	luminance = clamp(-dot(normal, SunlightDirection), 0.0, 1.0) * sunlight * 0.8 + 0.4;
+	luminance = clamp(-dot(normal, SunlightDirection), 0.0, 1.0) * sunlight * 0.8 + 0.5;
 	
 	// Reinherd tonemap
 	//luminance /= (luminance + 1.0);
@@ -194,5 +236,5 @@ void main() {
 	gl_FragData[0] = color;
 	gl_FragData[1] = vec4(finalNormal * 0.5 + vec3(0.5, 0.5, 0.5), 1.0);
 	gl_FragData[2] = vec4(blockIDEncoded, 0.0, 1.0);
-	gl_FragData[3] = vec4(encodeFloat24(depth), 1.0);
+	gl_FragData[3] = vec4(encodevec34(depth), 1.0);
 }

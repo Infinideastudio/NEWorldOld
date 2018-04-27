@@ -33,8 +33,7 @@ void FrameBuffer::create(int size_, int cnt, bool depth) {
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16_ARB, size, size, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
 		// Attach
 		glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, depthAttachment, 0);
-	}
-	else {
+	} else {
 		// Create depth renderbuffer
 		glGenRenderbuffersEXT(1, &depthAttachment);
 		glBindRenderbufferEXT(GL_RENDERBUFFER, depthAttachment);
