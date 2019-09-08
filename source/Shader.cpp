@@ -1,7 +1,6 @@
 #include "Shader.h"
 #include "FunctionsKit.h"
-#include "GLProc.h"
-Shader::Shader(string vshPath, string fshPath, bool bindLocation, std::set<string> defines) {
+Shader::Shader(std::string vshPath, std::string fshPath, bool bindLocation, std::set<std::string> defines) {
 	shaderVertex = loadShader(vshPath, GL_VERTEX_SHADER_ARB, defines);
 	shaderFragment = loadShader(fshPath, GL_FRAGMENT_SHADER_ARB, defines);
 	shaderProgram = glCreateProgramObjectARB();
@@ -12,7 +11,7 @@ Shader::Shader(string vshPath, string fshPath, bool bindLocation, std::set<strin
 	}
 	glLinkProgramARB(shaderProgram);
 
-	//¼ì²é´íÎó
+	//æ£€æŸ¥é”™è¯¯
 	checkErrors(shaderProgram, GL_LINK_STATUS, "Shader linking error!");
 }
 
@@ -53,10 +52,10 @@ bool Shader::setUniform(const char* uniform, float * value) {
 	return true;
 }
 
-GLhandleARB Shader::loadShader(string filename, unsigned int mode, std::set<string> defines) {
+GLhandleARB Shader::loadShader(std::string filename, unsigned int mode, std::set<std::string> defines) {
 	std::stringstream ss;
 	GLhandleARB res;
-	string cur, var, macro;
+    std::string cur, var, macro;
 	int lines = 0, curlen;
 	char* curline;
 	std::vector<char*> source;
@@ -66,7 +65,7 @@ GLhandleARB Shader::loadShader(string filename, unsigned int mode, std::set<stri
 	while (!filein.eof()) {
 		std::getline(filein, cur);
 		if (cur.empty()) continue;
-		if (beginWith(cur, "#")) { //´¦ÀíNEWorldÔ¤´¦ÀíÆ÷±êÖ¾
+		if (beginWith(cur, "#")) { //å¤„ç†NEWorldé¢„å¤„ç†å™¨æ ‡å¿—
 			ss.str(cur);
 			ss >> macro;
 			if (macro == "##NEWORLD_SHADER_DEFINES") {
@@ -85,19 +84,19 @@ GLhandleARB Shader::loadShader(string filename, unsigned int mode, std::set<stri
 	}
 	filein.close();
 
-	//´´½¨shader
+	//åˆ›å»ºshader
 	res = glCreateShaderObjectARB(mode);
 	glShaderSourceARB(res, lines, (const GLchar**)source.data(), length.data());
 	glCompileShaderARB(res);
-	//ÊÍ·ÅÄÚ´æ
+	//é‡Šæ”¾å†…å­˜
 	for (int i = 0; i < lines; i++) delete[] source[i];
 
-	//¼ì²é´íÎó
+	//æ£€æŸ¥é”™è¯¯
 	checkErrors(res, GL_COMPILE_STATUS, "Shader compilation error! File: " + filename);
 	return res;
 }
 
-void Shader::checkErrors(GLhandleARB res, int status, string errorMessage) {
+void Shader::checkErrors(GLhandleARB res, int status, std::string errorMessage) {
 	int st = GL_TRUE;
 	glGetObjectParameterivARB(res, status, &st);
 	if (st == GL_FALSE) DebugWarning(errorMessage);

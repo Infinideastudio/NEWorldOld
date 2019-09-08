@@ -4,7 +4,6 @@
 #include "Definitions.h"
 #include "Blocks.h"
 #include "Textures.h"
-#include "GLProc.h"
 #include "Renderer.h"
 #include "TextRenderer.h"
 #include "Player.h"
@@ -17,12 +16,10 @@
 #include "GUI.h"
 #include "Menus.h"
 #include "Frustum.h"
-#include "Network.h"
 #include "Effect.h"
 #include "Items.h"
 #include "Globalization.h"
 #include "Command.h"
-#include "ModLoader.h"
 #include "Setup.h"
 #include"AudioSystem.h"
 void loadOptions();
@@ -51,15 +48,14 @@ void ApplicationBeforeLaunch() {
 	loadOptions();
 	Globalization::Load();
 
-	_mkdir("Configs");
-	_mkdir("Worlds");
-	_mkdir("Screenshots");
-	_mkdir("Mods");
+	system("mkdir Configs");
+    system("mkdir Worlds");
+    system("mkdir Screenshots");
+    system("mkdir Mods");
 }
 
 void ApplicationAfterLaunch() {
 	loadTextures();
-	Mod::ModLoader::loadMods();
 	//初始化音频系统
 	AudioSystem::Init();
 }
@@ -98,21 +94,20 @@ void AppCleanUp()
 {
 	World::saveAllChunks();
 	World::destroyAllChunks();
-	Mod::ModLoader::unloadMods();
 }
 
 template<typename T>
-void loadoption(std::map<string, string> &m, const char* name, T &value) {
+void loadoption(std::map<std::string, std::string> &m, const char* name, T &value) {
 	if (m.find(name) == m.end()) return;
 	std::stringstream ss;
 	ss << m[name]; ss >> value;
 }
 
 void loadOptions() {
-	std::map<string, string> options;
+	std::map<std::string, std::string> options;
 	std::ifstream filein("Configs/options.ini", std::ios::in);
 	if (!filein.is_open()) return;
-	string name, value;
+	std::string name, value;
 	while (!filein.eof()) {
 		filein >> name >> value;
 		options[name] = value;
@@ -140,11 +135,11 @@ void loadOptions() {
 
 template<typename T>
 void saveoption(std::ofstream &out, const char* name, T &value) {
-	out << string(name) << " " << value << endl;
+	out << std::string(name) << " " << value << endl;
 }
 
 void saveOptions() {
-	std::map<string, string> options;
+	std::map<std::string, std::string> options;
 	std::ofstream fileout("Configs/options.ini", std::ios::out);
 	if (!fileout.is_open()) return;
 	saveoption(fileout, "Language", Globalization::Cur_Lang);

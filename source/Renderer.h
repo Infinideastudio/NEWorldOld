@@ -1,6 +1,5 @@
 #pragma once
 #include "Definitions.h"
-#include "GLProc.h"
 #include "Frustum.h"
 #include "Shader.h"
 

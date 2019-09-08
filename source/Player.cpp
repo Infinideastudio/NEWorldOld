@@ -24,7 +24,7 @@ vector<Hitbox::AABB> Player::Hitboxes;
 double Player::xa, Player::ya, Player::za, Player::xd, Player::yd, Player::zd;
 double Player::health = 20, Player::healthMax = 20, Player::healSpeed = 0.01, Player::dropDamage = 5.0;
 onlineid Player::onlineID;
-string Player::name;
+std::string Player::name;
 Frustum Player::ViewFrustum;
 
 double Player::speed;
@@ -88,7 +88,7 @@ void Player::spawn() {
 	memset(inventory, 0, sizeof(inventory));
 	memset(inventoryAmount, 0, sizeof(inventoryAmount));
 	
-	//×ÜµÃ¼ÓµãÎïÆ·°É
+	//ï¿½ÜµÃ¼Óµï¿½ï¿½ï¿½Æ·ï¿½ï¿½
 	for (size_t i = 0; i < 255; i++)
 	{
 		addItem(Blocks::ROCK);
@@ -97,7 +97,7 @@ void Player::spawn() {
 		addItem(Blocks::STONE);
 		addItem(Blocks::PLANK);
 		addItem(Blocks::WOOD);
-		//addItem(Blocks::BEDROCK);TMDÕâ¸öÊÇ»ùÑÒ
+		//addItem(Blocks::BEDROCK);TMDï¿½ï¿½ï¿½ï¿½Ç»ï¿½ï¿½ï¿½
 		addItem(Blocks::LEAF);
 		addItem(Blocks::GLASS);
 		addItem(Blocks::WATER);
@@ -151,7 +151,7 @@ void Player::updatePosition() {
 	if (ya != yal && yal > 0.0) jump = 0.0;
 	if (xa != xal || za != zal) NearWall = true; else NearWall = false;
 
-	//Ïû³ý¸¡µãÊý¾«¶È´øÀ´µÄÓ°Ïì£¨²éÁËºÃ¾ÃµÄ´©Ç½bug²Å·¢ÏÖÊÇÔÚÕâÀïÓÐÎÊÌâ(¨s¨F¡õ¡ä)¨s¦à©ß©¥©ß£©
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½ì£¨ï¿½ï¿½ï¿½ËºÃ¾ÃµÄ´ï¿½Ç½bugï¿½Å·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½sï¿½Fï¿½ï¿½ï¿½ï¿½)ï¿½sï¿½ï¿½ß©ï¿½ï¿½ß£ï¿½
 	//  --qiaozhanrong
 	xa = (double)((int)(xa * 100000)) / 100000.0;
 	ya = (double)((int)(ya * 100000)) / 100000.0;
@@ -168,7 +168,7 @@ void Player::updatePosition() {
 	cxt = getchunkpos((int)xpos); cyt = getchunkpos((int)ypos); czt = getchunkpos((int)zpos);
 }
 
-bool Player::putBlock(int x, int y, int z, block blockname) {
+bool Player::putBlock(int x, int y, int z, Block blockname) {
 	Hitbox::AABB blockbox;
 	bool success = false;
 	blockbox.xmin = x - 0.5; blockbox.ymin = y - 0.5; blockbox.zmin = z - 0.5;
@@ -182,7 +182,7 @@ bool Player::putBlock(int x, int y, int z, block blockname) {
 	return success;
 }
 
-bool Player::save(string worldn) {
+bool Player::save(std::string worldn) {
 	uint32 curversion = VERSION;
 	std::stringstream ss;
 	ss << "Worlds/" << worldn << "/player.NEWorldPlayer";
@@ -210,7 +210,7 @@ bool Player::save(string worldn) {
 	return true;
 }
 
-bool Player::load(string worldn) {
+bool Player::load(std::string worldn) {
 	uint32 targetVersion;
 	std::stringstream ss;
 	ss << "Worlds/" << worldn << "/player.NEWorldPlayer";
@@ -240,12 +240,12 @@ bool Player::load(string worldn) {
 }
 
 bool Player::addItem(item itemname, short amount) {
-	//Ïò±³°üÀï¼ÓÈëÎïÆ·
+	//ï¿½ò±³°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ·
 	const int InvMaxStack = 255;
 	for (int i = 3; i >= 0; i--) {
 		for (int j = 0; j != 10; j++) {
 			if (inventory[i][j] == itemname && inventoryAmount[i][j] < InvMaxStack) {
-				//ÕÒµ½Ò»¸öÍ¬Àà¸ñ×Ó
+				//ï¿½Òµï¿½Ò»ï¿½ï¿½Í¬ï¿½ï¿½ï¿½ï¿½ï¿½
 				if (amount + inventoryAmount[i][j] <= InvMaxStack) {
 					inventoryAmount[i][j] += amount;
 					return true;
@@ -260,7 +260,7 @@ bool Player::addItem(item itemname, short amount) {
 	for (int i = 3; i >= 0; i--) {
 		for (int j = 0; j != 10; j++) {
 			if (inventory[i][j] == Blocks::AIR) {
-				//ÕÒµ½Ò»¸ö¿Õ°×¸ñ×Ó
+				//ï¿½Òµï¿½Ò»ï¿½ï¿½ï¿½Õ°×¸ï¿½ï¿½ï¿½
 				inventory[i][j] = itemname;
 				if (amount <= InvMaxStack) {
 					inventoryAmount[i][j] = amount;
@@ -305,7 +305,7 @@ PlayerPacket Player::convertToPlayerPacket()
 #ifdef NEWORLD_COMPILE_DISABLE_SECURE
 	strcpy(p.name, name.c_str());
 #else
-	strcpy_s(p.name, name.c_str());
+	strcpy(p.name, name.c_str());
 #endif
 	return p;
 }

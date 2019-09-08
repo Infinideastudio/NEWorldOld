@@ -3,7 +3,7 @@
 enum PacketHeaders { CHUNK_DATA = 2, CHUNK_COMMAND, CHUNK_EMPTY, CHUNK_NOTBEMODIFIED };
 struct ChunkPacket {
 	int cx, cy, cz;
-	block pblocks[4096];
+	Block pblocks[4096];
 	brightness pbrightness[4096];
 };
 

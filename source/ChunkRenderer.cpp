@@ -6,7 +6,7 @@ namespace ChunkRenderer {
 	using World::getbrightness;
 
 	/*
-	ºÏ²¢ÃæµÄ¶¥µãË³Ğò£¨ÒÔ0µ½3±ê³ö£©£º
+	åˆå¹¶é¢çš„é¡¶ç‚¹é¡ºåºï¼ˆä»¥0åˆ°3æ ‡å‡ºï¼‰ï¼š
 
 	The vertex order of merge face render
 	Numbered from 0 to 3:
@@ -216,13 +216,13 @@ namespace ChunkRenderer {
 		}
 	}
 
-	void RenderChunk(World::chunk* c) {
+	void RenderChunk(World::Chunk* c) {
 		int x, y, z;
 		if (Renderer::AdvancedRender) Renderer::Init(2, 3, 1); else Renderer::Init(2, 3);
 		for (x = 0; x < 16; x++) {
 			for (y = 0; y < 16; y++) {
 				for (z = 0; z < 16; z++) {
-					block curr = c->getblock(x, y, z);
+					Block curr = c->getblock(x, y, z);
 					if (curr == Blocks::AIR) continue;
 					if (!BlockInfo(curr).isTranslucent()) renderblock(x, y, z, c);
 				}
@@ -233,7 +233,7 @@ namespace ChunkRenderer {
 		for (x = 0; x < 16; x++) {
 			for (y = 0; y < 16; y++) {
 				for (z = 0; z < 16; z++) {
-					block curr = c->getblock(x, y, z);
+					Block curr = c->getblock(x, y, z);
 					if (curr == Blocks::AIR) continue;
 					if (BlockInfo(curr).isTranslucent() && BlockInfo(curr).isSolid()) renderblock(x, y, z, c);
 				}
@@ -244,7 +244,7 @@ namespace ChunkRenderer {
 		for (x = 0; x < 16; x++) {
 			for (y = 0; y < 16; y++) {
 				for (z = 0; z < 16; z++) {
-					block curr = c->getblock(x, y, z);
+					Block curr = c->getblock(x, y, z);
 					if (curr == Blocks::AIR) continue;
 					if (!BlockInfo(curr).isSolid()) renderblock(x, y, z, c);
 				}
@@ -253,9 +253,9 @@ namespace ChunkRenderer {
 		Renderer::Flush(c->vbuffer[2], c->vertexes[2]);
 	}
 
-	//ºÏ²¢Ãæ´ó·¨ºÃ£¡£¡£¡
-	void MergeFaceRender(World::chunk* c) {
-		//»°ËµÎÒ×¢ÊÍÒ»»áÖĞÎÄÒ»»áÓ¢ÎÄÊÇ²»ÊÇÓĞµãÆæ¹Ö¡£¡£¡£
+	//åˆå¹¶é¢å¤§æ³•å¥½ï¼ï¼ï¼
+	void MergeFaceRender(World::Chunk* c) {
+		//è¯è¯´æˆ‘æ³¨é‡Šä¸€ä¼šä¸­æ–‡ä¸€ä¼šè‹±æ–‡æ˜¯ä¸æ˜¯æœ‰ç‚¹å¥‡æ€ªã€‚ã€‚ã€‚
 		// -- qiaozhanrong
 
 		int cx = c->cx, cy = c->cy, cz = c->cz;
@@ -263,7 +263,7 @@ namespace ChunkRenderer {
 		int x = 0, y = 0, z = 0, cur_l_mx, br;
 		int col0 = 0, col1 = 0, col2 = 0, col3 = 0;
 		QuadPrimitive cur;
-		block bl, neighbour;
+		Block bl, neighbour;
 		ubyte face = 0;
 		TextureID tex;
 		bool valid = false;
@@ -411,12 +411,12 @@ namespace ChunkRenderer {
 		}
 	}
 
-	void RenderDepthModel(World::chunk* c) {
+	void RenderDepthModel(World::Chunk* c) {
 		int cx = c->cx, cy = c->cy, cz = c->cz;
 		int x = 0, y = 0, z = 0;
 		QuadPrimitive_Depth cur;
 		int cur_l_mx;
-		block bl, neighbour;
+		Block bl, neighbour;
 		bool valid = false;
 		cur_l_mx = bl = neighbour = 0;
 		//Linear merge for depth model

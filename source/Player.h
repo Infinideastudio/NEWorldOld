@@ -16,13 +16,11 @@ public:
 
 	static void updatePosition();
 
-	static bool save(string worldn);
-	static bool load(string worldn);
+	static bool save(std::string worldn);
+	static bool load(std::string worldn);
 
 	static bool addItem(item itemname, short amount = 1);
-	static bool putBlock(int x, int y, int z, block blockname);
-
-	//修改游戏模式
+	static bool putBlock(int x, int y, int z, Block blockname);
 	static void changeGameMode(int gamemode);
 
 	static PlayerPacket convertToPlayerPacket();
@@ -31,7 +29,7 @@ public:
 	static double xa, ya, za, xd, yd, zd;
 	static double health, healthMax, healSpeed, dropDamage;
 	static onlineid onlineID;
-	static string name;
+	static std::string name;
 	static Frustum ViewFrustum;
 
 	enum GameMode { Survival, Creative };

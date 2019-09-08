@@ -1,7 +1,7 @@
 #include "Console.h"
 #include <time.h>
 
-void Print(string message, int level) {
+void Print(std::stringmessage, int level) {
 	switch (level) {
 	case MESSAGE_INFO:
 		cout << "[INFO]";
@@ -23,7 +23,7 @@ void Print(string message, int level) {
 		<< message << endl;
 }
 
-string toString(int i) {
+std::stringtoString(int i) {
 	char a[12];
 	_itoa_s(i, a, 12, 10);
 	return string(a);

@@ -2,11 +2,12 @@
 #include "WorldGen.h"
 #include "World.h"
 #include "Blocks.h"
+#include <limits>
 
 namespace ChunkRenderer {
-	void RenderChunk(World::chunk* c);
-	void MergeFaceRender(World::chunk* c);
-	void RenderDepthModel(World::chunk* c);
+	void RenderChunk(World::Chunk* c);
+	void MergeFaceRender(World::Chunk* c);
+	void RenderDepthModel(World::Chunk* c);
 }
 
 namespace Renderer {
@@ -20,7 +21,7 @@ namespace World {
 		int low, high, count;
 		HMapManager() {};
 		HMapManager(int cx, int cz) {
-			int l = MAXINT, hi = WorldGen::WaterLevel, h;
+			int l = std::numeric_limits<int>::max(), hi = WorldGen::WaterLevel, h;
 			for (int x = 0; x < 16; ++x) {
 				for (int z = 0; z < 16; ++z) {
 					h = HMap.getHeight(cx * 16 + x, cz * 16 + z);
@@ -33,22 +34,22 @@ namespace World {
 		}
 	};
 
-	inline string v22string(int x, int y) {
+	inline std::string v22string(int x, int y) {
 		char * _ = (char*)malloc(sizeof(int) * 2+1);
 		int * __ = (int*)_;
 		__[0] = x;
 		__[1] = y;
 		_[sizeof(int) * 2] = '\0';
-		string s = string(_);
+		std::string s = std::string(_);
 		free(_);
 		free(__);
-		return string(_);
+		return std::string(_);
 	}
 
 	/*std::map<std::string, HMapManager> HeightMap;
 
 	HMapManager* HMapInclude(int x, int z) {
-		string _ = v22string(x, z);
+		std::string_ = v22string(x, z);
 		if (!(HeightMap.find(_) != HeightMap.end())) {
 			pair<string, HMapManager> n = { _, HMapManager(x, z) };
 			HeightMap.insert(n);
@@ -58,18 +59,18 @@ namespace World {
 	}
 
 	void HMapExclude(int x, int z) {
-		string _ = v22string(x, z);
+		std::string_ = v22string(x, z);
 		if (!(HeightMap.find(_) != HeightMap.end())) return;
 		HeightMap[_].count--;
 		if (HeightMap[_].count == 0) HeightMap.erase(_);
 	}*/
 
-	double chunk::relBaseX, chunk::relBaseY, chunk::relBaseZ;
-	Frustum chunk::TestFrustum;
+	double Chunk::relBaseX, Chunk::relBaseY, Chunk::relBaseZ;
+	Frustum Chunk::TestFrustum;
 
-	void chunk::create() {
+	void Chunk::create() {
 		aabb = getBaseAABB();
-		pblocks = new block[4096];
+		pblocks = new Block[4096];
 		pbrightness = new brightness[4096];
 		//memset(pblocks, 0, sizeof(pblocks));
 		//memset(pbrightness, 0, sizeof(pbrightness));
@@ -80,7 +81,7 @@ namespace World {
 #endif
 	}
 
-	void chunk::destroy() {
+	void Chunk::destroy() {
 		//HMapExclude(cx, cz);
 		delete[] pblocks;
 		delete[] pbrightness;
@@ -90,13 +91,13 @@ namespace World {
 		unloadedChunks++;
 	}
 
-	void chunk::buildTerrain(bool initIfEmpty) {
+	void Chunk::buildTerrain(bool initIfEmpty) {
 		//Éú³ÉµØÐÎ
 		//assert(Empty == false);
 
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr || pbrightness == nullptr) {
-			DebugWarning("Empty pointer when chunk generating!");
+			DebugWarning("Empty pointer when Chunk generating!");
 			return;
 		}
 #endif
@@ -106,14 +107,14 @@ namespace World {
 		if (cy > 4) {
 			Empty = true;
 			if (!initIfEmpty) return;
-			memset(pblocks, 0, 4096 * sizeof(block));
+			memset(pblocks, 0, 4096 * sizeof(Block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
 			return;
 		}
 		if (cy < 0) {
 			Empty = true;
 			if (!initIfEmpty) return;
-			memset(pblocks, 0, 4096 * sizeof(block));
+			memset(pblocks, 0, 4096 * sizeof(Block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = BRIGHTNESSMIN;
 			return;
 		}
@@ -123,7 +124,7 @@ namespace World {
 		if (cy > cur.high) {
 			Empty = true;
 			if (!initIfEmpty) return;
-			memset(pblocks, 0, 4096 * sizeof(block));
+			memset(pblocks, 0, 4096 * sizeof(Block));
 			for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
 			return;
 		}
@@ -136,7 +137,7 @@ namespace World {
 
 		//Normal Calc
 		//Init
-		memset(pblocks, 0, 4096 * sizeof(block)); //Empty the chunk
+		memset(pblocks, 0, 4096 * sizeof(Block)); //Empty the Chunk
 		memset(pbrightness, 0, 4096 * sizeof(brightness)); //Set All Brightness to 0
 
 		int x, z, h = 0, sh = 0, wh = 0;
@@ -186,7 +187,7 @@ namespace World {
 		}
 	}
 
-	void chunk::buildDetail() {
+	void Chunk::buildDetail() {
 		int index = 0;
 		for (int x = 0; x < 16; x++) {
 			for (int y = 0; y < 16; y++) {
@@ -201,12 +202,12 @@ namespace World {
 		}
 	}
 
-	void chunk::build(bool initIfEmpty) {
+	void Chunk::build(bool initIfEmpty) {
 		buildTerrain(initIfEmpty);
 		if (!Empty) buildDetail();
 	}
 
-	void chunk::Load(bool initIfEmpty) {
+	void Chunk::Load(bool initIfEmpty) {
 		//assert(Empty == false);
 
 		create();
@@ -218,7 +219,7 @@ namespace World {
 		if (!Empty) updated = true;
 	}
 
-	void chunk::Unload() {
+	void Chunk::Unload() {
 		unloadedChunksCount++;
 #ifndef NEWORLD_DEBUG_NO_FILEIO
 		SaveToFile();
@@ -227,10 +228,10 @@ namespace World {
 		destroy();
 	}
 
-	bool chunk::LoadFromFile() {
+	bool Chunk::LoadFromFile() {
 		std::ifstream file(getChunkPath(), std::ios::in | std::ios::binary);
 		bool openChunkFile = file.is_open();
-		file.read((char*)pblocks, 4096 * sizeof(block));
+		file.read((char*)pblocks, 4096 * sizeof(Block));
 		file.read((char*)pbrightness, 4096 * sizeof(brightness));
 		file.read((char*)&DetailGenerated, sizeof(bool));
 		file.close();
@@ -240,20 +241,20 @@ namespace World {
 		return openChunkFile;
 	}
 
-	void chunk::SaveToFile(){
+	void Chunk::SaveToFile(){
 		if (!Empty&&Modified) {
 			std::ofstream file(getChunkPath(), std::ios::out | std::ios::binary);
-			file.write((char*)pblocks, 4096 * sizeof(block));
+			file.write((char*)pblocks, 4096 * sizeof(Block));
 			file.write((char*)pbrightness, 4096 * sizeof(brightness));
 			file.write((char*)&DetailGenerated, sizeof(bool));
 			file.close();
 		}
-		if (objects.size() != 0) {
+		if (!objects.empty()) {
 
 		}
 	}
 
-	void chunk::buildRender() {
+	void Chunk::buildRender() {
 		//assert(Empty == false);
 
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
@@ -290,7 +291,7 @@ namespace World {
 
 	}
 
-	void chunk::destroyRender() {
+	void Chunk::destroyRender() {
 		if (!renderBuilt) return;
 		if (vbuffer[0] != 0) vbuffersShouldDelete.push_back(vbuffer[0]);
 		if (vbuffer[1] != 0) vbuffersShouldDelete.push_back(vbuffer[1]);
@@ -300,7 +301,7 @@ namespace World {
 		renderBuilt = false;
 	}
 
-	Hitbox::AABB chunk::getBaseAABB(){
+	Hitbox::AABB Chunk::getBaseAABB(){
 		Hitbox::AABB ret;
 		ret.xmin = cx * 16 - 0.5;
 		ret.ymin = cy * 16 - 0.5;
@@ -311,7 +312,7 @@ namespace World {
 		return ret;
 	}
 
-	Frustum::ChunkBox chunk::getRelativeAABB() {
+	Frustum::ChunkBox Chunk::getRelativeAABB() {
 		Frustum::ChunkBox ret;
 		ret.xmin = (float)(aabb.xmin - relBaseX);
 		ret.xmax = (float)(aabb.xmax - relBaseX);

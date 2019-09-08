@@ -8,7 +8,7 @@
 #include "Items.h"
 
 void splashScreen() {
-	TextureID splTex = Textures::LoadRGBTexture("Textures/GUI/splashscreen.bmp");
+	TextureID splTex = Textures::LoadRGBTexture("./Textures/GUI/splashscreen.bmp");
 	glEnable(GL_TEXTURE_2D);
 	for (int i = 0; i < 256; i += 2) {
 		glfwSwapBuffers(MainWindow);
@@ -37,6 +37,7 @@ void createWindow() {
 	MainWindow = glfwCreateWindow(windowwidth, windowheight, title.str().c_str(), NULL, NULL);
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwMakeContextCurrent(MainWindow);
+	glewInit();
 	glfwSetCursor(MainWindow, MouseCursor);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwSetWindowSizeCallback(MainWindow, &WindowSizeFunc);
@@ -48,14 +49,13 @@ void createWindow() {
 
 void setupScreen() {
 
-	//»ñÈ¡OpenGL°æ±¾
+	//èŽ·å–OpenGLç‰ˆæœ¬
 	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
 	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
 	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
-	//»ñÈ¡OpenGLº¯ÊýµØÖ·
-	InitGLProc();
+	//èŽ·å–OpenGLå‡½æ•°åœ°å€
 
-	//äÖÈ¾²ÎÊýÉèÖÃ
+	//æ¸²æŸ“å‚æ•°è®¾ç½®
 	glViewport(0, 0, windowwidth, windowheight);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -70,7 +70,7 @@ void setupScreen() {
 	glEnable(GL_BLEND);
 	glEnable(GL_LINE_SMOOTH);
 	glDepthFunc(GL_LEQUAL);
-	glAlphaFunc(GL_GREATER, 0.0); //<--Õâ¼Ò»ïÔÚÂôÃÈ£¿(ÍùºóÃæ¿´¿´£¬ÂôÃÈµÄ¶à×ÅÄØ)
+	glAlphaFunc(GL_GREATER, 0.0); //<--è¿™å®¶ä¼™åœ¨å–èŒï¼Ÿ(å¾€åŽé¢çœ‹çœ‹ï¼Œå–èŒçš„å¤šç€å‘¢)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
 	glHint(GL_FOG_HINT, GL_FASTEST);
@@ -99,27 +99,27 @@ void setupNormalFog() {
 }
 
 void loadTextures() {
-	//ÔØÈëÎÆÀí
+	//è½½å…¥çº¹ç†
 	Textures::Init();
 
-	tex_select = Textures::LoadRGBATexture("Textures/GUI/select.bmp", "");
-	tex_unselect = Textures::LoadRGBATexture("Textures/GUI/unselect.bmp", "");
-	tex_title = Textures::LoadRGBATexture("Textures/GUI/title.bmp", "Textures/GUI/titlemask.bmp");
+	tex_select = Textures::LoadRGBATexture("./Textures/GUI/select.bmp", "");
+	tex_unselect = Textures::LoadRGBATexture("./Textures/GUI/unselect.bmp", "");
+	tex_title = Textures::LoadRGBATexture("./Textures/GUI/title.bmp", "./Textures/GUI/titlemask.bmp");
 	for (int i = 0; i < 6; i++) {
 		std::stringstream ss;
-		ss << "Textures/GUI/mainmenu" << i << ".bmp";
+		ss << "./Textures/GUI/mainmenu" << i << ".bmp";
 		tex_mainmenu[i] = Textures::LoadRGBTexture(ss.str());
 	}
 
-	DefaultSkin = Textures::LoadRGBATexture("Textures/Player/skin_xiaoqiao.bmp", "Textures/Player/skinmask_xiaoqiao.bmp");
+	DefaultSkin = Textures::LoadRGBATexture("./Textures/Player/skin_xiaoqiao.bmp", "./Textures/Player/skinmask_xiaoqiao.bmp");
 
 	for (int gloop = 1; gloop <= 10; gloop++) {
-		string path = "Textures/blocks/destroy_" + itos(gloop) + ".bmp";
+		std::string path = "./Textures/Blocks/destroy_" + itos(gloop) + ".bmp";
 		DestroyImage[gloop] = Textures::LoadRGBATexture(path, path);
 	}
 
-	BlockTextures = Textures::LoadRGBATexture("Textures/blocks/Terrain.bmp", "Textures/blocks/Terrainmask.bmp");
-	BlockTextures3D = Textures::LoadBlock3DTexture("Textures/blocks/Terrain3D.bmp", "Textures/blocks/Terrain3Dmask.bmp");
+	BlockTextures = Textures::LoadRGBATexture("./Textures/Blocks/Terrain.bmp", "./Textures/Blocks/Terrainmask.bmp");
+	BlockTextures3D = Textures::LoadBlock3DTexture("./Textures/Blocks/Terrain3D.bmp", "./Textures/Blocks/Terrain3Dmask.bmp");
 	loadItemsTextures();
 }
 

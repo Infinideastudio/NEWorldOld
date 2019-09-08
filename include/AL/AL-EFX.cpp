@@ -2,7 +2,7 @@
 namespace EFX {
 	ALuint uiEffectSlot, uiEffect;
 	EFXEAXREVERBPROPERTIES efxReverb;
-	EAXREVERBPROPERTIES EAXprop = Generic;//Ð§¹û
+	EAXREVERBPROPERTIES EAXprop = Generic;//æ•ˆæžœ
 	ALboolean CreateEffect(ALuint *puiEffect, ALenum eEffectType);
 	ALboolean CreateAuxEffectSlot(ALuint *puiAuxEffectSlot);
 	ALboolean SetEFXEAXReverbProperties(EFXEAXREVERBPROPERTIES *pEFXEAXReverb, ALuint uiEffect);

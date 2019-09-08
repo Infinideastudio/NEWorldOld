@@ -3,13 +3,13 @@
 #include "World.h"
 #include "Setup.h"
 
-string Str[] = {
+std::string Str[] = {
 "NEWorld Main Version:" + MAJOR_VERSION + MINOR_VERSION + EXT_VERSION ,
 "CopyLeft 2016 Infinideastudio, No Rights Reserved" ,
 "Welcome to develope with us!",
 "Contributers:" ,
 "qiaozhanrong,Null,SuperSodaSea,Null,DREAMWORLDVOID," ,
-"jacky8399,0u0,jelawatµØÊó,HydroH,Michael R,dtcxzyw" ,
+"jacky8399,0u0,jelawatåœ°é¼ ,HydroH,Michael R,dtcxzyw" ,
 "" ,
 "PS:Since this is a In-Develop Version, we welcome any types of suggestions or questions.",
 "Anyone is welcomed to send Issues on the following project site:",
@@ -35,8 +35,8 @@ namespace Menus {
 		}
 		void onUpdate() {
 			AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
-			EFX::EAXprop = Generic;
-			EFX::UpdateEAXprop();
+			//EFX::EAXprop = Generic;
+			//EFX::UpdateEAXprop();
 			float Pos[] = { 0.0f,0.0f,0.0f };
 			AudioSystem::Update(Pos, false, false, Pos, false, false);
 			if (backbtn.clicked) GUI::PopPage();

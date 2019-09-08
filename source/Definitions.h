@@ -21,13 +21,13 @@
 
 //Global Vars
 const unsigned int VERSION = 39;
-const string MAJOR_VERSION = "Alpha 0.";
-const string MINOR_VERSION = "5";
-const string EXT_VERSION = " Technical Perview";
-const int defaultwindowwidth = 852; //Ä¬ÈÏ´°¿Ú¿í¶È
-const int defaultwindowheight = 480; //Ä¬ÈÏ´°¿Ú¸ß¶È
-const int networkRequestFrequency = 3; //ÇëÇóÆµÂÊ
-const int networkRequestMax = 20; //ÀíÏë×î´óÇëÇó¶ÓÁĞ³¤¶È
+const std::string MAJOR_VERSION = "Alpha 0.";
+const std::string MINOR_VERSION = "5";
+const std::string EXT_VERSION = " Technical Perview";
+const int defaultwindowwidth = 852; //é»˜è®¤çª—å£å®½åº¦
+const int defaultwindowheight = 480; //é»˜è®¤çª—å£é«˜åº¦
+const int networkRequestFrequency = 3; //è¯·æ±‚é¢‘ç‡
+const int networkRequestMax = 20; //ç†æƒ³æœ€å¤§è¯·æ±‚é˜Ÿåˆ—é•¿åº¦
 extern float FOVyNormal;
 extern float mousemove;
 extern int viewdistance;
@@ -66,7 +66,7 @@ extern TextureID DestroyImage[11];
 extern TextureID DefaultSkin;
 
 extern bool multiplayer;
-extern string serverip;
+extern std::string serverip;
 extern unsigned short port;
 
 extern Mutex_t Mutex;
@@ -92,7 +92,7 @@ extern GLFWcursor* MouseCursor;
 extern double mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
 extern double mxdelta, mydelta;
-extern string inputstr;
+extern std::string inputstr;
 void AppCleanUp();
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC

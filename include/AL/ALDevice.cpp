@@ -1,10 +1,10 @@
 #include "ALDevice.h"
-ALDeviceList * ALDevice::GetALDeviceList()//ÓÃÍêÇëDelete
+ALDeviceList * ALDevice::GetALDeviceList()//ç”¨å®Œè¯·Delete
 {
 	ALDeviceList * pDeviceList = new ALDeviceList();
 	return pDeviceList;
 }
-bool ALDevice::InitAL(ALCchar * DeviceName)//³õÊ¼»¯
+bool ALDevice::InitAL(ALCchar * DeviceName)//åˆå§‹åŒ–
 {
 	Device = alcOpenDevice(DeviceName);
 	if (Device)
@@ -13,7 +13,7 @@ bool ALDevice::InitAL(ALCchar * DeviceName)//³õÊ¼»¯
 		if (Context)
 		{
 			alcMakeContextCurrent(Context);
-			//¿ªÆôEFX
+			//å¼€å¯EFX
 			EFX::Init();
 			return true;
 		}
@@ -61,15 +61,15 @@ ALuint ALDevice::Play(ALuint uiBuffer, bool loop, float gain,  ALfloat sourcePos
 	ALuint uiSource;
 	alGenSources(1, &uiSource);
 	alSourcei(uiSource, AL_BUFFER, uiBuffer);
-	alSourcei(uiSource, AL_LOOPING, loop);  // ÉèÖÃÒôÆµ²¥·ÅÊÇ·ñÎªÑ­»·²¥·Å£¬AL_FALSEÊÇ²»Ñ­»· 
-	alSourcef(uiSource, AL_GAIN, gain);  //ÉèÖÃÒôÁ¿´óĞ¡£¬1.0f±íÊ¾×î´óÒôÁ¿¡£openAL¶¯Ì¬µ÷½ÚÒôÁ¿´óĞ¡¾ÍÓÃÕâ¸ö·½·¨ 
-	//ÎªÊ¡ÊÂ£¬Ö±½ÓÍ³Ò»ÉèÖÃË¥¼õÒò×Ó
+	alSourcei(uiSource, AL_LOOPING, loop);  // è®¾ç½®éŸ³é¢‘æ’­æ”¾æ˜¯å¦ä¸ºå¾ªç¯æ’­æ”¾ï¼ŒAL_FALSEæ˜¯ä¸å¾ªç¯ 
+	alSourcef(uiSource, AL_GAIN, gain);  //è®¾ç½®éŸ³é‡å¤§å°ï¼Œ1.0fè¡¨ç¤ºæœ€å¤§éŸ³é‡ã€‚openALåŠ¨æ€è°ƒèŠ‚éŸ³é‡å¤§å°å°±ç”¨è¿™ä¸ªæ–¹æ³• 
+	//ä¸ºçœäº‹ï¼Œç›´æ¥ç»Ÿä¸€è®¾ç½®è¡°å‡å› å­
 	alSourcef(uiSource, AL_ROLLOFF_FACTOR, 5.0);
 	//alSourcef(uiSource, AL_MAX_DISTANCE, 30.0);
 	alSourcef(uiSource, AL_REFERENCE_DISTANCE, 1.0);
-	//ÉèÖÃÎ»ÖÃ
+	//è®¾ç½®ä½ç½®
 	Updatesource(uiSource,sourcePos,sourceVel);
-	//¿ªÆôEFX
+	//å¼€å¯EFX
 	EFX::set(uiSource);
 	alSourcePlay(uiSource);
 	return uiSource;

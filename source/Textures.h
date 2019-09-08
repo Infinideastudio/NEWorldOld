@@ -1,6 +1,5 @@
 #pragma once
 #include "Definitions.h"
-#include "GLProc.h"
 
 extern int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, filter;
 const short BITMAP_ID = 0x4D42;
@@ -42,18 +41,18 @@ namespace Textures{
 	const int NULLBLOCK = 63;
 
 	void Init();
-	ubyte getTextureIndex(block blockname, ubyte side);
+	ubyte getTextureIndex(Block blockname, ubyte side);
 	double getTexcoordX(item item, ubyte side);
 	double getTexcoordY(item item, ubyte side);
-	void LoadRGBImage(TEXTURE_RGB& tex, string Filename);
-	void LoadRGBAImage(TEXTURE_RGBA& tex, string Filename, string MkFilename);
+	void LoadRGBImage(TEXTURE_RGB& tex, std::string Filename);
+	void LoadRGBAImage(TEXTURE_RGBA& tex, std::string Filename, std::string MkFilename);
 
-	TextureID LoadRGBTexture(string Filename);
-	TextureID LoadFontTexture(string Filename);
-	TextureID LoadRGBATexture(string Filename, string MkFilename);
-	TextureID LoadBlock3DTexture(string Filename, string MkFilename);
+	TextureID LoadRGBTexture(std::string Filename);
+	TextureID LoadFontTexture(std::string Filename);
+	TextureID LoadRGBATexture(std::string Filename, std::string MkFilename);
+	TextureID LoadBlock3DTexture(std::string Filename, std::string MkFilename);
 
-	void SaveRGBImage(string filename, TEXTURE_RGB& image);
+	void SaveRGBImage(std::string filename, TEXTURE_RGB& image);
 
 	void Build2DMipmaps(GLenum format, int w, int h, int level, const ubyte* src);
 

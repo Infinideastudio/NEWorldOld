@@ -8,14 +8,14 @@ namespace Menus {
 	private:
 		GUI::label title;
 		GUI::button resumebtn, exitbtn;
-		void onLoad() {
+		void onLoad() override {
 			glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			title = GUI::label(GetStrbyKey("NEWorld.pause.caption"), -225, 225, 0, 16, 0.5, 0.5, 0.25, 0.25);
 			resumebtn = GUI::button(GetStrbyKey("NEWorld.pause.continue"), -200, 200, -35, -3, 0.5, 0.5, 0.5, 0.5);
 			exitbtn = GUI::button(GetStrbyKey("NEWorld.pause.back"), -200, 200, 3, 35, 0.5, 0.5, 0.5, 0.5);
 			registerControls(3, &title, &resumebtn, &exitbtn);
 		}
-		void onUpdate() {
+		void onUpdate() override {
 			MutexUnlock(Mutex);
 			//Make update thread realize that it should pause
 			MutexLock(Mutex);
@@ -31,8 +31,8 @@ namespace Menus {
 				updateThreadPaused = false;
 			}
 			AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
-			EFX::EAXprop = Generic;
-			EFX::UpdateEAXprop();
+			//EFX::EAXprop = Generic;
+			//EFX::UpdateEAXprop();
 			float Pos[] = { 0.0f,0.0f,0.0f };
 			AudioSystem::Update(Pos, false, false, Pos, false, false);
 			if (exitbtn.clicked) {

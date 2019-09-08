@@ -25,7 +25,7 @@ void handle(Net::Socket&& socket) {
 		
 		int len;
 		try {
-			len = socket.recvInt();	//»ñµÃÊı¾İ³¤¶È
+			len = socket.recvInt();	//è·å¾—æ•°æ®é•¿åº¦
 		}
 		catch (...) {
 			Print("A connection closed.");
@@ -47,7 +47,7 @@ void handle(Net::Socket&& socket) {
 		switch (signal) {
 		case PLAYER_PACKET_SEND:
 		{
-			//¿Í»§¶ËÍæ¼ÒÊı¾İ¸üĞÂ
+			//å®¢æˆ·ç«¯ç©å®¶æ•°æ®æ›´æ–°
 			PlayerPacket* pp = (PlayerPacket*)data;
 			if (IDSet&&pp->onlineID != onlineID) {
 				Print("The packet is trying to change other player's data. May cheat? (Packet from " + toString(onlineID) + ")", MESSAGE_WARNING);
@@ -59,7 +59,7 @@ void handle(Net::Socket&& socket) {
 					Print("Can't find player data, may change the online id in game. (" + toString(onlineID) + " to " + toString(pp->onlineID) + ")", MESSAGE_WARNING);
 					break;
 				}
-				players[pp->onlineID] = *pp;  //µÚÒ»´ÎÉÏ´«Êı¾İ
+				players[pp->onlineID] = *pp;  //ç¬¬ä¸€æ¬¡ä¸Šä¼ æ•°æ®
 				IDSet = true;
 				onlineID = pp->onlineID;
 			}
@@ -68,13 +68,13 @@ void handle(Net::Socket&& socket) {
 					Print("May repeat login?", MESSAGE_WARNING);
 					break;
 				}
-				iter->second = *pp;  //¸üĞÂÊı¾İ
+				iter->second = *pp;  //æ›´æ–°æ•°æ®
 			}
 			break;
 		}
 		case PLAYER_PACKET_REQ:
 		{
-			//¿Í»§¶ËÇëÇóÆäËûÍæ¼ÒµÄÎ»ÖÃ
+			//å®¢æˆ·ç«¯è¯·æ±‚å…¶ä»–ç©å®¶çš„ä½ç½®
 			if (players.size() == 0) break;
 			PlayerPacket* playersData = new PlayerPacket[players.size()];
 			int i = 0;

@@ -16,7 +16,7 @@ namespace TextRenderer {
 	void BuildFont(int w, int h){
 		ww = w;
 		wh = h;
-		Font = Textures::LoadFontTexture("Fonts/ASCII.bmp");
+		Font = Textures::LoadFontTexture("./Fonts/ASCII.bmp");
 
 		float cx, cy;
 		gbe = glGenLists(256);
@@ -103,13 +103,13 @@ namespace TextRenderer {
 	}
 
 	void MBToWC(const char* lpcszStr, wchar_t*& lpwszStr, int dwSize){
-		lpwszStr = (wchar_t*)malloc(dwSize);
+		lpwszStr = (wchar_t*)malloc(dwSize * 2);
 		memset(lpwszStr, 0, dwSize);
 		int iSize = (MByteToWChar(lpwszStr, lpcszStr, strlen(lpcszStr)) + 1)*sizeof(wchar_t);
 		lpwszStr = (wchar_t*)realloc(lpwszStr, iSize);
 	}
 
-	int getStrWidth(string s){
+	int getStrWidth(std::string s){
 		UnicodeChar c;
 		int uc, res = 0;
 		wchar_t* wstr = nullptr;
@@ -127,7 +127,7 @@ namespace TextRenderer {
 		return res;
 	}
 
-	void renderString(int x, int y, string glstring){
+	void renderString(int x, int y, std::string glstring){
 		UnicodeChar c;
 		int uc;
 		int span = 0;
@@ -185,7 +185,7 @@ namespace TextRenderer {
 		free(wstr);
 	}
 
-	void renderASCIIString(int x, int y, string glstring) {
+	void renderASCIIString(int x, int y, std::string glstring) {
 		//glBindTexture(GL_TEXTURE_2D, Font);
 		glPushMatrix();
 		glLoadIdentity();

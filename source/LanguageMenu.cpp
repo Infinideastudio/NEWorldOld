@@ -1,7 +1,7 @@
 #include "Menus.h"
 #include <deque>
 struct Langinfo {
-	string Symbol, EngSymbol, Name;
+	std::string Symbol, EngSymbol, Name;
 	GUI::button * Button;
 };
 
@@ -36,8 +36,8 @@ namespace Menus {
 
 		void onUpdate() {
 			AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
-			EFX::EAXprop = Generic;
-			EFX::UpdateEAXprop();
+			//EFX::EAXprop = Generic;
+			//EFX::UpdateEAXprop();
 			float Pos[] = { 0.0f,0.0f,0.0f };
 			AudioSystem::Update(Pos, false, false, Pos, false, false);
 			if (backbtn.clicked) GUI::PopPage();

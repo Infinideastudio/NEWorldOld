@@ -3,23 +3,24 @@
 #include "Renderer.h"
 #include "WorldGen.h"
 #include "Particles.h"
+#include <algorithm>
 
 namespace World {
 
-	string worldname;
+	std::string worldname;
 	brightness skylight = 15;         //Sky light level
 	brightness BRIGHTNESSMAX = 15;    //Maximum brightness
 	brightness BRIGHTNESSMIN = 2;     //Mimimum brightness
 	brightness BRIGHTNESSDEC = 1;     //Brightness decrease
-	chunk* EmptyChunkPtr;
+	Chunk* EmptyChunkPtr;
 	unsigned int EmptyBuffer;
 	int MaxChunkLoads = 64;
 	int MaxChunkUnloads = 64;
 	int MaxChunkRenders = 1;
 
-	chunk** chunks;
+	Chunk** chunks;
 	int loadedChunks, chunkArraySize;
-	chunk* cpCachePtr = nullptr;
+	Chunk* cpCachePtr = nullptr;
 	chunkid cpCacheID = 0;
 	chunkPtrArray cpArray;
 	HeightMap HMap;
@@ -29,7 +30,7 @@ namespace World {
 	int unloadedChunks, unloadedChunksCount;
 	int chunkBuildRenderList[256][2];
 	int chunkLoadList[256][4];
-	pair<chunk*, int> chunkUnloadList[256];
+	pair<Chunk*, int> chunkUnloadList[256];
 	vector<unsigned int> vbuffersShouldDelete;
 	int chunkBuildRenders, chunkLoads, chunkUnloads;
 	//bool* loadedChunkArray = nullptr; //Accelerate sortings
@@ -38,14 +39,14 @@ namespace World {
 		
 		std::stringstream ss;
 		ss << "Worlds/" << worldname << "/";
-		_mkdir(ss.str().c_str());
+        system(("mkdir " + ss.str()).c_str());
 		ss.clear(); ss.str("");
 		ss << "Worlds/" << worldname << "/chunks";
-		_mkdir(ss.str().c_str());
+        system(("mkdir " + ss.str()).c_str());
 		
-		//EmptyChunkPtr = new chunk(0, 0, 0, getChunkID(0, 0, 0));
+		//EmptyChunkPtr = new Chunk(0, 0, 0, getChunkID(0, 0, 0));
 		//EmptyChunkPtr->Empty = true;
-		EmptyChunkPtr = (chunk*)~0;
+		EmptyChunkPtr = (Chunk*)~0;
 
 		WorldGen::perlinNoiseInit(3404);
 		cpCachePtr = nullptr;
@@ -61,7 +62,7 @@ namespace World {
 		
 	}
 
-	inline pair<int,int> binary_search_chunks(chunk** target, int len, chunkid cid) {
+	inline pair<int,int> binary_search_chunks(Chunk** target, int len, chunkid cid) {
 		//¶þ·Ö²éÕÒ,GO!
 		int first = 0;
 		int last = len - 1;
@@ -73,14 +74,14 @@ namespace World {
 		}
 		return std::make_pair(first, middle);
 	}
-	chunk* AddChunk(int x, int y, int z) {
+	Chunk* AddChunk(int x, int y, int z) {
 
 		chunkid cid;
 		cid = getChunkID(x, y, z);  //Chunk ID
 		pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
 		if (loadedChunks > 0 && chunks[pos.second]->id == cid) {
 			printf("[Console][Error]");
-			printf("Chunk(%d,%d,%d)has been loaded,when adding chunk.\n", x, y, z);
+			printf("Chunk(%d,%d,%d)has been loaded,when adding Chunk.\n", x, y, z);
 			return chunks[pos.second];
 		}
 
@@ -88,7 +89,7 @@ namespace World {
 		for (int i = loadedChunks - 1; i >= pos.first + 1; i--) {
 			chunks[i] = chunks[i - 1];
 		}
-		chunks[pos.first] = new chunk(x, y, z, cid);
+		chunks[pos.first] = new Chunk(x, y, z, cid);
 		cpCacheID = cid;
 		cpCachePtr = chunks[pos.first];
 		cpArray.AddChunk(chunks[pos.first],x,y,z);
@@ -123,11 +124,11 @@ namespace World {
 		return -1;
 	}
 
-	chunk* getChunkPtr(int x, int y, int z){
+	Chunk* getChunkPtr(int x, int y, int z){
 		chunkid cid = getChunkID(x, y, z);
 		if (cpCacheID == cid && cpCachePtr != nullptr) return cpCachePtr;
 		else {
-			chunk* ret = cpArray.getChunkPtr(x, y, z);
+			Chunk* ret = cpArray.getChunkPtr(x, y, z);
 			if (ret != nullptr) {
 				cpCacheID = cid;
 				cpCachePtr = ret;
@@ -159,7 +160,7 @@ namespace World {
 			if (chunkArraySize < 1024) chunkArraySize = 1024;
 			else chunkArraySize *= 2;
 			while (chunkArraySize < loadedChunks) chunkArraySize *= 2;
-			chunk** cp = (chunk**)realloc(chunks, chunkArraySize * sizeof(chunk*));
+			Chunk** cp = (Chunk**)realloc(chunks, chunkArraySize * sizeof(Chunk*));
 			if (cp == nullptr && loadedChunks != 0) {
 				DebugError("Allocate memory failed!");
 				saveAllChunks();
@@ -175,12 +176,12 @@ namespace World {
 		loadedChunks -= cc;
 	}
 
-	void renderblock(int x, int y, int z, chunk* chunkptr) {
+	void renderblock(int x, int y, int z, Chunk* chunkptr) {
 
 		double colors, color1, color2, color3, color4, tcx, tcy, size, EPS = 0.0;
 		int cx = chunkptr->cx, cy = chunkptr->cy, cz = chunkptr->cz;
 		int gx = cx * 16 + x, gy = cy * 16 + y, gz = cz * 16 + z;
-		block blk[7] = { chunkptr->getblock(x,y,z) ,
+		Block blk[7] = { chunkptr->getblock(x,y,z) ,
 			z < 15 ? chunkptr->getblock(x, y, z + 1) : getblock(gx, gy, gz + 1, Blocks::ROCK),
 			z>0 ? chunkptr->getblock(x, y, z - 1) : getblock(gx, gy, gz - 1, Blocks::ROCK),
 			x < 15 ? chunkptr->getblock(x + 1, y, z) : getblock(gx + 1, gy, gz, Blocks::ROCK),
@@ -503,7 +504,7 @@ namespace World {
 		int by = getblockpos(y);
 		int bz = getblockpos(z);
 
-		chunk* cptr = getChunkPtr(cx, cy, cz);
+		Chunk* cptr = getChunkPtr(cx, cy, cz);
 		if (cptr != nullptr) {
 
 			if (cptr == EmptyChunkPtr) {
@@ -528,7 +529,7 @@ namespace World {
 
 				brightness br;
 				int maxbrightness;
-				block blks[7] = { 0,
+				Block blks[7] = { 0,
 					getblock(x, y, z + 1),    //Front face
 					getblock(x, y, z - 1),    //Back face
 					getblock(x + 1, y, z),    //Right face
@@ -594,7 +595,7 @@ namespace World {
 		}
 	}
 
-	block getblock(int x, int y, int z, block mask, chunk* cptr) {
+	Block getblock(int x, int y, int z, Block mask, Chunk* cptr) {
 		//获取方块
 		int	cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
 		if (chunkOutOfBound(cx, cy, cz)) return Blocks::AIR;
@@ -602,13 +603,13 @@ namespace World {
 		if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
 			return cptr->getblock(bx, by, bz);
 		}
-		chunk* ci = getChunkPtr(cx, cy, cz);
+		Chunk* ci = getChunkPtr(cx, cy, cz);
 		if (ci == EmptyChunkPtr) return Blocks::AIR;
 		if (ci != nullptr) return ci->getblock(bx, by, bz);
 		return mask;
 	}
 
-	brightness getbrightness(int x, int y, int z, chunk* cptr) {
+	brightness getbrightness(int x, int y, int z, Chunk* cptr) {
 		//获取亮度
 		int	cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
 		if (chunkOutOfBound(cx, cy, cz)) return skylight;
@@ -616,13 +617,13 @@ namespace World {
 		if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
 			return cptr->getbrightness(bx, by, bz);
 		}
-		chunk* ci = getChunkPtr(cx, cy, cz);
+		Chunk* ci = getChunkPtr(cx, cy, cz);
 		if (ci == EmptyChunkPtr) if (cy < 0) return BRIGHTNESSMIN; else return skylight;
 		if (ci != nullptr)return ci->getbrightness(bx, by, bz);
 		return skylight;
 	}
 
-	void setblock(int x, int y, int z, block Blockname, chunk* cptr) {
+	void setblock(int x, int y, int z, Block Blockname, Chunk* cptr) {
 		//设置方块
 		int	cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
 		int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
@@ -633,9 +634,9 @@ namespace World {
 			updateblock(x, y, z, true);
 		}
 		if (!chunkOutOfBound(cx, cy, cz)) {
-			chunk* i = getChunkPtr(cx, cy, cz);
+			Chunk* i = getChunkPtr(cx, cy, cz);
 			if (i == EmptyChunkPtr) {
-				chunk* cp = AddChunk(cx, cy, cz);
+				Chunk* cp = AddChunk(cx, cy, cz);
 				cp->Load();
 				cp->Empty = false;
 				i = cp;
@@ -647,7 +648,7 @@ namespace World {
 		}
 	}
 
-	void setbrightness(int x, int y, int z, brightness Brightness, chunk* cptr) {
+	void setbrightness(int x, int y, int z, brightness Brightness, Chunk* cptr) {
 		//设置亮度
 		int	cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
 		int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
@@ -657,9 +658,9 @@ namespace World {
 			cptr->setbrightness(bx, by, bz, Brightness);
 		}
 		if (!chunkOutOfBound(cx, cy, cz)) {
-			chunk* i = getChunkPtr(cx, cy, cz);
+			Chunk* i = getChunkPtr(cx, cy, cz);
 			if (i == EmptyChunkPtr) {
-				chunk* cp = AddChunk(cx, cy, cz);
+				Chunk* cp = AddChunk(cx, cy, cz);
 				cp->Load();
 				cp->Empty = false;
 				i = cp;
@@ -671,15 +672,15 @@ namespace World {
 	}
 	
 	bool chunkUpdated(int x, int y, int z) {
-		chunk* i = getChunkPtr(x, y, z);
+		Chunk* i = getChunkPtr(x, y, z);
 		if (i == nullptr || i == EmptyChunkPtr) return false;
 		return i->updated;
 	}
 
 	void setChunkUpdated(int x, int y, int z, bool value) {
-		chunk* i = getChunkPtr(x, y, z);
+		Chunk* i = getChunkPtr(x, y, z);
 		if (i == EmptyChunkPtr) {
-			chunk* cp = AddChunk(x, y, z);
+			Chunk* cp = AddChunk(x, y, z);
 			cp->Load();
 			cp->Empty = false;
 			i = cp;
@@ -800,7 +801,7 @@ namespace World {
 	}
 
 	void calcVisible(double xpos, double ypos, double zpos, Frustum& frus) {
-		chunk::setRelativeBase(xpos, ypos, zpos, frus);
+		Chunk::setRelativeBase(xpos, ypos, zpos, frus);
 		for (int ci = 0; ci != loadedChunks; ci++) chunks[ci]->calcVisible();
 	}
 
@@ -923,7 +924,7 @@ namespace World {
 			else { break; };
 		}
 		//取最小值
-		h = min(h, Dirt * 15 / 268 * max(rnd(), 0.8));
+		h = std::min(h, int(Dirt * 15 / 268 * max(rnd(), 0.8)));
 		if (h < 7)return;
 		//开始生成树干
 		for (int i = y + 1; i < y + h + 1; i++)
@@ -940,7 +941,7 @@ namespace World {
 			{
 				for (int iz = z - 6; iz < z + 6; iz++)
 				{
-					int distancen = Distancen(ix, iy, iz, x, y + leafh + 1, z);
+					int distancen = DistanceSquare(ix, iy, iz, x, y+leafh+1, z);
 					if ((getblock(ix, iy, iz) == Blocks::AIR) && (distancen <distancen2)) {
 						if ((distancen <= distancen2 / 9) && (rnd()>0.3))//生成枝杈
 						{
@@ -970,7 +971,7 @@ namespace World {
 		*/
 	}
 
-	void explode(int x, int y, int z, int r, chunk* c) {
+	void explode(int x, int y, int z, int r, Chunk* c) {
 		double maxdistsqr = r*r;
 		for (int fx = x - r - 1; fx < x + r + 1; fx++) {
 			for (int fy = y - r - 1; fy < y + r + 1; fy++) {
@@ -978,7 +979,7 @@ namespace World {
 					int distsqr = (fx - x)*(fx - x) + (fy - y)*(fy - y) + (fz - z)*(fz - z);
 					if (distsqr <= maxdistsqr*0.75 ||
 						distsqr <= maxdistsqr && rnd() > (distsqr - maxdistsqr*0.6) / (maxdistsqr*0.4)) {
-						block e = World::getblock(fx, fy, fz);
+						Block e = World::getblock(fx, fy, fz);
 						if (e == Blocks::AIR) continue;
 						for (int j = 1; j <= 12; j++) {
 							Particles::throwParticle(e,

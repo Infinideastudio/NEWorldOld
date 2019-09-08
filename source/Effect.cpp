@@ -108,7 +108,7 @@ namespace Effect {
 
 		}
 
-		delete mat;
+		delete[] mat;
 
 	}
 

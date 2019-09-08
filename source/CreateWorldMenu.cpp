@@ -9,7 +9,7 @@ namespace Menus {
 		GUI::label title;
 		GUI::textbox worldnametb;
 		GUI::button okbtn, backbtn;
-		void onLoad() {
+		void onLoad() override {
 			title = GUI::label(GetStrbyKey("NEWorld.create.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			worldnametb = GUI::textbox(GetStrbyKey("NEWorld.create.inputname"), -250, 250, 48, 72, 0.5, 0.5, 0.0, 0.0);
 			okbtn = GUI::button(GetStrbyKey("NEWorld.create.ok"), -250, 250, 84, 120, 0.5, 0.5, 0.0, 0.0);
@@ -19,15 +19,15 @@ namespace Menus {
 			okbtn.enabled = false;
 			worldnametbChanged = false;
 		}
-		void onUpdate() {
+		void onUpdate() override {
 			if (worldnametb.pressed && !worldnametbChanged) {
 				worldnametb.text = "";
 				worldnametbChanged = true;
 			}
-			if (worldnametb.text == "" || !worldnametbChanged) okbtn.enabled = false;
+			if (worldnametb.text.empty() || !worldnametbChanged) okbtn.enabled = false;
 			else okbtn.enabled = true;
 			if (okbtn.clicked) {
-				if (worldnametb.text != "") {
+				if (!worldnametb.text.empty()) {
 					World::worldname = worldnametb.text;
 					GUI::ClearStack();
 					GameView();
@@ -37,8 +37,8 @@ namespace Menus {
 				}
 			}
 			AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
-			EFX::EAXprop = Generic;
-			EFX::UpdateEAXprop();
+			//EFX::EAXprop = Generic;
+			//EFX::UpdateEAXprop();
 			float Pos[] = { 0.0f,0.0f,0.0f };
 			AudioSystem::Update(Pos, false, false, Pos, false, false);
 			if (backbtn.clicked) GUI::PopPage();

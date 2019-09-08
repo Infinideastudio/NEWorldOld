@@ -1,6 +1,6 @@
 #pragma once
 #include "Definitions.h"
-#include "chunkPtrArray.h"
+#include "ChunkPtrArray.h"
 #include "HeightMap.h"
 #include "Chunk.h"
 #include "Hitbox.h"
@@ -14,22 +14,22 @@ class Frsutum;
 
 namespace World {
 
-	extern string worldname;
+	extern std::string worldname;
 	const int worldsize = 134217728;
 	const int worldheight = 128;
 	extern brightness skylight;         //Sky light level
 	extern brightness BRIGHTNESSMAX;    //Maximum brightness
 	extern brightness BRIGHTNESSMIN;    //Mimimum brightness
 	extern brightness BRIGHTNESSDEC;    //Brightness decree
-	extern chunk* EmptyChunkPtr;
+	extern Chunk* EmptyChunkPtr;
 	extern unsigned int EmptyBuffer;
 	extern int MaxChunkLoads;
 	extern int MaxChunkUnloads;
 	extern int MaxChunkRenders;
 
-	extern chunk** chunks;
+	extern Chunk** chunks;
 	extern int loadedChunks, chunkArraySize;
-	extern chunk* cpCachePtr;
+	extern Chunk* cpCachePtr;
 	extern chunkid cpCacheID;
 	extern HeightMap HMap;
 	extern chunkPtrArray cpArray;
@@ -40,13 +40,13 @@ namespace World {
 	extern int unloadedChunks, unloadedChunksCount;
 	extern int chunkBuildRenderList[256][2];
 	extern int chunkLoadList[256][4];
-	extern pair<chunk*, int> chunkUnloadList[256];
+	extern pair<Chunk*, int> chunkUnloadList[256];
 	extern vector<unsigned int> vbuffersShouldDelete;
 	extern int chunkBuildRenders, chunkLoads, chunkUnloads;
 
 	void Init();
 
-	chunk* AddChunk(int x, int y, int z);
+	Chunk* AddChunk(int x, int y, int z);
 	void DeleteChunk(int x, int y, int z);
 	inline chunkid getChunkID(int x, int y, int z) {
 		if (y == -128) y = 0; if (y <= 0) y = abs(y) + (1LL << 7);
@@ -55,7 +55,7 @@ namespace World {
 		return (chunkid(y) << 56) + (chunkid(x) << 28) + z;
 	}
 	int getChunkPtrIndex(int x, int y, int z);
-	chunk* getChunkPtr(int x, int y, int z);
+	Chunk* getChunkPtr(int x, int y, int z);
 	void ExpandChunkArray(int cc);
 	void ReduceChunkArray(int cc);
 
@@ -74,13 +74,13 @@ namespace World {
 	vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB& box);
 	bool inWater(const Hitbox::AABB& box);
 
-	void renderblock(int x, int y, int z, chunk* chunkptr);
+	void renderblock(int x, int y, int z, Chunk* chunkptr);
 	void updateblock(int x, int y, int z, bool blockchanged, int depth = 0);
-	block getblock(int x, int y, int z, block mask = Blocks::AIR, chunk* cptr = nullptr);
-	brightness getbrightness(int x, int y, int z, chunk* cptr = nullptr);
-	void setblock(int x, int y, int z, block Block, chunk* cptr = nullptr);
-	void setbrightness(int x, int y, int z, brightness Brightness, chunk* cptr = nullptr);
-	inline void putblock(int x, int y, int z, block Block) { setblock(x, y, z, Block); }
+	Block getblock(int x, int y, int z, Block mask = Blocks::AIR, Chunk* cptr = nullptr);
+	brightness getbrightness(int x, int y, int z, Chunk* cptr = nullptr);
+	void setblock(int x, int y, int z, Block Block, Chunk* cptr = nullptr);
+	void setbrightness(int x, int y, int z, brightness Brightness, Chunk* cptr = nullptr);
+	inline void putblock(int x, int y, int z, Block Block) { setblock(x, y, z, Block); }
 	inline void pickleaf(){
 		if (rnd() < 0.2) {
 			if (rnd() < 0.5)Player::addItem(APPLE);
@@ -100,25 +100,26 @@ namespace World {
 				float(rnd()*0.02 + 0.03), int(rnd() * 60) + 30);
 		}
 		setblock(x, y, z, Blocks::AIR);
-		//ÉÏ
+		//ä¸Š
 		if ((getblock(x, y + 1, z) == Blocks::WOOD) || (getblock(x, y + 1, z) == Blocks::LEAF))picktree(x, y + 1, z);
-		//Ç°
+		//å‰
 		if ((getblock(x, y , z + 1) == Blocks::WOOD) || (getblock(x, y , z + 1) == Blocks::LEAF))picktree(x, y, z + 1); 
-		//ºó
+		//åŽ
 		if ((getblock(x, y, z - 1) == Blocks::WOOD) || (getblock(x, y, z - 1) == Blocks::LEAF))picktree(x, y, z - 1); 
-		//×ó
+		//å·¦
 		if ((getblock(x+1, y, z) == Blocks::WOOD) || (getblock(x+1, y, z) == Blocks::LEAF))picktree(x+1, y, z); 
-		//ÓÒ
+		//å³
 		if ((getblock(x - 1, y, z) == Blocks::WOOD) || (getblock(x - 1, y, z) == Blocks::LEAF))picktree(x - 1, y, z);
 	}
+
 	inline void pickblock(int x, int y, int z) {
 		if (getblock(x, y, z) == Blocks::WOOD && 
 			((getblock(x, y+1, z) == Blocks::WOOD)|| (getblock(x, y + 1, z) == Blocks::LEAF)) &&
 			(getblock(x, y, z + 1) == Blocks::AIR) && (getblock(x, y, z - 1) == Blocks::AIR) &&
 			(getblock(x + 1, y, z) == Blocks::AIR) && (getblock(x - 1, y, z) == Blocks::AIR) &&
 			(getblock(x, y - 1, z) != Blocks::AIR)
-			) { picktree(x, y + 1, z); }//´¥·¢¿³Ê÷Ä£Ê½
-		//»÷´òÊ÷Ò¶
+			) { picktree(x, y + 1, z); }//è§¦å‘ç æ ‘æ¨¡å¼
+		//å‡»æ‰“æ ‘å¶
 		if (getblock(x, y, z)!=Blocks::LEAF)Player::addItem(getblock(x, y, z));
 		else pickleaf();
 
@@ -127,7 +128,7 @@ namespace World {
 
 
 	inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
-		//¼ì²â¸ø³öµÄchunk×ø±êÊÇ·ñÔÚäÖÈ¾·¶Î§ÄÚ
+		//æ£€æµ‹ç»™å‡ºçš„chunkåæ ‡æ˜¯å¦åœ¨æ¸²æŸ“èŒƒå›´å†…
 		if (x<px - dist || x>px + dist - 1 || y<py - dist || y>py + dist - 1 || z<pz - dist || z>pz + dist - 1) return false;
 		return true;
 	}
@@ -141,5 +142,5 @@ namespace World {
 	void destroyAllChunks();
 
 	void buildtree(int x, int y, int z);
-	void explode(int x, int y, int z, int r, chunk* c = nullptr);
+	void explode(int x, int y, int z, int r, Chunk* c = nullptr);
 }

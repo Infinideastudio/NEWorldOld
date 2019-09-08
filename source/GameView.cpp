@@ -1,7 +1,7 @@
 #include "GameView.h"
+#include <utility>
 #include "Blocks.h"
 #include "Textures.h"
-#include "GLProc.h"
 #include "Renderer.h"
 #include "TextRenderer.h"
 #include "Player.h"
@@ -14,12 +14,10 @@
 #include "GUI.h"
 #include "Menus.h"
 #include "Frustum.h"
-#include "Network.h"
 #include "Effect.h"
 #include "Items.h"
 #include "Globalization.h"
 #include "Command.h"
-#include "ModLoader.h"
 #include "Setup.h"
 #include"AudioSystem.h"
 
@@ -32,28 +30,28 @@ vector<Command> commands;
 
 class GameDView :public GUI::Form {
 private:
-	string chatword;
+	std::string chatword;
 	bool chatmode = false;
-	vector<string> chatMessages;
+	vector<std::string> chatMessages;
 
-	int fps, fpsc, ups, upsc;
-	double fctime, uctime;
+	int fps{}, fpsc{}, ups{}, upsc{};
+	double fctime{}, uctime{};
 
-	bool GUIrenderswitch;
-	bool DebugMode;
-	bool DebugHitbox;
+	bool GUIrenderswitch{};
+	bool DebugMode{};
+	bool DebugHitbox{};
 	//bool DebugChunk;
 	//bool DebugPerformance;
-	bool DebugShadow;
-	bool DebugMergeFace;
+	bool DebugShadow{};
+	bool DebugMergeFace{};
 
-	int selx, sely, selz, oldselx, oldsely, oldselz, selface;
-	bool sel;
-	float selt, seldes;
-	block selb;
-	brightness selbr;
-	bool selce;
-	int selbx, selby, selbz, selcx, selcy, selcz;
+	int selx{}, sely{}, selz{}, oldselx{}, oldsely{}, oldselz{}, selface{};
+	bool sel{};
+	float selt{}, seldes{};
+	Block selb{};
+	brightness selbr{};
+	bool selce{};
+	int selbx{}, selby{}, selbz{}, selcx{}, selcy{}, selcz{};
 
 	int getMouseScroll() { return mw; }
 	int getMouseButton() { return mb; }
@@ -74,14 +72,13 @@ public:
 		lastupdate = timer();
 
 		while (updateThreadRun) {
-
 			MutexUnlock(Mutex);
-			Sleep(1); //Don't make it always busy
+			std::this_thread::yield();
 			MutexLock(Mutex);
 
 			while (updateThreadPaused) {
 				MutexUnlock(Mutex);
-				Sleep(1); //Same as before
+				std::this_thread::yield();
 				MutexLock(Mutex);
 				lastupdate = updateTimer = timer();
 			}
@@ -107,7 +104,7 @@ public:
 		MutexUnlock(Mutex);
 	}
 
-	void saveGame() {
+	static void saveGame() {
 		World::saveAllChunks();
 		if (!Player::save(World::worldname)) {
 #ifdef NEWORLD_CONSOLE_OUTPUT
@@ -116,7 +113,7 @@ public:
 		}
 	}
 
-	bool loadGame() {
+	static bool loadGame() {
 		if (!Player::load(World::worldname)) {
 #ifdef NEWORLD_CONSOLE_OUTPUT
 			DebugWarning("Failed loading player info!");
@@ -127,7 +124,7 @@ public:
 	}
 
 
-	bool isPressed(int key, bool setFalse = false) {
+	static bool isPressed(int key, bool setFalse = false) {
 		static bool keyPressed[GLFW_KEY_LAST + 1];
 		if (setFalse) { keyPressed[key] = false; return true; }
 		if (key > GLFW_KEY_LAST || key <= 0) return false;
@@ -146,12 +143,12 @@ public:
 		static bool WP;
 		//bool chunkupdated = false;
 
-		//ÓÃÓÚÒôĞ§¸üĞÂ
+		//ç”¨äºéŸ³æ•ˆæ›´æ–°
 		bool BlockClick = false;
 		ALfloat BlockPos[3];
 
 		Player::BlockInHand = Player::inventory[3][Player::indexInHand];
-		//ÉúÃüÖµÏà¹Ø
+		//ç”Ÿå‘½å€¼ç›¸å…³
 		if (Player::health > 0 || Player::gamemode == Player::Creative) {
 			if (Player::ypos < -100) Player::health -= ((-100) - Player::ypos) / 100;
 			if (Player::health < Player::healthMax) Player::health += Player::healSpeed;
@@ -159,7 +156,7 @@ public:
 		}
 		else Player::spawn();
 
-		//Ê±¼ä
+		//æ—¶é—´
 		gametime++;
 		if (glfwGetKey(MainWindow, GLFW_KEY_F8)) gametime += 30;
 		if (gametime > gameTimeMax) gametime = 0;
@@ -180,11 +177,11 @@ public:
 		if (FirstUpdateThisFrame) {
 			World::sortChunkLoadUnloadList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
 
-			//Ğ¶ÔØÇø¿é(Unload chunks)
+			//å¸è½½åŒºå—(Unload chunks)
 			int sumUnload;
 			sumUnload = World::chunkUnloads > World::MaxChunkUnloads ? World::MaxChunkUnloads : World::chunkUnloads;
 			for (int i = 0; i < sumUnload; i++) {
-				World::chunk* cp = World::chunkUnloadList[i].first;
+				World::Chunk* cp = World::chunkUnloadList[i].first;
 #ifdef NEWORLD_DEBUG
 				if (cp == nullptr || cp == World::EmptyChunkPtr) DebugError("Unload error!");
 #endif
@@ -193,14 +190,14 @@ public:
 				World::DeleteChunk(cx, cy, cz);
 			}
 
-			//¼ÓÔØÇø¿é(Load chunks)
+			//åŠ è½½åŒºå—(Load chunks)
 			int sumLoad;
 			sumLoad = World::chunkLoads > World::MaxChunkLoads ? World::MaxChunkLoads : World::chunkLoads;
 			for (int i = 0; i < sumLoad; i++) {
 				int cx = World::chunkLoadList[i][1];
 				int cy = World::chunkLoadList[i][2];
 				int cz = World::chunkLoadList[i][3];
-				World::chunk* c = World::AddChunk(cx, cy, cz);
+				World::Chunk* c = World::AddChunk(cx, cy, cz);
 				c->Load(false);
 				if (c->Empty) {
 					c->Unload(); World::DeleteChunk(cx, cy, cz);
@@ -210,14 +207,14 @@ public:
 
 		}
 
-		//¼ÓÔØ¶¯»­
+		//åŠ è½½åŠ¨ç”»
 		for (int i = 0; i < World::loadedChunks; i++) {
-			World::chunk* cp = World::chunks[i];
+			World::Chunk* cp = World::chunks[i];
 			if (cp->loadAnim <= 0.3f) cp->loadAnim = 0.0f;
 			else cp->loadAnim *= 0.6f;
 		}
 
-		//Ëæ»ú×´Ì¬¸üĞÂ
+		//éšæœºçŠ¶æ€æ›´æ–°
 		for (int i = 0; i < World::loadedChunks; i++) {
 			int x, y, z, gx, gy, gz;
 			int cx = World::chunks[i]->cx;
@@ -240,19 +237,19 @@ public:
 					World::getblock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
 					World::getblock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
 					World::getblock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)) {
-				//³¤²İ
+				//é•¿è‰
 				World::chunks[i]->setblock(x, y, z, Blocks::GRASS);
 				World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
 				World::setChunkUpdated(cx, cy, cz, true);
 			}
 			if (World::chunks[i]->getblock(x, y, z) == Blocks::GRASS && World::getblock(gx, gy + 1, gz, Blocks::AIR) != Blocks::AIR) {
-				//²İ±»¸²¸Ç
+				//è‰è¢«è¦†ç›–
 				World::chunks[i]->setblock(x, y, z, Blocks::DIRT);
 				World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
 			}
 		}
 
-		//ÅĞ¶ÏÑ¡ÖĞµÄ·½¿é
+		//åˆ¤æ–­é€‰ä¸­çš„æ–¹å—
 		double lx, ly, lz, lxl, lyl, lzl;
 		lx = Player::xpos; ly = Player::ypos + Player::height + Player::heightExt; lz = Player::zpos;
 
@@ -261,16 +258,16 @@ public:
 
 		if (!bagOpened) {
 
-			//´ÓÍæ¼ÒÎ»ÖÃ·¢ÉäÒ»ÌõÏß¶Î
+			//ä»ç©å®¶ä½ç½®å‘å°„ä¸€æ¡çº¿æ®µ
 			for (int i = 0; i < selectPrecision*selectDistance; i++) {
 				lxl = lx; lyl = ly; lzl = lz;
 
-				//Ïß¶ÎÑÓÉì
+				//çº¿æ®µå»¶ä¼¸
 				lx += sin(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
 				ly += cos(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
 				lz += cos(M_PI / 180 * (Player::heading - 180))*sin(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
 
-				//Åöµ½·½¿é
+				//ç¢°åˆ°æ–¹å—
 				if (BlockInfo(World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
 					int x, y, z, xl, yl, zl;
 					x = RoundInt(lx); y = RoundInt(ly); z = RoundInt(lz);
@@ -279,12 +276,12 @@ public:
 					selx = x; sely = y; selz = z;
 					sel = true;
 
-					//ÕÒ·½¿éËùÔÚÇø¿é¼°Î»ÖÃ
+					//æ‰¾æ–¹å—æ‰€åœ¨åŒºå—åŠä½ç½®
 					selcx = getchunkpos(x); selcy = getchunkpos(y); selcz = getchunkpos(z);
 					selbx = getblockpos(x); selby = getblockpos(y); selbz = getblockpos(z);
 
 					if (World::chunkOutOfBound(selcx, selcy, selcz) == false) {
-						World::chunk* cp = World::getChunkPtr(selcx, selcy, selcz);
+						World::Chunk* cp = World::getChunkPtr(selcx, selcy, selcz);
 						if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
 						selb = cp->getblock(selbx, selby, selbz);
 					}
@@ -321,9 +318,9 @@ public:
 							BlockPos[0] = x; BlockPos[1] = y; BlockPos[2] = z;
 						}
 					}
-					if (((mb == 2 && mbp == false) || (!chatmode&&isPressed(GLFW_KEY_TAB)))) { //Êó±êÓÒ¼ü
+					if (((mb == 2 && mbp == false) || (!chatmode&&isPressed(GLFW_KEY_TAB)))) { //é¼ æ ‡å³é”®
 						if (Player::inventoryAmount[3][Player::indexInHand] > 0 && isBlock(Player::inventory[3][Player::indexInHand])) {
-							//·ÅÖÃ·½¿é
+							//æ”¾ç½®æ–¹å—
 							if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
 								Player::inventoryAmount[3][Player::indexInHand]--;
 								if (Player::inventoryAmount[3][Player::indexInHand] == 0) Player::inventory[3][Player::indexInHand] = Blocks::AIR;
@@ -333,7 +330,7 @@ public:
 							}
 						}
 						else {
-							//Ê¹ÓÃÎïÆ·
+							//ä½¿ç”¨ç‰©å“
 							if (Player::inventory[3][Player::indexInHand] == APPLE) {
 								Player::inventoryAmount[3][Player::indexInHand]--;
 								if (Player::inventoryAmount[3][Player::indexInHand] == 0) Player::inventory[3][Player::indexInHand] = Blocks::AIR;
@@ -354,13 +351,13 @@ public:
 			Player::intypos = RoundInt(Player::ypos);
 			Player::intzpos = RoundInt(Player::zpos);
 
-			//¸üĞÂ·½Ïò
+			//æ›´æ–°æ–¹å‘
 			Player::heading += Player::xlookspeed;
 			Player::lookupdown += Player::ylookspeed;
 			Player::xlookspeed = Player::ylookspeed = 0.0;
 
 			if (!chatmode) {
-				//ÒÆ¶¯£¡(ÉúÃüÔÚÓÚÔË¶¯)
+				//ç§»åŠ¨ï¼(ç”Ÿå‘½åœ¨äºè¿åŠ¨)
 				if (glfwGetKey(MainWindow, GLFW_KEY_W) || Player::glidingNow) {
 					if (!WP) {
 						if (Wprstm == 0.0) {
@@ -442,7 +439,7 @@ public:
 					}
 				}
 
-				//ÇĞ»»·½¿é
+				//åˆ‡æ¢æ–¹å—
 				if (isPressed(GLFW_KEY_Z) && Player::indexInHand > 0) Player::indexInHand--;
 				if (isPressed(GLFW_KEY_X) && Player::indexInHand < 9) Player::indexInHand++;
 				if ((int)Player::indexInHand + (mwl - mw) < 0)Player::indexInHand = 0;
@@ -450,7 +447,7 @@ public:
 				else Player::indexInHand += (char)(mwl - mw);
 				mwl = mw;
 
-				//ÆğÌø£¡
+				//èµ·è·³ï¼
 				if (isPressed(GLFW_KEY_SPACE)) {
 					if (!Player::inWater) {
 						if ((Player::OnGround || Player::AirJumps < MaxAirJumps) && Player::Flying == false && Player::CrossWall == false) {
@@ -487,7 +484,7 @@ public:
 					Player::glidingNow = true;
 				}
 
-				//¸÷ÖÖÉèÖÃÇĞ»»
+				//å„ç§è®¾ç½®åˆ‡æ¢
 				if (isPressed(GLFW_KEY_F1)) {
 					Player::changeGameMode(Player::gamemode == Player::Creative ?
 						Player::Survival : Player::Creative);
@@ -514,15 +511,15 @@ public:
 				if (isPressed(GLFW_KEY_F5)) GUIrenderswitch = !GUIrenderswitch;
 				if (isPressed(GLFW_KEY_F6)) Player::Glide = !Player::Glide;
 				if (isPressed(GLFW_KEY_F7)) Player::spawn();
-				if (isPressed(GLFW_KEY_SLASH)) chatmode = true; //Ğ±¸Ü½«»áÔÚÏÂÃæµÄif(chatmode)ÀïÌí¼Ó
+				if (isPressed(GLFW_KEY_SLASH)) chatmode = true; //æ–œæ å°†ä¼šåœ¨ä¸‹é¢çš„if(chatmode)é‡Œæ·»åŠ 
 			}
 
 			if (isPressed(GLFW_KEY_ENTER) == GLFW_PRESS) {
 				chatmode = !chatmode;
-				if (chatword != "") { //Ö¸ÁîµÄÖ´ĞĞ£¬»ò·¢³öÁÄÌìÎÄ±¾
-					if (chatword.substr(0, 1) == "/") { //Ö¸Áî
-						vector<string> command = split(chatword, " ");
-						if (!doCommand(command)) { //Ö´ĞĞÊ§°Ü
+				if (!chatword.empty()) { //æŒ‡ä»¤çš„æ‰§è¡Œï¼Œæˆ–å‘å‡ºèŠå¤©æ–‡æœ¬
+					if (chatword.substr(0, 1) == "/") { //æŒ‡ä»¤
+						vector<std::string> command = split(chatword, " ");
+						if (!doCommand(command)) { //æ‰§è¡Œå¤±è´¥
 							DebugWarning("Fail to execute the command: " + chatword);
 							chatMessages.push_back("Fail to execute the command: " + chatword);
 						}
@@ -544,8 +541,8 @@ public:
 				else {
 					chatword += inputstr;
 				}
-				//×Ô¶¯²¹È«
-				if (isPressed(GLFW_KEY_TAB) && chatmode && chatword.size() > 0 && chatword.substr(0, 1) == "/") {
+				//è‡ªåŠ¨è¡¥å…¨
+				if (isPressed(GLFW_KEY_TAB) && chatmode && !chatword.empty() && chatword.substr(0, 1) == "/") {
 					for (unsigned int i = 0; i != commands.size(); i++) {
 						if (beginWith(commands[i].identifier, chatword)) {
 							chatword = commands[i].identifier;
@@ -573,7 +570,7 @@ public:
 			if (isPressed(GLFW_KEY_L))World::saveAllChunks();
 		}
 
-		//ÌøÔ¾
+		//è·³è·ƒ
 		if (!Player::glidingNow) {
 			if (!Player::inWater) {
 				if (!Player::Flying && !Player::CrossWall) {
@@ -584,7 +581,7 @@ public:
 						isPressed(GLFW_KEY_SPACE, true);
 					}
 					else {
-						//×ÔÓÉÂäÌå¼ÆËã
+						//è‡ªç”±è½ä½“è®¡ç®—
 						Player::jump -= 0.025;
 						Player::ya = Player::jump + 0.5 * 0.6 / 900.0;
 					}
@@ -605,7 +602,7 @@ public:
 			}
 		}
 
-		//ÅÀÇ½
+		//çˆ¬å¢™
 		//if (Player::NearWall && Player::Flying == false && Player::CrossWall == false){
 		//	Player::ya += walkspeed
 		//	Player::jump = 0.0
@@ -615,7 +612,7 @@ public:
 			double& E = Player::glidingEnergy;
 			double oldh = Player::ypos + Player::height + Player::heightExt + Player::ya;
 			double h = oldh;
-			if (E - Player::glidingMinimumSpeed < h*g) {  //Ğ¡ÓÚ×îĞ¡ËÙ¶È
+			if (E - Player::glidingMinimumSpeed < h*g) {  //å°äºæœ€å°é€Ÿåº¦
 				h = (E - Player::glidingMinimumSpeed) / g;
 			}
 			Player::glidingSpeed = sqrt(2 * (E - g*h));
@@ -624,7 +621,7 @@ public:
 		}
 
 
-		//ÒôĞ§¸üĞÂ
+		//éŸ³æ•ˆæ›´æ–°
 		int Run = 0;
 		if (WP)Run = Player::Running ? 2 : 1;
 		ALfloat PlayerPos[3];
@@ -634,23 +631,23 @@ public:
 		bool Fall = Player::OnGround
 			&& (!Player::inWater)
 			&& (Player::jump == 0);
-		//¸üĞÂÉùËÙ
+		//æ›´æ–°å£°é€Ÿ
 		AudioSystem::SpeedOfSound = Player::inWater ? AudioSystem::Water_SpeedOfSound : AudioSystem::Air_SpeedOfSound;
-		//¸üĞÂ»·¾³
+		//æ›´æ–°ç¯å¢ƒ
 		if (Player::inWater)
 		{
-			EFX::EAXprop = UnderWater;
+			//EFX::EAXprop = UnderWater;
 		}
 		else {
 			if (Player::OnGround)
 			{
-				EFX::EAXprop = Plain;
+				//EFX::EAXprop = Plain;
 			}
 			else {
-				EFX::EAXprop = Generic;
+				//EFX::EAXprop = Generic;
 			}
 		}
-		EFX::UpdateEAXprop();
+		//EFX::UpdateEAXprop();
 		AudioSystem::Update(PlayerPos, Fall, BlockClick, BlockPos, Run, Player::inWater);
 
 
@@ -673,24 +670,24 @@ public:
 
 	}
 
-	void debugText(string s, bool init) {
+	static void debugText(std::string s, bool init) {
 		static int pos = 0;
 		if (init) {
 			pos = 0;
 			return;
 		}
-		TextRenderer::renderASCIIString(0, 16 * pos, s);
+		TextRenderer::renderASCIIString(0, 16 * pos, std::move(s));
 		pos++;
 	}
 
 	void Grender() {
-		//»­³¡¾°
+		//ç”»åœºæ™¯
 		double curtime = timer();
 		double TimeDelta;
 		double xpos, ypos, zpos;
 		int renderedChunk = 0;
 
-		//¼ì²âÖ¡ËÙÂÊ
+		//æ£€æµ‹å¸§é€Ÿç‡
 		if (timer() - fctime >= 1.0) {
 			fps = fpsc;
 			fpsc = 0;
@@ -719,7 +716,7 @@ public:
 		SpeedupAnimTimer = curtime;
 
 		if (Player::OnGround) {
-			//°ë¶×ÌØĞ§
+			//åŠè¹²ç‰¹æ•ˆ
 			if (Player::jump < -0.005) {
 				if (Player::jump <= -(Player::height - 0.5f))
 					Player::heightExt = -(Player::height - 0.5f);
@@ -740,14 +737,14 @@ public:
 		zpos = Player::zpos - Player::zd + (curtime - lastupdate) * 30.0 * Player::zd;
 
 		if (!bagOpened) {
-			//×ªÍ·£¡ÄãÖÎºÃÁËÎÒ¶àÄêµÄ¾±×µ²¡£¡
+			//è½¬å¤´ï¼ä½ æ²»å¥½äº†æˆ‘å¤šå¹´çš„é¢ˆæ¤ç—…ï¼
 			if (mx != mxl) Player::xlookspeed -= (mx - mxl)*mousemove;
 			if (my != myl) Player::ylookspeed += (my - myl)*mousemove;
 			if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == 1) Player::xlookspeed -= mousemove * 16 * (curtime - lastframe) * 30.0;
 			if (glfwGetKey(MainWindow, GLFW_KEY_LEFT) == 1) Player::xlookspeed += mousemove * 16 * (curtime - lastframe) * 30.0;
 			if (glfwGetKey(MainWindow, GLFW_KEY_UP) == 1) Player::ylookspeed -= mousemove * 16 * (curtime - lastframe) * 30.0;
 			if (glfwGetKey(MainWindow, GLFW_KEY_DOWN) == 1) Player::ylookspeed += mousemove * 16 * (curtime - lastframe) * 30.0;
-			//ÏŞÖÆ½Ç¶È£¬±ğ°ÑÍ·×ªµôÏÂÀ´ÁË ¡û_¡û
+			//é™åˆ¶è§’åº¦ï¼Œåˆ«æŠŠå¤´è½¬æ‰ä¸‹æ¥äº† â†_â†
 			if (Player::lookupdown + Player::ylookspeed < -90.0) Player::ylookspeed = -90.0 - Player::lookupdown;
 			if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
 		}
@@ -756,7 +753,7 @@ public:
 		Player::cyt = getchunkpos((int)Player::ypos);
 		Player::czt = getchunkpos((int)Player::zpos);
 
-		//¸üĞÂÇø¿éVBO
+		//æ›´æ–°åŒºå—VBO
 		World::sortChunkBuildRenderList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
 		int brl = World::chunkBuildRenders > World::MaxChunkRenders ? World::MaxChunkRenders : World::chunkBuildRenders;
 		for (int i = 0; i < brl; i++) {
@@ -764,8 +761,8 @@ public:
 			World::chunks[ci]->buildRender();
 		}
 
-		//É¾³ıÒÑĞ¶ÔØÇø¿éµÄVBO
-		if (World::vbuffersShouldDelete.size() > 0) {
+		//åˆ é™¤å·²å¸è½½åŒºå—çš„VBO
+		if (!World::vbuffersShouldDelete.empty()) {
 			glDeleteBuffersARB(World::vbuffersShouldDelete.size(), World::vbuffersShouldDelete.data());
 			World::vbuffersShouldDelete.clear();
 		}
@@ -919,8 +916,8 @@ public:
 		if (DebugHitbox) {
 			glDisable(GL_CULL_FACE);
 			glDisable(GL_TEXTURE_2D);
-			for (unsigned int i = 0; i < Player::Hitboxes.size(); i++) {
-				Hitbox::renderAABB(Player::Hitboxes[i], GUI::FgR, GUI::FgG, GUI::FgB, 3, 0.002);
+			for (const auto & Hitboxe : Player::Hitboxes) {
+				Hitbox::renderAABB(Hitboxe, GUI::FgR, GUI::FgG, GUI::FgB, 3, 0.002);
 			}
 
 			glLoadIdentity();
@@ -977,16 +974,11 @@ public:
 		if (shouldGetScreenshot) {
 			shouldGetScreenshot = false;
 			screenshotAnimTimer = curtime;
-			time_t t = time(0);
+			time_t t = time(nullptr);
 			char tmp[64];
 			tm* timeinfo;
-#ifdef NEWORLD_COMPILE_DISABLE_SECURE
 			timeinfo = localtime(&t);
-#else
-			timeinfo = new tm;
-			localtime_s(timeinfo, &t);
-#endif
-			strftime(tmp, sizeof(tmp), "%YÄê%mÔÂ%dÈÕ%HÊ±%M·Ö%SÃë", timeinfo);
+			strftime(tmp, sizeof(tmp), "%Yå¹´%mæœˆ%dæ—¥%Hæ—¶%Måˆ†%Sç§’", timeinfo);
 			delete timeinfo;
 			std::stringstream ss;
 			ss << "Screenshots/" << tmp << ".bmp";
@@ -997,19 +989,19 @@ public:
 			createThumbnail();
 		}
 
-		//ÆÁÄ»Ë¢ĞÂ£¬Ç§Íò±ğÉ¾£¬ºó¹û×Ô¸º£¡£¡£¡
+		//å±å¹•åˆ·æ–°ï¼Œåƒä¸‡åˆ«åˆ ï¼Œåæœè‡ªè´Ÿï¼ï¼ï¼
 		//====refresh====//
 		MutexUnlock(Mutex);
 	}
 
-	void onRender() {
+	void onRender() override {
 		MutexLock(Mutex);
 		//==refresh end==//
 	}
 
-	void drawBorder(int x, int y, int z) {
-		//»æÖÆÑ¡Ôñ±ß¿ò
-		static float eps = 0.002f; //Êµ¼ÊÉÏÕâ¸ö±ß¿òÓ¦¸Ã±È·½¿é´óÒ»Ğ©£¬·ñÔòºÜÄÑ¿´
+	static void drawBorder(int x, int y, int z) {
+		//ç»˜åˆ¶é€‰æ‹©è¾¹æ¡†
+		static float eps = 0.002f; //å®é™…ä¸Šè¿™ä¸ªè¾¹æ¡†åº”è¯¥æ¯”æ–¹å—å¤§ä¸€äº›ï¼Œå¦åˆ™å¾ˆéš¾çœ‹
 		glEnable(GL_LINE_SMOOTH);
 		glLineWidth(1);
 		glColor3f(0.2f, 0.2f, 0.2f);
@@ -1242,13 +1234,6 @@ public:
 				<< " render:"  << WorldRenderer::RenderChunkList.size() << " update:" <<World::updatedChunks ;
 			debugText(ss.str(), false); ss.str("");
 
-			if (multiplayer) {
-				MutexLock(Network::mutex);
-				ss << Network::getRequestCount() << "/" << networkRequestMax << " network requests";
-				debugText(ss.str(), false); ss.str("");
-				MutexUnlock(Network::mutex);
-			}
-
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 			ss << c_getChunkPtrFromCPA << " CPA requests";
 			debugText(ss.str()); ss.str("");
@@ -1270,7 +1255,7 @@ public:
 		glFlush();
 	}
 
-	void drawCloud(double px, double pz) {
+	static void drawCloud(double px, double pz) {
 		//glFogf(GL_FOG_START, 100.0);
 		//glFogf(GL_FOG_END, 300.0);
 		static double ltimer;
@@ -1322,7 +1307,7 @@ public:
 		//setupNormalFog();
 	}
 
-	void renderDestroy(float level, int x, int y, int z) {
+	static void renderDestroy(float level, int x, int y, int z) {
 		static float eps = 0.002f;
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -1362,8 +1347,8 @@ public:
 		glEnd();
 	}
 
-	void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha) {
-		//»­³ö±³°üµÄÒ»ĞĞ
+	static void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha) {
+		//ç”»å‡ºèƒŒåŒ…çš„ä¸€è¡Œ
 		for (int i = 0; i < 10; i++) {
 			if (i == itemid) glBindTexture(GL_TEXTURE_2D, tex_select);
 			else glBindTexture(GL_TEXTURE_2D, tex_unselect);
@@ -1397,17 +1382,17 @@ public:
 	}
 
 	void drawBag() {
-		//±³°ü½çÃæÓë¸üĞÂ
+		//èƒŒåŒ…ç•Œé¢ä¸æ›´æ–°
 		static int si, sj, sf;
 		int csi = -1, csj = -1;
 		int leftp = (windowwidth / stretch - 392) / 2;
 		int upp = windowheight / stretch - 152 - 16;
 		static int mousew, mouseb, mousebl;
-		static block indexselected = Blocks::AIR;
+		static Block indexselected = Blocks::AIR;
 		static short Amountselected = 0;
 		double curtime = timer();
 		double TimeDelta = curtime - bagAnimTimer;
-		float bagAnim = (float)(1.0 - pow(0.9, TimeDelta*60.0) + pow(0.9, bagAnimDuration*60.0) / bagAnimDuration * TimeDelta);
+		auto bagAnim = (float)(1.0 - pow(0.9, TimeDelta*60.0) + pow(0.9, bagAnimDuration*60.0) / bagAnimDuration * TimeDelta);
 
 		if (bagOpened) {
 
@@ -1549,7 +1534,7 @@ public:
 		glFlush();
 	}
 
-	void saveScreenshot(int x, int y, int w, int h, string filename) {
+	static void saveScreenshot(int x, int y, int w, int h, std::string filename) {
 		Textures::TEXTURE_RGB scrBuffer;
 		int bufw = w, bufh = h;
 		while (bufw % 4 != 0) { bufw += 1; }
@@ -1558,7 +1543,7 @@ public:
 		scrBuffer.sizeY = bufh;
 		scrBuffer.buffer = unique_ptr<ubyte[]>(new ubyte[bufw*bufh * 3]);
 		glReadPixels(x, y, bufw, bufh, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
-		Textures::SaveRGBImage(filename, scrBuffer);
+		Textures::SaveRGBImage(std::move(filename), scrBuffer);
 	}
 
 	void createThumbnail() {
@@ -1568,15 +1553,15 @@ public:
 	}
 
 
-	void registerCommands() {
-		commands.push_back(Command("/give", [](const vector<string>& command) {
+	static void registerCommands() {
+		commands.emplace_back("/give", [](const vector<std::string>& command) {
 			if (command.size() != 3) return false;
 			item itemid; conv(command[1], itemid);
 			short amount; conv(command[2], amount);
 			Player::addItem(itemid, amount);
 			return true;
-		}));
-		commands.push_back(Command("/tp", [](const vector<string>& command) {
+		});
+		commands.emplace_back("/tp", [](const vector<std::string>& command) {
 			if (command.size() != 4) return false;
 			double x; conv(command[1], x);
 			double y; conv(command[2], y);
@@ -1585,30 +1570,30 @@ public:
 			Player::ypos = y;
 			Player::zpos = z;
 			return true;
-		}));
-		commands.push_back(Command("/suicide", [](const vector<string>& command) {
+		});
+		commands.emplace_back("/suicide", [](const vector<std::string>& command) {
 			if (command.size() != 1) return false;
 			Player::spawn();
 			return true;
-		}));
-		commands.push_back(Command("/setblock", [](const vector<string>& command) {
+		});
+		commands.emplace_back("/setblock", [](const vector<std::string>& command) {
 			if (command.size() != 5) return false;
 			int x; conv(command[1], x);
 			int y; conv(command[2], y);
 			int z; conv(command[3], z);
-			block b; conv(command[4], b);
+			Block b; conv(command[4], b);
 			World::setblock(x, y, z, b);
 			return true;
-		}));
-		commands.push_back(Command("/tree", [](const vector<string>& command) {
+		});
+		commands.emplace_back("/tree", [](const vector<std::string>& command) {
 			if (command.size() != 4) return false;
 			int x; conv(command[1], x);
 			int y; conv(command[2], y);
 			int z; conv(command[3], z);
 			World::buildtree(x, y, z);
 			return true;
-		}));
-		commands.push_back(Command("/explode", [](const vector<string>& command) {
+		});
+		commands.emplace_back("/explode", [](const vector<std::string>& command) {
 			if (command.size() != 5) return false;
 			int x; conv(command[1], x);
 			int y; conv(command[2], y);
@@ -1616,14 +1601,14 @@ public:
 			int r; conv(command[4], r);
 			World::explode(x, y, z, r);
 			return true;
-		}));
-		commands.push_back(Command("/gamemode", [](const vector<string>& command) {
+		});
+		commands.emplace_back("/gamemode", [](const vector<std::string>& command) {
 			if (command.size() != 2) return false;
 			int mode; conv(command[1], mode);
 			Player::changeGameMode(mode);
 			return true;
-		}));
-		commands.push_back(Command("/kit", [](const vector<string>& command) {
+		});
+		commands.emplace_back("/kit", [](const vector<std::string>& command) {
 			if (command.size() != 1) return false;
 			Player::inventory[0][0] = 1; Player::inventoryAmount[0][0] = 255;
 			Player::inventory[0][1] = 2; Player::inventoryAmount[0][1] = 255;
@@ -1644,17 +1629,17 @@ public:
 			Player::inventory[1][6] = 17; Player::inventoryAmount[1][6] = 255;
 			Player::inventory[1][7] = 18; Player::inventoryAmount[1][7] = 255;
 			return true;
-		}));
-		commands.push_back(Command("/time", [](const vector<string>& command) {
+		});
+		commands.emplace_back("/time", [](const vector<std::string>& command) {
 			if (command.size() != 2) return false;
 			int time; conv(command[1], time);
 			if (time<0 || time>gameTimeMax) return false;
 			gametime = time;
 			return true;
-		}));
+		});
 	}
 
-	bool doCommand(const vector<string>& command) {
+	static bool doCommand(const vector<std::string>& command) {
 		for (unsigned int i = 0; i != commands.size(); i++) {
 			if (command[0] == commands[i].identifier) {
 				return commands[i].execute(command);
@@ -1663,7 +1648,7 @@ public:
 		return false;
 	}
 
-	void onLoad() {
+	void onLoad() override {
 		Background = nullptr;
 
 		glEnable(GL_LINE_SMOOTH);
@@ -1674,14 +1659,13 @@ public:
 
 		Mutex = MutexCreate();
 		MutexLock(Mutex);
-		updateThread = ThreadCreate(&updateThreadFunc, NULL);
+		updateThread = ThreadCreate(&updateThreadFunc, nullptr);
 		if (multiplayer) {
-			fastSrand((unsigned int)time(NULL));
+			fastSrand((unsigned int)time(nullptr));
 			Player::name = "";
 			Player::onlineID = rand();
-			Network::init(serverip, port);
 		}
-		//³õÊ¼»¯ÓÎÏ·×´Ì¬
+		//åˆå§‹åŒ–æ¸¸æˆçŠ¶æ€
 		printf("[Console][Game]Init player...\n");
 		if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
 		else Player::spawn();
@@ -1700,7 +1684,7 @@ public:
 		glfwPollEvents();
 		printf("[Console][Game]Game start!\n");
 
-		//Õâ²ÅÊÇÓÎÏ·¿ªÊ¼!
+		//è¿™æ‰æ˜¯æ¸¸æˆå¼€å§‹!
 		glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		mxl = mx; myl = my;
 		printf("[Console][Game]Main loop started\n");
@@ -1708,7 +1692,7 @@ public:
 		fctime = uctime = lastupdate = timer();
 	}
 
-	void onUpdate() {
+	void onUpdate() override {
 
 		MutexUnlock(Mutex);
 		MutexLock(Mutex);
@@ -1728,7 +1712,7 @@ public:
 			Menus::gamemenu();
 		}
 	}
-	void onLeave() {
+	void onLeave() override {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 		TextRenderer::renderString(0, 0, "Saving world...");
@@ -1742,11 +1726,10 @@ public:
 		MutexDestroy(Mutex);
 		saveGame();
 		World::destroyAllChunks();
-		if (World::vbuffersShouldDelete.size() > 0) {
+		if (!World::vbuffersShouldDelete.empty()) {
 			glDeleteBuffersARB(World::vbuffersShouldDelete.size(), World::vbuffersShouldDelete.data());
 			World::vbuffersShouldDelete.clear();
 		}
-		if (multiplayer) Network::cleanUp();
 		commands.clear();
 		chatMessages.clear();
 		GUI::BackToMain();

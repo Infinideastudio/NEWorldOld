@@ -1,5 +1,7 @@
 ﻿#pragma once
-#include "stdinclude.h"
+#include <utility>
+#include <utility>
+#include "StdInclude.h"
 #include "Definitions.h"
 #include "Globalization.h"
 namespace Blocks {
@@ -8,11 +10,11 @@ namespace Blocks {
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
 		TNT, BLOCK_DEF_END
 	};
-	const block NONEMPTY = 1;
+	const Block NONEMPTY = 1;
 
 	class SingleBlock {
 	private:
-		string name;
+		std::string name;
 		float Hardness;
 		bool Solid;
 		bool Opaque;
@@ -21,11 +23,11 @@ namespace Blocks {
 		bool canexplode;
 
 	public:
-		SingleBlock(string blockName, bool solid, bool opaque, bool translucent, bool _canexplode, float _hardness) :
-			name(blockName), Solid(solid), Opaque(opaque), Translucent(translucent), canexplode(_canexplode), Hardness(_hardness) {};
+		SingleBlock(std::string blockName, bool solid, bool opaque, bool translucent, bool _canexplode, float _hardness) :
+			name(std::move(std::move(blockName))), Solid(solid), Opaque(opaque), Translucent(translucent), canexplode(_canexplode), Hardness(_hardness) {};
 
 		//获得方块名称
-		inline string getBlockName()const { return Globalization::GetStrbyKey(name); }
+		inline std::string getBlockName()const { return Globalization::GetStrbyKey(name); }
 		//是否是固体
 		inline bool isSolid()const { return Solid; }
 		//是否不透明

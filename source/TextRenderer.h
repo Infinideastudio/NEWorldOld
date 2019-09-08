@@ -32,7 +32,7 @@ namespace TextRenderer {
 	void resize();
 	void setFontColor(float r, float g, float b, float a);
 	void loadchar(unsigned int uc);
-	int getStrWidth(string s);
-	void renderString(int x, int y, string glstring);
-	void renderASCIIString(int x, int y, string glstring);
+	int getStrWidth(std::string s);
+	void renderString(int x, int y, std::string glstring);
+	void renderASCIIString(int x, int y, std::string glstring);
 }

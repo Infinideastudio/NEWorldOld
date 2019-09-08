@@ -3,6 +3,7 @@
 #include "Textures.h"
 #include "GameView.h"
 #include "TextRenderer.h"
+#include <boost/filesystem.hpp>
 
 namespace Menus {
 	class WorldMenu :public GUI::Form {
@@ -14,8 +15,8 @@ namespace Menus {
 		bool refresh = true;
 		int selected = 0, mouseon;
 		int worldcount;
-		string chosenWorldName;
-		vector<string> worldnames;
+		std::string chosenWorldName;
+		vector<std::string> worldnames;
 		vector<TextureID> thumbnails, texSizeX, texSizeY;
 		int trs = 0;
 		GUI::label title;
@@ -36,8 +37,8 @@ namespace Menus {
 		void onUpdate() {
 
 			AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
-			EFX::EAXprop = Generic;
-			EFX::UpdateEAXprop();
+			//EFX::EAXprop = Generic;
+			//EFX::UpdateEAXprop();
 			float Pos[] = { 0.0f,0.0f,0.0f };
 			AudioSystem::Update(Pos, false, false, Pos, false, false);
 
@@ -81,8 +82,8 @@ namespace Menus {
 				GameView();
 			}
 			if (deletebtn.clicked) {
-				//É¾³ıÊÀ½çÎÄ¼ş
-				system((string("rd /s/q \"Worlds\\") + chosenWorldName + "\"").c_str());
+				//åˆ é™¤ä¸–ç•Œæ–‡ä»¶
+				system((std::string("rd /s/q \"Worlds\\") + chosenWorldName + "\"").c_str());
 				deletebtn.clicked = false;
 				World::worldname = "";
 				enterbtn.enabled = false;
@@ -99,36 +100,32 @@ namespace Menus {
 				mouseon = -1;
 				vscroll.barpos = 0;
 				chosenWorldName = "";
-				//²éÕÒËùÓĞÊÀ½ç´æµµ
+				//æŸ¥æ‰¾æ‰€æœ‰ä¸–ç•Œå­˜æ¡£
 				Textures::TEXTURE_RGB tmb;
 				long hFile = 0;
-				_finddata_t fileinfo;
-				if ((hFile = _findfirst("Worlds\\*", &fileinfo)) != -1) {
-					do {
-						if ((fileinfo.attrib &  _A_SUBDIR)) {
-							if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0) {
-								worldnames.push_back(fileinfo.name);
-								std::fstream file;
-								file.open(("Worlds\\" + string(fileinfo.name) + "\\Thumbnail.bmp").c_str(), std::ios::in);
-								thumbnails.push_back(0);
-								texSizeX.push_back(0);
-								texSizeY.push_back(0);
-								if (file.is_open()) {
-									Textures::LoadRGBImage(tmb, "Worlds\\" + string(fileinfo.name) + "\\Thumbnail.bmp");
-									glGenTextures(1, &thumbnails[thumbnails.size() - 1]);
-									glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size() - 1]);
-									glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-									glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-									glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb.sizeX, tmb.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, tmb.buffer.get());
-									texSizeX[texSizeX.size() - 1] = tmb.sizeX;
-									texSizeY[texSizeY.size() - 1] = tmb.sizeY;
-								}
-								file.close();
-							}
-						}
-					} while (_findnext(hFile, &fileinfo) == 0);
-					_findclose(hFile);
+				for (auto&& x : boost::filesystem::directory_iterator("Worlds/")) {
+				    if (boost::filesystem::is_directory(x)) {
+                        worldnames.push_back(x.path().filename().string());
+                        std::fstream file;
+                        file.open((x.path().string()+"\\Thumbnail.bmp").c_str(), std::ios::in);
+                        thumbnails.push_back(0);
+                        texSizeX.push_back(0);
+                        texSizeY.push_back(0);
+                        if (file.is_open()) {
+                            Textures::LoadRGBImage(tmb, x.path().string()+"\\Thumbnail.bmp");
+                            glGenTextures(1, &thumbnails[thumbnails.size()-1]);
+                            glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size()-1]);
+                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb.sizeX, tmb.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                                    tmb.buffer.get());
+                            texSizeX[texSizeX.size()-1] = tmb.sizeX;
+                            texSizeY[texSizeY.size()-1] = tmb.sizeY;
+                        }
+                        file.close();
+                    }
 				}
+
 				refresh = false;
 			}
 			enterbtn.enabled = chosenWorldName != "";
@@ -157,7 +154,7 @@ namespace Menus {
 				else {
 					bool marginOnSides;
 					float w, h;
-					//¼ÆËã²ÄÖÊ×ø±ê£¬±£³Ö¸ß¿í±È£¨°´Å¥´óĞ¡Îª500x60£©£¬ÓĞĞ¡Ñ§ÊıÑ§»ù´¡µÄÈË×ĞÏ¸ÏëÒ»ÏëÓ¦¸ÃÄÜ¶®QAQ
+					//è®¡ç®—æè´¨åæ ‡ï¼Œä¿æŒé«˜å®½æ¯”ï¼ˆæŒ‰é’®å¤§å°ä¸º500x60ï¼‰ï¼Œæœ‰å°å­¦æ•°å­¦åŸºç¡€çš„äººä»”ç»†æƒ³ä¸€æƒ³åº”è¯¥èƒ½æ‡‚QAQ
 					if (texSizeX[i] * 60 / 500 < texSizeY[i]) {
 						marginOnSides = true;
 						w = 1.0f, h = texSizeX[i] * 60 / 500.0f / texSizeY[i];

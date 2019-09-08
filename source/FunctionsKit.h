@@ -1,11 +1,14 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winteger-overflow"
 #pragma once
 #include "StdInclude.h"
 #include "Typedefs.h"
+#include <chrono>
 
 extern double stretch;
 
-//³£ÓÃº¯Êı
-vector<string> split(string str, string pattern);
+//å¸¸ç”¨å‡½æ•°
+vector<std::string> split(const std::string& str, const std::string& pattern);
 
 inline void UITrans(double x, double y) {
 	glTranslated(x*stretch, y*stretch, 0);
@@ -26,23 +29,23 @@ inline int fastRand() {
 	return (g_seed >> 16) & 0x7FFF;
 }
 inline void fastSrand(int seed) { g_seed = seed; }
-vector<string> split(string str, string pattern);
-inline string boolstr(bool b) { return b ? "True" : "False"; }
+vector<std::string> split(const std::string& str, const std::string& pattern);
+inline std::string boolstr(bool b) { return b ? "True" : "False"; }
 inline double rnd() { return (double)fastRand() / (RAND_MAX + 1); }
 inline int RoundInt(double d) { return int(floor(d + 0.5)); }
 
-inline string itos(int i) {
+inline std::string itos(int i) {
 	std::stringstream ss;
 	ss << i;
-	return string(ss.str());
+	return ss.str();
 }
 
-inline bool beginWith(string str, string begin) {
+inline bool beginWith(const std::string& str, const std::string& begin) {
 	if (str.size() < begin.size()) return false;
 	return str.substr(0, begin.size()) == begin;
 }
 
-inline void DebugWarning(string msg) {
+inline void DebugWarning(const std::string& msg) {
 #ifdef NEWORLD_USE_WINAPI
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
 	printf("[Debug][Warning]");
@@ -53,7 +56,7 @@ inline void DebugWarning(string msg) {
 #endif
 }
 
-inline void DebugError(string msg) {
+inline void DebugError(const std::string& msg) {
 #ifdef NEWORLD_USE_WINAPI
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
 	printf("[Debug][Error]");
@@ -64,7 +67,7 @@ inline void DebugError(string msg) {
 #endif
 }
 
-template<class T> inline void conv(string str, T& ret) {
+template<class T> inline void conv(const std::string& str, T& ret) {
 	std::stringstream s(str);
 	s >> ret;
 }
@@ -75,44 +78,20 @@ template<class T> inline T clamp(T x, T min, T max) {
 	return x;
 }
 
-#ifdef NEWORLD_USE_WINAPI
-inline Mutex_t MutexCreate() { return CreateMutex(NULL, FALSE, ""); }
-inline void MutexDestroy(Mutex_t _hMutex) { CloseHandle(_hMutex); }
-inline void MutexLock(Mutex_t _hMutex) { WaitForSingleObject(_hMutex, INFINITE); }
-inline void MutexUnlock(Mutex_t _hMutex) { ReleaseMutex(_hMutex); }
-inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return CreateThread(NULL, 0, func, param, 0, NULL); }
-inline void ThreadWait(Thread_t _hThread) { WaitForSingleObject(_hThread, INFINITE); }
-inline void ThreadDestroy(Thread_t _hThread) { CloseHandle(_hThread); }
-inline unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n) {
-	int res = MultiByteToWideChar(CP_ACP, 0, src, n, dst, n);
-	return res;
-}
-inline unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n) {
-	return WideCharToMultiByte(CP_ACP, 0, src, n, dst, n * 2, NULL, NULL);
-}
-inline unsigned int wstrlen(const wchar_t* wstr) { return lstrlenW(wstr); }
-inline double timer() {
-	static LARGE_INTEGER counterFreq;
-	if (counterFreq.QuadPart == 0) QueryPerformanceFrequency(&counterFreq);
-	LARGE_INTEGER now;
-	QueryPerformanceCounter(&now);
-	return (double)now.QuadPart / counterFreq.QuadPart;
-}
-#else
 inline Mutex_t MutexCreate() { return new std::mutex; }
 inline void MutexDestroy(Mutex_t _hMutex) { delete _hMutex; }
 inline void MutexLock(Mutex_t _hMutex) { _hMutex->lock(); }
 inline void MutexUnlock(Mutex_t _hMutex) { _hMutex->unlock(); }
-inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return new std::thread(func, param); }
+inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return new std::thread([=]{ func(param); }); }
 inline void ThreadWait(Thread_t _hThread) { _hThread->join(); }
 inline void ThreadDestroy(Thread_t _hThread) { delete _hThread; }
-inline unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n) { size_t res; mbstowcs_s(&res, dst, n, src, _TRUNCATE); return res; }
-inline unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n) { size_t res; wcstombs_s(&res, dst, n, src, _TRUNCATE); return res; }
+inline unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n) { return mbstowcs(dst, src, n);  }
+inline unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n) { return wcstombs(dst, src, n); }
 inline unsigned int wstrlen(const wchar_t* wstr) { return wcslen(wstr); }
-inline void Sleep(unsigned int ms) { unsigned int fr = clock(); while (clock() - fr <= ms); }
-inline double timer() { return (double)clock() / CLOCKS_PER_SEC; }
-#endif
-inline int Distancen(int ix, int iy, int iz, int x, int y, int z)//¼ÆËã¾àÀëµÄÆ½·½
+inline void Sleep(unsigned int ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
+inline double timer() { return static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count())/1000.0; }
+inline int DistanceSquare(int ix, int iy, int iz, int x, int y, int z)//è®¡ç®—è·ç¦»çš„å¹³æ–¹
 {
 	return (ix - x)*(ix - x) + (iy - y)*(iy - y) + (iz - z)*(iz - z);
 }
+#pragma clang diagnostic pop

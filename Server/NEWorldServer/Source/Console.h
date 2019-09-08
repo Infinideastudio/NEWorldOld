@@ -8,6 +8,6 @@ using std::endl;
 
 enum { MESSAGE_INFO, MESSAGE_WARNING, MESSAGE_ERROR };
 
-void Print(string message, int level = MESSAGE_INFO);
+void Print(std::stringmessage, int level = MESSAGE_INFO);
 
-string toString(int i);
+std::stringtoString(int i);
