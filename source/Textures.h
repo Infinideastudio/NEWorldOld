@@ -11,13 +11,13 @@ namespace Textures{
 	struct TEXTURE_RGB {
 		unsigned int sizeX;
 		unsigned int sizeY;
-		unique_ptr<ubyte[]> buffer;
+		std::unique_ptr<ubyte[]> buffer;
 	};
 
 	struct TEXTURE_RGBA {
 		unsigned int sizeX;
 		unsigned int sizeY;
-		unique_ptr<ubyte[]> buffer;
+        std::unique_ptr<ubyte[]> buffer;
 	};
 
 	struct BITMAPINFOHEADER {

@@ -1,23 +1,12 @@
 #pragma once
-//#define NEWORLD_DEBUG
 #ifndef NEWORLD_DEBUG
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
-//#define NEWORLD_SECURE
 #include "StdInclude.h"
 #include "Typedefs.h"
 #include "FunctionsKit.h"
-#ifdef NEWORLD_SECURE
-// Naive!
-#define WinExec(x)
-#define system(x)
-#define ShellExecute(x)
-#endif
-//#ifdef NEWORLD_DEBUG
-//#define NEWORLD_DEBUG_CONSOLE_OUTPUT
-//#define NEWORLD_DEBUG_NO_FILEIO
-//#define NEWORLD_DEBUG_PERFORMANCE_REC
-//#endif
+#define GLFW_DLL
+#include <GLFW/glfw3.h>
 
 //Global Vars
 const unsigned int VERSION = 39;
@@ -95,9 +84,3 @@ extern double mxdelta, mydelta;
 extern std::string inputstr;
 void AppCleanUp();
 
-#ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-extern int c_getChunkPtrFromCPA;
-extern int c_getChunkPtrFromSearch;
-extern int c_getHeightFromHMap;
-extern int c_getHeightFromWorldGen;
-#endif

@@ -13,7 +13,7 @@ std::string Str[] = {
 "" ,
 "PS:Since this is a In-Develop Version, we welcome any types of suggestions or questions.",
 "Anyone is welcomed to send Issues on the following project site:",
-"https:\\\\github.com\\Infinideastudio\\NEWorld",
+R"(https:\\github.com\Infinideastudio\NEWorld)",
 "You can post bugs or request new features there",
 "If you have any problems, please contact us",
 "Thank you very much!"
@@ -24,16 +24,16 @@ namespace Menus {
 		GUI::label title;
 		GUI::button backbtn;
 
-		void onLoad() {
+		void onLoad() override {
 			backbtn = GUI::button(GetStrbyKey("NEWorld.language.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(1, &backbtn);
 		}
-		void onRender() {
+		void onRender() override {
 			for (int i = 0; i != 13; ++i) {
 				TextRenderer::renderString(10, 10+20*i, Str[i]);
 			}
 		}
-		void onUpdate() {
+		void onUpdate() override {
 			AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
 			//EFX::EAXprop = Generic;
 			//EFX::UpdateEAXprop();

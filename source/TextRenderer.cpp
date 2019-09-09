@@ -1,7 +1,21 @@
 #include "TextRenderer.h"
 #include "Textures.h"
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 namespace TextRenderer {
+    struct UnicodeChar {
+        bool aval;
+        TextureID tex;
+        VBOID buffer;
+        unsigned int vtxs;
+        int xpos, ypos;
+        int width, height, advance;
+        UnicodeChar() :aval(false), tex(0), buffer(0),
+                       vtxs(0), xpos(0), ypos(0),
+                       width(0), height(0), advance(0) {}
+    };
+
 	FT_Library library;
 	FT_Face fontface;
 	FT_GlyphSlot slot;

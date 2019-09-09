@@ -1541,7 +1541,7 @@ public:
 		while (bufh % 4 != 0) { bufh += 1; }
 		scrBuffer.sizeX = bufw;
 		scrBuffer.sizeY = bufh;
-		scrBuffer.buffer = unique_ptr<ubyte[]>(new ubyte[bufw*bufh * 3]);
+		scrBuffer.buffer = std::unique_ptr<ubyte[]>(new ubyte[bufw*bufh * 3]);
 		glReadPixels(x, y, bufw, bufh, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
 		Textures::SaveRGBImage(std::move(filename), scrBuffer);
 	}
