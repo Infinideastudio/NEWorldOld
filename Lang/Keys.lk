@@ -55,7 +55,7 @@ NEWorld.gui.blur
 NEWorld.gui.stretch
 NEWorld.gui.back
 NEWorld.worlds.caption
-NEWorld.worlds.enter
+NEWorld.worlds.Enter
 NEWorld.worlds.delete
 NEWorld.worlds.new
 NEWorld.worlds.back
