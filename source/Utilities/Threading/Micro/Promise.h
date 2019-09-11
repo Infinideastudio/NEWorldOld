@@ -29,10 +29,13 @@ enum class ContinuationFlag : int {
 class AsyncContinuationContext {
 public:
     void Reschedule(IExecTask* task) noexcept {
+        ThreadPool::Enqueue(std::unique_ptr<IExecTask>(task));
     }
 
     static AsyncContinuationContext* CaptureCurrent() noexcept {
-
+        // TODO: Reimplement when multiple Threadpool support is available
+        static AsyncContinuationContext dummy;
+        return &dummy;
     }
 };
 
@@ -491,7 +494,7 @@ namespace InterOp {
             );
             task->Setup(flag, context);
             auto future = task->GetFuture();
-            _State->SetContinuation(task.release(), flag);
+            _State->SetContinuation(task.release());
             _State = nullptr;
             return future;
         }
@@ -649,42 +652,60 @@ public:
     void SetValueUnsafe() noexcept { GetState().SetValueUnsafe(); }
 };
 
-
 namespace InterOp {
     void AsyncResumePrevious() noexcept;
 
     IExecTask* AsyncGetCurrent() noexcept;
 
     void AsyncCall(IExecTask* inner) noexcept;
+
+    void AsyncCallSync(IExecTask* inner) noexcept;
 }
 
 template <template <class> class Cont, class U>
 U Await(Cont<U> cont) {
+    const auto context = InterOp::AsyncGetCurrent();
+    if (!context) {
+        throw std::runtime_error("awaiting on none async context");
+    }
     if constexpr (std::is_same_v<U, void>) {
-        auto fu = cont.then([task = InterOp::AsyncGetCurrent()](auto&& lst) {
+        auto fu = cont.Then([task = context](auto&& lst) {
             ThreadPool::Enqueue(std::unique_ptr<IExecTask>(task));
-            lst.get();
+            lst.Get();
         });
         InterOp::AsyncResumePrevious();
-        fu.get();
+        fu.Get();
     }
     else {
-        auto fu = cont.then([task = InterOp::AsyncGetCurrent()](auto&& lst) {
+        auto fu = cont.Then([task = context](auto&& lst) {
             ThreadPool::Enqueue(std::unique_ptr<IExecTask>(task));
-            return lst.get();
+            return lst.Get();
         });
         InterOp::AsyncResumePrevious();
-        return fu.get();
+        return fu.Get();
     }
 }
 
 template <class Func, class ...Ts>
-auto Async(Func __fn, Ts&& ... args) {
-    auto inner_task = new DeferredProcedureCallTask (
-            std::forward<std::decay_t<Func>>(std::move(__fn)),
+auto Async(Func func, Ts&& ... args) {
+    auto inner = new DeferredProcedureCallTask (
+            std::forward<std::decay_t<Func>>(std::move(func)),
             std::forward<Ts>(args)...
     );
-    auto future = inner_task->GetFuture();
-    AsyncCall(inner_task);
+    auto future = inner->GetFuture();
+    InterOp::AsyncCall(inner);
     return future;
 }
+
+
+template <class Func, class ...Ts>
+auto AsyncHere(Func func, Ts&& ... args) {
+    auto inner = new DeferredProcedureCallTask (
+            std::forward<std::decay_t<Func>>(std::move(func)),
+            std::forward<Ts>(args)...
+    );
+    auto future = inner->GetFuture();
+    InterOp::AsyncCallSync(inner);
+    return future;
+}
+

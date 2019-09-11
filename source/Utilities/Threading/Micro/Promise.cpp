@@ -46,4 +46,8 @@ namespace InterOp {
     void AsyncCall(IExecTask* inner) noexcept {
         ThreadPool::Enqueue(std::make_unique<AsyncExecutor>(inner));
     }
+
+    void AsyncCallSync(IExecTask* inner) noexcept {
+        (new AsyncExecutor(inner))->Exec();
+    }
 }

@@ -27,10 +27,25 @@ namespace {
             return ret;
         }
 
+        bool SnapshotCheck() const noexcept {
+            if (!_Exec.empty()) {
+                return true;
+            }
+            for (Queue* current = _Next; current!=this; current = current->_Next) {
+                if (!current->_Exec.empty()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "readability-container-size-empty"
         IExecTask* TryDequeue() {
-            for (Queue* current = this; current!=this; current = current->_Next) {
+            if (const auto res = Pop(); res) {
+                return res;
+            }
+            for (Queue* current = _Next; current!=this; current = current->_Next) {
                 if (current->_Exec.size()) { // Dangerous Operation!
                     if (const auto res = current->Pop(); res) {
                         return res;
@@ -60,7 +75,7 @@ namespace {
         }
 
         static auto& Instance() {
-            static QueueGroup instance;
+            static QueueGroup instance {};
             return instance;
         }
 
@@ -126,8 +141,29 @@ namespace {
     std::atomic_int _Parked;
     Semaphore _ParkingLot {};
 
+    void WakeOne() noexcept {
+        for (;;) {
+            if (auto c = _Parked.load(); c) {
+                if (_Parked.compare_exchange_strong(c, c - 1)) {
+                    _ParkingLot.Signal();
+                    return;
+                }
+            }
+            else {
+                return;
+            }
+        }
+    }
+
     void Rest() {
-        _Parked.fetch_add(1);
+        _Parked.fetch_add(1); // enter protected region
+        if (GetCurrentQueue()->SnapshotCheck()) {
+            // it is possible that a task was added during function invocation period of this function and the WakeOne
+            // did not notice this thread is going to sleep. To prevent system stalling, we will invoke WakeOne again
+            // to woke a worker (including this one)
+            WakeOne();
+        }
+        // to keep integrity, this thread will enter sleep state regardless of whether if the snapshot check is positive
         _ParkingLot.Wait();
         if (_Panicking) {
             WorkerPanic();
@@ -168,20 +204,6 @@ namespace {
         }
     }
 
-    void WakeOne() noexcept {
-        for (;;) {
-            if (auto c = _Parked.load(); c) {
-                if (_Parked.compare_exchange_strong(c, c - 1)) {
-                    _ParkingLot.Signal();
-                    return;
-                }
-            }
-            else {
-                return;
-            }
-        }
-    }
-
     struct RaiiStop {
         ~RaiiStop() {
             ThreadPool::Stop();
@@ -189,6 +211,7 @@ namespace {
     };
 
     RaiiStop Start(int threadCount) {
+        _Running = true;
         for (int i = 0; i < threadCount; i++) {
             _Workers.emplace_back(Worker);
         }
