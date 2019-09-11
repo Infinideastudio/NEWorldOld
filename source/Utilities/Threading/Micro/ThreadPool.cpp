@@ -182,14 +182,20 @@ namespace {
         }
     }
 
-    bool Start(int threadCount) {
+    struct RaiiStop {
+        ~RaiiStop() {
+            ThreadPool::Stop();
+        }
+    };
+
+    RaiiStop Start(int threadCount) {
         for (int i = 0; i < threadCount; i++) {
             _Workers.emplace_back(Worker);
         }
-        return true;
+        return RaiiStop();
     }
 
-    bool _UU_Init = Start(std::thread::hardware_concurrency() - 1);
+    RaiiStop _UU_Init = Start(std::thread::hardware_concurrency() - 1);
 }
 
 bool ThreadPool::LocalEnqueue(std::unique_ptr<IExecTask>& task) {
@@ -218,6 +224,11 @@ void ThreadPool::Spawn(std::unique_ptr<AInstancedExecTask> task) {
 void ThreadPool::Stop() {
     _Running = false;
     WakeAll();
+    for (auto&& x : _Workers) {
+        if (x.joinable()) {
+            x.join();
+        }
+    }
 }
 
 void ThreadPool::Panic() noexcept {

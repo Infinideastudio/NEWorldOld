@@ -22,7 +22,7 @@ namespace World {
 	int loadedChunks, chunkArraySize;
 	Chunk* cpCachePtr = nullptr;
 	chunkid cpCacheID = 0;
-	chunkPtrArray cpArray;
+	ChunkPtrArray cpArray;
 	HeightMap HMap;
 	int cloud[128][128];
 	int rebuiltChunks, rebuiltChunksCount;
@@ -36,7 +36,6 @@ namespace World {
 	//bool* loadedChunkArray = nullptr; //Accelerate sortings
 
 	void Init(){
-		
 		std::stringstream ss;
 		ss << "Worlds/" << worldname << "/";
         system(("mkdir " + ss.str()).c_str());
@@ -52,10 +51,7 @@ namespace World {
 		cpCachePtr = nullptr;
 		cpCacheID = 0;
 
-		cpArray.setSize((viewdistance + 2) * 2);
-		if (!cpArray.create()) {
-			DebugError("Chunk Pointer Array not avaliable because it couldn't be created.");
-		}
+        cpArray.Create((viewdistance+2)*2);
 
 		HMap.setSize((viewdistance + 2) * 2 * 16);
 		HMap.create();
@@ -92,7 +88,7 @@ namespace World {
 		chunks[pos.first] = new Chunk(x, y, z, cid);
 		cpCacheID = cid;
 		cpCachePtr = chunks[pos.first];
-		cpArray.AddChunk(chunks[pos.first],x,y,z);
+        cpArray.Add(chunks[pos.first], {x, y, z});
 		return chunks[pos.first];
 	}
 
@@ -106,7 +102,7 @@ namespace World {
 			cpCacheID = 0;
 			cpCachePtr = nullptr;
 		}
-		cpArray.DeleteChunk(x, y, z);
+        cpArray.Remove({x, y, z});
 		chunks[loadedChunks - 1] = nullptr;
 		ReduceChunkArray(1);
 	}
@@ -128,24 +124,19 @@ namespace World {
 		chunkid cid = getChunkID(x, y, z);
 		if (cpCacheID == cid && cpCachePtr != nullptr) return cpCachePtr;
 		else {
-			Chunk* ret = cpArray.getChunkPtr(x, y, z);
+			Chunk* ret = cpArray.Get({x, y, z});
 			if (ret != nullptr) {
 				cpCacheID = cid;
 				cpCachePtr = ret;
 				return ret;
 			}
 			if (loadedChunks > 0){
-#ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-				c_getChunkPtrFromSearch++;
-#endif
 				pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
 				if (chunks[pos.second]->id == cid) {
 					ret = chunks[pos.second];
 					cpCacheID = cid;
 					cpCachePtr = ret;
-					if (cpArray.elementExists(x - cpArray.originX, y - cpArray.originY, z - cpArray.originZ)){
-						cpArray.array[(x - cpArray.originX)*cpArray.size2 + (y - cpArray.originY)*cpArray.size + (z - cpArray.originZ)] = chunks[pos.second];
-					}
+					cpArray.Add(chunks[pos.second], {x, y, z});
 					return ret;
 				}
 			}
@@ -767,7 +758,7 @@ namespace World {
 			for (cy = cyp - viewdistance - 1; cy <= cyp + viewdistance; cy++) {
 				for (cz = czp - viewdistance - 1; cz <= czp + viewdistance; cz++) {
 					if (chunkOutOfBound(cx, cy, cz)) continue;
-					if (cpArray.getChunkPtr(cx, cy, cz) == nullptr) {
+					if (cpArray.Get({cx, cy, cz}) == nullptr) {
 						xd = cx * 16 + 7 - xpos;
 						yd = cy * 16 + 7 - ypos;
 						zd = cz * 16 + 7 - zpos;
@@ -826,7 +817,7 @@ namespace World {
 		chunks = nullptr;
 		loadedChunks = 0;
 		chunkArraySize = 0;
-		cpArray.destroy();
+        cpArray.Finalize();
 		HMap.destroy();
 
 		rebuiltChunks = 0;

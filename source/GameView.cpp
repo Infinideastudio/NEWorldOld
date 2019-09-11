@@ -166,9 +166,8 @@ public:
 		World::updatedChunks = 0;
 
 		//cpArray move
-		if (World::cpArray.originX != Player::cxt - viewdistance - 2 || World::cpArray.originY != Player::cyt - viewdistance - 2 || World::cpArray.originZ != Player::czt - viewdistance - 2) {
-			World::cpArray.moveTo(Player::cxt - viewdistance - 2, Player::cyt - viewdistance - 2, Player::czt - viewdistance - 2);
-		}
+		World::cpArray.MoveTo({Player::cxt-viewdistance-2, Player::cyt-viewdistance-2, Player::czt-viewdistance-2});
+
 		//HeightMap move
 		if (World::HMap.originX != (Player::cxt - viewdistance - 2) * 16 || World::HMap.originZ != (Player::czt - viewdistance - 2) * 16) {
 			World::HMap.moveTo((Player::cxt - viewdistance - 2) * 16, (Player::czt - viewdistance - 2) * 16);
@@ -200,8 +199,9 @@ public:
 				World::Chunk* c = World::AddChunk(cx, cy, cz);
 				c->Load(false);
 				if (c->Empty) {
-					c->Unload(); World::DeleteChunk(cx, cy, cz);
-					World::cpArray.setChunkPtr(cx, cy, cz, World::EmptyChunkPtr);
+					c->Unload();
+					World::DeleteChunk(cx, cy, cz);
+                    World::cpArray.Set({cx, cy, cz}, World::EmptyChunkPtr);
 				}
 			}
 

@@ -31,7 +31,7 @@ private:
     semaphore_t _Handle;
 };
 
-#if __has_include(<Windows.h>)
+#elif __has_include(<Windows.h>)
 #define _WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 class Semaphore {
@@ -57,7 +57,6 @@ private:
 
 #elif __has_include(<semaphore.h>)
 #include <semaphore.h>
-
 class Semaphore {
 public:
     Semaphore() noexcept {

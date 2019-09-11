@@ -649,3 +649,42 @@ public:
     void SetValueUnsafe() noexcept { GetState().SetValueUnsafe(); }
 };
 
+
+namespace InterOp {
+    void AsyncResumePrevious() noexcept;
+
+    IExecTask* AsyncGetCurrent() noexcept;
+
+    void AsyncCall(IExecTask* inner) noexcept;
+}
+
+template <template <class> class Cont, class U>
+U Await(Cont<U> cont) {
+    if constexpr (std::is_same_v<U, void>) {
+        auto fu = cont.then([task = InterOp::AsyncGetCurrent()](auto&& lst) {
+            ThreadPool::Enqueue(std::unique_ptr<IExecTask>(task));
+            lst.get();
+        });
+        InterOp::AsyncResumePrevious();
+        fu.get();
+    }
+    else {
+        auto fu = cont.then([task = InterOp::AsyncGetCurrent()](auto&& lst) {
+            ThreadPool::Enqueue(std::unique_ptr<IExecTask>(task));
+            return lst.get();
+        });
+        InterOp::AsyncResumePrevious();
+        return fu.get();
+    }
+}
+
+template <class Func, class ...Ts>
+auto Async(Func __fn, Ts&& ... args) {
+    auto inner_task = new DeferredProcedureCallTask (
+            std::forward<std::decay_t<Func>>(std::move(__fn)),
+            std::forward<Ts>(args)...
+    );
+    auto future = inner_task->GetFuture();
+    AsyncCall(inner_task);
+    return future;
+}

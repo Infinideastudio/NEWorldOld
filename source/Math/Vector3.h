@@ -56,75 +56,75 @@ struct Vec3 {
     constexpr Vec3 operator<<(T r) const noexcept { return {X << r, Y << r, Z << r}; }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
-    constexpr Vec3 operator<<(const Vec3& r) const noexcept { return {X << r.X, Y << r.X, Z << r.X}; }
+    constexpr Vec3 operator<<(const Vec3& r) const noexcept { return {X << r.X, Y << r.Y, Z << r.Y}; }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
     constexpr Vec3& operator<<=(T r) noexcept { return (X <<= r, Y <<= r, Z <<= r, *this); }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
-    constexpr Vec3& operator<<=(const Vec3& r) noexcept { return (X <<= r.X, Y <<= r.X, Z <<= r.X, *this); }
+    constexpr Vec3& operator<<=(const Vec3& r) noexcept { return (X <<= r.X, Y <<= r.Y, Z <<= r.Z, *this); }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
     constexpr Vec3 operator>>(T r) const noexcept { return {X >> r, Y >> r, Z >> r}; }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
-    constexpr Vec3 operator>>(const Vec3& r) const noexcept { return {X >> r.X, Y >> r.X, Z >> r.X}; }
+    constexpr Vec3 operator>>(const Vec3& r) const noexcept { return {X >> r.X, Y >> r.Y, Z >> r.Z}; }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
     constexpr Vec3& operator>>=(T r) noexcept { return (X >>= r, Y >>= r, Z >>= r, *this); }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
-    constexpr Vec3& operator>>=(const Vec3& r) noexcept { return (X >>= r.X, Y >>= r.X, Z >>= r.X, *this); }
+    constexpr Vec3& operator>>=(const Vec3& r) noexcept { return (X >>= r.X, Y >>= r.Y, Z >>= r.Z, *this); }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
     constexpr Vec3 operator|(T r) const noexcept { return {X | r, Y | r, Z | r}; }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
-    constexpr Vec3 operator|(const Vec3& r) const noexcept { return {X | r.X, Y | r.X, Z | r.X}; }
+    constexpr Vec3 operator|(const Vec3& r) const noexcept { return {X | r.X, Y | r.Y, Z | r.Z}; }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
     constexpr Vec3& operator|=(T r) noexcept { return (X |= r, Y |= r, Z |= r, *this); }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
-    constexpr Vec3& operator|=(const Vec3& r) noexcept { return (X |= r.X, Y |= r.X, Z |= r.X, *this); }
+    constexpr Vec3& operator|=(const Vec3& r) noexcept { return (X |= r.X, Y |= r.Y, Z |= r.Z, *this); }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
     constexpr Vec3 operator&(T r) const noexcept { return {X & r, Y & r, Z & r}; }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
-    constexpr Vec3 operator&(const Vec3& r) const noexcept { return {X & r.X, Y & r.X, Z & r.X}; }
+    constexpr Vec3 operator&(const Vec3& r) const noexcept { return {X & r.X, Y & r.Y, Z & r.Z}; }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
     constexpr Vec3& operator&=(T r) noexcept { return (X &= r, Y &= r, Z &= r, *this); }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
-    constexpr Vec3& operator&=(const Vec3& r) noexcept { return (X &= r.X, Y &= r.X, Z &= r.X, *this); }
+    constexpr Vec3& operator&=(const Vec3& r) noexcept { return (X &= r.X, Y &= r.Y, Z &= r.Z, *this); }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
     constexpr Vec3 operator^(T r) const noexcept { return {X ^ r, Y ^ r, Z ^ r}; }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
-    constexpr Vec3 operator^(const Vec3& r) const noexcept { return {X ^ r.X, Y ^ r.X, Z ^ r.X}; }
+    constexpr Vec3 operator^(const Vec3& r) const noexcept { return {X ^ r.X, Y ^ r.Y, Z ^ r.Z}; }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
     constexpr Vec3& operator^=(T r) noexcept { return (X ^= r, Y ^= r, Z ^= r, *this); }
 
     template <class = std::enable_if<std::is_integral_v<T>>>
-    constexpr Vec3& operator^=(const Vec3& r) noexcept { return (X ^= r.X, Y ^= r.X, Z ^= r.X, *this); }
+    constexpr Vec3& operator^=(const Vec3& r) noexcept { return (X ^= r.X, Y ^= r.Y, Z ^= r.Z, *this); }
 
     constexpr Vec3 operator-() const noexcept { return {-X, -Y, -Z}; }
 
     constexpr T LengthSquared() const noexcept { return X*X+Y*Y+Z*Z; }
 
-    constexpr bool operator==(const Vec3& r) const noexcept { return (X==r.x) && (Y==r.y) && (Z==r.z); }
+    constexpr bool operator==(const Vec3& r) const noexcept { return (X==r.X) && (Y==r.Y) && (Z==r.Z); }
 
-    constexpr bool operator<(const Vec3& r) const noexcept { return LengthSquared()<r.lengthSqr(); }
+    constexpr bool operator<(const Vec3& r) const noexcept { return LengthSquared()<r.LengthSquared(); }
 
-    constexpr bool operator>(const Vec3& r) const noexcept { return LengthSquared()>r.lengthSqr(); }
+    constexpr bool operator>(const Vec3& r) const noexcept { return LengthSquared()>r.LengthSquared(); }
 
-    constexpr bool operator<=(const Vec3& r) const noexcept { return LengthSquared()<=r.lengthSqr(); }
+    constexpr bool operator<=(const Vec3& r) const noexcept { return LengthSquared()<=r.LengthSquared(); }
 
-    constexpr bool operator>=(const Vec3& r) const noexcept { return LengthSquared()>=r.lengthSqr(); }
+    constexpr bool operator>=(const Vec3& r) const noexcept { return LengthSquared()>=r.LengthSquared(); }
 
     constexpr T Dot(const Vec3& r) const noexcept { return X*r.X+Y*r.Y+Z*r.Z; }
 
