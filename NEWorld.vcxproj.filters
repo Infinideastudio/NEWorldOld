@@ -122,12 +122,6 @@
     <ClInclude Include="include\Netycat\include\Netycat\Netycat.h">
       <Filter>Netycat</Filter>
     </ClInclude>
-    <ClInclude Include="source\GUI.h">
-      <Filter>源代码\GUI</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Menus.h">
-      <Filter>源代码\GUI</Filter>
-    </ClInclude>
     <ClInclude Include="source\StdInclude.h">
       <Filter>Source\Common</Filter>
     </ClInclude>
@@ -232,6 +226,8 @@
     <ClInclude Include="source\Menus.h">
       <Filter>Source\GUI</Filter>
     </ClInclude>
+    <ClInclude Include="source\GUI.h" />
+    <ClInclude Include="source\Menus.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -275,9 +271,6 @@
     </ClCompile>
     <ClCompile Include="include\Netycat\src\Netycat\Core\Socket.cpp">
       <Filter>Netycat</Filter>
-    </ClCompile>
-    <ClCompile Include="source\GUI.cpp">
-      <Filter>源代码\GUI</Filter>
     </ClCompile>
     <ClCompile Include="source\RenderOptionsMenu.cpp">
       <Filter>Source\GUI\Menus</Filter>
@@ -383,6 +376,9 @@
     </ClCompile>
     <ClCompile Include="source\GUI.cpp">
       <Filter>Source\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GUI.cpp">
+      <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
