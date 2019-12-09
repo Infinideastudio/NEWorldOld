@@ -1,13 +1,14 @@
-#version 120
+#version 110
 
 ##NEWORLD_SHADER_DEFINES MergeFace MERGE_FACE
 
 uniform sampler2D Texture;
 uniform sampler2DShadow DepthTexture;
 uniform sampler3D Texture3D;
+uniform mat4 Translation;
 uniform mat4 ShadowMapProjection;
 uniform mat4 ShadowMapModelView;
-uniform mat4 Translation;
+//uniform float ShadowMapDepthRange;
 uniform vec4 BackgroundColor;
 uniform float RenderDistance;
 uniform float ShadowDistance;
@@ -17,7 +18,7 @@ uniform float GameTime;
 uniform ivec3 PlayerPositionInt;
 uniform vec3 PlayerPositionFrac;
 
-varying vec4 vertCoords;
+varying vec4 vertexCoords;
 varying float blockIDf;
 
 varying vec3 normal;
@@ -28,11 +29,11 @@ const mat4 Normalization = mat4(
 	0.5, 0.0, 0.0, 0.0,
 	0.0, 0.5, 0.0, 0.0,
 	0.0, 0.0, 0.5, 0.0,
-	0.5, 0.5, 0.4999, 1.0
+	0.5, 0.5, 0.5, 1.0
 );
 
 const float MaxBlockID = 4096.0;
-const int WaterID = 10, GlowStoneID = 12, FlanID = 233;
+const int WaterID = 10, GlowStoneID = 12;
 
 const int RepeatLength = 1024;
 
@@ -44,7 +45,7 @@ vec2 encodeFloat16(in float v) {
 	return enc;
 }
 
-vec3 encodeFloat24(in float v) {
+vec3 encodevec34(in float v) {
 	vec3 enc = fract(vec3(1.0 - 1.0 / 1024.0, 255.0, 255.0 * 255.0) * v);
 	enc -= enc.yzz * vec3(1.0 / 255.0, 1.0 / 255.0, 0.0);
 	return enc;
@@ -113,15 +114,29 @@ vec3 getWaveNormal(in vec3 v, in float lod) {
 	return vec3(xd, yd, zd);
 }
 
-float sampleShadow(ivec2 pixel, float depth) {
-	return shadow2D(DepthTexture, vec3(float(pixel.x) / ShadowMapResolution, float(pixel.y) / ShadowMapResolution, depth)).z;
+vec2 FisheyeProjection(vec2 position) {
+	const float FisheyeFactor = 0.85;
+	float dist = length(position);
+    float distortFactor = (1.0 - FisheyeFactor) + dist * FisheyeFactor;
+    position /= distortFactor;
+	return position;
+}
+
+vec2 FisheyeReverse(vec2 position) {
+	const float FisheyeFactor = 0.85;
+	float dist = length(position);
+	float distortFactor = (1.0 - dist * FisheyeFactor) / (1.0 - FisheyeFactor);
+    position /= distortFactor;
+	return position;
+}
+
+float sampleShadow(in vec4 coords, in float bias) {
+	coords = Normalization * coords;
+	return shadow2D(DepthTexture, vec3(coords.xy, coords.z - bias)).z;
 }
 
 void main() {
-	mat4 trans = Normalization * ShadowMapProjection * ShadowMapModelView * Translation;
-	vec4 rel = gl_ModelViewMatrix * vertCoords;
-	vec4 shadowCoords = trans * vertCoords;
-	float luminance = 0.0, sunlight = 0.0;
+	vec4 rel = gl_ModelViewMatrix * vertexCoords;
 	float dist = length(rel);
 	
 	blockID = int(blockIDf + 0.5);
@@ -132,30 +147,59 @@ void main() {
 	);
 	
 	// Shadow calculation
+	vec4 shadowCoords = ShadowMapProjection * ShadowMapModelView * Translation * vertexCoords;
+	shadowCoords = vec4(FisheyeProjection(shadowCoords.xy), shadowCoords.zw);
+	
+	float luminance = 0.0, sunlight = 0.0;
+	
 	if (dot(normal, SunlightDirection) > 0.0) sunlight = 0.0;
-	else if (shadowCoords.x >= 0.0 && shadowCoords.x <= 1.0 &&
-			 shadowCoords.y >= 0.0 && shadowCoords.y <= 1.0 && shadowCoords.z <= 1.0) {
-		float xpos = shadowCoords.x * ShadowMapResolution, ypos = shadowCoords.y * ShadowMapResolution, depth = shadowCoords.z;
-		float x0 = float(int(xpos)), y0 = float(int(ypos));
-		float x1 = x0 + 1.0, y1 = y0 + 1.0;
-		float texel00 = shadow2D(DepthTexture, vec3(x0 / ShadowMapResolution, y0 / ShadowMapResolution, depth)).z;
-		float texel01 = shadow2D(DepthTexture, vec3(x0 / ShadowMapResolution, y1 / ShadowMapResolution, depth)).z;
-		float texel10 = shadow2D(DepthTexture, vec3(x1 / ShadowMapResolution, y0 / ShadowMapResolution, depth)).z;
-		float texel11 = shadow2D(DepthTexture, vec3(x1 / ShadowMapResolution, y1 / ShadowMapResolution, depth)).z;
-		float w00 = (x1 - xpos) * (y1 - ypos), w01 = (x1 - xpos) * (ypos - y0), w10 = (xpos - x0) * (y1 - ypos), w11 = (xpos - x0) * (ypos - y0);
-		sunlight = texel00 * w00 + texel01 * w01 + texel10 * w10 + texel11 * w11;
+	else if (shadowCoords.x >= -1.0 && shadowCoords.x <= 1.0 && shadowCoords.y >= -1.0 && shadowCoords.y <= 1.0 && shadowCoords.z <= 1.0) {
+		float pixelSize = 2.0 / ShadowMapResolution;
+//		vec3 lightSpaceNormal = (ShadowMapProjection * ShadowMapModelView * vec4(normal, 0.0)).xyz;
 		
+		// Neighbor pixel (fisheye projected) distance in light space
+		float shift = length(FisheyeReverse(shadowCoords.xy + vec2(pixelSize) * sign(shadowCoords.xy)) - FisheyeReverse(shadowCoords.xy));
+		shift = max(shift * 1.4, pixelSize);
+		// Depth slope in light space
+///		float slope = length((lightSpaceNormal / lightSpaceNormal.z).xy);
+		// Combined bias
+		float bias = (ShadowDistance < 64.0 ? max(shift, 1.0 / 1024.0) : shift) * max(ShadowDistance, 64.0) * 4.0e-4;
 		
-		float factor = clamp(min(distToEdge(shadowCoords.xy) * 10.0, (ShadowDistance - dist) / ShadowDistance * 10.0), 0.0, 1.0);
-		sunlight = mix(0.8, sunlight, factor);
-	}
-	else sunlight = 0.8;
+		float count = 0.0;
+#define SAMPLE(xd, yd) \
+sunlight += sampleShadow(shadowCoords + vec4(xd, yd, 0.0, 0.0) * pixelSize * 1.0, bias * (length(vec2(xd, yd)) + 1.0)); \
+count += 1.0
+//		SAMPLE(-1.0,-1.0);
+		SAMPLE( 0.0,-1.0);
+//		SAMPLE( 1.0,-1.0);
+		SAMPLE(-1.0, 0.0);
+		SAMPLE( 0.0, 0.0);
+		SAMPLE( 1.0, 0.0);
+//		SAMPLE(-1.0, 1.0);
+		SAMPLE( 0.0, 1.0);
+//		SAMPLE( 1.0, 1.0);
+#undef SAMPLE
+			sunlight /= count;
+		
+		//float factor = clamp(min(distToEdge(shadowCoords.xy) * 10.0, (ShadowDistance - dist) / ShadowDistance * 10.0), 0.0, 1.0);
+		//sunlight = mix(0.8, sunlight, factor);
+	} else sunlight = 0.8;
 	
-	luminance = clamp((-dot(normal, SunlightDirection) * 0.5 + 0.5) * 0.3 + 0.4 + sunlight * 0.5, 0.0, 1.1);
+	luminance = clamp(-dot(normal, SunlightDirection), 0.0, 1.0) * sunlight * 0.8 + 0.5;
 	
-	vec4 color = gl_Color;
+	// Reinherd tonemap
+	//luminance /= (luminance + 1.0);
+	//luminance *= 1.2;
 	
-	if (blockID == GlowStoneID || blockID == FlanID) {
+	//luminance = 0.0;
+	//vec3 cameraSpaceRevDir = (gl_ModelViewMatrix * vec4(reflect(normalize((Translation * vertexCoords).xyz), normal), 0.0)).xyz;
+	//luminance += clamp(dot(cameraSpaceRevDir, vec3(0.0, 0.0, 1.0)) * 1.2, 0.0, 1.2) * 1.0;
+	//vec3 cameraSpaceNormal = (gl_ModelViewMatrix * vec4(normal, 0.0)).xyz;
+	//luminance += clamp(dot(cameraSpaceNormal, vec3(0.0, 0.0, 1.0)) * 1.0, 0.0, 1.0) * 1.0;
+	
+	vec4 color = mix(gl_Color, vec4(1.0), clamp(sunlight - 0.2, 0.0, 1.0));
+	
+	if (blockID == GlowStoneID) {
 		luminance = 1.0;
 		color = vec4(1.0);
 	}
@@ -169,13 +213,11 @@ void main() {
 	
 	color *= vec4(texel.rgb * luminance, texel.a);
 	
-	// Fog calculation & Final color
-	
 	vec3 finalNormal = normal;
 	
 	if (blockID == WaterID) {
 		if (normal.y > 0.1) {
-			vec4 position = Translation * vertCoords + vec4(vec3(PlayerPositionMod) + PlayerPositionFrac, 0.0);
+			vec4 position = Translation * vertexCoords + vec4(vec3(PlayerPositionMod) + PlayerPositionFrac, 0.0);
 			vec3 waveNormal = getWaveNormal(position.xyz, max(0.0, 2.0 - dist * 0.05));
 			finalNormal = waveNormal;
 		}
@@ -187,5 +229,5 @@ void main() {
 	gl_FragData[0] = color;
 	gl_FragData[1] = vec4(finalNormal * 0.5 + vec3(0.5, 0.5, 0.5), 1.0);
 	gl_FragData[2] = vec4(blockIDEncoded, 0.0, 1.0);
-	gl_FragData[3] = vec4(encodeFloat24(depth), 1.0);
+	gl_FragData[3] = vec4(encodevec34(depth), 1.0);
 }

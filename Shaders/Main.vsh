@@ -5,7 +5,8 @@ uniform float RenderDistance;
 uniform float GameTime;
 
 attribute float VertexAttrib;
-varying vec4 vertCoords;
+
+varying vec4 vertexCoords;
 varying float blockIDf;
 
 varying vec3 normal;
@@ -39,7 +40,7 @@ void main() {
 	}
 	
     // Results
-	vertCoords = vertex;
+	vertexCoords = vertex;
 	normal = gl_Normal;
 	gl_FrontColor = gl_Color;
 	gl_TexCoord[0] = gl_MultiTexCoord0;

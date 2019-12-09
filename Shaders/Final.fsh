@@ -23,12 +23,17 @@ uniform vec3 PlayerPositionFrac;
 
 const float MaxBlockID = 4096.0;
 const int GlassID = 9, WaterID = 10, IceID = 15, IronID = 17;
-const int MaxIterations = 50, MaxNearIterations = 12;
-const int CloudIterations = 64, WaterCloudIterations = 2;
-const float stepScale = 4.0;
-
 const int RepeatLength = 1024;
+
+// Water reflection
+const int MaxIterations = 50;
+const float StepMult = 1.05;
+
+// Volumetric clouds
 const vec3 CloudScale = vec3(100.0, 50.0, 100.0);
+const float CloudBottom = 80.0, CloudTop = 320.0, CloudTransition = 80.0, CloudRangeMult = 2.0;
+const int CloudIterations = 64;
+const float CloudStep = 8.0;
 
 float xScale, yScale, xRange, yRange, blockIDf;
 int blockID;
@@ -55,12 +60,25 @@ vec3 cameraSpaceToTextureCoords(in vec3 v) {
 	return v3;
 }
 
+vec3 screenSpaceToTextureCoords(in vec3 v) {
+	vec3 v3 = v.xyz / 2.0 + vec3(0.5, 0.5, 0.5);
+	v3.x *= xRange;
+	v3.y *= yRange;
+	return v3;
+}
+
 vec3 getTextureNormal(in vec2 texCoord) {
 	return normalize((ModelViewMatrix * vec4(texture2D(Texture1, texCoord).rgb * 2.0 - vec3(1.0), 0.0)).xyz);
 }
 
 float getTextureDepth(in vec2 texCoord) {
 	return decodeFloat24(texture2D(Texture3, texCoord).rgb) * 2.0 - 1.0;
+}
+
+vec3 screenSpaceToCameraSpace(in vec3 v) {
+//	v = vec3(v.x / xRange * 2.0 - 1.0, v.y / yRange * 2.0 - 1.0, v.z);
+	vec4 res = ProjectionInverse * vec4(v, 1.0);
+	return res.xyz / res.w;
 }
 
 vec3 getTexturePosition(in vec2 texCoord) {
@@ -89,46 +107,51 @@ float distToEdge(in vec2 v) {
 }
 
 vec4 getSkyColor(in vec3 dir) {
+	return vec4(1.0);
 	return mix(
-		vec4(0.75, 0.95, 0.9, 1.0),
+		//vec4(240.0 / 255.0, 244.0 / 255.0, 250.0 / 255.0, 1.0),
 		vec4(152.0 / 255.0, 211.0 / 255.0, 250.0 / 255.0, 1.0),
-		//vec4(152.0 / 255.0, 211.0 / 255.0, 250.0 / 255.0, 1.0),
-		//vec4(90.0 / 255.0, 134.0 / 255.0, 206.0 / 255.0, 1.0),
+		vec4(90.0 / 255.0, 134.0 / 255.0, 206.0 / 255.0, 1.0),
 		smoothstep(0.0, 1.0, normalize(dir).y * 2.0)
 	);
 }
 
 vec3 ssr(in vec3 org, in vec3 dir, in vec3 bgColor, bool underWater) {
+	dir = divide(ProjectionMatrix * vec4(org + dir, 1.0));
+	org = divide(ProjectionMatrix * vec4(org, 1.0));
+	dir -= org;
+	
 	vec3 curr = org, last = org;
 	bool found = false;
-	float ratio = 1.0, step = clamp(getDist(org) / 10.0, 0.1, 4.0);
+	float estlen = (pow(StepMult, float(MaxIterations)) - 1.0) / (StepMult - 1.0);
+	float ratio = 1.0, step = 2.0 / estlen;
 	
-	dir = normalize(dir);
-	
-	curr += dir * step * stepScale;
+	dir /= length(dir.xy);
+	curr += dir * step;
 	
 	for (int i = 0; i < MaxIterations; i++) {
-		vec2 texCoord = cameraSpaceToTextureCoords(curr).xy;
+		vec2 texCoord = screenSpaceToTextureCoords(curr).xy;
 		if (!inside(texCoord)) break;
 		
-		float currDist = getDist(curr);
+		float currDist = getDist(screenSpaceToCameraSpace(curr));
 		float pixelDist = getDist(getTexturePosition(texCoord));
 		
-		if (currDist < 0.0 || currDist > RenderDistance) break;
+//		if (currDist < 0.0 || currDist > RenderDistance) break;
+		
+//		float x = getDist(screenSpaceToCameraSpace(curr - dir * step)) - getDist(screenSpaceToCameraSpace(curr));
 		
 		if (getBlockID(texCoord) != 0 && getBlockID(texCoord) != WaterID &&
-				pixelDist < currDist && (currDist - pixelDist < step * stepScale * 2.0 + 1.0 || underWater)) {
+				pixelDist < currDist/* && (currDist - pixelDist < 1.0 * abs(x) || underWater)*/) {
 			found = true;
-			dir /= 2.0;
+			step /= 2.0;
 			curr = last;
 			ratio = min(ratio, float(i) / float(MaxIterations));
 		} else last = curr;
 		
-		if (i >= MaxNearIterations) step = max(step, 1.0);
+		curr += dir * step;
+		if (!found) step *= StepMult;
 		
-		curr += dir * step * stepScale;
-		
-		if (found && (length(dir) < 0.1 || i == MaxIterations - 1)) {
+		if (found && (length(dir.xy * step) < 2.0 / max(ScreenWidth, ScreenHeight) || i == MaxIterations - 1)) {
 			float factor = clamp(min(distToEdge(texCoord) * 5.0, (1.0 - ratio) * 5.0), 0.0, 1.0);
 			return mix(bgColor, texture2D(Texture0, texCoord).rgb, factor);
 		}
@@ -143,10 +166,6 @@ int iMod(int v, int m) {
 	return res;
 }
 
-float random(in float f) {
-	return fract(sin(f * 233.0) * 43758.5453);
-}
-
 float interpolatedNoise3D(in vec3 x) {
 	const vec2 DefaultOffset = vec2(37.0, 17.0);
 	vec3 p = floor(x);
@@ -159,57 +178,68 @@ float interpolatedNoise3D(in vec3 x) {
 
 float perlinNoise3D(in vec3 c) {
 	float res = 0.0;
-	res += interpolatedNoise3D(c * 1.0) * 1.0;
-	res += interpolatedNoise3D(c * 2.0) * 0.5;
-	res += interpolatedNoise3D(c * 4.0) * 0.25;
-	res += interpolatedNoise3D(c * 8.0) * 0.125;
-	//return clamp(res / 2.0 * 3.0 - 1.0, 0.0, 1.0);
-	res = clamp(abs(res / 2.0 * 2.0 - 1.0) * 2.0 - 0.2, 0.0, 1.0);
-	return res;// < 0.2 ? 0.0 : res;
+	res += interpolatedNoise3D(c * 1.0) / 1.0;
+	res += interpolatedNoise3D(c * 2.0) / 2.0;
+	res += interpolatedNoise3D(c * 4.0) / 4.0;
+	res += interpolatedNoise3D(c * 8.0) / 8.0;
+	res += interpolatedNoise3D(c * 16.0) / 16.0;
+	res += interpolatedNoise3D(c * 32.0) / 32.0;
+//	res += interpolatedNoise3D(c * 64.0) / 64.0;
+//	res += interpolatedNoise3D(c * 128.0) / 128.0;
+	res = clamp(abs(res - 0.5) * 2.0 - 0.8, 0.0, 1.0);
+	//res = clamp(abs(res / 2.0 * 2.0 - 1.0) * 2.0 - 0.2, 0.0, 1.0);
+	//return res < 0.5 ? 0.0 : 1.0;
+	return res < 0.3 ? clamp((res - 0.3) * 4.0 + 0.3, 0.0, 1.0) : res;
 }
 
-vec4 cloud(in vec3 org, in vec3 dir, in float maxDist, in int iterations) {
-	const float Bottom = 160.0, Top = 240.0, Transition = 40.0;
-	
+float getCloudOpacity(in vec3 pos) {
+	float factor = min(
+		smoothstep(CloudBottom, CloudBottom + CloudTransition, pos.y),
+		1.0 - smoothstep(CloudTop - CloudTransition, CloudTop, pos.y)
+	);
+	return factor * 0.5 * perlinNoise3D(pos / CloudScale);
+}
+
+vec4 cloud(in vec3 org, in vec3 dir, in float stp, in float maxDist) {
 	vec3 curr = org;
-	vec4 res = vec4(0.0);
+	vec3 res = vec3(0.0);
+	float transparency = 1.0;
 	
 	dir = normalize(dir);
 	
-	// Adjust step length according to iterations
-	float step = 8.0;//(Top - Bottom) / float(iterations) * 2.0;
-	// Adjust opacity factor according to iterations
-	float alpha = 0.5;//1.0 - pow(0.003, 1.0 / float(iterations));
+	//float stp = 8.0;// / max(dir.y, 0.01);
 	
-	// Skip non-cloud area
-	if (curr.y < Bottom) {
-		if (dir.y <= 0.0) return res;
-		curr += dir * (Bottom - curr.y) / dir.y;
-	} else if (curr.y > Top) {
-		if (dir.y >= 0.0) return res;
-		curr += dir * (Top - curr.y) / dir.y;
+	if (curr.y < CloudBottom) {
+		if (dir.y <= 0.0) return vec4(0.0);
+		curr += dir * (CloudBottom - curr.y) / dir.y;
+	} else if (curr.y > CloudTop) {
+		if (dir.y >= 0.0) return vec4(0.0);
+		curr += dir * (CloudTop - curr.y) / dir.y;
 	}
 	
-	for (int i = 0; i < 16; i++) {
-		curr += dir * step;
+	for (int i = 0; i < CloudIterations; i++) {
+		curr += dir * stp;
 		
-		if (curr.y >= Bottom && curr.y <= Top) {
-			float factor = min(smoothstep(Bottom, Bottom + Transition, curr.y), 1.0 - smoothstep(Top - Transition, Top, curr.y));
-			float opacity = factor * 0.5 * perlinNoise3D(curr / CloudScale);
-			float diff = opacity - factor * 0.5 * perlinNoise3D(curr / CloudScale - SunlightDirection * 0.2);
-			float col = 0.8 + diff;
-			col = clamp(col, 0.2, 1.0);
-			res.rgb = vec3(col) * (1.0 - res.a) + res.rgb * res.a;
-			res.a = 1.0 - (1.0 - res.a) * (1.0 - opacity);
-		} else return res;
+		if (transparency < 0.01) break;
+		if (length(curr - org) > maxDist) break;
 		
-		step *= 1.02;
-		
-		if (res.a > 0.99) return res;
-		if (length(curr - org) > maxDist) return res;
+		if (curr.y >= CloudBottom && curr.y <= CloudTop) {
+			float factor = smoothstep(-maxDist, -maxDist * 0.6, -length(curr - org));
+			float opacity = factor * getCloudOpacity(curr) * 0.5;
+			if (opacity > 0.0) {
+				float occulusion = getCloudOpacity(curr - SunlightDirection * stp * 4.0);
+				float col = clamp(1.2 - occulusion * 0.8, 0.6, 1.0);
+				res += transparency * opacity * vec3(col);
+				transparency *= 1.0 - opacity;
+			}
+		} else break;
 	}
 	
-	return res;
+	return vec4(res, 1.0 - transparency);
+}
+
+float random(in float f) {
+	return fract(sin(f * 233.0) * 43758.5453);
 }
 
 float edgeDetect(in vec2 texCoord) {
@@ -224,7 +254,7 @@ float edgeDetect(in vec2 texCoord) {
 		float dist = length(getTexturePosition(texCoord));
 		float distDiff = abs(dist - length(getTexturePosition(sp)));
 		//float depthDiff = abs(getTextureDepth(texCoord) - getTextureDepth(sp));
-		if (normalDiff > -0.9 || distDiff > max(0.9, dist * 0.01)) res += 1.0;
+		if (normalDiff > -0.9 || distDiff > max(0.9, dist * 0.02)) res += 1.0;
 	}
 	return res / float(Samples) * 2.0;
 }
@@ -232,6 +262,7 @@ float sigmoid(float x)
 {
 	return 1.0/(1.0+exp(-1.0*x));
 }
+
 void main() {
 	xScale = BufferSize / ScreenWidth;
 	yScale = BufferSize / ScreenHeight;
@@ -264,15 +295,15 @@ void main() {
 		dist = RenderDistance * 4.0;
 		color = getSkyColor(viewDir);
 	} else if (blockID == WaterID || blockID == IceID || blockID == IronID) {
-		vec3 normal = getTextureNormal(texCoord);
-		vec3 reflectDir = reflect(normalize(cameraSpacePosition), normal);
-		float cosTheta = dot(normalize(-cameraSpacePosition), normal);
+		vec3 normal = (ModelViewMatrix * vec4(data1.rgb * 2.0 - vec3(1.0, 1.0, 1.0), 0.0)).xyz;
+		vec3 reflectDir = reflect(normalize(cameraSpacePosition), normalize(normal));
+		float cosTheta = dot(normalize(-cameraSpacePosition), normalize(normal));
 		
 		vec3 worldReflectDir = (ModelViewInverse * vec4(reflectDir, 0.0)).xyz;
 #ifdef VOLUMETRIC_CLOUDS
 		vec3 worldPosition = vec3(PlayerPositionInt) + PlayerPositionFrac + divide(ModelViewInverse * vec4(cameraSpacePosition, 1.0));
-		vec4 cloud = cloud(worldPosition, worldReflectDir, RenderDistance * 16.0, WaterCloudIterations);
-		vec3 bgColor = mix(getSkyColor(worldReflectDir).rgb, cloud.rgb, cloud.a);
+		vec4 cloudColor = cloud(worldPosition, worldReflectDir, CloudStep * 4.0, RenderDistance * 2.0);
+		vec3 bgColor = cloudColor.rgb + (1.0 - cloudColor.a) * getSkyColor(worldReflectDir).rgb;
 #else
 		vec3 bgColor = getSkyColor(worldReflectDir).rgb;
 #endif
@@ -290,11 +321,14 @@ void main() {
 		color = vec4(data0.rgb, 1.0);
 	}
 	
-#ifdef VOLUMETRIC_CLOUDS
-	vec4 cloud = cloud(vec3(PlayerPositionMod) + PlayerPositionFrac, viewDir, dist, CloudIterations);
-	color = vec4(mix(color.rgb, cloud.rgb, cloud.a), 1.0);
-#endif
+	// Fog
+	color = vec4(mix(getSkyColor(viewDir).rgb, color.rgb, clamp((RenderDistance - dist) / 32.0, 0.0, 1.0)), color.a);
 	
+#ifdef VOLUMETRIC_CLOUDS
+	vec4 cloudColor = cloud(vec3(PlayerPositionMod) + PlayerPositionFrac, viewDir, CloudStep, min(RenderDistance * CloudRangeMult, dist));
+	color = vec4(cloudColor.rgb + (1.0 - cloudColor.a) * color.rgb, 1.0);
+#endif
+
 	float gs = 0.2989 * color.r + 0.5870 * color.g + 0.1140 * color.b;//(color.r + color.g + color.b) / 3.0;
 	gs = min(gs, 1.0 - edgeDetect(texCoord));
 	//gs = smoothstep(0.2, 0.8, gs);
@@ -308,9 +342,5 @@ void main() {
 	color = vec4(vec3(gs,gs,gs), color.a);
 	
 	gl_FragColor = color;//vec4(mix(getSkyColor(viewDir).rgb, color.rgb, clamp((RenderDistance - dist) / 32.0, 0.0, 1.0)), color.a);
-	
-	float finalDepth = screenSpacePosition.z;
-	if (blockID == 0) finalDepth = 1.0;
-	
-	gl_FragDepth = finalDepth * 0.5 + 0.5;
+	gl_FragDepth = screenSpacePosition.z * 0.5 + 0.5;
 }
