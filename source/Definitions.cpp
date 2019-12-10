@@ -61,8 +61,8 @@ double bagAnimDuration = 0.5;
 //OpenGL
 int GLVersionMajor, GLVersionMinor, GLVersionRev;
 //GLFW
-GLFWwindow* MainWindow;
-GLFWcursor* MouseCursor;
+GLFWwindow *MainWindow;
+GLFWcursor *MouseCursor;
 
 double mx, my, mxl, myl;
 int mw, mb, mbp, mbl, mwl;

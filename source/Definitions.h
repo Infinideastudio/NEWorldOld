@@ -2,6 +2,7 @@
 #ifndef NEWORLD_DEBUG
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
+
 #include "StdInclude.h"
 #include "Typedefs.h"
 #include "FunctionsKit.h"
@@ -74,11 +75,12 @@ extern double bagAnimTimer;
 extern double bagAnimDuration;
 
 extern int GLVersionMajor, GLVersionMinor, GLVersionRev;
-extern GLFWwindow* MainWindow;
-extern GLFWcursor* MouseCursor;
+extern GLFWwindow *MainWindow;
+extern GLFWcursor *MouseCursor;
 extern double mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
 extern double mxdelta, mydelta;
 extern std::string inputstr;
+
 void AppCleanUp();
 

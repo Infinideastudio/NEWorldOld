@@ -12,10 +12,10 @@ void setupNormalFog();
 
 void loadTextures();
 
-void WindowSizeFunc(GLFWwindow* win, int width, int height);
+void WindowSizeFunc(GLFWwindow *win, int width, int height);
 
-void MouseButtonFunc(GLFWwindow*, int button, int action, int);
+void MouseButtonFunc(GLFWwindow *, int button, int action, int);
 
-void CharInputFunc(GLFWwindow*, unsigned int c);
+void CharInputFunc(GLFWwindow *, unsigned int c);
 
-void MouseScrollFunc(GLFWwindow*, double, double yoffset);
+void MouseScrollFunc(GLFWwindow *, double, double yoffset);
