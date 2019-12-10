@@ -3,15 +3,16 @@
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
 
-#include "StdInclude.h"
 #include "Typedefs.h"
 #include "FunctionsKit.h"
 
+#include <string>
+
 //Global Vars
 const unsigned int VERSION = 39;
-const std::string MAJOR_VERSION = "Alpha 0.";
-const std::string MINOR_VERSION = "5";
-const std::string EXT_VERSION = " Technical Perview";
+constexpr const char* MAJOR_VERSION = "Alpha 0.";
+constexpr const char* MINOR_VERSION = "5";
+constexpr const char* EXT_VERSION = " Technical Perview";
 const int defaultwindowwidth = 852; //默认窗口宽度
 const int defaultwindowheight = 480; //默认窗口高度
 const int networkRequestFrequency = 3; //请求频率

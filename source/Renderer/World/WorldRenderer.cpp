@@ -12,7 +12,7 @@ namespace WorldRenderer {
                                     cx, cy, cz, renderdistance)) {
                 if (!frustest || World::chunks[i]->visible) {
                     renderedChunks++;
-                    RenderChunkList.push_back(RenderChunk(World::chunks[i], (curtime - lastupdate) * 30.0));
+                    RenderChunkList.emplace_back(World::chunks[i], (curtime - lastupdate) * 30.0);
                 }
             }
         }

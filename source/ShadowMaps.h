@@ -1,7 +1,7 @@
 #pragma once
 
 #include "StdInclude.h"
-#include "WorldRenderer.h"
+#include "Renderer/World/WorldRenderer.h"
 #include "Renderer.h"
 
 namespace ShadowMaps {

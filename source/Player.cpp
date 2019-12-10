@@ -1,5 +1,5 @@
 #include "Player.h"
-#include "World.h"
+#include "Universe/World/World.h"
 #include "OnlinePlayer.h"
 #include <sstream>
 #include <fstream>
@@ -156,8 +156,6 @@ void Player::updatePosition() {
     if (ya != yal && yal > 0.0) jump = 0.0;
     if (xa != xal || za != zal) NearWall = true; else NearWall = false;
 
-    //�������������ȴ�����Ӱ�죨���˺þõĴ�ǽbug�ŷ�����������������(�s�F����)�s��ߩ��ߣ�
-    //  --qiaozhanrong
     xa = (double) ((int) (xa * 100000)) / 100000.0;
     ya = (double) ((int) (ya * 100000)) / 100000.0;
     za = (double) ((int) (za * 100000)) / 100000.0;
@@ -192,9 +190,9 @@ bool Player::putBlock(int x, int y, int z, Block blockname) {
     blockbox.ymax = y + 0.5;
     blockbox.zmax = z + 0.5;
     int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
-    if (!World::chunkOutOfBound(cx, cy, cz) && (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall ||
-                                                 BlockInfo(blockname).isSolid() == false) &&
-                                                BlockInfo(World::getblock(x, y, z)).isSolid() == false)) {
+    if (!World::chunkOutOfBound(cx, cy, cz) && ((!Hitbox::Hit(playerbox, blockbox) || CrossWall ||
+                                                 !BlockInfo(blockname).isSolid()) &&
+                                                !BlockInfo(World::getblock(x, y, z)).isSolid())) {
         World::putblock(x, y, z, blockname);
         success = true;
     }

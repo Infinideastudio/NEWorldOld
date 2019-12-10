@@ -4,7 +4,7 @@
 #include "Definitions.h"
 #include "Renderer.h"
 #include "TextRenderer.h"
-#include "World.h"
+#include "Universe/World/World.h"
 #include "GUI.h"
 #include "Globalization.h"
 #include "Setup.h"

@@ -112,18 +112,18 @@ namespace Renderer {
 
         vtxs = Vertexes;
         if (Vertexes != 0) {
-            if (buffer == 0) glGenBuffersARB(1, &buffer);
-            glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
-            glBufferDataARB(GL_ARRAY_BUFFER_ARB,
+            if (buffer == 0) glGenBuffers(1, &buffer);
+            glBindBuffer(GL_ARRAY_BUFFER, buffer);
+            glBufferData(GL_ARRAY_BUFFER,
                             Vertexes * ((Texcoordc + Colorc + Attribc + 3) * sizeof(float)),
-                            VertexArray, GL_STATIC_DRAW_ARB);
-            glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+                            VertexArray, GL_STATIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
         }
     }
 
     void renderbuffer(VBOID buffer, vtxCount vtxs, int tc, int cc, int ac) {
 
-        glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
+        glBindBuffer(GL_ARRAY_BUFFER, buffer);
         int cnt = tc + cc + 3;
         if (!AdvancedRender || ac == 0) {
             if (tc != 0) {
@@ -143,7 +143,7 @@ namespace Renderer {
             }
         } else {
             cnt += ac;
-            glVertexAttribPointerARB(ShaderAttribLoc, ac, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float *) 0);
+            glVertexAttribPointer(ShaderAttribLoc, ac, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float *) 0);
             glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float *) (ac * sizeof(float)));
             glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float *) ((ac + tc) * sizeof(float)));
             glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float *) ((ac + tc + cc) * sizeof(float)));
@@ -183,9 +183,9 @@ namespace Renderer {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, ShadowRes, ShadowRes, 0, GL_DEPTH_COMPONENT,
                      GL_UNSIGNED_INT, NULL);
 
-        glActiveTextureARB(GL_TEXTURE1);
+        glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, DepthTexture);
-        glActiveTextureARB(GL_TEXTURE0);
+        glActiveTexture(GL_TEXTURE0);
 
         glGenFramebuffersEXT(1, &ShadowFBO);
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, ShadowFBO);
@@ -235,7 +235,7 @@ namespace Renderer {
         shader.setUniform("Depth_modl", frus.getModlMatrix());
 
         //Enable arrays for additional vertex attributes
-        glEnableVertexAttribArrayARB(ShaderAttribLoc);
+        glEnableVertexAttribArray(ShaderAttribLoc);
     }
 
     void DisableShaders() {
@@ -243,7 +243,7 @@ namespace Renderer {
         Shader::unbind();
 
         //Disable arrays for additional vertex attributes
-        glDisableVertexAttribArrayARB(ShaderAttribLoc);
+        glDisableVertexAttribArray(ShaderAttribLoc);
     }
 
     void StartShadowPass() {

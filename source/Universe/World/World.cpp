@@ -8,10 +8,10 @@
 namespace World {
 
     std::string worldname;
-    brightness skylight = 15;         //Sky light level
-    brightness BRIGHTNESSMAX = 15;    //Maximum brightness
-    brightness BRIGHTNESSMIN = 2;     //Mimimum brightness
-    brightness BRIGHTNESSDEC = 1;     //Brightness decrease
+    Brightness skylight = 15;         //Sky light level
+    Brightness BRIGHTNESSMAX = 15;    //Maximum brightness
+    Brightness BRIGHTNESSMIN = 2;     //Mimimum brightness
+    Brightness BRIGHTNESSDEC = 1;     //Brightness decrease
     Chunk *EmptyChunkPtr;
     unsigned int EmptyBuffer;
     int MaxChunkLoads = 64;
@@ -174,21 +174,21 @@ namespace World {
         double colors, color1, color2, color3, color4, tcx, tcy, size, EPS = 0.0;
         int cx = chunkptr->cx, cy = chunkptr->cy, cz = chunkptr->cz;
         int gx = cx * 16 + x, gy = cy * 16 + y, gz = cz * 16 + z;
-        Block blk[7] = {chunkptr->getblock(x, y, z),
-                        z < 15 ? chunkptr->getblock(x, y, z + 1) : getblock(gx, gy, gz + 1, Blocks::ROCK),
-                        z > 0 ? chunkptr->getblock(x, y, z - 1) : getblock(gx, gy, gz - 1, Blocks::ROCK),
-                        x < 15 ? chunkptr->getblock(x + 1, y, z) : getblock(gx + 1, gy, gz, Blocks::ROCK),
-                        x > 0 ? chunkptr->getblock(x - 1, y, z) : getblock(gx - 1, gy, gz, Blocks::ROCK),
-                        y < 15 ? chunkptr->getblock(x, y + 1, z) : getblock(gx, gy + 1, gz, Blocks::ROCK),
-                        y > 0 ? chunkptr->getblock(x, y - 1, z) : getblock(gx, gy - 1, gz, Blocks::ROCK)};
+        Block blk[7] = {(chunkptr->GetBlock({x, y, z})),
+                        z < 15 ? chunkptr->GetBlock({(x), (y), (z + 1)}) : getblock(gx, gy, gz + 1, Blocks::ROCK),
+                        z > 0 ? chunkptr->GetBlock({(x), (y), (z - 1)}) : getblock(gx, gy, gz - 1, Blocks::ROCK),
+                        x < 15 ? chunkptr->GetBlock({(x + 1), (y), (z)}) : getblock(gx + 1, gy, gz, Blocks::ROCK),
+                        x > 0 ? chunkptr->GetBlock({(x - 1), (y), (z)}) : getblock(gx - 1, gy, gz, Blocks::ROCK),
+                        y < 15 ? chunkptr->GetBlock({(x), (y + 1), (z)}) : getblock(gx, gy + 1, gz, Blocks::ROCK),
+                        y > 0 ? chunkptr->GetBlock({(x), (y - 1), (z)}) : getblock(gx, gy - 1, gz, Blocks::ROCK)};
 
-        brightness brt[7] = {chunkptr->getbrightness(x, y, z),
-                             z < 15 ? chunkptr->getbrightness(x, y, z + 1) : getbrightness(gx, gy, gz + 1),
-                             z > 0 ? chunkptr->getbrightness(x, y, z - 1) : getbrightness(gx, gy, gz - 1),
-                             x < 15 ? chunkptr->getbrightness(x + 1, y, z) : getbrightness(gx + 1, gy, gz),
-                             x > 0 ? chunkptr->getbrightness(x - 1, y, z) : getbrightness(gx - 1, gy, gz),
-                             y < 15 ? chunkptr->getbrightness(x, y + 1, z) : getbrightness(gx, gy + 1, gz),
-                             y > 0 ? chunkptr->getbrightness(x, y - 1, z) : getbrightness(gx, gy - 1, gz)};
+        Brightness brt[7] = {(chunkptr->GetBrightness({(x), (y), (z)})),
+                             z < 15 ? chunkptr->GetBrightness({(x), (y), (z + 1)}) : getbrightness(gx, gy, gz + 1),
+                             z > 0 ? chunkptr->GetBrightness({(x), (y), (z - 1)}) : getbrightness(gx, gy, gz - 1),
+                             x < 15 ? chunkptr->GetBrightness({(x + 1), (y), (z)}) : getbrightness(gx + 1, gy, gz),
+                             x > 0 ? chunkptr->GetBrightness({(x - 1), (y), (z)}) : getbrightness(gx - 1, gy, gz),
+                             y < 15 ? chunkptr->GetBrightness({(x), (y + 1), (z)}) : getbrightness(gx, gy + 1, gz),
+                             y > 0 ? chunkptr->GetBrightness({(x), (y - 1), (z)}) : getbrightness(gx, gy - 1, gz)};
 
         size = 1 / 8.0f - EPS;
 
@@ -202,7 +202,7 @@ namespace World {
         }
 
         // Front Face
-        if (!(BlockInfo(blk[1]).isOpaque() || (blk[1] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) ||
+        if (!(BlockInfo(blk[1]).isOpaque() || (blk[1] == blk[0] && !BlockInfo(blk[0]).isOpaque())) ||
             blk[0] == Blocks::LEAF) {
 
             colors = brt[1];
@@ -259,7 +259,7 @@ namespace World {
         }
 
         // Back Face
-        if (!(BlockInfo(blk[2]).isOpaque() || (blk[2] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) ||
+        if (!(BlockInfo(blk[2]).isOpaque() || (blk[2] == blk[0] && !BlockInfo(blk[0]).isOpaque())) ||
             blk[0] == Blocks::LEAF) {
 
             colors = brt[2];
@@ -373,7 +373,7 @@ namespace World {
         }
 
         // Left Face
-        if (!(BlockInfo(blk[4]).isOpaque() || (blk[4] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) ||
+        if (!(BlockInfo(blk[4]).isOpaque() || (blk[4] == blk[0] && !BlockInfo(blk[0]).isOpaque())) ||
             blk[0] == Blocks::LEAF) {
 
             colors = brt[4];
@@ -424,7 +424,7 @@ namespace World {
         tcy = Textures::getTexcoordY(blk[0], 1);
 
         // Top Face
-        if (!(BlockInfo(blk[5]).isOpaque() || (blk[5] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) ||
+        if (!(BlockInfo(blk[5]).isOpaque() || (blk[5] == blk[0] && !BlockInfo(blk[0]).isOpaque())) ||
             blk[0] == Blocks::LEAF) {
 
             colors = brt[5];
@@ -469,7 +469,7 @@ namespace World {
         tcy = Textures::getTexcoordY(blk[0], 3);
 
         // Bottom Face
-        if (!(BlockInfo(blk[6]).isOpaque() || (blk[6] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) ||
+        if (!(BlockInfo(blk[6]).isOpaque() || (blk[6] == blk[0] && !BlockInfo(blk[0]).isOpaque())) ||
             blk[0] == Blocks::LEAF) {
 
             colors = brt[6];
@@ -580,7 +580,7 @@ namespace World {
                 cptr->Load();
                 cptr->Empty = false;
             }
-            brightness oldbrightness = cptr->getbrightness(bx, by, bz);
+            Brightness oldbrightness = cptr->GetBrightness({(bx), (by), (bz)});
             bool skylighted = true;
             int yi, cyi;
             yi = y + 1;
@@ -598,7 +598,7 @@ namespace World {
 
             if (!BlockInfo(getblock(x, y, z)).isOpaque()) {
 
-                brightness br;
+                Brightness br;
                 int maxbrightness;
                 Block blks[7] = {0,
                                  getblock(x, y, z + 1),    //Front face
@@ -607,7 +607,7 @@ namespace World {
                                  getblock(x - 1, y, z),    //Left face
                                  getblock(x, y + 1, z),    //Top face
                                  getblock(x, y - 1, z)};  //Bottom face
-                brightness brts[7] = {0,
+                Brightness brts[7] = {0,
                                       getbrightness(x, y, z + 1),    //Front face
                                       getbrightness(x, y, z - 1),    //Back face
                                       getbrightness(x + 1, y, z),    //Right face
@@ -642,7 +642,7 @@ namespace World {
 
             }
 
-            if (oldbrightness != cptr->getbrightness(bx, by, bz)) updated = true;
+            if (oldbrightness != cptr->GetBrightness({(bx), (by), (bz)})) updated = true;
 
             if (updated) {
                 updateblock(x, y + 1, z, false, depth);
@@ -670,25 +670,29 @@ namespace World {
         if (chunkOutOfBound(cx, cy, cz)) return Blocks::AIR;
         int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
         if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
-            return cptr->getblock(bx, by, bz);
+            return cptr->GetBlock({(bx), (by), (bz)});
         }
         Chunk *ci = getChunkPtr(cx, cy, cz);
         if (ci == EmptyChunkPtr) return Blocks::AIR;
-        if (ci != nullptr) return ci->getblock(bx, by, bz);
+        if (ci != nullptr) {
+            return ci->GetBlock({(bx), (by), (bz)});
+        }
         return mask;
     }
 
-    brightness getbrightness(int x, int y, int z, Chunk *cptr) {
+    Brightness getbrightness(int x, int y, int z, Chunk *cptr) {
         //获取亮度
         int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
         if (chunkOutOfBound(cx, cy, cz)) return skylight;
         int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
         if (cptr != nullptr && cx == cptr->cx && cy == cptr->cy && cz == cptr->cz) {
-            return cptr->getbrightness(bx, by, bz);
+            return cptr->GetBrightness({(bx), (by), (bz)});
         }
         Chunk *ci = getChunkPtr(cx, cy, cz);
         if (ci == EmptyChunkPtr) if (cy < 0) return BRIGHTNESSMIN; else return skylight;
-        if (ci != nullptr)return ci->getbrightness(bx, by, bz);
+        if (ci != nullptr) {
+            return ci->GetBrightness({(bx), (by), (bz)});
+        }
         return skylight;
     }
 
@@ -717,7 +721,7 @@ namespace World {
         }
     }
 
-    void setbrightness(int x, int y, int z, brightness Brightness, Chunk *cptr) {
+    void setbrightness(int x, int y, int z, Brightness Brightness, Chunk *cptr) {
         //设置亮度
         int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
         int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
@@ -919,41 +923,6 @@ namespace World {
     }
 
     void buildtree(int x, int y, int z) {
-
-        //废除原来的不科学的代码
-        /*
-        block trblock = getblock(x, y+1, z), tublock = getblock(x, y , z);
-        ubyte th = ubyte(rnd() * 3) + 4;
-        if (trblock != Blocks::AIR || tublock != Blocks::GRASS) { return; }
-
-        for (ubyte yt = 0; yt != th; yt++) {
-        setblock(x, y + yt, z, Blocks::WOOD);
-        }
-
-        setblock(x, y - 1, z, Blocks::DIRT);
-
-        for (ubyte xt = 0; xt != 5; xt++) {
-        for (ubyte zt = 0; zt != 5; zt++) {
-        for (ubyte yt = 0; yt != 2; yt++) {
-        if (getblock(x + xt - 2, y + th - 3 + yt, z + zt - 2) == Blocks::AIR) setblock(x + xt - 2, y + th - 3 + yt, z + zt - 2, Blocks::LEAF);
-        }
-        }
-        }
-
-        for (ubyte xt = 0; xt != 3; xt++) {
-        for (ubyte zt = 0; zt != 3; zt++) {
-        for (ubyte yt = 0; yt != 2; yt++) {
-        if (getblock(x + xt - 1, y + th - 1 + yt, z + zt - 1) == Blocks::AIR && abs(xt - 1) != abs(zt - 1)) setblock(x + xt - 1, y + th - 1 + yt, z + zt - 1, Blocks::LEAF);
-        }
-        }
-        }
-
-        setblock(x, y + th, z, Blocks::LEAF);
-
-        }
-
-
-        */
         //对生成条件进行更严格的检测
         //一：正上方五格必须为空气
         for (int i = y + 1; i < y + 6; i++) {
@@ -1002,31 +971,15 @@ namespace World {
                 for (int iz = z - 6; iz < z + 6; iz++) {
                     int distancen = DistanceSquare(ix, iy, iz, x, y + leafh + 1, z);
                     if ((getblock(ix, iy, iz) == Blocks::AIR) && (distancen < distancen2)) {
-                        if ((distancen <= distancen2 / 9) && (rnd() > 0.3))//生成枝杈
-                        {
-                            setblock(ix, iy, iz, Blocks::WOOD);
-                        } else//生成树叶
-                        {
-                            //鉴于残缺树叶的bug,不考虑树叶密度
-                            /*
-                            if (rnd() < (double)Dirt / 250.0)//树叶密度
-                            {
-                            setblock(ix, iy, iz, Blocks::LEAF);
-                            }
-                            */
-                            setblock(ix, iy, iz, Blocks::LEAF);
+                        if ((distancen <= distancen2 / 9) && (rnd() > 0.3)) {
+                            setblock(ix, iy, iz, Blocks::WOOD);//生成枝杈
+                        } else {
+                            setblock(ix, iy, iz, Blocks::LEAF); //生成树叶
                         }
                     }
                 }
             }
         }
-
-        //调试数据
-        /*
-        char a[100];
-        sprintf_s(a, "buildtree: h:%d leafh:%d endh:%d distancen2:%d\n", h, leafh, int(double(h)*1.382) + 2,distancen2);
-        OutputDebugString(a);
-        */
     }
 
     void explode(int x, int y, int z, int r, Chunk *c) {

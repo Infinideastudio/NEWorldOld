@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Definitions.h"
-
 //Perlin Noise 2D
 namespace WorldGen {
 
@@ -28,10 +26,6 @@ namespace WorldGen {
     double PerlinNoise2D(double x, double y);
 
     inline int getHeight(int x, int y) {
-#ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-        c_getHeightFromWorldGen++;
-#endif
         return (int) PerlinNoise2D(x / NoiseScaleX + 0.125, y / NoiseScaleZ + 0.125) >> 2;
     }
-
 }

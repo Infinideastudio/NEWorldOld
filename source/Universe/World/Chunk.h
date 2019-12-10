@@ -5,14 +5,15 @@
 #include "Blocks.h"
 #include "Frustum.h"
 #include <cstring>
+#include <Math/Vector3.h>
 
 class Object;
 
 namespace World {
 
     extern std::string worldname;
-    extern brightness BRIGHTNESSMIN;
-    extern brightness skylight;
+    extern Brightness BRIGHTNESSMIN;
+    extern Brightness skylight;
 
     class Chunk;
 
@@ -20,14 +21,25 @@ namespace World {
 
     void explode(int x, int y, int z, int r, Chunk *c);
 
+    constexpr unsigned int ChunkEdgeSizeLog2 = 4;
+    constexpr unsigned int ChunkPlaneSizeLog2 = ChunkEdgeSizeLog2 * 2u;
+    constexpr unsigned int ChunkCubicSizeLog2 = ChunkEdgeSizeLog2 * 3u;
+    constexpr unsigned int ChunkEdgeSize = 1u << ChunkEdgeSizeLog2;
+    constexpr unsigned int ChunkPlaneSize = 1u << ChunkPlaneSizeLog2;
+    constexpr unsigned int ChunkCubicSize = 1u << ChunkCubicSizeLog2;
+
     class Chunk {
     private:
-        Block *pblocks;
-        brightness *pbrightness;
+        Block *mBlock;
+        Brightness *mBrightness;
         std::vector<Object *> objects;
         static double relBaseX, relBaseY, relBaseZ;
         static Frustum TestFrustum;
 
+        static constexpr unsigned int GetIndex(const Int3 vec) noexcept {
+            const auto v = UInt3(vec);
+            return (v.X << ChunkPlaneSizeLog2) | (v.Y << ChunkEdgeSizeLog2) | v.Z;
+        }
     public:
         //竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻ --Null
         //2333 --qiaozhanrong
@@ -61,46 +73,43 @@ namespace World {
 
         void build(bool initIfEmpty = true);
 
-        inline std::string getChunkPath() {
+        std::string getChunkPath() {
             //assert(Empty == false);
             std::stringstream ss;
             ss << "Worlds/" << worldname << "/chunks/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldChunk";
             return ss.str();
         }
 
-        inline std::string getObjectsPath() {
+        std::string getObjectsPath() {
             std::stringstream ss;
             ss << "Worlds/" << worldname << "/objects/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldObjects";
             return ss.str();
         }
 
         bool LoadFromFile(); //返回true代表区块文件打开成功
+
         void SaveToFile();
 
         void buildRender();
 
         void destroyRender();
 
-        inline Block getblock(int x, int y, int z) {
-            return pblocks[(x << 8) ^ (y << 4) ^ z];
-        }
+        Block GetBlock(const Int3 vec) noexcept {return mBlock[GetIndex(vec)];}
 
-        inline brightness getbrightness(int x, int y, int z) {
-            return pbrightness[(x << 8) ^ (y << 4) ^ z];
-        }
+        Brightness GetBrightness(const Int3 vec) noexcept {return mBrightness[GetIndex(vec)];}
 
-        inline void setblock(int x, int y, int z, Block iblock) {
+        void setblock(int x, int y, int z, Block iblock) {
             if (iblock == Blocks::TNT) {
                 World::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 8, this);
                 return;
             }
-            pblocks[(x << 8) ^ (y << 4) ^ z] = iblock;
+            mBlock[GetIndex({x, y, z})] = iblock;
             Modified = true;
         }
 
-        inline void setbrightness(int x, int y, int z, brightness ibrightness) {
+        void setbrightness(int x, int y, int z, Brightness ibrightness) {
             //assert(Empty == false);
-            pbrightness[(x << 8) ^ (y << 4) ^ z] = ibrightness;
+            mBrightness[GetIndex({x, y, z})] = ibrightness;
             Modified = true;
         }
 
@@ -115,7 +124,7 @@ namespace World {
 
         Frustum::ChunkBox getRelativeAABB();
 
-        inline void calcVisible() { visible = TestFrustum.FrustumTest(getRelativeAABB()); }
+        void calcVisible() { visible = TestFrustum.FrustumTest(getRelativeAABB()); }
 
     };
 }

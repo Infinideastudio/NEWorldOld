@@ -45,8 +45,8 @@ namespace World {
 
     void Chunk::create() {
         aabb = getBaseAABB();
-        pblocks = new Block[4096];
-        pbrightness = new brightness[4096];
+        mBlock = new Block[4096];
+        mBrightness = new Brightness[4096];
         //memset(pblocks, 0, sizeof(pblocks));
         //memset(pbrightness, 0, sizeof(pbrightness));
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
@@ -58,10 +58,10 @@ namespace World {
 
     void Chunk::destroy() {
         //HMapExclude(cx, cz);
-        delete[] pblocks;
-        delete[] pbrightness;
-        pblocks = nullptr;
-        pbrightness = nullptr;
+        delete[] mBlock;
+        delete[] mBrightness;
+        mBlock = nullptr;
+        mBrightness = nullptr;
         updated = false;
         unloadedChunks++;
     }
@@ -82,15 +82,15 @@ namespace World {
         if (cy > 4) {
             Empty = true;
             if (!initIfEmpty) return;
-            memset(pblocks, 0, 4096 * sizeof(Block));
-            for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
+            memset(mBlock, 0, 4096 * sizeof(Block));
+            for (int i = 0; i < 4096; i++) mBrightness[i] = skylight;
             return;
         }
         if (cy < 0) {
             Empty = true;
             if (!initIfEmpty) return;
-            memset(pblocks, 0, 4096 * sizeof(Block));
-            for (int i = 0; i < 4096; i++) pbrightness[i] = BRIGHTNESSMIN;
+            memset(mBlock, 0, 4096 * sizeof(Block));
+            for (int i = 0; i < 4096; i++) mBrightness[i] = BRIGHTNESSMIN;
             return;
         }
 
@@ -99,25 +99,25 @@ namespace World {
         if (cy > cur.high) {
             Empty = true;
             if (!initIfEmpty) return;
-            memset(pblocks, 0, 4096 * sizeof(Block));
-            for (int i = 0; i < 4096; i++) pbrightness[i] = skylight;
+            memset(mBlock, 0, 4096 * sizeof(Block));
+            for (int i = 0; i < 4096; i++) mBrightness[i] = skylight;
             return;
         }
         if (cy < cur.low) {
-            for (int i = 0; i < 4096; i++) pblocks[i] = Blocks::ROCK;
-            memset(pbrightness, 0, 4096 * sizeof(brightness));
+            for (int i = 0; i < 4096; i++) mBlock[i] = Blocks::ROCK;
+            memset(mBrightness, 0, 4096 * sizeof(Brightness));
             if (cy == 0)
                 for (int x = 0; x < 16; x++)
                     for (int z = 0; z < 16; z++)
-                        pblocks[x * 256 + z] = Blocks::BEDROCK;
+                        mBlock[x * 256 + z] = Blocks::BEDROCK;
             Empty = false;
             return;
         }
 
         //Normal Calc
         //Init
-        memset(pblocks, 0, 4096 * sizeof(Block)); //Empty the Chunk
-        memset(pbrightness, 0, 4096 * sizeof(brightness)); //Set All Brightness to 0
+        memset(mBlock, 0, 4096 * sizeof(Block)); //Empty the Chunk
+        memset(mBrightness, 0, 4096 * sizeof(Brightness)); //Set All Brightness to 0
 
         int x, z, h = 0, sh = 0, wh = 0;
         int minh, maxh, cur_br;
@@ -133,38 +133,38 @@ namespace World {
                 if (h >= 0 || wh >= 0) Empty = false;
                 if (h > sh && h > wh + 1) {
                     //Grass layer
-                    if (h >= 0 && h < 16) pblocks[(h << 4) + base] = Blocks::GRASS;
+                    if (h >= 0 && h < 16) mBlock[(h << 4) + base] = Blocks::GRASS;
                     //Dirt layer
                     maxh = std::min(std::max(0, h), 16);
                     for (int y = std::min(std::max(0, h - 5), 16); y < maxh; ++y)
-                        pblocks[(y << 4) + base] = Blocks::DIRT;
+                        mBlock[(y << 4) + base] = Blocks::DIRT;
                 } else {
                     //Sand layer
                     maxh = std::min(std::max(0, h + 1), 16);
                     for (int y = std::min(std::max(0, h - 5), 16); y < maxh; ++y)
-                        pblocks[(y << 4) + base] = Blocks::SAND;
+                        mBlock[(y << 4) + base] = Blocks::SAND;
                     //Water layer
                     minh = std::min(std::max(0, h + 1), 16);
                     maxh = std::min(std::max(0, wh + 1), 16);
                     cur_br = BRIGHTNESSMAX - (WorldGen::WaterLevel - (maxh - 1 + (cy << 4))) * 2;
                     if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
                     for (int y = maxh - 1; y >= minh; --y) {
-                        pblocks[(y << 4) + base] = Blocks::WATER;
-                        pbrightness[(y << 4) + base] = (brightness) cur_br;
+                        mBlock[(y << 4) + base] = Blocks::WATER;
+                        mBrightness[(y << 4) + base] = (Brightness) cur_br;
                         cur_br -= 2;
                         if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
                     }
                 }
                 //Rock layer
                 maxh = std::min(std::max(0, h - 5), 16);
-                for (int y = 0; y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::ROCK;
+                for (int y = 0; y < maxh; ++y) mBlock[(y << 4) + base] = Blocks::ROCK;
                 //Air layer
                 for (int y = std::min(std::max(0, std::max(h + 1, wh + 1)), 16); y < 16; ++y) {
-                    pblocks[(y << 4) + base] = Blocks::AIR;
-                    pbrightness[(y << 4) + base] = skylight;
+                    mBlock[(y << 4) + base] = Blocks::AIR;
+                    mBrightness[(y << 4) + base] = skylight;
                 }
                 //Bedrock layer (overwrite)
-                if (cy == 0) pblocks[base] = Blocks::BEDROCK;
+                if (cy == 0) mBlock[base] = Blocks::BEDROCK;
             }
         }
     }
@@ -175,7 +175,7 @@ namespace World {
             for (int y = 0; y < 16; y++) {
                 for (int z = 0; z < 16; z++) {
                     //Tree
-                    if (pblocks[index] == Blocks::GRASS && rnd() < 0.005) {
+                    if (mBlock[index] == Blocks::GRASS && rnd() < 0.005) {
                         buildtree(cx * 16 + x, cy * 16 + y, cz * 16 + z);
                     }
                     index++;
@@ -213,8 +213,8 @@ namespace World {
     bool Chunk::LoadFromFile() {
         std::ifstream file(getChunkPath(), std::ios::in | std::ios::binary);
         bool openChunkFile = file.is_open();
-        file.read((char *) pblocks, 4096 * sizeof(Block));
-        file.read((char *) pbrightness, 4096 * sizeof(brightness));
+        file.read((char *) mBlock, 4096 * sizeof(Block));
+        file.read((char *) mBrightness, 4096 * sizeof(Brightness));
         file.read((char *) &DetailGenerated, sizeof(bool));
         file.close();
 
@@ -226,8 +226,8 @@ namespace World {
     void Chunk::SaveToFile() {
         if (!Empty && Modified) {
             std::ofstream file(getChunkPath(), std::ios::out | std::ios::binary);
-            file.write((char *) pblocks, 4096 * sizeof(Block));
-            file.write((char *) pbrightness, 4096 * sizeof(brightness));
+            file.write((char *) mBlock, 4096 * sizeof(Block));
+            file.write((char *) mBrightness, 4096 * sizeof(Brightness));
             file.write((char *) &DetailGenerated, sizeof(bool));
             file.close();
         }
@@ -237,15 +237,6 @@ namespace World {
     }
 
     void Chunk::buildRender() {
-        //assert(Empty == false);
-
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-        if (pblocks == nullptr || pbrightness == nullptr){
-            DebugWarning("Empty pointer when building vertex buffers!");
-            return;
-        }
-#endif
-        //½¨Á¢chunkÏÔÊ¾ÁÐ±í
         int x, y, z;
         for (x = -1; x <= 1; x++) {
             for (y = -1; y <= 1; y++) {
@@ -260,7 +251,7 @@ namespace World {
         rebuiltChunks++;
         updatedChunks++;
 
-        if (renderBuilt == false) {
+        if (!renderBuilt) {
             renderBuilt = true;
             loadAnim = cy * 16.0f + 16.0f;
         }

@@ -1,5 +1,5 @@
 #include "Particles.h"
-#include "World.h"
+#include "Universe/World/World.h"
 #include "Textures.h"
 
 namespace Particles {

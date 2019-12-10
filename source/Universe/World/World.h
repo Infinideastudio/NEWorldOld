@@ -6,9 +6,9 @@
 #include "Chunk.h"
 #include "Hitbox.h"
 #include "Blocks.h"
-#include"Player.h"
-#include"Particles.h"
-#include"Items.h"
+#include "Player.h"
+#include "Particles.h"
+#include "Items.h"
 
 extern int viewdistance;
 
@@ -19,10 +19,10 @@ namespace World {
     extern std::string worldname;
     const int worldsize = 134217728;
     const int worldheight = 128;
-    extern brightness skylight;         //Sky light level
-    extern brightness BRIGHTNESSMAX;    //Maximum brightness
-    extern brightness BRIGHTNESSMIN;    //Mimimum brightness
-    extern brightness BRIGHTNESSDEC;    //Brightness decree
+    extern Brightness skylight;         //Sky light level
+    extern Brightness BRIGHTNESSMAX;    //Maximum brightness
+    extern Brightness BRIGHTNESSMIN;    //Mimimum brightness
+    extern Brightness BRIGHTNESSDEC;    //Brightness decree
     extern Chunk *EmptyChunkPtr;
     extern unsigned int EmptyBuffer;
     extern int MaxChunkLoads;
@@ -80,8 +80,7 @@ namespace World {
 
     inline bool chunkLoaded(int x, int y, int z) {
         if (chunkOutOfBound(x, y, z))return false;
-        if (getChunkPtr(x, y, z) != nullptr)return true;
-        return false;
+        return getChunkPtr(x, y, z) != nullptr;
     }
 
     std::vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB &box);
@@ -94,11 +93,11 @@ namespace World {
 
     Block getblock(int x, int y, int z, Block mask = Blocks::AIR, Chunk *cptr = nullptr);
 
-    brightness getbrightness(int x, int y, int z, Chunk *cptr = nullptr);
+    Brightness getbrightness(int x, int y, int z, Chunk *cptr = nullptr);
 
     void setblock(int x, int y, int z, Block Block, Chunk *cptr = nullptr);
 
-    void setbrightness(int x, int y, int z, brightness Brightness, Chunk *cptr = nullptr);
+    void setbrightness(int x, int y, int z, Brightness Brightness, Chunk *cptr = nullptr);
 
     inline void putblock(int x, int y, int z, Block Block) { setblock(x, y, z, Block); }
 

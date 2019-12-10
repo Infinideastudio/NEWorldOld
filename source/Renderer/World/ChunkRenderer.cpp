@@ -1,6 +1,6 @@
 #include "ChunkRenderer.h"
 #include "Renderer.h"
-#include "World.h"
+#include "Universe/World/World.h"
 
 namespace ChunkRenderer {
     using World::getbrightness;
@@ -236,7 +236,7 @@ namespace ChunkRenderer {
         for (x = 0; x < 16; x++) {
             for (y = 0; y < 16; y++) {
                 for (z = 0; z < 16; z++) {
-                    Block curr = c->getblock(x, y, z);
+                    Block curr = c->GetBlock({x, y, z});
                     if (curr == Blocks::AIR) continue;
                     if (!BlockInfo(curr).isTranslucent()) renderblock(x, y, z, c);
                 }
@@ -247,7 +247,7 @@ namespace ChunkRenderer {
         for (x = 0; x < 16; x++) {
             for (y = 0; y < 16; y++) {
                 for (z = 0; z < 16; z++) {
-                    Block curr = c->getblock(x, y, z);
+                    Block curr = c->GetBlock({x, y, z});
                     if (curr == Blocks::AIR) continue;
                     if (BlockInfo(curr).isTranslucent() && BlockInfo(curr).isSolid()) renderblock(x, y, z, c);
                 }
@@ -258,7 +258,7 @@ namespace ChunkRenderer {
         for (x = 0; x < 16; x++) {
             for (y = 0; y < 16; y++) {
                 for (z = 0; z < 16; z++) {
-                    Block curr = c->getblock(x, y, z);
+                    Block curr = c->GetBlock({x, y, z});
                     if (curr == Blocks::AIR) continue;
                     if (!BlockInfo(curr).isSolid()) renderblock(x, y, z, c);
                 }
@@ -418,7 +418,7 @@ namespace ChunkRenderer {
                                 } else col0 = col1 = col2 = col3 = br * 4;
                             }
                             //Get block ID
-                            bl = c->getblock(x, y, z);
+                            bl = c->GetBlock({x, y, z});
                             tex = Textures::getTextureIndex(bl, face);
                             neighbour = World::getblock(gx + delta[d][0], gy + delta[d][1], gz + delta[d][2],
                                                         Blocks::ROCK, c);
@@ -464,9 +464,7 @@ namespace ChunkRenderer {
                                     cur.col1 = col1;
                                     cur.col2 = col2;
                                     cur.col3 = col3;
-                                    if (col0 != col1 || col1 != col2 || col2 != col3)
-                                        cur.once = true;
-                                    else cur.once = false;
+                                    cur.once = col0 != col1 || col1 != col2 || col2 != col3;
                                 } else {
                                     if (cur_l_mx > cur.length) cur.length = cur_l_mx;
                                     cur.length++;
@@ -482,9 +480,7 @@ namespace ChunkRenderer {
                                 cur.col1 = col1;
                                 cur.col2 = col2;
                                 cur.col3 = col3;
-                                if (col0 != col1 || col1 != col2 || col2 != col3)
-                                    cur.once = true;
-                                else cur.once = false;
+                                cur.once = col0 != col1 || col1 != col2 || col2 != col3;
                             }
                         }
                         if (valid) {
@@ -517,13 +513,15 @@ namespace ChunkRenderer {
                         else if (d < 4) x = i, y = j, z = k;
                         else x = k, y = i, z = j;
                         //Get block ID
-                        bl = c->getblock(x, y, z);
+                        bl = c->GetBlock({x, y, z});
                         //Get neighbour ID
                         int xx = x + delta[d][0], yy = y + delta[d][1], zz = z + delta[d][2];
                         int gx = cx * 16 + xx, gy = cy * 16 + yy, gz = cz * 16 + zz;
                         if (xx < 0 || xx >= 16 || yy < 0 || yy >= 16 || zz < 0 || zz >= 16)
                             neighbour = World::getblock(gx, gy, gz);
-                        else neighbour = c->getblock(xx, yy, zz);
+                        else {
+                            neighbour = c->GetBlock({(xx), (yy), (zz)});
+                        }
                         //Render
                         if (bl == Blocks::AIR || bl == Blocks::GLASS || bl == neighbour && bl != Blocks::LEAF ||
                             BlockInfo(neighbour).isOpaque() || BlockInfo(bl).isTranslucent()) {

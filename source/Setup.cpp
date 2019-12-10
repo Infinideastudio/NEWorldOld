@@ -5,7 +5,7 @@
 #include "Textures.h"
 #include "TextRenderer.h"
 #include "Renderer.h"
-#include "World.h"
+#include "Universe/World/World.h"
 #include "Items.h"
 
 void splashScreen() {

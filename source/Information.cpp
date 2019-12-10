@@ -1,10 +1,8 @@
 #include "Menus.h"
 #include "TextRenderer.h"
-#include "World.h"
-#include "Setup.h"
 
 std::string Str[] = {
-        "NEWorld Main Version:" + MAJOR_VERSION + MINOR_VERSION + EXT_VERSION,
+        std::string("NEWorld Main Version:") + MAJOR_VERSION + MINOR_VERSION + EXT_VERSION,
         "CopyLeft 2016 Infinideastudio, No Rights Reserved",
         "Welcome to develope with us!",
         "Contributers:",
@@ -18,6 +16,7 @@ std::string Str[] = {
         "If you have any problems, please contact us",
         "Thank you very much!"
 };
+
 namespace Menus {
     class Info : public GUI::Form {
     private:

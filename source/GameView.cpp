@@ -6,8 +6,8 @@
 #include "TextRenderer.h"
 #include "Player.h"
 #include "WorldGen.h"
-#include "World.h"
-#include "WorldRenderer.h"
+#include "Universe/World/World.h"
+#include "Renderer/World/WorldRenderer.h"
 #include "ShadowMaps.h"
 #include "Particles.h"
 #include "Hitbox.h"
@@ -51,7 +51,7 @@ private:
     bool sel{};
     float selt{}, seldes{};
     Block selb{};
-    brightness selbr{};
+    Brightness selbr{};
     bool selce{};
     int selbx{}, selby{}, selbz{}, selcx{}, selcy{}, selcz{};
 
@@ -234,7 +234,7 @@ public:
             gy = y + cy * 16;
             z = int(rnd() * 16);
             gz = z + cz * 16;
-            if (World::chunks[i]->getblock(x, y, z) == Blocks::DIRT &&
+            if (World::chunks[i]->GetBlock({x, y, z}) == Blocks::DIRT &&
                 World::getblock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR && (
                         World::getblock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
                         World::getblock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
@@ -253,7 +253,7 @@ public:
                 World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
                 World::setChunkUpdated(cx, cy, cz, true);
             }
-            if (World::chunks[i]->getblock(x, y, z) == Blocks::GRASS &&
+            if (World::chunks[i]->GetBlock({x, y, z}) == Blocks::GRASS &&
                 World::getblock(gx, gy + 1, gz, Blocks::AIR) != Blocks::AIR) {
                 //草被覆盖
                 World::chunks[i]->setblock(x, y, z, Blocks::DIRT);
@@ -308,10 +308,10 @@ public:
                     selby = getblockpos(y);
                     selbz = getblockpos(z);
 
-                    if (World::chunkOutOfBound(selcx, selcy, selcz) == false) {
+                    if (!World::chunkOutOfBound(selcx, selcy, selcz)) {
                         World::Chunk *cp = World::getChunkPtr(selcx, selcy, selcz);
                         if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
-                        selb = cp->getblock(selbx, selby, selbz);
+                        selb = cp->GetBlock({(selbx), (selby), (selbz)});
                     }
                     selbr = World::getbrightness(xl, yl, zl);
                     selb = World::getblock(x, y, z);
@@ -357,7 +357,7 @@ public:
                             BlockPos[2] = z;
                         }
                     }
-                    if (((mb == 2 && mbp == false) || (!chatmode && isPressed(GLFW_KEY_TAB)))) { //鼠标右键
+                    if (((mb == 2 && mbp == 0) || (!chatmode && isPressed(GLFW_KEY_TAB)))) { //鼠标右键
                         if (Player::inventoryAmount[3][Player::indexInHand] > 0 &&
                             isBlock(Player::inventory[3][Player::indexInHand])) {
                             //放置方块
@@ -398,6 +398,7 @@ public:
 
             //更新方向
             Player::heading += Player::xlookspeed;
+            Player::heading = std::fmod(Player::heading, 360.0);
             Player::lookupdown += Player::ylookspeed;
             Player::xlookspeed = Player::ylookspeed = 0.0;
 
@@ -498,9 +499,9 @@ public:
                 //起跳！
                 if (isPressed(GLFW_KEY_SPACE)) {
                     if (!Player::inWater) {
-                        if ((Player::OnGround || Player::AirJumps < MaxAirJumps) && Player::Flying == false &&
-                            Player::CrossWall == false) {
-                            if (Player::OnGround == false) {
+                        if ((Player::OnGround || Player::AirJumps < MaxAirJumps) && !Player::Flying &&
+                            !Player::CrossWall) {
+                            if (!Player::OnGround) {
                                 Player::jump = 0.3;
                                 Player::AirJumps++;
                             } else {

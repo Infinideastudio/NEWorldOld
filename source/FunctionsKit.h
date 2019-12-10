@@ -5,6 +5,7 @@
 #include "stdinclude.h"
 #include "Typedefs.h"
 #include <chrono>
+#include <vector>
 #include <sstream>
 
 extern double stretch;

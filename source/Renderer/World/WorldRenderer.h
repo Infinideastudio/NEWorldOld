@@ -1,7 +1,7 @@
 #pragma once
 
-#include "StdInclude.h"
-#include "World.h"
+#include "stdinclude.h"
+#include "Universe/World/World.h"
 #include "Renderer.h"
 
 namespace WorldRenderer {

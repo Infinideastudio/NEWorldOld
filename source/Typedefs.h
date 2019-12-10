@@ -1,11 +1,16 @@
 #pragma once
 //Types/constants define
+
+#include <cstdint>
+#include <thread>
+#include <mutex>
+
 typedef unsigned char ubyte;
 typedef unsigned long uint32;
 typedef unsigned long long uint64;
 
 typedef unsigned char blockprop;
-typedef unsigned char brightness;
+typedef unsigned char Brightness;
 typedef unsigned int TextureID;
 typedef uint32_t item;
 typedef unsigned int VBOID;
