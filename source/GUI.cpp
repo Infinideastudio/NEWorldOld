@@ -1070,10 +1070,10 @@ namespace GUI {
     }
 
     void ProcessRequests() {    //Process the op deque
-        for (std::deque<PageOpRq>::iterator i = ViewOps.begin(); i != ViewOps.end(); i++) {
-            switch (i->Op) {
+        for (auto&& i: ViewOps) {
+            switch (i.Op) {
                 case 1:
-                    ViewStack.push_front(i->Page);
+                    ViewStack.push_front(i.Page);
                     (*ViewStack.begin())->onLoad();
                     break;
                 case 2:

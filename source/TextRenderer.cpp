@@ -126,7 +126,7 @@ namespace TextRenderer {
         lpwszStr = (wchar_t *) malloc(dwSize * 2);
         memset(lpwszStr, 0, dwSize);
         int iSize = (MByteToWChar(lpwszStr, lpcszStr, strlen(lpcszStr)) + 1) * sizeof(wchar_t);
-        lpwszStr = (wchar_t *) realloc(lpwszStr, iSize);
+        lpwszStr = (wchar_t *) realloc(lpwszStr, iSize + 1);
     }
 
     int getStrWidth(std::string s) {

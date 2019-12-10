@@ -32,7 +32,7 @@ void ApplicationBeforeLaunch() {
     if (postexe.is_open()) {
         postexe.close();
         WinExec("Post.exe", SW_SHOWDEFAULT);
-        Sleep(3000);
+        SleepMs(3000);
     }
     else postexe.close();
 #endif

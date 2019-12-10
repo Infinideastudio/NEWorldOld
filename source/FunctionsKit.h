@@ -1,5 +1,3 @@
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Winteger-overflow"
 #pragma once
 
 #include "stdinclude.h"
@@ -7,6 +5,12 @@
 #include <chrono>
 #include <vector>
 #include <sstream>
+#if __has_include(<Windows.h>)
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#define NEWORLD_WIN32
+#include <Windows.h>
+#endif
 
 extern double stretch;
 
@@ -106,13 +110,25 @@ inline void ThreadWait(Thread_t _hThread) { _hThread->join(); }
 
 inline void ThreadDestroy(Thread_t _hThread) { delete _hThread; }
 
-inline unsigned int MByteToWChar(wchar_t *dst, const char *src, unsigned int n) { return mbstowcs(dst, src, n); }
+inline unsigned int MByteToWChar(wchar_t *dst, const char *src, unsigned int n) {
+#ifdef NEWORLD_WIN32
+    return MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, src, n, dst, n);
+#else
+    return mbstowcs(dst, src, n);
+#endif
+}
 
-inline unsigned int WCharToMByte(char *dst, const wchar_t *src, unsigned int n) { return wcstombs(dst, src, n); }
+inline unsigned int WCharToMByte(char *dst, const wchar_t *src, unsigned int n) {
+#ifdef NEWORLD_WIN32
+    return WideCharToMultiByte(CP_UTF8, WC_COMPOSITECHECK, src, n, dst, n, nullptr, nullptr);
+#else
+    return wcstombs(dst, src, n);
+#endif
+}
 
 inline unsigned int wstrlen(const wchar_t *wstr) { return wcslen(wstr); }
 
-inline void Sleep(unsigned int ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
+inline void SleepMs(unsigned int ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
 
 inline double timer() { return static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now().time_since_epoch()).count()) / 1000.0;
@@ -122,5 +138,3 @@ inline int DistanceSquare(int ix, int iy, int iz, int x, int y, int z)//计算�
 {
     return (ix - x) * (ix - x) + (iy - y) * (iy - y) + (iz - z) * (iz - z);
 }
-
-#pragma clang diagnostic pop

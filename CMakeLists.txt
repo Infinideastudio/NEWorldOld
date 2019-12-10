@@ -11,6 +11,11 @@ find_package(OpenGL REQUIRED)
 find_package(OpenAL REQUIRED)
 find_package(Freetype REQUIRED)
 
+if (MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /source-charset:utf-8")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /source-charset:utf-8")
+endif()
+
 file(GLOB_RECURSE SOURCE source/*.*)
 add_executable(NEWorld ${SOURCE})
 target_compile_definitions(NEWorld PRIVATE -DNEWORLD_GAME)

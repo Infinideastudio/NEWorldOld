@@ -5,7 +5,6 @@
 #include "Renderer.h"
 #include "TextRenderer.h"
 #include "Player.h"
-#include "WorldGen.h"
 #include "Universe/World/World.h"
 #include "Renderer/World/WorldRenderer.h"
 #include "ShadowMaps.h"
@@ -14,12 +13,10 @@
 #include "GUI.h"
 #include "Menus.h"
 #include "Frustum.h"
-#include "Effect.h"
 #include "Items.h"
-#include "Globalization.h"
 #include "Command.h"
 #include "Setup.h"
-#include"AudioSystem.h"
+#include "AudioSystem.h"
 
 
 ThreadFunc updateThreadFunc(void *);
@@ -66,7 +63,7 @@ public:
         MutexLock(Mutex);
         while (!updateThreadRun) {
             MutexUnlock(Mutex);
-            Sleep(1);
+            SleepMs(1);
             MutexLock(Mutex);
         }
         MutexUnlock(Mutex);

@@ -18,15 +18,8 @@
 find_package(PkgConfig)
 pkg_check_modules(PC_glfw3 QUIET glfw3)
 
-find_path(glfw3_INCLUDE_DIR
-    NAMES GLFW/glfw3.h
-    PATHS ${PC_glfw3_INCLUDE_DIRS} ../../deps
-    PATH_SUFFIXES GLFW
-    )
-find_library(glfw3_LIBRARY
-    NAMES glfw
-    PATHS ${PC_glfw3_LIBRARY_DIRS} ../../deps
-    )
+find_path(glfw3_INCLUDE_DIR NAMES GLFW/glfw3.h)
+find_library(glfw3_LIBRARY NAMES glfw glfw3 glfw3dll)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(glfw3
