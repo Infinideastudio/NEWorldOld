@@ -1,11 +1,13 @@
 #pragma once
+
 #include "Definitions.h"
 #include "Frustum.h"
 #include "Shader.h"
+#include <cstring>
 
 namespace Renderer{
-	//ÎÒ²ÂÄã¿Ï¶¨²»¸Ò¿´Renderer.cpp  --qiaozhanrong
-	//²Â¶ÔÁË  --Null
+	//æˆ‘çŒœä½ è‚¯å®šä¸æ•¢çœ‹Renderer.cpp  --qiaozhanrong
+	//çŒœå¯¹äº†  --Null
 
 	enum {
 		MainShader, MergeFaceShader, ShadowShader, DepthShader
@@ -21,7 +23,7 @@ namespace Renderer{
 	extern int shadowdist;
 	extern float sunlightXrot, sunlightYrot;
 	extern unsigned int DepthTexture;
-	extern vector<Shader> shaders;
+	extern std::vector<Shader> shaders;
 	extern int ActiveShader;
 
 	void Init(int tc, int cc, int ac = 0);
@@ -39,7 +41,7 @@ namespace Renderer{
 	inline void Color4d(double r, double g, double b, double a) { Color4f((float)r, (float)g, (float)b, (float)a); }
 
 	inline void Quad(float *geomentry) {
-		//ÕâÑù×öÃ²ËÆÌáÉı²»ÁËĞÔÄÜ°É¡£¡£¡£ --qiaozhanrong
+		//è¿™æ ·åšè²Œä¼¼æå‡ä¸äº†æ€§èƒ½å§ã€‚ã€‚ã€‚ --qiaozhanrong
 		memcpy(VA, geomentry, size*sizeof(float)); VA += size;
 		Vertexes += 4;
 	}

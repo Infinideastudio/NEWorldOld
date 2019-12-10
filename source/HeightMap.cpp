@@ -1,5 +1,6 @@
 #include "HeightMap.h"
 #include "WorldGen.h"
+#include <cstring>
 
 namespace World {
 	void HeightMap::setSize(int s){

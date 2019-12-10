@@ -15,7 +15,7 @@ namespace WorldRenderer {
 			memcpy(vertexes, c->vertexes, sizeof(vertexes));
 		}
 	};
-	extern vector<RenderChunk> RenderChunkList;
+	extern std::vector<RenderChunk> RenderChunkList;
 
 	int ListRenderChunks(int cx, int cy, int cz, int renderdistance, double curtime, bool frustest = true);
 	void RenderChunks(double x, double y, double z, int buffer);

@@ -142,7 +142,7 @@ namespace GUI {
 	// 窗体 / 容器
 	class Form {
 	public:
-		vector<controls*> children;
+        std::vector<controls*> children;
 		bool tabp, shiftp, enterp, enterpl;
 		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, backspacep, backspacepl, updated;
 		int maxid, currentid, focusid, mx, my, mw, mb, mxl, myl, mwl, mbl;

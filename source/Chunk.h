@@ -1,8 +1,10 @@
 ﻿#pragma once
+
 #include "Definitions.h"
 #include "Hitbox.h"
 #include "Blocks.h"
 #include "Frustum.h"
+#include <cstring>
 
 class Object;
 
@@ -20,7 +22,7 @@ namespace World {
 	private:
 		Block* pblocks;
 		brightness* pbrightness;
-		vector<Object*> objects;
+		std::vector<Object*> objects;
 		static double relBaseX, relBaseY, relBaseZ;
 		static Frustum TestFrustum;
 
@@ -58,15 +60,8 @@ namespace World {
 			ss << "Worlds/" << worldname << "/objects/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldObjects";
 			return ss.str();
 		}
-		inline bool fileExist(const std::string& path){
-			//assert(Empty == false);
-			std::fstream file;
-			file.open(path, std::ios::in);
-			bool ret = file.is_open();
-			file.close();
-			return ret;
-		}
-		bool LoadFromFile(); //返回true代表区块文件打开成功
+
+        bool LoadFromFile(); //返回true代表区块文件打开成功
 		void SaveToFile();
 		void buildRender();
 		void destroyRender();

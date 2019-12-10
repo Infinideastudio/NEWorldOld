@@ -1,7 +1,9 @@
+#include <deque>
+#include <climits>
 #include "GUI.h"
 #include "TextRenderer.h"
 #include "Frustum.h"
-#include"AudioSystem.h"
+#include "AudioSystem.h"
 
 extern std::string inputstr;
 

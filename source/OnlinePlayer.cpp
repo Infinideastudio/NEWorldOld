@@ -1,12 +1,12 @@
 #include "OnlinePlayer.h"
 #include "Renderer.h"
 
-map<SkinID, pair<VBOID, vtxCount>> playerSkins;
-vector<OnlinePlayer> players;
+std::map<SkinID, std::pair<VBOID, vtxCount>> playerSkins;
+std::vector<OnlinePlayer> players;
 
 void OnlinePlayer::GenVAOVBO(int skinID) {
 	return;
-	if (skinID != -1) { //默认皮肤
+	if (skinID != -1) {
 		using Renderer::TexCoord2d;
 		using Renderer::Vertex3f;
 		using Renderer::Color3f;
@@ -281,7 +281,7 @@ void OnlinePlayer::buildRenderIfNeed() {
 		else {
 			VBO = 0;
 			vtxs = 0;
-			GenVAOVBO(_skinID); //生成玩家的VAO/VBO
+			GenVAOVBO(_skinID);
 			playerSkins[_skinID] = std::make_pair(VBO, vtxs);
 		}
 	}

@@ -21,7 +21,10 @@
 #include "Globalization.h"
 #include "Command.h"
 #include "Setup.h"
-#include"AudioSystem.h"
+#include "AudioSystem.h"
+#include <iostream>
+#include <fstream>
+
 void loadOptions();
 void saveOptions();
 
@@ -64,7 +67,7 @@ int main() {
 	ApplicationBeforeLaunch();
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
-	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
+    std::cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << std::endl;
 	createWindow();
 	setupScreen();
 	glDisable(GL_CULL_FACE);
@@ -135,7 +138,7 @@ void loadOptions() {
 
 template<typename T>
 void saveoption(std::ofstream &out, const char* name, T &value) {
-	out << std::string(name) << " " << value << endl;
+	out << std::string(name) << " " << value << std::endl;
 }
 
 void saveOptions() {

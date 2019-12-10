@@ -3,7 +3,7 @@
 #include "Textures.h"
 
 namespace Particles {
-	vector<Particle> ptcs;
+    std::vector<Particle> ptcs;
 	int ptcsrendered;
 	double pxpos, pypos, pzpos;
 
@@ -23,7 +23,7 @@ namespace Particles {
 		dy = ptc.ysp;
 		dz = ptc.zsp;
 
-		vector<Hitbox::AABB> Hitboxes = World::getHitboxes(Hitbox::Expand(ptc.hb, dx, dy, dz));
+        std::vector<Hitbox::AABB> Hitboxes = World::getHitboxes(Hitbox::Expand(ptc.hb, dx, dy, dz));
 		int hitnum = Hitboxes.size();
 		for (int i = 0; i < hitnum; i++){
 			dy = Hitbox::MaxMoveOnYclip(ptc.hb, Hitboxes[i], dy);
@@ -50,7 +50,7 @@ namespace Particles {
 	}
 
 	void updateall(){
-		for (vector<Particle>::iterator iter = ptcs.begin(); iter < ptcs.end();){
+		for (auto iter = ptcs.begin(); iter < ptcs.end();){
 			if (!iter->exist) continue;
 			update(*iter);
 			if (iter->lasts <= 0){

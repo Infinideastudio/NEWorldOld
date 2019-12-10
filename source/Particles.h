@@ -11,7 +11,7 @@ namespace Particles {
 		int lasts;
 		Hitbox::AABB hb;
 	};
-	extern vector<Particle> ptcs;
+	extern std::vector<Particle> ptcs;
 	extern int ptcsrendered;
 	void update(Particle &ptc);
 	void updateall();

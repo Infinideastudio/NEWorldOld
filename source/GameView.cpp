@@ -26,13 +26,13 @@ ThreadFunc updateThreadFunc(void*);
 
 int getMouseScroll() { return mw; }
 int getMouseButton() { return mb; }
-vector<Command> commands;
+std::vector<Command> commands;
 
 class GameDView :public GUI::Form {
 private:
 	std::string chatword;
 	bool chatmode = false;
-	vector<std::string> chatMessages;
+    std::vector<std::string> chatMessages;
 
 	int fps{}, fpsc{}, ups{}, upsc{};
 	double fctime{}, uctime{};
@@ -518,7 +518,7 @@ public:
 				chatmode = !chatmode;
 				if (!chatword.empty()) { //指令的执行，或发出聊天文本
 					if (chatword.substr(0, 1) == "/") { //指令
-						vector<std::string> command = split(chatword, " ");
+                        std::vector<std::string> command = split(chatword, " ");
 						if (!doCommand(command)) { //执行失败
 							DebugWarning("Fail to execute the command: " + chatword);
 							chatMessages.push_back("Fail to execute the command: " + chatword);
@@ -1554,14 +1554,14 @@ public:
 
 
 	static void registerCommands() {
-		commands.emplace_back("/give", [](const vector<std::string>& command) {
+		commands.emplace_back("/give", [](const std::vector<std::string>& command) {
 			if (command.size() != 3) return false;
 			item itemid; conv(command[1], itemid);
 			short amount; conv(command[2], amount);
 			Player::addItem(itemid, amount);
 			return true;
 		});
-		commands.emplace_back("/tp", [](const vector<std::string>& command) {
+		commands.emplace_back("/tp", [](const std::vector<std::string>& command) {
 			if (command.size() != 4) return false;
 			double x; conv(command[1], x);
 			double y; conv(command[2], y);
@@ -1571,12 +1571,12 @@ public:
 			Player::zpos = z;
 			return true;
 		});
-		commands.emplace_back("/suicide", [](const vector<std::string>& command) {
+		commands.emplace_back("/suicide", [](const std::vector<std::string>& command) {
 			if (command.size() != 1) return false;
 			Player::spawn();
 			return true;
 		});
-		commands.emplace_back("/setblock", [](const vector<std::string>& command) {
+		commands.emplace_back("/setblock", [](const std::vector<std::string>& command) {
 			if (command.size() != 5) return false;
 			int x; conv(command[1], x);
 			int y; conv(command[2], y);
@@ -1585,7 +1585,7 @@ public:
 			World::setblock(x, y, z, b);
 			return true;
 		});
-		commands.emplace_back("/tree", [](const vector<std::string>& command) {
+		commands.emplace_back("/tree", [](const std::vector<std::string>& command) {
 			if (command.size() != 4) return false;
 			int x; conv(command[1], x);
 			int y; conv(command[2], y);
@@ -1593,7 +1593,7 @@ public:
 			World::buildtree(x, y, z);
 			return true;
 		});
-		commands.emplace_back("/explode", [](const vector<std::string>& command) {
+		commands.emplace_back("/explode", [](const std::vector<std::string>& command) {
 			if (command.size() != 5) return false;
 			int x; conv(command[1], x);
 			int y; conv(command[2], y);
@@ -1602,13 +1602,13 @@ public:
 			World::explode(x, y, z, r);
 			return true;
 		});
-		commands.emplace_back("/gamemode", [](const vector<std::string>& command) {
+		commands.emplace_back("/gamemode", [](const std::vector<std::string>& command) {
 			if (command.size() != 2) return false;
 			int mode; conv(command[1], mode);
 			Player::changeGameMode(mode);
 			return true;
 		});
-		commands.emplace_back("/kit", [](const vector<std::string>& command) {
+		commands.emplace_back("/kit", [](const std::vector<std::string>& command) {
 			if (command.size() != 1) return false;
 			Player::inventory[0][0] = 1; Player::inventoryAmount[0][0] = 255;
 			Player::inventory[0][1] = 2; Player::inventoryAmount[0][1] = 255;
@@ -1630,7 +1630,7 @@ public:
 			Player::inventory[1][7] = 18; Player::inventoryAmount[1][7] = 255;
 			return true;
 		});
-		commands.emplace_back("/time", [](const vector<std::string>& command) {
+		commands.emplace_back("/time", [](const std::vector<std::string>& command) {
 			if (command.size() != 2) return false;
 			int time; conv(command[1], time);
 			if (time<0 || time>gameTimeMax) return false;
@@ -1639,7 +1639,7 @@ public:
 		});
 	}
 
-	static bool doCommand(const vector<std::string>& command) {
+	static bool doCommand(const std::vector<std::string>& command) {
 		for (unsigned int i = 0; i != commands.size(); i++) {
 			if (command[0] == commands[i].identifier) {
 				return commands[i].execute(command);

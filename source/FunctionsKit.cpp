@@ -1,8 +1,8 @@
 #include "FunctionsKit.h"
 unsigned int g_seed;
 
-vector<std::string> split(const std::string& str, const std::string& pattern) {
-	vector<std::string> ret;
+std::vector<std::string> split(const std::string& str, const std::string& pattern) {
+    std::vector<std::string> ret;
 	if (pattern.empty()) return ret;
 	size_t start = 0, index = str.find_first_of(pattern, 0);
 	while (index != str.npos)

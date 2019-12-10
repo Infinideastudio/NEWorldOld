@@ -1,4 +1,5 @@
 #include "ChunkPtrArray.h"
+#include <cstring>
 
 namespace World {
 	void ChunkPtrArray::Create(int s){

@@ -5,8 +5,6 @@
 #include "StdInclude.h"
 #include "Typedefs.h"
 #include "FunctionsKit.h"
-#define GLFW_DLL
-#include <GLFW/glfw3.h>
 
 //Global Vars
 const unsigned int VERSION = 39;

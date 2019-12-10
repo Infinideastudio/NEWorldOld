@@ -2,6 +2,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <memory>
+#include <cstring>
 
 void Frustum::LoadIdentity() {
 	memset(proj, 0, sizeof(proj));

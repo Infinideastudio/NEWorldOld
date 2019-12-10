@@ -1,11 +1,12 @@
+#include <fstream>
 #include "Globalization.h"
 
 namespace Globalization {
 
 	int count;
 	std::string Cur_Lang = "zh_CN", Cur_Symbol = "", Cur_Name = "";
-	map<int, Line> Lines;
-	map<std::string, int> keys;
+    std::map<int, Line> Lines;
+    std::map<std::string, int> keys;
 
 	bool LoadLang(std::string lang) {
 		std::ifstream f("Lang/" + lang + ".lang");

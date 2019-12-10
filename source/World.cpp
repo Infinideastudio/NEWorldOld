@@ -30,8 +30,8 @@ namespace World {
 	int unloadedChunks, unloadedChunksCount;
 	int chunkBuildRenderList[256][2];
 	int chunkLoadList[256][4];
-	pair<Chunk*, int> chunkUnloadList[256];
-	vector<unsigned int> vbuffersShouldDelete;
+    std::pair<Chunk*, int> chunkUnloadList[256];
+    std::vector<unsigned int> vbuffersShouldDelete;
 	int chunkBuildRenders, chunkLoads, chunkUnloads;
 	//bool* loadedChunkArray = nullptr; //Accelerate sortings
 
@@ -58,7 +58,7 @@ namespace World {
 		
 	}
 
-	inline pair<int,int> binary_search_chunks(Chunk** target, int len, chunkid cid) {
+	inline std::pair<int,int> binary_search_chunks(Chunk** target, int len, chunkid cid) {
 		//¶þ·Ö²éÕÒ,GO!
 		int first = 0;
 		int last = len - 1;
@@ -74,7 +74,7 @@ namespace World {
 
 		chunkid cid;
 		cid = getChunkID(x, y, z);  //Chunk ID
-		pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
+        std::pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
 		if (loadedChunks > 0 && chunks[pos.second]->id == cid) {
 			printf("[Console][Error]");
 			printf("Chunk(%d,%d,%d)has been loaded,when adding Chunk.\n", x, y, z);
@@ -112,7 +112,7 @@ namespace World {
 		c_getChunkPtrFromSearch++;
 #endif
 		chunkid cid = getChunkID(x, y, z);
-		pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
+        std::pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
 		if (chunks[pos.second]->id == cid) return pos.second;
 #ifdef NEWORLD_DEBUG
 		DebugError("getChunkPtrIndex Error!");
@@ -131,7 +131,7 @@ namespace World {
 				return ret;
 			}
 			if (loadedChunks > 0){
-				pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
+                std::pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
 				if (chunks[pos.second]->id == cid) {
 					ret = chunks[pos.second];
 					cpCacheID = cid;
@@ -437,11 +437,11 @@ namespace World {
 		}
 	}
 
-	vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB& box) {
+    std::vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB& box) {
 		//返回与box相交的所有方块AABB
 
 		Hitbox::AABB blockbox;
-		vector<Hitbox::AABB> Hitboxes;
+        std::vector<Hitbox::AABB> Hitboxes;
 
 		for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++) {
 			for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++) {
@@ -915,7 +915,7 @@ namespace World {
 			else { break; };
 		}
 		//取最小值
-		h = std::min(h, int(Dirt * 15 / 268 * max(rnd(), 0.8)));
+		h = std::min(h, int(Dirt * 15 / 268 * std::max(rnd(), 0.8)));
 		if (h < 7)return;
 		//开始生成树干
 		for (int i = y + 1; i < y + h + 1; i++)

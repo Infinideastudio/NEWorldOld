@@ -1,5 +1,7 @@
 #pragma once
-#include "StdInclude.h"
+
+#include <map>
+#include <string>
 
 namespace Globalization {
 	struct Line {
@@ -8,8 +10,8 @@ namespace Globalization {
 	};
 	
 	extern int count;
-	extern map<int, Line> Lines;
-	extern map<std::string, int> keys;
+	extern std::map<int, Line> Lines;
+	extern std::map<std::string, int> keys;
 	extern std::string Cur_Lang;
 	
 	bool LoadLang(std::string lang);

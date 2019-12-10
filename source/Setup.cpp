@@ -1,3 +1,4 @@
+#include <iostream>
 #include "Setup.h"
 #include "GUI.h"
 #include "Definitions.h"
@@ -30,7 +31,7 @@ void splashScreen() {
 }
 
 void createWindow() {
-	glfwSetErrorCallback([](int, const char* desc) { cout << desc << endl; });
+	glfwSetErrorCallback([](int, const char* desc) { std::cout << desc << std::endl; });
 	std::stringstream title;
 	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
 	if (Multisample != 0) glfwWindowHint(GLFW_SAMPLES, Multisample);

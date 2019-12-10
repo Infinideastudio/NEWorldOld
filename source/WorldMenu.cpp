@@ -3,7 +3,8 @@
 #include "Textures.h"
 #include "GameView.h"
 #include "TextRenderer.h"
-#include <boost/filesystem.hpp>
+#include <fstream>
+#include <filesystem>
 
 namespace Menus {
 	class WorldMenu :public GUI::Form {
@@ -16,8 +17,8 @@ namespace Menus {
 		int selected = 0, mouseon;
 		int worldcount;
 		std::string chosenWorldName;
-		vector<std::string> worldnames;
-		vector<TextureID> thumbnails, texSizeX, texSizeY;
+        std::vector<std::string> worldnames;
+        std::vector<TextureID> thumbnails, texSizeX, texSizeY;
 		int trs = 0;
 		GUI::label title;
 		GUI::vscroll vscroll;
@@ -103,8 +104,8 @@ namespace Menus {
 				//查找所有世界存档
 				Textures::TEXTURE_RGB tmb;
 				long hFile = 0;
-				for (auto&& x : boost::filesystem::directory_iterator("Worlds/")) {
-				    if (boost::filesystem::is_directory(x)) {
+				for (auto&& x : std::filesystem::directory_iterator("./Worlds/")) {
+				    if (std::filesystem::is_directory(x)) {
                         worldnames.push_back(x.path().filename().string());
                         std::fstream file;
                         file.open((x.path().string()+"\\Thumbnail.bmp").c_str(), std::ios::in);

@@ -1,5 +1,7 @@
 #include "Menus.h"
 #include <deque>
+#include <fstream>
+
 struct Langinfo {
 	std::string Symbol, EngSymbol, Name;
 	GUI::button * Button;
@@ -55,7 +57,7 @@ namespace Menus {
 
 		void onLeave() {
 			for (size_t i = 0; i < Langs.size(); i++) {
-				for (vector<GUI::controls*>::iterator iter = children.begin(); iter != children.end(); ) {
+				for (auto iter = children.begin(); iter != children.end(); ) {
 					if ((*iter)->id == Langs[i].Button->id) iter = children.erase(iter);
 					else ++iter;
 				}

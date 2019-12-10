@@ -40,8 +40,8 @@ namespace World {
 	extern int unloadedChunks, unloadedChunksCount;
 	extern int chunkBuildRenderList[256][2];
 	extern int chunkLoadList[256][4];
-	extern pair<Chunk*, int> chunkUnloadList[256];
-	extern vector<unsigned int> vbuffersShouldDelete;
+	extern std::pair<Chunk*, int> chunkUnloadList[256];
+	extern std::vector<unsigned int> vbuffersShouldDelete;
 	extern int chunkBuildRenders, chunkLoads, chunkUnloads;
 
 	void Init();
@@ -71,7 +71,7 @@ namespace World {
 		return false;
 	}
 
-	vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB& box);
+    std::vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB& box);
 	bool inWater(const Hitbox::AABB& box);
 
 	void renderblock(int x, int y, int z, Chunk* chunkptr);

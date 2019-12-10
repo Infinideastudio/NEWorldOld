@@ -1,7 +1,7 @@
 #include "WorldRenderer.h"
 
 namespace WorldRenderer {
-	vector<RenderChunk> RenderChunkList;
+    std::vector<RenderChunk> RenderChunkList;
 
 	int ListRenderChunks(int cx, int cy, int cz, int renderdistance, double curtime, bool frustest) {
 		int renderedChunks = 0;

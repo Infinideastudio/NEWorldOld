@@ -1,5 +1,8 @@
 #pragma once
-#include "StdInclude.h"
+
+#include <set>
+#include <string>
+#include "stdinclude.h"
 
 class Shader {
 public:

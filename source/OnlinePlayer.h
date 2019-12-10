@@ -2,8 +2,9 @@
 #include "Object.h"
 #include "StdInclude.h"
 #include "PlayerPacket.h"
+#include <map>
 
-extern map<SkinID, pair<VBOID, vtxCount>> playerSkins;
+extern std::map<SkinID, std::pair<VBOID, vtxCount>> playerSkins;
 
 class OnlinePlayer : public Object {
 public:
@@ -30,4 +31,4 @@ private:
 	double _lookupdown, _heading;
 };
 
-extern vector<OnlinePlayer> players;
+extern std::vector<OnlinePlayer> players;

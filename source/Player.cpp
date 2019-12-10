@@ -1,6 +1,8 @@
 #include "Player.h"
 #include "World.h"
 #include "OnlinePlayer.h"
+#include <sstream>
+#include <fstream>
 
 int Player::gamemode = GameMode::Survival;
 bool Player::Glide;
@@ -19,7 +21,7 @@ item Player::BlockInHand = Blocks::AIR;
 ubyte Player::indexInHand = 0;
 
 Hitbox::AABB Player::playerbox;
-vector<Hitbox::AABB> Player::Hitboxes;
+std::vector<Hitbox::AABB> Player::Hitboxes;
 
 double Player::xa, Player::ya, Player::za, Player::xd, Player::yd, Player::zd;
 double Player::health = 20, Player::healthMax = 20, Player::healSpeed = 0.01, Player::dropDamage = 5.0;

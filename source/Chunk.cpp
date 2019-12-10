@@ -3,6 +3,7 @@
 #include "World.h"
 #include "Blocks.h"
 #include <limits>
+#include <fstream>
 
 namespace ChunkRenderer {
 	void RenderChunk(World::Chunk* c);
@@ -15,7 +16,6 @@ namespace Renderer {
 }
 
 namespace World {
-
 	struct HMapManager {
 		int H[16][16];
 		int low, high, count;
@@ -34,36 +34,6 @@ namespace World {
 		}
 	};
 
-	inline std::string v22string(int x, int y) {
-		char * _ = (char*)malloc(sizeof(int) * 2+1);
-		int * __ = (int*)_;
-		__[0] = x;
-		__[1] = y;
-		_[sizeof(int) * 2] = '\0';
-		std::string s = std::string(_);
-		free(_);
-		free(__);
-		return std::string(_);
-	}
-
-	/*std::map<std::string, HMapManager> HeightMap;
-
-	HMapManager* HMapInclude(int x, int z) {
-		std::string_ = v22string(x, z);
-		if (!(HeightMap.find(_) != HeightMap.end())) {
-			pair<string, HMapManager> n = { _, HMapManager(x, z) };
-			HeightMap.insert(n);
-		}
-		HeightMap[_].count++;
-		return &HeightMap[_];
-	}
-
-	void HMapExclude(int x, int z) {
-		std::string_ = v22string(x, z);
-		if (!(HeightMap.find(_) != HeightMap.end())) return;
-		HeightMap[_].count--;
-		if (HeightMap[_].count == 0) HeightMap.erase(_);
-	}*/
 
 	double Chunk::relBaseX, Chunk::relBaseY, Chunk::relBaseZ;
 	Frustum Chunk::TestFrustum;
@@ -156,15 +126,15 @@ namespace World {
 					//Grass layer
 					if (h >= 0 && h < 16) pblocks[(h << 4) + base] = Blocks::GRASS;
 					//Dirt layer
-					maxh = min(max(0, h), 16);
-					for (int y = min(max(0, h - 5), 16); y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::DIRT;
+					maxh = std::min(std::max(0, h), 16);
+					for (int y = std::min(std::max(0, h - 5), 16); y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::DIRT;
 				}
 				else {
 					//Sand layer
-					maxh = min(max(0, h + 1), 16);
-					for (int y = min(max(0, h - 5), 16); y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::SAND;
+					maxh = std::min(std::max(0, h + 1), 16);
+					for (int y = std::min(std::max(0, h - 5), 16); y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::SAND;
 					//Water layer
-					minh = min(max(0, h + 1), 16); maxh = min(max(0, wh + 1), 16);
+					minh = std::min(std::max(0, h + 1), 16); maxh = std::min(std::max(0, wh + 1), 16);
 					cur_br = BRIGHTNESSMAX - (WorldGen::WaterLevel - (maxh - 1 + (cy << 4))) * 2;
 					if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
 					for (int y = maxh - 1; y >= minh; --y) {
@@ -174,10 +144,10 @@ namespace World {
 					}
 				}
 				//Rock layer
-				maxh = min(max(0, h - 5), 16);
+				maxh = std::min(std::max(0, h - 5), 16);
 				for (int y = 0; y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::ROCK;
 				//Air layer
-				for (int y = min(max(0, max(h + 1, wh + 1)), 16); y < 16; ++y) {
+				for (int y = std::min(std::max(0, std::max(h + 1, wh + 1)), 16); y < 16; ++y) {
 					pblocks[(y << 4) + base] = Blocks::AIR;
 					pbrightness[(y << 4) + base] = skylight;
 				}

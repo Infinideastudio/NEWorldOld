@@ -1,14 +1,16 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Winteger-overflow"
 #pragma once
-#include "StdInclude.h"
+
+#include "stdinclude.h"
 #include "Typedefs.h"
 #include <chrono>
+#include <sstream>
 
 extern double stretch;
 
 //常用函数
-vector<std::string> split(const std::string& str, const std::string& pattern);
+std::vector<std::string> split(const std::string& str, const std::string& pattern);
 
 inline void UITrans(double x, double y) {
 	glTranslated(x*stretch, y*stretch, 0);
@@ -29,7 +31,7 @@ inline int fastRand() {
 	return (g_seed >> 16) & 0x7FFF;
 }
 inline void fastSrand(int seed) { g_seed = seed; }
-vector<std::string> split(const std::string& str, const std::string& pattern);
+std::vector<std::string> split(const std::string& str, const std::string& pattern);
 inline std::string boolstr(bool b) { return b ? "True" : "False"; }
 inline double rnd() { return (double)fastRand() / (RAND_MAX + 1); }
 inline int RoundInt(double d) { return int(floor(d + 0.5)); }

@@ -1,5 +1,9 @@
+#include <cstring>
+#include <fstream>
+#include <iostream>
 #include "Shader.h"
 #include "FunctionsKit.h"
+
 Shader::Shader(std::string vshPath, std::string fshPath, bool bindLocation, std::set<std::string> defines) {
 	shaderVertex = loadShader(vshPath, GL_VERTEX_SHADER_ARB, defines);
 	shaderFragment = loadShader(fshPath, GL_FRAGMENT_SHADER_ARB, defines);
@@ -106,7 +110,7 @@ void Shader::checkErrors(GLhandleARB res, int status, std::string errorMessage) 
 	if (infologLength > 1) {
 		infoLog = new char[infologLength];
 		glGetInfoLogARB(res, infologLength, &charsWritten, infoLog);
-		cout << infoLog << endl;
+        std::cout << infoLog << std::endl;
 		delete[] infoLog;
 	}
 }
