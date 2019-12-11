@@ -32,7 +32,8 @@ Frustum Player::ViewFrustum;
 double Player::speed;
 int Player::AirJumps;
 int Player::cxt, Player::cyt, Player::czt, Player::cxtl, Player::cytl, Player::cztl;
-double Player::lookupdown, Player::heading, Player::xpos, Player::ypos, Player::zpos;
+Double3 Player::Pos;
+double Player::lookupdown, Player::heading;
 double Player::xposold, Player::yposold, Player::zposold, Player::jump;
 double Player::xlookspeed, Player::ylookspeed;
 int Player::intxpos, Player::intypos, Player::intzpos;
@@ -53,14 +54,14 @@ void InitHitbox(Hitbox::AABB &playerbox) {
 }
 
 void InitPosition() {
-    Player::xposold = Player::xpos;
-    Player::yposold = Player::ypos;
-    Player::zposold = Player::zpos;
-    Player::cxt = World::GetChunkPos((int) Player::xpos);
+    Player::xposold = Player::Pos.X;
+    Player::yposold = Player::Pos.Y;
+    Player::zposold = Player::Pos.Z;
+    Player::cxt = World::GetChunkPos((int) Player::Pos.X);
     Player::cxtl = Player::cxt;
-    Player::cyt = World::GetChunkPos((int) Player::ypos);
+    Player::cyt = World::GetChunkPos((int) Player::Pos.Y);
     Player::cytl = Player::cyt;
-    Player::czt = World::GetChunkPos((int) Player::zpos);
+    Player::czt = World::GetChunkPos((int) Player::Pos.Z);
     Player::cztl = Player::czt;
 }
 
@@ -69,22 +70,18 @@ void MoveHitbox(double x, double y, double z) {
 }
 
 void updateHitbox() {
-    MoveHitbox(Player::xpos, Player::ypos, Player::zpos);
+    MoveHitbox(Player::Pos.X, Player::Pos.Y, Player::Pos.Z);
 }
 
-void Player::init(double x, double y, double z) {
-    xpos = x;
-    ypos = y;
-    zpos = z;
+void Player::init(Double3 pos) {
+	Pos = pos;
     InitHitbox(Player::playerbox);
     InitPosition();
     updateHitbox();
 }
 
 void Player::spawn() {
-    xpos = 0.0;
-    ypos = 60.0;
-    zpos = 0.0;
+	Pos = Double3(0.0,60.0,0.0);
     jump = 0.0;
     InitHitbox(Player::playerbox);
     InitPosition();
@@ -163,9 +160,7 @@ void Player::updatePosition() {
     xd = xa;
     yd = ya;
     zd = za;
-    xpos += xa;
-    ypos += ya;
-    zpos += za;
+	Pos += Double3(xa, ya, za);
     xa *= 0.8;
     za *= 0.8;
     if (Flying || CrossWall) ya *= 0.8;
@@ -175,9 +170,9 @@ void Player::updatePosition() {
     cxtl = cxt;
     cytl = cyt;
     cztl = czt;
-    cxt = World::GetChunkPos((int) xpos);
-    cyt = World::GetChunkPos((int) ypos);
-    czt = World::GetChunkPos((int) zpos);
+    cxt = World::GetChunkPos((int) Pos.X);
+    cyt = World::GetChunkPos((int) Pos.Y);
+    czt = World::GetChunkPos((int) Pos.Z);
 }
 
 bool Player::putBlock(int x, int y, int z, Block blockname) {
@@ -206,9 +201,7 @@ bool Player::save(std::string worldn) {
     std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
     if (!isave.is_open()) return false;
     isave.write((char *) &curversion, sizeof(curversion));
-    isave.write((char *) &xpos, sizeof(xpos));
-    isave.write((char *) &ypos, sizeof(ypos));
-    isave.write((char *) &zpos, sizeof(zpos));
+	isave.write((char*)&Pos, sizeof(Pos));
     isave.write((char *) &lookupdown, sizeof(lookupdown));
     isave.write((char *) &heading, sizeof(heading));
     isave.write((char *) &jump, sizeof(jump));
@@ -235,9 +228,7 @@ bool Player::load(std::string worldn) {
     if (!iload.is_open()) return false;
     iload.read((char *) &targetVersion, sizeof(targetVersion));
     if (targetVersion != VERSION) return false;
-    iload.read((char *) &xpos, sizeof(xpos));
-    iload.read((char *) &ypos, sizeof(ypos));
-    iload.read((char *) &zpos, sizeof(zpos));
+	iload.read((char*)&Pos, sizeof(Pos));
     iload.read((char *) &lookupdown, sizeof(lookupdown));
     iload.read((char *) &heading, sizeof(heading));
     iload.read((char *) &jump, sizeof(jump));
@@ -308,9 +299,9 @@ void Player::changeGameMode(int _gamemode) {
 
 PlayerPacket Player::convertToPlayerPacket() {
     PlayerPacket p;
-    p.x = xpos;
-    p.y = ypos + height + heightExt;
-    p.z = zpos;
+    p.x = Pos.X;
+    p.y = Pos.Y + height + heightExt;
+    p.z = Pos.Z;
     p.heading = heading;
     p.lookupdown = lookupdown;
     p.onlineID = onlineID;

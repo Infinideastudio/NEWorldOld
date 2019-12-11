@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Definitions.h"
+#include "Math/Vector3.h"
 
 const double g = 9.8;
 const double EDrop = 0.1;
@@ -12,7 +13,7 @@ class Frustum;
 
 class Player {
 public:
-    static void init(double x, double y, double z);
+    static void init(Double3 pos);
 
     static void spawn();
 
@@ -54,7 +55,8 @@ public:
     static double speed;
     static int AirJumps;
     static int cxt, cyt, czt, cxtl, cytl, cztl;
-    static double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
+	static Double3 Pos;
+    static double lookupdown, heading, xposold, yposold, zposold, jump;
     static double xlookspeed, ylookspeed;
     static int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
 

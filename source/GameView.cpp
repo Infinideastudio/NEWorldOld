@@ -154,7 +154,7 @@ public:
         Player::BlockInHand = Player::inventory[3][Player::indexInHand];
         //生命值相关
         if (Player::health > 0 || Player::gamemode == Player::Creative) {
-            if (Player::ypos < -100) Player::health -= ((-100) - Player::ypos) / 100;
+            if (Player::Pos.Y < -100) Player::health -= ((-100) - Player::Pos.Y) / 100;
             if (Player::health < Player::healthMax) Player::health += Player::healSpeed;
             if (Player::health > Player::healthMax) Player::health = Player::healthMax;
         } else Player::spawn();
@@ -179,7 +179,7 @@ public:
         }
 
         if (FirstUpdateThisFrame) {
-            World::sortChunkLoadUnloadList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
+            World::sortChunkLoadUnloadList(RoundInt(Player::Pos.X), RoundInt(Player::Pos.Y), RoundInt(Player::Pos.Z));
 
             //卸载区块(Unload chunks)
             int sumUnload;
@@ -209,7 +209,6 @@ public:
                     World::cpArray.Set({cx, cy, cz}, World::EmptyChunkPtr);
                 }
             }
-
         }
 
         //加载动画
@@ -260,9 +259,9 @@ public:
 
         //判断选中的方块
         double lx, ly, lz, lxl, lyl, lzl;
-        lx = Player::xpos;
-        ly = Player::ypos + Player::height + Player::heightExt;
-        lz = Player::zpos;
+        lx = Player::Pos.X;
+        ly = Player::Pos.Y + Player::height + Player::heightExt;
+        lz = Player::Pos.Z;
 
         sel = false;
         selx = sely = selz = selbx = selby = selbz = selcx = selcy = selcz = selb = selbr = 0;
@@ -389,9 +388,9 @@ public:
             oldsely = sely;
             oldselz = selz;
 
-            Player::intxpos = RoundInt(Player::xpos);
-            Player::intypos = RoundInt(Player::ypos);
-            Player::intzpos = RoundInt(Player::zpos);
+            Player::intxpos = RoundInt(Player::Pos.X);
+            Player::intypos = RoundInt(Player::Pos.Y);
+            Player::intzpos = RoundInt(Player::Pos.Z);
 
             //更新方向
             Player::heading += Player::xlookspeed;
@@ -524,7 +523,7 @@ public:
                 }
 
                 if (glfwGetKey(MainWindow, GLFW_KEY_K) && Player::Glide && !Player::OnGround && !Player::glidingNow) {
-                    double h = Player::ypos + Player::height + Player::heightExt;
+                    double h = Player::Pos.Y + Player::height + Player::heightExt;
                     Player::glidingEnergy = g * h;
                     Player::glidingSpeed = 0;
                     Player::glidingNow = true;
@@ -650,7 +649,7 @@ public:
 
         if (Player::glidingNow) {
             double &E = Player::glidingEnergy;
-            double oldh = Player::ypos + Player::height + Player::heightExt + Player::ya;
+            double oldh = Player::Pos.Y + Player::height + Player::heightExt + Player::ya;
             double h = oldh;
             if (E - Player::glidingMinimumSpeed < h * g) {  //小于最小速度
                 h = (E - Player::glidingMinimumSpeed) / g;
@@ -665,9 +664,9 @@ public:
         int Run = 0;
         if (WP)Run = Player::Running ? 2 : 1;
         ALfloat PlayerPos[3];
-        PlayerPos[0] = Player::xpos;
-        PlayerPos[1] = Player::ypos;
-        PlayerPos[2] = Player::zpos;
+        PlayerPos[0] = Player::Pos.X;
+        PlayerPos[1] = Player::Pos.Y;
+        PlayerPos[2] = Player::Pos.Z;
         bool Fall = Player::OnGround
                     && (!Player::inWater)
                     && (Player::jump == 0);
@@ -691,16 +690,16 @@ public:
         FirstFrameThisUpdate = true;
         Particles::updateall();
 
-        Player::intxpos = RoundInt(Player::xpos);
-        Player::intypos = RoundInt(Player::ypos);
-        Player::intzpos = RoundInt(Player::zpos);
+        Player::intxpos = RoundInt(Player::Pos.X);
+        Player::intypos = RoundInt(Player::Pos.Y);
+        Player::intzpos = RoundInt(Player::Pos.Z);
         Player::updatePosition();
-        Player::xposold = Player::xpos;
-        Player::yposold = Player::ypos;
-        Player::zposold = Player::zpos;
-        Player::intxposold = RoundInt(Player::xpos);
-        Player::intyposold = RoundInt(Player::ypos);
-        Player::intzposold = RoundInt(Player::zpos);
+        Player::xposold = Player::Pos.X;
+        Player::yposold = Player::Pos.Y;
+        Player::zposold = Player::Pos.Z;
+        Player::intxposold = RoundInt(Player::Pos.X);
+        Player::intyposold = RoundInt(Player::Pos.Y);
+        Player::intzposold = RoundInt(Player::Pos.Z);
 
         //	Time_updategame += timer() - Time_updategame;
 
@@ -764,10 +763,10 @@ public:
             }
         }
 
-        xpos = Player::xpos - Player::xd + (curtime - lastupdate) * 30.0 * Player::xd;
-        ypos = Player::ypos + Player::height + Player::heightExt - Player::yd +
+        xpos = Player::Pos.X - Player::xd + (curtime - lastupdate) * 30.0 * Player::xd;
+        ypos = Player::Pos.Y + Player::height + Player::heightExt - Player::yd +
                (curtime - lastupdate) * 30.0 * Player::yd;
-        zpos = Player::zpos - Player::zd + (curtime - lastupdate) * 30.0 * Player::zd;
+        zpos = Player::Pos.Z - Player::zd + (curtime - lastupdate) * 30.0 * Player::zd;
 
         if (!bagOpened) {
             //转头！你治好了我多年的颈椎病！
@@ -786,12 +785,12 @@ public:
             if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
         }
 
-        Player::cxt = World::GetChunkPos((int) Player::xpos);
-        Player::cyt = World::GetChunkPos((int) Player::ypos);
-        Player::czt = World::GetChunkPos((int) Player::zpos);
+        Player::cxt = World::GetChunkPos((int) Player::Pos.X);
+        Player::cyt = World::GetChunkPos((int) Player::Pos.Y);
+        Player::czt = World::GetChunkPos((int) Player::Pos.Z);
 
         //更新区块VBO
-        World::sortChunkBuildRenderList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
+        World::sortChunkBuildRenderList(RoundInt(Player::Pos.X), RoundInt(Player::Pos.Y), RoundInt(Player::Pos.Z));
         int brl = World::chunkBuildRenders > World::MaxChunkRenders ? World::MaxChunkRenders : World::chunkBuildRenders;
         for (int i = 0; i < brl; i++) {
             int ci = World::chunkBuildRenderList[i][1];
@@ -959,7 +958,7 @@ public:
             glLoadIdentity();
             glRotated(plookupdown, 1, 0, 0);
             glRotated(360.0 - pheading, 0, 1, 0);
-            glTranslated(-Player::xpos, -Player::ypos - Player::height - Player::heightExt, -Player::zpos);
+            glTranslated(-Player::Pos.X, -Player::Pos.Y - Player::height - Player::heightExt, -Player::Pos.Z);
 
             Hitbox::renderAABB(Player::playerbox, 1.0f, 1.0f, 1.0f, 1);
             Hitbox::renderAABB(Hitbox::Expand(Player::playerbox, Player::xd, Player::yd, Player::zd), 1.0f, 1.0f, 1.0f,
@@ -1245,7 +1244,7 @@ public:
                 debugText(ss.str(), false);
                 ss.str("");
             }
-            ss << "X:" << Player::xpos << " Y:" << Player::ypos << " Z:" << Player::zpos;
+            ss << "X:" << Player::Pos.X << " Y:" << Player::Pos.Y << " Z:" << Player::Pos.Z;
             debugText(ss.str(), false);
             ss.str("");
             ss << "Direction:" << Player::heading << " Head:" << Player::lookupdown << "Jump speed:" << Player::jump;
@@ -1657,15 +1656,11 @@ public:
         });
         commands.emplace_back("/tp", [](const std::vector<std::string> &command) {
             if (command.size() != 4) return false;
-            double x;
-            conv(command[1], x);
-            double y;
-            conv(command[2], y);
-            double z;
-            conv(command[3], z);
-            Player::xpos = x;
-            Player::ypos = y;
-            Player::zpos = z;
+			Double3 targetPos;
+            conv(command[1], targetPos.X);
+            conv(command[2], targetPos.Y);
+            conv(command[3], targetPos.Z);
+			Player::Pos = targetPos;
             return true;
         });
         commands.emplace_back("/suicide", [](const std::vector<std::string> &command) {
@@ -1795,7 +1790,7 @@ public:
         }
         //初始化游戏状态
         printf("[Console][Game]Init player...\n");
-        if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
+        if (loadGame()) Player::init(Player::Pos);
         else Player::spawn();
         printf("[Console][Game]Init world...\n");
         World::Init();
