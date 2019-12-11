@@ -5,12 +5,6 @@
 #include <chrono>
 #include <vector>
 #include <sstream>
-#if __has_include(<Windows.h>)
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#define NEWORLD_WIN32
-#include <Windows.h>
-#endif
 
 extern double stretch;
 
@@ -46,7 +40,7 @@ inline std::string boolstr(bool b) { return b ? "True" : "False"; }
 
 inline double rnd() { return static_cast<double>(fastRand()) / static_cast<double>(0x7FFFu); }
 
-inline int RoundInt(double d) { return int(floor(d + 0.5)); }
+inline int RoundInt(double d) { return static_cast<int>(lround(d)); }
 
 inline std::string itos(int i) {
     std::stringstream ss;
@@ -59,27 +53,9 @@ inline bool beginWith(const std::string &str, const std::string &begin) {
     return str.substr(0, begin.size()) == begin;
 }
 
-inline void DebugWarning(const std::string &msg) {
-#ifdef NEWORLD_USE_WINAPI
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
-    printf("[Debug][Warning]");
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-    printf("%s\n", msg.c_str());
-#else
-    printf("[Debug][Warning]%s\n", msg.c_str());
-#endif
-}
+void DebugWarning(const std::string &msg);
 
-inline void DebugError(const std::string &msg) {
-#ifdef NEWORLD_USE_WINAPI
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
-    printf("[Debug][Error]");
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
-    printf("%s\n", msg.c_str());
-#else
-    printf("[Debug][Error]%s\n", msg.c_str());
-#endif
-}
+void DebugError(const std::string &msg);
 
 template<class T>
 inline void conv(const std::string &str, T &ret) {
@@ -108,31 +84,20 @@ inline void ThreadWait(Thread_t _hThread) { _hThread->join(); }
 
 inline void ThreadDestroy(Thread_t _hThread) { delete _hThread; }
 
-inline unsigned int MByteToWChar(wchar_t *dst, const char *src, unsigned int n) {
-#ifdef NEWORLD_WIN32
-    return MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, src, n, dst, n);
-#else
-    return mbstowcs(dst, src, n);
-#endif
-}
+unsigned int MByteToWChar(wchar_t *dst, const char *src, unsigned int n);
 
-inline unsigned int WCharToMByte(char *dst, const wchar_t *src, unsigned int n) {
-#ifdef NEWORLD_WIN32
-    return WideCharToMultiByte(CP_UTF8, WC_COMPOSITECHECK, src, n, dst, n, nullptr, nullptr);
-#else
-    return wcstombs(dst, src, n);
-#endif
-}
+unsigned int WCharToMByte(char *dst, const wchar_t *src, unsigned int n);
 
 inline unsigned int wstrlen(const wchar_t *wstr) { return wcslen(wstr); }
 
 inline void SleepMs(unsigned int ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
 
-inline double timer() { return static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(
+inline double timer() {
+    return static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now().time_since_epoch()).count()) / 1000.0;
 }
 
-inline int DistanceSquare(int ix, int iy, int iz, int x, int y, int z)//计算距离的平方
-{
+//计算距离的平方
+inline int DistanceSquare(int ix, int iy, int iz, int x, int y, int z) {
     return (ix - x) * (ix - x) + (iy - y) * (iy - y) + (iz - z) * (iz - z);
 }

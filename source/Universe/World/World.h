@@ -68,10 +68,6 @@ namespace World {
 
     Chunk *GetChunk(Int3 vec);
 
-    void ExpandChunkArray(int cc);
-
-    void ReduceChunkArray(int cc);
-
     constexpr bool ChunkOutOfBound(const Int3 v) noexcept {
         return v.Y < -World::worldheight || v.Y > World::worldheight - 1 ||
                 v.X < -134217728 || v.X > 134217727 || v.Z < -134217728 || v.Z > 134217727;

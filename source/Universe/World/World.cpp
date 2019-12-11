@@ -36,6 +36,10 @@ namespace World {
     int chunkBuildRenders, chunkLoads, chunkUnloads;
     //bool* loadedChunkArray = nullptr; //Accelerate sortings
 
+    void ExpandChunkArray(int cc);
+
+    void ReduceChunkArray(int cc);
+
     void Init() {
         std::stringstream ss;
         ss << "Worlds/" << worldname << "/";

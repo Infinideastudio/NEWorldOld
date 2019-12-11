@@ -198,3 +198,9 @@ FakesAssemblies/
 [Ww]orlds/
 [Ss]creen[Ss]hots/
 [Cc]onfigs/
+CMakeSettings.json
+.idea/
+Fonts/
+Mods/
+Textures/
+cmake-build-*

@@ -1,5 +1,12 @@
 #include "FunctionsKit.h"
 
+#if __has_include(<Windows.h>)
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#define NEWORLD_WIN32
+#include <Windows.h>
+#endif
+
 unsigned int g_seed;
 
 std::vector<std::string> split(const std::string &str, const std::string &pattern) {
@@ -15,4 +22,42 @@ std::vector<std::string> split(const std::string &str, const std::string &patter
     if (!str.substr(start).empty())
         ret.push_back(str.substr(start));
     return ret;
+}
+
+void DebugWarning(const std::string &msg) {
+#ifdef NEWORLD_WIN32
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
+    printf("[Debug][Warning]");
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+    printf("%s\n", msg.c_str());
+#else
+    printf("[Debug][Warning]%s\n", msg.c_str());
+#endif
+}
+
+void DebugError(const std::string &msg) {
+#ifdef NEWORLD_WIN32
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+    printf("[Debug][Error]");
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+    printf("%s\n", msg.c_str());
+#else
+    printf("[Debug][Error]%s\n", msg.c_str());
+#endif
+}
+
+unsigned int MByteToWChar(wchar_t *dst, const char *src, unsigned int n) {
+#ifdef NEWORLD_WIN32
+    return MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, src, n, dst, n);
+#else
+    return mbstowcs(dst, src, n);
+#endif
+}
+
+unsigned int WCharToMByte(char *dst, const wchar_t *src, unsigned int n) {
+#ifdef NEWORLD_WIN32
+    return WideCharToMultiByte(CP_UTF8, WC_COMPOSITECHECK, src, n, dst, n, nullptr, nullptr);
+#else
+    return wcstombs(dst, src, n);
+#endif
 }
