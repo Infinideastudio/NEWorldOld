@@ -15,8 +15,6 @@
 extern double stretch;
 
 //常用函数
-std::vector<std::string> split(const std::string &str, const std::string &pattern);
-
 inline void UITrans(double x, double y) {
     glTranslated(x * stretch, y * stretch, 0);
 }
@@ -35,9 +33,9 @@ inline void UIVertex(int x, int y) {
 
 extern unsigned int g_seed;
 
-inline int fastRand() {
+inline unsigned int fastRand() {
     g_seed = (214013 * g_seed + 2531011);
-    return (g_seed >> 16) & 0x7FFF;
+    return (g_seed >> 16u) & 0x7FFFu;
 }
 
 inline void fastSrand(int seed) { g_seed = seed; }
@@ -46,7 +44,7 @@ std::vector<std::string> split(const std::string &str, const std::string &patter
 
 inline std::string boolstr(bool b) { return b ? "True" : "False"; }
 
-inline double rnd() { return (double) fastRand() / (RAND_MAX + 1); }
+inline double rnd() { return static_cast<double>(fastRand()) / static_cast<double>(0x7FFFu); }
 
 inline int RoundInt(double d) { return int(floor(d + 0.5)); }
 

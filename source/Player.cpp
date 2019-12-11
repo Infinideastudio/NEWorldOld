@@ -190,18 +190,10 @@ bool Player::putBlock(int x, int y, int z, Block blockname) {
     blockbox.ymax = y + 0.5;
     blockbox.zmax = z + 0.5;
     int cx = World::GetChunkPos(x), cy = World::GetChunkPos(y), cz = World::GetChunkPos(z);
-    if (!World::ChunkOutOfBound({(cx), (cy), (cz)}) && ((!Hitbox::Hit(playerbox, blockbox) || CrossWall ||
-                                                         !BlockInfo(blockname).isSolid()) &&
-                                                        !BlockInfo({
-                                                                       int x1 = x;
-                                                                       int y2 = y;
-                                                                       int z1 = z;
-                                                                       Block mask = Blocks::AIR;
-                                                                       World::Chunk *cptr = nullptr;
-                                                                       Block result;
-                                                                       result = GetBlock({x1, y2, z1}, mask, cptr);
-                                                                   }).isSolid())) {
-        World::putblock(x, y, z, blockname);
+    if (!World::ChunkOutOfBound({(cx), (cy), (cz)})
+        && ((!Hitbox::Hit(playerbox, blockbox) || CrossWall ||
+             !BlockInfo(blockname).isSolid()) && !BlockInfo(World::GetBlock({x, y, z})).isSolid())) {
+        World::PutBlock({(x), (y), (z)}, blockname);
         success = true;
     }
     return success;
@@ -265,7 +257,6 @@ bool Player::load(std::string worldn) {
 }
 
 bool Player::addItem(item itemname, short amount) {
-    //�򱳰��������Ʒ
     const int InvMaxStack = 255;
     for (int i = 3; i >= 0; i--) {
         for (int j = 0; j != 10; j++) {

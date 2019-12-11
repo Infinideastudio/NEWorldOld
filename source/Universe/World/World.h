@@ -12,8 +12,6 @@
 
 extern int viewdistance;
 
-class Frsutum;
-
 namespace World {
 
     extern std::string worldname;
@@ -31,8 +29,6 @@ namespace World {
 
     extern Chunk **chunks;
     extern int loadedChunks, chunkArraySize;
-    extern Chunk *cpCachePtr;
-    extern chunkid cpCacheID;
     extern HeightMap HMap;
     extern ChunkPtrArray cpArray;
 
@@ -64,11 +60,11 @@ namespace World {
         if (vec.X == -134217728) vec.X = 0;
         if (vec.X <= 0) vec.X = abs(vec.X) + (1LL << 27);
         if (vec.Z  == -134217728) vec.Z  = 0;
-        if (vec.Z  <= 0) vec.Z  = abs(vec.Z ) + (1LL << 27);
+        if (vec.Z  <= 0) vec.Z  = abs(vec.Z) + (1LL << 27);
         return (chunkid(vec.Y) << 56) + (chunkid(vec.X) << 28) + vec.Z ;
     }
 
-    int GetChunkIndex(int x, int y, int z);
+    int GetChunkIndex(Int3 v);
 
     Chunk *GetChunk(Int3 vec);
 
@@ -90,8 +86,6 @@ namespace World {
 
     bool inWater(const Hitbox::AABB &box);
 
-    void renderblock(int x, int y, int z, Chunk *chunkptr);
-
     void updateblock(int x, int y, int z, bool blockchanged, int depth = 0);
 
     Block GetBlock(Int3 v, Block mask = Blocks::AIR, Chunk *hint = nullptr);
@@ -106,65 +100,13 @@ namespace World {
         return GetBrightness({x, y, z}, cptr);
     }
 
-    inline void putblock(int x, int y, int z, Block Block) { SetBlock({(x), (y), (z)}, Block); }
+    inline void PutBlock(const Int3 v, Block block) { SetBlock(v, block); }
 
-    inline void pickleaf() {
-        if (rnd() < 0.2) {
-            if (rnd() < 0.5)Player::addItem(APPLE);
-            else Player::addItem(STICK);
-        } else {
-            Player::addItem(Blocks::LEAF);
-        }
-    }
+    void pickleaf();
 
-    inline void picktree(int x, int y, int z) {
-        if (GetBlock({(x), (y), (z)}) != Blocks::LEAF) {
-            Player::addItem(GetBlock({(x), (y), (z)}));
-        }
-        else pickleaf();
-        for (int j = 1; j <= 10; j++) {
-            Particles::throwParticle(GetBlock({(x), (y), (z)}),
-                                     float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
-                                     float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
-                                     float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
-        }
-        SetBlock({(x), (y), (z)}, Blocks::AIR);
-        //上
-        if ((GetBlock({(x), (y + 1), (z)}) == Blocks::WOOD) || (
-                GetBlock({(x), (y + 1), (z)}) == Blocks::LEAF))picktree(x, y + 1, z);
-        //前
-        if ((GetBlock({(x), (y), (z + 1)}) == Blocks::WOOD) || (
-                GetBlock({(x), (y), (z + 1)}) == Blocks::LEAF))picktree(x, y, z + 1);
-        //后
-        if ((GetBlock({(x), (y), (z - 1)}) == Blocks::WOOD) || (
-                GetBlock({(x), (y), (z - 1)}) == Blocks::LEAF))picktree(x, y, z - 1);
-        //左
-        if ((GetBlock({(x + 1), (y), (z)}) == Blocks::WOOD) || (
-                GetBlock({(x + 1), (y), (z)}) == Blocks::LEAF))picktree(x + 1, y, z);
-        //右
-        if ((GetBlock({(x - 1), (y), (z)}) == Blocks::WOOD) || (
-                GetBlock({(x - 1), (y), (z)}) == Blocks::LEAF))picktree(x - 1, y, z);
-    }
+    void picktree(int x, int y, int z);
 
-    inline void pickblock(int x, int y, int z) {
-        if (GetBlock({(x), (y), (z)}) == Blocks::WOOD &&
-            ((GetBlock({(x), (y + 1), (z)}) == Blocks::WOOD) || (
-                    GetBlock({(x), (y + 1), (z)}) == Blocks::LEAF)) &&
-            (GetBlock({(x), (y), (z + 1)}) == Blocks::AIR) && (
-                    GetBlock({(x), (y), (z - 1)}) == Blocks::AIR) &&
-            (GetBlock({(x + 1), (y), (z)}) == Blocks::AIR) && (
-                    GetBlock({(x - 1), (y), (z)}) == Blocks::AIR) &&
-            (GetBlock({(x), (y - 1), (z)}) != Blocks::AIR)
-                ) { picktree(x, y + 1, z); }//触发砍树模式
-        //击打树叶
-        if (GetBlock({(x), (y), (z)}) != Blocks::LEAF) {
-            Player::addItem(GetBlock({(x), (y), (z)}));
-        }
-        else pickleaf();
-
-        SetBlock({(x), (y), (z)}, Blocks::AIR);
-    }
-
+    void pickblock(int x, int y, int z);
 
     inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
         //检测给出的chunk坐标是否在渲染范围内
