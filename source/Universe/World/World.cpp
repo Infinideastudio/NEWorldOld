@@ -1,6 +1,5 @@
 ﻿#include "World.h"
 #include "Textures.h"
-#include "Renderer.h"
 #include "WorldGen.h"
 #include "Particles.h"
 #include <algorithm>

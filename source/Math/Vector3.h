@@ -21,14 +21,9 @@ struct Vec3 {
     constexpr explicit Vec3(T v) noexcept
             : X(v), Y(v), Z(v) {}
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "google-explicit-constructor"
-
     template<typename U, class = std::enable_if_t<std::is_convertible_v<T, U>>>
-    constexpr Vec3(const Vec3<U> &r) noexcept
+    constexpr Vec3(const Vec3<U> &r) noexcept // NOLINT
             : X(T(r.X)), Y(T(r.Y)), Z(T(r.Z)) {}
-
-#pragma clang diagnostic pop
 
     constexpr Vec3 operator+(const Vec3 &r) const noexcept { return {X + r.X, Y + r.Y, Z + r.Z}; }
 
