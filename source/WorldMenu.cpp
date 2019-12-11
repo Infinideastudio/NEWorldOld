@@ -85,7 +85,7 @@ namespace Menus {
             }
             if (deletebtn.clicked) {
                 //删除世界文件
-                system((std::string("rd /s/q \"Worlds\\") + chosenWorldName + "\"").c_str());
+                std::filesystem::remove_all("./Worlds/" + chosenWorldName + '/');
                 deletebtn.clicked = false;
                 World::worldname = "";
                 enterbtn.enabled = false;

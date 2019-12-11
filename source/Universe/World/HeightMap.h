@@ -3,7 +3,6 @@
 #include "Definitions.h"
 
 namespace World {
-    chunkid getChunkID(int x, int y, int z);
 
     struct HeightMap {
         int *array = nullptr;

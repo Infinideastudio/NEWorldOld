@@ -242,8 +242,8 @@ namespace World {
             for (y = -1; y <= 1; y++) {
                 for (z = -1; z <= 1; z++) {
                     if (x == 0 && y == 0 && z == 0) continue;
-                    if (chunkOutOfBound(cx + x, cy + y, cz + z)) continue;
-                    if (!chunkLoaded(cx + x, cy + y, cz + z)) return;
+                    if (ChunkOutOfBound({(cx + x), (cy + y), (cz + z)})) continue;
+                    if (!ChunkLoaded({(cx + x), (cy + y), (cz + z)})) return;
                 }
             }
         }

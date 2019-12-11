@@ -232,28 +232,28 @@ public:
             z = int(rnd() * 16);
             gz = z + cz * 16;
             if (World::chunks[i]->GetBlock({x, y, z}) == Blocks::DIRT &&
-                World::getblock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR && (
-                        World::getblock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx, gy, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx, gy, gz - 1, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx + 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx - 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx, gy + 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx, gy + 1, gz - 1, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx + 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-                        World::getblock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)) {
+                World::GetBlock({(gx), (gy + 1), (gz)}, Blocks::NONEMPTY, nullptr) == Blocks::AIR && (
+                        World::GetBlock({(gx + 1), (gy), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx - 1), (gy), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy), (gz + 1)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy), (gz - 1)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx + 1), (gy + 1), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx - 1), (gy + 1), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy + 1), (gz + 1)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy + 1), (gz - 1)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx + 1), (gy - 1), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx - 1), (gy - 1), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy - 1), (gz + 1)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy - 1), (gz - 1)}) == Blocks::GRASS)) {
                 //长草
-                World::chunks[i]->setblock(x, y, z, Blocks::GRASS);
+                World::chunks[i]->SetBlock({(x), (y), (z)}, Blocks::GRASS);
                 World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
                 World::setChunkUpdated(cx, cy, cz, true);
             }
             if (World::chunks[i]->GetBlock({x, y, z}) == Blocks::GRASS &&
-                World::getblock(gx, gy + 1, gz, Blocks::AIR) != Blocks::AIR) {
+                World::GetBlock({(gx), (gy + 1), (gz)}) != Blocks::AIR) {
                 //草被覆盖
-                World::chunks[i]->setblock(x, y, z, Blocks::DIRT);
+                World::chunks[i]->SetBlock({(x), (y), (z)}, Blocks::DIRT);
                 World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
             }
         }
@@ -283,7 +283,7 @@ public:
                       (double) selectPrecision;
 
                 //碰到方块
-                if (BlockInfo(World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
+                if (BlockInfo(World::GetBlock({RoundInt(lx), RoundInt(ly), RoundInt(lz)})).isSolid()) {
                     int x, y, z, xl, yl, zl;
                     x = RoundInt(lx);
                     y = RoundInt(ly);
@@ -298,20 +298,20 @@ public:
                     sel = true;
 
                     //找方块所在区块及位置
-                    selcx = getchunkpos(x);
-                    selcy = getchunkpos(y);
-                    selcz = getchunkpos(z);
-                    selbx = getblockpos(x);
-                    selby = getblockpos(y);
-                    selbz = getblockpos(z);
+                    selcx = World::GetChunkPos(x);
+                    selcy = World::GetChunkPos(y);
+                    selcz = World::GetChunkPos(z);
+                    selbx = World::GetBlockPos(x);
+                    selby = World::GetBlockPos(y);
+                    selbz = World::GetBlockPos(z);
 
-                    if (!World::chunkOutOfBound(selcx, selcy, selcz)) {
-                        World::Chunk *cp = World::getChunkPtr(selcx, selcy, selcz);
+                    if (!World::ChunkOutOfBound({(selcx), (selcy), (selcz)})) {
+                        World::Chunk *cp = World::GetChunk({(selcx), (selcy), (selcz)});
                         if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
                         selb = cp->GetBlock({(selbx), (selby), (selbz)});
                     }
                     selbr = World::getbrightness(xl, yl, zl);
-                    selb = World::getblock(x, y, z);
+                    selb = World::GetBlock({(x), (y), (z)});
                     if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
                         Particles::throwParticle(selb,
                                                  float(x + rnd() - 0.5f), float(y + rnd() - 0.2f),
@@ -786,9 +786,9 @@ public:
             if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
         }
 
-        Player::cxt = getchunkpos((int) Player::xpos);
-        Player::cyt = getchunkpos((int) Player::ypos);
-        Player::czt = getchunkpos((int) Player::zpos);
+        Player::cxt = World::GetChunkPos((int) Player::xpos);
+        Player::cyt = World::GetChunkPos((int) Player::ypos);
+        Player::czt = World::GetChunkPos((int) Player::zpos);
 
         //更新区块VBO
         World::sortChunkBuildRenderList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
@@ -978,7 +978,7 @@ public:
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
-        if (World::getblock(RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)) == Blocks::WATER) {
+        if (World::GetBlock({RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)}) == Blocks::WATER) {
             glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
             glBindTexture(GL_TEXTURE_2D, BlockTextures);
             double tcX = Textures::getTexcoordX(Blocks::WATER, 1);
@@ -1683,7 +1683,7 @@ public:
             conv(command[3], z);
             Block b;
             conv(command[4], b);
-            World::setblock(x, y, z, b);
+            World::SetBlock({(x), (y), (z)}, b);
             return true;
         });
         commands.emplace_back("/tree", [](const std::vector<std::string> &command) {

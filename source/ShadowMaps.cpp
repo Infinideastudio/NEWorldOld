@@ -2,7 +2,7 @@
 
 namespace ShadowMaps {
     void BuildShadowMap(double xpos, double ypos, double zpos, double curtime) {
-        int cx = getchunkpos((int) xpos), cy = getchunkpos((int) ypos), cz = getchunkpos((int) zpos);
+        int cx = World::GetChunkPos((int) xpos), cy = World::GetChunkPos((int) ypos), cz = World::GetChunkPos((int) zpos);
 
         Renderer::StartShadowPass();
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -34,7 +34,7 @@ namespace ShadowMaps {
     }
 
     void RenderShadowMap(double xpos, double ypos, double zpos, double curtime) {
-        int cx = getchunkpos((int) xpos), cy = getchunkpos((int) ypos), cz = getchunkpos((int) zpos);
+        int cx = World::GetChunkPos((int) xpos), cy = World::GetChunkPos((int) ypos), cz = World::GetChunkPos((int) zpos);
 
         Renderer::bindShader(Renderer::DepthShader);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

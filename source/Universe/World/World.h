@@ -46,41 +46,44 @@ namespace World {
     extern std::vector<unsigned int> vbuffersShouldDelete;
     extern int chunkBuildRenders, chunkLoads, chunkUnloads;
 
+    template <class T>
+    constexpr T GetChunkPos(const T n) noexcept { return n >> 4; }
+
+    template <class T>
+    constexpr T GetBlockPos(const T n) noexcept { return n & 15; }
+
     void Init();
 
     Chunk *AddChunk(int x, int y, int z);
 
     void DeleteChunk(int x, int y, int z);
 
-    inline chunkid getChunkID(int x, int y, int z) {
-        if (y == -128) y = 0;
-        if (y <= 0) y = abs(y) + (1LL << 7);
-        if (x == -134217728) x = 0;
-        if (x <= 0) x = abs(x) + (1LL << 27);
-        if (z == -134217728) z = 0;
-        if (z <= 0) z = abs(z) + (1LL << 27);
-        return (chunkid(y) << 56) + (chunkid(x) << 28) + z;
+    inline chunkid GetChunkId(Int3 vec) noexcept {
+        if (vec.Y == -128) vec.Y= 0;
+        if (vec.Y <= 0) vec.Y = abs(vec.Y) + (1LL << 7);
+        if (vec.X == -134217728) vec.X = 0;
+        if (vec.X <= 0) vec.X = abs(vec.X) + (1LL << 27);
+        if (vec.Z  == -134217728) vec.Z  = 0;
+        if (vec.Z  <= 0) vec.Z  = abs(vec.Z ) + (1LL << 27);
+        return (chunkid(vec.Y) << 56) + (chunkid(vec.X) << 28) + vec.Z ;
     }
 
-    int getChunkPtrIndex(int x, int y, int z);
+    int GetChunkIndex(int x, int y, int z);
 
-    Chunk *getChunkPtr(int x, int y, int z);
+    Chunk *GetChunk(Int3 vec);
 
     void ExpandChunkArray(int cc);
 
     void ReduceChunkArray(int cc);
 
-#define getchunkpos(n) ((n)>>4)
-#define getblockpos(n) ((n)&15)
-
-    inline bool chunkOutOfBound(int x, int y, int z) {
-        return y < -World::worldheight || y > World::worldheight - 1 ||
-               x < -134217728 || x > 134217727 || z < -134217728 || z > 134217727;
+    constexpr bool ChunkOutOfBound(const Int3 v) noexcept {
+        return v.Y < -World::worldheight || v.Y > World::worldheight - 1 ||
+                v.X < -134217728 || v.X > 134217727 || v.Z < -134217728 || v.Z > 134217727;
     }
 
-    inline bool chunkLoaded(int x, int y, int z) {
-        if (chunkOutOfBound(x, y, z))return false;
-        return getChunkPtr(x, y, z) != nullptr;
+    inline bool ChunkLoaded(const Int3 v) noexcept {
+        if (ChunkOutOfBound(v)) return false;
+        return GetChunk(v);
     }
 
     std::vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB &box);
@@ -91,15 +94,19 @@ namespace World {
 
     void updateblock(int x, int y, int z, bool blockchanged, int depth = 0);
 
-    Block getblock(int x, int y, int z, Block mask = Blocks::AIR, Chunk *cptr = nullptr);
+    Block GetBlock(Int3 v, Block mask = Blocks::AIR, Chunk *hint = nullptr);
 
-    Brightness getbrightness(int x, int y, int z, Chunk *cptr = nullptr);
+    Brightness GetBrightness(Int3 v, Chunk *hint = nullptr);
 
-    void setblock(int x, int y, int z, Block Block, Chunk *cptr = nullptr);
+    void SetBlock(Int3 v, Block block, Chunk *hint = nullptr);
 
-    void setbrightness(int x, int y, int z, Brightness Brightness, Chunk *cptr = nullptr);
+    void SetBrightness(Int3 v, Brightness brightness, Chunk *hint = nullptr);
 
-    inline void putblock(int x, int y, int z, Block Block) { setblock(x, y, z, Block); }
+    inline Brightness getbrightness(int x, int y, int z, Chunk *cptr = nullptr) {
+        return GetBrightness({x, y, z}, cptr);
+    }
+
+    inline void putblock(int x, int y, int z, Block Block) { SetBlock({(x), (y), (z)}, Block); }
 
     inline void pickleaf() {
         if (rnd() < 0.2) {
@@ -111,51 +118,61 @@ namespace World {
     }
 
     inline void picktree(int x, int y, int z) {
-        if (getblock(x, y, z) != Blocks::LEAF)Player::addItem(getblock(x, y, z));
+        if (GetBlock({(x), (y), (z)}) != Blocks::LEAF) {
+            Player::addItem(GetBlock({(x), (y), (z)}));
+        }
         else pickleaf();
         for (int j = 1; j <= 10; j++) {
-            Particles::throwParticle(getblock(x, y, z),
+            Particles::throwParticle(GetBlock({(x), (y), (z)}),
                                      float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
                                      float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
                                      float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
         }
-        setblock(x, y, z, Blocks::AIR);
+        SetBlock({(x), (y), (z)}, Blocks::AIR);
         //上
-        if ((getblock(x, y + 1, z) == Blocks::WOOD) || (getblock(x, y + 1, z) == Blocks::LEAF))picktree(x, y + 1, z);
+        if ((GetBlock({(x), (y + 1), (z)}) == Blocks::WOOD) || (
+                GetBlock({(x), (y + 1), (z)}) == Blocks::LEAF))picktree(x, y + 1, z);
         //前
-        if ((getblock(x, y, z + 1) == Blocks::WOOD) || (getblock(x, y, z + 1) == Blocks::LEAF))picktree(x, y, z + 1);
+        if ((GetBlock({(x), (y), (z + 1)}) == Blocks::WOOD) || (
+                GetBlock({(x), (y), (z + 1)}) == Blocks::LEAF))picktree(x, y, z + 1);
         //后
-        if ((getblock(x, y, z - 1) == Blocks::WOOD) || (getblock(x, y, z - 1) == Blocks::LEAF))picktree(x, y, z - 1);
+        if ((GetBlock({(x), (y), (z - 1)}) == Blocks::WOOD) || (
+                GetBlock({(x), (y), (z - 1)}) == Blocks::LEAF))picktree(x, y, z - 1);
         //左
-        if ((getblock(x + 1, y, z) == Blocks::WOOD) || (getblock(x + 1, y, z) == Blocks::LEAF))picktree(x + 1, y, z);
+        if ((GetBlock({(x + 1), (y), (z)}) == Blocks::WOOD) || (
+                GetBlock({(x + 1), (y), (z)}) == Blocks::LEAF))picktree(x + 1, y, z);
         //右
-        if ((getblock(x - 1, y, z) == Blocks::WOOD) || (getblock(x - 1, y, z) == Blocks::LEAF))picktree(x - 1, y, z);
+        if ((GetBlock({(x - 1), (y), (z)}) == Blocks::WOOD) || (
+                GetBlock({(x - 1), (y), (z)}) == Blocks::LEAF))picktree(x - 1, y, z);
     }
 
     inline void pickblock(int x, int y, int z) {
-        if (getblock(x, y, z) == Blocks::WOOD &&
-            ((getblock(x, y + 1, z) == Blocks::WOOD) || (getblock(x, y + 1, z) == Blocks::LEAF)) &&
-            (getblock(x, y, z + 1) == Blocks::AIR) && (getblock(x, y, z - 1) == Blocks::AIR) &&
-            (getblock(x + 1, y, z) == Blocks::AIR) && (getblock(x - 1, y, z) == Blocks::AIR) &&
-            (getblock(x, y - 1, z) != Blocks::AIR)
+        if (GetBlock({(x), (y), (z)}) == Blocks::WOOD &&
+            ((GetBlock({(x), (y + 1), (z)}) == Blocks::WOOD) || (
+                    GetBlock({(x), (y + 1), (z)}) == Blocks::LEAF)) &&
+            (GetBlock({(x), (y), (z + 1)}) == Blocks::AIR) && (
+                    GetBlock({(x), (y), (z - 1)}) == Blocks::AIR) &&
+            (GetBlock({(x + 1), (y), (z)}) == Blocks::AIR) && (
+                    GetBlock({(x - 1), (y), (z)}) == Blocks::AIR) &&
+            (GetBlock({(x), (y - 1), (z)}) != Blocks::AIR)
                 ) { picktree(x, y + 1, z); }//触发砍树模式
         //击打树叶
-        if (getblock(x, y, z) != Blocks::LEAF)Player::addItem(getblock(x, y, z));
+        if (GetBlock({(x), (y), (z)}) != Blocks::LEAF) {
+            Player::addItem(GetBlock({(x), (y), (z)}));
+        }
         else pickleaf();
 
-        setblock(x, y, z, Blocks::AIR);
+        SetBlock({(x), (y), (z)}, Blocks::AIR);
     }
 
 
     inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
         //检测给出的chunk坐标是否在渲染范围内
-        if (x < px - dist || x > px + dist - 1 || y < py - dist || y > py + dist - 1 || z < pz - dist ||
-            z > pz + dist - 1)
-            return false;
-        return true;
+        return !(x < px - dist || x > px + dist - 1 || y < py - dist || y > py + dist - 1 || z < pz - dist ||
+                 z > pz + dist - 1);
     }
 
-    bool chunkUpdated(int x, int y, int z);
+    bool chunkUpdated(Int3 vec);
 
     void setChunkUpdated(int x, int y, int z, bool value);
 

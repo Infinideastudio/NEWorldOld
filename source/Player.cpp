@@ -56,11 +56,11 @@ void InitPosition() {
     Player::xposold = Player::xpos;
     Player::yposold = Player::ypos;
     Player::zposold = Player::zpos;
-    Player::cxt = getchunkpos((int) Player::xpos);
+    Player::cxt = World::GetChunkPos((int) Player::xpos);
     Player::cxtl = Player::cxt;
-    Player::cyt = getchunkpos((int) Player::ypos);
+    Player::cyt = World::GetChunkPos((int) Player::ypos);
     Player::cytl = Player::cyt;
-    Player::czt = getchunkpos((int) Player::zpos);
+    Player::czt = World::GetChunkPos((int) Player::zpos);
     Player::cztl = Player::czt;
 }
 
@@ -175,9 +175,9 @@ void Player::updatePosition() {
     cxtl = cxt;
     cytl = cyt;
     cztl = czt;
-    cxt = getchunkpos((int) xpos);
-    cyt = getchunkpos((int) ypos);
-    czt = getchunkpos((int) zpos);
+    cxt = World::GetChunkPos((int) xpos);
+    cyt = World::GetChunkPos((int) ypos);
+    czt = World::GetChunkPos((int) zpos);
 }
 
 bool Player::putBlock(int x, int y, int z, Block blockname) {
@@ -189,10 +189,18 @@ bool Player::putBlock(int x, int y, int z, Block blockname) {
     blockbox.xmax = x + 0.5;
     blockbox.ymax = y + 0.5;
     blockbox.zmax = z + 0.5;
-    int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
-    if (!World::chunkOutOfBound(cx, cy, cz) && ((!Hitbox::Hit(playerbox, blockbox) || CrossWall ||
-                                                 !BlockInfo(blockname).isSolid()) &&
-                                                !BlockInfo(World::getblock(x, y, z)).isSolid())) {
+    int cx = World::GetChunkPos(x), cy = World::GetChunkPos(y), cz = World::GetChunkPos(z);
+    if (!World::ChunkOutOfBound({(cx), (cy), (cz)}) && ((!Hitbox::Hit(playerbox, blockbox) || CrossWall ||
+                                                         !BlockInfo(blockname).isSolid()) &&
+                                                        !BlockInfo({
+                                                                       int x1 = x;
+                                                                       int y2 = y;
+                                                                       int z1 = z;
+                                                                       Block mask = Blocks::AIR;
+                                                                       World::Chunk *cptr = nullptr;
+                                                                       Block result;
+                                                                       result = GetBlock({x1, y2, z1}, mask, cptr);
+                                                                   }).isSolid())) {
         World::putblock(x, y, z, blockname);
         success = true;
     }

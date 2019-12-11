@@ -11,6 +11,7 @@
 #include "AudioSystem.h"
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 void loadOptions();
 
@@ -38,11 +39,10 @@ void ApplicationBeforeLaunch() {
 #endif
     loadOptions();
     Globalization::Load();
-
-    system("mkdir Configs");
-    system("mkdir Worlds");
-    system("mkdir Screenshots");
-    system("mkdir Mods");
+    std::filesystem::create_directories("./Configs");
+    std::filesystem::create_directories("./Worlds");
+    std::filesystem::create_directories("./Screenshots");
+    std::filesystem::create_directories("./Mods");
 }
 
 void ApplicationAfterLaunch() {

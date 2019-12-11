@@ -420,17 +420,19 @@ namespace ChunkRenderer {
                             //Get block ID
                             bl = c->GetBlock({x, y, z});
                             tex = Textures::getTextureIndex(bl, face);
-                            neighbour = World::getblock(gx + delta[d][0], gy + delta[d][1], gz + delta[d][2],
-                                                        Blocks::ROCK, c);
+                            neighbour = GetBlock({(gx + delta[d][0]), (gy + delta[d][1]), (gz + delta[d][2])},
+                                                 Blocks::ROCK, c);
                             if (NiceGrass && bl == Blocks::GRASS) {
-                                if (d == 0 && getblock(gx + 1, gy - 1, gz, Blocks::ROCK, c) == Blocks::GRASS)
+                                if (d == 0 && GetBlock({(gx + 1), (gy - 1), (gz)}, Blocks::ROCK, c) == Blocks::GRASS)
                                     tex = Textures::getTextureIndex(bl, 1);
-                                else if (d == 1 && getblock(gx - 1, gy - 1, gz, Blocks::ROCK, c) == Blocks::GRASS)
-                                    tex = Textures::getTextureIndex(bl, 1);
-                                else if (d == 4 && getblock(gx, gy - 1, gz + 1, Blocks::ROCK, c) == Blocks::GRASS)
-                                    tex = Textures::getTextureIndex(bl, 1);
-                                else if (d == 5 && getblock(gx, gy - 1, gz - 1, Blocks::ROCK, c) == Blocks::GRASS)
-                                    tex = Textures::getTextureIndex(bl, 1);
+                                else {
+                                    if (d == 1 && GetBlock({(gx - 1), (gy - 1), (gz)}, Blocks::ROCK, c) == Blocks::GRASS)
+                                        tex = Textures::getTextureIndex(bl, 1);
+                                    else if (d == 4 && GetBlock({gx, gy - 1, gz + 1}, Blocks::ROCK, c) == Blocks::GRASS)
+                                        tex = Textures::getTextureIndex(bl, 1);
+                                    else if (d == 5 && GetBlock({gx, gy - 1, gz - 1}, Blocks::ROCK, c) == Blocks::GRASS)
+                                        tex = Textures::getTextureIndex(bl, 1);
+                                }
                             }
                             //Render
                             const Blocks::SingleBlock &info = BlockInfo(bl);
@@ -517,8 +519,9 @@ namespace ChunkRenderer {
                         //Get neighbour ID
                         int xx = x + delta[d][0], yy = y + delta[d][1], zz = z + delta[d][2];
                         int gx = cx * 16 + xx, gy = cy * 16 + yy, gz = cz * 16 + zz;
-                        if (xx < 0 || xx >= 16 || yy < 0 || yy >= 16 || zz < 0 || zz >= 16)
-                            neighbour = World::getblock(gx, gy, gz);
+                        if (xx < 0 || xx >= 16 || yy < 0 || yy >= 16 || zz < 0 || zz >= 16) {
+                            neighbour = World::GetBlock({(gx), (gy), (gz)});
+                        }
                         else {
                             neighbour = c->GetBlock({(xx), (yy), (zz)});
                         }

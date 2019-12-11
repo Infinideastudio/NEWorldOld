@@ -17,8 +17,6 @@ namespace World {
 
     class Chunk;
 
-    chunkid getChunkID(int x, int y, int z);
-
     void explode(int x, int y, int z, int r, Chunk *c);
 
     constexpr unsigned int ChunkEdgeSizeLog2 = 4;
@@ -98,18 +96,17 @@ namespace World {
 
         Brightness GetBrightness(const Int3 vec) noexcept {return mBrightness[GetIndex(vec)];}
 
-        void setblock(int x, int y, int z, Block iblock) {
-            if (iblock == Blocks::TNT) {
-                World::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 8, this);
+        void SetBlock(const Int3 vec, Block block) noexcept {
+            if (block == Blocks::TNT) {
+                World::explode(cx * 16 + vec.X, cy * 16 + vec.Y, cz * 16 + vec.Z, 8, this);
                 return;
             }
-            mBlock[GetIndex({x, y, z})] = iblock;
+            mBlock[GetIndex(vec)] = block;
             Modified = true;
         }
 
-        void setbrightness(int x, int y, int z, Brightness ibrightness) {
-            //assert(Empty == false);
-            mBrightness[GetIndex({x, y, z})] = ibrightness;
+        void SetBrightness(const Int3 vec, Brightness brightness) noexcept {
+            mBrightness[GetIndex(vec)] = brightness;
             Modified = true;
         }
 
