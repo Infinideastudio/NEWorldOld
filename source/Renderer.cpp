@@ -122,9 +122,7 @@ namespace Renderer {
         }
     }
 
-    void renderbuffer(VBOID buffer, vtxCount vtxs, int tc, int cc, int ac) {
-
-        glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    void BatchStart(int tc, int cc, int ac) noexcept {
         int cnt = tc + cc + 3;
         if (!AdvancedRender || ac == 0) {
             if (tc != 0) {
@@ -149,7 +147,23 @@ namespace Renderer {
             glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float *) ((ac + tc) * sizeof(float)));
             glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float *) ((ac + tc + cc) * sizeof(float)));
         }
+    }
 
+    void RenderBuffer(VBOID buffer, vtxCount vtxs) {
+        glBindBuffer(GL_ARRAY_BUFFER, buffer);
+        //这个框是不是很装逼2333 --qiaozhanrong
+        //====================================================================================================//
+        /**/                                                                                                /**/
+        /**/                                                                                                /**/
+        /**/                                glDrawArrays(GL_QUADS, 0, vtxs);                                /**/
+        /**/                                                                                                /**/
+        /**/                                                                                                /**/
+        //====================================================================================================//
+    }
+
+    void RenderBufferDirect(VBOID buffer, vtxCount vtxs, int tc, int cc, int ac) {
+        glBindBuffer(GL_ARRAY_BUFFER, buffer);
+        BatchStart(tc, cc, ac);
         //这个框是不是很装逼2333 --qiaozhanrong
         //====================================================================================================//
         /**/                                                                                                /**/

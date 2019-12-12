@@ -191,7 +191,7 @@ public:
 #endif
                 int cx = cp->cx, cy = cp->cy, cz = cp->cz;
                 cp->Unload();
-                World::DeleteChunk(cx, cy, cz);
+                World::DeleteChunk({(cx), (cy), (cz)});
             }
 
             //加载区块(Load chunks)
@@ -201,25 +201,25 @@ public:
                 int cx = World::chunkLoadList[i][1];
                 int cy = World::chunkLoadList[i][2];
                 int cz = World::chunkLoadList[i][3];
-                World::Chunk *c = World::AddChunk(cx, cy, cz);
+                World::Chunk *c = World::AddChunk({(cx), (cy), (cz)});
                 c->Load(false);
                 if (c->Empty) {
                     c->Unload();
-                    World::DeleteChunk(cx, cy, cz);
+                    World::DeleteChunk({(cx), (cy), (cz)});
                     World::cpArray.Set({cx, cy, cz}, World::EmptyChunkPtr);
                 }
             }
         }
 
         //加载动画
-        for (int i = 0; i < World::loadedChunks; i++) {
+        for (int i = 0; i < World::chunks.size(); i++) {
             World::Chunk *cp = World::chunks[i];
             if (cp->loadAnim <= 0.3f) cp->loadAnim = 0.0f;
             else cp->loadAnim *= 0.6f;
         }
 
         //随机状态更新
-        for (int i = 0; i < World::loadedChunks; i++) {
+        for (int i = 0; i < World::chunks.size(); i++) {
             int x, y, z, gx, gy, gz;
             int cx = World::chunks[i]->cx;
             int cy = World::chunks[i]->cy;
@@ -1280,7 +1280,7 @@ public:
             debugText(ss.str(), false);
             ss.str("");
 
-            ss << "load:" << World::loadedChunks << " unload:" << World::unloadedChunks
+            ss << "load:" << World::chunks.size() << " unload:" << World::unloadedChunks
                << " render:" << WorldRenderer::RenderChunkList.size() << " update:" << World::updatedChunks;
             debugText(ss.str(), false);
             ss.str("");
@@ -1351,7 +1351,7 @@ public:
         for (int i = 0; i < 128; i++) {
             glPushMatrix();
             glTranslated(-64.0 * cloudwidth - px, 0.0, cloudwidth * ((l + i) % 128 + f) - 64.0 * cloudwidth - pz);
-            Renderer::renderbuffer(cloudvb[i], vtxs[i], 0, 0);
+            Renderer::RenderBufferDirect(cloudvb[i], vtxs[i], 0, 0);
             glPopMatrix();
         }
         //setupNormalFog();

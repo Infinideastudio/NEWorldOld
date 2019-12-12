@@ -27,8 +27,7 @@ namespace World {
     extern int MaxChunkUnloads;
     extern int MaxChunkRenders;
 
-    extern Chunk **chunks;
-    extern int loadedChunks, chunkArraySize;
+    extern std::vector<Chunk*> chunks;
     extern HeightMap HMap;
     extern ChunkPtrArray cpArray;
 
@@ -50,9 +49,11 @@ namespace World {
 
     void Init();
 
-    Chunk *AddChunk(int x, int y, int z);
+    Chunk *AddChunk(Int3 vec);
 
-    void DeleteChunk(int x, int y, int z);
+    void DeleteChunk(Int3 vec);
+
+    Chunk *GetChunk(Int3 vec);
 
     inline chunkid GetChunkId(Int3 vec) noexcept {
         if (vec.Y == -128) vec.Y= 0;
@@ -64,9 +65,6 @@ namespace World {
         return (chunkid(vec.Y) << 56) + (chunkid(vec.X) << 28) + vec.Z ;
     }
 
-    int GetChunkIndex(Int3 v);
-
-    Chunk *GetChunk(Int3 vec);
 
     constexpr bool ChunkOutOfBound(const Int3 v) noexcept {
         return v.Y < -World::worldheight || v.Y > World::worldheight - 1 ||

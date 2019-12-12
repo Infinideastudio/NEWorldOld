@@ -59,7 +59,11 @@ namespace Renderer {
 
     void Flush(VBOID &buffer, vtxCount &vtxs);
 
-    void renderbuffer(VBOID buffer, vtxCount vtxs, int tc, int cc, int ac = 0);
+    void BatchStart(int tc, int cc, int ac) noexcept;
+
+    void RenderBuffer(VBOID buffer, vtxCount vtxs);
+
+    void RenderBufferDirect(VBOID buffer, vtxCount vtxs, int tc, int cc, int ac = 0);
 
     void initShaders();
 

@@ -57,6 +57,8 @@ namespace World {
         double loadAnim;
         bool visible;
 
+        [[nodiscard]] chunkid GetId() const noexcept { return id; }
+
         void create();
 
         void destroy();

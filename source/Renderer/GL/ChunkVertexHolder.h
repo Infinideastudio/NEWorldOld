@@ -1,17 +1,29 @@
 #pragma once
 
 #include <GL/glew.h>
+#include "Renderer/World/ChunkVertexBuilder.h"
 
 class ChunkVertexHolder {
 public:
-    ChunkVertexHolder(int size);
+    explicit ChunkVertexHolder(int size);
 
     ~ChunkVertexHolder() noexcept;
 
-    void* MapWriteOnly();
+    void *MapWriteOnly();
 
     void Unmap();
 
+    void Bind() noexcept;
+
 private:
-    GLuint mHandle;
+    GLuint mHandle{};
+};
+
+class ChunkVertexRenderer {
+public:
+    explicit ChunkVertexRenderer(const ChunkVertexBuilder &builder);
+
+private:
+    inline static float gTexturePerLine;
+    ChunkVertexHolder mHolder;
 };

@@ -18,8 +18,7 @@ namespace World {
     int MaxChunkUnloads = 64;
     int MaxChunkRenders = 1;
 
-    Chunk **chunks;
-    int loadedChunks, chunkArraySize;
+    std::vector<Chunk *> chunks{};
     Chunk *cpCachePtr = nullptr;
     chunkid cpCacheID = 0;
     ChunkPtrArray cpArray;
@@ -33,11 +32,6 @@ namespace World {
     std::pair<Chunk *, int> chunkUnloadList[256];
     std::vector<unsigned int> vbuffersShouldDelete;
     int chunkBuildRenders, chunkLoads, chunkUnloads;
-    //bool* loadedChunkArray = nullptr; //Accelerate sortings
-
-    void ExpandChunkArray(int cc);
-
-    void ReduceChunkArray(int cc);
 
     void Init() {
         std::stringstream ss;
@@ -48,8 +42,6 @@ namespace World {
         ss << "Worlds/" << worldname << "/chunks";
         std::filesystem::create_directories(ss.str());
 
-        //EmptyChunkPtr = new Chunk(0, 0, 0, getChunkID(0, 0, 0));
-        //EmptyChunkPtr->Empty = true;
         EmptyChunkPtr = (Chunk *) ~0;
 
         WorldGen::perlinNoiseInit(3404);
@@ -63,59 +55,28 @@ namespace World {
 
     }
 
-    inline std::pair<int, int> binary_search_chunks(Chunk **target, int len, chunkid cid) {
-        int first = 0;
-        int last = len - 1;
-        int middle = (first + last) / 2;
-        while (first <= last && target[middle]->id != cid) {
-            if (target[middle]->id > cid) { last = middle - 1; }
-            if (target[middle]->id < cid) { first = middle + 1; }
-            middle = (first + last) / 2;
-        }
-        return std::make_pair(first, middle);
+    auto LowerChunkBound(chunkid cid) noexcept {
+        return std::lower_bound(chunks.begin(), chunks.end(), cid, [](auto& left, auto right) noexcept {
+            return left->GetId() < right;
+        });
     }
 
-    Chunk *AddChunk(int x, int y, int z) {
-        chunkid cid;
-        cid = GetChunkId({(x), (y), (z)});  //Chunk ID
-        std::pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
-        if (loadedChunks > 0 && chunks[pos.second]->id == cid) {
-            printf("[Console][Error]");
-            printf("Chunk(%d,%d,%d)has been loaded,when adding Chunk.\n", x, y, z);
-            return chunks[pos.second];
+    Chunk *AddChunk(Int3 vec) {
+        chunkid cid = GetChunkId(vec);  //Chunk ID
+        auto chunkIter = LowerChunkBound(cid);
+        if (chunkIter != chunks.end()) {
+            if ((*chunkIter)->id == cid) {
+                printf("[Console][Error]");
+                printf("Chunk(%d,%d,%d)has been loaded,when adding Chunk.\n", vec.X, vec.Y, vec.Z);
+                return *chunkIter;
+            }
         }
-
-        ExpandChunkArray(1);
-        for (int i = loadedChunks - 1; i >= pos.first + 1; i--) {
-            chunks[i] = chunks[i - 1];
-        }
-        chunks[pos.first] = new Chunk(x, y, z, cid);
+        auto newChunk = new Chunk(vec.X, vec.Y, vec.Z, cid);
+        chunks.insert(chunkIter, newChunk);
         cpCacheID = cid;
-        cpCachePtr = chunks[pos.first];
-        cpArray.Add(chunks[pos.first], {x, y, z});
-        return chunks[pos.first];
-    }
-
-    void DeleteChunk(int x, int y, int z) {
-        int index = GetChunkIndex({(x), (y), (z)});
-        delete chunks[index];
-        for (int i = index; i < loadedChunks - 1; i++) {
-            chunks[i] = chunks[i + 1];
-        }
-        if (cpCachePtr == chunks[index]) {
-            cpCacheID = 0;
-            cpCachePtr = nullptr;
-        }
-        cpArray.Remove({x, y, z});
-        chunks[loadedChunks - 1] = nullptr;
-        ReduceChunkArray(1);
-    }
-
-    int GetChunkIndex(const Int3 v) {
-        chunkid cid = GetChunkId(v);
-        std::pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
-        if (chunks[pos.second]->id == cid) return pos.second;
-        return -1;
+        cpCachePtr = newChunk;
+        cpArray.Add(newChunk, vec);
+        return newChunk;
     }
 
     Chunk *GetChunk(Int3 vec) {
@@ -127,40 +88,39 @@ namespace World {
             cpCachePtr = ret;
             return ret;
         }
-        if (loadedChunks > 0) {
-            std::pair<int, int> pos = binary_search_chunks(chunks, loadedChunks, cid);
-            if (chunks[pos.second]->id == cid) {
-                ret = chunks[pos.second];
-                cpCacheID = cid;
-                cpCachePtr = ret;
-                cpArray.Add(chunks[pos.second], vec);
-                return ret;
+        if (!chunks.empty()) {
+            auto iter = LowerChunkBound(cid);
+            if (iter != chunks.end()) {
+                auto chunk = *iter;
+                if (chunk->id == cid) {
+                    ret = chunk;
+                    cpCacheID = cid;
+                    cpCachePtr = ret;
+                    cpArray.Add(chunk, vec);
+                    return ret;
+                }
             }
         }
         return nullptr;
     }
 
-    void ExpandChunkArray(int cc) {
-        loadedChunks += cc;
-        if (loadedChunks > chunkArraySize) {
-            if (chunkArraySize < 1024) chunkArraySize = 1024;
-            else chunkArraySize *= 2;
-            while (chunkArraySize < loadedChunks) chunkArraySize *= 2;
-            Chunk **cp = (Chunk **) realloc(chunks, chunkArraySize * sizeof(Chunk *));
-            if (cp == nullptr && loadedChunks != 0) {
-                DebugError("Allocate memory failed!");
-                saveAllChunks();
-                destroyAllChunks();
-                glfwTerminate();
-                exit(0);
+    void DeleteChunk(Int3 vec) {
+        auto id = GetChunkId(vec);  //Chunk ID
+        auto chunkIter = LowerChunkBound(id);
+        if (chunkIter != chunks.end()) {
+            if ((*chunkIter)->id == id) {
+                const auto chunk = *chunkIter;
+                chunks.erase(chunkIter);
+                delete chunk;
+                if (cpCachePtr == chunk) {
+                    cpCacheID = 0;
+                    cpCachePtr = nullptr;
+                }
+                cpArray.Remove(vec);
             }
-            chunks = cp;
         }
     }
 
-    void ReduceChunkArray(int cc) {
-        loadedChunks -= cc;
-    }
 
     std::vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB &box) {
         //返回与box相交的所有方块AABB
@@ -226,7 +186,7 @@ namespace World {
         Chunk *cptr = GetChunk({(cx), (cy), (cz)});
         if (cptr != nullptr) {
             if (cptr == EmptyChunkPtr) {
-                cptr = World::AddChunk(cx, cy, cz);
+                cptr = AddChunk({(cx), (cy), (cz)});
                 cptr->Load();
                 cptr->Empty = false;
             }
@@ -237,7 +197,8 @@ namespace World {
             cyi = GetChunkPos(yi);
             if (y < 0) skylighted = false;
             else {
-                while (!ChunkOutOfBound({(cx), (cyi + 1), (cz)}) && ChunkLoaded({(cx), (cyi + 1), (cz)}) && skylighted) {
+                while (!ChunkOutOfBound({(cx), (cyi + 1), (cz)}) && ChunkLoaded({(cx), (cyi + 1), (cz)}) &&
+                       skylighted) {
                     if (BlockInfo(GetBlock({x, yi, z})).isOpaque() || GetBlock({(x), (yi), (z)}) == Blocks::WATER) {
                         skylighted = false;
                     }
@@ -346,10 +307,10 @@ namespace World {
         return skylight;
     }
 
-    Chunk* GetChunkNoneLazy(const Int3 c) noexcept {
+    Chunk *GetChunkNoneLazy(const Int3 c) noexcept {
         auto i = GetChunk(c);
         if (i == EmptyChunkPtr) {
-            i = AddChunk(c.X, c.Y, c.Z);
+            i = AddChunk(c);
             i->Load();
             i->Empty = false;
         }
@@ -364,7 +325,7 @@ namespace World {
             hint->SetBlock(b, block);
             updateblock(v.X, v.Y, v.Z, true);
         }
-        if (!ChunkOutOfBound(c)) {
+        else if (!ChunkOutOfBound(c)) {
             if (const auto i = GetChunkNoneLazy(c); i) {
                 i->SetBlock(b, block);
                 updateblock(v.X, v.Y, v.Z, true);
@@ -379,7 +340,7 @@ namespace World {
         if (ChunkHintNoneEmptyMatch(c, hint)) {
             hint->SetBrightness(b, brightness);
         }
-        if (!ChunkOutOfBound(c)) {
+        else if (!ChunkOutOfBound(c)) {
             if (const auto i = GetChunkNoneLazy(c); i) {
                 i->SetBrightness(b, brightness);
             }
@@ -406,7 +367,7 @@ namespace World {
         cyp = GetChunkPos(ypos);
         czp = GetChunkPos(zpos);
 
-        for (int ci = 0; ci < loadedChunks; ci++) {
+        for (int ci = 0; ci < chunks.size(); ci++) {
             if (chunks[ci]->updated) {
                 cx = chunks[ci]->cx;
                 cy = chunks[ci]->cy;
@@ -442,7 +403,7 @@ namespace World {
         cyp = GetChunkPos(ypos);
         czp = GetChunkPos(zpos);
 
-        for (int ci = 0; ci < loadedChunks; ci++) {
+        for (int ci = 0; ci < chunks.size(); ci++) {
             cx = chunks[ci]->cx;
             cy = chunks[ci]->cy;
             cz = chunks[ci]->cz;
@@ -514,12 +475,12 @@ namespace World {
 
     void calcVisible(double xpos, double ypos, double zpos, Frustum &frus) {
         Chunk::setRelativeBase(xpos, ypos, zpos, frus);
-        for (int ci = 0; ci != loadedChunks; ci++) chunks[ci]->calcVisible();
+        for (int ci = 0; ci != chunks.size(); ci++) chunks[ci]->calcVisible();
     }
 
     void saveAllChunks() {
 #ifndef NEWORLD_DEBUG_NO_FILEIO
-        for (int i = 0; i != loadedChunks; i++) {
+        for (int i = 0; i != chunks.size(); i++) {
             chunks[i]->SaveToFile();
         }
 #endif
@@ -527,17 +488,16 @@ namespace World {
 
     void destroyAllChunks() {
 
-        for (int i = 0; i != loadedChunks; i++) {
+        for (int i = 0; i != chunks.size(); i++) {
             if (!chunks[i]->Empty) {
                 chunks[i]->destroyRender();
                 chunks[i]->destroy();
                 delete chunks[i];
             }
         }
-        free(chunks);
-        chunks = nullptr;
-        loadedChunks = 0;
-        chunkArraySize = 0;
+        chunks.clear();
+        chunks.shrink_to_fit();
+
         cpArray.Finalize();
         HMap.destroy();
 
@@ -569,7 +529,9 @@ namespace World {
         for (int ix = x - 4; ix < x + 4; ix++) {
             for (int iy = y - 4; iy < y + 4; iy++) {
                 for (int iz = z - 4; iz < z + 4; iz++) {
-                    if (GetBlock({(ix), (iy), (iz)}) == Blocks::WOOD || GetBlock({(ix), (iy), (iz)}) == Blocks::LEAF)return;
+                    if (GetBlock({(ix), (iy), (iz)}) == Blocks::WOOD ||
+                        GetBlock({(ix), (iy), (iz)}) == Blocks::LEAF)
+                        return;
                 }
             }
         }
@@ -656,8 +618,7 @@ namespace World {
     void picktree(int x, int y, int z) {
         if (GetBlock({(x), (y), (z)}) != Blocks::LEAF) {
             Player::addItem(GetBlock({(x), (y), (z)}));
-        }
-        else pickleaf();
+        } else pickleaf();
         for (int j = 1; j <= 10; j++) {
             Particles::throwParticle(GetBlock({(x), (y), (z)}),
                                      float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
@@ -667,19 +628,24 @@ namespace World {
         SetBlock({(x), (y), (z)}, Blocks::AIR);
         //上
         if ((GetBlock({(x), (y + 1), (z)}) == Blocks::WOOD) || (
-                GetBlock({(x), (y + 1), (z)}) == Blocks::LEAF))picktree(x, y + 1, z);
+                GetBlock({(x), (y + 1), (z)}) == Blocks::LEAF))
+            picktree(x, y + 1, z);
         //前
         if ((GetBlock({(x), (y), (z + 1)}) == Blocks::WOOD) || (
-                GetBlock({(x), (y), (z + 1)}) == Blocks::LEAF))picktree(x, y, z + 1);
+                GetBlock({(x), (y), (z + 1)}) == Blocks::LEAF))
+            picktree(x, y, z + 1);
         //后
         if ((GetBlock({(x), (y), (z - 1)}) == Blocks::WOOD) || (
-                GetBlock({(x), (y), (z - 1)}) == Blocks::LEAF))picktree(x, y, z - 1);
+                GetBlock({(x), (y), (z - 1)}) == Blocks::LEAF))
+            picktree(x, y, z - 1);
         //左
         if ((GetBlock({(x + 1), (y), (z)}) == Blocks::WOOD) || (
-                GetBlock({(x + 1), (y), (z)}) == Blocks::LEAF))picktree(x + 1, y, z);
+                GetBlock({(x + 1), (y), (z)}) == Blocks::LEAF))
+            picktree(x + 1, y, z);
         //右
         if ((GetBlock({(x - 1), (y), (z)}) == Blocks::WOOD) || (
-                GetBlock({(x - 1), (y), (z)}) == Blocks::LEAF))picktree(x - 1, y, z);
+                GetBlock({(x - 1), (y), (z)}) == Blocks::LEAF))
+            picktree(x - 1, y, z);
     }
 
     void pickblock(int x, int y, int z) {
@@ -695,8 +661,7 @@ namespace World {
         //击打树叶
         if (GetBlock({(x), (y), (z)}) != Blocks::LEAF) {
             Player::addItem(GetBlock({(x), (y), (z)}));
-        }
-        else pickleaf();
+        } else pickleaf();
 
         SetBlock({(x), (y), (z)}, Blocks::AIR);
     }

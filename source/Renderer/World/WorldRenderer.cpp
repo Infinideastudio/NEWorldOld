@@ -6,7 +6,7 @@ namespace WorldRenderer {
     int ListRenderChunks(int cx, int cy, int cz, int renderdistance, double curtime, bool frustest) {
         int renderedChunks = 0;
         RenderChunkList.clear();
-        for (int i = 0; i < World::loadedChunks; i++) {
+        for (int i = 0; i < World::chunks.size(); i++) {
             if (!World::chunks[i]->renderBuilt || World::chunks[i]->Empty) continue;
             if (World::chunkInRange(World::chunks[i]->cx, World::chunks[i]->cy, World::chunks[i]->cz,
                                     cx, cy, cz, renderdistance)) {
@@ -37,8 +37,8 @@ namespace WorldRenderer {
                 m[13] = cr.cy * 16.0f - (float) cr.loadAnim - (float) y;
                 m[14] = cr.cz * 16.0f - (float) z;
                 Renderer::shaders[Renderer::ActiveShader].setUniform("TransMat", m);
-                Renderer::renderbuffer(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount, 1);
-            } else Renderer::renderbuffer(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount);
+                Renderer::RenderBufferDirect(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount, 1);
+            } else Renderer::RenderBufferDirect(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount);
             glPopMatrix();
         }
 

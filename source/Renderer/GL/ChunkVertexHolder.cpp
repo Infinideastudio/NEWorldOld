@@ -23,3 +23,15 @@ void ChunkVertexHolder::Unmap() {
     glBindBuffer(GL_ARRAY_BUFFER, mHandle);
     glUnmapBuffer(GL_ARRAY_BUFFER);
 }
+
+void ChunkVertexHolder::Bind() noexcept {
+    glBindBuffer(GL_ARRAY_BUFFER, mHandle);
+}
+
+ChunkVertexRenderer::ChunkVertexRenderer(const ChunkVertexBuilder &builder)
+        : mHolder(builder.Count()) {
+    const auto target = reinterpret_cast<float *>(mHolder.MapWriteOnly());
+    auto result = ChunkVertexExpander(builder);
+    result.SetTarget(target).SetTexturePerLine(gTexturePerLine).Expand();
+    mHolder.Unmap();
+}
