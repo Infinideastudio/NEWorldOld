@@ -181,9 +181,7 @@ namespace World {
 
         if (ChunkOutOfBound({(cx), (cy), (cz)})) return;
 
-        const auto bx = GetBlockPos(x);
-        const auto by = GetBlockPos(y);
-        const auto bz = GetBlockPos(z);
+        const auto b = GetBlockPos(Int3{x, y, z});
 
         auto cptr = GetChunk({(cx), (cy), (cz)});
         if (cptr != nullptr) {
@@ -192,7 +190,7 @@ namespace World {
                 cptr->Load();
                 cptr->Empty = false;
             }
-            const auto oldbrightness = cptr->GetBrightness({(bx), (by), (bz)});
+            const auto oldbrightness = cptr->GetBrightness(b);
             auto skylighted = true;
             auto yi = y + 1;
             auto cyi = GetChunkPos(yi);
@@ -239,19 +237,19 @@ namespace World {
                 }
                 if (br < BRIGHTNESSMIN) br = BRIGHTNESSMIN;
                 //Set brightness
-                cptr->SetBrightness({(bx), (by), (bz)}, br);
+                cptr->SetBrightness(b, br);
 
             } else {
 
                 //Opaque block
-                cptr->SetBrightness({(bx), (by), (bz)}, 0);
+                cptr->SetBrightness(b, 0);
                 if (GetBlock({(x), (y), (z)}) == Blocks::GLOWSTONE || GetBlock({(x), (y), (z)}) == Blocks::LAVA) {
-                    cptr->SetBrightness({(bx), (by), (bz)}, BRIGHTNESSMAX);
+                    cptr->SetBrightness(b, BRIGHTNESSMAX);
                 }
 
             }
 
-            if (oldbrightness != cptr->GetBrightness({(bx), (by), (bz)})) updated = true;
+            if (oldbrightness != cptr->GetBrightness(b)) updated = true;
 
             if (updated) {
                 updateblock(x, y + 1, z, false, depth);
@@ -263,12 +261,12 @@ namespace World {
             }
 
             setChunkUpdated(cx, cy, cz, true);
-            if (bx == 15 && cx < worldsize - 1) setChunkUpdated(cx + 1, cy, cz, true);
-            if (bx == 0 && cx > -worldsize) setChunkUpdated(cx - 1, cy, cz, true);
-            if (by == 15 && cy < worldheight - 1) setChunkUpdated(cx, cy + 1, cz, true);
-            if (by == 0 && cy > -worldheight) setChunkUpdated(cx, cy - 1, cz, true);
-            if (bz == 15 && cz < worldsize - 1) setChunkUpdated(cx, cy, cz + 1, true);
-            if (bz == 0 && cz > -worldsize) setChunkUpdated(cx, cy, cz - 1, true);
+            if (b.X == 15 && cx < worldsize - 1) setChunkUpdated(cx + 1, cy, cz, true);
+            if (b.X == 0 && cx > -worldsize) setChunkUpdated(cx - 1, cy, cz, true);
+            if (b.Y == 15 && cy < worldheight - 1) setChunkUpdated(cx, cy + 1, cz, true);
+            if (b.Y == 0 && cy > -worldheight) setChunkUpdated(cx, cy - 1, cz, true);
+            if (b.Z == 15 && cz < worldsize - 1) setChunkUpdated(cx, cy, cz + 1, true);
+            if (b.Z == 0 && cz > -worldsize) setChunkUpdated(cx, cy, cz - 1, true);
 
         }
     }

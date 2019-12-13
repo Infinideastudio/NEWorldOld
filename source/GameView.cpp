@@ -1,6 +1,6 @@
 #include "GameView.h"
 #include <utility>
-#include "Blocks.h"
+#include "Universe/World/Blocks.h"
 #include "Textures.h"
 #include "Renderer.h"
 #include "TextRenderer.h"
@@ -214,42 +214,7 @@ public:
         }
 
         //随机状态更新
-        for (auto& chunk : World::chunks) {
-            const auto cx = chunk->cx;
-            const auto cy = chunk->cy;
-            const auto cz = chunk->cz;
-            const auto x = int(rnd() * 16);
-            const auto gx = x + cx * 16;
-            const auto y = int(rnd() * 16);
-            const auto gy = y + cy * 16;
-            const auto z = int(rnd() * 16);
-            const auto gz = z + cz * 16;
-            if (chunk->GetBlock({x, y, z}) == Blocks::DIRT &&
-                World::GetBlock({(gx), (gy + 1), (gz)}, Blocks::NONEMPTY, nullptr) == Blocks::AIR && (
-                        World::GetBlock({(gx + 1), (gy), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx - 1), (gy), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy), (gz + 1)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy), (gz - 1)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx + 1), (gy + 1), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx - 1), (gy + 1), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy + 1), (gz + 1)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy + 1), (gz - 1)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx + 1), (gy - 1), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx - 1), (gy - 1), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy - 1), (gz + 1)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy - 1), (gz - 1)}) == Blocks::GRASS)) {
-                //长草
-                chunk->SetBlock({(x), (y), (z)}, Blocks::GRASS);
-                World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
-                World::setChunkUpdated(cx, cy, cz, true);
-            }
-            if (chunk->GetBlock({x, y, z}) == Blocks::GRASS &&
-                World::GetBlock({(gx), (gy + 1), (gz)}) != Blocks::AIR) {
-                //草被覆盖
-                chunk->SetBlock({(x), (y), (z)}, Blocks::DIRT);
-                World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
-            }
-        }
+        RandomTick();
 
         auto lx = Player::Pos.X;
         auto ly = Player::Pos.Y + Player::height + Player::heightExt;
@@ -259,125 +224,7 @@ public:
         selx = sely = selz = selbx = selby = selbz = selcx = selcy = selcz = selb = selbr = 0;
 
         if (!bagOpened) {
-
-            //从玩家位置发射一条线段
-            for (auto i = 0; i < selectPrecision * selectDistance; i++) {
-                const auto lxl = lx;
-                const auto lyl = ly;
-                const auto lzl = lz;
-
-                //线段延伸
-                lx += sin(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) /
-                      static_cast<double>(selectPrecision);
-                ly += cos(M_PI / 180 * (Player::lookupdown + 90)) / static_cast<double>(selectPrecision);
-                lz += cos(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) /
-                      static_cast<double>(selectPrecision);
-
-                //碰到方块
-                if (BlockInfo(World::GetBlock({RoundInt(lx), RoundInt(ly), RoundInt(lz)})).isSolid()) {
-                    const auto x = RoundInt(lx);
-                    const auto y = RoundInt(ly);
-                    const auto z = RoundInt(lz);
-                    const auto xl = RoundInt(lxl);
-                    const auto yl = RoundInt(lyl);
-                    const auto zl = RoundInt(lzl);
-
-                    selx = x;
-                    sely = y;
-                    selz = z;
-                    sel = true;
-
-                    //找方块所在区块及位置
-                    selcx = World::GetChunkPos(x);
-                    selcy = World::GetChunkPos(y);
-                    selcz = World::GetChunkPos(z);
-                    selbx = World::GetBlockPos(x);
-                    selby = World::GetBlockPos(y);
-                    selbz = World::GetBlockPos(z);
-
-                    if (!World::ChunkOutOfBound({(selcx), (selcy), (selcz)})) {
-                        auto cp = World::GetChunk({(selcx), (selcy), (selcz)});
-                        if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
-                        selb = cp->GetBlock({(selbx), (selby), (selbz)});
-                    }
-                    selbr = World::getbrightness(xl, yl, zl);
-                    selb = World::GetBlock({(x), (y), (z)});
-                    if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
-                        Particles::throwParticle(selb,
-                                                 float(x + rnd() - 0.5f), float(y + rnd() - 0.2f),
-                                                 float(z + rnd() - 0.5f),
-                                                 float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
-                                                 float(rnd() * 0.2f - 0.1f),
-                                                 float(rnd() * 0.01f + 0.02f), int(rnd() * 30) + 30);
-
-                        if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
-                        else {
-                            float Factor = 1.0;
-                            if (Player::inventory[3][Player::indexInHand] == STICK)Factor = 4;
-                            else
-                                Factor = 30.0 /
-                                         (BlockInfo(Player::inventory[3][Player::indexInHand]).getHardness() + 0.1);
-                            if (Factor < 1.0)Factor = 1.0;
-                            if (Factor > 1.7)Factor = 1.7;
-                            seldes += BlockInfo(selb).getHardness() *
-                                      ((Player::gamemode == Player::Creative) ? 10.0f : 0.3f) * Factor;
-                            BlockClick = true;
-                            BlockPos[0] = x;
-                            BlockPos[1] = y;
-                            BlockPos[2] = z;
-
-                        }
-
-                        if (seldes >= 100.0) {
-                            for (auto j = 1; j <= 25; j++) {
-                                Particles::throwParticle(selb,
-                                                         float(x + rnd() - 0.5f), float(y + rnd() - 0.2f),
-                                                         float(z + rnd() - 0.5f),
-                                                         float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
-                                                         float(rnd() * 0.2f - 0.1f),
-                                                         float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
-                            }
-                            World::pickblock(x, y, z);
-                            BlockClick = true;
-                            BlockPos[0] = x;
-                            BlockPos[1] = y;
-                            BlockPos[2] = z;
-                        }
-                    }
-                    if (((mb == 2 && mbp == 0) || (!chatmode && isPressed(GLFW_KEY_TAB)))) { //鼠标右键
-                        if (Player::inventoryAmount[3][Player::indexInHand] > 0 &&
-                            isBlock(Player::inventory[3][Player::indexInHand])) {
-                            //放置方块
-                            if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
-                                Player::inventoryAmount[3][Player::indexInHand]--;
-                                if (Player::inventoryAmount[3][Player::indexInHand] == 0)
-                                    Player::inventory[3][Player::indexInHand] = Blocks::AIR;
-
-                                BlockClick = true;
-                                BlockPos[0] = x;
-                                BlockPos[1] = y;
-                                BlockPos[2] = z;
-                            }
-                        } else {
-                            //使用物品
-                            if (Player::inventory[3][Player::indexInHand] == APPLE) {
-                                Player::inventoryAmount[3][Player::indexInHand]--;
-                                if (Player::inventoryAmount[3][Player::indexInHand] == 0)
-                                    Player::inventory[3][Player::indexInHand] = Blocks::AIR;
-                                Player::health = Player::healthMax;
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-
-            if (selx != oldselx || sely != oldsely || selz != oldselz ||
-                (mb == 0 && glfwGetKey(MainWindow, GLFW_KEY_ENTER) != GLFW_PRESS))
-                seldes = 0.0;
-            oldselx = selx;
-            oldsely = sely;
-            oldselz = selz;
+            BlockClick = PlayerInteract(BlockPos, lx, ly, lz);
 
             Player::intxpos = RoundInt(Player::Pos.X);
             Player::intypos = RoundInt(Player::Pos.Y);
@@ -694,6 +541,167 @@ public:
 
         //	Time_updategame += timer() - Time_updategame;
 
+    }
+
+    bool PlayerInteract(ALfloat *BlockPos, double lx, double ly, double lz) {
+        bool BlockClick;//从玩家位置发射一条线段
+        for (auto i = 0; i < selectPrecision * selectDistance; i++) {
+            const auto lxl = lx;
+            const auto lyl = ly;
+            const auto lzl = lz;
+
+            //线段延伸
+            lx += sin(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) /
+                  static_cast<double>(selectPrecision);
+            ly += cos(M_PI / 180 * (Player::lookupdown + 90)) / static_cast<double>(selectPrecision);
+            lz += cos(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) /
+                  static_cast<double>(selectPrecision);
+
+            //碰到方块
+            if (BlockInfo(World::GetBlock({RoundInt(lx), RoundInt(ly), RoundInt(lz)})).isSolid()) {
+                const auto x = RoundInt(lx);
+                const auto y = RoundInt(ly);
+                const auto z = RoundInt(lz);
+                const auto xl = RoundInt(lxl);
+                const auto yl = RoundInt(lyl);
+                const auto zl = RoundInt(lzl);
+
+                selx = x;
+                sely = y;
+                selz = z;
+                sel = true;
+
+                //找方块所在区块及位置
+                selcx = World::GetChunkPos(x);
+                selcy = World::GetChunkPos(y);
+                selcz = World::GetChunkPos(z);
+                selbx = World::GetBlockPos(x);
+                selby = World::GetBlockPos(y);
+                selbz = World::GetBlockPos(z);
+
+                if (!World::ChunkOutOfBound({(selcx), (selcy), (selcz)})) {
+                    auto cp = World::GetChunk({(selcx), (selcy), (selcz)});
+                    if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
+                    selb = cp->GetBlock({(selbx), (selby), (selbz)});
+                }
+                selbr = World::getbrightness(xl, yl, zl);
+                selb = World::GetBlock({(x), (y), (z)});
+                if (mb == 1 || glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS) {
+                    Particles::throwParticle(selb,
+                                             float(x + rnd() - 0.5f), float(y + rnd() - 0.2f),
+                                             float(z + rnd() - 0.5f),
+                                             float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
+                                             float(rnd() * 0.2f - 0.1f),
+                                             float(rnd() * 0.01f + 0.02f), int(rnd() * 30) + 30);
+
+                    if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0;
+                    else {
+                        float Factor = 1.0;
+                        if (Player::inventory[3][Player::indexInHand] == STICK)Factor = 4;
+                        else
+                            Factor = 30.0 /
+                                     (BlockInfo(Player::inventory[3][Player::indexInHand]).getHardness() + 0.1);
+                        if (Factor < 1.0)Factor = 1.0;
+                        if (Factor > 1.7)Factor = 1.7;
+                        seldes += BlockInfo(selb).getHardness() *
+                                  ((Player::gamemode == Player::Creative) ? 10.0f : 0.3f) * Factor;
+                        BlockClick = true;
+                        BlockPos[0] = x;
+                        BlockPos[1] = y;
+                        BlockPos[2] = z;
+
+                    }
+
+                    if (seldes >= 100.0) {
+                        for (auto j = 1; j <= 25; j++) {
+                            Particles::throwParticle(selb,
+                                                     float(x + rnd() - 0.5f), float(y + rnd() - 0.2f),
+                                                     float(z + rnd() - 0.5f),
+                                                     float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
+                                                     float(rnd() * 0.2f - 0.1f),
+                                                     float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
+                        }
+                        World::pickblock(x, y, z);
+                        BlockClick = true;
+                        BlockPos[0] = x;
+                        BlockPos[1] = y;
+                        BlockPos[2] = z;
+                    }
+                }
+                if (((mb == 2 && mbp == 0) || (!chatmode && isPressed(GLFW_KEY_TAB)))) { //鼠标右键
+                    if (Player::inventoryAmount[3][Player::indexInHand] > 0 &&
+                        isBlock(Player::inventory[3][Player::indexInHand])) {
+                        //放置方块
+                        if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
+                            Player::inventoryAmount[3][Player::indexInHand]--;
+                            if (Player::inventoryAmount[3][Player::indexInHand] == 0)
+                                Player::inventory[3][Player::indexInHand] = Blocks::AIR;
+
+                            BlockClick = true;
+                            BlockPos[0] = x;
+                            BlockPos[1] = y;
+                            BlockPos[2] = z;
+                        }
+                    } else {
+                        //使用物品
+                        if (Player::inventory[3][Player::indexInHand] == APPLE) {
+                            Player::inventoryAmount[3][Player::indexInHand]--;
+                            if (Player::inventoryAmount[3][Player::indexInHand] == 0)
+                                Player::inventory[3][Player::indexInHand] = Blocks::AIR;
+                            Player::health = Player::healthMax;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        if (selx != oldselx || sely != oldsely || selz != oldselz ||
+            (mb == 0 && glfwGetKey(MainWindow, GLFW_KEY_ENTER) != GLFW_PRESS))
+            seldes = 0.0;
+        oldselx = selx;
+        oldsely = sely;
+        oldselz = selz;
+        return BlockClick;
+    }
+
+    void RandomTick() const {
+        for (auto& chunk : World::chunks) {
+            const auto cx = chunk->cx;
+            const auto cy = chunk->cy;
+            const auto cz = chunk->cz;
+            const auto x = int(rnd() * 16);
+            const auto gx = x + cx * 16;
+            const auto y = int(rnd() * 16);
+            const auto gy = y + cy * 16;
+            const auto z = int(rnd() * 16);
+            const auto gz = z + cz * 16;
+            if (chunk->GetBlock({x, y, z}) == Blocks::DIRT &&
+                World::GetBlock({(gx), (gy + 1), (gz)}, Blocks::NONEMPTY, nullptr) == Blocks::AIR && (
+                        World::GetBlock({(gx + 1), (gy), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx - 1), (gy), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy), (gz + 1)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy), (gz - 1)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx + 1), (gy + 1), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx - 1), (gy + 1), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy + 1), (gz + 1)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy + 1), (gz - 1)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx + 1), (gy - 1), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx - 1), (gy - 1), (gz)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy - 1), (gz + 1)}) == Blocks::GRASS ||
+                        World::GetBlock({(gx), (gy - 1), (gz - 1)}) == Blocks::GRASS)) {
+                //长草
+                chunk->SetBlock({(x), (y), (z)}, Blocks::GRASS);
+                World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
+                World::setChunkUpdated(cx, cy, cz, true);
+            }
+            if (chunk->GetBlock({x, y, z}) == Blocks::GRASS &&
+                World::GetBlock({(gx), (gy + 1), (gz)}) != Blocks::AIR) {
+                //草被覆盖
+                chunk->SetBlock({(x), (y), (z)}, Blocks::DIRT);
+                World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
+            }
+        }
     }
 
     static void debugText(std::string s, bool init) {

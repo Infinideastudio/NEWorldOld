@@ -274,7 +274,7 @@ namespace World {
     }
 
     Hitbox::AABB Chunk::getBaseAABB() {
-        Hitbox::AABB ret;
+        Hitbox::AABB ret{};
         ret.xmin = cx * 16 - 0.5;
         ret.ymin = cy * 16 - 0.5;
         ret.zmin = cz * 16 - 0.5;
@@ -285,7 +285,7 @@ namespace World {
     }
 
     Frustum::ChunkBox Chunk::getRelativeAABB() {
-        Frustum::ChunkBox ret;
+        Frustum::ChunkBox ret{};
         ret.xmin = static_cast<float>(aabb.xmin - relBaseX);
         ret.xmax = static_cast<float>(aabb.xmax - relBaseX);
         ret.ymin = static_cast<float>(aabb.ymin - loadAnim - relBaseY);
