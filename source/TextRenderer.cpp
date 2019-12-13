@@ -33,13 +33,11 @@ namespace TextRenderer {
         wh = h;
         Font = Textures::LoadFontTexture("./Fonts/ASCII.bmp");
 
-        float cx, cy;
         gbe = glGenLists(256);
         glBindTexture(GL_TEXTURE_2D, Font);
         for (gloop = 0; gloop < 256; gloop++) {
-
-            cx = (float) (gloop % 16) / 16.0f;
-            cy = (float) (gloop / 16) / 16.0f;
+            const auto cx = static_cast<float>(gloop % 16) / 16.0f;
+            const auto cy = static_cast<float>(gloop / 16) / 16.0f;
 
             glNewList(gbe + gloop, GL_COMPILE);
             glBegin(GL_QUADS);
@@ -74,7 +72,7 @@ namespace TextRenderer {
         if (FT_Set_Pixel_Sizes(fontface, 16 * stretch, 16 * stretch)) {
             //assert(false);
         }
-        for (int i = 0; i < 63356; i++)
+        for (auto i = 0; i < 63356; i++)
             if (chars[i].aval) {
                 chars[i].aval = false;
                 glDeleteTextures(1, &chars[i].tex);
@@ -89,17 +87,14 @@ namespace TextRenderer {
     }
 
     void loadchar(unsigned int uc) {
-        FT_Bitmap *bitmap;
-        unsigned int index;
-        ubyte *Tex, *Texsrc;
-        int wid = (int) pow(2, ceil(log2(32 * stretch)));
+        const auto wid = static_cast<int>(pow(2, ceil(log2(32 * stretch))));
 
-        index = FT_Get_Char_Index(fontface, uc);
+        const auto index = FT_Get_Char_Index(fontface, uc);
         FT_Load_Glyph(fontface, index, FT_LOAD_DEFAULT);
         FT_Render_Glyph(slot, FT_RENDER_MODE_NORMAL);
-        bitmap = &(slot->bitmap);
-        Texsrc = bitmap->buffer;
-        Tex = new ubyte[wid * wid * 4];
+        const auto bitmap = &(slot->bitmap);
+        auto Texsrc = bitmap->buffer;
+        const auto Tex = new ubyte[wid * wid * 4];
         memset(Tex, 0, wid * wid * 4 * sizeof(ubyte));
         for (unsigned int i = 0; i < bitmap->rows; i++) {
             for (unsigned int j = 0; j < bitmap->width; j++) {
@@ -123,20 +118,19 @@ namespace TextRenderer {
     }
 
     void MBToWC(const char *lpcszStr, wchar_t *&lpwszStr, int dwSize) {
-        lpwszStr = (wchar_t *) malloc(dwSize * 2);
+        lpwszStr = static_cast<wchar_t *>(malloc(dwSize * 2));
         memset(lpwszStr, 0, dwSize);
-        int iSize = (MByteToWChar(lpwszStr, lpcszStr, strlen(lpcszStr)) + 1) * sizeof(wchar_t);
-        lpwszStr = (wchar_t *) realloc(lpwszStr, iSize + 1);
+        const int iSize = (MByteToWChar(lpwszStr, lpcszStr, strlen(lpcszStr)) + 1) * sizeof(wchar_t);
+        lpwszStr = static_cast<wchar_t *>(realloc(lpwszStr, iSize + 1));
     }
 
     int getStrWidth(std::string s) {
-        UnicodeChar c;
-        int uc, res = 0;
+        auto res = 0;
         wchar_t *wstr = nullptr;
         MBToWC(s.c_str(), wstr, s.length() + 128);
         for (unsigned int k = 0; k < wstrlen(wstr); k++) {
-            uc = wstr[k];
-            c = chars[uc];
+            const int uc = wstr[k];
+            auto c = chars[uc];
             if (!c.aval) {
                 loadchar(uc);
                 c = chars[uc];
@@ -148,19 +142,16 @@ namespace TextRenderer {
     }
 
     void renderString(int x, int y, std::string glstring) {
-        UnicodeChar c;
-        int uc;
-        int span = 0;
-        double wid = pow(2, ceil(log2(32 * stretch)));
+        auto span = 0;
+        const auto wid = pow(2, ceil(log2(32 * stretch)));
         wchar_t *wstr = nullptr;
         MBToWC(glstring.c_str(), wstr, glstring.length() + 128);
 
         glEnable(GL_TEXTURE_2D);
         for (unsigned int k = 0; k < wstrlen(wstr); k++) {
-
-            uc = wstr[k];
-            c = chars[uc];
-            if (uc == (int) '\n') {
+            const int uc = wstr[k];
+            auto c = chars[uc];
+            if (uc == static_cast<int>('\n')) {
                 UITrans(0, 20);
                 span = 0;
                 continue;
@@ -212,12 +203,12 @@ namespace TextRenderer {
         glColor4f(0.5, 0.5, 0.5, a);
         glTranslated(x + 1, y + 1, 0);
         glListBase(gbe);
-        glCallLists((GLsizei) glstring.length(), GL_UNSIGNED_BYTE, glstring.c_str());
+        glCallLists(static_cast<GLsizei>(glstring.length()), GL_UNSIGNED_BYTE, glstring.c_str());
         glLoadIdentity();
         glColor4f(r, g, b, a);
         glTranslated(x, y, 0);
         glListBase(gbe);
-        glCallLists((GLsizei) glstring.length(), GL_UNSIGNED_BYTE, glstring.c_str());
+        glCallLists(static_cast<GLsizei>(glstring.length()), GL_UNSIGNED_BYTE, glstring.c_str());
         glPopMatrix();
     }
 

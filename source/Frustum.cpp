@@ -2,8 +2,7 @@
 
 #define _USE_MATH_DEFINES
 
-#include <math.h>
-#include <memory>
+#include <cmath>
 #include <cstring>
 
 void Frustum::LoadIdentity() {
@@ -19,8 +18,8 @@ inline void Frustum::MultMatrix(float *a, float *b) {
 }
 
 void Frustum::SetPerspective(float FOV, float aspect, float Znear, float Zfar) {
-    float ViewAngleH = FOV * (float) M_PI / 180.0f;
-    float ViewAngleV = atan(tan(ViewAngleH / 2.0f) * aspect) * 2.0f;
+    const auto ViewAngleH = FOV * static_cast<float>(M_PI) / 180.0f;
+    const auto ViewAngleV = atan(tan(ViewAngleH / 2.0f) * aspect) * 2.0f;
     proj[0] = 1.0f / tan(ViewAngleV / 2);
     proj[5] = proj[0] * aspect;
     proj[10] = -(Zfar + Znear) / (Zfar - Znear);
@@ -38,14 +37,14 @@ void Frustum::SetOrtho(float left, float right, float top, float bottom, float Z
 void Frustum::MultRotate(float angle, float x, float y, float z) {
     float m[16], sum[16];
     memset(m, 0, sizeof(m));
-    float length = sqrtf(x * x + y * y + z * z);
+    const auto length = sqrtf(x * x + y * y + z * z);
     x /= length;
     y /= length;
     z /= length;
-    float alpha = angle * (float) M_PI / 180.0f;
-    float s = sin(alpha);
-    float c = cos(alpha);
-    float t = 1.0f - c;
+    const auto alpha = angle * static_cast<float>(M_PI) / 180.0f;
+    const auto s = sin(alpha);
+    const auto c = cos(alpha);
+    const auto t = 1.0f - c;
     m[0] = t * x * x + c;
     m[1] = t * x * y + s * z;
     m[2] = t * x * z - s * y;
@@ -61,7 +60,7 @@ void Frustum::MultRotate(float angle, float x, float y, float z) {
 }
 
 inline void Frustum::normalize(int side) {
-    float magnitude = sqrtf(
+    const auto magnitude = sqrtf(
             frus[side + 0] * frus[side + 0] + frus[side + 1] * frus[side + 1] + frus[side + 2] * frus[side + 2]);
     frus[side + 0] /= magnitude;
     frus[side + 1] /= magnitude;
@@ -110,7 +109,7 @@ void Frustum::update() {
 }
 
 bool Frustum::FrustumTest(const ChunkBox &aabb) {
-    for (int i = 0; i < 24; i += 4) {
+    for (auto i = 0; i < 24; i += 4) {
         if (frus[i] * aabb.xmin + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f &&
             frus[i] * aabb.xmax + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f &&
             frus[i] * aabb.xmin + frus[i + 1] * aabb.ymax + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f &&

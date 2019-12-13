@@ -58,13 +58,13 @@ void DebugWarning(const std::string &msg);
 void DebugError(const std::string &msg);
 
 template<class T>
-inline void conv(const std::string &str, T &ret) {
+void conv(const std::string &str, T &ret) {
     std::stringstream s(str);
     s >> ret;
 }
 
 template<class T>
-inline T clamp(T x, T min, T max) {
+T clamp(T x, T min, T max) {
     if (x < min) return min;
     if (x > max) return max;
     return x;

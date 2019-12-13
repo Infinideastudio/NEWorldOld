@@ -17,15 +17,15 @@ public:
     OnlinePlayer(PlayerPacket &p) :
             OnlinePlayer(p.x, p.y, p.z, p.name, p.onlineID, p.skinID, p.lookupdown, p.heading) {}
 
-    const std::string &getName() const { return _name; }
+    [[nodiscard]] const std::string &getName() const { return _name; }
 
-    const onlineid getOnlineID() const { return _onlineID; }
+    [[nodiscard]] const onlineid getOnlineID() const { return _onlineID; }
 
     void GenVAOVBO(int skinID);
 
     void buildRenderIfNeed();
 
-    void render() const;
+    void render() const override;
 
 private:
     std::string _name;

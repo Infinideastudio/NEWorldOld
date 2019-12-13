@@ -1,6 +1,6 @@
 #include "Effect.h"
 #include "Definitions.h"
-#include <math.h>
+#include <cmath>
 
 
 namespace Effect {
@@ -23,14 +23,14 @@ namespace Effect {
 
     void gray(int w, int h, uint8_t *src, uint8_t *dst) {
 
-        uintptr_t size = w * h * 3;
+        const uintptr_t size = w * h * 3;
 
         for (uintptr_t i = 0; i < size; i += 3) {
 
             dst[i] = dst[i + 1] = dst[i + 2]
-                    = (uint8_t) (0.299f * src[i]
-                                 + 0.587f * src[i + 1]
-                                 + 0.114f * src[i + 2]);
+                    = static_cast<uint8_t>(0.299f * src[i]
+                        + 0.587f * src[i + 1]
+                        + 0.114f * src[i + 2]);
 
         }
 
@@ -38,20 +38,19 @@ namespace Effect {
 
     void blurGaussianX(int w, int h, uint8_t *src, uint8_t *dst, int rx) {
 
-        int size = rx * 2 + 1;
+        const auto size = rx * 2 + 1;
 
-        float *mat = new float[size];
+        const auto mat = new float[size];
 
-        float sigma = (rx - 1) * 0.3f + 0.8f;
-        float sigma2 = -0.5f / (sigma * sigma);
-        float sum = 0.0f;
+        const auto sigma = (rx - 1) * 0.3f + 0.8f;
+        const auto sigma2 = -0.5f / (sigma * sigma);
+        auto sum = 0.0f;
 
-        for (int i = 0; i < size; i++) {
+        for (auto i = 0; i < size; i++) {
+            const auto x = i - rx;
+            const auto x2 = x * x;
 
-            int x = i - rx;
-            int x2 = x * x;
-
-            float val = ::expf(sigma2 * x2);
+            const auto val = ::expf(sigma2 * x2);
 
             mat[i] = val;
 
@@ -61,27 +60,25 @@ namespace Effect {
 
         sum = 1.0f / sum;
 
-        for (int i = 0; i < size; i++) {
+        for (auto i = 0; i < size; i++) {
 
             mat[i] *= sum;
 
         }
 
-        for (int i = 0; i < w * h * 3; i += 3) {
+        for (auto i = 0; i < w * h * 3; i += 3) {
 
             dst[i] = dst[i + 1] = dst[i + 2] = 0;
 
         }
 
-        for (int i = 0; i < size; i++) {
+        for (auto i = 0; i < size; i++) {
+            const auto dx = i - rx;
 
-            int dx = i - rx;
+            const auto val = mat[i];
 
-            float val = mat[i];
-
-            for (int j = 0; j < w; j++) {
-
-                int x = j + dx;
+            for (auto j = 0; j < w; j++) {
+                auto x = j + dx;
                 if (x < 0) {
 
                     x = 0;
@@ -93,14 +90,13 @@ namespace Effect {
 
                 }
 
-                for (int k = 0; k < h; k++) {
+                for (auto k = 0; k < h; k++) {
+                    const auto indexsrc = (k * w + j) * 3;
+                    const auto indexdst = (k * w + x) * 3;
 
-                    int indexsrc = (k * w + j) * 3;
-                    int indexdst = (k * w + x) * 3;
-
-                    dst[indexdst] += (uint8_t) (val * src[indexsrc]);
-                    dst[indexdst + 1] += (uint8_t) (val * src[indexsrc + 1]);
-                    dst[indexdst + 2] += (uint8_t) (val * src[indexsrc + 2]);
+                    dst[indexdst] += static_cast<uint8_t>(val * src[indexsrc]);
+                    dst[indexdst + 1] += static_cast<uint8_t>(val * src[indexsrc + 1]);
+                    dst[indexdst + 2] += static_cast<uint8_t>(val * src[indexsrc + 2]);
 
                 }
 
@@ -114,20 +110,19 @@ namespace Effect {
 
     void blurGaussianY(int w, int h, uint8_t *src, uint8_t *dst, int ry) {
 
-        int size = ry * 2 + 1;
+        const auto size = ry * 2 + 1;
 
-        float *mat = new float[size];
+        const auto mat = new float[size];
 
-        float sigma = (ry - 1) * 0.3f + 0.8f;
-        float sigma2 = -0.5f / (sigma * sigma);
-        float sum = 0.0f;
+        const auto sigma = (ry - 1) * 0.3f + 0.8f;
+        const auto sigma2 = -0.5f / (sigma * sigma);
+        auto sum = 0.0f;
 
-        for (int i = 0; i < size; i++) {
+        for (auto i = 0; i < size; i++) {
+            const auto y = i - ry;
+            const auto y2 = y * y;
 
-            int y = i - ry;
-            int y2 = y * y;
-
-            float val = ::expf(sigma2 * y2);
+            const auto val = ::expf(sigma2 * y2);
 
             mat[i] = val;
 
@@ -137,27 +132,25 @@ namespace Effect {
 
         sum = 1.0f / sum;
 
-        for (int i = 0; i < size; i++) {
+        for (auto i = 0; i < size; i++) {
 
             mat[i] *= sum;
 
         }
 
-        for (int i = 0; i < w * h * 3; i += 3) {
+        for (auto i = 0; i < w * h * 3; i += 3) {
 
             dst[i] = dst[i + 1] = dst[i + 2] = 0;
 
         }
 
-        for (int i = 0; i < size; i++) {
+        for (auto i = 0; i < size; i++) {
+            const auto dy = i - ry;
 
-            int dy = i - ry;
+            const auto val = mat[i];
 
-            float val = mat[i];
-
-            for (int j = 0; j < h; j++) {
-
-                int y = j + dy;
+            for (auto j = 0; j < h; j++) {
+                auto y = j + dy;
                 if (y < 0) {
 
                     y = 0;
@@ -169,14 +162,13 @@ namespace Effect {
 
                 }
 
-                for (int k = 0; k < w; k++) {
+                for (auto k = 0; k < w; k++) {
+                    const auto indexsrc = (j * w + k) * 3;
+                    const auto indexdst = (y * w + k) * 3;
 
-                    int indexsrc = (j * w + k) * 3;
-                    int indexdst = (y * w + k) * 3;
-
-                    dst[indexdst] += (uint8_t) (val * src[indexsrc]);
-                    dst[indexdst + 1] += (uint8_t) (val * src[indexsrc + 1]);
-                    dst[indexdst + 2] += (uint8_t) (val * src[indexsrc + 2]);
+                    dst[indexdst] += static_cast<uint8_t>(val * src[indexsrc]);
+                    dst[indexdst + 1] += static_cast<uint8_t>(val * src[indexsrc + 1]);
+                    dst[indexdst + 2] += static_cast<uint8_t>(val * src[indexsrc + 2]);
 
                 }
 
@@ -184,7 +176,7 @@ namespace Effect {
 
         }
 
-        delete mat;
+        delete[] mat;
 
     }
 

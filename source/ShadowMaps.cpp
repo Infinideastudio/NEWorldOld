@@ -1,8 +1,11 @@
 #include "ShadowMaps.h"
+#include "Universe/World/World.h"
+#include "Renderer.h"
+#include "Renderer/World/WorldRenderer.h"
 
 namespace ShadowMaps {
     void BuildShadowMap(double xpos, double ypos, double zpos, double curtime) {
-        int cx = World::GetChunkPos((int) xpos), cy = World::GetChunkPos((int) ypos), cz = World::GetChunkPos((int) zpos);
+        const auto cx = World::GetChunkPos(static_cast<int>(xpos)), cy = World::GetChunkPos(static_cast<int>(ypos)), cz = World::GetChunkPos(static_cast<int>(zpos));
 
         Renderer::StartShadowPass();
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -10,8 +13,8 @@ namespace ShadowMaps {
         glDisable(GL_TEXTURE_2D);
         glDisable(GL_FOG);
         glDisable(GL_BLEND);
-        float scale = 16.0f * sqrt(3.0f);
-        float length = Renderer::shadowdist * scale;
+        const auto scale = 16.0f * sqrt(3.0f);
+        const auto length = Renderer::shadowdist * scale;
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
         glOrtho(-length, length, -length, length, -length, length);
@@ -34,7 +37,7 @@ namespace ShadowMaps {
     }
 
     void RenderShadowMap(double xpos, double ypos, double zpos, double curtime) {
-        int cx = World::GetChunkPos((int) xpos), cy = World::GetChunkPos((int) ypos), cz = World::GetChunkPos((int) zpos);
+        const auto cx = World::GetChunkPos(static_cast<int>(xpos)), cy = World::GetChunkPos(static_cast<int>(ypos)), cz = World::GetChunkPos(static_cast<int>(zpos));
 
         Renderer::bindShader(Renderer::DepthShader);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -42,8 +45,8 @@ namespace ShadowMaps {
         glDisable(GL_TEXTURE_2D);
         glDisable(GL_FOG);
         glDisable(GL_BLEND);
-        float scale = 16.0f * sqrt(3.0f);
-        float length = Renderer::shadowdist * scale;
+        const auto scale = 16.0f * sqrt(3.0f);
+        const auto length = Renderer::shadowdist * scale;
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
         glOrtho(-length, length, -length, length, -length, length);

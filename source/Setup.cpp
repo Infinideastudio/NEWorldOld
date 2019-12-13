@@ -9,14 +9,14 @@
 #include "Items.h"
 
 void splashScreen() {
-    TextureID splTex = Textures::LoadRGBTexture("./Textures/GUI/splashscreen.bmp");
+    auto splTex = Textures::LoadRGBTexture("./Textures/GUI/splashscreen.bmp");
     glEnable(GL_TEXTURE_2D);
-    for (int i = 0; i < 256; i += 2) {
+    for (auto i = 0; i < 256; i += 2) {
         glfwSwapBuffers(MainWindow);
         glfwPollEvents();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glBindTexture(GL_TEXTURE_2D, splTex);
-        glColor4f((float) i / 256, (float) i / 256, (float) i / 256, 1.0);
+        glColor4f(static_cast<float>(i) / 256, static_cast<float>(i) / 256, static_cast<float>(i) / 256, 1.0);
         glBegin(GL_QUADS);
         glTexCoord2f(0.0, 1.0);
         glVertex2i(-1, 1);
@@ -110,7 +110,7 @@ void loadTextures() {
     tex_select = Textures::LoadRGBATexture("./Textures/GUI/select.bmp", "");
     tex_unselect = Textures::LoadRGBATexture("./Textures/GUI/unselect.bmp", "");
     tex_title = Textures::LoadRGBATexture("./Textures/GUI/title.bmp", "./Textures/GUI/titlemask.bmp");
-    for (int i = 0; i < 6; i++) {
+    for (auto i = 0; i < 6; i++) {
         std::stringstream ss;
         ss << "./Textures/GUI/mainmenu" << i << ".bmp";
         tex_mainmenu[i] = Textures::LoadRGBTexture(ss.str());
@@ -119,8 +119,8 @@ void loadTextures() {
     DefaultSkin = Textures::LoadRGBATexture("./Textures/Player/skin_xiaoqiao.bmp",
                                             "./Textures/Player/skinmask_xiaoqiao.bmp");
 
-    for (int gloop = 1; gloop <= 10; gloop++) {
-        std::string path = "./Textures/Blocks/destroy_" + itos(gloop) + ".bmp";
+    for (auto gloop = 1; gloop <= 10; gloop++) {
+        const auto path = "./Textures/Blocks/destroy_" + itos(gloop) + ".bmp";
         DestroyImage[gloop] = Textures::LoadRGBATexture(path, path);
     }
 
@@ -150,18 +150,17 @@ void MouseButtonFunc(GLFWwindow *, int button, int action, int) {
 
 void CharInputFunc(GLFWwindow *, unsigned int c) {
     if (c >= 128) {
-        wchar_t *pwszUnicode = new wchar_t[2];
-        pwszUnicode[0] = (wchar_t) c;
+        const auto pwszUnicode = new wchar_t[2];
+        pwszUnicode[0] = static_cast<wchar_t>(c);
         pwszUnicode[1] = '\0';
-        char *pszMultiByte;
-        pszMultiByte = (char *) malloc((unsigned int) 4);
-        pszMultiByte = (char *) realloc(pszMultiByte, WCharToMByte(pszMultiByte, pwszUnicode, 4));
+        auto pszMultiByte = static_cast<char *>(malloc(static_cast<unsigned int>(4)));
+        pszMultiByte = static_cast<char *>(realloc(pszMultiByte, WCharToMByte(pszMultiByte, pwszUnicode, 4)));
         inputstr += pszMultiByte;
         free(pszMultiByte);
         delete[] pwszUnicode;
-    } else inputstr += (char) c;
+    } else inputstr += static_cast<char>(c);
 }
 
 void MouseScrollFunc(GLFWwindow *, double, double yoffset) {
-    mw += (int) yoffset;
+    mw += static_cast<int>(yoffset);
 }

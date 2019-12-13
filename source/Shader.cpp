@@ -28,7 +28,7 @@ void Shader::release() {
 }
 
 bool Shader::setUniform(const char *uniform, float value) {
-    int loc = glGetUniformLocationARB(shaderProgram, uniform);
+    const auto loc = glGetUniformLocationARB(shaderProgram, uniform);
     assert(loc != -1);
     if (loc == -1) return false;
     glUniform1fARB(loc, value);
@@ -36,7 +36,7 @@ bool Shader::setUniform(const char *uniform, float value) {
 }
 
 bool Shader::setUniform(const char *uniform, int value) {
-    int loc = glGetUniformLocationARB(shaderProgram, uniform);
+    const auto loc = glGetUniformLocationARB(shaderProgram, uniform);
     assert(loc != -1);
     if (loc == -1) return false;
     glUniform1iARB(loc, value);
@@ -44,7 +44,7 @@ bool Shader::setUniform(const char *uniform, int value) {
 }
 
 bool Shader::setUniform(const char *uniform, float v0, float v1, float v2, float v3) {
-    int loc = glGetUniformLocationARB(shaderProgram, uniform);
+    const auto loc = glGetUniformLocationARB(shaderProgram, uniform);
     assert(loc != -1);
     if (loc == -1) return false;
     glUniform4fARB(loc, v0, v1, v2, v3);
@@ -52,7 +52,7 @@ bool Shader::setUniform(const char *uniform, float v0, float v1, float v2, float
 }
 
 bool Shader::setUniform(const char *uniform, float *value) {
-    int loc = glGetUniformLocationARB(shaderProgram, uniform);
+    const auto loc = glGetUniformLocationARB(shaderProgram, uniform);
     assert(loc != -1);
     if (loc == -1) return false;
     glUniformMatrix4fvARB(loc, 1, GL_FALSE, value);
@@ -96,7 +96,7 @@ GLhandleARB Shader::loadShader(std::string filename, unsigned int mode, std::set
     glShaderSourceARB(res, lines, (const GLchar **) source.data(), length.data());
     glCompileShaderARB(res);
     //释放内存
-    for (int i = 0; i < lines; i++) delete[] source[i];
+    for (auto i = 0; i < lines; i++) delete[] source[i];
 
     //检查错误
     checkErrors(res, GL_COMPILE_STATUS, "Shader compilation error! File: " + filename);
@@ -104,14 +104,13 @@ GLhandleARB Shader::loadShader(std::string filename, unsigned int mode, std::set
 }
 
 void Shader::checkErrors(GLhandleARB res, int status, std::string errorMessage) {
-    int st = GL_TRUE;
+    auto st = GL_TRUE;
     glGetObjectParameterivARB(res, status, &st);
     if (st == GL_FALSE) DebugWarning(errorMessage);
     int infologLength, charsWritten;
-    char *infoLog;
     glGetObjectParameterivARB(res, GL_OBJECT_INFO_LOG_LENGTH_ARB, &infologLength);
     if (infologLength > 1) {
-        infoLog = new char[infologLength];
+        const auto infoLog = new char[infologLength];
         glGetInfoLogARB(res, infologLength, &charsWritten, infoLog);
         std::cout << infoLog << std::endl;
         delete[] infoLog;

@@ -39,15 +39,15 @@ namespace GUI {
     }
 
     void screenBlur() {
-        static int szl = 0, rl = 0;
+        static auto szl = 0, rl = 0;
         static float *mat = nullptr;
         static ubyte *scr; //屏幕像素缓存
 
-        int w = windowwidth; //Width
-        int h = windowheight; //Height
-        int r = 2; //范围
-        int sz = 1;
-        float scale = 2;
+        const auto w = windowwidth; //Width
+        const auto h = windowheight; //Height
+        const auto r = 2; //范围
+        auto sz = 1;
+        const float scale = 2;
         TextureID bgTex;
 
         while (sz < w || sz < h) sz *= 2;
@@ -59,20 +59,20 @@ namespace GUI {
 
         if (rl != r) {
             if (mat != nullptr) delete[] mat;
-            int size = r * 2 + 1;
-            int size2 = size * size;
-            float sum = 0.0f;
-            int index = 0;
+            const auto size = r * 2 + 1;
+            const auto size2 = size * size;
+            auto sum = 0.0f;
+            auto index = 0;
             mat = new float[size2];
-            for (int x = -r; x <= r; x++) {
-                for (int y = -r; y <= r; y++) {
-                    float val = 1.0f / (float) (abs(x) + abs(y) + 1);
+            for (auto x = -r; x <= r; x++) {
+                for (auto y = -r; y <= r; y++) {
+                    const auto val = 1.0f / static_cast<float>(abs(x) + abs(y) + 1);
                     mat[index++] = val;
                     sum += val;
                 }
             }
             sum = 1.0f / sum;
-            for (int i = 0; i < size2; i++) mat[i] *= sum;
+            for (auto i = 0; i < size2; i++) mat[i] *= sum;
         }
 
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -88,16 +88,16 @@ namespace GUI {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        for (int x = -r; x <= r; x++) {
-            for (int y = -r; y <= r; y++) {
-                float d = mat[(x + r) * (r * 2 + 1) + y + r];
+        for (auto x = -r; x <= r; x++) {
+            for (auto y = -r; y <= r; y++) {
+                const auto d = mat[(x + r) * (r * 2 + 1) + y + r];
                 glColor4f(1.0f, 1.0f, 1.0f, d);
                 glBegin(GL_QUADS);
-                glTexCoord2f(0.0f, (float) h / sz);
+                glTexCoord2f(0.0f, static_cast<float>(h) / sz);
                 glVertex2f(x * scale, y * scale);
-                glTexCoord2f((float) w / sz, (float) h / sz);
+                glTexCoord2f(static_cast<float>(w) / sz, static_cast<float>(h) / sz);
                 glVertex2f(w + x * scale, y * scale);
-                glTexCoord2f((float) w / sz, 0.0f);
+                glTexCoord2f(static_cast<float>(w) / sz, 0.0f);
                 glVertex2f(w + x * scale, h + y * scale);
                 glTexCoord2f(0.0f, 0.0f);
                 glVertex2f(x * scale, h + y * scale);
@@ -115,10 +115,10 @@ namespace GUI {
 
     void drawBackground() {
         static Frustum frus;
-        static double startTimer = timer();
-        double elapsed = timer() - startTimer;
+        static auto startTimer = timer();
+        const auto elapsed = timer() - startTimer;
         frus.LoadIdentity();
-        frus.SetPerspective(90.0f, (float) windowwidth / windowheight, 0.1f, 10.0f);
+        frus.SetPerspective(90.0f, static_cast<float>(windowwidth) / windowheight, 0.1f, 10.0f);
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
@@ -209,8 +209,8 @@ namespace GUI {
         glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth,
                                    &nScreenHeight);
         int vmc;
-        const GLFWvidmode *mode = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
-        double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth) / 25.4f);
+        const auto mode = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
+        const auto ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth) / 25.4f);
         stretch = ppi / stdppi;
         //Calaulate the scale and resize the window
         windowwidth = static_cast<int>(windowwidth * stretch);
@@ -229,10 +229,10 @@ namespace GUI {
     }
 
     void controls::updatepos() {
-        xmin = (int) (windowwidth * _xmin_b / stretch) + _xmin_r;
-        ymin = (int) (windowheight * _ymin_b / stretch) + _ymin_r;
-        xmax = (int) (windowwidth * _xmax_b / stretch) + _xmax_r;
-        ymax = (int) (windowheight * _ymax_b / stretch) + _ymax_r;
+        xmin = static_cast<int>(windowwidth * _xmin_b / stretch) + _xmin_r;
+        ymin = static_cast<int>(windowheight * _ymin_b / stretch) + _ymin_r;
+        xmax = static_cast<int>(windowwidth * _xmax_b / stretch) + _xmax_r;
+        ymax = static_cast<int>(windowheight * _ymax_b / stretch) + _ymax_r;
     }
 
     void controls::resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
@@ -255,12 +255,10 @@ namespace GUI {
     }
 
     void label::render() {
-        //渲染标签
-        float fcR, fcG, fcB, fcA;
-        fcR = FgR;
-        fcG = FgG;
-        fcB = FgB;
-        fcA = FgA;
+        auto fcR = FgR;
+        auto fcG = FgG;
+        auto fcB = FgB;
+        auto fcA = FgA;
         if (mouseon) {
             fcR = FgR * 1.2f;
             fcG = FgG * 1.2f;
@@ -308,12 +306,10 @@ namespace GUI {
 
     void button::render() {
 
-        //渲染按钮
-        float fcR, fcG, fcB, fcA;
-        fcR = FgR;
-        fcG = FgG;
-        fcB = FgB;
-        fcA = FgA;
+        auto fcR = FgR;
+        auto fcG = FgG;
+        auto fcB = FgB;
+        auto fcA = FgA;
         if (mouseon) {
             fcR = FgR * 1.2f;
             fcG = FgG * 1.2f;
@@ -407,17 +403,14 @@ namespace GUI {
 
     void trackbar::render() {
 
-        //渲染TrackBar（How can I translate it?）
-        float fcR, fcG, fcB, fcA;
-        float bcR, bcG, bcB, bcA;
-        fcR = FgR;
-        fcG = FgG;
-        fcB = FgB;
-        fcA = FgA;
-        bcR = BgR;
-        bcG = BgG;
-        bcB = BgB;
-        bcA = BgA;
+        auto fcR = FgR;
+        auto fcG = FgG;
+        auto fcB = FgB;
+        auto fcA = FgA;
+        const auto bcR = BgR;
+        const auto bcG = BgG;
+        const auto bcB = BgB;
+        const auto bcA = BgA;
         if (mouseon) {
             fcR = FgR * 1.2f;
             fcG = FgG * 1.2f;
@@ -504,8 +497,8 @@ namespace GUI {
             mouseon = false, focused = false, pressed = false;
             return;
         }
-        static int delt = 0;
-        static int ldel = 0;
+        static auto delt = 0;
+        static auto ldel = 0;
         if (delt > INT_MAX - 2) delt = 0;
         if (ldel > INT_MAX - 2) delt = 0;
         //更新文本框状态
@@ -523,7 +516,7 @@ namespace GUI {
         delt++;
         if (parent->backspacep && (delt - ldel > 5) && text.length() >= 1) {
             ldel = delt;
-            int n = text[text.length() - 1];
+            const int n = text[text.length() - 1];
             if (n > 0 && n <= 127)
                 text = text.substr(0, text.length() - 1);
             else
@@ -533,12 +526,10 @@ namespace GUI {
 
     void textbox::render() {
 
-        //渲染文本框
-        float bcR, bcG, bcB, bcA;
-        bcR = BgR;
-        bcG = BgG;
-        bcB = BgB;
-        bcA = BgA;
+        auto bcR = BgR;
+        auto bcG = BgG;
+        auto bcB = BgB;
+        auto bcA = BgA;
         if (!enabled) {
             bcR = BgR * 0.5f;
             bcG = BgG * 0.5f;
@@ -654,17 +645,14 @@ namespace GUI {
     }
 
     void vscroll::render() {
-        //渲染滚动条
-        float fcR, fcG, fcB, fcA;
-        float bcR, bcG, bcB, bcA;
-        fcR = FgR;
-        fcG = FgG;
-        fcB = FgB;
-        fcA = FgA;
-        bcR = BgR;
-        bcG = BgG;
-        bcB = BgB;
-        bcA = BgA;
+        auto fcR = FgR;
+        auto fcG = FgG;
+        auto fcB = FgB;
+        auto fcA = FgA;
+        const auto bcR = BgR;
+        const auto bcG = BgG;
+        const auto bcB = BgB;
+        const auto bcA = BgA;
         if (mouseon) {
             fcR = FgR * 1.2f;
             fcG = FgG * 1.2f;
@@ -816,9 +804,9 @@ namespace GUI {
 
     void Form::registerControls(int count, controls *c, ...) {
         va_list arg_ptr;
-        controls *cur = c;
+        auto cur = c;
         va_start(arg_ptr, c);
-        for (int i = 0; i < count; i++) {
+        for (auto i = 0; i < count; i++) {
             registerControl(cur);
             cur = va_arg(arg_ptr, controls*);
         }
@@ -827,7 +815,7 @@ namespace GUI {
 
     void Form::update() {
         updated = false;
-        bool lMouseOnTextbox = MouseOnTextbox;
+        const auto lMouseOnTextbox = MouseOnTextbox;
         MouseOnTextbox = false;
 
         if (glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS) {                             //TAB键切换焦点
@@ -906,8 +894,8 @@ namespace GUI {
     void Form::render() {
         if (Background) Background();
 
-        double TimeDelta = timer() - transitionTimer;
-        float transitionAnim = (float) (1.0 - pow(0.8, TimeDelta * 60.0) + pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);
+        const auto TimeDelta = timer() - transitionTimer;
+        const auto transitionAnim = static_cast<float>(1.0 - pow(0.8, TimeDelta * 60.0) + pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
@@ -1026,7 +1014,7 @@ namespace GUI {
         mb = getMouseButton();
         mw = getMouseScroll();
         glfwGetCursorPos(MainWindow, &dmx, &dmy);
-        mx = (int) (dmx / stretch), my = (int) (dmy / stretch);
+        mx = static_cast<int>(dmx / stretch), my = static_cast<int>(dmy / stretch);
         update();
         render();
         glFinish();

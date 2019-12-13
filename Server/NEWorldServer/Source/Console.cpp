@@ -1,5 +1,5 @@
 #include "Console.h"
-#include <time.h>
+#include <ctime>
 
 void Print(std::stringmessage, int level) {
 	switch (level) {

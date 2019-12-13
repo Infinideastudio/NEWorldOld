@@ -1,6 +1,8 @@
 #include "Menus.h"
 #include "Universe/World/World.h"
 #include "GameView.h"
+#include "GUI.h"
+#include "AudioSystem.h"
 
 namespace Menus {
     class CreateWorldMenu : public GUI::Form {

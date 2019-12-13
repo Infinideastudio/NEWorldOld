@@ -1,7 +1,8 @@
 #include "Menus.h"
-#include "TextRenderer.h"
 #include "Renderer.h"
 #include <sstream>
+#include "GUI.h"
+#include "AudioSystem.h"
 
 namespace Menus {
     class RenderOptionsMenu : public GUI::Form {
@@ -10,12 +11,12 @@ namespace Menus {
         GUI::button smoothlightingbtn, fancygrassbtn, mergefacebtn, shaderbtn, vsyncbtn, backbtn;
         GUI::trackbar msaabar;
 
-        void onLoad() {
+        void onLoad() override {
             title = GUI::label(GetStrbyKey("NEWorld.render.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
             smoothlightingbtn = GUI::button("", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
             fancygrassbtn = GUI::button("", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
             mergefacebtn = GUI::button("", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
-            msaabar = GUI::trackbar("", 120, Multisample == 0 ? 0 : (int) (log2(Multisample) - 1) * 30 - 1, 10, 250, 96,
+            msaabar = GUI::trackbar("", 120, Multisample == 0 ? 0 : static_cast<int>(log2(Multisample) - 1) * 30 - 1, 10, 250, 96,
                                     120, 0.5, 0.5, 0.0, 0.0);
             shaderbtn = GUI::button(GetStrbyKey("NEWorld.render.shaders"), -250, -10, 132, 156, 0.5, 0.5, 0.0, 0.0);
             vsyncbtn = GUI::button("", 10, 250, 132, 156, 0.5, 0.5, 0.0, 0.0);
@@ -24,7 +25,7 @@ namespace Menus {
                              &vsyncbtn, &backbtn);
         }
 
-        void onUpdate() {
+        void onUpdate() override {
             glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &GUI::nScreenWidth,
                                        &GUI::nScreenHeight);
             if (smoothlightingbtn.clicked) SmoothLighting = !SmoothLighting;

@@ -1,5 +1,7 @@
 #include "Menus.h"
 #include "Renderer.h"
+#include "GUI.h"
+#include "AudioSystem.h"
 
 namespace Menus {
     class ShaderOptionsMenu : public GUI::Form {
@@ -8,10 +10,10 @@ namespace Menus {
         GUI::button enablebtn, backbtn;
         GUI::trackbar shadowresbar, shadowdistbar;
 
-        void onLoad() {
+        void onLoad() override {
             title = GUI::label(GetStrbyKey("NEWorld.shaders.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
             enablebtn = GUI::button("", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-            shadowresbar = GUI::trackbar("", 120, (int) (log2(Renderer::ShadowRes) - 10) * 40 - 1, 10, 250, 60, 84, 0.5,
+            shadowresbar = GUI::trackbar("", 120, static_cast<int>(log2(Renderer::ShadowRes) - 10) * 40 - 1, 10, 250, 60, 84, 0.5,
                                          0.5, 0.0, 0.0);
             shadowdistbar = GUI::trackbar("", 120, (Renderer::MaxShadowDist - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5,
                                           0.0, 0.0);
@@ -21,13 +23,13 @@ namespace Menus {
             if (!Renderer::AdvancedRender) shadowresbar.enabled = shadowdistbar.enabled = false;
         }
 
-        void onUpdate() {
+        void onUpdate() override {
             if (enablebtn.clicked) {
                 Renderer::AdvancedRender = !Renderer::AdvancedRender;
                 if (Renderer::AdvancedRender) shadowresbar.enabled = shadowdistbar.enabled = true;
                 else shadowresbar.enabled = shadowdistbar.enabled = false;
             }
-            Renderer::ShadowRes = (int) pow(2, (shadowresbar.barpos + 1) / 40 + 10);
+            Renderer::ShadowRes = static_cast<int>(pow(2, (shadowresbar.barpos + 1) / 40 + 10));
             Renderer::MaxShadowDist = (shadowdistbar.barpos + 1) / 4 + 2;
             if (backbtn.clicked) {
                 GUI::PopPage();

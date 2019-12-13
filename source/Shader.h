@@ -11,9 +11,9 @@ public:
 
     Shader(std::string vshPath, std::string fshPath, bool bindLocation, std::set<std::string> defines);
 
-    inline void bind() { glUseProgramObjectARB(shaderProgram); }
+    void bind() { glUseProgramObjectARB(shaderProgram); }
 
-    static inline void unbind() { glUseProgramObjectARB(0); }
+    static void unbind() { glUseProgramObjectARB(0); }
 
     void release();
 

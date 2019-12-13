@@ -2,7 +2,6 @@
 
 #include <utility>
 #include <utility>
-#include "StdInclude.h"
 #include "Definitions.h"
 #include "Globalization.h"
 
@@ -31,22 +30,22 @@ namespace Blocks {
                 canexplode(_canexplode), Hardness(_hardness) {};
 
         //获得方块名称
-        inline std::string getBlockName() const { return Globalization::GetStrbyKey(name); }
+        [[nodiscard]] std::string getBlockName() const { return Globalization::GetStrbyKey(name); }
 
         //是否是固体
-        inline bool isSolid() const { return Solid; }
+        [[nodiscard]] bool isSolid() const { return Solid; }
 
         //是否不透明
-        inline bool isOpaque() const { return Opaque; }
+        [[nodiscard]] bool isOpaque() const { return Opaque; }
 
         //是否半透明
-        inline bool isTranslucent() const { return Translucent; }
+        [[nodiscard]] bool isTranslucent() const { return Translucent; }
 
         //是否可以爆炸
-        inline bool canExplode() const { return canexplode; }
+        [[nodiscard]] bool canExplode() const { return canexplode; }
 
         //获得硬度（数值越大硬度越小，最大100）
-        inline float getHardness() const { return Hardness; }
+        [[nodiscard]] float getHardness() const { return Hardness; }
     };
 
     const SingleBlock blockData[BLOCK_DEF_END + 1] = {

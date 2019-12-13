@@ -4,6 +4,8 @@
 #include "Particles.h"
 #include <algorithm>
 #include <filesystem>
+#include "Player.h"
+#include "Items.h"
 
 namespace World {
 
@@ -62,8 +64,8 @@ namespace World {
     }
 
     Chunk *AddChunk(Int3 vec) {
-        chunkid cid = GetChunkId(vec);  //Chunk ID
-        auto chunkIter = LowerChunkBound(cid);
+        const auto cid = GetChunkId(vec);  //Chunk ID
+        const auto chunkIter = LowerChunkBound(cid);
         if (chunkIter != chunks.end()) {
             if ((*chunkIter)->id == cid) {
                 printf("[Console][Error]");
@@ -71,7 +73,7 @@ namespace World {
                 return *chunkIter;
             }
         }
-        auto newChunk = new Chunk(vec.X, vec.Y, vec.Z, cid);
+        const auto newChunk = new Chunk(vec.X, vec.Y, vec.Z, cid);
         chunks.insert(chunkIter, newChunk);
         cpCacheID = cid;
         cpCachePtr = newChunk;
@@ -82,16 +84,16 @@ namespace World {
     Chunk *GetChunk(Int3 vec) {
         const auto cid = GetChunkId(vec);
         if (cpCacheID == cid && cpCachePtr) return cpCachePtr;
-        Chunk *ret = cpArray.Get(vec);
+        auto ret = cpArray.Get(vec);
         if (ret) {
             cpCacheID = cid;
             cpCachePtr = ret;
             return ret;
         }
         if (!chunks.empty()) {
-            auto iter = LowerChunkBound(cid);
+            const auto iter = LowerChunkBound(cid);
             if (iter != chunks.end()) {
-                auto chunk = *iter;
+                const auto chunk = *iter;
                 if (chunk->id == cid) {
                     ret = chunk;
                     cpCacheID = cid;
@@ -105,8 +107,8 @@ namespace World {
     }
 
     void DeleteChunk(Int3 vec) {
-        auto id = GetChunkId(vec);  //Chunk ID
-        auto chunkIter = LowerChunkBound(id);
+        const auto id = GetChunkId(vec);  //Chunk ID
+        const auto chunkIter = LowerChunkBound(id);
         if (chunkIter != chunks.end()) {
             if ((*chunkIter)->id == id) {
                 const auto chunk = *chunkIter;
@@ -128,9 +130,9 @@ namespace World {
         Hitbox::AABB blockbox;
         std::vector<Hitbox::AABB> Hitboxes;
 
-        for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++) {
-            for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++) {
-                for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++) {
+        for (auto a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++) {
+            for (auto b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++) {
+                for (auto c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++) {
                     if (BlockInfo(GetBlock({a, b, c})).isSolid()) {
                         blockbox.xmin = a - 0.5;
                         blockbox.xmax = a + 0.5;
@@ -148,9 +150,9 @@ namespace World {
 
     bool inWater(const Hitbox::AABB &box) {
         Hitbox::AABB blockbox;
-        for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5); a++) {
-            for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5); b++) {
-                for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5); c++) {
+        for (auto a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5); a++) {
+            for (auto b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5); b++) {
+                for (auto c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5); c++) {
                     if (GetBlock({(a), (b), (c)}) == Blocks::WATER || GetBlock({(a), (b), (c)}) == Blocks::LAVA) {
                         blockbox.xmin = a - 0.5;
                         blockbox.xmax = a + 0.5;
@@ -172,29 +174,28 @@ namespace World {
         if (depth > 4096) return;
         depth++;
 
-        bool updated = blockchanged;
-        int cx = GetChunkPos(x);
-        int cy = GetChunkPos(y);
-        int cz = GetChunkPos(z);
+        auto updated = blockchanged;
+        const auto cx = GetChunkPos(x);
+        const auto cy = GetChunkPos(y);
+        const auto cz = GetChunkPos(z);
 
         if (ChunkOutOfBound({(cx), (cy), (cz)})) return;
 
-        int bx = GetBlockPos(x);
-        int by = GetBlockPos(y);
-        int bz = GetBlockPos(z);
+        const auto bx = GetBlockPos(x);
+        const auto by = GetBlockPos(y);
+        const auto bz = GetBlockPos(z);
 
-        Chunk *cptr = GetChunk({(cx), (cy), (cz)});
+        auto cptr = GetChunk({(cx), (cy), (cz)});
         if (cptr != nullptr) {
             if (cptr == EmptyChunkPtr) {
                 cptr = AddChunk({(cx), (cy), (cz)});
                 cptr->Load();
                 cptr->Empty = false;
             }
-            Brightness oldbrightness = cptr->GetBrightness({(bx), (by), (bz)});
-            bool skylighted = true;
-            int yi, cyi;
-            yi = y + 1;
-            cyi = GetChunkPos(yi);
+            const auto oldbrightness = cptr->GetBrightness({(bx), (by), (bz)});
+            auto skylighted = true;
+            auto yi = y + 1;
+            auto cyi = GetChunkPos(yi);
             if (y < 0) skylighted = false;
             else {
                 while (!ChunkOutOfBound({(cx), (cyi + 1), (cz)}) && ChunkLoaded({(cx), (cyi + 1), (cz)}) &&
@@ -208,9 +209,6 @@ namespace World {
             }
 
             if (!BlockInfo(GetBlock({x, y, z})).isOpaque()) {
-
-                Brightness br;
-                int maxbrightness;
                 Block blks[7] = {0,
                                  (GetBlock({(x), (y), (z + 1)})),    //Front face
                                  (GetBlock({(x), (y), (z - 1)})),    //Back face
@@ -225,11 +223,11 @@ namespace World {
                                       getbrightness(x - 1, y, z),    //Left face
                                       getbrightness(x, y + 1, z),    //Top face
                                       getbrightness(x, y - 1, z)};  //Bottom face
-                maxbrightness = 1;
-                for (int i = 2; i <= 6; i++) {
+                auto maxbrightness = 1;
+                for (auto i = 2; i <= 6; i++) {
                     if (brts[maxbrightness] < brts[i]) maxbrightness = i;
                 }
-                br = brts[maxbrightness];
+                auto br = brts[maxbrightness];
                 if (blks[maxbrightness] == Blocks::WATER) {
                     if (br - 2 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br -= 2;
                 } else {
@@ -348,7 +346,7 @@ namespace World {
     }
 
     bool chunkUpdated(const Int3 vec) {
-        Chunk *i = GetChunk(vec);
+        const auto i = GetChunk(vec);
         if (!i || i == EmptyChunkPtr) return false;
         return i->updated;
     }
@@ -360,26 +358,25 @@ namespace World {
     }
 
     void sortChunkBuildRenderList(int xpos, int ypos, int zpos) {
-        int cxp, cyp, czp, cx, cy, cz, p = 0;
-        int xd, yd, zd, distsqr;
+        auto p = 0;
 
-        cxp = GetChunkPos(xpos);
-        cyp = GetChunkPos(ypos);
-        czp = GetChunkPos(zpos);
+        const auto cxp = GetChunkPos(xpos);
+        const auto cyp = GetChunkPos(ypos);
+        const auto czp = GetChunkPos(zpos);
 
-        for (int ci = 0; ci < chunks.size(); ci++) {
+        for (auto ci = 0; ci < chunks.size(); ci++) {
             if (chunks[ci]->updated) {
-                cx = chunks[ci]->cx;
-                cy = chunks[ci]->cy;
-                cz = chunks[ci]->cz;
+                const auto cx = chunks[ci]->cx;
+                const auto cy = chunks[ci]->cy;
+                const auto cz = chunks[ci]->cz;
                 if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance)) continue;
-                xd = cx * 16 + 7 - xpos;
-                yd = cy * 16 + 7 - ypos;
-                zd = cz * 16 + 7 - zpos;
-                distsqr = xd * xd + yd * yd + zd * zd;
-                for (int i = 0; i < MaxChunkRenders; i++) {
+                const auto xd = cx * 16 + 7 - xpos;
+                const auto yd = cy * 16 + 7 - ypos;
+                const auto zd = cz * 16 + 7 - zpos;
+                const auto distsqr = xd * xd + yd * yd + zd * zd;
+                for (auto i = 0; i < MaxChunkRenders; i++) {
                     if (distsqr < chunkBuildRenderList[i][0] || p <= i) {
-                        for (int j = MaxChunkRenders - 1; j >= i + 1; j--) {
+                        for (auto j = MaxChunkRenders - 1; j >= i + 1; j--) {
                             chunkBuildRenderList[j][0] = chunkBuildRenderList[j - 1][0];
                             chunkBuildRenderList[j][1] = chunkBuildRenderList[j - 1][1];
                         }
@@ -396,17 +393,17 @@ namespace World {
 
     void sortChunkLoadUnloadList(int xpos, int ypos, int zpos) {
 
-        int cxp, cyp, czp, cx, cy, cz, pl = 0, pu = 0, i;
+        int cx, cy, cz, pl = 0, pu = 0, i;
         int xd, yd, zd, distsqr, first, middle, last;
 
-        cxp = GetChunkPos(xpos);
-        cyp = GetChunkPos(ypos);
-        czp = GetChunkPos(zpos);
+        const auto cxp = GetChunkPos(xpos);
+        const auto cyp = GetChunkPos(ypos);
+        const auto czp = GetChunkPos(zpos);
 
-        for (int ci = 0; ci < chunks.size(); ci++) {
-            cx = chunks[ci]->cx;
-            cy = chunks[ci]->cy;
-            cz = chunks[ci]->cz;
+        for (auto& chunk : chunks) {
+            cx = chunk->cx;
+            cy = chunk->cy;
+            cz = chunk->cz;
             if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance + 1)) {
                 xd = cx * 16 + 7 - xpos;
                 yd = cy * 16 + 7 - ypos;
@@ -423,11 +420,11 @@ namespace World {
                 if (first > pl || first >= MaxChunkUnloads) continue;
                 i = first;
 
-                for (int j = MaxChunkUnloads - 1; j > i; j--) {
+                for (auto j = MaxChunkUnloads - 1; j > i; j--) {
                     chunkUnloadList[j].first = chunkUnloadList[j - 1].first;
                     chunkUnloadList[j].second = chunkUnloadList[j - 1].second;
                 }
-                chunkUnloadList[i].first = chunks[ci];
+                chunkUnloadList[i].first = chunk;
                 chunkUnloadList[i].second = distsqr;
 
                 if (pl < MaxChunkUnloads) pl++;
@@ -455,7 +452,7 @@ namespace World {
                         if (first > pu || first >= MaxChunkLoads) continue;
                         i = first;
 
-                        for (int j = MaxChunkLoads - 1; j > i; j--) {
+                        for (auto j = MaxChunkLoads - 1; j > i; j--) {
                             chunkLoadList[j][0] = chunkLoadList[j - 1][0];
                             chunkLoadList[j][1] = chunkLoadList[j - 1][1];
                             chunkLoadList[j][2] = chunkLoadList[j - 1][2];
@@ -475,12 +472,12 @@ namespace World {
 
     void calcVisible(double xpos, double ypos, double zpos, Frustum &frus) {
         Chunk::setRelativeBase(xpos, ypos, zpos, frus);
-        for (int ci = 0; ci != chunks.size(); ci++) chunks[ci]->calcVisible();
+        for (auto ci = 0; ci != chunks.size(); ci++) chunks[ci]->calcVisible();
     }
 
     void saveAllChunks() {
 #ifndef NEWORLD_DEBUG_NO_FILEIO
-        for (int i = 0; i != chunks.size(); i++) {
+        for (auto i = 0; i != chunks.size(); i++) {
             chunks[i]->SaveToFile();
         }
 #endif
@@ -488,7 +485,7 @@ namespace World {
 
     void destroyAllChunks() {
 
-        for (int i = 0; i != chunks.size(); i++) {
+        for (auto i = 0; i != chunks.size(); i++) {
             if (!chunks[i]->Empty) {
                 chunks[i]->destroyRender();
                 chunks[i]->destroy();
@@ -522,13 +519,13 @@ namespace World {
     void buildtree(int x, int y, int z) {
         //对生成条件进行更严格的检测
         //一：正上方五格必须为空气
-        for (int i = y + 1; i < y + 6; i++) {
+        for (auto i = y + 1; i < y + 6; i++) {
             if (GetBlock({(x), (i), (z)}) != Blocks::AIR)return;
         }
         //二：周围五格不能有树
-        for (int ix = x - 4; ix < x + 4; ix++) {
-            for (int iy = y - 4; iy < y + 4; iy++) {
-                for (int iz = z - 4; iz < z + 4; iz++) {
+        for (auto ix = x - 4; ix < x + 4; ix++) {
+            for (auto iy = y - 4; iy < y + 4; iy++) {
+                for (auto iz = z - 4; iz < z + 4; iz++) {
                     if (GetBlock({(ix), (iy), (iz)}) == Blocks::WOOD ||
                         GetBlock({(ix), (iy), (iz)}) == Blocks::LEAF)
                         return;
@@ -539,18 +536,18 @@ namespace World {
         //设置泥土
         SetBlock({(x), (y), (z)}, Blocks::DIRT);
         //设置树干
-        int h = 0;//高度
+        auto h = 0;//高度
         //测算泥土数量
-        int Dirt = 0;//泥土数
-        for (int ix = x - 4; ix < x + 4; ix++) {
-            for (int iy = y - 4; iy < y; iy++) {
-                for (int iz = z - 4; iz < z + 4; iz++) {
+        auto Dirt = 0;//泥土数
+        for (auto ix = x - 4; ix < x + 4; ix++) {
+            for (auto iy = y - 4; iy < y; iy++) {
+                for (auto iz = z - 4; iz < z + 4; iz++) {
                     if (GetBlock({(ix), (iy), (iz)}) == Blocks::DIRT)Dirt++;
                 }
             }
         }
         //测算最高高度
-        for (int i = y + 1; i < y + 16; i++) {
+        for (auto i = y + 1; i < y + 16; i++) {
             if (GetBlock({(x), (i), (z)}) == Blocks::AIR) { h++; }
             else { break; };
         }
@@ -558,17 +555,17 @@ namespace World {
         h = std::min(h, int(Dirt * 15 / 268 * std::max(rnd(), 0.8)));
         if (h < 7)return;
         //开始生成树干
-        for (int i = y + 1; i < y + h + 1; i++) {
+        for (auto i = y + 1; i < y + h + 1; i++) {
             SetBlock({(x), (i), (z)}, Blocks::WOOD);
         }
         //设置树叶及枝杈
         //计算树叶起始生成高度
-        int leafh = int(double(h) * 0.618) + 1;//黄金分割比大法好！！！
-        int distancen2 = int(double((h - leafh + 1) * (h - leafh + 1))) + 1;
-        for (int iy = y + leafh; iy < y + int(double(h) * 1.382) + 2; iy++) {
-            for (int ix = x - 6; ix < x + 6; ix++) {
-                for (int iz = z - 6; iz < z + 6; iz++) {
-                    int distancen = DistanceSquare(ix, iy, iz, x, y + leafh + 1, z);
+        const auto leafh = int(double(h) * 0.618) + 1;//黄金分割比大法好！！！
+        const auto distancen2 = int(double((h - leafh + 1) * (h - leafh + 1))) + 1;
+        for (auto iy = y + leafh; iy < y + int(double(h) * 1.382) + 2; iy++) {
+            for (auto ix = x - 6; ix < x + 6; ix++) {
+                for (auto iz = z - 6; iz < z + 6; iz++) {
+                    const auto distancen = DistanceSquare(ix, iy, iz, x, y + leafh + 1, z);
                     if ((GetBlock({(ix), (iy), (iz)}) == Blocks::AIR) && (distancen < distancen2)) {
                         if ((distancen <= distancen2 / 9) && (rnd() > 0.3)) {
                             SetBlock({(ix), (iy), (iz)}, Blocks::WOOD);//生成枝杈
@@ -582,16 +579,16 @@ namespace World {
     }
 
     void explode(int x, int y, int z, int r, Chunk *c) {
-        double maxdistsqr = r * r;
-        for (int fx = x - r - 1; fx < x + r + 1; fx++) {
-            for (int fy = y - r - 1; fy < y + r + 1; fy++) {
-                for (int fz = z - r - 1; fz < z + r + 1; fz++) {
-                    int distsqr = (fx - x) * (fx - x) + (fy - y) * (fy - y) + (fz - z) * (fz - z);
+        const double maxdistsqr = r * r;
+        for (auto fx = x - r - 1; fx < x + r + 1; fx++) {
+            for (auto fy = y - r - 1; fy < y + r + 1; fy++) {
+                for (auto fz = z - r - 1; fz < z + r + 1; fz++) {
+                    const auto distsqr = (fx - x) * (fx - x) + (fy - y) * (fy - y) + (fz - z) * (fz - z);
                     if (distsqr <= maxdistsqr * 0.75 ||
                         distsqr <= maxdistsqr && rnd() > (distsqr - maxdistsqr * 0.6) / (maxdistsqr * 0.4)) {
-                        Block e = GetBlock({(fx), (fy), (fz)});
+                        const auto e = GetBlock({(fx), (fy), (fz)});
                         if (e == Blocks::AIR) continue;
-                        for (int j = 1; j <= 12; j++) {
+                        for (auto j = 1; j <= 12; j++) {
                             Particles::throwParticle(e,
                                                      float(fx + rnd() - 0.5f), float(fy + rnd() - 0.2f),
                                                      float(fz + rnd() - 0.5f),
@@ -619,7 +616,7 @@ namespace World {
         if (GetBlock({(x), (y), (z)}) != Blocks::LEAF) {
             Player::addItem(GetBlock({(x), (y), (z)}));
         } else pickleaf();
-        for (int j = 1; j <= 10; j++) {
+        for (auto j = 1; j <= 10; j++) {
             Particles::throwParticle(GetBlock({(x), (y), (z)}),
                                      float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
                                      float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),

@@ -1,8 +1,10 @@
 #include "Menus.h"
+#include "GUI.h"
+#include "AudioSystem.h"
 
 namespace Menus {
     int getDotCount(std::string s) {
-        int ret = 0;
+        auto ret = 0;
         for (unsigned int i = 0; i != s.size(); i++)
             if (s[i] == '.') ret++;
         return ret;
@@ -14,7 +16,7 @@ namespace Menus {
         GUI::textbox serveriptb;
         GUI::button runbtn, okbtn, backbtn;
 
-        void onLoad() {
+        void onLoad() override {
             title = GUI::label("==============<  多 人 游 戏  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
             serveriptb = GUI::textbox("输入服务器IP", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
             runbtn = GUI::button("运行服务器（开服）", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
@@ -25,8 +27,8 @@ namespace Menus {
             registerControls(4, &title, &serveriptb, &runbtn, &okbtn, &backbtn);
         }
 
-        void onUpdate() {
-            static bool serveripChanged = false;
+        void onUpdate() override {
+            static auto serveripChanged = false;
 #ifdef NEWORLD_USE_WINAPI
             if (runbtn.clicked) WinExec("NEWorldServer.exe", SW_SHOWDEFAULT);
 #endif

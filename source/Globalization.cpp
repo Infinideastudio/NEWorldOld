@@ -1,5 +1,6 @@
 #include <fstream>
 #include "Globalization.h"
+#include <map>
 
 namespace Globalization {
 
@@ -19,7 +20,7 @@ namespace Globalization {
         f >> Cur_Symbol;
         f.get();
         getline(f, Cur_Name);
-        for (int i = 0; i < count; i++) {
+        for (auto i = 0; i < count; i++) {
             getline(f, Lines[i].str);
         }
         f.close();
@@ -31,7 +32,7 @@ namespace Globalization {
         if (f.bad()) return false;
         f >> count;
         f.get();
-        for (int i = 0; i < count; i++) {
+        for (auto i = 0; i < count; i++) {
             std::string temp;
             getline(f, temp);
             keys[temp] = i;

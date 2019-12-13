@@ -4,15 +4,15 @@ namespace WorldRenderer {
     std::vector<RenderChunk> RenderChunkList;
 
     int ListRenderChunks(int cx, int cy, int cz, int renderdistance, double curtime, bool frustest) {
-        int renderedChunks = 0;
+        auto renderedChunks = 0;
         RenderChunkList.clear();
-        for (int i = 0; i < World::chunks.size(); i++) {
-            if (!World::chunks[i]->renderBuilt || World::chunks[i]->Empty) continue;
-            if (World::chunkInRange(World::chunks[i]->cx, World::chunks[i]->cy, World::chunks[i]->cz,
+        for (auto& chunk : World::chunks) {
+            if (!chunk->renderBuilt || chunk->Empty) continue;
+            if (World::chunkInRange(chunk->cx, chunk->cy, chunk->cz,
                                     cx, cy, cz, renderdistance)) {
-                if (!frustest || World::chunks[i]->visible) {
+                if (!frustest || chunk->visible) {
                     renderedChunks++;
-                    RenderChunkList.emplace_back(World::chunks[i], (curtime - lastupdate) * 30.0);
+                    RenderChunkList.emplace_back(chunk, (curtime - lastupdate) * 30.0);
                 }
             }
         }
@@ -20,22 +20,21 @@ namespace WorldRenderer {
     }
 
     void RenderChunks(double x, double y, double z, int buffer) {
-        int TexcoordCount = MergeFace ? 3 : 2, ColorCount = 3;
+        auto TexcoordCount = MergeFace ? 3 : 2, ColorCount = 3;
         float m[16];
         if (buffer != 3) {
             memset(m, 0, sizeof(m));
             m[0] = m[5] = m[10] = m[15] = 1.0f;
         } else TexcoordCount = ColorCount = 0;
 
-        for (unsigned int i = 0; i < RenderChunkList.size(); i++) {
-            RenderChunk cr = RenderChunkList[i];
+        for (auto cr : RenderChunkList) {
             if (cr.vertexes[0] == 0) continue;
             glPushMatrix();
             glTranslated(cr.cx * 16.0 - x, cr.cy * 16.0 - cr.loadAnim - y, cr.cz * 16.0 - z);
             if (Renderer::AdvancedRender && buffer != 3) {
-                m[12] = cr.cx * 16.0f - (float) x;
-                m[13] = cr.cy * 16.0f - (float) cr.loadAnim - (float) y;
-                m[14] = cr.cz * 16.0f - (float) z;
+                m[12] = cr.cx * 16.0f - static_cast<float>(x);
+                m[13] = cr.cy * 16.0f - static_cast<float>(cr.loadAnim) - static_cast<float>(y);
+                m[14] = cr.cz * 16.0f - static_cast<float>(z);
                 Renderer::shaders[Renderer::ActiveShader].setUniform("TransMat", m);
                 Renderer::RenderBufferDirect(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount, 1);
             } else Renderer::RenderBufferDirect(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount);

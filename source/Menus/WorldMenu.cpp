@@ -5,6 +5,8 @@
 #include "TextRenderer.h"
 #include <fstream>
 #include <filesystem>
+#include "GUI.h"
+#include "AudioSystem.h"
 
 namespace Menus {
     class WorldMenu : public GUI::Form {
@@ -24,7 +26,7 @@ namespace Menus {
         GUI::vscroll vscroll;
         GUI::button enterbtn, deletebtn, backbtn;
 
-        void onLoad() {
+        void onLoad() override {
             title = GUI::label(GetStrbyKey("NEWorld.worlds.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
             vscroll = GUI::vscroll(100, 0, 275, 295, 36, -20, 0.5, 0.5, 0.0, 1.0);
             enterbtn = GUI::button(GetStrbyKey("NEWorld.worlds.enter"), -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
@@ -37,7 +39,7 @@ namespace Menus {
             vscroll.defaultv = true;
         }
 
-        void onUpdate() {
+        void onUpdate() override {
 
             AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
             //EFX::EAXprop = Generic;
@@ -46,7 +48,7 @@ namespace Menus {
             AudioSystem::Update(Pos, false, false, Pos, false, false);
 
 
-            worldcount = (int) worldnames.size();
+            worldcount = static_cast<int>(worldnames.size());
             leftp = static_cast<int>(windowwidth / 2.0 / stretch - 250);
             midp = static_cast<int>(windowwidth / 2.0 / stretch);
             rightp = static_cast<int>(windowwidth / 2.0 / stretch + 250);
@@ -61,7 +63,7 @@ namespace Menus {
             trs = vscroll.barpos * (64 * worldcount + 64) / (downp - 36 - 40);
             mouseon = -1;
             if (mx >= midp - 250 && mx <= midp + 250 && my >= 48 && my <= downp - 72) {
-                for (int i = 0; i < worldcount; i++) {
+                for (auto i = 0; i < worldcount; i++) {
                     if (my >= 48 + i * 64 - trs && my <= 48 + i * 64 + 60 - trs) {
                         if (mb == 1 && mbl == 0) {
                             chosenWorldName = worldnames[i];
@@ -135,12 +137,12 @@ namespace Menus {
             if (backbtn.clicked) GUI::PopPage();
         }
 
-        void onRender() {
+        void onRender() override {
             glEnable(GL_SCISSOR_TEST);
             glScissor(0, windowheight - static_cast<int>((downp - 72) * stretch), windowwidth,
                       static_cast<int>((downp - 72 - 48 + 1) * stretch));
-            glTranslatef(0.0f, (float) -trs, 0.0f);
-            for (int i = 0; i < worldcount; i++) {
+            glTranslatef(0.0f, static_cast<float>(-trs), 0.0f);
+            for (auto i = 0; i < worldcount; i++) {
                 int xmin, xmax, ymin, ymax;
                 xmin = midp - 250, xmax = midp + 250;
                 ymin = 48 + i * 64, ymax = 48 + i * 64 + 60;
@@ -168,7 +170,7 @@ namespace Menus {
                     }
                     glEnable(GL_TEXTURE_2D);
                     glBindTexture(GL_TEXTURE_2D, thumbnails[i]);
-                    if (mouseon == (int) i) glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+                    if (mouseon == static_cast<int>(i)) glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
                     else glColor4f(0.8f, 0.8f, 0.8f, 0.9f);
                     glBegin(GL_QUADS);
                     glTexCoord2f(0.5f - w / 2, 0.5f + h / 2), UIVertex(midp - 250, 48 + i * 64);
@@ -186,7 +188,7 @@ namespace Menus {
                 UIVertex(xmax, ymax);
                 UIVertex(xmax, ymin);
                 glEnd();
-                if (selected == (int) i) {
+                if (selected == static_cast<int>(i)) {
                     glLineWidth(2.0);
                     glColor4f(0.0, 0.0, 0.0, 1.0);
                     glBegin(GL_LINE_LOOP);
@@ -200,7 +202,7 @@ namespace Menus {
                         static_cast<int>(windowwidth / stretch - TextRenderer::getStrWidth(worldnames[i])) / 2,
                         (140 + i * 128) / 2, worldnames[i]);
             }
-            int i = worldcount;
+            const auto i = worldcount;
             glDisable(GL_TEXTURE_2D);
             if (mouseon == i) glColor4f(0.5f, 0.5f, 0.5f, GUI::FgA);
             else

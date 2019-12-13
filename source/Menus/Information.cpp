@@ -1,5 +1,8 @@
 #include "Menus.h"
 #include "TextRenderer.h"
+#include "Definitions.h"
+#include "GUI.h"
+#include "AudioSystem.h"
 
 std::string Str[] = {
         std::string("NEWorld Main Version:") + MAJOR_VERSION + MINOR_VERSION + EXT_VERSION,
@@ -29,7 +32,7 @@ namespace Menus {
         }
 
         void onRender() override {
-            for (int i = 0; i != 13; ++i) {
+            for (auto i = 0; i != 13; ++i) {
                 TextRenderer::renderString(10, 10 + 20 * i, Str[i]);
             }
         }

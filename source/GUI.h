@@ -16,14 +16,14 @@ inline std::string BoolEnabled(bool b) {
 }
 
 template<typename T>
-inline std::string strWithVar(std::string str, T var) {
+std::string strWithVar(std::string str, T var) {
     std::stringstream ss;
     ss << str << var;
     return ss.str();
 }
 
 template<typename T>
-inline std::string Var2Str(T var) {
+std::string Var2Str(T var) {
     std::stringstream ss;
     ss << var;
     return ss.str();
@@ -93,9 +93,9 @@ namespace GUI {
         label(std::string t,
               int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 
-        void update();
+        void update() override;
 
-        void render();
+        void render() override;
     };
 
     class button : public controls {
@@ -109,9 +109,9 @@ namespace GUI {
         button(std::string t,
                int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 
-        void update();
+        void update() override;
 
-        void render();
+        void render() override;
     };
 
     class trackbar : public controls {
@@ -127,9 +127,9 @@ namespace GUI {
         trackbar(std::string t, int w, int s,
                  int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 
-        void update();
+        void update() override;
 
-        void render();
+        void render() override;
     };
 
     class textbox : public controls {
@@ -143,9 +143,9 @@ namespace GUI {
         textbox(std::string t,
                 int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 
-        void update();
+        void update() override;
 
-        void render();
+        void render() override;
     };
 
     class vscroll : public controls {
@@ -160,9 +160,9 @@ namespace GUI {
         vscroll(int h, int s,
                 int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 
-        void update();
+        void update() override;
 
-        void render();
+        void render() override;
     };
 
     class imagebox : public controls {
@@ -176,9 +176,9 @@ namespace GUI {
         imagebox(float _txmin, float _txmax, float _tymin, float _tymax, TextureID iid,
                  int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 
-        void update();
+        void update() override;
 
-        void render();
+        void render() override;
     };
 
     typedef void(*UIVoidF)();

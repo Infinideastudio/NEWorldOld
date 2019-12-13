@@ -1,6 +1,5 @@
 #pragma once
 
-#include "stdinclude.h"
 #include "Universe/World/World.h"
 #include "Renderer.h"
 

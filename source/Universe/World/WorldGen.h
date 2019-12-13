@@ -12,7 +12,7 @@ namespace WorldGen {
     void perlinNoiseInit(int mapseed);
 
     inline double Noise(int x, int y) {
-        long long xx = x + y * 13258953287;
+        auto xx = x + y * 13258953287;
         xx = (xx >> 13) ^ xx;
         return ((xx * (xx * xx * 15731 + 789221) + 1376312589) & 0x7fffffff) / 16777216.0;
     }
@@ -26,6 +26,6 @@ namespace WorldGen {
     double PerlinNoise2D(double x, double y);
 
     inline int getHeight(int x, int y) {
-        return (int) PerlinNoise2D(x / NoiseScaleX + 0.125, y / NoiseScaleZ + 0.125) >> 2;
+        return static_cast<int>(PerlinNoise2D(x / NoiseScaleX + 0.125, y / NoiseScaleZ + 0.125)) >> 2;
     }
 }

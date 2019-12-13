@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Definitions.h"
-#include "Frustum.h"
 #include "Shader.h"
 #include <cstring>
 
@@ -40,15 +39,15 @@ namespace Renderer {
 
     void Attrib1f(float attr);
 
-    inline void Vertex3d(double x, double y, double z) { Vertex3f((float) x, (float) y, (float) z); }
+    inline void Vertex3d(double x, double y, double z) { Vertex3f(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)); }
 
-    inline void TexCoord2d(double x, double y) { TexCoord2f((float) x, (float) y); }
+    inline void TexCoord2d(double x, double y) { TexCoord2f(static_cast<float>(x), static_cast<float>(y)); }
 
-    inline void TexCoord3d(double x, double y, double z) { TexCoord3f((float) x, (float) y, (float) z); }
+    inline void TexCoord3d(double x, double y, double z) { TexCoord3f(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)); }
 
-    inline void Color3d(double r, double g, double b) { Color3f((float) r, (float) g, (float) b); }
+    inline void Color3d(double r, double g, double b) { Color3f(static_cast<float>(r), static_cast<float>(g), static_cast<float>(b)); }
 
-    inline void Color4d(double r, double g, double b, double a) { Color4f((float) r, (float) g, (float) b, (float) a); }
+    inline void Color4d(double r, double g, double b, double a) { Color4f(static_cast<float>(r), static_cast<float>(g), static_cast<float>(b), static_cast<float>(a)); }
 
     inline void Quad(float *geomentry) {
         //这样做貌似提升不了性能吧。。。 --qiaozhanrong

@@ -17,7 +17,7 @@ std::mutex m;
 
 void handle(Net::Socket&& socket) {
 	unsigned int onlineID = 0;
-	bool IDSet = false;
+    auto IDSet = false;
 	m.lock();
 	Print("New connection. Online players:" + toString(players.size()+1));
 	m.unlock();
@@ -39,16 +39,16 @@ void handle(Net::Socket&& socket) {
 		Net::Buffer buffer(len);
 		socket.recv(buffer, Net::BufferConditionExactLength(len));
 
-		int signal = 0;
-		buffer.read((void*)&signal, sizeof(int));
-		char* data = (char*)buffer.getData() + sizeof(int);
+        auto signal = 0;
+		buffer.read(static_cast<void*>(&signal), sizeof(int));
+		char* data = static_cast<char*>(buffer.getData()) + sizeof(int);
 		m.lock();
 		Print("Online players:" + toString(players.size()));
 		switch (signal) {
 		case PLAYER_PACKET_SEND:
 		{
 			//客户端玩家数据更新
-			PlayerPacket* pp = (PlayerPacket*)data;
+			PlayerPacket* pp = static_cast<PlayerPacket*>(data);
 			if (IDSet&&pp->onlineID != onlineID) {
 				Print("The packet is trying to change other player's data. May cheat? (Packet from " + toString(onlineID) + ")", MESSAGE_WARNING);
 				break;
@@ -76,16 +76,16 @@ void handle(Net::Socket&& socket) {
 		{
 			//客户端请求其他玩家的位置
 			if (players.size() == 0) break;
-			PlayerPacket* playersData = new PlayerPacket[players.size()];
-			int i = 0;
+            const auto playersData = new PlayerPacket[players.size()];
+            auto i = 0;
 			for (auto iter = players.begin(); iter != players.end(); ++iter) {
 				playersData[i] = iter->second;
 				i++;
 			}
 			Net::Buffer bufferSend(players.size()*sizeof(PlayerPacket) + sizeof(int));
 			int len = players.size()*sizeof(PlayerPacket);
-			bufferSend.write((void*)&len, sizeof(int));
-			bufferSend.write((void*)playersData, players.size()*sizeof(PlayerPacket));
+			bufferSend.write(static_cast<void*>(&len), sizeof(int));
+			bufferSend.write(static_cast<void*>(playersData), players.size()*sizeof(PlayerPacket));
 			socket.send(bufferSend);
 			break;
 		}

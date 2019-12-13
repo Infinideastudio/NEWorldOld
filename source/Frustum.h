@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Hitbox.h"
-
 class Frustum {
 private:
     float frus[24], clip[16];
@@ -14,13 +12,13 @@ public:
         float xmax, ymax, zmax;
     };
 
-    inline float *getProjMatrix() { return proj; }
+    float *getProjMatrix() { return proj; }
 
-    inline float *getModlMatrix() { return modl; }
+    float *getModlMatrix() { return modl; }
 
     void LoadIdentity();
 
-    inline void MultMatrixTo(float *sum, float *a, float *b) {
+    void MultMatrixTo(float *sum, float *a, float *b) {
         sum[0] = a[0] * b[0] + a[1] * b[4] + a[2] * b[8] + a[3] * b[12];
         sum[1] = a[0] * b[1] + a[1] * b[5] + a[2] * b[9] + a[3] * b[13];
         sum[2] = a[0] * b[2] + a[1] * b[6] + a[2] * b[10] + a[3] * b[14];

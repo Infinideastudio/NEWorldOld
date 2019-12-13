@@ -9,8 +9,7 @@ namespace Particles {
 
     void update(Particle &ptc) {
 
-        double dx, dy, dz;
-        float psz = ptc.psize;
+        const auto psz = ptc.psize;
 
         ptc.hb.xmin = ptc.xpos - psz;
         ptc.hb.xmax = ptc.xpos + psz;
@@ -19,21 +18,21 @@ namespace Particles {
         ptc.hb.zmin = ptc.zpos - psz;
         ptc.hb.zmax = ptc.zpos + psz;
 
-        dx = ptc.xsp;
-        dy = ptc.ysp;
-        dz = ptc.zsp;
+        double dx = ptc.xsp;
+        double dy = ptc.ysp;
+        double dz = ptc.zsp;
 
-        std::vector<Hitbox::AABB> Hitboxes = World::getHitboxes(Hitbox::Expand(ptc.hb, dx, dy, dz));
-        int hitnum = Hitboxes.size();
-        for (int i = 0; i < hitnum; i++) {
+        auto Hitboxes = World::getHitboxes(Hitbox::Expand(ptc.hb, dx, dy, dz));
+        const int hitnum = Hitboxes.size();
+        for (auto i = 0; i < hitnum; i++) {
             dy = Hitbox::MaxMoveOnYclip(ptc.hb, Hitboxes[i], dy);
         }
         Hitbox::Move(ptc.hb, 0.0, dy, 0.0);
-        for (int i = 0; i < hitnum; i++) {
+        for (auto i = 0; i < hitnum; i++) {
             dx = Hitbox::MaxMoveOnXclip(ptc.hb, Hitboxes[i], dx);
         }
         Hitbox::Move(ptc.hb, dx, 0.0, 0.0);
-        for (int i = 0; i < hitnum; i++) {
+        for (auto i = 0; i < hitnum; i++) {
             dz = Hitbox::MaxMoveOnZclip(ptc.hb, Hitboxes[i], dz);
         }
         Hitbox::Move(ptc.hb, 0.0, 0.0, dz);
@@ -65,18 +64,18 @@ namespace Particles {
     void render(Particle &ptc) {
         //if (!Frustum::aabbInFrustum(ptc.hb)) return;
         ptcsrendered++;
-        float size = (float) BLOCKTEXTURE_UNITSIZE / BLOCKTEXTURE_SIZE * (ptc.psize <= 1.0f ? ptc.psize : 1.0f);
-        float col = World::getbrightness(RoundInt(ptc.xpos), RoundInt(ptc.ypos), RoundInt(ptc.zpos)) /
-                    (float) World::BRIGHTNESSMAX;
-        float col1 = col * 0.5f;
-        float col2 = col * 0.7f;
-        float tcx = ptc.tcX;
-        float tcy = ptc.tcY;
-        float psize = ptc.psize;
-        double palpha = (ptc.lasts < 30 ? ptc.lasts / 30.0 : 1.0);
-        double xpos = ptc.xpos - pxpos;
-        double ypos = ptc.ypos - pypos;
-        double zpos = ptc.zpos - pzpos;
+        const auto size = static_cast<float>(BLOCKTEXTURE_UNITSIZE) / BLOCKTEXTURE_SIZE * (ptc.psize <= 1.0f ? ptc.psize : 1.0f);
+        const auto col = World::getbrightness(RoundInt(ptc.xpos), RoundInt(ptc.ypos), RoundInt(ptc.zpos)) /
+                    static_cast<float>(World::BRIGHTNESSMAX);
+        const auto col1 = col * 0.5f;
+        const auto col2 = col * 0.7f;
+        const auto tcx = ptc.tcX;
+        const auto tcy = ptc.tcY;
+        const auto psize = ptc.psize;
+        const auto palpha = (ptc.lasts < 30 ? ptc.lasts / 30.0 : 1.0);
+        const auto xpos = ptc.xpos - pxpos;
+        const auto ypos = ptc.ypos - pypos;
+        const auto zpos = ptc.zpos - pzpos;
 
         glBegin(GL_QUADS);
         glColor4d(col1, col1, col1, palpha);
@@ -153,8 +152,8 @@ namespace Particles {
     }
 
     void throwParticle(Block pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last) {
-        float tcX1 = (float) Textures::getTexcoordX(pt, 2);
-        float tcY1 = (float) Textures::getTexcoordY(pt, 2);
+        const auto tcX1 = static_cast<float>(Textures::getTexcoordX(pt, 2));
+        const auto tcY1 = static_cast<float>(Textures::getTexcoordY(pt, 2));
         Particle ptc;
         ptc.exist = true;
         ptc.xpos = x;
@@ -171,8 +170,8 @@ namespace Particles {
         ptc.hb.zmin = z - psz;
         ptc.hb.zmax = z + psz;
         ptc.lasts = last;
-        ptc.tcX = tcX1 + (float) rnd() * ((float) BLOCKTEXTURE_UNITSIZE / BLOCKTEXTURE_SIZE) * (1.0f - psz);
-        ptc.tcY = tcY1 + (float) rnd() * ((float) BLOCKTEXTURE_UNITSIZE / BLOCKTEXTURE_SIZE) * (1.0f - psz);
+        ptc.tcX = tcX1 + static_cast<float>(rnd()) * (static_cast<float>(BLOCKTEXTURE_UNITSIZE) / BLOCKTEXTURE_SIZE) * (1.0f - psz);
+        ptc.tcY = tcY1 + static_cast<float>(rnd()) * (static_cast<float>(BLOCKTEXTURE_UNITSIZE) / BLOCKTEXTURE_SIZE) * (1.0f - psz);
         ptcs.push_back(ptc);
     }
 }

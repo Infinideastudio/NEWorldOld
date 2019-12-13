@@ -7,8 +7,8 @@ namespace ChunkRenderer {
 
     void renderblock(int x, int y, int z, World::Chunk *chunkptr) {
         double colors, color1, color2, color3, color4, tcx, tcy, size, EPS = 0.0;
-        int cx = chunkptr->cx, cy = chunkptr->cy, cz = chunkptr->cz;
-        int gx = cx * 16 + x, gy = cy * 16 + y, gz = cz * 16 + z;
+        auto cx = chunkptr->cx, cy = chunkptr->cy, cz = chunkptr->cz;
+        auto gx = cx * 16 + x, gy = cy * 16 + y, gz = cz * 16 + z;
         Block blk[7] = {(chunkptr->GetBlock({x, y, z})),
                         z < 15 ? chunkptr->GetBlock({(x), (y), (z + 1)}) : World::GetBlock({(gx), (gy), (gz + 1)}, Blocks::ROCK),
                         z > 0 ? chunkptr->GetBlock({(x), (y), (z - 1)}) : World::GetBlock({(gx), (gy), (gz - 1)}, Blocks::ROCK),
@@ -368,11 +368,11 @@ namespace ChunkRenderer {
     */
 
     void RenderPrimitive(QuadPrimitive &p) {
-        float col0 = (float) p.col0 * 0.25f / World::BRIGHTNESSMAX;
-        float col1 = (float) p.col1 * 0.25f / World::BRIGHTNESSMAX;
-        float col2 = (float) p.col2 * 0.25f / World::BRIGHTNESSMAX;
-        float col3 = (float) p.col3 * 0.25f / World::BRIGHTNESSMAX;
-        int x = p.x, y = p.y, z = p.z, length = p.length;
+        auto col0 = static_cast<float>(p.col0) * 0.25f / World::BRIGHTNESSMAX;
+        auto col1 = static_cast<float>(p.col1) * 0.25f / World::BRIGHTNESSMAX;
+        auto col2 = static_cast<float>(p.col2) * 0.25f / World::BRIGHTNESSMAX;
+        auto col3 = static_cast<float>(p.col3) * 0.25f / World::BRIGHTNESSMAX;
+        const auto x = p.x, y = p.y, z = p.z, length = p.length;
 #ifdef NERDMODE1
         Renderer::TexCoord3d(0.0, 0.0, (p.tex + 0.5) / 64.0);
         if (p.direction == 0) {
@@ -538,7 +538,7 @@ namespace ChunkRenderer {
     }
 
     void RenderPrimitive_Depth(QuadPrimitive_Depth &p) {
-        int x = p.x, y = p.y, z = p.z, length = p.length;
+        const auto x = p.x, y = p.y, z = p.z, length = p.length;
         if (p.direction == 0) {
             Renderer::Vertex3d(x + 0.5, y - 0.5, z - 0.5);
             Renderer::Vertex3d(x + 0.5, y + 0.5, z - 0.5);
@@ -578,7 +578,7 @@ namespace ChunkRenderer {
         for (x = 0; x < 16; x++) {
             for (y = 0; y < 16; y++) {
                 for (z = 0; z < 16; z++) {
-                    Block curr = c->GetBlock({x, y, z});
+                    const auto curr = c->GetBlock({x, y, z});
                     if (curr == Blocks::AIR) continue;
                     if (!BlockInfo(curr).isTranslucent()) renderblock(x, y, z, c);
                 }
@@ -589,7 +589,7 @@ namespace ChunkRenderer {
         for (x = 0; x < 16; x++) {
             for (y = 0; y < 16; y++) {
                 for (z = 0; z < 16; z++) {
-                    Block curr = c->GetBlock({x, y, z});
+                    const auto curr = c->GetBlock({x, y, z});
                     if (curr == Blocks::AIR) continue;
                     if (BlockInfo(curr).isTranslucent() && BlockInfo(curr).isSolid()) renderblock(x, y, z, c);
                 }
@@ -600,7 +600,7 @@ namespace ChunkRenderer {
         for (x = 0; x < 16; x++) {
             for (y = 0; y < 16; y++) {
                 for (z = 0; z < 16; z++) {
-                    Block curr = c->GetBlock({x, y, z});
+                    const auto curr = c->GetBlock({x, y, z});
                     if (curr == Blocks::AIR) continue;
                     if (!BlockInfo(curr).isSolid()) renderblock(x, y, z, c);
                 }
@@ -614,29 +614,29 @@ namespace ChunkRenderer {
         //话说我注释一会中文一会英文是不是有点奇怪。。。
         // -- qiaozhanrong
 
-        int cx = c->cx, cy = c->cy, cz = c->cz;
-        int gx = 0, gy = 0, gz = 0;
+        auto cx = c->cx, cy = c->cy, cz = c->cz;
+        auto gx = 0, gy = 0, gz = 0;
         int x = 0, y = 0, z = 0, cur_l_mx, br;
-        int col0 = 0, col1 = 0, col2 = 0, col3 = 0;
+        auto col0 = 0, col1 = 0, col2 = 0, col3 = 0;
         QuadPrimitive cur;
         Block bl, neighbour;
         ubyte face = 0;
         TextureID tex;
-        bool valid = false;
-        for (int steps = 0; steps < 3; steps++) {
+        auto valid = false;
+        for (auto steps = 0; steps < 3; steps++) {
             cur = QuadPrimitive();
             cur_l_mx = bl = neighbour = 0;
             //Linear merge
             if (Renderer::AdvancedRender) Renderer::Init(3, 3, 1); else Renderer::Init(3, 3);
-            for (int d = 0; d < 6; d++) {
+            for (auto d = 0; d < 6; d++) {
                 cur.direction = d;
                 if (d == 2) face = 1;
                 else if (d == 3) face = 3;
                 else face = 2;
                 //Render current face
-                for (int i = 0; i < 16; i++)
-                    for (int j = 0; j < 16; j++) {
-                        for (int k = 0; k < 16; k++) {
+                for (auto i = 0; i < 16; i++)
+                    for (auto j = 0; j < 16; j++) {
+                        for (auto k = 0; k < 16; k++) {
                             //Get position & brightness
                             if (d == 0) { //x+
                                 x = i, y = j, z = k;
@@ -777,7 +777,7 @@ namespace ChunkRenderer {
                                 }
                             }
                             //Render
-                            const Blocks::SingleBlock &info = BlockInfo(bl);
+                            const auto& info = BlockInfo(bl);
                             if (bl == Blocks::AIR || bl == neighbour && bl != Blocks::LEAF ||
                                 BlockInfo(neighbour).isOpaque() ||
                                 steps == 0 && info.isTranslucent() ||
@@ -838,20 +838,19 @@ namespace ChunkRenderer {
     }
 
     void RenderDepthModel(World::Chunk *c) {
-        int cx = c->cx, cy = c->cy, cz = c->cz;
-        int x = 0, y = 0, z = 0;
+        const auto cx = c->cx, cy = c->cy, cz = c->cz;
+        auto x = 0, y = 0, z = 0;
         QuadPrimitive_Depth cur;
-        int cur_l_mx;
         Block bl, neighbour;
-        bool valid = false;
-        cur_l_mx = bl = neighbour = 0;
+        auto valid = false;
+        int cur_l_mx = bl = neighbour = 0;
         //Linear merge for depth model
         Renderer::Init(0, 0);
-        for (int d = 0; d < 6; d++) {
+        for (auto d = 0; d < 6; d++) {
             cur.direction = d;
-            for (int i = 0; i < 16; i++)
-                for (int j = 0; j < 16; j++) {
-                    for (int k = 0; k < 16; k++) {
+            for (auto i = 0; i < 16; i++)
+                for (auto j = 0; j < 16; j++) {
+                    for (auto k = 0; k < 16; k++) {
                         //Get position
                         if (d < 2) x = i, y = j, z = k;
                         else if (d < 4) x = i, y = j, z = k;
@@ -859,8 +858,8 @@ namespace ChunkRenderer {
                         //Get block ID
                         bl = c->GetBlock({x, y, z});
                         //Get neighbour ID
-                        int xx = x + delta[d][0], yy = y + delta[d][1], zz = z + delta[d][2];
-                        int gx = cx * 16 + xx, gy = cy * 16 + yy, gz = cz * 16 + zz;
+                        const auto xx = x + delta[d][0], yy = y + delta[d][1], zz = z + delta[d][2];
+                        const auto gx = cx * 16 + xx, gy = cy * 16 + yy, gz = cz * 16 + zz;
                         if (xx < 0 || xx >= 16 || yy < 0 || yy >= 16 || zz < 0 || zz >= 16) {
                             neighbour = World::GetBlock({(gx), (gy), (gz)});
                         }

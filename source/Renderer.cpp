@@ -1,6 +1,7 @@
 #include "Renderer.h"
 #include "Shader.h"
 #include <algorithm>
+#include "Frustum.h"
 
 namespace Renderer {
 
@@ -123,26 +124,26 @@ namespace Renderer {
     }
 
     void BatchStart(int tc, int cc, int ac) noexcept {
-        int cnt = tc + cc + 3;
+        auto cnt = tc + cc + 3;
         if (!AdvancedRender || ac == 0) {
             if (tc != 0) {
                 if (cc != 0) {
-                    glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float *) 0);
+                    glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), static_cast<float *>(0));
                     glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float *) (tc * sizeof(float)));
                     glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float *) ((tc + cc) * sizeof(float)));
                 } else {
-                    glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float *) 0);
+                    glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), static_cast<float *>(0));
                     glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float *) (tc * sizeof(float)));
                 }
             } else {
                 if (cc != 0) {
-                    glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float *) 0);
+                    glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), static_cast<float *>(0));
                     glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float *) (cc * sizeof(float)));
-                } else glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float *) 0);
+                } else glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), static_cast<float *>(0));
             }
         } else {
             cnt += ac;
-            glVertexAttribPointer(ShaderAttribLoc, ac, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float *) 0);
+            glVertexAttribPointer(ShaderAttribLoc, ac, GL_FLOAT, GL_FALSE, cnt * sizeof(float), static_cast<float *>(0));
             glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float *) (ac * sizeof(float)));
             glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float *) ((ac + tc) * sizeof(float)));
             glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float *) ((ac + tc + cc) * sizeof(float)));
@@ -210,7 +211,7 @@ namespace Renderer {
         }
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-        for (int i = 0; i < 2; i++) {
+        for (auto i = 0; i < 2; i++) {
             shaders[i].bind();
             if (i == 0) shaders[i].setUniform("Tex", 0);
             else shaders[i].setUniform("Tex3D", 0);
@@ -232,12 +233,12 @@ namespace Renderer {
         shadowdist = std::min(MaxShadowDist, viewdistance);
 
         //Enable shader
-        Shader &shader = shaders[MergeFace ? MergeFaceShader : MainShader];
+        auto& shader = shaders[MergeFace ? MergeFaceShader : MainShader];
         bindShader(MergeFace ? MergeFaceShader : MainShader);
 
         //Calc matrix
-        float scale = 16.0f * sqrt(3.0f);
-        float length = shadowdist * scale;
+        const auto scale = 16.0f * sqrt(3.0f);
+        const auto length = shadowdist * scale;
         Frustum frus;
         frus.LoadIdentity();
         frus.SetOrtho(-length, length, -length, length, -length, length);

@@ -111,7 +111,7 @@ struct Vec3 {
 
     constexpr Vec3 operator-() const noexcept { return {-X, -Y, -Z}; }
 
-    constexpr T LengthSquared() const noexcept { return X * X + Y * Y + Z * Z; }
+    [[nodiscard]] constexpr T LengthSquared() const noexcept { return X * X + Y * Y + Z * Z; }
 
     constexpr bool operator==(const Vec3 &r) const noexcept { return (X == r.X) && (Y == r.Y) && (Z == r.Z); }
 
@@ -123,9 +123,9 @@ struct Vec3 {
 
     constexpr bool operator>=(const Vec3 &r) const noexcept { return LengthSquared() >= r.LengthSquared(); }
 
-    constexpr T Dot(const Vec3 &r) const noexcept { return X * r.X + Y * r.Y + Z * r.Z; }
+    [[nodiscard]] constexpr T Dot(const Vec3 &r) const noexcept { return X * r.X + Y * r.Y + Z * r.Z; }
 
-    T Length() const noexcept { return std::sqrt(LengthSquared()); }
+    [[nodiscard]] T Length() const noexcept { return std::sqrt(LengthSquared()); }
 
     void Normalize() noexcept { (*this) /= Length(); }
 };

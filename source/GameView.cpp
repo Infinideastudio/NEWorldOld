@@ -148,7 +148,7 @@ public:
         //bool chunkupdated = false;
 
         //用于音效更新
-        bool BlockClick = false;
+        auto BlockClick = false;
         ALfloat BlockPos[3];
 
         Player::BlockInHand = Player::inventory[3][Player::indexInHand];
@@ -181,27 +181,23 @@ public:
         if (FirstUpdateThisFrame) {
             World::sortChunkLoadUnloadList(RoundInt(Player::Pos.X), RoundInt(Player::Pos.Y), RoundInt(Player::Pos.Z));
 
-            //卸载区块(Unload chunks)
-            int sumUnload;
-            sumUnload = World::chunkUnloads > World::MaxChunkUnloads ? World::MaxChunkUnloads : World::chunkUnloads;
-            for (int i = 0; i < sumUnload; i++) {
-                World::Chunk *cp = World::chunkUnloadList[i].first;
+            const auto sumUnload = World::chunkUnloads > World::MaxChunkUnloads ? World::MaxChunkUnloads : World::chunkUnloads;
+            for (auto i = 0; i < sumUnload; i++) {
+                auto cp = World::chunkUnloadList[i].first;
 #ifdef NEWORLD_DEBUG
                 if (cp == nullptr || cp == World::EmptyChunkPtr) DebugError("Unload error!");
 #endif
-                int cx = cp->cx, cy = cp->cy, cz = cp->cz;
+                const auto cx = cp->cx, cy = cp->cy, cz = cp->cz;
                 cp->Unload();
                 World::DeleteChunk({(cx), (cy), (cz)});
             }
 
-            //加载区块(Load chunks)
-            int sumLoad;
-            sumLoad = World::chunkLoads > World::MaxChunkLoads ? World::MaxChunkLoads : World::chunkLoads;
-            for (int i = 0; i < sumLoad; i++) {
-                int cx = World::chunkLoadList[i][1];
-                int cy = World::chunkLoadList[i][2];
-                int cz = World::chunkLoadList[i][3];
-                World::Chunk *c = World::AddChunk({(cx), (cy), (cz)});
+            const auto sumLoad = World::chunkLoads > World::MaxChunkLoads ? World::MaxChunkLoads : World::chunkLoads;
+            for (auto i = 0; i < sumLoad; i++) {
+                const auto cx = World::chunkLoadList[i][1];
+                const auto cy = World::chunkLoadList[i][2];
+                const auto cz = World::chunkLoadList[i][3];
+                auto c = World::AddChunk({(cx), (cy), (cz)});
                 c->Load(false);
                 if (c->Empty) {
                     c->Unload();
@@ -212,25 +208,23 @@ public:
         }
 
         //加载动画
-        for (int i = 0; i < World::chunks.size(); i++) {
-            World::Chunk *cp = World::chunks[i];
+        for (auto cp : World::chunks) {
             if (cp->loadAnim <= 0.3f) cp->loadAnim = 0.0f;
             else cp->loadAnim *= 0.6f;
         }
 
         //随机状态更新
-        for (int i = 0; i < World::chunks.size(); i++) {
-            int x, y, z, gx, gy, gz;
-            int cx = World::chunks[i]->cx;
-            int cy = World::chunks[i]->cy;
-            int cz = World::chunks[i]->cz;
-            x = int(rnd() * 16);
-            gx = x + cx * 16;
-            y = int(rnd() * 16);
-            gy = y + cy * 16;
-            z = int(rnd() * 16);
-            gz = z + cz * 16;
-            if (World::chunks[i]->GetBlock({x, y, z}) == Blocks::DIRT &&
+        for (auto& chunk : World::chunks) {
+            const auto cx = chunk->cx;
+            const auto cy = chunk->cy;
+            const auto cz = chunk->cz;
+            const auto x = int(rnd() * 16);
+            const auto gx = x + cx * 16;
+            const auto y = int(rnd() * 16);
+            const auto gy = y + cy * 16;
+            const auto z = int(rnd() * 16);
+            const auto gz = z + cz * 16;
+            if (chunk->GetBlock({x, y, z}) == Blocks::DIRT &&
                 World::GetBlock({(gx), (gy + 1), (gz)}, Blocks::NONEMPTY, nullptr) == Blocks::AIR && (
                         World::GetBlock({(gx + 1), (gy), (gz)}) == Blocks::GRASS ||
                         World::GetBlock({(gx - 1), (gy), (gz)}) == Blocks::GRASS ||
@@ -245,23 +239,21 @@ public:
                         World::GetBlock({(gx), (gy - 1), (gz + 1)}) == Blocks::GRASS ||
                         World::GetBlock({(gx), (gy - 1), (gz - 1)}) == Blocks::GRASS)) {
                 //长草
-                World::chunks[i]->SetBlock({(x), (y), (z)}, Blocks::GRASS);
+                chunk->SetBlock({(x), (y), (z)}, Blocks::GRASS);
                 World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
                 World::setChunkUpdated(cx, cy, cz, true);
             }
-            if (World::chunks[i]->GetBlock({x, y, z}) == Blocks::GRASS &&
+            if (chunk->GetBlock({x, y, z}) == Blocks::GRASS &&
                 World::GetBlock({(gx), (gy + 1), (gz)}) != Blocks::AIR) {
                 //草被覆盖
-                World::chunks[i]->SetBlock({(x), (y), (z)}, Blocks::DIRT);
+                chunk->SetBlock({(x), (y), (z)}, Blocks::DIRT);
                 World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
             }
         }
 
-        //判断选中的方块
-        double lx, ly, lz, lxl, lyl, lzl;
-        lx = Player::Pos.X;
-        ly = Player::Pos.Y + Player::height + Player::heightExt;
-        lz = Player::Pos.Z;
+        auto lx = Player::Pos.X;
+        auto ly = Player::Pos.Y + Player::height + Player::heightExt;
+        auto lz = Player::Pos.Z;
 
         sel = false;
         selx = sely = selz = selbx = selby = selbz = selcx = selcy = selcz = selb = selbr = 0;
@@ -269,27 +261,26 @@ public:
         if (!bagOpened) {
 
             //从玩家位置发射一条线段
-            for (int i = 0; i < selectPrecision * selectDistance; i++) {
-                lxl = lx;
-                lyl = ly;
-                lzl = lz;
+            for (auto i = 0; i < selectPrecision * selectDistance; i++) {
+                const auto lxl = lx;
+                const auto lyl = ly;
+                const auto lzl = lz;
 
                 //线段延伸
                 lx += sin(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) /
-                      (double) selectPrecision;
-                ly += cos(M_PI / 180 * (Player::lookupdown + 90)) / (double) selectPrecision;
+                      static_cast<double>(selectPrecision);
+                ly += cos(M_PI / 180 * (Player::lookupdown + 90)) / static_cast<double>(selectPrecision);
                 lz += cos(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) /
-                      (double) selectPrecision;
+                      static_cast<double>(selectPrecision);
 
                 //碰到方块
                 if (BlockInfo(World::GetBlock({RoundInt(lx), RoundInt(ly), RoundInt(lz)})).isSolid()) {
-                    int x, y, z, xl, yl, zl;
-                    x = RoundInt(lx);
-                    y = RoundInt(ly);
-                    z = RoundInt(lz);
-                    xl = RoundInt(lxl);
-                    yl = RoundInt(lyl);
-                    zl = RoundInt(lzl);
+                    const auto x = RoundInt(lx);
+                    const auto y = RoundInt(ly);
+                    const auto z = RoundInt(lz);
+                    const auto xl = RoundInt(lxl);
+                    const auto yl = RoundInt(lyl);
+                    const auto zl = RoundInt(lzl);
 
                     selx = x;
                     sely = y;
@@ -305,7 +296,7 @@ public:
                     selbz = World::GetBlockPos(z);
 
                     if (!World::ChunkOutOfBound({(selcx), (selcy), (selcz)})) {
-                        World::Chunk *cp = World::GetChunk({(selcx), (selcy), (selcz)});
+                        auto cp = World::GetChunk({(selcx), (selcy), (selcz)});
                         if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
                         selb = cp->GetBlock({(selbx), (selby), (selbz)});
                     }
@@ -338,7 +329,7 @@ public:
                         }
 
                         if (seldes >= 100.0) {
-                            for (int j = 1; j <= 25; j++) {
+                            for (auto j = 1; j <= 25; j++) {
                                 Particles::throwParticle(selb,
                                                          float(x + rnd() - 0.5f), float(y + rnd() - 0.2f),
                                                          float(z + rnd() - 0.5f),
@@ -451,7 +442,7 @@ public:
                 }
 
                 if (!Player::Flying && !Player::CrossWall) {
-                    double horizontalSpeed = sqrt(Player::xa * Player::xa + Player::za * Player::za);
+                    const auto horizontalSpeed = sqrt(Player::xa * Player::xa + Player::za * Player::za);
                     if (horizontalSpeed > Player::speed && !Player::glidingNow) {
                         Player::xa *= Player::speed / horizontalSpeed;
                         Player::za *= Player::speed / horizontalSpeed;
@@ -487,9 +478,9 @@ public:
                 //切换方块
                 if (isPressed(GLFW_KEY_Z) && Player::indexInHand > 0) Player::indexInHand--;
                 if (isPressed(GLFW_KEY_X) && Player::indexInHand < 9) Player::indexInHand++;
-                if ((int) Player::indexInHand + (mwl - mw) < 0)Player::indexInHand = 0;
-                else if ((int) Player::indexInHand + (mwl - mw) > 9)Player::indexInHand = 9;
-                else Player::indexInHand += (char) (mwl - mw);
+                if (static_cast<int>(Player::indexInHand) + (mwl - mw) < 0)Player::indexInHand = 0;
+                else if (static_cast<int>(Player::indexInHand) + (mwl - mw) > 9)Player::indexInHand = 9;
+                else Player::indexInHand += static_cast<char>(mwl - mw);
                 mwl = mw;
 
                 //起跳！
@@ -523,7 +514,7 @@ public:
                 }
 
                 if (glfwGetKey(MainWindow, GLFW_KEY_K) && Player::Glide && !Player::OnGround && !Player::glidingNow) {
-                    double h = Player::Pos.Y + Player::height + Player::heightExt;
+                    const auto h = Player::Pos.Y + Player::height + Player::heightExt;
                     Player::glidingEnergy = g * h;
                     Player::glidingSpeed = 0;
                     Player::glidingNow = true;
@@ -563,7 +554,7 @@ public:
                 chatmode = !chatmode;
                 if (!chatword.empty()) { //指令的执行，或发出聊天文本
                     if (chatword.substr(0, 1) == "/") { //指令
-                        std::vector<std::string> command = split(chatword, " ");
+                        const auto command = split(chatword, " ");
                         if (!doCommand(command)) { //执行失败
                             DebugWarning("Fail to execute the command: " + chatword);
                             chatMessages.push_back("Fail to execute the command: " + chatword);
@@ -576,7 +567,7 @@ public:
             }
             if (chatmode) {
                 if (isPressed(GLFW_KEY_BACKSPACE) && chatword.length() > 0) {
-                    int n = chatword[chatword.length() - 1];
+                    const int n = chatword[chatword.length() - 1];
                     if (n > 0 && n <= 127)
                         chatword = chatword.substr(0, chatword.length() - 1);
                     else
@@ -648,9 +639,9 @@ public:
         //}
 
         if (Player::glidingNow) {
-            double &E = Player::glidingEnergy;
-            double oldh = Player::Pos.Y + Player::height + Player::heightExt + Player::ya;
-            double h = oldh;
+            auto& E = Player::glidingEnergy;
+            const auto oldh = Player::Pos.Y + Player::height + Player::heightExt + Player::ya;
+            auto h = oldh;
             if (E - Player::glidingMinimumSpeed < h * g) {  //小于最小速度
                 h = (E - Player::glidingMinimumSpeed) / g;
             }
@@ -661,13 +652,13 @@ public:
 
 
         //音效更新
-        int Run = 0;
+        auto Run = 0;
         if (WP)Run = Player::Running ? 2 : 1;
         ALfloat PlayerPos[3];
         PlayerPos[0] = Player::Pos.X;
         PlayerPos[1] = Player::Pos.Y;
         PlayerPos[2] = Player::Pos.Z;
-        bool Fall = Player::OnGround
+        const auto Fall = Player::OnGround
                     && (!Player::inWater)
                     && (Player::jump == 0);
         //更新声速
@@ -706,7 +697,7 @@ public:
     }
 
     static void debugText(std::string s, bool init) {
-        static int pos = 0;
+        static auto pos = 0;
         if (init) {
             pos = 0;
             return;
@@ -717,10 +708,9 @@ public:
 
     void Grender() {
         //画场景
-        double curtime = timer();
+        const auto curtime = timer();
         double TimeDelta;
-        double xpos, ypos, zpos;
-        int renderedChunk = 0;
+        auto renderedChunk = 0;
 
         //检测帧速率
         if (timer() - fctime >= 1.0) {
@@ -735,13 +725,13 @@ public:
         if (Player::Running) {
             if (FOVyExt < 9.8) {
                 TimeDelta = curtime - SpeedupAnimTimer;
-                FOVyExt = 10.0f - (10.0f - FOVyExt) * (float) pow(0.8, TimeDelta * 30);
+                FOVyExt = 10.0f - (10.0f - FOVyExt) * static_cast<float>(pow(0.8, TimeDelta * 30));
                 SpeedupAnimTimer = curtime;
             } else FOVyExt = 10.0;
         } else {
             if (FOVyExt > 0.2) {
                 TimeDelta = curtime - SpeedupAnimTimer;
-                FOVyExt *= (float) pow(0.8, TimeDelta * 30);
+                FOVyExt *= static_cast<float>(pow(0.8, TimeDelta * 30));
                 SpeedupAnimTimer = curtime;
             } else FOVyExt = 0.0;
         }
@@ -753,20 +743,20 @@ public:
                 if (Player::jump <= -(Player::height - 0.5f))
                     Player::heightExt = -(Player::height - 0.5f);
                 else
-                    Player::heightExt = (float) Player::jump;
+                    Player::heightExt = static_cast<float>(Player::jump);
                 TouchdownAnimTimer = curtime;
             } else {
                 if (Player::heightExt <= -0.005) {
-                    Player::heightExt *= (float) pow(0.8, (curtime - TouchdownAnimTimer) * 30);
+                    Player::heightExt *= static_cast<float>(pow(0.8, (curtime - TouchdownAnimTimer) * 30));
                     TouchdownAnimTimer = curtime;
                 }
             }
         }
 
-        xpos = Player::Pos.X - Player::xd + (curtime - lastupdate) * 30.0 * Player::xd;
-        ypos = Player::Pos.Y + Player::height + Player::heightExt - Player::yd +
-               (curtime - lastupdate) * 30.0 * Player::yd;
-        zpos = Player::Pos.Z - Player::zd + (curtime - lastupdate) * 30.0 * Player::zd;
+        const auto xpos = Player::Pos.X - Player::xd + (curtime - lastupdate) * 30.0 * Player::xd;
+        const auto ypos = Player::Pos.Y + Player::height + Player::heightExt - Player::yd +
+            (curtime - lastupdate) * 30.0 * Player::yd;
+        const auto zpos = Player::Pos.Z - Player::zd + (curtime - lastupdate) * 30.0 * Player::zd;
 
         if (!bagOpened) {
             //转头！你治好了我多年的颈椎病！
@@ -785,15 +775,15 @@ public:
             if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
         }
 
-        Player::cxt = World::GetChunkPos((int) Player::Pos.X);
-        Player::cyt = World::GetChunkPos((int) Player::Pos.Y);
-        Player::czt = World::GetChunkPos((int) Player::Pos.Z);
+        Player::cxt = World::GetChunkPos(static_cast<int>(Player::Pos.X));
+        Player::cyt = World::GetChunkPos(static_cast<int>(Player::Pos.Y));
+        Player::czt = World::GetChunkPos(static_cast<int>(Player::Pos.Z));
 
         //更新区块VBO
         World::sortChunkBuildRenderList(RoundInt(Player::Pos.X), RoundInt(Player::Pos.Y), RoundInt(Player::Pos.Z));
-        int brl = World::chunkBuildRenders > World::MaxChunkRenders ? World::MaxChunkRenders : World::chunkBuildRenders;
-        for (int i = 0; i < brl; i++) {
-            int ci = World::chunkBuildRenderList[i][1];
+        const auto brl = World::chunkBuildRenders > World::MaxChunkRenders ? World::MaxChunkRenders : World::chunkBuildRenders;
+        for (auto i = 0; i < brl; i++) {
+            const auto ci = World::chunkBuildRenderList[i][1];
             World::chunks[ci]->buildRender();
         }
 
@@ -805,8 +795,8 @@ public:
 
         glFlush();
 
-        double plookupdown = Player::lookupdown + Player::ylookspeed;
-        double pheading = Player::heading + Player::xlookspeed;
+        const auto plookupdown = Player::lookupdown + Player::ylookspeed;
+        const auto pheading = Player::heading + Player::xlookspeed;
 
         glDepthFunc(GL_LEQUAL);
         glEnable(GL_CULL_FACE);
@@ -824,10 +814,10 @@ public:
         glEnable(GL_TEXTURE_2D);
 
         Player::ViewFrustum.LoadIdentity();
-        Player::ViewFrustum.SetPerspective(FOVyNormal + FOVyExt, (float) windowwidth / windowheight, 0.05f,
+        Player::ViewFrustum.SetPerspective(FOVyNormal + FOVyExt, static_cast<float>(windowwidth) / windowheight, 0.05f,
                                            viewdistance * 16.0f);
-        Player::ViewFrustum.MultRotate((float) plookupdown, 1, 0, 0);
-        Player::ViewFrustum.MultRotate(360.0f - (float) pheading, 0, 1, 0);
+        Player::ViewFrustum.MultRotate(static_cast<float>(plookupdown), 1, 0, 0);
+        Player::ViewFrustum.MultRotate(360.0f - static_cast<float>(pheading), 0, 1, 0);
         Player::ViewFrustum.update();
 
         glMatrixMode(GL_PROJECTION);
@@ -980,8 +970,8 @@ public:
         if (World::GetBlock({RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)}) == Blocks::WATER) {
             glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
             glBindTexture(GL_TEXTURE_2D, BlockTextures);
-            double tcX = Textures::getTexcoordX(Blocks::WATER, 1);
-            double tcY = Textures::getTexcoordY(Blocks::WATER, 1);
+            const auto tcX = Textures::getTexcoordX(Blocks::WATER, 1);
+            const auto tcY = Textures::getTexcoordY(Blocks::WATER, 1);
             glBegin(GL_QUADS);
             glTexCoord2d(tcX, tcY + 1 / 8.0);
             glVertex2i(0, 0);
@@ -1000,7 +990,7 @@ public:
 
         glDisable(GL_TEXTURE_2D);
         if (curtime - screenshotAnimTimer <= 1.0 && !shouldGetScreenshot) {
-            float col = 1.0f - (float) (curtime - screenshotAnimTimer);
+            const auto col = 1.0f - static_cast<float>(curtime - screenshotAnimTimer);
             glColor4f(1.0f, 1.0f, 1.0f, col);
             glBegin(GL_QUADS);
             glVertex2i(0, 0);
@@ -1014,10 +1004,9 @@ public:
         if (shouldGetScreenshot) {
             shouldGetScreenshot = false;
             screenshotAnimTimer = curtime;
-            time_t t = time(nullptr);
+            auto t = time(nullptr);
             char tmp[64];
-            tm *timeinfo;
-            timeinfo = localtime(&t);
+            const auto timeinfo = localtime(&t);
             strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", timeinfo);
             delete timeinfo;
             std::stringstream ss;
@@ -1041,7 +1030,7 @@ public:
 
     static void drawBorder(int x, int y, int z) {
         //绘制选择边框
-        static float eps = 0.002f; //实际上这个边框应该比方块大一些，否则很难看
+        static auto eps = 0.002f; //实际上这个边框应该比方块大一些，否则很难看
         glEnable(GL_LINE_SMOOTH);
         glLineWidth(1);
         glColor3f(0.2f, 0.2f, 0.2f);
@@ -1091,8 +1080,8 @@ public:
         glDepthFunc(GL_ALWAYS);
         glDisable(GL_TEXTURE_2D);
         glEnable(GL_LINE_SMOOTH);
-        float seldes_100 = seldes / 100.0f;
-        int disti = (int) (seldes_100 * linedist);
+        auto seldes_100 = seldes / 100.0f;
+        auto disti = static_cast<int>(seldes_100 * linedist);
 
         if (DebugMode) {
 
@@ -1109,7 +1098,7 @@ public:
                 glEnable(GL_TEXTURE_2D);
                 glDisable(GL_CULL_FACE);
                 std::stringstream ss;
-                ss << BlockInfo(selb).getBlockName() << " (ID " << (int) selb << ")";
+                ss << BlockInfo(selb).getBlockName() << " (ID " << static_cast<int>(selb) << ")";
                 TextRenderer::renderString(windowuswidth / 2 + 50, windowusheight / 2 + 50 - 16, ss.str());
                 glDisable(GL_TEXTURE_2D);
                 glEnable(GL_CULL_FACE);
@@ -1167,13 +1156,13 @@ public:
             glBegin(GL_LINES);
             glColor4f(0.5, 0.5, 0.5, 1.0);
             glVertex2i(windowwidth / 2 - 15, windowheight / 2);
-            glVertex2i(windowwidth / 2 - 15 + (int) (seldes_100 * 15), windowheight / 2);
+            glVertex2i(windowwidth / 2 - 15 + static_cast<int>(seldes_100 * 15), windowheight / 2);
             glVertex2i(windowwidth / 2 + 15, windowheight / 2);
-            glVertex2i(windowwidth / 2 + 15 - (int) (seldes_100 * 15), windowheight / 2);
+            glVertex2i(windowwidth / 2 + 15 - static_cast<int>(seldes_100 * 15), windowheight / 2);
             glVertex2i(windowwidth / 2, windowheight / 2 - 15);
-            glVertex2i(windowwidth / 2, windowheight / 2 - 15 + (int) (seldes_100 * 15));
+            glVertex2i(windowwidth / 2, windowheight / 2 - 15 + static_cast<int>(seldes_100 * 15));
             glVertex2i(windowwidth / 2, windowheight / 2 + 15);
-            glVertex2i(windowwidth / 2, windowheight / 2 + 15 - (int) (seldes_100 * 15));
+            glVertex2i(windowwidth / 2, windowheight / 2 + 15 - static_cast<int>(seldes_100 * 15));
             glEnd();
 
         }
@@ -1189,7 +1178,7 @@ public:
             UIVertex(10, 30);
             glEnd();
 
-            double healthPercent = (double) Player::health / Player::healthMax;
+            auto healthPercent = static_cast<double>(Player::health) / Player::healthMax;
             glColor4d(1.0, 0.0, 0.0, 0.5);
             glBegin(GL_QUADS);
             UIVertex(20, 15);
@@ -1212,10 +1201,10 @@ public:
             glEnable(GL_TEXTURE_2D);
             TextRenderer::renderString(0, windowheight - 50, chatword);
         }
-        int posy = 0;
+        auto posy = 0;
         int size = chatMessages.size();
         if (size != 0) {
-            for (int i = size - 1; i >= (size - 10 > 0 ? size - 10 : 0); --i) {
+            for (auto i = size - 1; i >= (size - 10 > 0 ? size - 10 : 0); --i) {
                 TextRenderer::renderString(0, windowheight - 80 - 18 * posy++, chatMessages[i]);
             }
         }
@@ -1269,9 +1258,9 @@ public:
             debugText(ss.str(), false);
             ss.str("");
 
-            int h = gametime / (30 * 60);
-            int m = gametime % (30 * 60) / 30;
-            int s = gametime % 30 * 2;
+            auto h = gametime / (30 * 60);
+            auto m = gametime % (30 * 60) / 30;
+            auto s = gametime % 30 * 2;
             ss << "Time: "
                << (h < 10 ? "0" : "") << h << ":"
                << (m < 10 ? "0" : "") << m << ":"
@@ -1315,7 +1304,7 @@ public:
         static float f;
         static int l;
         if (ltimer == 0.0) ltimer = timer();
-        f += (float) (timer() - ltimer) * 0.25f;
+        f += static_cast<float>(timer() - ltimer) * 0.25f;
         ltimer = timer();
         if (f >= 1.0) {
             l += int(f);
@@ -1325,15 +1314,15 @@ public:
 
         if (!generated) {
             generated = true;
-            for (int i = 0; i != 128; i++) {
-                for (int j = 0; j != 128; j++) {
+            for (auto i = 0; i != 128; i++) {
+                for (auto j = 0; j != 128; j++) {
                     World::cloud[i][j] = int(rnd() * 2);
                 }
             }
             glGenBuffersARB(128, cloudvb);
-            for (int i = 0; i != 128; i++) {
+            for (auto i = 0; i != 128; i++) {
                 Renderer::Init(0, 0);
-                for (int j = 0; j != 128; j++) {
+                for (auto j = 0; j != 128; j++) {
                     if (World::cloud[i][j] != 0) {
                         Renderer::Vertex3d(j * cloudwidth, 128.0, 0.0);
                         Renderer::Vertex3d(j * cloudwidth, 128.0, cloudwidth);
@@ -1348,7 +1337,7 @@ public:
         glDisable(GL_TEXTURE_2D);
         glDisable(GL_CULL_FACE);
         glColor4f(1.0, 1.0, 1.0, 0.5);
-        for (int i = 0; i < 128; i++) {
+        for (auto i = 0; i < 128; i++) {
             glPushMatrix();
             glTranslated(-64.0 * cloudwidth - px, 0.0, cloudwidth * ((l + i) % 128 + f) - 64.0 * cloudwidth - pz);
             Renderer::RenderBufferDirect(cloudvb[i], vtxs[i], 0, 0);
@@ -1358,7 +1347,7 @@ public:
     }
 
     static void renderDestroy(float level, int x, int y, int z) {
-        static float eps = 0.002f;
+        static auto eps = 0.002f;
         glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
         if (level < 100.0) glBindTexture(GL_TEXTURE_2D, DestroyImage[int(level / 10) + 1]);
@@ -1423,7 +1412,7 @@ public:
 
     static void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha) {
         //画出背包的一行
-        for (int i = 0; i < 10; i++) {
+        for (auto i = 0; i < 10; i++) {
             if (i == itemid) glBindTexture(GL_TEXTURE_2D, tex_select);
             else glBindTexture(GL_TEXTURE_2D, tex_unselect);
             glColor4f(1.0f, 1.0f, 1.0f, alpha);
@@ -1440,8 +1429,8 @@ public:
             glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
             if (Player::inventory[row][i] != Blocks::AIR) {
                 glBindTexture(GL_TEXTURE_2D, BlockTextures);
-                double tcX = Textures::getTexcoordX(Player::inventory[row][i], 1);
-                double tcY = Textures::getTexcoordY(Player::inventory[row][i], 1);
+                const auto tcX = Textures::getTexcoordX(Player::inventory[row][i], 1);
+                const auto tcY = Textures::getTexcoordY(Player::inventory[row][i], 1);
                 glBegin(GL_QUADS);
                 glTexCoord2d(tcX, tcY + 1 / 8.0);
                 UIVertex(xbase + i * (32 + spac) + 2, ybase + 2);
@@ -1453,7 +1442,7 @@ public:
                 UIVertex(xbase + i * (32 + spac) + 2, ybase + 30);
                 glEnd();
                 std::stringstream ss;
-                ss << (int) Player::inventoryAmount[row][i];
+                ss << static_cast<int>(Player::inventoryAmount[row][i]);
                 TextRenderer::renderString(xbase + i * (32 + spac), ybase, ss.str());
             }
         }
@@ -1462,16 +1451,16 @@ public:
     void drawBag() {
         //背包界面与更新
         static int si, sj, sf;
-        int csi = -1, csj = -1;
-        int leftp = (windowwidth / stretch - 392) / 2;
-        int upp = windowheight / stretch - 152 - 16;
+        auto csi = -1, csj = -1;
+        const int leftp = (windowwidth / stretch - 392) / 2;
+        const int upp = windowheight / stretch - 152 - 16;
         static int mousew, mouseb, mousebl;
         static Block indexselected = Blocks::AIR;
         static short Amountselected = 0;
-        double curtime = timer();
-        double TimeDelta = curtime - bagAnimTimer;
-        auto bagAnim = (float) (1.0 - pow(0.9, TimeDelta * 60.0) +
-                                pow(0.9, bagAnimDuration * 60.0) / bagAnimDuration * TimeDelta);
+        const auto curtime = timer();
+        const auto TimeDelta = curtime - bagAnimTimer;
+        const auto bagAnim = static_cast<float>(1.0 - pow(0.9, TimeDelta * 60.0) +
+            pow(0.9, bagAnimDuration * 60.0) / bagAnimDuration * TimeDelta);
 
         if (bagOpened) {
 
@@ -1486,9 +1475,9 @@ public:
             else glColor4f(0.2f, 0.2f, 0.2f, 0.6f * bagAnim);
             glBegin(GL_QUADS);
             UIVertex(0, 0);
-            UIVertex((int) (windowwidth / stretch), 0);
-            UIVertex((int) (windowwidth / stretch), (int) (windowheight / stretch));
-            UIVertex(0, (int) (windowheight / stretch));
+            UIVertex(static_cast<int>(windowwidth / stretch), 0);
+            UIVertex(static_cast<int>(windowwidth / stretch), static_cast<int>(windowheight / stretch));
+            UIVertex(0, static_cast<int>(windowheight / stretch));
             glEnd();
 
             glEnable(GL_TEXTURE_2D);
@@ -1497,8 +1486,8 @@ public:
             sf = 0;
 
             if (curtime - bagAnimTimer > bagAnimDuration) {
-                for (int i = 0; i < 4; i++) {
-                    for (int j = 0; j < 10; j++) {
+                for (auto i = 0; i < 4; i++) {
+                    for (auto j = 0; j < 10; j++) {
                         if (mx >= j * 40 + leftp && mx <= j * 40 + 32 + leftp &&
                             my >= i * 40 + upp && my <= i * 40 + 32 + upp) {
                             csi = si = i;
@@ -1540,8 +1529,8 @@ public:
             }
             if (indexselected != Blocks::AIR) {
                 glBindTexture(GL_TEXTURE_2D, BlockTextures);
-                double tcX = Textures::getTexcoordX(indexselected, 1);
-                double tcY = Textures::getTexcoordY(indexselected, 1);
+                const auto tcX = Textures::getTexcoordX(indexselected, 1);
+                const auto tcY = Textures::getTexcoordY(indexselected, 1);
                 glBegin(GL_QUADS);
                 glTexCoord2d(tcX, tcY + 1 / 8.0);
                 UIVertex(mx - 16, my - 16);
@@ -1554,28 +1543,28 @@ public:
                 glEnd();
                 std::stringstream ss;
                 ss << Amountselected;
-                TextRenderer::renderString((int) mx - 16, (int) my - 16, ss.str());
+                TextRenderer::renderString(static_cast<int>(mx) - 16, static_cast<int>(my) - 16, ss.str());
             }
             if (Player::inventory[si][sj] != 0 && sf == 1) {
                 glColor4f(1.0, 1.0, 0.0, 1.0);
-                TextRenderer::renderString((int) mx, (int) my - 16,
+                TextRenderer::renderString(static_cast<int>(mx), static_cast<int>(my) - 16,
                                            BlockInfo(Player::inventory[si][sj]).getBlockName());
             }
 
-            int xbase = 0, ybase = 0, spac = 0;
-            float alpha = 0.5f + 0.5f * bagAnim;
+            auto xbase = 0, ybase = 0, spac = 0;
+            const auto alpha = 0.5f + 0.5f * bagAnim;
             if (curtime - bagAnimTimer <= bagAnimDuration) {
-                xbase = (int) round(((windowwidth / stretch - 392) / 2) * bagAnim);
-                ybase = (int) round(
-                        (windowheight / stretch - 152 - 16 + 120 - (windowheight / stretch - 32)) * bagAnim +
-                        (windowheight / stretch - 32));
-                spac = (int) round(8 * bagAnim);
+                xbase = static_cast<int>(round(((windowwidth / stretch - 392) / 2) * bagAnim));
+                ybase = static_cast<int>(round(
+                    (windowheight / stretch - 152 - 16 + 120 - (windowheight / stretch - 32)) * bagAnim +
+                    (windowheight / stretch - 32)));
+                spac = static_cast<int>(round(8 * bagAnim));
                 drawBagRow(3, -1, xbase, ybase, spac, alpha);
-                xbase = (int) round(
-                        ((windowwidth / stretch - 392) / 2 - windowwidth / stretch) * bagAnim + windowwidth / stretch);
-                ybase = (int) round((windowheight / stretch - 152 - 16 - (windowheight / stretch - 32)) * bagAnim +
-                                    (windowheight / stretch - 32));
-                for (int i = 0; i < 3; i++) {
+                xbase = static_cast<int>(round(
+                    ((windowwidth / stretch - 392) / 2 - windowwidth / stretch) * bagAnim + windowwidth / stretch));
+                ybase = static_cast<int>(round((windowheight / stretch - 152 - 16 - (windowheight / stretch - 32)) * bagAnim +
+                    (windowheight / stretch - 32)));
+                for (auto i = 0; i < 3; i++) {
                     glColor4f(1.0f, 1.0f, 1.0f, bagAnim);
                     drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
                 }
@@ -1600,23 +1589,23 @@ public:
                 glVertex2i(0, windowheight);
                 glEnd();
                 glEnable(GL_TEXTURE_2D);
-                int xbase = 0, ybase = 0, spac = 0;
-                float alpha = 1.0f - 0.5f * bagAnim;
-                xbase = (int) round(
-                        ((windowwidth / stretch - 392) / 2) - ((windowwidth / stretch - 392) / 2) * bagAnim);
-                ybase = (int) round((windowheight / stretch - 152 - 16 + 120 - (windowheight / stretch - 32)) -
-                                    (windowheight / stretch - 152 - 16 + 120 - (windowheight - 32)) * bagAnim +
-                                    (windowheight / stretch - 32));
-                spac = (int) round(8 - 8 * bagAnim);
+                auto xbase = 0, ybase = 0, spac = 0;
+                const auto alpha = 1.0f - 0.5f * bagAnim;
+                xbase = static_cast<int>(round(
+                    ((windowwidth / stretch - 392) / 2) - ((windowwidth / stretch - 392) / 2) * bagAnim));
+                ybase = static_cast<int>(round((windowheight / stretch - 152 - 16 + 120 - (windowheight / stretch - 32)) -
+                    (windowheight / stretch - 152 - 16 + 120 - (windowheight - 32)) * bagAnim +
+                    (windowheight / stretch - 32)));
+                spac = static_cast<int>(round(8 - 8 * bagAnim));
                 glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
                 drawBagRow(3, Player::indexInHand, xbase, ybase, spac, alpha);
-                xbase = (int) round(((windowwidth / stretch - 392) / 2 - windowwidth / stretch) -
-                                    ((windowwidth / stretch - 392) / 2 - windowwidth / stretch) * bagAnim +
-                                    windowwidth / stretch);
-                ybase = (int) round((windowheight / stretch - 152 - 16 - (windowheight / stretch - 32)) -
-                                    (windowheight / stretch - 152 - 16 - (windowheight / stretch - 32)) * bagAnim +
-                                    (windowheight / stretch - 32));
-                for (int i = 0; i < 3; i++) {
+                xbase = static_cast<int>(round(((windowwidth / stretch - 392) / 2 - windowwidth / stretch) -
+                    ((windowwidth / stretch - 392) / 2 - windowwidth / stretch) * bagAnim +
+                    windowwidth / stretch));
+                ybase = static_cast<int>(round((windowheight / stretch - 152 - 16 - (windowheight / stretch - 32)) -
+                    (windowheight / stretch - 152 - 16 - (windowheight / stretch - 32)) * bagAnim +
+                    (windowheight / stretch - 32)));
+                for (auto i = 0; i < 3; i++) {
                     glColor4f(1.0f, 1.0f, 1.0f, 1.0f - bagAnim);
                     drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
                 }
@@ -1627,7 +1616,7 @@ public:
 
     static void saveScreenshot(int x, int y, int w, int h, std::string filename) {
         Textures::TEXTURE_RGB scrBuffer;
-        int bufw = w, bufh = h;
+        auto bufw = w, bufh = h;
         while (bufw % 4 != 0) { bufw += 1; }
         while (bufh % 4 != 0) { bufh += 1; }
         scrBuffer.sizeX = bufw;
@@ -1784,7 +1773,7 @@ public:
         MutexLock(Mutex);
         updateThread = ThreadCreate(&updateThreadFunc, nullptr);
         if (multiplayer) {
-            fastSrand((unsigned int) time(nullptr));
+            fastSrand(static_cast<unsigned int>(time(nullptr)));
             Player::name = "";
             Player::onlineID = rand();
         }

@@ -11,11 +11,11 @@ public:
 
     virtual void render() const = 0;
 
-    const double getXPos() const { return _x; }
+    [[nodiscard]] const double getXPos() const { return _x; }
 
-    const double getYPos() const { return _y; }
+    [[nodiscard]] const double getYPos() const { return _y; }
 
-    const double getZPos() const { return _z; }
+    [[nodiscard]] const double getZPos() const { return _z; }
 
 protected:
     int _id;

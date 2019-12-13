@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Definitions.h"
-
 namespace World {
 
     struct HeightMap {

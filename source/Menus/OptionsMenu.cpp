@@ -1,4 +1,6 @@
 #include "Menus.h"
+#include "GUI.h"
+#include "AudioSystem.h"
 
 void saveOptions();
 
@@ -10,10 +12,10 @@ namespace Menus {
         GUI::button rdstbtn, langbtn, gistbtn, backbtn, savebtn, sounbtn;
 
         //GUI::button rdstbtn, gistbtn, backbtn, savebtn;
-        void onLoad() {
+        void onLoad() override {
             title = GUI::label(GetStrbyKey("NEWorld.options.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-            FOVyBar = GUI::trackbar("", 120, (int) (FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-            mmsBar = GUI::trackbar("", 120, (int) (mousemove * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+            FOVyBar = GUI::trackbar("", 120, static_cast<int>(FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+            mmsBar = GUI::trackbar("", 120, static_cast<int>(mousemove * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
             viewdistBar = GUI::trackbar("", 120, (viewdistance - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
             rdstbtn = GUI::button(GetStrbyKey("NEWorld.options.rendermenu"), -250, -10, 204, 228, 0.5, 0.5, 0.0, 0.0);
             gistbtn = GUI::button(GetStrbyKey("NEWorld.options.guimenu"), 10, 250, 204, 228, 0.5, 0.5, 0.0, 0.0);
@@ -26,8 +28,8 @@ namespace Menus {
             //registerControls(8, &title, &FOVyBar, &mmsBar, &viewdistBar, &rdstbtn, &gistbtn, &backbtn, &savebtn);
         }
 
-        void onUpdate() {
-            FOVyNormal = (float) (FOVyBar.barpos + 1);
+        void onUpdate() override {
+            FOVyNormal = static_cast<float>(FOVyBar.barpos + 1);
             mousemove = (mmsBar.barpos / 2 + 1) / 40.0f;
             viewdistance = (viewdistBar.barpos + 1) / 4 + 2;
             if (rdstbtn.clicked) Renderoptions();

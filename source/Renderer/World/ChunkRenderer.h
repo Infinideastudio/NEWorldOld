@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Definitions.h"
-#include "Blocks.h"
 #include "Textures.h"
 
 namespace World { class Chunk; }

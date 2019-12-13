@@ -1,6 +1,7 @@
 #include "Menus.h"
-#include "TextRenderer.h"
 #include "Setup.h"
+#include "GUI.h"
+#include "AudioSystem.h"
 
 namespace Menus {
     class GameMenu : public GUI::Form {
@@ -28,7 +29,7 @@ namespace Menus {
                 setupNormalFog();
                 double dmx, dmy;
                 glfwGetCursorPos(MainWindow, &dmx, &dmy);
-                mx = (int) (dmx / stretch), my = (int) (dmy / stretch);
+                mx = static_cast<int>(dmx / stretch), my = static_cast<int>(dmy / stretch);
                 updateThreadPaused = false;
             }
             AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;

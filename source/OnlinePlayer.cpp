@@ -477,7 +477,7 @@ void OnlinePlayer::GenVAOVBO(int skinID) {
 
 void OnlinePlayer::buildRenderIfNeed() {
     if (VBO == 0 || vtxs == 0) {
-        auto iter = playerSkins.find(_skinID);
+        const auto iter = playerSkins.find(_skinID);
         if (iter != playerSkins.end()) {
             VBO = iter->second.first;
             vtxs = iter->second.second;

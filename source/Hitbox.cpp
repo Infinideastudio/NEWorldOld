@@ -63,7 +63,7 @@ namespace Hitbox {
     }
 
     AABB Expand(const AABB &box, double xe, double ye, double ze) {
-        AABB ret = box;
+        auto ret = box;
         if (xe > 0.0) ret.xmax += xe; else ret.xmin += xe;
         if (ye > 0.0) ret.ymax += ye; else ret.ymin += ye;
         if (ze > 0.0) ret.zmax += ze; else ret.zmin += ze;
@@ -80,11 +80,10 @@ namespace Hitbox {
     }
 
     void MoveTo(AABB &box, double x, double y, double z) {
-        double l, w, h;
         //注意在执行这个过程时，参数中的xyz坐标将成为移动后的AABB的中心，而不是初始化AABB时的原点！
-        l = (box.xmax - box.xmin) / 2;
-        w = (box.ymax - box.ymin) / 2;
-        h = (box.zmax - box.zmin) / 2;
+        const auto l = (box.xmax - box.xmin) / 2;
+        const auto w = (box.ymax - box.ymin) / 2;
+        const auto h = (box.zmax - box.zmin) / 2;
         box.xmin = x - l;
         box.ymin = y - w;
         box.zmin = z - h;

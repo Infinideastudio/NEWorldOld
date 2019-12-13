@@ -1,7 +1,7 @@
 #include "Menus.h"
-#include "TextRenderer.h"
 #include "Renderer.h"
-#include"AudioSystem.h"
+#include "AudioSystem.h"
+#include "GUI.h"
 
 namespace Menus {
     class SoundMenu : public GUI::Form {
@@ -10,7 +10,7 @@ namespace Menus {
         GUI::button backbtn;
         GUI::trackbar Musicbar, SoundBar;
 
-        void onLoad() {
+        void onLoad() override {
             title = GUI::label(GetStrbyKey("NEWorld.Sound.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
             Musicbar = GUI::trackbar(GetStrbyKey("NEWorld.Sound.MusicGain"), 100, AudioSystem::BGMGain * 300, -200, 201,
                                      60, 84, 0.5, 0.5, 0.0, 0.0);
@@ -20,7 +20,7 @@ namespace Menus {
             registerControls(4, &title, &Musicbar, &SoundBar, &backbtn);
         }
 
-        void onUpdate() {
+        void onUpdate() override {
             char text[100];
             AudioSystem::BGMGain = float(Musicbar.barpos) / 300.0f;
             AudioSystem::SoundGain = float(SoundBar.barpos) / 300.0f;

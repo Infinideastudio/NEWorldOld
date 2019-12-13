@@ -57,11 +57,11 @@ void InitPosition() {
     Player::xposold = Player::Pos.X;
     Player::yposold = Player::Pos.Y;
     Player::zposold = Player::Pos.Z;
-    Player::cxt = World::GetChunkPos((int) Player::Pos.X);
+    Player::cxt = World::GetChunkPos(static_cast<int>(Player::Pos.X));
     Player::cxtl = Player::cxt;
-    Player::cyt = World::GetChunkPos((int) Player::Pos.Y);
+    Player::cyt = World::GetChunkPos(static_cast<int>(Player::Pos.Y));
     Player::cytl = Player::cyt;
-    Player::czt = World::GetChunkPos((int) Player::Pos.Z);
+    Player::czt = World::GetChunkPos(static_cast<int>(Player::Pos.Z));
     Player::cztl = Player::czt;
 }
 
@@ -120,22 +120,22 @@ void Player::updatePosition() {
         ya *= 0.6;
         za *= 0.6;
     }
-    double xal = xa, yal = ya, zal = za;
+    const auto xal = xa, yal = ya, zal = za;
 
     if (!CrossWall) {
         Hitboxes.clear();
         Hitboxes = World::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
-        int num = Hitboxes.size();
+        const int num = Hitboxes.size();
         if (num > 0) {
-            for (int i = 0; i < num; i++) {
+            for (auto i = 0; i < num; i++) {
                 ya = Hitbox::MaxMoveOnYclip(playerbox, Hitboxes[i], ya);
             }
             Hitbox::Move(playerbox, 0.0, ya, 0.0);
-            for (int i = 0; i < num; i++) {
+            for (auto i = 0; i < num; i++) {
                 xa = Hitbox::MaxMoveOnXclip(playerbox, Hitboxes[i], xa);
             }
             Hitbox::Move(playerbox, xa, 0.0, 0.0);
-            for (int i = 0; i < num; i++) {
+            for (auto i = 0; i < num; i++) {
                 za = Hitbox::MaxMoveOnZclip(playerbox, Hitboxes[i], za);
             }
             Hitbox::Move(playerbox, 0.0, 0.0, za);
@@ -153,9 +153,9 @@ void Player::updatePosition() {
     if (ya != yal && yal > 0.0) jump = 0.0;
     if (xa != xal || za != zal) NearWall = true; else NearWall = false;
 
-    xa = (double) ((int) (xa * 100000)) / 100000.0;
-    ya = (double) ((int) (ya * 100000)) / 100000.0;
-    za = (double) ((int) (za * 100000)) / 100000.0;
+    xa = static_cast<double>(static_cast<int>(xa * 100000)) / 100000.0;
+    ya = static_cast<double>(static_cast<int>(ya * 100000)) / 100000.0;
+    za = static_cast<double>(static_cast<int>(za * 100000)) / 100000.0;
 
     xd = xa;
     yd = ya;
@@ -170,21 +170,21 @@ void Player::updatePosition() {
     cxtl = cxt;
     cytl = cyt;
     cztl = czt;
-    cxt = World::GetChunkPos((int) Pos.X);
-    cyt = World::GetChunkPos((int) Pos.Y);
-    czt = World::GetChunkPos((int) Pos.Z);
+    cxt = World::GetChunkPos(static_cast<int>(Pos.X));
+    cyt = World::GetChunkPos(static_cast<int>(Pos.Y));
+    czt = World::GetChunkPos(static_cast<int>(Pos.Z));
 }
 
 bool Player::putBlock(int x, int y, int z, Block blockname) {
     Hitbox::AABB blockbox;
-    bool success = false;
+    auto success = false;
     blockbox.xmin = x - 0.5;
     blockbox.ymin = y - 0.5;
     blockbox.zmin = z - 0.5;
     blockbox.xmax = x + 0.5;
     blockbox.ymax = y + 0.5;
     blockbox.zmax = z + 0.5;
-    int cx = World::GetChunkPos(x), cy = World::GetChunkPos(y), cz = World::GetChunkPos(z);
+    const auto cx = World::GetChunkPos(x), cy = World::GetChunkPos(y), cz = World::GetChunkPos(z);
     if (!World::ChunkOutOfBound({(cx), (cy), (cz)})
         && ((!Hitbox::Hit(playerbox, blockbox) || CrossWall ||
              !BlockInfo(blockname).isSolid()) && !BlockInfo(World::GetBlock({x, y, z})).isSolid())) {
@@ -248,9 +248,9 @@ bool Player::load(std::string worldn) {
 }
 
 bool Player::addItem(item itemname, short amount) {
-    const int InvMaxStack = 255;
-    for (int i = 3; i >= 0; i--) {
-        for (int j = 0; j != 10; j++) {
+    const auto InvMaxStack = 255;
+    for (auto i = 3; i >= 0; i--) {
+        for (auto j = 0; j != 10; j++) {
             if (inventory[i][j] == itemname && inventoryAmount[i][j] < InvMaxStack) {
                 //�ҵ�һ��ͬ�����
                 if (amount + inventoryAmount[i][j] <= InvMaxStack) {
@@ -263,8 +263,8 @@ bool Player::addItem(item itemname, short amount) {
             }
         }
     }
-    for (int i = 3; i >= 0; i--) {
-        for (int j = 0; j != 10; j++) {
+    for (auto i = 3; i >= 0; i--) {
+        for (auto j = 0; j != 10; j++) {
             if (inventory[i][j] == Blocks::AIR) {
                 //�ҵ�һ���հ׸���
                 inventory[i][j] = itemname;

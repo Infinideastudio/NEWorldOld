@@ -1,5 +1,7 @@
 #include "Menus.h"
 #include "TextRenderer.h"
+#include "GUI.h"
+#include "AudioSystem.h"
 
 namespace Menus {
     class MainMenu : public GUI::Form {
@@ -7,7 +9,7 @@ namespace Menus {
         GUI::imagebox title;
         GUI::button startbtn, optionsbtn, quitbtn, info;
 
-        void onLoad() {
+        void onLoad() override {
             title = GUI::imagebox(0.0f, 1.0f, 0.5f, 1.0f, tex_title, -256, 256, 20, 276, 0.5, 0.5, 0.0, 0.0);
             startbtn = GUI::button(GetStrbyKey("NEWorld.main.start"), -200, 200, 280, 312, 0.5, 0.5, 0.0, 0.0);
             optionsbtn = GUI::button(GetStrbyKey("NEWorld.main.options"), -200, -3, 318, 352, 0.5, 0.5, 0.0, 0.0);
@@ -16,7 +18,7 @@ namespace Menus {
             registerControls(5, &title, &startbtn, &optionsbtn, &info, &quitbtn);
         }
 
-        void onUpdate() {
+        void onUpdate() override {
             AudioSystem::SpeedOfSound = AudioSystem::Air_SpeedOfSound;
             //EFX::EAXprop = Generic;
             //EFX::UpdateEAXprop();
