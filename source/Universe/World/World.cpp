@@ -30,10 +30,11 @@ namespace World {
     int updatedChunks, updatedChunksCount;
     int unloadedChunks, unloadedChunksCount;
     int chunkBuildRenderList[256][2];
-    int chunkLoadList[256][4];
-    std::pair<Chunk *, int> chunkUnloadList[256];
     std::vector<unsigned int> vbuffersShouldDelete;
-    int chunkBuildRenders, chunkLoads, chunkUnloads;
+    int chunkBuildRenders;
+
+    OrderedList<int, Int3, 64> ChunkLoadList {};
+    OrderedList<int, Chunk*, 64, std::greater> ChunkUnloadList {};
 
     void Init() {
         std::stringstream ss;
@@ -113,11 +114,11 @@ namespace World {
             if ((*chunkIter)->id == id) {
                 const auto chunk = *chunkIter;
                 chunks.erase(chunkIter);
-                delete chunk;
                 if (cpCachePtr == chunk) {
                     cpCacheID = 0;
                     cpCachePtr = nullptr;
                 }
+                delete chunk;
                 cpArray.Remove(vec);
             }
         }
@@ -390,82 +391,37 @@ namespace World {
     }
 
     void sortChunkLoadUnloadList(int xpos, int ypos, int zpos) {
-
-        int cx, cy, cz, pl = 0, pu = 0, i;
-        int xd, yd, zd, distsqr, first, middle, last;
+        int cx, cy, cz;
 
         const auto cxp = GetChunkPos(xpos);
         const auto cyp = GetChunkPos(ypos);
         const auto czp = GetChunkPos(zpos);
+        const auto blockDistOffset = Int3{7, 7, 7} - Int3{xpos, ypos, zpos};
 
+        ChunkUnloadList.Clear();
         for (auto& chunk : chunks) {
             cx = chunk->cx;
             cy = chunk->cy;
             cz = chunk->cz;
             if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance + 1)) {
-                xd = cx * 16 + 7 - xpos;
-                yd = cy * 16 + 7 - ypos;
-                zd = cz * 16 + 7 - zpos;
-                distsqr = xd * xd + yd * yd + zd * zd;
-
-                first = 0;
-                last = pl - 1;
-                while (first <= last) {
-                    middle = (first + last) / 2;
-                    if (distsqr > chunkUnloadList[middle].second)last = middle - 1;
-                    else first = middle + 1;
-                }
-                if (first > pl || first >= MaxChunkUnloads) continue;
-                i = first;
-
-                for (auto j = MaxChunkUnloads - 1; j > i; j--) {
-                    chunkUnloadList[j].first = chunkUnloadList[j - 1].first;
-                    chunkUnloadList[j].second = chunkUnloadList[j - 1].second;
-                }
-                chunkUnloadList[i].first = chunk;
-                chunkUnloadList[i].second = distsqr;
-
-                if (pl < MaxChunkUnloads) pl++;
+                auto vec = Int3{cx, cy, cz};
+				vec = vec * 16 + blockDistOffset;
+                ChunkUnloadList.Insert(vec.LengthSquared(), chunk);
             }
         }
-        chunkUnloads = pl;
 
+        ChunkLoadList.Clear();
         for (cx = cxp - viewdistance - 1; cx <= cxp + viewdistance; cx++) {
             for (cy = cyp - viewdistance - 1; cy <= cyp + viewdistance; cy++) {
                 for (cz = czp - viewdistance - 1; cz <= czp + viewdistance; cz++) {
-                    if (ChunkOutOfBound({(cx), (cy), (cz)})) continue;
-                    if (cpArray.Get({cx, cy, cz}) == nullptr) {
-                        xd = cx * 16 + 7 - xpos;
-                        yd = cy * 16 + 7 - ypos;
-                        zd = cz * 16 + 7 - zpos;
-                        distsqr = xd * xd + yd * yd + zd * zd;
-
-                        first = 0;
-                        last = pu - 1;
-                        while (first <= last) {
-                            middle = (first + last) / 2;
-                            if (distsqr < chunkLoadList[middle][0]) last = middle - 1;
-                            else first = middle + 1;
-                        }
-                        if (first > pu || first >= MaxChunkLoads) continue;
-                        i = first;
-
-                        for (auto j = MaxChunkLoads - 1; j > i; j--) {
-                            chunkLoadList[j][0] = chunkLoadList[j - 1][0];
-                            chunkLoadList[j][1] = chunkLoadList[j - 1][1];
-                            chunkLoadList[j][2] = chunkLoadList[j - 1][2];
-                            chunkLoadList[j][3] = chunkLoadList[j - 1][3];
-                        }
-                        chunkLoadList[i][0] = distsqr;
-                        chunkLoadList[i][1] = cx;
-                        chunkLoadList[i][2] = cy;
-                        chunkLoadList[i][3] = cz;
-                        if (pu < MaxChunkLoads) pu++;
+                    const auto vec = Int3{cx, cy, cz};
+                    if (ChunkOutOfBound(vec)) continue;
+                    if (!cpArray.Get(vec)) {
+                        ChunkLoadList.Insert((vec * 16 + blockDistOffset).LengthSquared(), vec);
                     }
                 }
             }
         }
-        chunkLoads = pu;
     }
 
     void calcVisible(double xpos, double ypos, double zpos, Frustum &frus) {
@@ -482,11 +438,9 @@ namespace World {
     }
 
     void destroyAllChunks() {
-
         for (auto i = 0; i != chunks.size(); i++) {
             if (!chunks[i]->Empty) {
-                chunks[i]->destroyRender();
-                chunks[i]->destroy();
+                chunks[i]->Unload();
                 delete chunks[i];
             }
         }
@@ -505,13 +459,10 @@ namespace World {
         unloadedChunks = 0;
         unloadedChunksCount = 0;
 
-        memset(chunkBuildRenderList, 0, 256 * 2 * sizeof(int));
-        memset(chunkLoadList, 0, 256 * 4 * sizeof(int));
+        ChunkLoadList.Clear();
+        ChunkUnloadList.Clear();
 
         chunkBuildRenders = 0;
-        chunkLoads = 0;
-        chunkUnloads = 0;
-
     }
 
     void buildtree(int x, int y, int z) {

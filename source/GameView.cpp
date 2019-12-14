@@ -180,29 +180,18 @@ public:
 
         if (FirstUpdateThisFrame) {
             World::sortChunkLoadUnloadList(RoundInt(Player::Pos.X), RoundInt(Player::Pos.Y), RoundInt(Player::Pos.Z));
-
-            const auto sumUnload = World::chunkUnloads > World::MaxChunkUnloads ? World::MaxChunkUnloads : World::chunkUnloads;
-            for (auto i = 0; i < sumUnload; i++) {
-                auto cp = World::chunkUnloadList[i].first;
-#ifdef NEWORLD_DEBUG
-                if (cp == nullptr || cp == World::EmptyChunkPtr) DebugError("Unload error!");
-#endif
-                const auto cx = cp->cx, cy = cp->cy, cz = cp->cz;
-                cp->Unload();
-                World::DeleteChunk({(cx), (cy), (cz)});
+            for (const auto& [_, chunk] : World::ChunkUnloadList) {
+				const auto c = Int3{chunk->cx, chunk->cy, chunk->cz};
+                chunk->Unload();
+                World::DeleteChunk(c);
             }
-
-            const auto sumLoad = World::chunkLoads > World::MaxChunkLoads ? World::MaxChunkLoads : World::chunkLoads;
-            for (auto i = 0; i < sumLoad; i++) {
-                const auto cx = World::chunkLoadList[i][1];
-                const auto cy = World::chunkLoadList[i][2];
-                const auto cz = World::chunkLoadList[i][3];
-                auto c = World::AddChunk({(cx), (cy), (cz)});
+            for (const auto& [_, pos]: World::ChunkLoadList) {
+                auto c = World::AddChunk(pos);
                 c->Load(false);
                 if (c->Empty) {
                     c->Unload();
-                    World::DeleteChunk({(cx), (cy), (cz)});
-                    World::cpArray.Set({cx, cy, cz}, World::EmptyChunkPtr);
+                    World::DeleteChunk(pos);
+                    World::cpArray.Set(pos, World::EmptyChunkPtr);
                 }
             }
         }
@@ -544,7 +533,7 @@ public:
     }
 
     bool PlayerInteract(ALfloat *BlockPos, double lx, double ly, double lz) {
-        bool BlockClick;//从玩家位置发射一条线段
+        bool BlockClick {false};//从玩家位置发射一条线段
         for (auto i = 0; i < selectPrecision * selectDistance; i++) {
             const auto lxl = lx;
             const auto lyl = ly;

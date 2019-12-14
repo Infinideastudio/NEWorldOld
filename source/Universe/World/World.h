@@ -6,6 +6,7 @@
 #include "Chunk.h"
 #include "Hitbox.h"
 #include "Blocks.h"
+#include "OrderedArray.h"
 
 extern int viewdistance;
 
@@ -33,10 +34,10 @@ namespace World {
     extern int updatedChunks, updatedChunksCount;
     extern int unloadedChunks, unloadedChunksCount;
     extern int chunkBuildRenderList[256][2];
-    extern int chunkLoadList[256][4];
-    extern std::pair<Chunk *, int> chunkUnloadList[256];
     extern std::vector<unsigned int> vbuffersShouldDelete;
-    extern int chunkBuildRenders, chunkLoads, chunkUnloads;
+    extern int chunkBuildRenders;
+    extern OrderedList<int, Int3, 64> ChunkLoadList;
+    extern OrderedList<int, Chunk*, 64, std::greater> ChunkUnloadList;
 
     template <class T>
     constexpr T GetChunkPos(const T n) noexcept { return n >> 4; }
@@ -64,7 +65,7 @@ namespace World {
 
 
     constexpr bool ChunkOutOfBound(const Int3 v) noexcept {
-        return v.Y < -World::worldheight || v.Y > World::worldheight - 1 ||
+        return v.Y < -worldheight || v.Y > worldheight - 1 ||
                 v.X < -134217728 || v.X > 134217727 || v.Z < -134217728 || v.Z > 134217727;
     }
 
