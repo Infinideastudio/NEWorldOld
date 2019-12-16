@@ -1,5 +1,6 @@
 #include "GameView.h"
 #include <utility>
+#include <Renderer/World/ShadowMaps.h>
 #include "Universe/World/Blocks.h"
 #include "Textures.h"
 #include "Renderer.h"
@@ -7,7 +8,6 @@
 #include "Player.h"
 #include "Universe/World/World.h"
 #include "Renderer/World/WorldRenderer.h"
-#include "ShadowMaps.h"
 #include "Particles.h"
 #include "Hitbox.h"
 #include "GUI.h"
@@ -179,21 +179,7 @@ public:
         }
 
         if (FirstUpdateThisFrame) {
-            World::sortChunkLoadUnloadList(RoundInt(Player::Pos.X), RoundInt(Player::Pos.Y), RoundInt(Player::Pos.Z));
-            for (const auto& [_, chunk] : World::ChunkUnloadList) {
-				const auto c = Int3{chunk->cx, chunk->cy, chunk->cz};
-                chunk->Unload();
-                World::DeleteChunk(c);
-            }
-            for (const auto& [_, pos]: World::ChunkLoadList) {
-                auto c = World::AddChunk(pos);
-                c->Load(false);
-                if (c->Empty) {
-                    c->Unload();
-                    World::DeleteChunk(pos);
-                    World::cpArray.Set(pos, World::EmptyChunkPtr);
-                }
-            }
+            ChunkLoadUnload();
         }
 
         //加载动画
@@ -226,90 +212,7 @@ public:
             Player::xlookspeed = Player::ylookspeed = 0.0;
 
             if (!chatmode) {
-                //移动！(生命在于运动)
-                if (glfwGetKey(MainWindow, GLFW_KEY_W) || Player::glidingNow) {
-                    if (!WP) {
-                        if (Wprstm == 0.0) {
-                            Wprstm = timer();
-                        } else {
-                            if (timer() - Wprstm <= 0.5) {
-                                Player::Running = true;
-                                Wprstm = 0.0;
-                            }
-                            else Wprstm = timer();
-                        }
-                    }
-                    if (Wprstm != 0.0 && timer() - Wprstm > 0.5) Wprstm = 0.0;
-                    WP = true;
-                    if (!Player::glidingNow) {
-                        Player::xa += -sin(Player::heading * M_PI / 180.0) * Player::speed;
-                        Player::za += -cos(Player::heading * M_PI / 180.0) * Player::speed;
-                    } else {
-                        Player::xa = sin(M_PI / 180 * (Player::heading - 180)) *
-                                     sin(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
-                        Player::ya = cos(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
-                        Player::za = cos(M_PI / 180 * (Player::heading - 180)) *
-                                     sin(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
-                        if (Player::ya < 0) Player::ya *= 2;
-                    }
-                } else {
-                    Player::Running = false;
-                    WP = false;
-                }
-                if (Player::Running)Player::speed = runspeed;
-                else Player::speed = walkspeed;
-
-                if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS && !Player::glidingNow) {
-                    Player::xa += sin(Player::heading * M_PI / 180.0) * Player::speed;
-                    Player::za += cos(Player::heading * M_PI / 180.0) * Player::speed;
-                    Wprstm = 0.0;
-                }
-
-                if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS && !Player::glidingNow) {
-                    Player::xa += sin((Player::heading - 90) * M_PI / 180.0) * Player::speed;
-                    Player::za += cos((Player::heading - 90) * M_PI / 180.0) * Player::speed;
-                    Wprstm = 0.0;
-                }
-
-                if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS && !Player::glidingNow) {
-                    Player::xa += -sin((Player::heading - 90) * M_PI / 180.0) * Player::speed;
-                    Player::za += -cos((Player::heading - 90) * M_PI / 180.0) * Player::speed;
-                    Wprstm = 0.0;
-                }
-
-                if (!Player::Flying && !Player::CrossWall) {
-                    const auto horizontalSpeed = sqrt(Player::xa * Player::xa + Player::za * Player::za);
-                    if (horizontalSpeed > Player::speed && !Player::glidingNow) {
-                        Player::xa *= Player::speed / horizontalSpeed;
-                        Player::za *= Player::speed / horizontalSpeed;
-                    }
-                } else {
-                    if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS && !Player::glidingNow) {
-                        if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-                            Player::xa = -sin(Player::heading * M_PI / 180.0) * runspeed * 10;
-                            Player::za = -cos(Player::heading * M_PI / 180.0) * runspeed * 10;
-                        } else {
-                            Player::xa = sin(M_PI / 180 * (Player::heading - 180)) *
-                                         sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-                            Player::ya = cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-                            Player::za = cos(M_PI / 180 * (Player::heading - 180)) *
-                                         sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-                        }
-                    }
-
-                    if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS && !Player::glidingNow) {
-                        if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
-                            Player::xa = sin(Player::heading * M_PI / 180.0) * runspeed * 10;
-                            Player::za = cos(Player::heading * M_PI / 180.0) * runspeed * 10;
-                        } else {
-                            Player::xa = -sin(M_PI / 180 * (Player::heading - 180)) *
-                                         sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-                            Player::ya = -cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-                            Player::za = -cos(M_PI / 180 * (Player::heading - 180)) *
-                                         sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-                        }
-                    }
-                }
+                WP = ProcessPlayerNavigate(Wprstm, WP);
 
                 //切换方块
                 if (isPressed(GLFW_KEY_Z) && Player::indexInHand > 0) Player::indexInHand--;
@@ -320,28 +223,7 @@ public:
                 mwl = mw;
 
                 //起跳！
-                if (isPressed(GLFW_KEY_SPACE)) {
-                    if (!Player::inWater) {
-                        if ((Player::OnGround || Player::AirJumps < MaxAirJumps) && !Player::Flying &&
-                            !Player::CrossWall) {
-                            if (!Player::OnGround) {
-                                Player::jump = 0.3;
-                                Player::AirJumps++;
-                            } else {
-                                Player::jump = 0.25;
-                                Player::OnGround = false;
-                            }
-                        }
-                        if (Player::Flying || Player::CrossWall) {
-                            Player::ya += walkspeed / 2;
-                            isPressed(GLFW_KEY_SPACE, true);
-                        }
-                        Wprstm = 0.0;
-                    } else {
-                        Player::ya = walkspeed;
-                        isPressed(GLFW_KEY_SPACE, true);
-                    }
-                }
+                PlayerStartJump(Wprstm);
 
                 if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
                      glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !Player::glidingNow) {
@@ -355,71 +237,11 @@ public:
                     Player::glidingSpeed = 0;
                     Player::glidingNow = true;
                 }
+                HotkeySettingsToggle();
 
-                //各种设置切换
-                if (isPressed(GLFW_KEY_F1)) {
-                    Player::changeGameMode(Player::gamemode == Player::Creative ?
-                                           Player::Survival : Player::Creative);
-                }
-                if (isPressed(GLFW_KEY_F2)) shouldGetScreenshot = true;
-                if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
-                if (isPressed(GLFW_KEY_F4)) Player::CrossWall = !Player::CrossWall;
-                if (isPressed(GLFW_KEY_H) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
-                    DebugHitbox = !DebugHitbox;
-                    DebugMode = true;
-                }
-                if (Renderer::AdvancedRender) {
-                    if (isPressed(GLFW_KEY_M) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
-                        DebugShadow = !DebugShadow;
-                        DebugMode = true;
-                    }
-                } else DebugShadow = false;
-                if (isPressed(GLFW_KEY_G) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
-                    DebugMergeFace = !DebugMergeFace;
-                    DebugMode = true;
-                }
-                if (isPressed(GLFW_KEY_F4 && Player::gamemode == Player::Creative))
-                    Player::CrossWall = !Player::CrossWall;
-                if (isPressed(GLFW_KEY_F5)) GUIrenderswitch = !GUIrenderswitch;
-                if (isPressed(GLFW_KEY_F6)) Player::Glide = !Player::Glide;
-                if (isPressed(GLFW_KEY_F7)) Player::spawn();
-                if (isPressed(GLFW_KEY_SLASH)) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
             }
 
-            if (isPressed(GLFW_KEY_ENTER) == GLFW_PRESS) {
-                chatmode = !chatmode;
-                if (!chatword.empty()) { //指令的执行，或发出聊天文本
-                    if (chatword.substr(0, 1) == "/") { //指令
-                        const auto command = split(chatword, " ");
-                        if (!doCommand(command)) { //执行失败
-                            DebugWarning("Fail to execute the command: " + chatword);
-                            chatMessages.push_back("Fail to execute the command: " + chatword);
-                        }
-                    } else {
-                        chatMessages.push_back(chatword);
-                    }
-                }
-                chatword = "";
-            }
-            if (chatmode) {
-                if (isPressed(GLFW_KEY_BACKSPACE) && chatword.length() > 0) {
-                    const int n = chatword[chatword.length() - 1];
-                    if (n > 0 && n <= 127)
-                        chatword = chatword.substr(0, chatword.length() - 1);
-                    else
-                        chatword = chatword.substr(0, chatword.length() - 2);
-                } else {
-                    chatword += inputstr;
-                }
-                //自动补全
-                if (isPressed(GLFW_KEY_TAB) && chatmode && !chatword.empty() && chatword.substr(0, 1) == "/") {
-                    for (unsigned int i = 0; i != commands.size(); i++) {
-                        if (beginWith(commands[i].identifier, chatword)) {
-                            chatword = commands[i].identifier;
-                        }
-                    }
-                }
-            }
+            HandleChatAndCommand();
         }
 
         inputstr = "";
@@ -440,6 +262,272 @@ public:
         }
 
         //跳跃
+        ProcessPlayerJump();
+
+        //爬墙
+        //if (Player::NearWall && Player::Flying == false && Player::CrossWall == false){
+        //	Player::ya += walkspeed
+        //	Player::jump = 0.0
+        //}
+
+        if (Player::glidingNow) {
+            auto& E = Player::glidingEnergy;
+            const auto oldh = Player::Pos.Y + Player::height + Player::heightExt + Player::ya;
+            auto h = oldh;
+            if (E - Player::glidingMinimumSpeed < h * g) {  //小于最小速度
+                h = (E - Player::glidingMinimumSpeed) / g;
+            }
+            Player::glidingSpeed = sqrt(2 * (E - g * h));
+            E -= EDrop;
+            Player::ya += h - oldh;
+        }
+
+        AudioUpdate(WP, BlockClick, BlockPos);
+
+
+        mbp = mb;
+        FirstFrameThisUpdate = true;
+        Particles::updateall();
+
+        Player::intxpos = RoundInt(Player::Pos.X);
+        Player::intypos = RoundInt(Player::Pos.Y);
+        Player::intzpos = RoundInt(Player::Pos.Z);
+        Player::updatePosition();
+        Player::xposold = Player::Pos.X;
+        Player::yposold = Player::Pos.Y;
+        Player::zposold = Player::Pos.Z;
+        Player::intxposold = RoundInt(Player::Pos.X);
+        Player::intyposold = RoundInt(Player::Pos.Y);
+        Player::intzposold = RoundInt(Player::Pos.Z);
+
+        //	Time_updategame += timer() - Time_updategame;
+
+    }
+
+    void AudioUpdate(bool WP, bool blockClick, ALfloat *blockPos) const {//音效更新
+        auto Run = 0;
+        if (WP)Run = Player::Running ? 2 : 1;
+        ALfloat PlayerPos[3];
+        PlayerPos[0] = Player::Pos.X;
+        PlayerPos[1] = Player::Pos.Y;
+        PlayerPos[2] = Player::Pos.Z;
+        const auto Fall = Player::OnGround
+                    && (!Player::inWater)
+                    && (Player::jump == 0);
+        //更新声速
+        AudioSystem::SpeedOfSound = Player::inWater ? AudioSystem::Water_SpeedOfSound : AudioSystem::Air_SpeedOfSound;
+        //更新环境
+        if (Player::inWater) {
+            //EFX::EAXprop = UnderWater;
+        } else {
+            if (Player::OnGround) {
+                //EFX::EAXprop = Plain;
+            } else {
+                //EFX::EAXprop = Generic;
+            }
+        }
+        //EFX::UpdateEAXprop();
+        AudioSystem::Update(PlayerPos, Fall, blockClick, blockPos, Run, Player::inWater);
+    }
+
+    void ChunkLoadUnload() const {
+        World::sortChunkLoadUnloadList(RoundInt(Player::Pos.X), RoundInt(Player::Pos.Y), RoundInt(Player::Pos.Z));
+        for (const auto& [_, chunk] : World::ChunkUnloadList) {
+            const auto c = Int3{chunk->cx, chunk->cy, chunk->cz};
+            chunk->Unload();
+            World::DeleteChunk(c);
+        }
+        for (const auto& [_, pos]: World::ChunkLoadList) {
+            auto c = World::AddChunk(pos);
+            c->Load(false);
+            if (c->Empty) {
+                c->Unload();
+                World::DeleteChunk(pos);
+                World::cpArray.Set(pos, World::EmptyChunkPtr);
+            }
+        }
+    }
+
+    void PlayerStartJump(double& Wprstm) const {
+        if (isPressed(GLFW_KEY_SPACE)) {
+            if (!Player::inWater) {
+                if ((Player::OnGround || Player::AirJumps < MaxAirJumps) && !Player::Flying &&
+                    !Player::CrossWall) {
+                    if (!Player::OnGround) {
+                        Player::jump = 0.3;
+                        Player::AirJumps++;
+                    } else {
+                        Player::jump = 0.25;
+                        Player::OnGround = false;
+                    }
+                }
+                if (Player::Flying || Player::CrossWall) {
+                    Player::ya += walkspeed / 2;
+                    isPressed(GLFW_KEY_SPACE, true);
+                }
+                Wprstm = 0.0;
+            } else {
+                Player::ya = walkspeed;
+                isPressed(GLFW_KEY_SPACE, true);
+            }
+        }
+    }
+
+    void HandleChatAndCommand() {
+        if (isPressed(GLFW_KEY_ENTER) == GLFW_PRESS) {
+            chatmode = !chatmode;
+            if (!chatword.empty()) { //指令的执行，或发出聊天文本
+                if (chatword.substr(0, 1) == "/") { //指令
+                    const auto command = split(chatword, " ");
+                    if (!doCommand(command)) { //执行失败
+                        DebugWarning("Fail to execute the command: " + chatword);
+                        chatMessages.push_back("Fail to execute the command: " + chatword);
+                    }
+                } else {
+                    chatMessages.push_back(chatword);
+                }
+            }
+            chatword = "";
+        }
+        if (chatmode) {
+            if (isPressed(GLFW_KEY_BACKSPACE) && chatword.length() > 0) {
+                const int n = chatword[chatword.length() - 1];
+                if (n > 0 && n <= 127)
+                    chatword = chatword.substr(0, chatword.length() - 1);
+                else
+                    chatword = chatword.substr(0, chatword.length() - 2);
+            } else {
+                chatword += inputstr;
+            }
+            //自动补全
+            if (isPressed(GLFW_KEY_TAB) && chatmode && !chatword.empty() && chatword.substr(0, 1) == "/") {
+                for (unsigned int i = 0; i != commands.size(); i++) {
+                    if (beginWith(commands[i].identifier, chatword)) {
+                        chatword = commands[i].identifier;
+                    }
+                }
+            }
+        }
+    }
+
+    void HotkeySettingsToggle() {//各种设置切换
+        if (isPressed(GLFW_KEY_F1)) {
+            Player::changeGameMode(Player::gamemode == Player::Creative ?
+                                   Player::Survival : Player::Creative);
+        }
+        if (isPressed(GLFW_KEY_F2)) shouldGetScreenshot = true;
+        if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
+        if (isPressed(GLFW_KEY_F4)) Player::CrossWall = !Player::CrossWall;
+        if (isPressed(GLFW_KEY_H) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
+            DebugHitbox = !DebugHitbox;
+            DebugMode = true;
+        }
+        if (Renderer::AdvancedRender) {
+            if (isPressed(GLFW_KEY_M) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
+                DebugShadow = !DebugShadow;
+                DebugMode = true;
+            }
+        } else DebugShadow = false;
+        if (isPressed(GLFW_KEY_G) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
+            DebugMergeFace = !DebugMergeFace;
+            DebugMode = true;
+        }
+        if (isPressed(GLFW_KEY_F4 && Player::gamemode == Player::Creative))
+            Player::CrossWall = !Player::CrossWall;
+        if (isPressed(GLFW_KEY_F5)) GUIrenderswitch = !GUIrenderswitch;
+        if (isPressed(GLFW_KEY_F6)) Player::Glide = !Player::Glide;
+        if (isPressed(GLFW_KEY_F7)) Player::spawn();
+        if (isPressed(GLFW_KEY_SLASH)) chatmode = true; //斜杠将会在下面的if(chatmode)里添加
+    }
+
+    bool ProcessPlayerNavigate(double& Wprstm, bool WP) const {//移动！(生命在于运动)
+        if (glfwGetKey(MainWindow, GLFW_KEY_W) || Player::glidingNow) {
+            if (!WP) {
+                if (Wprstm == 0.0) {
+                    Wprstm = timer();
+                } else {
+                    if (timer() - Wprstm <= 0.5) {
+                        Player::Running = true;
+                        Wprstm = 0.0;
+                    }
+                    else Wprstm = timer();
+                }
+            }
+            if (Wprstm != 0.0 && timer() - Wprstm > 0.5) Wprstm = 0.0;
+            WP = true;
+            if (!Player::glidingNow) {
+                Player::xa += -sin(Player::heading * M_PI / 180.0) * Player::speed;
+                Player::za += -cos(Player::heading * M_PI / 180.0) * Player::speed;
+            } else {
+                Player::xa = sin(M_PI / 180 * (Player::heading - 180)) *
+                             sin(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
+                Player::ya = cos(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
+                Player::za = cos(M_PI / 180 * (Player::heading - 180)) *
+                             sin(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
+                if (Player::ya < 0) Player::ya *= 2;
+            }
+        } else {
+            Player::Running = false;
+            WP = false;
+        }
+        if (Player::Running)Player::speed = runspeed;
+        else Player::speed = walkspeed;
+
+        if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS && !Player::glidingNow) {
+            Player::xa += sin(Player::heading * M_PI / 180.0) * Player::speed;
+            Player::za += cos(Player::heading * M_PI / 180.0) * Player::speed;
+            Wprstm = 0.0;
+        }
+
+        if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS && !Player::glidingNow) {
+            Player::xa += sin((Player::heading - 90) * M_PI / 180.0) * Player::speed;
+            Player::za += cos((Player::heading - 90) * M_PI / 180.0) * Player::speed;
+            Wprstm = 0.0;
+        }
+
+        if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS && !Player::glidingNow) {
+            Player::xa += -sin((Player::heading - 90) * M_PI / 180.0) * Player::speed;
+            Player::za += -cos((Player::heading - 90) * M_PI / 180.0) * Player::speed;
+            Wprstm = 0.0;
+        }
+
+        if (!Player::Flying && !Player::CrossWall) {
+            const auto horizontalSpeed = sqrt(Player::xa * Player::xa + Player::za * Player::za);
+            if (horizontalSpeed > Player::speed && !Player::glidingNow) {
+                Player::xa *= Player::speed / horizontalSpeed;
+                Player::za *= Player::speed / horizontalSpeed;
+            }
+        } else {
+            if (glfwGetKey(MainWindow, GLFW_KEY_R) == GLFW_PRESS && !Player::glidingNow) {
+                if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+                    Player::xa = -sin(Player::heading * M_PI / 180.0) * runspeed * 10;
+                    Player::za = -cos(Player::heading * M_PI / 180.0) * runspeed * 10;
+                } else {
+                    Player::xa = sin(M_PI / 180 * (Player::heading - 180)) *
+                                 sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+                    Player::ya = cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+                    Player::za = cos(M_PI / 180 * (Player::heading - 180)) *
+                                 sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+                }
+            }
+
+            if (glfwGetKey(MainWindow, GLFW_KEY_F) == GLFW_PRESS && !Player::glidingNow) {
+                if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+                    Player::xa = sin(Player::heading * M_PI / 180.0) * runspeed * 10;
+                    Player::za = cos(Player::heading * M_PI / 180.0) * runspeed * 10;
+                } else {
+                    Player::xa = -sin(M_PI / 180 * (Player::heading - 180)) *
+                                 sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+                    Player::ya = -cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+                    Player::za = -cos(M_PI / 180 * (Player::heading - 180)) *
+                                 sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+                }
+            }
+        }
+        return WP;
+    }
+
+    void ProcessPlayerJump() const {
         if (!Player::glidingNow) {
             if (!Player::inWater) {
                 if (!Player::Flying && !Player::CrossWall) {
@@ -467,69 +555,6 @@ public:
                 }
             }
         }
-
-        //爬墙
-        //if (Player::NearWall && Player::Flying == false && Player::CrossWall == false){
-        //	Player::ya += walkspeed
-        //	Player::jump = 0.0
-        //}
-
-        if (Player::glidingNow) {
-            auto& E = Player::glidingEnergy;
-            const auto oldh = Player::Pos.Y + Player::height + Player::heightExt + Player::ya;
-            auto h = oldh;
-            if (E - Player::glidingMinimumSpeed < h * g) {  //小于最小速度
-                h = (E - Player::glidingMinimumSpeed) / g;
-            }
-            Player::glidingSpeed = sqrt(2 * (E - g * h));
-            E -= EDrop;
-            Player::ya += h - oldh;
-        }
-
-
-        //音效更新
-        auto Run = 0;
-        if (WP)Run = Player::Running ? 2 : 1;
-        ALfloat PlayerPos[3];
-        PlayerPos[0] = Player::Pos.X;
-        PlayerPos[1] = Player::Pos.Y;
-        PlayerPos[2] = Player::Pos.Z;
-        const auto Fall = Player::OnGround
-                    && (!Player::inWater)
-                    && (Player::jump == 0);
-        //更新声速
-        AudioSystem::SpeedOfSound = Player::inWater ? AudioSystem::Water_SpeedOfSound : AudioSystem::Air_SpeedOfSound;
-        //更新环境
-        if (Player::inWater) {
-            //EFX::EAXprop = UnderWater;
-        } else {
-            if (Player::OnGround) {
-                //EFX::EAXprop = Plain;
-            } else {
-                //EFX::EAXprop = Generic;
-            }
-        }
-        //EFX::UpdateEAXprop();
-        AudioSystem::Update(PlayerPos, Fall, BlockClick, BlockPos, Run, Player::inWater);
-
-
-        mbp = mb;
-        FirstFrameThisUpdate = true;
-        Particles::updateall();
-
-        Player::intxpos = RoundInt(Player::Pos.X);
-        Player::intypos = RoundInt(Player::Pos.Y);
-        Player::intzpos = RoundInt(Player::Pos.Z);
-        Player::updatePosition();
-        Player::xposold = Player::Pos.X;
-        Player::yposold = Player::Pos.Y;
-        Player::zposold = Player::Pos.Z;
-        Player::intxposold = RoundInt(Player::Pos.X);
-        Player::intyposold = RoundInt(Player::Pos.Y);
-        Player::intzposold = RoundInt(Player::Pos.Z);
-
-        //	Time_updategame += timer() - Time_updategame;
-
     }
 
     bool PlayerInteract(ALfloat *BlockPos, double lx, double ly, double lz) {
