@@ -17,7 +17,7 @@ bool Player::Running = false;
 bool Player::NearWall = false;
 bool Player::inWater = false;
 bool Player::glidingNow = false;
-item Player::BlockInHand = Blocks::AIR;
+item Player::BlockInHand = Blocks::ENV;
 ubyte Player::indexInHand = 0;
 
 Hitbox::AABB Player::playerbox;
@@ -265,7 +265,7 @@ bool Player::addItem(item itemname, short amount) {
     }
     for (auto i = 3; i >= 0; i--) {
         for (auto j = 0; j != 10; j++) {
-            if (inventory[i][j] == Blocks::AIR) {
+            if (inventory[i][j] == Blocks::ENV) {
                 //�ҵ�һ���հ׸���
                 inventory[i][j] = itemname;
                 if (amount <= InvMaxStack) {

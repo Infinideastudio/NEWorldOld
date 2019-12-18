@@ -12,7 +12,6 @@
 #include "Hitbox.h"
 #include "GUI.h"
 #include "Menus.h"
-#include "Frustum.h"
 #include "Items.h"
 #include "Command.h"
 #include "Setup.h"
@@ -334,14 +333,12 @@ public:
         World::sortChunkLoadUnloadList(RoundInt(Player::Pos.X), RoundInt(Player::Pos.Y), RoundInt(Player::Pos.Z));
         for (const auto& [_, chunk] : World::ChunkUnloadList) {
             const auto c = Int3{chunk->cx, chunk->cy, chunk->cz};
-            chunk->Unload();
             World::DeleteChunk(c);
         }
         for (const auto& [_, pos]: World::ChunkLoadList) {
             auto c = World::AddChunk(pos);
             c->Load(false);
             if (c->Empty) {
-                c->Unload();
                 World::DeleteChunk(pos);
                 World::cpArray.Set(pos, World::EmptyChunkPtr);
             }
@@ -635,7 +632,7 @@ public:
                                                      float(rnd() * 0.2f - 0.1f),
                                                      float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
                         }
-                        World::pickblock(x, y, z);
+                        World::PickBlock({(x), (y), (z)});
                         BlockClick = true;
                         BlockPos[0] = x;
                         BlockPos[1] = y;
@@ -649,7 +646,7 @@ public:
                         if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
                             Player::inventoryAmount[3][Player::indexInHand]--;
                             if (Player::inventoryAmount[3][Player::indexInHand] == 0)
-                                Player::inventory[3][Player::indexInHand] = Blocks::AIR;
+                                Player::inventory[3][Player::indexInHand] = Blocks::ENV;
 
                             BlockClick = true;
                             BlockPos[0] = x;
@@ -661,7 +658,7 @@ public:
                         if (Player::inventory[3][Player::indexInHand] == APPLE) {
                             Player::inventoryAmount[3][Player::indexInHand]--;
                             if (Player::inventoryAmount[3][Player::indexInHand] == 0)
-                                Player::inventory[3][Player::indexInHand] = Blocks::AIR;
+                                Player::inventory[3][Player::indexInHand] = Blocks::ENV;
                             Player::health = Player::healthMax;
                         }
                     }
@@ -681,40 +678,13 @@ public:
 
     void RandomTick() const {
         for (auto& chunk : World::chunks) {
-            const auto cx = chunk->cx;
-            const auto cy = chunk->cy;
-            const auto cz = chunk->cz;
-            const auto x = int(rnd() * 16);
-            const auto gx = x + cx * 16;
-            const auto y = int(rnd() * 16);
-            const auto gy = y + cy * 16;
-            const auto z = int(rnd() * 16);
-            const auto gz = z + cz * 16;
-            if (chunk->GetBlock({x, y, z}) == Blocks::DIRT &&
-                World::GetBlock({(gx), (gy + 1), (gz)}, Blocks::NONEMPTY, nullptr) == Blocks::AIR && (
-                        World::GetBlock({(gx + 1), (gy), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx - 1), (gy), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy), (gz + 1)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy), (gz - 1)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx + 1), (gy + 1), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx - 1), (gy + 1), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy + 1), (gz + 1)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy + 1), (gz - 1)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx + 1), (gy - 1), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx - 1), (gy - 1), (gz)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy - 1), (gz + 1)}) == Blocks::GRASS ||
-                        World::GetBlock({(gx), (gy - 1), (gz - 1)}) == Blocks::GRASS)) {
-                //长草
-                chunk->SetBlock({(x), (y), (z)}, Blocks::GRASS);
-                World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
-                World::setChunkUpdated(cx, cy, cz, true);
-            }
-            if (chunk->GetBlock({x, y, z}) == Blocks::GRASS &&
-                World::GetBlock({(gx), (gy + 1), (gz)}) != Blocks::AIR) {
-                //草被覆盖
-                chunk->SetBlock({(x), (y), (z)}, Blocks::DIRT);
-                World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
-            }
+            const auto cPos = Int3{chunk->cx, chunk->cy, chunk->cz};
+            const auto bPos = Int3{int(rnd() * 16), int(rnd() * 16), int(rnd() * 16)};
+            const auto gPos = (cPos << World::ChunkEdgeSizeLog2) + bPos;
+            const auto block = chunk->GetBlock(bPos);
+            if (block != Blocks::ENV) {
+                BlockInfo(block).OnRandomTick(gPos, block);
+			}
         }
     }
 
@@ -1107,7 +1077,7 @@ public:
 
         if (DebugMode) {
 
-            if (selb != Blocks::AIR) {
+            if (selb != Blocks::ENV) {
                 glLineWidth(1);
                 glBegin(GL_LINES);
                 glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, 0.8f);
@@ -1449,7 +1419,7 @@ public:
             UIVertex(xbase + i * (32 + spac), ybase + 32);
             glEnd();
             glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-            if (Player::inventory[row][i] != Blocks::AIR) {
+            if (Player::inventory[row][i] != Blocks::ENV) {
                 glBindTexture(GL_TEXTURE_2D, BlockTextures);
                 const auto tcX = Textures::getTexcoordX(Player::inventory[row][i], 1);
                 const auto tcY = Textures::getTexcoordY(Player::inventory[row][i], 1);
@@ -1477,7 +1447,7 @@ public:
         const int leftp = (windowwidth / stretch - 392) / 2;
         const int upp = windowheight / stretch - 152 - 16;
         static int mousew, mouseb, mousebl;
-        static Block indexselected = Blocks::AIR;
+        static Block indexselected = Blocks::ENV;
         static short Amountselected = 0;
         const auto curtime = timer();
         const auto TimeDelta = curtime - bagAnimTimer;
@@ -1533,23 +1503,23 @@ public:
                                 Amountselected--;
                                 Player::inventoryAmount[i][j]++;
                             }
-                            if (mousebl == 0 && mouseb == 2 && Player::inventory[i][j] == Blocks::AIR) {
+                            if (mousebl == 0 && mouseb == 2 && Player::inventory[i][j] == Blocks::ENV) {
                                 Amountselected--;
                                 Player::inventoryAmount[i][j] = 1;
                                 Player::inventory[i][j] = indexselected;
                             }
 
-                            if (Amountselected == 0) indexselected = Blocks::AIR;
-                            if (indexselected == Blocks::AIR) Amountselected = 0;
-                            if (Player::inventoryAmount[i][j] == 0) Player::inventory[i][j] = Blocks::AIR;
-                            if (Player::inventory[i][j] == Blocks::AIR) Player::inventoryAmount[i][j] = 0;
+                            if (Amountselected == 0) indexselected = Blocks::ENV;
+                            if (indexselected == Blocks::ENV) Amountselected = 0;
+                            if (Player::inventoryAmount[i][j] == 0) Player::inventory[i][j] = Blocks::ENV;
+                            if (Player::inventory[i][j] == Blocks::ENV) Player::inventoryAmount[i][j] = 0;
                         }
                     }
                     drawBagRow(i, (csi == i ? csj : -1), (windowwidth / stretch - 392) / 2,
                                windowheight / stretch - 152 - 16 + i * 40, 8, 1.0f);
                 }
             }
-            if (indexselected != Blocks::AIR) {
+            if (indexselected != Blocks::ENV) {
                 glBindTexture(GL_TEXTURE_2D, BlockTextures);
                 const auto tcX = Textures::getTexcoordX(indexselected, 1);
                 const auto tcY = Textures::getTexcoordY(indexselected, 1);

@@ -579,7 +579,7 @@ namespace ChunkRenderer {
             for (y = 0; y < 16; y++) {
                 for (z = 0; z < 16; z++) {
                     const auto curr = c->GetBlock({x, y, z});
-                    if (curr == Blocks::AIR) continue;
+                    if (curr == Blocks::ENV) continue;
                     if (!BlockInfo(curr).isTranslucent()) renderblock(x, y, z, c);
                 }
             }
@@ -590,7 +590,7 @@ namespace ChunkRenderer {
             for (y = 0; y < 16; y++) {
                 for (z = 0; z < 16; z++) {
                     const auto curr = c->GetBlock({x, y, z});
-                    if (curr == Blocks::AIR) continue;
+                    if (curr == Blocks::ENV) continue;
                     if (BlockInfo(curr).isTranslucent() && BlockInfo(curr).isSolid()) renderblock(x, y, z, c);
                 }
             }
@@ -601,7 +601,7 @@ namespace ChunkRenderer {
             for (y = 0; y < 16; y++) {
                 for (z = 0; z < 16; z++) {
                     const auto curr = c->GetBlock({x, y, z});
-                    if (curr == Blocks::AIR) continue;
+                    if (curr == Blocks::ENV) continue;
                     if (!BlockInfo(curr).isSolid()) renderblock(x, y, z, c);
                 }
             }
@@ -778,7 +778,7 @@ namespace ChunkRenderer {
                             }
                             //Render
                             const auto& info = BlockInfo(bl);
-                            if (bl == Blocks::AIR || bl == neighbour && bl != Blocks::LEAF ||
+                            if (bl == Blocks::ENV || bl == neighbour && bl != Blocks::LEAF ||
                                 BlockInfo(neighbour).isOpaque() ||
                                 steps == 0 && info.isTranslucent() ||
                                 steps == 1 && (!info.isTranslucent() || !info.isSolid()) ||
@@ -867,7 +867,7 @@ namespace ChunkRenderer {
                             neighbour = c->GetBlock({(xx), (yy), (zz)});
                         }
                         //Render
-                        if (bl == Blocks::AIR || bl == Blocks::GLASS || bl == neighbour && bl != Blocks::LEAF ||
+                        if (bl == Blocks::ENV || bl == Blocks::GLASS || bl == neighbour && bl != Blocks::LEAF ||
                             BlockInfo(neighbour).isOpaque() || BlockInfo(bl).isTranslucent()) {
                             //Not valid block
                             if (valid) {

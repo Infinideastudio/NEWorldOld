@@ -80,7 +80,7 @@ namespace World {
 
     void updateblock(int x, int y, int z, bool blockchanged, int depth = 0);
 
-    Block GetBlock(Int3 v, Block mask = Blocks::AIR, Chunk *hint = nullptr);
+    Block GetBlock(Int3 v, Block mask = Blocks::ENV, Chunk *hint = nullptr);
 
     Brightness GetBrightness(Int3 v, Chunk *hint = nullptr);
 
@@ -92,13 +92,9 @@ namespace World {
         return GetBrightness({x, y, z}, cptr);
     }
 
-    inline void PutBlock(const Int3 v, Block block) { SetBlock(v, block); }
+    void PutBlock(Int3 v, Block block);
 
-    void pickleaf();
-
-    void picktree(int x, int y, int z);
-
-    void pickblock(int x, int y, int z);
+    void PickBlock(Int3 v);
 
     inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
         //检测给出的chunk坐标是否在渲染范围内

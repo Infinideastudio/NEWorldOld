@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <filesystem>
 #include "Player.h"
-#include "Items.h"
 
 namespace World {
 
@@ -283,11 +282,11 @@ namespace World {
     Block GetBlock(const Int3 v, Block mask, Chunk *const hint) {
         //获取方块
         const auto c = GetChunkPos(v);
-        if (ChunkOutOfBound(c)) return Blocks::AIR;
+        if (ChunkOutOfBound(c)) return Blocks::ENV;
         const auto b = GetBlockPos(v);
         if (ChunkHintMatch(c, hint)) { return hint->GetBlock(b); }
         const auto ci = GetChunk(c);
-        if (ci == EmptyChunkPtr) return Blocks::AIR;
+        if (ci == EmptyChunkPtr) return Blocks::ENV;
         if (ci) { return ci->GetBlock(b); }
         return mask;
     }
@@ -440,7 +439,6 @@ namespace World {
     void destroyAllChunks() {
         for (auto i = 0; i != chunks.size(); i++) {
             if (!chunks[i]->Empty) {
-                chunks[i]->Unload();
                 delete chunks[i];
             }
         }
@@ -469,7 +467,7 @@ namespace World {
         //对生成条件进行更严格的检测
         //一：正上方五格必须为空气
         for (auto i = y + 1; i < y + 6; i++) {
-            if (GetBlock({(x), (i), (z)}) != Blocks::AIR)return;
+            if (GetBlock({(x), (i), (z)}) != Blocks::ENV)return;
         }
         //二：周围五格不能有树
         for (auto ix = x - 4; ix < x + 4; ix++) {
@@ -497,7 +495,7 @@ namespace World {
         }
         //测算最高高度
         for (auto i = y + 1; i < y + 16; i++) {
-            if (GetBlock({(x), (i), (z)}) == Blocks::AIR) { h++; }
+            if (GetBlock({(x), (i), (z)}) == Blocks::ENV) { h++; }
             else { break; };
         }
         //取最小值
@@ -515,7 +513,7 @@ namespace World {
             for (auto ix = x - 6; ix < x + 6; ix++) {
                 for (auto iz = z - 6; iz < z + 6; iz++) {
                     const auto distancen = DistanceSquare(ix, iy, iz, x, y + leafh + 1, z);
-                    if ((GetBlock({(ix), (iy), (iz)}) == Blocks::AIR) && (distancen < distancen2)) {
+                    if ((GetBlock({(ix), (iy), (iz)}) == Blocks::ENV) && (distancen < distancen2)) {
                         if ((distancen <= distancen2 / 9) && (rnd() > 0.3)) {
                             SetBlock({(ix), (iy), (iz)}, Blocks::WOOD);//生成枝杈
                         } else {
@@ -536,7 +534,7 @@ namespace World {
                     if (distsqr <= maxdistsqr * 0.75 ||
                         distsqr <= maxdistsqr && rnd() > (distsqr - maxdistsqr * 0.6) / (maxdistsqr * 0.4)) {
                         const auto e = GetBlock({(fx), (fy), (fz)});
-                        if (e == Blocks::AIR) continue;
+                        if (e == Blocks::ENV) continue;
                         for (auto j = 1; j <= 12; j++) {
                             Particles::throwParticle(e,
                                                      float(fx + rnd() - 0.5f), float(fy + rnd() - 0.2f),
@@ -545,71 +543,28 @@ namespace World {
                                                      float(rnd() * 0.2f - 0.1f),
                                                      float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
                         }
-                        SetBlock({(fx), (fy), (fz)}, Blocks::AIR, c);
+                        SetBlock({(fx), (fy), (fz)}, Blocks::ENV, c);
                     }
                 }
             }
         }
     }
 
-    void pickleaf() {
-        if (rnd() < 0.2) {
-            if (rnd() < 0.5)Player::addItem(APPLE);
-            else Player::addItem(STICK);
-        } else {
-            Player::addItem(Blocks::LEAF);
+    void PutBlock(const Int3 v, Block block) {
+        auto& blockInfo = BlockInfo(block);
+        if (blockInfo.BeforeBlockPlace(v, block)) {
+            SetBlock(v, block);
+            blockInfo.AfterBlockPlace(v, block);
         }
     }
 
-    void picktree(int x, int y, int z) {
-        if (GetBlock({(x), (y), (z)}) != Blocks::LEAF) {
-            Player::addItem(GetBlock({(x), (y), (z)}));
-        } else pickleaf();
-        for (auto j = 1; j <= 10; j++) {
-            Particles::throwParticle(GetBlock({(x), (y), (z)}),
-                                     float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
-                                     float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
-                                     float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
+    void PickBlock(const Int3 v) {
+        const auto block = GetBlock(v);
+        auto& type = BlockInfo(block);
+        if (type.BeforeBlockDestroy(v, block)) {
+            SetBlock(v, Blocks::ENV);
+            type.AfterBlockDestroy(v, block);
         }
-        SetBlock({(x), (y), (z)}, Blocks::AIR);
-        //上
-        if ((GetBlock({(x), (y + 1), (z)}) == Blocks::WOOD) || (
-                GetBlock({(x), (y + 1), (z)}) == Blocks::LEAF))
-            picktree(x, y + 1, z);
-        //前
-        if ((GetBlock({(x), (y), (z + 1)}) == Blocks::WOOD) || (
-                GetBlock({(x), (y), (z + 1)}) == Blocks::LEAF))
-            picktree(x, y, z + 1);
-        //后
-        if ((GetBlock({(x), (y), (z - 1)}) == Blocks::WOOD) || (
-                GetBlock({(x), (y), (z - 1)}) == Blocks::LEAF))
-            picktree(x, y, z - 1);
-        //左
-        if ((GetBlock({(x + 1), (y), (z)}) == Blocks::WOOD) || (
-                GetBlock({(x + 1), (y), (z)}) == Blocks::LEAF))
-            picktree(x + 1, y, z);
-        //右
-        if ((GetBlock({(x - 1), (y), (z)}) == Blocks::WOOD) || (
-                GetBlock({(x - 1), (y), (z)}) == Blocks::LEAF))
-            picktree(x - 1, y, z);
-    }
-
-    void pickblock(int x, int y, int z) {
-        if (GetBlock({(x), (y), (z)}) == Blocks::WOOD &&
-            ((GetBlock({(x), (y + 1), (z)}) == Blocks::WOOD) || (
-                    GetBlock({(x), (y + 1), (z)}) == Blocks::LEAF)) &&
-            (GetBlock({(x), (y), (z + 1)}) == Blocks::AIR) && (
-                    GetBlock({(x), (y), (z - 1)}) == Blocks::AIR) &&
-            (GetBlock({(x + 1), (y), (z)}) == Blocks::AIR) && (
-                    GetBlock({(x - 1), (y), (z)}) == Blocks::AIR) &&
-            (GetBlock({(x), (y - 1), (z)}) != Blocks::AIR)
-                ) { picktree(x, y + 1, z); }//触发砍树模式
-        //击打树叶
-        if (GetBlock({(x), (y), (z)}) != Blocks::LEAF) {
-            Player::addItem(GetBlock({(x), (y), (z)}));
-        } else pickleaf();
-
-        SetBlock({(x), (y), (z)}, Blocks::AIR);
     }
 
 }

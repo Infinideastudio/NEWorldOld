@@ -47,13 +47,6 @@ namespace World {
         aabb = getBaseAABB();
         mBlock = new Block[4096];
         mBrightness = new Brightness[4096];
-        //memset(pblocks, 0, sizeof(pblocks));
-        //memset(pbrightness, 0, sizeof(pbrightness));
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-        if (pblocks == nullptr || pbrightness == nullptr){
-            DebugError("Allocate memory failed!");
-        }
-#endif
     }
 
     void Chunk::destroy() {
@@ -67,16 +60,6 @@ namespace World {
     }
 
     void Chunk::buildTerrain(bool initIfEmpty) {
-        //Éú³ÉµØÐÎ
-        //assert(Empty == false);
-
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-        if (pblocks == nullptr || pbrightness == nullptr) {
-            DebugWarning("Empty pointer when Chunk generating!");
-            return;
-        }
-#endif
-
         //Fast generate parts
         //Part1 out of the terrain bound
         if (cy > 4) {
@@ -160,7 +143,7 @@ namespace World {
                 for (auto y = 0; y < maxh; ++y) mBlock[(y << 4) + base] = Blocks::ROCK;
                 //Air layer
                 for (auto y = std::min(std::max(0, std::max(h + 1, wh + 1)), 16); y < 16; ++y) {
-                    mBlock[(y << 4) + base] = Blocks::AIR;
+                    mBlock[(y << 4) + base] = Blocks::ENV;
                     mBrightness[(y << 4) + base] = skylight;
                 }
                 //Bedrock layer (overwrite)
@@ -201,11 +184,9 @@ namespace World {
         if (!Empty) updated = true;
     }
 
-    void Chunk::Unload() {
+    Chunk::~Chunk() {
         unloadedChunksCount++;
-#ifndef NEWORLD_DEBUG_NO_FILEIO
         SaveToFile();
-#endif
         destroyRender();
         destroy();
     }

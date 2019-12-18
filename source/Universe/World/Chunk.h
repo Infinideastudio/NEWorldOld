@@ -10,14 +10,9 @@
 class Object;
 
 namespace World {
-
     extern std::string worldname;
     extern Brightness BRIGHTNESSMIN;
     extern Brightness skylight;
-
-    class Chunk;
-
-    void explode(int x, int y, int z, int r, Chunk *c);
 
     constexpr unsigned int ChunkEdgeSizeLog2 = 4;
     constexpr unsigned int ChunkPlaneSizeLog2 = ChunkEdgeSizeLog2 * 2u;
@@ -65,7 +60,7 @@ namespace World {
 
         void Load(bool initIfEmpty = true);
 
-        void Unload();
+        ~Chunk();
 
         void buildTerrain(bool initIfEmpty = true);
 
@@ -99,10 +94,6 @@ namespace World {
         Brightness GetBrightness(const Int3 vec) noexcept {return mBrightness[GetIndex(vec)];}
 
         void SetBlock(const Int3 vec, Block block) noexcept {
-            if (block == Blocks::TNT) {
-                World::explode(cx * 16 + vec.X, cy * 16 + vec.Y, cz * 16 + vec.Z, 8, this);
-                return;
-            }
             mBlock[GetIndex(vec)] = block;
             Modified = true;
         }

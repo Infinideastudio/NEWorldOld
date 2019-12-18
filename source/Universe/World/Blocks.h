@@ -2,12 +2,13 @@
 
 #include <utility>
 #include <utility>
+#include <Math/Vector3.h>
 #include "Definitions.h"
 #include "Globalization.h"
 
 namespace Blocks {
     enum BlockID {
-        AIR, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
+        ENV, ROCK, GRASS, DIRT, STONE, PLANK, WOOD, BEDROCK, LEAF,
         GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON,
         TNT, BLOCK_DEF_END
     };
@@ -20,12 +21,13 @@ namespace Blocks {
         bool Solid;
         bool Opaque;
         bool Translucent;
-        bool Dark;
 
     public:
         BlockType(std::string blockName, bool solid, bool opaque, bool translucent, float _hardness)
-                :name(std::move(blockName)), Solid(solid), Opaque(opaque), Translucent(translucent),
-                Hardness(_hardness) {};
+                :name(std::move(blockName)), Hardness(_hardness), Solid(solid), Opaque(opaque),
+                 Translucent(translucent) { };
+
+        virtual  ~BlockType() noexcept;
 
         [[nodiscard]] std::string_view GetId() const noexcept { return std::string_view(name); }
 
@@ -43,8 +45,14 @@ namespace Blocks {
 
         //获得硬度（数值越大硬度越小，最大100）
         [[nodiscard]] float getHardness() const { return Hardness; }
-    };
 
-    extern BlockType blockData[BLOCK_DEF_END + 1];
+        //方块事件
+        virtual bool BeforeBlockPlace(const Int3& position, Block block) noexcept;
+        virtual void AfterBlockPlace(const Int3& position, Block block) noexcept;
+        virtual bool BeforeBlockDestroy(const Int3& position, Block block) noexcept;
+        virtual void AfterBlockDestroy(const Int3& position, Block block) noexcept;
+        virtual void OnRandomTick(const Int3& position, Block block) noexcept;
+    };
 }
-#define BlockInfo(blockID) Blocks::blockData[(blockID) >= Blocks::BLOCK_DEF_END || (blockID) < 0 ? Blocks::BLOCK_DEF_END : (blockID)]
+
+Blocks::BlockType& BlockInfo(int id) noexcept;
