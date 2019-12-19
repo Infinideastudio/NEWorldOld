@@ -221,7 +221,7 @@ namespace GUI {
 
         void singleloop();
 
-        ~Form();
+        virtual ~Form();
     };
 
     void AppStart();

@@ -17,7 +17,15 @@ namespace Renderer {
     extern bool AdvancedRender;
 }
 
+namespace {
+    World::ChunkGenerator gChunkGenerator = nullptr;
+}
+
 namespace World {
+    void UseChunkGenerator(const ChunkGenerator newGenerator) noexcept {
+        gChunkGenerator = newGenerator;
+    }
+
     struct HMapManager {
         int H[16][16];
         int low, high, count;

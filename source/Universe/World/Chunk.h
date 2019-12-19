@@ -21,6 +21,7 @@ namespace World {
     constexpr unsigned int ChunkPlaneSize = 1u << ChunkPlaneSizeLog2;
     constexpr unsigned int ChunkCubicSize = 1u << ChunkCubicSizeLog2;
 
+
     class Chunk {
     private:
         Block *mBlock;
@@ -117,4 +118,8 @@ namespace World {
         void calcVisible() { visible = TestFrustum.FrustumTest(getRelativeAABB()); }
 
     };
+
+    using ChunkGenerator = void (*)(Chunk&);
+
+    void UseChunkGenerator(ChunkGenerator newGenerator) noexcept;
 }
