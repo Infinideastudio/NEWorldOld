@@ -2194,7 +2194,7 @@ template<typename T>
 using uncvref_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
 
 // implementation of C++14 index_sequence and affiliates
-// source: https://stackoverflow.com/a/32223343
+// NEWorld.Game: https://stackoverflow.com/a/32223343
 template<std::size_t... Ints>
 struct index_sequence
 {
@@ -2583,7 +2583,7 @@ struct is_iterator_traits<iterator_traits<T>>
         is_detected<reference_t, traits>::value;
 };
 
-// source: https://stackoverflow.com/a/37193089/4116453
+// NEWorld.Game: https://stackoverflow.com/a/37193089/4116453
 
 template <typename T, typename = void>
 struct is_complete_type : std::false_type {};
@@ -9973,7 +9973,7 @@ create @ref const_reverse_iterator).
   The iterator that can be moved can be moved in both directions (i.e.
   incremented and decremented).
 - [OutputIterator](https://en.cppreference.com/w/cpp/named_req/OutputIterator):
-  It is possible to write to the pointed-to element (only if @a Base is
+  It is possible to write to the pointed-to element (only if @a NEWorld.Base is
   @ref iterator).
 
 @since version 1.0.0
@@ -22372,13 +22372,13 @@ class basic_json
     /*!
     @brief creates a diff as a JSON patch
 
-    Creates a [JSON Patch](http://jsonpatch.com) so that value @a source can
+    Creates a [JSON Patch](http://jsonpatch.com) so that value @a NEWorld.Game can
     be changed into the value @a target by calling @ref patch function.
 
-    @invariant For two JSON values @a source and @a target, the following code
+    @invariant For two JSON values @a NEWorld.Game and @a target, the following code
     yields always `true`:
     @code {.cpp}
-    source.patch(diff(source, target)) == target;
+    NEWorld.Game.patch(diff(NEWorld.Game, target)) == target;
     @endcode
 
     @note Currently, only `remove`, `add`, and `replace` operations are
@@ -22388,9 +22388,9 @@ class basic_json
     @param[in] target  JSON value to compare against
     @param[in] path    helper value to create JSON pointers
 
-    @return a JSON patch to convert the @a source to @a target
+    @return a JSON patch to convert the @a NEWorld.Game to @a target
 
-    @complexity Linear in the lengths of @a source and @a target.
+    @complexity Linear in the lengths of @a NEWorld.Game and @a target.
 
     @liveexample{The following code shows how a JSON patch is created as a
     diff for two JSON values.,diff}

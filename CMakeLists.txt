@@ -21,23 +21,38 @@ if (NOT DEFINED NWCONF_IPO_CONFIGURED)
     endfunction()
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/Build/CMake)
+
+find_package(sqlite3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(OpenAL REQUIRED)
 find_package(Freetype REQUIRED)
 
+if (APPLE)
+    find_package(Boost REQUIRED COMPONENTS filesystem)
+endif()
+
 if (MSVC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /source-charset:utf-8")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /source-charset:utf-8")
 endif()
 
-file(GLOB_RECURSE SOURCE source/*.*)
+file(GLOB_RECURSE SRC_BASE NEWorld.Base/*.*)
+add_library(NEWorld.Base STATIC ${SRC_BASE})
+target_include_directories(NEWorld.Base PUBLIC NEWorld.Base)
+target_link_libraries(NEWorld.Base PRIVATE SQLite::SQLite3)
+
+file(GLOB_RECURSE SOURCE NEWorld.Game/*.*)
 add_executable(NEWorld ${SOURCE})
 target_enable_ipo(NEWorld)
 target_compile_definitions(NEWorld PRIVATE -DNEWORLD_GAME)
-target_include_directories(NEWorld PRIVATE source ${OPENAL_INCLUDE_DIR} External)
-target_link_libraries(NEWorld PRIVATE OpenGL::GL GLEW::GLEW glfw3::glfw3 Freetype::Freetype)
+target_include_directories(NEWorld PRIVATE NEWorld.Game ${OPENAL_INCLUDE_DIR} External)
+target_link_libraries(NEWorld PRIVATE OpenGL::GL GLEW::GLEW glfw3::glfw3 Freetype::Freetype NEWorld.Base)
+if (APPLE)
+    target_link_libraries(NEWorld PRIVATE Boost::filesystem)
+endif()
+

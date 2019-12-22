@@ -200,7 +200,7 @@ FakesAssemblies/
 [Cc]onfigs/
 CMakeSettings.json
 .idea/
-Fonts/
+Assets/Fonts/
 Mods/
-Textures/
+Assets/Textures/
 cmake-build-*
