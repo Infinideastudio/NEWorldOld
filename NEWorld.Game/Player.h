@@ -55,10 +55,10 @@ public:
     static double speed;
     static int AirJumps;
     static int cxt, cyt, czt, cxtl, cytl, cztl;
-	static Double3 Pos;
-    static double lookupdown, heading, xposold, yposold, zposold, jump;
+	static Double3 Pos, PosOld;
+    static double lookupdown, heading, jump;
     static double xlookspeed, ylookspeed;
-    static int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
+    static Int3 IntPos, IntPosOld;
 
     static float height;
     static float heightExt;

@@ -2,6 +2,7 @@
 #include "Textures.h"
 #include "WorldGen.h"
 #include "Particles.h"
+#include <cmath>
 #include <algorithm>
 #include "System/FileSystem.h"
 #include "Player.h"
@@ -32,8 +33,8 @@ namespace World {
     std::vector<unsigned int> vbuffersShouldDelete;
     int chunkBuildRenders;
 
-    OrderedList<int, Int3, 64> ChunkLoadList {};
-    OrderedList<int, Chunk*, 64, std::greater> ChunkUnloadList {};
+    OrderedList<int, Int3, 64> ChunkLoadList{};
+    OrderedList<int, Chunk *, 64, std::greater> ChunkUnloadList{};
 
     void Init() {
         std::stringstream ss;
@@ -58,7 +59,7 @@ namespace World {
     }
 
     auto LowerChunkBound(chunkid cid) noexcept {
-        return std::lower_bound(chunks.begin(), chunks.end(), cid, [](auto& left, auto right) noexcept {
+        return std::lower_bound(chunks.begin(), chunks.end(), cid, [](auto &left, auto right) noexcept {
             return left->GetId() < right;
         });
     }
@@ -149,7 +150,7 @@ namespace World {
     }
 
     bool inWater(const Hitbox::AABB &box) {
-        Hitbox::AABB blockbox;
+        Hitbox::AABB blockbox{};
         for (auto a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5); a++) {
             for (auto b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5); b++) {
                 for (auto c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5); c++) {
@@ -179,14 +180,14 @@ namespace World {
         const auto cy = GetChunkPos(y);
         const auto cz = GetChunkPos(z);
 
-        if (ChunkOutOfBound({(cx), (cy), (cz)})) return;
+        if (ChunkOutOfBound({cx, cy, cz})) return;
 
         const auto b = GetBlockPos(Int3{x, y, z});
 
-        auto cptr = GetChunk({(cx), (cy), (cz)});
+        auto cptr = GetChunk({cx, cy, cz});
         if (cptr != nullptr) {
             if (cptr == EmptyChunkPtr) {
-                cptr = AddChunk({(cx), (cy), (cz)});
+                cptr = AddChunk({cx, cy, cz});
                 cptr->Load();
                 cptr->Empty = false;
             }
@@ -243,7 +244,7 @@ namespace World {
 
                 //Opaque block
                 cptr->SetBrightness(b, 0);
-                if (GetBlock({(x), (y), (z)}) == Blocks::GLOWSTONE || GetBlock({(x), (y), (z)}) == Blocks::LAVA) {
+                if (GetBlock({x, y, z}) == Blocks::GLOWSTONE || GetBlock({x, y, z}) == Blocks::LAVA) {
                     cptr->SetBrightness(b, BRIGHTNESSMAX);
                 }
 
@@ -271,9 +272,7 @@ namespace World {
         }
     }
 
-    bool ChunkHintMatch(const Int3 c, Chunk *const cptr) noexcept {
-        return cptr && c.X == cptr->cx && c.Y == cptr->cy && c.Z == cptr->cz;
-    }
+    bool ChunkHintMatch(const Int3 c, Chunk *const cptr) noexcept { return cptr && cptr->GetPosition() == c; }
 
     bool ChunkHintNoneEmptyMatch(const Int3 c, Chunk *const cptr) noexcept {
         return cptr != EmptyChunkPtr && ChunkHintMatch(c, cptr);
@@ -320,8 +319,7 @@ namespace World {
         if (ChunkHintNoneEmptyMatch(c, hint)) {
             hint->SetBlock(b, block);
             updateblock(v.X, v.Y, v.Z, true);
-        }
-        else if (!ChunkOutOfBound(c)) {
+        } else if (!ChunkOutOfBound(c)) {
             if (const auto i = GetChunkNoneLazy(c); i) {
                 i->SetBlock(b, block);
                 updateblock(v.X, v.Y, v.Z, true);
@@ -335,8 +333,7 @@ namespace World {
         const auto b = GetBlockPos(v);
         if (ChunkHintNoneEmptyMatch(c, hint)) {
             hint->SetBrightness(b, brightness);
-        }
-        else if (!ChunkOutOfBound(c)) {
+        } else if (!ChunkOutOfBound(c)) {
             if (const auto i = GetChunkNoneLazy(c); i) {
                 i->SetBrightness(b, brightness);
             }
@@ -350,77 +347,56 @@ namespace World {
     }
 
     void setChunkUpdated(int x, int y, int z, bool value) {
-        if (const auto i = GetChunkNoneLazy({(x), (y), (z)}); i) {
+        if (const auto i = GetChunkNoneLazy({x, y, z}); i) {
             i->updated = value;
         }
     }
+    
+    static constexpr auto ccOffset = Int3(7); // offset to a chunk center
 
     void sortChunkBuildRenderList(int xpos, int ypos, int zpos) {
         auto p = 0;
-
-        const auto cxp = GetChunkPos(xpos);
-        const auto cyp = GetChunkPos(ypos);
-        const auto czp = GetChunkPos(zpos);
+        const auto pos = Int3{xpos, ypos, zpos};
+        const auto cp = GetChunkPos(pos);
 
         for (auto ci = 0; ci < chunks.size(); ci++) {
-            if (chunks[ci]->updated) {
-                const auto cx = chunks[ci]->cx;
-                const auto cy = chunks[ci]->cy;
-                const auto cz = chunks[ci]->cz;
-                if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance)) continue;
-                const auto xd = cx * 16 + 7 - xpos;
-                const auto yd = cy * 16 + 7 - ypos;
-                const auto zd = cz * 16 + 7 - zpos;
-                const auto distsqr = xd * xd + yd * yd + zd * zd;
-                for (auto i = 0; i < MaxChunkRenders; i++) {
-                    if (distsqr < chunkBuildRenderList[i][0] || p <= i) {
-                        for (auto j = MaxChunkRenders - 1; j >= i + 1; j--) {
-                            chunkBuildRenderList[j][0] = chunkBuildRenderList[j - 1][0];
-                            chunkBuildRenderList[j][1] = chunkBuildRenderList[j - 1][1];
-                        }
-                        chunkBuildRenderList[i][0] = distsqr;
-                        chunkBuildRenderList[i][1] = ci;
-                        break;
+            if (!chunks[ci]->updated) continue;
+            const auto c = chunks[ci]->GetPosition();
+            if (ChebyshevDistance(c, cp) > viewdistance) continue;
+            const auto dist = DistanceSquared(c * 16 + ccOffset, pos);
+            for (auto i = 0; i < MaxChunkRenders; i++) {
+                if (dist < chunkBuildRenderList[i][0] || p <= i) {
+                    for (auto j = MaxChunkRenders - 1; j >= i + 1; j--) {
+                        chunkBuildRenderList[j][0] = chunkBuildRenderList[j - 1][0];
+                        chunkBuildRenderList[j][1] = chunkBuildRenderList[j - 1][1];
                     }
+                    chunkBuildRenderList[i][0] = dist;
+                    chunkBuildRenderList[i][1] = ci;
+                    break;
                 }
-                if (p < MaxChunkRenders) p++;
             }
+            if (p < MaxChunkRenders) p++;
         }
         chunkBuildRenders = p;
     }
 
-    void sortChunkLoadUnloadList(int xpos, int ypos, int zpos) {
-        int cx, cy, cz;
-
-        const auto cxp = GetChunkPos(xpos);
-        const auto cyp = GetChunkPos(ypos);
-        const auto czp = GetChunkPos(zpos);
-        const auto blockDistOffset = Int3{7, 7, 7} - Int3{xpos, ypos, zpos};
+    void sortChunkLoadUnloadList(Int3 pos) {
+        const auto cp = GetChunkPos(pos);
 
         ChunkUnloadList.Clear();
-        for (auto& chunk : chunks) {
-            cx = chunk->cx;
-            cy = chunk->cy;
-            cz = chunk->cz;
-            if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance + 1)) {
-                auto vec = Int3{cx, cy, cz};
-				vec = vec * 16 + blockDistOffset;
-                ChunkUnloadList.Insert(vec.LengthSquared(), chunk);
-            }
+        for (auto &chunk : chunks) {
+            const auto c = chunk->GetPosition();
+            if (ChebyshevDistance(c, cp) > viewdistance)
+                ChunkUnloadList.Insert(DistanceSquared(c * 16 + ccOffset, pos), chunk);
         }
 
         ChunkLoadList.Clear();
-        for (cx = cxp - viewdistance - 1; cx <= cxp + viewdistance; cx++) {
-            for (cy = cyp - viewdistance - 1; cy <= cyp + viewdistance; cy++) {
-                for (cz = czp - viewdistance - 1; cz <= czp + viewdistance; cz++) {
-                    const auto vec = Int3{cx, cy, cz};
-                    if (ChunkOutOfBound(vec)) continue;
-                    if (!cpArray.Get(vec)) {
-                        ChunkLoadList.Insert((vec * 16 + blockDistOffset).LengthSquared(), vec);
-                    }
-                }
-            }
-        }
+        const auto diff = Int3(viewdistance + 1);
+        Cursor(cp - diff, cp + diff, [&](const auto &c) noexcept {
+            if (ChunkOutOfBound(c)) return;
+            if (!cpArray.Get(c))
+                ChunkLoadList.Insert(DistanceSquared(c * 16 + ccOffset, pos), c);
+        });
     }
 
     void calcVisible(double xpos, double ypos, double zpos, Frustum &frus) {
@@ -481,7 +457,7 @@ namespace World {
         }
         //终于可以开始生成了
         //设置泥土
-        SetBlock({(x), (y), (z)}, Blocks::DIRT);
+        SetBlock({x, y, z}, Blocks::DIRT);
         //设置树干
         auto h = 0;//高度
         //测算泥土数量
@@ -551,7 +527,7 @@ namespace World {
     }
 
     void PutBlock(const Int3 v, Block block) {
-        auto& blockInfo = BlockInfo(block);
+        auto &blockInfo = BlockInfo(block);
         if (blockInfo.BeforeBlockPlace(v, block)) {
             SetBlock(v, block);
             blockInfo.AfterBlockPlace(v, block);
@@ -560,7 +536,7 @@ namespace World {
 
     void PickBlock(const Int3 v) {
         const auto block = GetBlock(v);
-        auto& type = BlockInfo(block);
+        auto &type = BlockInfo(block);
         if (type.BeforeBlockDestroy(v, block)) {
             SetBlock(v, Blocks::ENV);
             type.AfterBlockDestroy(v, block);

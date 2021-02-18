@@ -32,12 +32,11 @@ Frustum Player::ViewFrustum;
 double Player::speed;
 int Player::AirJumps;
 int Player::cxt, Player::cyt, Player::czt, Player::cxtl, Player::cytl, Player::cztl;
-Double3 Player::Pos;
+Double3 Player::Pos, Player::PosOld;
 double Player::lookupdown, Player::heading;
-double Player::xposold, Player::yposold, Player::zposold, Player::jump;
+double Player::jump;
 double Player::xlookspeed, Player::ylookspeed;
-int Player::intxpos, Player::intypos, Player::intzpos;
-int Player::intxposold, Player::intyposold, Player::intzposold;
+Int3 Player::IntPos, Player::IntPosOld;
 
 item Player::inventory[4][10];
 short Player::inventoryAmount[4][10];
@@ -54,9 +53,7 @@ void InitHitbox(Hitbox::AABB &playerbox) {
 }
 
 void InitPosition() {
-    Player::xposold = Player::Pos.X;
-    Player::yposold = Player::Pos.Y;
-    Player::zposold = Player::Pos.Z;
+    Player::PosOld = Player::Pos;
     Player::cxt = World::GetChunkPos(static_cast<int>(Player::Pos.X));
     Player::cxtl = Player::cxt;
     Player::cyt = World::GetChunkPos(static_cast<int>(Player::Pos.Y));

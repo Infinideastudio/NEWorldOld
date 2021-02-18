@@ -4,12 +4,12 @@ namespace WorldRenderer {
     std::vector<RenderChunk> RenderChunkList;
 
     int ListRenderChunks(int cx, int cy, int cz, int renderdistance, double curtime, bool frustest) {
+        const auto cPos = Int3{cx, cy, cz};
         auto renderedChunks = 0;
         RenderChunkList.clear();
         for (auto& chunk : World::chunks) {
             if (!chunk->renderBuilt || chunk->Empty) continue;
-            if (World::chunkInRange(chunk->cx, chunk->cy, chunk->cz,
-                                    cx, cy, cz, renderdistance)) {
+            if (ChebyshevDistance(cPos, chunk->GetPosition()) <= renderdistance) {
                 if (!frustest || chunk->visible) {
                     renderedChunks++;
                     RenderChunkList.emplace_back(chunk, (curtime - lastupdate) * 30.0);

@@ -44,6 +44,8 @@ namespace World {
             memset(vbuffer, 0, sizeof(vbuffer));
         }
 
+        [[nodiscard]] Int3 GetPosition() const noexcept { return {cx, cy, cz}; }
+
         int cx, cy, cz;
         Hitbox::AABB aabb;
         bool Empty, updated, renderBuilt, Modified, DetailGenerated;

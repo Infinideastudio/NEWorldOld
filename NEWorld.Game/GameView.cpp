@@ -333,7 +333,7 @@ public:
             glDisable(GL_CULL_FACE);
             glDisable(GL_TEXTURE_2D);
             for (const auto &Hitboxe : Player::Hitboxes) {
-                Hitbox::renderAABB(Hitboxe, GUI::FgR, GUI::FgG, GUI::FgB, 3, 0.002);
+                renderAABB(Hitboxe, GUI::FgR, GUI::FgG, GUI::FgB, 3, 0.002);
             }
 
             glLoadIdentity();
@@ -341,8 +341,8 @@ public:
             glRotated(360.0 - pheading, 0, 1, 0);
             glTranslated(-Player::Pos.X, -Player::Pos.Y - Player::height - Player::heightExt, -Player::Pos.Z);
 
-            Hitbox::renderAABB(Player::playerbox, 1.0f, 1.0f, 1.0f, 1);
-            Hitbox::renderAABB(Hitbox::Expand(Player::playerbox, Player::xd, Player::yd, Player::zd), 1.0f, 1.0f, 1.0f,
+            renderAABB(Player::playerbox, 1.0f, 1.0f, 1.0f, 1);
+            renderAABB(Hitbox::Expand(Player::playerbox, Player::xd, Player::yd, Player::zd), 1.0f, 1.0f, 1.0f,
                                1);
         }
 
@@ -1117,6 +1117,86 @@ public:
         commands.clear();
         chatMessages.clear();
         GUI::BackToMain();
+    }
+
+
+    void renderAABB(const Hitbox::AABB &box, float colR, float colG, float colB, int mode, double EPS = 0.0) {
+        //Debug only!
+        //碰撞箱渲染出来很瞎狗眼的QAQ而且又没用QAQ
+
+        glLineWidth(2.0);
+        glEnable(GL_LINE_SMOOTH);
+        glColor4f(colR, colG, colB, 1.0);
+
+        if (mode == 1 || mode == 3) {
+            glBegin(GL_LINE_LOOP);
+            glVertex3d(box.xmin, box.ymin, box.zmin);
+            glVertex3d(box.xmax, box.ymin, box.zmin);
+            glVertex3d(box.xmax, box.ymax, box.zmin);
+            glVertex3d(box.xmin, box.ymax, box.zmin);
+            glEnd();
+            glBegin(GL_LINE_LOOP);
+            glVertex3d(box.xmin, box.ymin, box.zmax);
+            glVertex3d(box.xmax, box.ymin, box.zmax);
+            glVertex3d(box.xmax, box.ymax, box.zmax);
+            glVertex3d(box.xmin, box.ymax, box.zmax);
+            glEnd();
+            glBegin(GL_LINE_LOOP);
+            glVertex3d(box.xmin, box.ymin, box.zmin);
+            glVertex3d(box.xmax, box.ymin, box.zmin);
+            glVertex3d(box.xmax, box.ymin, box.zmax);
+            glVertex3d(box.xmin, box.ymin, box.zmax);
+            glEnd();
+            glBegin(GL_LINE_LOOP);
+            glVertex3d(box.xmin, box.ymax, box.zmin);
+            glVertex3d(box.xmax, box.ymax, box.zmin);
+            glVertex3d(box.xmax, box.ymax, box.zmax);
+            glVertex3d(box.xmin, box.ymax, box.zmax);
+            glEnd();
+            glBegin(GL_LINE_LOOP);
+            glVertex3d(box.xmin, box.ymin, box.zmin);
+            glVertex3d(box.xmin, box.ymin, box.zmax);
+            glVertex3d(box.xmin, box.ymax, box.zmax);
+            glVertex3d(box.xmin, box.ymax, box.zmin);
+            glEnd();
+            glBegin(GL_LINE_LOOP);
+            glVertex3d(box.xmax, box.ymin, box.zmin);
+            glVertex3d(box.xmax, box.ymin, box.zmax);
+            glVertex3d(box.xmax, box.ymax, box.zmax);
+            glVertex3d(box.xmax, box.ymax, box.zmin);
+            glEnd();
+        }
+
+        glColor4f(colR, colG, colB, 0.5);
+
+        if (mode == 2 || mode == 3) {
+            glBegin(GL_QUADS);
+            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmin - EPS);
+            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmin - EPS);
+            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmin - EPS);
+            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmin - EPS);
+            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmax + EPS);
+            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmax + EPS);
+            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmax + EPS);
+            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmax + EPS);
+            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmin - EPS);
+            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmin - EPS);
+            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmax + EPS);
+            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmax + EPS);
+            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmin - EPS);
+            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmin - EPS);
+            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmax + EPS);
+            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmax + EPS);
+            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmin - EPS);
+            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmax + EPS);
+            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmax + EPS);
+            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmin - EPS);
+            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmin - EPS);
+            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmax + EPS);
+            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmax + EPS);
+            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmin - EPS);
+            glEnd();
+        }
     }
 };
 

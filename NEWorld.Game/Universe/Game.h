@@ -105,10 +105,7 @@ public:
 
         if (!bagOpened) {
             BlockClick = PlayerInteract(BlockPos, lx, ly, lz);
-
-            Player::intxpos = RoundInt(Player::Pos.X);
-            Player::intypos = RoundInt(Player::Pos.Y);
-            Player::intzpos = RoundInt(Player::Pos.Z);
+            Player::IntPos = Int3(Player::Pos, RoundInt);
 
             //更新方向
             Player::heading += Player::xlookspeed;
@@ -172,19 +169,12 @@ public:
         FirstFrameThisUpdate = true;
         Particles::updateall();
 
-        Player::intxpos = RoundInt(Player::Pos.X);
-        Player::intypos = RoundInt(Player::Pos.Y);
-        Player::intzpos = RoundInt(Player::Pos.Z);
+        Player::IntPos = Int3(Player::Pos, RoundInt);
         Player::updatePosition();
-        Player::xposold = Player::Pos.X;
-        Player::yposold = Player::Pos.Y;
-        Player::zposold = Player::Pos.Z;
-        Player::intxposold = RoundInt(Player::Pos.X);
-        Player::intyposold = RoundInt(Player::Pos.Y);
-        Player::intzposold = RoundInt(Player::Pos.Z);
+        Player::PosOld = Player::Pos;
+        Player::IntPosOld = Int3(Player::Pos, RoundInt);
 
         //	Time_updategame += timer() - Time_updategame;
-
     }
 
     void AudioUpdate(bool WP, bool blockClick, ALfloat *blockPos) const {//音效更新
@@ -214,9 +204,9 @@ public:
     }
 
     void ChunkLoadUnload() const {
-        World::sortChunkLoadUnloadList(RoundInt(Player::Pos.X), RoundInt(Player::Pos.Y), RoundInt(Player::Pos.Z));
+        World::sortChunkLoadUnloadList(Player::IntPos);
         for (const auto&[_, chunk] : World::ChunkUnloadList) {
-            const auto c = Int3{chunk->cx, chunk->cy, chunk->cz};
+            const auto c = chunk->GetPosition();
             World::DeleteChunk(c);
         }
         for (const auto&[_, pos]: World::ChunkLoadList) {
@@ -550,7 +540,7 @@ public:
 
     void RandomTick() const {
         for (auto &chunk : World::chunks) {
-            const auto cPos = Int3{chunk->cx, chunk->cy, chunk->cz};
+            const auto cPos = chunk->GetPosition();
             const auto bPos = Int3{int(rnd() * 16), int(rnd() * 16), int(rnd() * 16)};
             const auto gPos = (cPos << World::ChunkEdgeSizeLog2) + bPos;
             const auto block = chunk->GetBlock(bPos);

@@ -96,19 +96,13 @@ namespace World {
 
     void PickBlock(Int3 v);
 
-    inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
-        //检测给出的chunk坐标是否在渲染范围内
-        return !(x < px - dist || x > px + dist - 1 || y < py - dist || y > py + dist - 1 || z < pz - dist ||
-                 z > pz + dist - 1);
-    }
-
     bool chunkUpdated(Int3 vec);
 
     void setChunkUpdated(int x, int y, int z, bool value);
 
     void sortChunkBuildRenderList(int xpos, int ypos, int zpos);
 
-    void sortChunkLoadUnloadList(int xpos, int ypos, int zpos);
+    void sortChunkLoadUnloadList(Int3 pos);
 
     void calcVisible(double xpos, double ypos, double zpos, Frustum &frus);
 

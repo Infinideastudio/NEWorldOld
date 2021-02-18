@@ -25,6 +25,11 @@ struct Vec3 {
     constexpr Vec3(const Vec3<U> &r) noexcept // NOLINT
             : X(T(r.X)), Y(T(r.Y)), Z(T(r.Z)) {}
 
+    template<typename U, class F>
+    constexpr Vec3(const Vec3<U> &r, F transform) noexcept // NOLINT
+            : X(transform(r.X)), Y(transform(r.Y)), Z(transform(r.Z)) {}
+
+
     constexpr Vec3 operator+(const Vec3 &r) const noexcept { return {X + r.X, Y + r.Y, Z + r.Z}; }
 
     constexpr Vec3 operator-(const Vec3 &r) const noexcept { return {X - r.X, Y - r.Y, Z - r.Z}; }
@@ -164,6 +169,15 @@ constexpr T ChebyshevDistance(const Vec3<T> &l, const Vec3<T> &r) noexcept {
 template<class T>
 constexpr T ManhattanDistance(const Vec3<T> &l, const Vec3<T> &r) noexcept {
     return std::abs(l.X - r.X) + std::abs(l.Y - r.Y) + std::abs(l.Z - r.Z);
+}
+
+template<class T, class F>
+void Cursor(const Vec3<T> &min, const Vec3<T> &max, F func) noexcept {
+    Vec3<T> vec{};
+    for (vec.X = min.X; vec.X < max.X; ++vec.X)
+        for (vec.Y = min.Y; vec.Y < max.Y; ++vec.Y)
+            for (vec.Z = min.Z; vec.Z < max.Z; ++vec.Z)
+                func(vec);
 }
 
 using Char3 = Vec3<int8_t>;
