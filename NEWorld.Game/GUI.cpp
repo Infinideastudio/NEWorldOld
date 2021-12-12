@@ -892,7 +892,7 @@ namespace GUI {
     }
 
     void Form::render() {
-        if (Background) Background();
+       /* if (Background) Background();
 
         const auto TimeDelta = timer() - transitionTimer;
         const auto transitionAnim = static_cast<float>(1.0 - pow(0.8, TimeDelta * 60.0) + pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);
@@ -923,10 +923,10 @@ namespace GUI {
         glNewList(displaylist, GL_COMPILE_AND_EXECUTE);
         for (size_t i = 0; i != children.size(); i++) {
             children[i]->render();
-        }
+        }*/
         onRender();
-        glEndList();
-        lastdisplaylist = displaylist;
+        /*glEndList();
+        lastdisplaylist = displaylist;*/
     }
 
     label::label(std::string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b,

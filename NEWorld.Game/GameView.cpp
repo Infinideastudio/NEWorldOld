@@ -1092,7 +1092,6 @@ public:
             updateThreadPaused = true;
             createThumbnail();
             GUI::clearTransition();
-            Menus::gamemenu();
         }
     }
 

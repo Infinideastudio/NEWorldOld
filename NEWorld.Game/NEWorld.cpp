@@ -14,7 +14,13 @@
 #include <map>
 #include "System/MessageBus.h"
 #include "System/FileSystem.h"
-
+#include <NsGui/IntegrationAPI.h>
+#include "NsApp/ThemeProviders.h"
+#include "NsApp/EmbeddedXamlProvider.h"
+#include "NsApp/EmbeddedFontProvider.h"
+#include "NsApp/LocalTextureProvider.h"
+#include "NsApp/LocalFontProvider.h"
+#include "NsApp/LocalXamlProvider.h"
 void loadOptions();
 
 void saveOptions();
@@ -23,24 +29,35 @@ void saveOptions();
 //==============================     主程序     ================================//
 
 void ApplicationBeforeLaunch() {
-#ifndef NEWORLD_USE_WINAPI
     setlocale(LC_ALL, "zh_CN.UTF-8");
-#else
-    //提交OpenGL信息
-    std::ifstream postexe("Post.exe");
-    if (postexe.is_open()) {
-        postexe.close();
-        WinExec("Post.exe", SW_SHOWDEFAULT);
-        SleepMs(3000);
-    }
-    else postexe.close();
-#endif
     loadOptions();
     Globalization::Load();
     NEWorld::filesystem::create_directories("./Configs");
     NEWorld::filesystem::create_directories("./Worlds");
     NEWorld::filesystem::create_directories("./Screenshots");
     NEWorld::filesystem::create_directories("./Mods");
+    Noesis::SetLogHandler([](const char*, uint32_t, uint32_t level, const char*, const char* msg) {
+        // [TRACE] [DEBUG] [INFO] [WARNING] [ERROR]
+        const char* prefixes[] = { "T", "D", "I", "W", "E" };
+
+        printf("[NOESIS/%s] %s\n", prefixes[level], msg);
+        });
+
+    // Sets the active license
+    Noesis::GUI::SetLicense(NS_LICENSE_NAME, NS_LICENSE_KEY);
+
+    // Noesis initialization. This must be the first step before using any NoesisGUI functionality
+    Noesis::GUI::Init();
+
+    Noesis::Ptr<Noesis::XamlProvider> xamlProvider =
+        *new NoesisApp::LocalXamlProvider("Assets/GUI");
+    Noesis::Ptr<Noesis::FontProvider> fontProvider =
+        *new NoesisApp::LocalFontProvider("Assets/Fonts");
+    Noesis::Ptr<Noesis::TextureProvider> textureProvider = 
+        *new NoesisApp::LocalTextureProvider("Assets/Textures");
+    NoesisApp::SetThemeProviders(xamlProvider, fontProvider, textureProvider);
+
+    Noesis::GUI::LoadApplicationResources("Theme/NEWorld.xaml");
 }
 
 void ApplicationAfterLaunch() {
@@ -63,7 +80,7 @@ int main() {
     createWindow();
     setupScreen();
     glDisable(GL_CULL_FACE);
-    splashScreen();
+    //splashScreen();
     ApplicationAfterLaunch();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();

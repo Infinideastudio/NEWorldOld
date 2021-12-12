@@ -10,7 +10,13 @@
       "cmakeCommandArgs": "-",
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
-      "variables": [],
+      "variables": [
+        {
+          "name": "CMAKE_TOOLCHAIN_FILE",
+          "value": "D:/Projects/vcpkg/scripts/buildsystems/vcpkg.cmake",
+          "type": "FILEPATH"
+        }
+      ],
       "cmakeToolchain": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
     },
     {
