@@ -31,8 +31,9 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(OpenAL REQUIRED)
 find_package(Freetype REQUIRED)
+
+# find noesis core and its app
 find_package(Noesis REQUIRED)
-# noesis apps
 file(GLOB NOESIS_APP_INCLUDE 
 External/Neosis/Src/Packages/*/*/Include
 External/Neosis/Src/Packages/App/Theme/Data/Theme
@@ -66,6 +67,10 @@ add_custom_command(TARGET NEWorld POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
                        ${CMAKE_SOURCE_DIR}/Assets $<TARGET_FILE_DIR:NEWorld>/Assets)
 file(COPY ${NOESIS_DLL} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+# build noesis files
+execute_process(COMMAND python bin2h.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
 
 target_enable_ipo(NEWorld)
 target_compile_definitions(NEWorld PRIVATE NEWORLD_GAME NS_APP_PROVIDERS_API=)
