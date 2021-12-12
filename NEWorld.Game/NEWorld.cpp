@@ -23,6 +23,7 @@
 #include "NsApp/LocalXamlProvider.h"
 #include "GameView.h"
 #include "GUI/Menus/Menus.h"
+#include "Common/Logger.h"
 void loadOptions();
 
 void saveOptions();
@@ -40,11 +41,15 @@ void ApplicationBeforeLaunch() {
     NEWorld::filesystem::create_directories("./Mods");
 
     Noesis::SetLogHandler([](const char*, uint32_t, uint32_t level, const char*, const char* msg) {
-        // [TRACE] [DEBUG] [INFO] [WARNING] [ERROR]
-        const char* prefixes[] = { "T", "D", "I", "W", "E" };
-
-        printf("[NOESIS/%s] %s\n", prefixes[level], msg);
-        });
+        Logger::Level prefixes[] = {
+            Logger::Level::debug,
+            Logger::Level::debug,
+            Logger::Level::info,
+            Logger::Level::warning,
+            Logger::Level::error
+        };
+        Logger(__FILE__, __FUNCTION__, __LINE__, prefixes[level], "Noesis") << msg;
+    });
 
     // Sets the active license
     Noesis::GUI::SetLicense(NS_LICENSE_NAME, NS_LICENSE_KEY);

@@ -55,12 +55,12 @@ if (MSVC)
 endif()
 
 file(GLOB_RECURSE SRC_BASE NEWorld.Base/*.*)
-add_library(NEWorld.Base STATIC ${SRC_BASE} "NEWorld.Game/GUI/Menus/Menus.h")
+add_library(NEWorld.Base STATIC ${SRC_BASE})
 target_include_directories(NEWorld.Base PUBLIC NEWorld.Base)
 target_link_libraries(NEWorld.Base PRIVATE SQLite::SQLite3)
 
 file(GLOB_RECURSE SOURCE NEWorld.Game/*.*)
-add_executable(NEWorld ${SOURCE} ${NOESIS_APP_SRCS} "NEWorld.Game/GUI/Menus/Menus.h")
+add_executable(NEWorld ${SOURCE} ${NOESIS_APP_SRCS})
 
 # copy assets
 add_custom_command(TARGET NEWorld POST_BUILD
