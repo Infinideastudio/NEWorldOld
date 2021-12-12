@@ -15,6 +15,7 @@
 #include "Command.h"
 #include "Setup.h"
 #include "Universe/Game.h"
+#include "Common/Logger.h"
 
 ThreadFunc updateThreadFunc(void *);
 
@@ -44,7 +45,6 @@ public:
     GameView() : Scene(nullptr, false) {}
 
     void GameThreadloop() {
-
         //Wait until start...
         MutexLock(Mutex);
         while (!updateThreadRun) {
@@ -391,14 +391,16 @@ public:
             shouldGetThumbnail = false;
             createThumbnail();
         }
-
+        mxl = mx;
+        myl = my;
         //屏幕刷新，千万别删，后果自负！！！
         //====refresh====//
-        MutexUnlock(Mutex);
     }
 
     void onRender() override {
         MutexLock(Mutex);
+        Grender();
+        MutexUnlock(Mutex);
         //==refresh end==//
     }
 
@@ -671,7 +673,7 @@ public:
         glfwPollEvents();
 
         Mutex = MutexCreate();
-        MutexLock(Mutex);
+        //MutexLock(Mutex);
         currentGame = this;
         updateThread = ThreadCreate(&updateThreadFunc, nullptr);
         if (multiplayer) {
@@ -680,13 +682,12 @@ public:
             Player::onlineID = rand();
         }
         //初始化游戏状态
-        printf("[Console][Game]Init player...\n");
+        infostream << "Init player...";
         if (loadGame()) Player::init(Player::Pos);
         else Player::spawn();
-        printf("[Console][Game]Init world...\n");
+        infostream << "Init world...";
         World::Init();
         registerCommands();
-        printf("[Console][Game]Loading Mods...\n");
 
         GUIrenderswitch = true;
         glDepthFunc(GL_LEQUAL);
@@ -696,21 +697,21 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glfwSwapBuffers(MainWindow);
         glfwPollEvents();
-        printf("[Console][Game]Game start!\n");
+        infostream << "Game start!";
 
         //这才是游戏开始!
         glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         mxl = mx;
         myl = my;
-        printf("[Console][Game]Main loop started\n");
+        infostream << "Main loop started";
         updateThreadRun = true;
         fctime = uctime = lastupdate = timer();
     }
 
     void onUpdate() override {
-
-        MutexUnlock(Mutex);
-        MutexLock(Mutex);
+        glfwGetCursorPos(MainWindow, &mx, &my);
+        //MutexUnlock(Mutex);
+        //MutexLock(Mutex);
 
         if ((timer() - uctime) >= 1.0) {
             uctime = timer();
@@ -718,7 +719,7 @@ public:
             upsc = 0;
         }
 
-        Grender();
+        //Grender();
 
         if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1) {
             updateThreadPaused = true;
@@ -734,7 +735,7 @@ public:
         glfwPollEvents();
         printf("[Console][Game]Terminate threads\n");
         updateThreadRun = false;
-        MutexUnlock(Mutex);
+        //MutexUnlock(Mutex);
         ThreadWait(updateThread);
         ThreadDestroy(updateThread);
         currentGame = nullptr;

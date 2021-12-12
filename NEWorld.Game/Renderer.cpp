@@ -46,7 +46,7 @@ namespace Renderer {
     float *VA = nullptr;
     float TexCoords[3], Colors[4], Attribs;
     //unsigned int Buffers[3];
-    bool AdvancedRender;
+    bool AdvancedRender = true;
     int ShadowRes = 4096;
     int MaxShadowDist = 4;
     int shadowdist;

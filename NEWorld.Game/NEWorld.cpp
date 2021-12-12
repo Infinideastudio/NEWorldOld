@@ -39,7 +39,7 @@ void ApplicationBeforeLaunch() {
     NEWorld::filesystem::create_directories("./Worlds");
     NEWorld::filesystem::create_directories("./Screenshots");
     NEWorld::filesystem::create_directories("./Mods");
-
+    /**/
     Noesis::SetLogHandler([](const char*, uint32_t, uint32_t level, const char*, const char* msg) {
         Logger::Level prefixes[] = {
             Logger::Level::debug,
@@ -84,7 +84,11 @@ int main() {
     ApplicationBeforeLaunch();
     windowwidth = defaultwindowwidth;
     windowheight = defaultwindowheight;
-    std::cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << std::endl;
+    if (glfwInit() == 1) {
+        infostream << "Initialize GLFW";
+    } else {
+        infostream << "GLFW initialization failed";
+    }
     createWindow();
     setupScreen();
     glDisable(GL_CULL_FACE);

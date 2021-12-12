@@ -12,6 +12,9 @@ namespace Menus {
         MainMenu() : GUI::Scene("MainMenu.xaml"){}
     private:
         void onLoad() override {
+            //pushGameView();
+            //requestLeave();
+            //return;
             mRoot->FindName<Noesis::Button>("startGame")->Click() += [](Noesis::BaseComponent* sender, const Noesis::RoutedEventArgs& args) {
                 pushGameView();
             };

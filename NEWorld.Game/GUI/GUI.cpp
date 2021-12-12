@@ -7,6 +7,7 @@
 #include <NsRender/GLFactory.h>
 #include <NsApp/ThemeProviders.h>
 #include <NoesisPCH.h>
+#include "Shader.h"
 
 namespace GUI {
 
@@ -30,7 +31,7 @@ namespace GUI {
     }
 
     void Scene::render() {
-        if (mView) {
+        if (mView&&false) {
             // Update view (layout, animations, ...)
             mView->Update(1 / 30.0f);
 
@@ -47,9 +48,11 @@ namespace GUI {
             glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         }
 
+        //Disable shader
+        Shader::unbind();
         onRender();
 
-        if (mView) {
+        if (mView && false) {
             // Rendering is done in the active framebuffer
             mView->GetRenderer()->Render();
         }
@@ -67,12 +70,15 @@ namespace GUI {
     }
 
     void Scene::load() {
+        static Noesis::Ptr<Noesis::RenderDevice> renderDevice =
+            NoesisApp::GLFactory::CreateDevice(false);
+
         glfwSetInputMode(MainWindow, GLFW_CURSOR, mHasCursor ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_HIDDEN);
         if (mXamlPath) {
             mRoot = Noesis::GUI::LoadXaml<Noesis::Grid>(mXamlPath);
             mView = Noesis::GUI::CreateView(mRoot);
             mView->SetFlags(Noesis::RenderFlags_PPAA | Noesis::RenderFlags_LCD);
-            mView->GetRenderer()->Init(NoesisApp::GLFactory::CreateDevice(false));
+            mView->GetRenderer()->Init(renderDevice);
         }
         onLoad();
     }

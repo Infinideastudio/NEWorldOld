@@ -7,6 +7,7 @@
 #include "NsGui/Grid.h"
 
 namespace GUI {
+    
     class Scene {
     public:
         Scene(const char* xaml, bool hasCursor = true) : mXamlPath(xaml), mHasCursor(hasCursor) {}

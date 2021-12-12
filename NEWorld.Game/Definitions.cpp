@@ -38,7 +38,7 @@ std::string serverip;
 unsigned short port = 30001;
 
 TextureID BlockTextures, BlockTextures3D;
-TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
+TextureID tex_select, tex_unselect, tex_mainmenu[6];
 TextureID DestroyImage[11];
 TextureID DefaultSkin;
 

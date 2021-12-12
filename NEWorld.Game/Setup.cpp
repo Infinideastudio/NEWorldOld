@@ -107,7 +107,6 @@ void loadTextures() {
 
     tex_select = Textures::LoadRGBATexture("./Assets/Textures/GUI/select.bmp", "");
     tex_unselect = Textures::LoadRGBATexture("./Assets/Textures/GUI/unselect.bmp", "");
-    tex_title = Textures::LoadRGBATexture("./Assets/Textures/GUI/title.bmp", "./Assets/Textures/GUI/titlemask.bmp");
     for (auto i = 0; i < 6; i++) {
         std::stringstream ss;
         ss << "./Assets/Textures/GUI/mainmenu" << i << ".bmp";
