@@ -91,7 +91,6 @@ public:
         MutexUnlock(Mutex);
     }
 
-
     static void debugText(std::string s, bool init) {
         static auto pos = 0;
         if (init) {
@@ -334,23 +333,6 @@ public:
 
         MutexLock(Mutex);
 
-        if (DebugHitbox) {
-            glDisable(GL_CULL_FACE);
-            glDisable(GL_TEXTURE_2D);
-            for (const auto &Hitboxe : Player::Hitboxes) {
-                renderAABB(Hitboxe, 1,1,1, 3, 0.002);
-            }
-
-            glLoadIdentity();
-            glRotated(plookupdown, 1, 0, 0);
-            glRotated(360.0 - pheading, 0, 1, 0);
-            glTranslated(-Player::Pos.X, -Player::Pos.Y - Player::height - Player::heightExt, -Player::Pos.Z);
-
-            renderAABB(Player::playerbox, 1.0f, 1.0f, 1.0f, 1);
-            renderAABB(Hitbox::Expand(Player::playerbox, Player::xd, Player::yd, Player::zd), 1.0f, 1.0f, 1.0f,
-                               1);
-        }
-
         glEnable(GL_CULL_FACE);
         glEnable(GL_TEXTURE_2D);
 
@@ -378,9 +360,6 @@ public:
             glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
             glVertex2i(windowwidth, 0);
             glEnd();
-        }
-        if (GUIrenderswitch) {
-            drawBag();
         }
 
         glDisable(GL_TEXTURE_2D);
@@ -666,210 +645,6 @@ public:
         glEnd();
     }
 
-    static void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha) {
-        //画出背包的一行
-        for (auto i = 0; i < 10; i++) {
-            if (i == itemid) glBindTexture(GL_TEXTURE_2D, tex_select);
-            else glBindTexture(GL_TEXTURE_2D, tex_unselect);
-            glColor4f(1.0f, 1.0f, 1.0f, alpha);
-            glBegin(GL_QUADS);
-            glTexCoord2f(0.0, 1.0);
-            UIVertex(xbase + i * (32 + spac), ybase);
-            glTexCoord2f(0.0, 0.0);
-            UIVertex(xbase + i * (32 + spac) + 32, ybase);
-            glTexCoord2f(1.0, 0.0);
-            UIVertex(xbase + i * (32 + spac) + 32, ybase + 32);
-            glTexCoord2f(1.0, 1.0);
-            UIVertex(xbase + i * (32 + spac), ybase + 32);
-            glEnd();
-            glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-            if (Player::inventory[row][i] != Blocks::ENV) {
-                glBindTexture(GL_TEXTURE_2D, BlockTextures);
-                const auto tcX = Textures::getTexcoordX(Player::inventory[row][i], 1);
-                const auto tcY = Textures::getTexcoordY(Player::inventory[row][i], 1);
-                glBegin(GL_QUADS);
-                glTexCoord2d(tcX, tcY + 1 / 8.0);
-                UIVertex(xbase + i * (32 + spac) + 2, ybase + 2);
-                glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-                UIVertex(xbase + i * (32 + spac) + 30, ybase + 2);
-                glTexCoord2d(tcX + 1 / 8.0, tcY);
-                UIVertex(xbase + i * (32 + spac) + 30, ybase + 30);
-                glTexCoord2d(tcX, tcY);
-                UIVertex(xbase + i * (32 + spac) + 2, ybase + 30);
-                glEnd();
-                std::stringstream ss;
-                ss << static_cast<int>(Player::inventoryAmount[row][i]);
-                TextRenderer::renderString(xbase + i * (32 + spac), ybase, ss.str());
-            }
-        }
-    }
-
-    void drawBag() {
-        //背包界面与更新
-        static int si, sj, sf;
-        auto csi = -1, csj = -1;
-        const int leftp = (windowwidth / stretch - 392) / 2;
-        const int upp = windowheight / stretch - 152 - 16;
-        static int mousew, mouseb, mousebl;
-        static Block indexselected = Blocks::ENV;
-        static short Amountselected = 0;
-        const auto curtime = timer();
-        const auto TimeDelta = curtime - bagAnimTimer;
-        const auto bagAnim = static_cast<float>(1.0 - pow(0.9, TimeDelta * 60.0) +
-            pow(0.9, bagAnimDuration * 60.0) / bagAnimDuration * TimeDelta);
-
-        if (bagOpened) {
-
-            glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-            mousew = mw;
-            mouseb = mb;
-            glDepthFunc(GL_ALWAYS);
-            glDisable(GL_CULL_FACE);
-            glDisable(GL_TEXTURE_2D);
-
-            if (curtime - bagAnimTimer > bagAnimDuration) glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
-            else glColor4f(0.2f, 0.2f, 0.2f, 0.6f * bagAnim);
-            glBegin(GL_QUADS);
-            UIVertex(0, 0);
-            UIVertex(static_cast<int>(windowwidth / stretch), 0);
-            UIVertex(static_cast<int>(windowwidth / stretch), static_cast<int>(windowheight / stretch));
-            UIVertex(0, static_cast<int>(windowheight / stretch));
-            glEnd();
-
-            glEnable(GL_TEXTURE_2D);
-            glDisable(GL_CULL_FACE);
-            glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-            sf = 0;
-
-            if (curtime - bagAnimTimer > bagAnimDuration) {
-                for (auto i = 0; i < 4; i++) {
-                    for (auto j = 0; j < 10; j++) {
-                        if (mx >= j * 40 + leftp && mx <= j * 40 + 32 + leftp &&
-                            my >= i * 40 + upp && my <= i * 40 + 32 + upp) {
-                            csi = si = i;
-                            csj = sj = j;
-                            sf = 1;
-                            if (mousebl == 0 && mouseb == 1 && indexselected == Player::inventory[i][j]) {
-                                if (Player::inventoryAmount[i][j] + Amountselected <= 255) {
-                                    Player::inventoryAmount[i][j] += Amountselected;
-                                    Amountselected = 0;
-                                } else {
-                                    Amountselected = Player::inventoryAmount[i][j] + Amountselected - 255;
-                                    Player::inventoryAmount[i][j] = 255;
-                                }
-                            }
-                            if (mousebl == 0 && mouseb == 1 && indexselected != Player::inventory[i][j]) {
-                                std::swap(Amountselected, Player::inventoryAmount[i][j]);
-                                std::swap(indexselected, Player::inventory[i][j]);
-                            }
-                            if (mousebl == 0 && mouseb == 2 && indexselected == Player::inventory[i][j] &&
-                                Player::inventoryAmount[i][j] < 255) {
-                                Amountselected--;
-                                Player::inventoryAmount[i][j]++;
-                            }
-                            if (mousebl == 0 && mouseb == 2 && Player::inventory[i][j] == Blocks::ENV) {
-                                Amountselected--;
-                                Player::inventoryAmount[i][j] = 1;
-                                Player::inventory[i][j] = indexselected;
-                            }
-
-                            if (Amountselected == 0) indexselected = Blocks::ENV;
-                            if (indexselected == Blocks::ENV) Amountselected = 0;
-                            if (Player::inventoryAmount[i][j] == 0) Player::inventory[i][j] = Blocks::ENV;
-                            if (Player::inventory[i][j] == Blocks::ENV) Player::inventoryAmount[i][j] = 0;
-                        }
-                    }
-                    drawBagRow(i, (csi == i ? csj : -1), (windowwidth / stretch - 392) / 2,
-                               windowheight / stretch - 152 - 16 + i * 40, 8, 1.0f);
-                }
-            }
-            if (indexselected != Blocks::ENV) {
-                glBindTexture(GL_TEXTURE_2D, BlockTextures);
-                const auto tcX = Textures::getTexcoordX(indexselected, 1);
-                const auto tcY = Textures::getTexcoordY(indexselected, 1);
-                glBegin(GL_QUADS);
-                glTexCoord2d(tcX, tcY + 1 / 8.0);
-                UIVertex(mx - 16, my - 16);
-                glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-                UIVertex(mx + 16, my - 16);
-                glTexCoord2d(tcX + 1 / 8.0, tcY);
-                UIVertex(mx + 16, my + 16);
-                glTexCoord2d(tcX, tcY);
-                UIVertex(mx - 16, my + 16);
-                glEnd();
-                std::stringstream ss;
-                ss << Amountselected;
-                TextRenderer::renderString(static_cast<int>(mx) - 16, static_cast<int>(my) - 16, ss.str());
-            }
-            if (Player::inventory[si][sj] != 0 && sf == 1) {
-                glColor4f(1.0, 1.0, 0.0, 1.0);
-                TextRenderer::renderString(static_cast<int>(mx), static_cast<int>(my) - 16,
-                                           BlockInfo(Player::inventory[si][sj]).getBlockName());
-            }
-
-            auto xbase = 0, ybase = 0, spac = 0;
-            const auto alpha = 0.5f + 0.5f * bagAnim;
-            if (curtime - bagAnimTimer <= bagAnimDuration) {
-                xbase = static_cast<int>(round(((windowwidth / stretch - 392) / 2) * bagAnim));
-                ybase = static_cast<int>(round(
-                    (windowheight / stretch - 152 - 16 + 120 - (windowheight / stretch - 32)) * bagAnim +
-                    (windowheight / stretch - 32)));
-                spac = static_cast<int>(round(8 * bagAnim));
-                drawBagRow(3, -1, xbase, ybase, spac, alpha);
-                xbase = static_cast<int>(round(
-                    ((windowwidth / stretch - 392) / 2 - windowwidth / stretch) * bagAnim + windowwidth / stretch));
-                ybase = static_cast<int>(round((windowheight / stretch - 152 - 16 - (windowheight / stretch - 32)) * bagAnim +
-                    (windowheight / stretch - 32)));
-                for (auto i = 0; i < 3; i++) {
-                    glColor4f(1.0f, 1.0f, 1.0f, bagAnim);
-                    drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
-                }
-            }
-
-            glEnable(GL_TEXTURE_2D);
-            glDisable(GL_CULL_FACE);
-            glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-
-            mousebl = mouseb;
-        } else {
-
-            glEnable(GL_TEXTURE_2D);
-            glDisable(GL_CULL_FACE);
-            if (curtime - bagAnimTimer <= bagAnimDuration) {
-                glDisable(GL_TEXTURE_2D);
-                glColor4f(0.2f, 0.2f, 0.2f, 0.6f - 0.6f * bagAnim);
-                glBegin(GL_QUADS);
-                glVertex2i(0, 0);
-                glVertex2i(windowwidth, 0);
-                glVertex2i(windowwidth, windowheight);
-                glVertex2i(0, windowheight);
-                glEnd();
-                glEnable(GL_TEXTURE_2D);
-                auto xbase = 0, ybase = 0, spac = 0;
-                const auto alpha = 1.0f - 0.5f * bagAnim;
-                xbase = static_cast<int>(round(
-                    ((windowwidth / stretch - 392) / 2) - ((windowwidth / stretch - 392) / 2) * bagAnim));
-                ybase = static_cast<int>(round((windowheight / stretch - 152 - 16 + 120 - (windowheight / stretch - 32)) -
-                    (windowheight / stretch - 152 - 16 + 120 - (windowheight - 32)) * bagAnim +
-                    (windowheight / stretch - 32)));
-                spac = static_cast<int>(round(8 - 8 * bagAnim));
-                glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-                drawBagRow(3, Player::indexInHand, xbase, ybase, spac, alpha);
-                xbase = static_cast<int>(round(((windowwidth / stretch - 392) / 2 - windowwidth / stretch) -
-                    ((windowwidth / stretch - 392) / 2 - windowwidth / stretch) * bagAnim +
-                    windowwidth / stretch));
-                ybase = static_cast<int>(round((windowheight / stretch - 152 - 16 - (windowheight / stretch - 32)) -
-                    (windowheight / stretch - 152 - 16 - (windowheight / stretch - 32)) * bagAnim +
-                    (windowheight / stretch - 32)));
-                for (auto i = 0; i < 3; i++) {
-                    glColor4f(1.0f, 1.0f, 1.0f, 1.0f - bagAnim);
-                    drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
-                }
-            } else drawBagRow(3, Player::indexInHand, 0, windowheight / stretch - 32, 0, 0.5f);
-        }
-        glFlush();
-    }
-
     static void saveScreenshot(int x, int y, int w, int h, std::string filename) {
         Textures::TEXTURE_RGB scrBuffer;
         auto bufw = w, bufh = h;
@@ -887,7 +662,6 @@ public:
         ss << "Worlds/" << World::worldname << "/Thumbnail.bmp";
         saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
     }
-
 
     void onLoad() override {
         glEnable(GL_LINE_SMOOTH);
@@ -974,86 +748,6 @@ public:
         commands.clear();
         chatMessages.clear();
         //GUI::popScene();
-    }
-
-
-    void renderAABB(const Hitbox::AABB &box, float colR, float colG, float colB, int mode, double EPS = 0.0) {
-        //Debug only!
-        //碰撞箱渲染出来很瞎狗眼的QAQ而且又没用QAQ
-
-        glLineWidth(2.0);
-        glEnable(GL_LINE_SMOOTH);
-        glColor4f(colR, colG, colB, 1.0);
-
-        if (mode == 1 || mode == 3) {
-            glBegin(GL_LINE_LOOP);
-            glVertex3d(box.xmin, box.ymin, box.zmin);
-            glVertex3d(box.xmax, box.ymin, box.zmin);
-            glVertex3d(box.xmax, box.ymax, box.zmin);
-            glVertex3d(box.xmin, box.ymax, box.zmin);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
-            glVertex3d(box.xmin, box.ymin, box.zmax);
-            glVertex3d(box.xmax, box.ymin, box.zmax);
-            glVertex3d(box.xmax, box.ymax, box.zmax);
-            glVertex3d(box.xmin, box.ymax, box.zmax);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
-            glVertex3d(box.xmin, box.ymin, box.zmin);
-            glVertex3d(box.xmax, box.ymin, box.zmin);
-            glVertex3d(box.xmax, box.ymin, box.zmax);
-            glVertex3d(box.xmin, box.ymin, box.zmax);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
-            glVertex3d(box.xmin, box.ymax, box.zmin);
-            glVertex3d(box.xmax, box.ymax, box.zmin);
-            glVertex3d(box.xmax, box.ymax, box.zmax);
-            glVertex3d(box.xmin, box.ymax, box.zmax);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
-            glVertex3d(box.xmin, box.ymin, box.zmin);
-            glVertex3d(box.xmin, box.ymin, box.zmax);
-            glVertex3d(box.xmin, box.ymax, box.zmax);
-            glVertex3d(box.xmin, box.ymax, box.zmin);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
-            glVertex3d(box.xmax, box.ymin, box.zmin);
-            glVertex3d(box.xmax, box.ymin, box.zmax);
-            glVertex3d(box.xmax, box.ymax, box.zmax);
-            glVertex3d(box.xmax, box.ymax, box.zmin);
-            glEnd();
-        }
-
-        glColor4f(colR, colG, colB, 0.5);
-
-        if (mode == 2 || mode == 3) {
-            glBegin(GL_QUADS);
-            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmin - EPS);
-            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmin - EPS);
-            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmin - EPS);
-            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmin - EPS);
-            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmax + EPS);
-            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmax + EPS);
-            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmax + EPS);
-            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmax + EPS);
-            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmin - EPS);
-            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmin - EPS);
-            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmax + EPS);
-            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmax + EPS);
-            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmin - EPS);
-            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmin - EPS);
-            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmax + EPS);
-            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmax + EPS);
-            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmin - EPS);
-            glVertex3d(box.xmin - EPS, box.ymin - EPS, box.zmax + EPS);
-            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmax + EPS);
-            glVertex3d(box.xmin - EPS, box.ymax + EPS, box.zmin - EPS);
-            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmin - EPS);
-            glVertex3d(box.xmax + EPS, box.ymin - EPS, box.zmax + EPS);
-            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmax + EPS);
-            glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmin - EPS);
-            glEnd();
-        }
     }
 };
 
