@@ -3,19 +3,21 @@
 #include "../GUI.h"
 #include "NsRender/GLFactory.h"
 #include "NsGui/Grid.h"
+#include "NsGui/Button.h"
+#include "GameView.h"
 
 namespace Menus {
     class MainMenu : public GUI::Scene {
     public:
         MainMenu() : GUI::Scene("MainMenu.xaml"){}
     private:
-        void onUpdate() override {
-        }
-
         void onLoad() override {
-        }
-
-        void onRender() override {
+            mRoot->FindName<Noesis::Button>("startGame")->Click() += [](Noesis::BaseComponent* sender, const Noesis::RoutedEventArgs& args) {
+                pushGameView();
+            };
+            mRoot->FindName<Noesis::Button>("exit")->Click() += [this](Noesis::BaseComponent* sender, const Noesis::RoutedEventArgs& args) {
+                requestLeave();
+            };
         }
     };
 

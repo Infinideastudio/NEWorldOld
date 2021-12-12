@@ -4,29 +4,35 @@
 #include "Globalization.h"
 #include <NsCore/Ptr.h>
 #include <NsGui/IView.h>
+#include "NsGui/Grid.h"
 
 namespace GUI {
     class Scene {
     public:
-        Scene(const char* xaml, bool hasCursor = true) : mXaml(xaml), mHasCursor(hasCursor) {}
+        Scene(const char* xaml, bool hasCursor = true) : mXamlPath(xaml), mHasCursor(hasCursor) {}
 
         virtual ~Scene();
 
         void load();
         void singleLoop();
 
+        void requestLeave() noexcept { mShouldLeave = true; }
+        bool shouldLeave() const noexcept { return mShouldLeave; }
+
     protected:
         virtual void onRender() {}
         virtual void onUpdate() {}
         virtual void onLoad() {}
 
-        Noesis::Ptr<Noesis::IView> _view;
+        Noesis::Ptr<Noesis::Grid> mRoot;
+        Noesis::Ptr<Noesis::IView> mView;
 
     private:
         void render();
         void update();
 
-        const char* mXaml;
+        bool mShouldLeave = false;
+        const char* mXamlPath;
         bool mHasCursor;
     };
 

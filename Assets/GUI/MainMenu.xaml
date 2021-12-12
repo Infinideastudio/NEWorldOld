@@ -20,8 +20,9 @@
   <Image Grid.Column="1" Source="GUI/title.png" VerticalAlignment="Center" />
   <Viewbox Stretch="Uniform" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center" MaxHeight="200">
     <StackPanel>
-      <Button Content="Start Game" Margin="0 0 0 10" Height="50" Width="600" FontSize="18"/>
-      <Button Content="Settings" Margin="0 0 0 10" Height="50" Width="600" FontSize="18"/>
+      <Button x:Name="startGame" Content="Start Game" Margin="0 0 0 10" Height="50" Width="600" FontSize="18"/>
+      <Button x:Name="settings" Content="Settings" Margin="0 0 0 10" Height="50" Width="600" FontSize="18" />
+      <Button x:Name="exit" Content="Exit" Margin="0 0 0 10" Height="50" Width="600" FontSize="18"/>
     </StackPanel>
   </Viewbox>
 </Grid>
