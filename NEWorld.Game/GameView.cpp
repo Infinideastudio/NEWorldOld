@@ -10,7 +10,7 @@
 #include "Renderer/World/WorldRenderer.h"
 #include "Particles.h"
 #include "Hitbox.h"
-#include "GUI.h"
+#include "GUI/GUI.h"
 #include "Menus.h"
 #include "Command.h"
 #include "Setup.h"
@@ -18,12 +18,15 @@
 
 ThreadFunc updateThreadFunc(void *);
 
+class GameView;
+// pretty hacky. try to remove later.
+GameView* currentGame = nullptr;
+
 int getMouseScroll() { return mw; }
 
 int getMouseButton() { return mb; }
 
-
-class GameDView : public virtual GUI::Form, public Game {
+class GameView : public virtual GUI::Scene, public Game {
 private:
 
     int fps{}, fpsc{}, ups{}, upsc{};
@@ -38,6 +41,8 @@ private:
     int getMouseButton() { return mb; }
 
 public:
+    GameView() : Scene(nullptr, false) {}
+
     void GameThreadloop() {
 
         //Wait until start...
@@ -333,7 +338,7 @@ public:
             glDisable(GL_CULL_FACE);
             glDisable(GL_TEXTURE_2D);
             for (const auto &Hitboxe : Player::Hitboxes) {
-                renderAABB(Hitboxe, GUI::FgR, GUI::FgG, GUI::FgB, 3, 0.002);
+                renderAABB(Hitboxe, 1,1,1, 3, 0.002);
             }
 
             glLoadIdentity();
@@ -375,7 +380,6 @@ public:
             glEnd();
         }
         if (GUIrenderswitch) {
-            drawGUI();
             drawBag();
         }
 
@@ -465,152 +469,7 @@ public:
         glEnd();
         glDisable(GL_LINE_SMOOTH);
     }
-
-    void drawGUI() {
-        int windowuswidth = windowwidth / stretch, windowusheight = windowheight / stretch;
-        glDepthFunc(GL_ALWAYS);
-        glDisable(GL_TEXTURE_2D);
-        glEnable(GL_LINE_SMOOTH);
-        auto seldes_100 = seldes / 100.0f;
-        auto disti = static_cast<int>(seldes_100 * linedist);
-
-        if (DebugMode) {
-
-            if (selb != Blocks::ENV) {
-                glLineWidth(1);
-                glBegin(GL_LINES);
-                glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, 0.8f);
-                UIVertex(windowuswidth / 2, windowusheight / 2);
-                UIVertex(windowuswidth / 2 + 50, windowusheight / 2 + 50);
-                UIVertex(windowuswidth / 2 + 50, windowusheight / 2 + 50);
-                UIVertex(windowuswidth / 2 + 250, windowusheight / 2 + 50);
-                glEnd();
-                TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
-                glEnable(GL_TEXTURE_2D);
-                glDisable(GL_CULL_FACE);
-                std::stringstream ss;
-                ss << BlockInfo(selb).getBlockName() << " (ID " << static_cast<int>(selb) << ")";
-                TextRenderer::renderString(windowuswidth / 2 + 50, windowusheight / 2 + 50 - 16, ss.str());
-                glDisable(GL_TEXTURE_2D);
-                glEnable(GL_CULL_FACE);
-                glColor4f(0.0f, 0.0f, 0.0f, 0.9f);
-            } else {
-                glColor4f(0.0f, 0.0f, 0.0f, 0.6f);
-            }
-
-            glLineWidth(2);
-
-            glBegin(GL_LINES);
-            UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 - linedist + disti);
-            UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 - linedist + linelength + disti);
-            UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 - linedist + disti);
-            UIVertex(windowuswidth / 2 - linedist + linelength + disti, windowusheight / 2 - linedist + disti);
-
-            UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 - linedist + disti);
-            UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 - linedist + linelength + disti);
-            UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 - linedist + disti);
-            UIVertex(windowuswidth / 2 + linedist - linelength - disti, windowusheight / 2 - linedist + disti);
-
-            UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 + linedist - disti);
-            UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 + linedist - linelength - disti);
-            UIVertex(windowuswidth / 2 - linedist + disti, windowusheight / 2 + linedist - disti);
-            UIVertex(windowuswidth / 2 - linedist + linelength + disti, windowusheight / 2 + linedist - disti);
-
-            UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 + linedist - disti);
-            UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 + linedist - linelength - disti);
-            UIVertex(windowuswidth / 2 + linedist - disti, windowusheight / 2 + linedist - disti);
-            UIVertex(windowuswidth / 2 + linedist - linelength - disti, windowusheight / 2 + linedist - disti);
-
-            glEnd();
-
-        }
-
-        glLineWidth(4 * stretch);
-        glBegin(GL_LINES);
-        glColor4f(0.0, 0.0, 0.0, 1.0);
-        UIVertex(windowuswidth / 2 - 16, windowusheight / 2);
-        UIVertex(windowuswidth / 2 + 16, windowusheight / 2);
-        UIVertex(windowuswidth / 2, windowusheight / 2 - 16);
-        UIVertex(windowuswidth / 2, windowusheight / 2 + 16);
-        glEnd();
-        glLineWidth(2 * stretch);
-        glBegin(GL_LINES);
-        glColor4f(1.0, 1.0, 1.0, 1.0);
-        UIVertex(windowuswidth / 2 - 15, windowusheight / 2);
-        UIVertex(windowuswidth / 2 + 15, windowusheight / 2);
-        UIVertex(windowuswidth / 2, windowusheight / 2 - 15);
-        UIVertex(windowuswidth / 2, windowusheight / 2 + 15);
-        glEnd();
-
-        if (seldes > 0.0) {
-
-            glBegin(GL_LINES);
-            glColor4f(0.5, 0.5, 0.5, 1.0);
-            glVertex2i(windowwidth / 2 - 15, windowheight / 2);
-            glVertex2i(windowwidth / 2 - 15 + static_cast<int>(seldes_100 * 15), windowheight / 2);
-            glVertex2i(windowwidth / 2 + 15, windowheight / 2);
-            glVertex2i(windowwidth / 2 + 15 - static_cast<int>(seldes_100 * 15), windowheight / 2);
-            glVertex2i(windowwidth / 2, windowheight / 2 - 15);
-            glVertex2i(windowwidth / 2, windowheight / 2 - 15 + static_cast<int>(seldes_100 * 15));
-            glVertex2i(windowwidth / 2, windowheight / 2 + 15);
-            glVertex2i(windowwidth / 2, windowheight / 2 + 15 - static_cast<int>(seldes_100 * 15));
-            glEnd();
-
-        }
-
-        glDisable(GL_CULL_FACE);
-
-        RenderHealthBar();
-
-        TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
-        if (chatmode) {
-            glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
-            glDisable(GL_TEXTURE_2D);
-            glBegin(GL_QUADS);
-            glVertex2i(1, windowheight - 33);
-            glVertex2i(windowwidth - 1, windowheight - 33);
-            glVertex2i(windowwidth - 1, windowheight - 51);
-            glVertex2i(1, windowheight - 51);
-            glEnd();
-            glEnable(GL_TEXTURE_2D);
-            TextRenderer::renderString(0, windowheight - 50, chatword);
-        }
-        auto posy = 0;
-        int size = chatMessages.size();
-        if (size != 0) {
-            for (auto i = size - 1; i >= (size - 10 > 0 ? size - 10 : 0); --i) {
-                TextRenderer::renderString(0, windowheight - 80 - 18 * posy++, chatMessages[i]);
-            }
-        }
-
-        //if (DebugShadow) ShadowMaps::DrawShadowMap(windowwidth / 2, windowheight / 2, windowwidth, windowheight);
-
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, TextRenderer::Font);
-
-        RenderDebugText();
-        glFlush();
-    }
-    void RenderHealthBar() const {
-        if (Player::gamemode == Player::Survival) {
-            glColor4d(0.8, 0.0, 0.0, 0.3);
-            glBegin(GL_QUADS);
-            UIVertex(10, 10);
-            UIVertex(200, 10);
-            UIVertex(200, 30);
-            UIVertex(10, 30);
-            glEnd();
-
-            auto healthPercent = static_cast<double>(Player::health) / Player::healthMax;
-            glColor4d(1.0, 0.0, 0.0, 0.5);
-            glBegin(GL_QUADS);
-            UIVertex(20, 15);
-            UIVertex(static_cast<int>(20 + healthPercent * 170), 15);
-            UIVertex(static_cast<int>(20 + healthPercent * 170), 25);
-            UIVertex(20, 25);
-            glEnd();
-        }
-    }
+    
     void RenderDebugText() const {
         if (DebugMode) {
             std::stringstream ss;
@@ -1031,8 +890,6 @@ public:
 
 
     void onLoad() override {
-        Background = nullptr;
-
         glEnable(GL_LINE_SMOOTH);
         glEnable(GL_TEXTURE_2D);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1041,6 +898,7 @@ public:
 
         Mutex = MutexCreate();
         MutexLock(Mutex);
+        currentGame = this;
         updateThread = ThreadCreate(&updateThreadFunc, nullptr);
         if (multiplayer) {
             fastSrand(static_cast<unsigned int>(time(nullptr)));
@@ -1091,11 +949,10 @@ public:
         if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1) {
             updateThreadPaused = true;
             createThumbnail();
-            GUI::clearTransition();
         }
     }
 
-    void onLeave() override {
+    ~GameView() override {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
         TextRenderer::renderString(0, 0, "Saving world...");
@@ -1106,6 +963,7 @@ public:
         MutexUnlock(Mutex);
         ThreadWait(updateThread);
         ThreadDestroy(updateThread);
+        currentGame = nullptr;
         MutexDestroy(Mutex);
         saveGame();
         World::destroyAllChunks();
@@ -1115,7 +973,7 @@ public:
         }
         commands.clear();
         chatMessages.clear();
-        GUI::BackToMain();
+        //GUI::popScene();
     }
 
 
@@ -1199,11 +1057,9 @@ public:
     }
 };
 
-GameDView *Game = nullptr;
-
-void GameView() { GUI::PushPage(Game = (new GameDView)); }
+void pushGameView() { GUI::pushScene(std::make_unique<GameView>()); }
 
 ThreadFunc updateThreadFunc(void *) {
-    Game->GameThreadloop();
+    if(currentGame) currentGame->GameThreadloop();
     return 0;
 }

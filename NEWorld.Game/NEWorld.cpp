@@ -5,9 +5,9 @@
 #include "Renderer.h"
 #include "TextRenderer.h"
 #include "Universe/World/World.h"
-#include "GUI.h"
 #include "Globalization.h"
 #include "Setup.h"
+#include "GUI/GUI.h"
 #include "AudioSystem.h"
 #include <iostream>
 #include <fstream>
@@ -21,6 +21,8 @@
 #include "NsApp/LocalTextureProvider.h"
 #include "NsApp/LocalFontProvider.h"
 #include "NsApp/LocalXamlProvider.h"
+#include "GameView.h"
+#include "GUI/Menus/Menus.h"
 void loadOptions();
 
 void saveOptions();
@@ -36,6 +38,7 @@ void ApplicationBeforeLaunch() {
     NEWorld::filesystem::create_directories("./Worlds");
     NEWorld::filesystem::create_directories("./Screenshots");
     NEWorld::filesystem::create_directories("./Mods");
+
     Noesis::SetLogHandler([](const char*, uint32_t, uint32_t level, const char*, const char* msg) {
         // [TRACE] [DEBUG] [INFO] [WARNING] [ERROR]
         const char* prefixes[] = { "T", "D", "I", "W", "E" };
@@ -88,10 +91,8 @@ int main() {
     glLoadIdentity();
 
     glDisable(GL_LINE_SMOOTH);
-    GUI::clearTransition();
-    //App Entrance
-    GUI::BackToMain();
-    GUI::AppStart();
+    GUI::pushScene(Menus::startMenu());
+    GUI::appStart();
     //结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
     //不对啊这不是FB！！！这是正宗的C++！！！！！！
     //楼上的楼上在瞎说！！！别信他的！！！

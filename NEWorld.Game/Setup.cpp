@@ -1,6 +1,5 @@
 #include <iostream>
 #include "Setup.h"
-#include "GUI.h"
 #include "Definitions.h"
 #include "Textures.h"
 #include "TextRenderer.h"
@@ -49,7 +48,6 @@ void createWindow() {
     glfwSetMouseButtonCallback(MainWindow, &MouseButtonFunc);
     glfwSetScrollCallback(MainWindow, &MouseScrollFunc);
     glfwSetCharCallback(MainWindow, &CharInputFunc);
-    if (ppistretch) GUI::InitStretch();
 }
 
 void setupScreen() {

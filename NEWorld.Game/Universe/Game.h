@@ -1,9 +1,11 @@
 #pragma once
 
 #include "CommandHandler.h"
+#include <al.h>
+#include "AudioSystem.h"
 
 
-class Game : public virtual GUI::Form, public CommandHandler {
+class Game : public CommandHandler {
     int oldselx{};
     int oldsely{};
     int oldselz{};
