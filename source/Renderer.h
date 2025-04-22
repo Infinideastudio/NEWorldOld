@@ -7,11 +7,11 @@
 #include "FrameBuffer.h"
 
 namespace Renderer {
-	//ÎÒ²ÂÄã¿Ï¶¨²»¸Ò¿´Renderer.cpp  --qiaozhanrong
-	//²Â¶ÔÁË  --Null
+	//ï¿½Ò²ï¿½ï¿½ï¿½Ï¶ï¿½ï¿½ï¿½ï¿½Ò¿ï¿½Renderer.cpp  --qiaozhanrong
+	//ï¿½Â¶ï¿½ï¿½ï¿½  --Null
 
 	enum {
-		MainShader, MergeFaceShader, FinalShader, ShadowShader, ShowDepthShader
+		MainShader, FinalShader, ShadowShader, ShowDepthShader
 	};
 
 	const int ArraySize = 4194304;
@@ -21,7 +21,6 @@ namespace Renderer {
 	extern bool AdvancedRender;
 	extern int ShadowRes;
 	extern int MaxShadowDist;
-	extern int shadowdist;
 	extern float sunlightXrot, sunlightYrot;
 	extern Frustum playerFrustum;
 	extern vector<Shader> shaders;
@@ -47,7 +46,7 @@ namespace Renderer {
 	inline void Normal3d(double x, double y, double z) { Normal3f((float)x, (float)y, (float)z); }
 
 	inline void Quad(float *geomentry) {
-		//ÕâÑù×öÃ²ËÆÌáÉý²»ÁËÐÔÄÜ°É¡£¡£¡£ --qiaozhanrong
+		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü°É¡ï¿½ï¿½ï¿½ï¿½ï¿½ --qiaozhanrong
 		memcpy(VA, geomentry, size * sizeof(float)); VA += size;
 		Vertexes += 4;
 	}
@@ -62,16 +61,16 @@ namespace Renderer {
 	}
 	void destroyShaders();
 	FrustumTest getLightFrustum();
-	FrustumTest getShadowMapFrustum(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum);
+	FrustumTest getShadowMapFrustum(double xpos, double ypos, double zpos, double heading, double pitch, int shadowdist, const FrustumTest& playerFrustum);
 	
 	void ClearBuffer();
-	void EnableDefferedRendering(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum, float gametime);
-	void DisableDefferedRendering();
+	void StartMainPass(float gametime);
+	void EndMainPass();
 	
-	void StartShadowPass(float gameTime);
+	void StartShadowPass();
 	void EndShadowPass();
 
-	void StartFinalPass(double xpos, double ypos, double zpos, const FrustumTest& viewFrustum);
+	void StartFinalPass(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& viewFrustum, float gameTime);
 	void EndFinalPass();
 
 	void DrawFullscreen();

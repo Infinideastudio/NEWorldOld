@@ -1,5 +1,4 @@
 #pragma once
-#define NEWORLD_DEBUG
 #ifndef NEWORLD_DEBUG
 #pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
@@ -17,10 +16,10 @@ const unsigned int VERSION = 39;
 const string MAJOR_VERSION = "Alpha 0.";
 const string MINOR_VERSION = "5";
 const string EXT_VERSION = " [In Development]";
-const int defaultwindowwidth = 852; //Ä¬ÈÏ´°¿Ú¿í¶È
-const int defaultwindowheight = 480; //Ä¬ÈÏ´°¿Ú¸ß¶È
-const int networkRequestFrequency = 3; //ÇëÇóÆµÂÊ
-const int networkRequestMax = 20; //ÀíÏë×î´óÇëÇó¶ÓÁÐ³¤¶È
+const int defaultwindowwidth = 852; //Ä¬ï¿½Ï´ï¿½ï¿½Ú¿ï¿½ï¿½
+const int defaultwindowheight = 480; //Ä¬ï¿½Ï´ï¿½ï¿½Ú¸ß¶ï¿½
+const int networkRequestFrequency = 3; //ï¿½ï¿½ï¿½ï¿½Æµï¿½ï¿½
+const int networkRequestMax = 20; //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½
 extern float FOVyNormal;
 extern float mousemove;
 extern int viewdistance;

@@ -81,7 +81,7 @@ inline void putblock(int x, int y, int z, block Block) { setblock(x, y, z, Block
 inline void pickblock(int x, int y, int z) { setblock(x, y, z, Blocks::AIR); }
 
 inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
-	//¼ì²â¸ø³öµÄchunk×ø±êÊÇ·ñÔÚäÖÈ¾·¶Î§ÄÚ
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½chunkï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½È¾ï¿½ï¿½Î§ï¿½ï¿½
 	if (x < px - dist || x > px + dist - 1 || y < py - dist || y > py + dist - 1 || z < pz - dist || z > pz + dist - 1) return false;
 	return true;
 }

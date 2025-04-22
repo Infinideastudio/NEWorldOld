@@ -7,38 +7,38 @@
 namespace Renderer {
 
 	/*
-	ºÃ¾À½á°¡ºÃ¾À½á£¬¡°¸ß¼¶¡±äÖÈ¾Ä£Ê½ÀïµÄËùÓÐÊý¾ÝÒª²»Òª¶¼ÓÃVertexAttribArray°¡¡£¡£¡£
-	È»¶øÎÒ»¹ÊÇ±È½ÏÀÁ¡£¡£¡£ËùÒÔ³ýÁË¡¾¸½¼Ó¡¿µÄ¶¥µãÊôÐÔÖ®Íâ£¬ÆäËûÊôÐÔ£¨±ÈÈçÑÕÉ«¡¢ÎÆÀí×ø±ê£©¶¼±£ÁôÔ­À´µÄËãÁË¡£¡£¡£
+	ï¿½Ã¾ï¿½ï¿½á°¡ï¿½Ã¾ï¿½ï¿½á£¬ï¿½ï¿½ï¿½ß¼ï¿½ï¿½ï¿½ï¿½ï¿½È¾Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½VertexAttribArrayï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	È»ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Ç±È½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô³ï¿½ï¿½Ë¡ï¿½ï¿½ï¿½ï¿½Ó¡ï¿½ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö®ï¿½â£¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ê£©ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë¡ï¿½ï¿½ï¿½ï¿½ï¿½
 
-	Ëµµ½ÎªÉ¶ÒªÓÃ¡¾¸½¼Ó¡¿µÄ¶¥µãÊôÐÔ¡£¡£¡£ÕâÊÇÓÉÓÚShadow MapµÄ¾«¶ÈÎÊÌâ¡£¡£¡£
-	ÓÐµÄÊ±ºò±³¹âÃæµÄÍâÈ¦»áÓÐÁÁ¹â¡£¡£¡£ºÜÄÑ¿´¡£¡£¡£ËùÒÔÒªÓÃShader°Ñ±³¹âÃæÅª°µ¡£¡£¡£
-	ÓÚÊÇÈçºÎÈÃshaderÖªµÀÕâ¸öÃæ³¯ÄÄÀïÄØ£¿ÀÁµÃÓÃNormalArrayµÄÎÒ¾ÍÓÃÁËÒ»¸ö¸½¼ÓµÄ¶¥µãÊôÐÔ¡£¡£¡£
-	0.0f±íÊ¾Ç°Ãæ(z+)£¬1.0f±íÊ¾ºóÃæ(z-)£¬2.0f±íÊ¾ÓÒÃæ(x+)£¬3.0f±íÊ¾×óÃæ(x-)£¬4.0f±íÊ¾ÉÏÃæ(y+)£¬5.0f±íÊ¾ÏÂÃæ(y-)
+	Ëµï¿½ï¿½ÎªÉ¶Òªï¿½Ã¡ï¿½ï¿½ï¿½ï¿½Ó¡ï¿½ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Shadow Mapï¿½Ä¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½â¡£ï¿½ï¿½ï¿½ï¿½
+	ï¿½Ðµï¿½Ê±ï¿½ò±³¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½â¡£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½Shaderï¿½Ñ±ï¿½ï¿½ï¿½ï¿½ï¿½Åªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½shaderÖªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½æ³¯ï¿½ï¿½ï¿½ï¿½ï¿½Ø£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½NormalArrayï¿½ï¿½ï¿½Ò¾ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ÓµÄ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¡ï¿½ï¿½ï¿½ï¿½ï¿½
+	0.0fï¿½ï¿½Ê¾Ç°ï¿½ï¿½(z+)ï¿½ï¿½1.0fï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½(z-)ï¿½ï¿½2.0fï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½(x+)ï¿½ï¿½3.0fï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½(x-)ï¿½ï¿½4.0fï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½(y+)ï¿½ï¿½5.0fï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½(y-)
 
-	    ÄãÃ»ÓÐ¿´´í¡£¡£¡£ÕâÐ©Öµ¡£¡£¡£È«¶¼ÊÇ
+	    ï¿½ï¿½Ã»ï¿½Ð¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð©Öµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½
 
-	        ¸¡£¡
-	            µã£¡
-	                ÐÍ£¡
-	                    µÄ£¡£¡£¡£¡£¡£¡£¡
+	        ï¿½ï¿½ï¿½ï¿½
+	            ï¿½ã£¡
+	                ï¿½Í£ï¿½
+	                    ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-	¿ÓµùµÄGLSL²»Ö§³ÖÕûÐÍ×÷Îª¶¥µãÊôÐÔ¡£¡£¡£Ö»ºÃÓÃ¸¡µãÐÍ´úÌæÁË(¨s¨F¡õ¡ä)¨s¦à©ß©¥©ß
-	È»ºóÎªÁË½â¾ö¸¡µãÊýµÄ¾«¶ÈÎÊÌâ£¬ÎÒÔÚshaderÀïÐ´ÁË¸öËÄÉáÎåÈëÈ¡Õû¡£¡£¡£
-	²»ËµÁË¡£¡£¡£
+	ï¿½Óµï¿½ï¿½ï¿½GLSLï¿½ï¿½Ö§ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¡ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½ï¿½Ã¸ï¿½ï¿½ï¿½ï¿½Í´ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½sï¿½Fï¿½ï¿½ï¿½ï¿½)ï¿½sï¿½ï¿½ß©ï¿½ï¿½ï¿½
+	È»ï¿½ï¿½Îªï¿½Ë½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½â£¬ï¿½ï¿½ï¿½ï¿½shaderï¿½ï¿½Ð´ï¿½Ë¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	ï¿½ï¿½Ëµï¿½Ë¡ï¿½ï¿½ï¿½ï¿½ï¿½
 
-	µÈµÈÎÒ»¹Ã»ÓÐÇ©ÃûÄØ¡£¡£¡£
+	ï¿½Èµï¿½ï¿½Ò»ï¿½Ã»ï¿½ï¿½Ç©ï¿½ï¿½ï¿½Ø¡ï¿½ï¿½ï¿½ï¿½ï¿½
 	--qiaozhanrong
 
 	====================================================
-	ÁôÑÔ°å£º
+	ï¿½ï¿½ï¿½Ô°å£º
 
-	1Â¥. qiaozhanrong: ×Ô¼ºÇÀ¸öÉ³·¢ÏÈ
-	2Â¥. Null: Õâ¾ÍÊÇÄãÔÚÔ´ÂëÀïÐ´ÕâÃ´Ò»³¤´®µÄÀíÓÉ£¿23333333333
-	3Â¥. qiaozhanrong: ÎÞÁÄ°¡233333333333
+	1Â¥. qiaozhanrong: ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½ï¿½É³ï¿½ï¿½ï¿½ï¿½
+	2Â¥. Null: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½Ã´Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É£ï¿½23333333333
+	3Â¥. qiaozhanrong: ï¿½ï¿½ï¿½Ä°ï¿½233333333333
 
-	4Â¥. [ÇëÊäÈëÐÕÃû]: [ÇëÊäÈë»Ø¸´ÄÚÈÝ]
+	4Â¥. [ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½]: [ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½ï¿½ï¿½]
 
-	[»Ø¸´]
+	[ï¿½Ø¸ï¿½]
 	====================================================
 	*/
 
@@ -50,14 +50,13 @@ namespace Renderer {
 	bool AdvancedRender;
 	int ShadowRes = 4096;
 	int MaxShadowDist = 6;
-	int shadowdist;
 	float sunlightXrot, sunlightYrot;
 	vector<Shader> shaders;
 	int ActiveShader;
 	int index = 0, size = 0;
 	unsigned int ShaderAttribLoc = 0;
 
-	const int gBufferCount = 4;
+	const int gBufferCount = 3;
 	int gWidth, gHeight, gSize;
 	FrameBuffer shadow, gBuffers;
 	bool VolumetricClouds = false;
@@ -85,7 +84,7 @@ namespace Renderer {
 	void resizeGBuffers(int w, int h) {
 		gWidth = w, gHeight = h;
 		gSize = 1 << log2Ceil(max(gWidth, gHeight));
-		gBuffers.create(gSize, gBufferCount, false);
+		gBuffers.create(gSize, gBufferCount, true, false);
 	}
 
 	void Vertex3f(float x, float y, float z) {
@@ -112,8 +111,8 @@ namespace Renderer {
 
 	void Flush(VBOID& buffer, vtxCount& vtxs) {
 
-		//ÉÏ´Î²ÅÖªµÀÔ­À´Flush»¹ÓÐ³å²ÞËùµÄÒâË¼QAQ
-		//OpenGLÓÐ¸öº¯ÊýglFlush()£¬·­Òë¹ýÀ´¾ÍÊÇGL³å²ÞËù() ¡û_¡û
+		//ï¿½Ï´Î²ï¿½Öªï¿½ï¿½Ô­ï¿½ï¿½Flushï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë¼QAQ
+		//OpenGLï¿½Ð¸ï¿½ï¿½ï¿½ï¿½ï¿½glFlush()ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½GLï¿½ï¿½ï¿½ï¿½ï¿½() ï¿½ï¿½_ï¿½ï¿½
 
 		vtxs = Vertexes;
 		if (Vertexes != 0) {
@@ -155,7 +154,7 @@ namespace Renderer {
 			glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((ac + tc + cc + nc) * sizeof(float)));
 		}
 
-		//Õâ¸ö¿òÊÇ²»ÊÇºÜ×°±Æ2333 --qiaozhanrong
+		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç²ï¿½ï¿½Çºï¿½×°ï¿½ï¿½2333 --qiaozhanrong
 		//====================================================================================================//
 		/**/                                                                                                /**/
 		/**/                                                                                                /**/
@@ -189,47 +188,40 @@ namespace Renderer {
 
 	void initShaders() {
 		ShaderAttribLoc = 1;
-		std::set<string> mgf, defines;
-		mgf.insert("MergeFace");
+		std::set<string> defines;
+		if (MergeFace) defines.insert("MergeFace");
 		if (VolumetricClouds) defines.insert("VolumetricClouds");
 
-		sunlightXrot = 40.0f;
+		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
-		shadowdist = min(MaxShadowDist, viewdistance);
-		shaders.reserve(5);
-		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true));
-		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true, mgf));
+		shaders.clear();
+		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true, defines));
 		shaders.push_back(Shader("Shaders/Final.vsh", "Shaders/Final.fsh", false, defines));
-		shaders.push_back(Shader("Shaders/Shadow.vsh", "Shaders/Shadow.fsh", true));
-		shaders.push_back(Shader("Shaders/ShowDepth.vsh", "Shaders/ShowDepth.fsh", false));
+		shaders.push_back(Shader("Shaders/Shadow.vsh", "Shaders/Shadow.fsh", true, defines));
+		shaders.push_back(Shader("Shaders/ShowDepth.vsh", "Shaders/ShowDepth.fsh", false, defines));
 
-		// framebuffers
-
-		shadow.create(ShadowRes, 0, true);
+		// Create framebuffers
+		shadow.create(ShadowRes, 0, true, true);
 		resizeGBuffers(windowwidth, windowheight);
 
-		// load shaders
+		// Set constant uniforms
+		shaders[MainShader].bind();
+		shaders[MainShader].setUniform(MergeFace ? "Texture3D" : "Texture", 0);
 
-		for (int i = 0; i < 2; i++) {
-			shaders[i].bind();
-			if (i == 0) shaders[i].setUniform("Texture", 0);
-			else shaders[i].setUniform("Texture3D", 0);
-			shaders[i].setUniform("DepthTexture", 1);
-			shaders[i].setUniform("NoiseTexture", 2);
-			shaders[i].setUniform("BackgroundColor", skycolorR, skycolorG, skycolorB, 1.0f);
-			shaders[i].setUniform("ShadowMapResolution", float(ShadowRes));
-		}
-
+		float fisheyeFactor = MergeFace ? 0.0f : 0.85f;
 		shaders[FinalShader].bind();
 		shaders[FinalShader].setUniform("Texture0", 0);
 		shaders[FinalShader].setUniform("Texture1", 1);
 		shaders[FinalShader].setUniform("Texture2", 2);
-		shaders[FinalShader].setUniform("Texture3", 3);
-		shaders[FinalShader].setUniform("NoiseTexture", gBufferCount);
-		shaders[FinalShader].setUniform("BackgroundColor", skycolorR, skycolorG, skycolorB, 1.0f);
+		shaders[FinalShader].setUniform("DepthTexture", gBufferCount + 0);
+		shaders[FinalShader].setUniform("ShadowTexture", gBufferCount + 1);
+		shaders[FinalShader].setUniform("NoiseTexture", gBufferCount + 2);
+		shaders[FinalShader].setUniform("ShadowMapResolution", float(ShadowRes));
+		shaders[FinalShader].setUniform("ShadowFisheyeFactor", fisheyeFactor);
 
 		shaders[ShadowShader].bind();
 		shaders[ShadowShader].setUniform("Texture", 0);
+		shaders[ShadowShader].setUniform("ShadowFisheyeFactor", fisheyeFactor);
 
 		Shader::unbind();
 	}
@@ -250,12 +242,12 @@ namespace Renderer {
 		return res;
 	}
 
-	FrustumTest getShadowMapFrustum(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& frus) {
+	FrustumTest getShadowMapFrustum(double xpos, double ypos, double zpos, double heading, double pitch, int shadowdist, const FrustumTest& frus) {
 		FrustumTest lightSpace = getLightFrustum();
 		std::vector<Vec3f> vertexes;
 		float halfHeight = std::tan(frus.getFOV() / 2.0f);
 		float halfWidth = halfHeight * frus.getAspect();
-		float pnear = frus.getNear(), pfar = Renderer::shadowdist * 16.0f;
+		float pnear = frus.getNear(), pfar = shadowdist * 16.0f;
 		float nh = halfHeight * pnear, nw = halfWidth * pnear;
 		float fh = halfHeight * pfar, fw = halfWidth * pfar;
 		vertexes.push_back(Vec3f(-nw, -nh, -pnear));
@@ -303,43 +295,34 @@ namespace Renderer {
 	void ClearBuffer() {
 		gBuffers.bindTarget();
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		gBuffers.bindTargetBuffer(0);
-		glClearColor(skycolorR, skycolorG, skycolorB, 0.0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 		gBuffers.unbindTarget();
 	}
 
-	void EnableDefferedRendering(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& playerFrustum, float gameTime) {
+	void StartShadowPass() {
+		shadow.bindTarget();
+		bindShader(ShadowShader);
+		glEnableVertexAttribArrayARB(ShaderAttribLoc);
+	}
+
+	void EndShadowPass() {
+		shadow.unbindTarget();
+		Shader::unbind();
+		glDisableVertexAttribArrayARB(ShaderAttribLoc);
+	}
+
+	void StartMainPass(float gameTime) {
+		gBuffers.bindTargetBuffer(0);
+		glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 		gBuffers.bindTarget(gWidth, gHeight);
 
-		shadowdist = min(MaxShadowDist, viewdistance);
-		shadow.bindDepthTexture(1);
-		glActiveTextureARB(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, getNoiseTexture());
-		glActiveTextureARB(GL_TEXTURE0);
-
 		//Enable shader
-		Shader& shader = shaders[MergeFace ? MergeFaceShader : MainShader];
-		bindShader(MergeFace ? MergeFaceShader : MainShader);
-
-		//Calc matrix
-		FrustumTest frus = getShadowMapFrustum(xpos, ypos, zpos, heading, pitch, playerFrustum);
+		Shader& shader = shaders[MainShader];
+		bindShader(MainShader);
 
 		//Set uniform
-		shader.setUniform("RenderDistance", viewdistance * 16.0f);
-		shader.setUniform("ShadowDistance", shadowdist * 16.0f);
-		shader.setUniform("ShadowMapProjection", frus.getProjMatrix());
-		shader.setUniform("ShadowMapModelView", frus.getModlMatrix());
-		Mat4f trans = Mat4f::rotation(-sunlightXrot, Vec3f(1, 0, 0)) * Mat4f::rotation(-sunlightYrot, Vec3f(0, 1, 0));
-		Vec3f lightdir = trans.transformVec3(Vec3f(0, 0, -1));
-		lightdir.normalize();
-		shader.setUniform("SunlightDirection", lightdir.x, lightdir.y, lightdir.z);
 		shader.setUniform("GameTime", gameTime);
-		shader.setUniform3i("PlayerPositionInt", int(floor(xpos)), int(floor(ypos)), int(floor(zpos)));
-		shader.setUniform("PlayerPositionFrac", xpos - floor(xpos), ypos - floor(ypos), zpos - floor(zpos));
 
 		//Enable arrays for additional vertex attributes
 		glEnableClientState(GL_NORMAL_ARRAY);
@@ -347,7 +330,7 @@ namespace Renderer {
 		glDisable(GL_FOG);
 	}
 
-	void DisableDefferedRendering() {
+	void EndMainPass() {
 		gBuffers.unbindTarget();
 
 		//Disable shader
@@ -359,43 +342,42 @@ namespace Renderer {
 		glEnable(GL_FOG);
 	}
 
-	void StartShadowPass(float gameTime) {
-		shadow.bindTarget();
-		bindShader(ShadowShader);
-		shaders[ShadowShader].setUniform("GameTime", gameTime);
-		glEnableVertexAttribArrayARB(ShaderAttribLoc);
-	}
-
-	void EndShadowPass() {
-		shadow.unbindTarget();
-		Shader::unbind();
-		glDisableVertexAttribArrayARB(ShaderAttribLoc);
-	}
-
-	void StartFinalPass(double xpos, double ypos, double zpos, const FrustumTest& viewFrustum) {
+	void StartFinalPass(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& viewFrustum, float gameTime) {
+		// Bind textures to pre-defined slots
 		gBuffers.bindColorTextures(0);
-		glActiveTextureARB(GL_TEXTURE0 + gBufferCount);
+		gBuffers.bindDepthTexture(gBufferCount + 0);
+		shadow.bindDepthTexture(gBufferCount + 1);
+		glActiveTextureARB(GL_TEXTURE0 + gBufferCount + 2);
 		glBindTexture(GL_TEXTURE_2D, getNoiseTexture());
 		glActiveTextureARB(GL_TEXTURE0);
 
+		// Set dynamic uniforms
+		Shader& shader = shaders[FinalShader];
 		bindShader(FinalShader);
-		shaders[FinalShader].setUniform("ScreenWidth", float(gWidth));
-		shaders[FinalShader].setUniform("ScreenHeight", float(gHeight));
-		shaders[FinalShader].setUniform("BufferSize", float(gSize));
-		shaders[FinalShader].setUniform("ProjectionMatrix", viewFrustum.getProjMatrix());
-		shaders[FinalShader].setUniform("ModelViewMatrix", viewFrustum.getModlMatrix());
-		shaders[FinalShader].setUniform("ProjectionInverse", Mat4f(viewFrustum.getProjMatrix()).inverse().data);
-		shaders[FinalShader].setUniform("ModelViewInverse", Mat4f(viewFrustum.getModlMatrix()).inverse().data);
-		//shaders[FinalShader].setUniform("FOVx", viewFrustum.getFOV() * viewFrustum.getAspect());
-		//shaders[FinalShader].setUniform("FOVy", viewFrustum.getFOV());
-		shaders[FinalShader].setUniform("RenderDistance", viewdistance * 16.0f);
+		shader.setUniform("ScreenWidth", float(gWidth));
+		shader.setUniform("ScreenHeight", float(gHeight));
+		shader.setUniform("BufferSize", float(gSize));
+		shader.setUniform("ProjectionMatrix", viewFrustum.getProjMatrix());
+		shader.setUniform("ModelViewMatrix", viewFrustum.getModlMatrix());
+		shader.setUniform("ProjectionInverse", Mat4f(viewFrustum.getProjMatrix()).inverse().data);
+		shader.setUniform("ModelViewInverse", Mat4f(viewFrustum.getModlMatrix()).inverse().data);
+		//shader.setUniform("FOVx", viewFrustum.getFOV() * viewFrustum.getAspect());
+		//shader.setUniform("FOVy", viewFrustum.getFOV());
+
+		int shadowdist = min(MaxShadowDist, viewdistance);
+		shader.setUniform("RenderDistance", viewdistance * 16.0f);
+		shader.setUniform("ShadowDistance", shadowdist * 16.0f);
+		FrustumTest frus = getShadowMapFrustum(xpos, ypos, zpos, heading, pitch, shadowdist, viewFrustum);
+		shader.setUniform("ShadowMapProjection", frus.getProjMatrix());
+		shader.setUniform("ShadowMapModelView", frus.getModlMatrix());
 
 		Mat4f trans = Mat4f::rotation(-sunlightXrot, Vec3f(1, 0, 0)) * Mat4f::rotation(-sunlightYrot, Vec3f(0, 1, 0));
 		Vec3f lightdir = trans.transformVec3(Vec3f(0, 0, -1));
 		lightdir.normalize();
-		shaders[FinalShader].setUniform("SunlightDirection", lightdir.x, lightdir.y, lightdir.z);
-		shaders[FinalShader].setUniform3i("PlayerPositionInt", int(floor(xpos)), int(floor(ypos)), int(floor(zpos)));
-		shaders[FinalShader].setUniform("PlayerPositionFrac", xpos - floor(xpos), ypos - floor(ypos), zpos - floor(zpos));
+		shader.setUniform("SunlightDirection", lightdir.x, lightdir.y, lightdir.z);
+		shader.setUniform("GameTime", gameTime);
+		shader.setUniformI("PlayerPositionInt", int(floor(xpos)), int(floor(ypos)), int(floor(zpos)));
+		shader.setUniform("PlayerPositionFrac", xpos - floor(xpos), ypos - floor(ypos), zpos - floor(zpos));
 	}
 
 	void EndFinalPass() {

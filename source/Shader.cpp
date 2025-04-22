@@ -11,7 +11,7 @@ Shader::Shader(string vshPath, string fshPath, bool bindLocation, std::set<strin
     if (bindLocation) glBindAttribLocationARB(shaderProgram, 1, "VertexAttrib");
     glLinkProgramARB(shaderProgram);
 
-    //¼ì²é´íÎó
+    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     checkErrors(shaderProgram, GL_LINK_STATUS, "Shader linking error!");
 }
 
@@ -58,7 +58,7 @@ bool Shader::setUniform(const char* uniform, const float * value) {
     glUniformMatrix4fvARB(loc, 1, GL_FALSE, value);
     return true;
 }
-bool Shader::setUniform3i(const char* uniform, int v0, int v1, int v2) {
+bool Shader::setUniformI(const char* uniform, int v0, int v1, int v2) {
 	int loc = glGetUniformLocationARB(shaderProgram, uniform);
 	//  assert(loc != -1);
 	if (loc == -1) return false;
@@ -67,7 +67,6 @@ bool Shader::setUniform3i(const char* uniform, int v0, int v1, int v2) {
 }
 
 GLhandleARB Shader::loadShader(string filename, unsigned int mode, std::set<string> defines) {
-    std::stringstream ss;
     GLhandleARB res;
     string cur, var, macro;
     int lines = 0, curlen;
@@ -79,7 +78,7 @@ GLhandleARB Shader::loadShader(string filename, unsigned int mode, std::set<stri
     while (!filein.eof()) {
         std::getline(filein, cur);
         if (beginWith(cur, "#")) {
-            ss.str(cur);
+            std::stringstream ss(cur);
             ss >> macro;
             if (macro == "##NEWORLD_SHADER_DEFINES") {
                 ss >> var >> macro;

@@ -196,100 +196,6 @@ void renderblock(int x, int y, int z, chunk* chunkptr) {
 
 	size = 1 / 8.0f - EPS;
 
-	if (NiceGrass && blk[0] == Blocks::GRASS && getblock(gx, gy - 1, gz + 1, Blocks::ROCK, chunkptr) == Blocks::GRASS) {
-		tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
-		tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
-	} else {
-		tcx = Textures::getTexcoordX(blk[0], 2) + EPS;
-		tcy = Textures::getTexcoordY(blk[0], 2) + EPS;
-	}
-
-	// Front Face
-	if (!(BlockInfo(blk[1]).isOpaque() || (blk[1] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) || blk[0] == Blocks::LEAF) {
-
-		colors = brt[1];
-		color1 = colors; color2 = colors; color3 = colors; color4 = colors;
-
-		if (blk[0] != Blocks::GLOWSTONE && SmoothLighting) {
-			color1 = (colors + getbrightness(gx, gy - 1, gz + 1) + getbrightness(gx - 1, gy, gz + 1) + getbrightness(gx - 1, gy - 1, gz + 1)) / 4.0;
-			color2 = (colors + getbrightness(gx, gy - 1, gz + 1) + getbrightness(gx + 1, gy, gz + 1) + getbrightness(gx + 1, gy - 1, gz + 1)) / 4.0;
-			color3 = (colors + getbrightness(gx, gy + 1, gz + 1) + getbrightness(gx + 1, gy, gz + 1) + getbrightness(gx + 1, gy + 1, gz + 1)) / 4.0;
-			color4 = (colors + getbrightness(gx, gy + 1, gz + 1) + getbrightness(gx - 1, gy, gz + 1) + getbrightness(gx - 1, gy + 1, gz + 1)) / 4.0;
-		}
-
-		color1 /= BRIGHTNESSMAX;
-		color2 /= BRIGHTNESSMAX;
-		color3 /= BRIGHTNESSMAX;
-		color4 /= BRIGHTNESSMAX;
-		if (blk[0] != Blocks::GLOWSTONE && !Renderer::AdvancedRender) {
-			color1 *= 0.5;
-			color2 *= 0.5;
-			color3 *= 0.5;
-			color4 *= 0.5;
-		}
-
-		if (Renderer::AdvancedRender) {
-			Renderer::Normal3f(0.0f, 0.0f, 1.0f);
-			Renderer::Attrib1f((float)blk[0]);
-		}
-		Renderer::Color3d(color1, color1, color1);
-		Renderer::TexCoord2d(tcx, tcy); Renderer::Vertex3d(-0.5 + x, -0.5 + y, 0.5 + z);
-		Renderer::Color3d(color2, color2, color2);
-		Renderer::TexCoord2d(tcx + size, tcy); Renderer::Vertex3d(0.5 + x, -0.5 + y, 0.5 + z);
-		Renderer::Color3d(color3, color3, color3);
-		Renderer::TexCoord2d(tcx + size, tcy + size); Renderer::Vertex3d(0.5 + x, 0.5 + y, 0.5 + z);
-		Renderer::Color3d(color4, color4, color4);
-		Renderer::TexCoord2d(tcx, tcy + size); Renderer::Vertex3d(-0.5 + x, 0.5 + y, 0.5 + z);
-
-	}
-
-	if (NiceGrass && blk[0] == Blocks::GRASS && getblock(gx, gy - 1, gz - 1, Blocks::ROCK, chunkptr) == Blocks::GRASS) {
-		tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
-		tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
-	} else {
-		tcx = Textures::getTexcoordX(blk[0], 2) + EPS;
-		tcy = Textures::getTexcoordY(blk[0], 2) + EPS;
-	}
-
-	// Back Face
-	if (!(BlockInfo(blk[2]).isOpaque() || (blk[2] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) || blk[0] == Blocks::LEAF) {
-
-		colors = brt[2];
-		color1 = colors; color2 = colors; color3 = colors; color4 = colors;
-
-		if (blk[0] != Blocks::GLOWSTONE && SmoothLighting) {
-			color1 = (colors + getbrightness(gx, gy - 1, gz - 1) + getbrightness(gx - 1, gy, gz - 1) + getbrightness(gx - 1, gy - 1, gz - 1)) / 4.0;
-			color2 = (colors + getbrightness(gx, gy + 1, gz - 1) + getbrightness(gx - 1, gy, gz - 1) + getbrightness(gx - 1, gy + 1, gz - 1)) / 4.0;
-			color3 = (colors + getbrightness(gx, gy + 1, gz - 1) + getbrightness(gx + 1, gy, gz - 1) + getbrightness(gx + 1, gy + 1, gz - 1)) / 4.0;
-			color4 = (colors + getbrightness(gx, gy - 1, gz - 1) + getbrightness(gx + 1, gy, gz - 1) + getbrightness(gx + 1, gy - 1, gz - 1)) / 4.0;
-		}
-
-		color1 /= BRIGHTNESSMAX;
-		color2 /= BRIGHTNESSMAX;
-		color3 /= BRIGHTNESSMAX;
-		color4 /= BRIGHTNESSMAX;
-		if (blk[0] != Blocks::GLOWSTONE && !Renderer::AdvancedRender) {
-			color1 *= 0.5;
-			color2 *= 0.5;
-			color3 *= 0.5;
-			color4 *= 0.5;
-		}
-
-		if (Renderer::AdvancedRender) {
-			Renderer::Normal3f(0.0f, 0.0f, -1.0f);
-			Renderer::Attrib1f((float)blk[0]);
-		}
-		Renderer::Color3d(color1, color1, color1);
-		Renderer::TexCoord2d(tcx + size * 1.0, tcy + size * 0.0); Renderer::Vertex3d(-0.5 + x, -0.5 + y, -0.5 + z);
-		Renderer::Color3d(color2, color2, color2);
-		Renderer::TexCoord2d(tcx + size * 1.0, tcy + size * 1.0); Renderer::Vertex3d(-0.5 + x, 0.5 + y, -0.5 + z);
-		Renderer::Color3d(color3, color3, color3);
-		Renderer::TexCoord2d(tcx + size * 0.0, tcy + size * 1.0); Renderer::Vertex3d(0.5 + x, 0.5 + y, -0.5 + z);
-		Renderer::Color3d(color4, color4, color4);
-		Renderer::TexCoord2d(tcx + size * 0.0, tcy + size * 0.0); Renderer::Vertex3d(0.5 + x, -0.5 + y, -0.5 + z);
-
-	}
-
 	if (NiceGrass && blk[0] == Blocks::GRASS && getblock(gx + 1, gy - 1, gz, Blocks::ROCK, chunkptr) == Blocks::GRASS) {
 		tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
 		tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
@@ -453,6 +359,102 @@ void renderblock(int x, int y, int z, chunk* chunkptr) {
 		Renderer::TexCoord2d(tcx + size * 0.0, tcy + size * 0.0); Renderer::Vertex3d(0.5 + x, -0.5 + y, 0.5 + z);
 		Renderer::Color3d(color4, color4, color4);
 		Renderer::TexCoord2d(tcx + size * 1.0, tcy + size * 0.0); Renderer::Vertex3d(-0.5 + x, -0.5 + y, 0.5 + z);
+
+	}
+
+	if (NiceGrass && blk[0] == Blocks::GRASS && getblock(gx, gy - 1, gz + 1, Blocks::ROCK, chunkptr) == Blocks::GRASS) {
+		tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
+		tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
+	}
+	else {
+		tcx = Textures::getTexcoordX(blk[0], 2) + EPS;
+		tcy = Textures::getTexcoordY(blk[0], 2) + EPS;
+	}
+
+	// Front Face
+	if (!(BlockInfo(blk[1]).isOpaque() || (blk[1] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) || blk[0] == Blocks::LEAF) {
+
+		colors = brt[1];
+		color1 = colors; color2 = colors; color3 = colors; color4 = colors;
+
+		if (blk[0] != Blocks::GLOWSTONE && SmoothLighting) {
+			color1 = (colors + getbrightness(gx, gy - 1, gz + 1) + getbrightness(gx - 1, gy, gz + 1) + getbrightness(gx - 1, gy - 1, gz + 1)) / 4.0;
+			color2 = (colors + getbrightness(gx, gy - 1, gz + 1) + getbrightness(gx + 1, gy, gz + 1) + getbrightness(gx + 1, gy - 1, gz + 1)) / 4.0;
+			color3 = (colors + getbrightness(gx, gy + 1, gz + 1) + getbrightness(gx + 1, gy, gz + 1) + getbrightness(gx + 1, gy + 1, gz + 1)) / 4.0;
+			color4 = (colors + getbrightness(gx, gy + 1, gz + 1) + getbrightness(gx - 1, gy, gz + 1) + getbrightness(gx - 1, gy + 1, gz + 1)) / 4.0;
+		}
+
+		color1 /= BRIGHTNESSMAX;
+		color2 /= BRIGHTNESSMAX;
+		color3 /= BRIGHTNESSMAX;
+		color4 /= BRIGHTNESSMAX;
+		if (blk[0] != Blocks::GLOWSTONE && !Renderer::AdvancedRender) {
+			color1 *= 0.5;
+			color2 *= 0.5;
+			color3 *= 0.5;
+			color4 *= 0.5;
+		}
+
+		if (Renderer::AdvancedRender) {
+			Renderer::Normal3f(0.0f, 0.0f, 1.0f);
+			Renderer::Attrib1f((float)blk[0]);
+		}
+		Renderer::Color3d(color1, color1, color1);
+		Renderer::TexCoord2d(tcx, tcy); Renderer::Vertex3d(-0.5 + x, -0.5 + y, 0.5 + z);
+		Renderer::Color3d(color2, color2, color2);
+		Renderer::TexCoord2d(tcx + size, tcy); Renderer::Vertex3d(0.5 + x, -0.5 + y, 0.5 + z);
+		Renderer::Color3d(color3, color3, color3);
+		Renderer::TexCoord2d(tcx + size, tcy + size); Renderer::Vertex3d(0.5 + x, 0.5 + y, 0.5 + z);
+		Renderer::Color3d(color4, color4, color4);
+		Renderer::TexCoord2d(tcx, tcy + size); Renderer::Vertex3d(-0.5 + x, 0.5 + y, 0.5 + z);
+
+	}
+
+	if (NiceGrass && blk[0] == Blocks::GRASS && getblock(gx, gy - 1, gz - 1, Blocks::ROCK, chunkptr) == Blocks::GRASS) {
+		tcx = Textures::getTexcoordX(blk[0], 1) + EPS;
+		tcy = Textures::getTexcoordY(blk[0], 1) + EPS;
+	}
+	else {
+		tcx = Textures::getTexcoordX(blk[0], 2) + EPS;
+		tcy = Textures::getTexcoordY(blk[0], 2) + EPS;
+	}
+
+	// Back Face
+	if (!(BlockInfo(blk[2]).isOpaque() || (blk[2] == blk[0] && BlockInfo(blk[0]).isOpaque() == false)) || blk[0] == Blocks::LEAF) {
+
+		colors = brt[2];
+		color1 = colors; color2 = colors; color3 = colors; color4 = colors;
+
+		if (blk[0] != Blocks::GLOWSTONE && SmoothLighting) {
+			color1 = (colors + getbrightness(gx, gy - 1, gz - 1) + getbrightness(gx - 1, gy, gz - 1) + getbrightness(gx - 1, gy - 1, gz - 1)) / 4.0;
+			color2 = (colors + getbrightness(gx, gy + 1, gz - 1) + getbrightness(gx - 1, gy, gz - 1) + getbrightness(gx - 1, gy + 1, gz - 1)) / 4.0;
+			color3 = (colors + getbrightness(gx, gy + 1, gz - 1) + getbrightness(gx + 1, gy, gz - 1) + getbrightness(gx + 1, gy + 1, gz - 1)) / 4.0;
+			color4 = (colors + getbrightness(gx, gy - 1, gz - 1) + getbrightness(gx + 1, gy, gz - 1) + getbrightness(gx + 1, gy - 1, gz - 1)) / 4.0;
+		}
+
+		color1 /= BRIGHTNESSMAX;
+		color2 /= BRIGHTNESSMAX;
+		color3 /= BRIGHTNESSMAX;
+		color4 /= BRIGHTNESSMAX;
+		if (blk[0] != Blocks::GLOWSTONE && !Renderer::AdvancedRender) {
+			color1 *= 0.5;
+			color2 *= 0.5;
+			color3 *= 0.5;
+			color4 *= 0.5;
+		}
+
+		if (Renderer::AdvancedRender) {
+			Renderer::Normal3f(0.0f, 0.0f, -1.0f);
+			Renderer::Attrib1f((float)blk[0]);
+		}
+		Renderer::Color3d(color1, color1, color1);
+		Renderer::TexCoord2d(tcx + size * 1.0, tcy + size * 0.0); Renderer::Vertex3d(-0.5 + x, -0.5 + y, -0.5 + z);
+		Renderer::Color3d(color2, color2, color2);
+		Renderer::TexCoord2d(tcx + size * 1.0, tcy + size * 1.0); Renderer::Vertex3d(-0.5 + x, 0.5 + y, -0.5 + z);
+		Renderer::Color3d(color3, color3, color3);
+		Renderer::TexCoord2d(tcx + size * 0.0, tcy + size * 1.0); Renderer::Vertex3d(0.5 + x, 0.5 + y, -0.5 + z);
+		Renderer::Color3d(color4, color4, color4);
+		Renderer::TexCoord2d(tcx + size * 0.0, tcy + size * 0.0); Renderer::Vertex3d(0.5 + x, -0.5 + y, -0.5 + z);
 
 	}
 }

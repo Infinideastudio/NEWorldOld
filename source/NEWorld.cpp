@@ -941,8 +941,6 @@ void debugText(string s, bool init) {
 void render() {
 	//画场景
 
-	//Renderer::sunlightXrot = gametime / 10.0;
-
 	double curtime = timer();
 	double TimeDelta;
 	double xpos, ypos, zpos;
@@ -992,9 +990,17 @@ void render() {
 		}
 	}
 
-	xpos = Player::xpos - Player::xd + (curtime - lastupdate) * 30.0 * Player::xd;
-	ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + (curtime - lastupdate) * 30.0 * Player::yd;
-	zpos = Player::zpos - Player::zd + (curtime - lastupdate) * 30.0 * Player::zd;
+	double interp = (curtime - lastupdate) * 30.0;
+	xpos = Player::xpos - Player::xd + interp * Player::xd;
+	ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + interp * Player::yd;
+	zpos = Player::zpos - Player::zd + interp * Player::zd;
+
+	// Calculate sun position
+	float interpolatedTime = gametime - 1.0 + static_cast<float>(interp);
+	//daylight = clamp((1.0 - cos((double)gametime / gameTimeMax * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
+	//Renderer::sunlightXrot = 90 * daylight;
+	Renderer::sunlightYrot = interpolatedTime / 100.0f;
+
 
 	if (!bagOpened) {
 		//转头！你治好了我多年的颈椎病！
@@ -1036,9 +1042,6 @@ void render() {
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
-	//daylight = clamp((1.0 - cos((double)gametime / gameTimeMax * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
-	//Renderer::sunlightXrot = 90 * daylight;
-
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1048,11 +1051,14 @@ void render() {
 		glDisable(GL_TEXTURE_2D);
 		glEnable(GL_TEXTURE_3D);
 		glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
-	} else glBindTexture(GL_TEXTURE_2D, BlockTextures);
+	}
+	else {
+		glBindTexture(GL_TEXTURE_2D, BlockTextures);
+	}
 
 	if (Renderer::AdvancedRender) {
 		// Build shadow map
-		ShadowMaps::BuildShadowMap(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, curtime, gametime);
+		ShadowMaps::BuildShadowMap(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, curtime);
 		// Clear G-Buffers
 		Renderer::ClearBuffer();
 	}
@@ -1079,34 +1085,37 @@ void render() {
 		glPolygonMode(GL_FRONT, GL_LINE);
 	}
 
-	MutexUnlock(Mutex);
-
 	glDisable(GL_BLEND);
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glEnableClientState(GL_VERTEX_ARRAY);
 
-	if (Renderer::AdvancedRender) Renderer::EnableDefferedRendering(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, gametime);
+	if (Renderer::AdvancedRender) Renderer::StartMainPass(interpolatedTime);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
 	glEnable(GL_BLEND);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
 	glDisable(GL_CULL_FACE);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 2);
-	if (Renderer::AdvancedRender) Renderer::DisableDefferedRendering();
+	if (Renderer::AdvancedRender) Renderer::EndMainPass();
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	if (MergeFace) {
+		glDisable(GL_TEXTURE_3D);
+		glEnable(GL_TEXTURE_2D);
+	}
 
 	if (Renderer::AdvancedRender) {
-		Renderer::StartFinalPass(xpos, ypos, zpos, Player::ViewFrustum);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+
+		Renderer::StartFinalPass(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, interpolatedTime);
 		Renderer::DrawFullscreen();
 		Renderer::EndFinalPass();
 	}
@@ -1118,13 +1127,6 @@ void render() {
 	glLoadIdentity();
 	glRotated(plookupdown, 1, 0, 0);
 	glRotated(360.0 - pheading, 0, 1, 0);
-
-	MutexLock(Mutex);
-
-	if (MergeFace) {
-		glDisable(GL_TEXTURE_3D);
-		glEnable(GL_TEXTURE_2D);
-	}
 
 	if (DebugMergeFace) {
 		glEnable(GL_LINE_SMOOTH);
@@ -1200,52 +1202,6 @@ void render() {
 		drawGUI();
 		if (Renderer::AdvancedRender && DebugShadow) {
 			ShadowMaps::DrawShadowMap(windowwidth - windowheight / 2, 0, windowwidth, windowheight / 2);
-
-			{
-				FrustumTest lightSpace = Renderer::getLightFrustum(), frus = Player::ViewFrustum;
-				std::vector<Vec3f> vertexes;
-				float halfHeight = std::tan(frus.getFOV() / 2.0f);
-				float halfWidth = halfHeight * frus.getAspect();
-				float pnear = frus.getNear(), pfar = Renderer::shadowdist * 16.0f;
-				float nh = halfHeight * pnear, nw = halfWidth * pnear;
-				float fh = halfHeight * pfar, fw = halfWidth * pfar;
-				vertexes.push_back(Vec3f(-nw, -nh, -pnear));
-				vertexes.push_back(Vec3f(nw, -nh, -pnear));
-				vertexes.push_back(Vec3f(nw, nh, -pnear));
-				vertexes.push_back(Vec3f(-nw, nh, -pnear));
-				vertexes.push_back(Vec3f(-fw, -fh, -pfar));
-				vertexes.push_back(Vec3f(fw, -fh, -pfar));
-				vertexes.push_back(Vec3f(fw, fh, -pfar));
-				vertexes.push_back(Vec3f(-fw, fh, -pfar));
-				Mat4f frustumRotate = Mat4f::rotation(plookupdown, Vec3f(1, 0, 0)) * Mat4f::rotation(pheading, Vec3f(0, 1, 0));
-				Mat4f toLightSpace = frustumRotate * Mat4f(lightSpace.getProjMatrix()) * Mat4f(lightSpace.getModlMatrix());
-				for (size_t i = 0; i < vertexes.size(); i++) vertexes[i] = toLightSpace.transformVec3(vertexes[i]);
-				Vec3f nearCenter = toLightSpace.transformVec3(Vec3f(0, 0, -pnear));
-				Vec3f farCenter = toLightSpace.transformVec3(Vec3f(0, 0, -pfar));
-
-				FrustumTest res = lightSpace;
-				float xmin = vertexes[0].x, xmax = vertexes[0].x, ymin = vertexes[0].y, ymax = vertexes[0].y, zmin = vertexes[0].z, zmax = vertexes[0].z;
-
-				for (size_t i = 0; i < vertexes.size(); i++) {
-					xmin = min(xmin, vertexes[i].x);
-					xmax = max(xmax, vertexes[i].x);
-					ymin = min(ymin, vertexes[i].y);
-					ymax = max(ymax, vertexes[i].y);
-					zmin = min(zmin, vertexes[i].z);
-					zmax = max(zmax, vertexes[i].z);
-				}
-
-				float scale = 16.0f * sqrt(3.0f);
-				float length = Renderer::shadowdist * scale;
-
-				res.SetOrtho(-xmin, xmax, -ymin, ymax, -1000.0, 1000.0);
-
-				for (size_t i = 0; i < vertexes.size(); i++) {
-					glBegin(GL_POINTS);
-					glVertex2i(windowwidth - windowheight / 2 + windowheight / 4 + windowheight / 4 * vertexes[i].x / length, windowheight / 4 + windowheight / 4 * vertexes[i].y / length);
-					glEnd();
-				}
-			}
 		}
 		drawBag();
 	}
@@ -1275,7 +1231,7 @@ void render() {
 		timeinfo = new tm;
 		localtime_s(timeinfo, &t);
 #endif
-		strftime(tmp, sizeof(tmp), "%Y年%m月%d日%H时%M分%S秒", timeinfo);
+		strftime(tmp, sizeof(tmp), "%Y-%m-%d %H-%M-%S", timeinfo);
 		delete timeinfo;
 		std::stringstream ss;
 		ss << "Screenshots/" << tmp << ".bmp";
@@ -1289,7 +1245,6 @@ void render() {
 	//屏幕刷新，千万别删，后果自负！！！
 	//====refresh====//
 	MutexUnlock(Mutex);
-	glFinish();
 	glfwSwapBuffers(MainWindow);
 	glfwPollEvents();
 	MutexLock(Mutex);

@@ -4,7 +4,7 @@
 
 extern string inputstr;
 
-//Í¼ÐÎ½çÃæÏµÍ³¡£¡£¡£Õý×ÚOOP£¡£¡£¡
+//Í¼ï¿½Î½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½OOPï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 namespace GUI {
 
 int nScreenWidth, nScreenHeight;
@@ -37,11 +37,11 @@ void clearTransition() {
 void screenBlur() {
 	static int szl = 0, rl = 0;
 	static float* mat = nullptr;
-	static ubyte *scr; //ÆÁÄ»ÏñËØ»º´æ
+	static ubyte *scr; //ï¿½ï¿½Ä»ï¿½ï¿½ï¿½Ø»ï¿½ï¿½ï¿½
 
 	int w = windowwidth; //Width
 	int h = windowheight; //Height
-	int r = 2; //·¶Î§
+	int r = 2; //ï¿½ï¿½Î§
 	int sz = 1;
 	float scale = 2;
 	TextureID bgTex;
@@ -176,7 +176,7 @@ void drawBackground() {
 double stdppi = 96.0f;
 void InitStretch() {
 	//Get the Screen Physical Size and set stretch
-	//NEVER¡¡CALL THIS FUNCTION BEFORE THE CONTEXT IS CREATED
+	//NEVERï¿½ï¿½CALL THIS FUNCTION BEFORE THE CONTEXT IS CREATED
 	glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth,
 	                           &nScreenHeight);
 	int vmc;
@@ -209,18 +209,18 @@ void controls::resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, doubl
 }
 
 void label::update() {
-	//¸üÐÂ±êÇ©×´Ì¬
-	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)               //Êó±êÐüÍ£
+	//ï¿½ï¿½ï¿½Â±ï¿½Ç©×´Ì¬
+	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)               //ï¿½ï¿½ï¿½ï¿½ï¿½Í£
 		mouseon = true;
 	else
 		mouseon = false;
 
-	if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;              //½¹µãÔÚ´Ë
-	focused = parent->focusid == id;   //½¹µã
+	if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;              //ï¿½ï¿½ï¿½ï¿½ï¿½Ú´ï¿½
+	focused = parent->focusid == id;   //ï¿½ï¿½ï¿½ï¿½
 }
 
 void label::render() {
-	//äÖÈ¾±êÇ©
+	//ï¿½ï¿½È¾ï¿½ï¿½Ç©
 	float fcR, fcG, fcB, fcA;
 	fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
 	if (mouseon) {
@@ -251,7 +251,7 @@ void button::update() {
 		return;
 	}
 
-	//¸üÐÂ°´Å¥×´Ì¬
+	//ï¿½ï¿½ï¿½Â°ï¿½Å¥×´Ì¬
 	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
 		mouseon = true;
 	else
@@ -272,7 +272,7 @@ void button::update() {
 
 void button::render() {
 
-	//äÖÈ¾°´Å¥
+	//ï¿½ï¿½È¾ï¿½ï¿½Å¥
 	float fcR, fcG, fcB, fcA;
 	fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
 	if (mouseon) {
@@ -336,7 +336,7 @@ void trackbar::update() {
 		return;
 	}
 
-	//¸üÐÂTrackBar£¨µ½µ×¸ÃÔõÃ´·­ÒëÄØ£¿£©×´Ì¬
+	//ï¿½ï¿½ï¿½ï¿½TrackBarï¿½ï¿½ï¿½ï¿½ï¿½×¸ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½ï¿½ï¿½Ø£ï¿½ï¿½ï¿½×´Ì¬
 	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax && parent->mb == 1)
 		parent->focusid = id;
 	if (parent->mx >= xmin + barpos && parent->mx <= xmin + barpos + barwidth && parent->my >= ymin && parent->my <= ymax)
@@ -360,7 +360,7 @@ void trackbar::update() {
 
 void trackbar::render() {
 
-	//äÖÈ¾TrackBar£¨How can I translate it?£©
+	//ï¿½ï¿½È¾TrackBarï¿½ï¿½How can I translate it?ï¿½ï¿½
 	float fcR, fcG, fcB, fcA;
 	float bcR, bcG, bcB, bcA;
 	fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
@@ -446,7 +446,7 @@ void textbox::update() {
 	static int ldel = 0;
 	if (delt > INT_MAX - 2) delt = 0;
 	if (ldel > INT_MAX - 2) delt = 0;
-	//¸üÐÂÎÄ±¾¿ò×´Ì¬
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Ä±ï¿½ï¿½ï¿½×´Ì¬
 	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
 		mouseon = true, parent->MouseOnTextbox = true;
 	else mouseon = false;
@@ -454,8 +454,8 @@ void textbox::update() {
 	if ((parent->mb == 1 && mouseon || parent->enterp) && focused) pressed = true;
 	else pressed = false;
 
-	if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;       //½¹µãÔÚ´Ë
-	if (parent->focusid == id) focused = true; else focused = false;                //½¹µã
+	if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;       //ï¿½ï¿½ï¿½ï¿½ï¿½Ú´ï¿½
+	if (parent->focusid == id) focused = true; else focused = false;                //ï¿½ï¿½ï¿½ï¿½
 	if (focused && inputstr != "")
 		text += inputstr;
 	delt++;
@@ -471,7 +471,7 @@ void textbox::update() {
 
 void textbox::render() {
 
-	//äÖÈ¾ÎÄ±¾¿ò
+	//ï¿½ï¿½È¾ï¿½Ä±ï¿½ï¿½ï¿½
 	float bcR, bcG, bcB, bcA;
 	bcR = BgR; bcG = BgG; bcB = BgB; bcA = BgA;
 	if (!enabled) {
@@ -543,8 +543,8 @@ void vscroll::update() {
 	psup = false;
 	psdown = false;
 
-	//¸üÐÂ¹ö¶¯Ìõ×´Ì¬
-	//Êó±êÐüÍ£
+	//ï¿½ï¿½ï¿½Â¹ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬
+	//ï¿½ï¿½ï¿½ï¿½ï¿½Í£
 	mouseon = (parent->my >= ymin + barpos + 20 && parent->my <= ymin + barpos + barheight + 20 && parent->mx >= xmin && parent->mx <= xmax);
 	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax) {
 		if (parent->mb == 1) parent->focusid = id;
@@ -562,15 +562,15 @@ void vscroll::update() {
 			if (parent->my > ymin + barpos + barheight + 20)  barpos += 25;
 		}
 	}
-	if (parent->mb == 1 && mouseon && focused)  //Êó±ê°´×¡
+	if (parent->mb == 1 && mouseon && focused)  //ï¿½ï¿½ê°´×¡
 		pressed = true;
 	else {
 		if (parent->mbl == 0) pressed = false;
 	}
 
-	if (parent->mb == 1 && parent->mbl == 0 && mouseon)  parent->focusid = id;     //½¹µãÔÚ´Ë
-	focused = (parent->focusid == id);   //½¹µã
-	if (pressed) barpos += parent->my - parent->myl;                               //ÍÏ¶¯
+	if (parent->mb == 1 && parent->mbl == 0 && mouseon)  parent->focusid = id;     //ï¿½ï¿½ï¿½ï¿½ï¿½Ú´ï¿½
+	focused = (parent->focusid == id);   //ï¿½ï¿½ï¿½ï¿½
+	if (pressed) barpos += parent->my - parent->myl;                               //ï¿½Ï¶ï¿½
 	if (focused) {
 		if (parent->upkp)  barpos -= 1;
 		if (parent->downkp)  barpos += 1;
@@ -579,13 +579,13 @@ void vscroll::update() {
 	}
 	if (defaultv)
 		barpos += (parent->mwl - parent->mw) * 15;
-	if (barpos < 0) barpos = 0;                                                    //ÈÃÍÏ¶¯Ìõ²»Ô½½ç
+	if (barpos < 0) barpos = 0;                                                    //ï¿½ï¿½ï¿½Ï¶ï¿½ï¿½ï¿½ï¿½ï¿½Ô½ï¿½ï¿½
 	if (barpos >= ymax - ymin - barheight - 40)
 		barpos = ymax - ymin - barheight - 40;
 }
 
 void vscroll::render() {
-	//äÖÈ¾¹ö¶¯Ìõ
+	//ï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	float fcR, fcG, fcB, fcA;
 	float bcR, bcG, bcB, bcA;
 	fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
@@ -742,15 +742,15 @@ void Form::update() {
 	bool lMouseOnTextbox = MouseOnTextbox;
 	MouseOnTextbox = false;
 
-	if (glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS) {                             //TAB¼üÇÐ»»½¹µã
+	if (glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS) {                             //TABï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½
 		if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {   //Shift+Tab
 			updated = true;
 			if (!tabp) focusid--;
-			if (focusid == -2) focusid = maxid - 1;                                //µ½ÁË×îÇ°Ò»¸öID
+			if (focusid == -2) focusid = maxid - 1;                                //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°Ò»ï¿½ï¿½ID
 		} else {
 			updated = true;
 			if (!tabp) focusid++;
-			if (focusid == maxid + 1) focusid = -1;                              //µ½ÁË×îºóÒ»¸öID
+			if (focusid == maxid + 1) focusid = -1;                              //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ID
 		}
 		tabp = true;
 	}
@@ -764,23 +764,23 @@ void Form::update() {
 	}
 	if (!(glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS)) enterp = false;
 
-	upkpl = upkp;                                                              //·½Ïò¼üÉÏ
+	upkpl = upkp;                                                              //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	if (glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS) {
 		updated = true;
 		upkp = true;
 	}
 	if (!(glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS)) upkp = false;
 
-	downkpl = downkp;                                                          //·½Ïò¼üÏÂ
+	downkpl = downkp;                                                          //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	if (glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS)
 		downkp = true;
 	if (!(glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS)) downkp = false;
 
-	leftkpl = leftkp;                                                          //·½Ïò¼ü×ó
+	leftkpl = leftkp;                                                          //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	if (glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS)
 		leftkp = true;
 	if (!(glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS)) leftkp = false;
-	rightkpl = rightkp;                                                        //·½Ïò¼üÓÒ
+	rightkpl = rightkp;                                                        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == GLFW_PRESS)
 		rightkp = true;
 	if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) != GLFW_PRESS) rightkp = false;
@@ -791,11 +791,11 @@ void Form::update() {
 	else
 		backspacep = false;
 
-	if (mb == 1 && mbl == 0) focusid = -1;                                   //¿Õµã»÷Ê±Ê¹½¹µãÇå¿Õ
+	if (mb == 1 && mbl == 0) focusid = -1;                                   //ï¿½Õµï¿½ï¿½Ê±Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 	for (size_t i = 0; i != children.size(); i++) {
 		children[i]->updatepos();
-		children[i]->update();                                               //¸üÐÂ×Ó¿Ø¼þ
+		children[i]->update();                                               //ï¿½ï¿½ï¿½ï¿½ï¿½Ó¿Ø¼ï¿½
 	}
 
 	if (!lMouseOnTextbox && MouseOnTextbox) {
