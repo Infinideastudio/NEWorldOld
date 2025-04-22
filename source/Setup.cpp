@@ -74,11 +74,11 @@ void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum seve
 
 void setupScreen() {
 
-	//»ñÈ¡OpenGL°æ±¾
+	//ï¿½ï¿½È¡OpenGLï¿½æ±¾
 	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
 	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
 	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
-	//»ñÈ¡OpenGLº¯ÊýµØÖ·
+	//ï¿½ï¿½È¡OpenGLï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·
 	InitGLProc();
 
 #ifdef NEWORLD_DEBUG
@@ -90,7 +90,7 @@ void setupScreen() {
 	}
 #endif
 
-	//äÖÈ¾²ÎÊýÉèÖÃ
+	//ï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	glViewport(0, 0, windowwidth, windowheight);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -105,7 +105,7 @@ void setupScreen() {
 	glEnable(GL_BLEND);
 	glEnable(GL_LINE_SMOOTH);
 	glDepthFunc(GL_LEQUAL);
-	glAlphaFunc(GL_GREATER, 0.0); //<--Õâ¼Ò»ïÔÚÂôÃÈ£¿(ÍùºóÃæ¿´¿´£¬ÂôÃÈµÄ¶à×ÅÄØ)
+	glAlphaFunc(GL_GREATER, 0.0); //<--ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È£ï¿½(ï¿½ï¿½ï¿½ï¿½ï¿½æ¿´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÈµÄ¶ï¿½ï¿½ï¿½ï¿½ï¿½)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
 	glHint(GL_FOG_HINT, GL_FASTEST);
@@ -134,7 +134,7 @@ void setupNormalFog() {
 }
 
 void loadTextures() {
-	//ÔØÈëÎÆÀí
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	Textures::Init();
 
 	tex_select = Textures::LoadRGBATexture("Textures/GUI/select.bmp", "");

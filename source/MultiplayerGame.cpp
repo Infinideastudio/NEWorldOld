@@ -14,11 +14,11 @@ namespace Menus {
 		GUI::textbox serveriptb;
 		GUI::button runbtn, okbtn, backbtn;
 		void onLoad() {
-			title = GUI::label("==============<  多 人 游 戏  >==============", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-			serveriptb = GUI::textbox("输入服务器IP", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-			runbtn = GUI::button("运行服务器（开服）", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-			okbtn = GUI::button("确定", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-			backbtn = GUI::button("<< 返回", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			title = GUI::label("============================", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			serveriptb = GUI::textbox("[serveriptb]", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			runbtn = GUI::button("[runbtn]", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			okbtn = GUI::button("[okbtn]", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			backbtn = GUI::button("[backbtn]", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			inputstr = "";
 			okbtn.enabled = false;
 			registerControls(4, &title, &serveriptb, &runbtn, &okbtn, &backbtn);

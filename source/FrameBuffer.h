@@ -6,10 +6,10 @@
 class FrameBuffer {
 public:
 	FrameBuffer(): init(false) {}
-	FrameBuffer(int size_, int cnt, bool depth);
+	FrameBuffer(int size_, int cnt, bool depth, bool shadow);
 	~FrameBuffer();
 
-	void create(int size_, int cnt, bool depth);
+	void create(int size_, int cnt, bool depth, bool shadow);
 	void destroy();
 
 	void bindTargetBuffer(int index, int width = -1, int height = -1);

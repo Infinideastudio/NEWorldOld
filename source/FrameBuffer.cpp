@@ -1,14 +1,14 @@
 #include "FrameBuffer.h"
 
-FrameBuffer::FrameBuffer(int size_, int cnt, bool depth) {
-	create(size_, cnt, depth);
+FrameBuffer::FrameBuffer(int size_, int cnt, bool depth, bool shadow) {
+	create(size_, cnt, depth, shadow);
 }
 
 FrameBuffer::~FrameBuffer() {
-	destroy();
+	if (init) destroy();
 }
 
-void FrameBuffer::create(int size_, int cnt, bool depth) {
+void FrameBuffer::create(int size_, int cnt, bool depth, bool shadow) {
 	if (init) destroy();
 
 	size = size_;
@@ -27,10 +27,12 @@ void FrameBuffer::create(int size_, int cnt, bool depth) {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE_ARB, GL_INTENSITY_EXT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16_ARB, size, size, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE);
+		if (shadow) {
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL);
+		}
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24_ARB, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 		// Attach
 		glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, depthAttachment, 0);
 	} else {

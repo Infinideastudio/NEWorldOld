@@ -34,7 +34,10 @@ namespace Menus {
 				if (vsync) glfwSwapInterval(1);
 				else glfwSwapInterval(0);
 			}
-			if (backbtn.clicked) ExitSignal = true;
+			if (backbtn.clicked) {
+				if (Renderer::AdvancedRender) Renderer::initShaders();
+				ExitSignal = true;
+			}
 			std::stringstream ss; ss << Multisample;
 			smoothlightingbtn.text = GetStrbyKey("NEWorld.render.smooth") + BoolEnabled(SmoothLighting);
 			fancygrassbtn.text = GetStrbyKey("NEWorld.render.grasstex") + BoolYesNo(NiceGrass);

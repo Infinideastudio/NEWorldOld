@@ -28,8 +28,8 @@ namespace Menus {
 			Renderer::MaxShadowDist = (shadowdistbar.barpos + 1) / 4 + 2;
 			if (cloudsbtn.clicked) Renderer::VolumetricClouds = !Renderer::VolumetricClouds;
 			if (backbtn.clicked) {
-				ExitSignal = true;
 				if (Renderer::AdvancedRender) Renderer::initShaders();
+				ExitSignal = true;
 			}
 			enablebtn.text = GetStrbyKey("NEWorld.shaders.enable") + BoolYesNo(Renderer::AdvancedRender);
 			std::stringstream ss; ss << Renderer::ShadowRes;

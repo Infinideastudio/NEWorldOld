@@ -67,8 +67,6 @@ namespace ChunkRenderer {
 	using World::getbrightness;
 
 	/*
-	合并面的顶点顺序（以0到3标出）：
-
 	The vertex order of merge face render
 	Numbered from 0 to 3:
 
@@ -82,8 +80,6 @@ namespace ChunkRenderer {
 	|curr|    |   ...
 	|face|    |   (j++)
 	0----1----+--
-
-	--qiaozhanrong
 	*/
 
 	void RenderPrimitive(QuadPrimitive& p) {
@@ -95,8 +91,13 @@ namespace ChunkRenderer {
 #ifdef NERDMODE1
 		Renderer::TexCoord3d(0.0, 0.0, (p.tex + 0.5) / 64.0);
 		if (p.direction == 0) {
-			if (Renderer::AdvancedRender) Renderer::Attrib1f(2.0f);
-			else col0 *= 0.7f, col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f;
+			if (Renderer::AdvancedRender) {
+				Renderer::Normal3f(1.0f, 0.0f, 0.0f);
+				Renderer::Attrib1f((float)p.blk);
+			}
+			else {
+				col0 *= 0.7f, col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f;
+			}
 			Renderer::Color3f(col0, col0, col0);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x + 0.5, y - 0.5, z - 0.5);
 			Renderer::Color3f(col1, col1, col1);
@@ -107,8 +108,13 @@ namespace ChunkRenderer {
 			Renderer::TexCoord2d(length + 1.0, 0.0); Renderer::Vertex3d(x + 0.5, y - 0.5, z + length + 0.5);
 		}
 		else if (p.direction == 1) {
-			if (Renderer::AdvancedRender) Renderer::Attrib1f(3.0f);
-			else col0 *= 0.7f, col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f;
+			if (Renderer::AdvancedRender) {
+				Renderer::Normal3f(-1.0f, 0.0f, 0.0f);
+				Renderer::Attrib1f((float)p.blk);
+			}
+			else {
+				col0 *= 0.7f, col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f;
+			}
 			Renderer::Color3f(col0, col0, col0);
 			Renderer::TexCoord2d(0.0, 1.0); Renderer::Vertex3d(x - 0.5, y + 0.5, z - 0.5);
 			Renderer::Color3f(col1, col1, col1);
@@ -119,7 +125,10 @@ namespace ChunkRenderer {
 			Renderer::TexCoord2d(length + 1.0, 1.0); Renderer::Vertex3d(x - 0.5, y + 0.5, z + length + 0.5);
 		}
 		else if (p.direction == 2) {
-			if (Renderer::AdvancedRender) Renderer::Attrib1f(4.0f);
+			if (Renderer::AdvancedRender) {
+				Renderer::Normal3f(0.0f, 1.0f, 0.0f);
+				Renderer::Attrib1f((float)p.blk);
+			}
 			Renderer::Color3f(col0, col0, col0);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x + 0.5, y + 0.5, z - 0.5);
 			Renderer::Color3f(col1, col1, col1);
@@ -130,7 +139,10 @@ namespace ChunkRenderer {
 			Renderer::TexCoord2d(length + 1.0, 0.0); Renderer::Vertex3d(x + 0.5, y + 0.5, z + length + 0.5);
 		}
 		else if (p.direction == 3) {
-			if (Renderer::AdvancedRender) Renderer::Attrib1f(5.0f);
+			if (Renderer::AdvancedRender) {
+				Renderer::Normal3f(0.0f, -1.0f, 0.0f);
+				Renderer::Attrib1f((float)p.blk);
+			}
 			Renderer::Color3f(col0, col0, col0);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
 			Renderer::Color3f(col1, col1, col1);
@@ -141,8 +153,13 @@ namespace ChunkRenderer {
 			Renderer::TexCoord2d(length + 1.0, 0.0); Renderer::Vertex3d(x - 0.5, y - 0.5, z + length + 0.5);
 		}
 		else if (p.direction == 4) {
-			if (Renderer::AdvancedRender) Renderer::Attrib1f(0.0f);
-			else col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
+			if (Renderer::AdvancedRender) {
+				Renderer::Normal3f(0.0f, 0.0f, 1.0f);
+				Renderer::Attrib1f((float)p.blk);
+			}
+			else {
+				col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
+			}
 			Renderer::Color3f(col0, col0, col0);
 			Renderer::TexCoord2d(0.0, 1.0); Renderer::Vertex3d(x - 0.5, y + 0.5, z + 0.5);
 			Renderer::Color3f(col1, col1, col1);
@@ -153,8 +170,13 @@ namespace ChunkRenderer {
 			Renderer::TexCoord2d(length + 1.0, 1.0); Renderer::Vertex3d(x + length + 0.5, y + 0.5, z + 0.5);
 		}
 		else if (p.direction == 5) {
-			if (Renderer::AdvancedRender) Renderer::Attrib1f(1.0f);
-			else col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
+			if (Renderer::AdvancedRender) {
+				Renderer::Normal3f(0.0f, 0.0f, -1.0f);
+				Renderer::Attrib1f((float)p.blk);
+			}
+			else {
+				col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
+			}
 			Renderer::Color3f(col0, col0, col0);
 			Renderer::TexCoord2d(0.0, 0.0); Renderer::Vertex3d(x - 0.5, y - 0.5, z - 0.5);
 			Renderer::Color3f(col1, col1, col1);
@@ -274,11 +296,7 @@ namespace ChunkRenderer {
 		Renderer::Flush(c->vbuffer[2], c->vertexes[2]);
 	}
 
-	//合并面大法好！！！
 	void MergeFaceRender(World::chunk* c) {
-		//话说我注释一会中文一会英文是不是有点奇怪。。。
-		// -- qiaozhanrong
-
 		int cx = c->cx, cy = c->cy, cz = c->cz;
 		ChunkRenderData rd(cx, cy, cz);
 		int x = 0, y = 0, z = 0, cur_l_mx, br;
@@ -399,10 +417,10 @@ namespace ChunkRenderer {
 							continue;
 						}
 						if (valid) {
-							if (col0 != col1 || col1 != col2 || col2 != col3 || cur.once || tex != cur.tex || col0 != cur.col0) {
+							if (col0 != col1 || col1 != col2 || col2 != col3 || cur.once || bl != cur.blk || tex != cur.tex || col0 != cur.col0) {
 								RenderPrimitive(cur);
 								cur.x = x; cur.y = y; cur.z = z; cur.length = cur_l_mx = 0;
-								cur.tex = tex; cur.col0 = col0; cur.col1 = col1; cur.col2 = col2; cur.col3 = col3;
+								cur.blk = bl; cur.tex = tex; cur.col0 = col0; cur.col1 = col1; cur.col2 = col2; cur.col3 = col3;
 								if (col0 != col1 || col1 != col2 || col2 != col3) cur.once = true; else cur.once = false;
 							}
 							else {
@@ -413,7 +431,7 @@ namespace ChunkRenderer {
 						else {
 							valid = true;
 							cur.x = x; cur.y = y; cur.z = z; cur.length = cur_l_mx = 0;
-							cur.tex = tex; cur.col0 = col0; cur.col1 = col1; cur.col2 = col2; cur.col3 = col3;
+							cur.blk = bl; cur.tex = tex; cur.col0 = col0; cur.col1 = col1; cur.col2 = col2; cur.col3 = col3;
 							if (col0 != col1 || col1 != col2 || col2 != col3) cur.once = true; else cur.once = false;
 						}
 					}
