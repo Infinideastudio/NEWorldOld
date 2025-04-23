@@ -40,7 +40,7 @@ namespace Netycat {
             BufferCondition(const BufferCondition& src);
             virtual ~BufferCondition() = 0;
             
-            virtual uintptr_t control(Buffer& buffer, uintptr_t recvBufferSize) = 0;
+            virtual uintptr_t control(Buffer& buffer, uintptr_t recvBufferSize) const = 0;
             
         };
         
@@ -56,7 +56,7 @@ namespace Netycat {
             BufferConditionExactLength(const BufferConditionExactLength& src);
             ~BufferConditionExactLength();
             
-            uintptr_t control(Buffer& buffer, uintptr_t recvBufferSize);
+            uintptr_t control(Buffer& buffer, uintptr_t recvBufferSize) const;
             
         };
         
@@ -72,7 +72,7 @@ namespace Netycat {
             BufferConditionLeastLength(const BufferConditionLeastLength& src);
             ~BufferConditionLeastLength();
             
-            uintptr_t control(Buffer& buffer, uintptr_t recvBufferSize);
+            uintptr_t control(Buffer& buffer, uintptr_t recvBufferSize) const;
             
         };
         
@@ -89,7 +89,7 @@ namespace Netycat {
             BufferConditionMeetkeyword(const BufferConditionMeetkeyword& src);
             ~BufferConditionMeetkeyword();
             
-            uintptr_t control(Buffer& buffer, uintptr_t recvBufferSize);
+            uintptr_t control(Buffer& buffer, uintptr_t recvBufferSize) const;
             
         };
         

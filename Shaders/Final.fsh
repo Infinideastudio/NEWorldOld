@@ -46,7 +46,7 @@ const mat4 Normalization = mat4(
 );
 const float ShadowUnits = 32.0;
 const float ShadowSmooth = 0.1;
-const int ShadowSamples = 4;
+const int ShadowSamples = 16;
 
 // Water reflection
 const float WaveUnits = 32.0;
@@ -171,13 +171,13 @@ vec3 getSkyColor(vec3 dir) {
 	vec3 bitangent = cross(tangent, -SunlightDirection);
 	vec3 local = vec3(dot(dir, tangent), dot(dir, bitangent), dot(dir, -SunlightDirection));
 	if (abs(local.x) < 0.03 && abs(local.y) < 0.03 && local.z > 0.0) {
-		return vec3(100.0);
+		return vec3(3.5, 3.0, 2.9) * 10.0;
 	}
 	return mix(
-		vec3(0.35, 0.56, 0.96),
+		vec3(1.2, 1.6, 2.0),
 		vec3(0.25, 0.4, 1.0),
 		smoothstep(0.0, 1.0, normalize(dir).y * 2.0)
-	) * 3.0;
+	) * 1.0;
 }
 
 vec4 diffuse(vec2 texCoord) {
@@ -223,7 +223,7 @@ vec4 diffuse(vec2 texCoord) {
 	float glow = 0.0;
 	if (blockID == GlowstoneID) glow = 5.0;
 
-	return vec4(max(vec3(4.5, 4.0, 3.0) * sunlight + vec3(0.35, 0.56, 0.96) * 0.5, glow) * color.rgb, color.a);
+	return vec4(max(vec3(3.5, 3.0, 2.9) * sunlight + vec3(0.35, 0.56, 0.96) * 0.5, glow) * color.rgb, color.a);
 }
 
 vec3 diffuseBackground(vec2 texCoord) {
@@ -243,8 +243,8 @@ float waveNoise(vec3 c) {
 	float res = 0.0;
 	res += interpolatedNoise(c * 1.0) / 1.0;
 	res += interpolatedNoise(c * 2.0) / 2.0;
-	res += interpolatedNoise(c * 6.0) / 4.0;
-	res += interpolatedNoise(c * 24.0) / 12.0;
+	res += interpolatedNoise(c * vec3(6.0, 6.0, 0.0)) / 4.0;
+	res += interpolatedNoise(c * vec3(24.0, 24.0, 0.0)) / 12.0;
 	return res / (1.0 + 1.0 / 2.0 + 1.0 / 4.0 + 1.0 / 12.0);
 }
 
@@ -358,12 +358,11 @@ vec3 cloud(vec3 org, vec3 dir, vec3 bgColor, float dist, vec3 center, float qual
 			float transmittence = pow(1.0 - factor * getCloudOpacity(curr), step);
 			if (transmittence < 0.99) {
 				float scattering = 1.0;
-				scattering *= pow(1.0 - getCloudOpacity(curr - SunlightDirection * 20.0), 20.0);
-				// scattering *= pow(1.0 - getCloudOpacity(curr - SunlightDirection * 10.0), 10.0);
-				// scattering *= pow(1.0 - getCloudOpacity(curr - SunlightDirection * 20.0), 10.0);
-				// scattering *= pow(1.0 - getCloudOpacity(curr - SunlightDirection * 30.0), 10.0);
-				// scattering *= pow(1.0 - getCloudOpacity(curr - SunlightDirection * 40.0), 10.0);
-				vec3 col = vec3(4.5, 4.0, 3.0) * scattering + vec3(0.25, 0.4, 1.0) * 0.5;
+				scattering *= pow(1.0 - getCloudOpacity(curr - SunlightDirection * 8.0), 8.0);
+				scattering *= pow(1.0 - getCloudOpacity(curr - SunlightDirection * 16.0), 8.0);
+				scattering *= pow(1.0 - getCloudOpacity(curr - SunlightDirection * 32.0), 16.0);
+				// scattering *= pow(1.0 - getCloudOpacity(curr - SunlightDirection * 64.0), 32.0);
+				vec3 col = vec3(3.5, 3.0, 2.9) * scattering + vec3(0.25, 0.4, 1.0) * 0.5;
 				res += acc * (1.0 - transmittence) * col;
 				acc *= transmittence;
 			}
@@ -373,6 +372,15 @@ vec3 cloud(vec3 org, vec3 dir, vec3 bgColor, float dist, vec3 center, float qual
 	}
 	
 	return res + acc * bgColor;
+}
+
+vec3 aces(vec3 x) {
+  const float a = 2.51;
+  const float b = 0.03;
+  const float c = 2.43;
+  const float d = 0.59;
+  const float e = 0.14;
+  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
 void main() {
@@ -409,6 +417,16 @@ void main() {
 			float cosTheta = dot(normalize(viewOrigin - reflectOrigin), waveNormal);
 			if (inside) cosTheta = -cosTheta;
 			if (cosTheta >= 0.0) normal = waveNormal;
+		}
+
+		// Glossy metal effect
+		if (blockID == IronID) {
+			vec3 perturb = vec3(
+				rand2(gl_FragCoord.xy),
+				rand2(gl_FragCoord.xy + vec2(0.1, 0.0)),
+				rand2(gl_FragCoord.xy + vec2(0.0, 1.0)));
+			perturb = (perturb - vec3(0.5)) * 0.03;
+			normal = normalize(normal + perturb);
 		}
 
 		// Reflection calculation
@@ -453,7 +471,8 @@ void main() {
 
 	// Component-wise tone mapping
 	// color = color / (color + vec3(1.0)); // Reinhard tone mapping
-	color = vec3(1.0) - exp(-color * 0.8); // Exposure tone mapping
+	// color = vec3(1.0) - exp(-color * 0.8); // Exposure tone mapping
+	color = aces(color * 0.8);
 
 	// Luminance-based tone mapping
 	// float luminance = (color.r + color.g + color.b) / 3.0;

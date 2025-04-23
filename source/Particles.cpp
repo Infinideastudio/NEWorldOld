@@ -150,7 +150,7 @@ namespace Particles {
 		}
 	}
 
-	void throwParticle(block pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last){
+	void throwParticle(BlockID pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last){
 		float tcX1 = (float)Textures::getTexcoordX(pt, 2);
 		float tcY1 = (float)Textures::getTexcoordY(pt, 2);
 		Particle ptc;

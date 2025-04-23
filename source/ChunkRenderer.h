@@ -3,7 +3,7 @@
 #include "Blocks.h"
 #include "Textures.h"
 
-namespace World { class chunk; }
+namespace World { class Chunk; }
 
 namespace ChunkRenderer {
 	const int delta[6][3] = { { 1,0,0 },{ -1,0,0 },{ 0,1,0 },{ 0,-1,0 },{ 0,0,1 },{ 0,0,-1 } };
@@ -19,14 +19,13 @@ namespace ChunkRenderer {
 		// Vertex colors
 		int col0, col1, col2, col3;
 		// Block ID
-		block blk;
+		BlockID blk;
 		// Texture ID
 		TextureID tex;
 		QuadPrimitive() : x(0), y(0), z(0), length(0), direction(0), once(false),
 			blk(Blocks::AIR), tex(Textures::NULLBLOCK), col0(0), col1(0), col2(0), col3(0) {}
 	};
 	
-	void RenderPrimitive(QuadPrimitive& p);
-	void RenderChunk(World::chunk* c);
-	void MergeFaceRender(World::chunk* c);
+	std::vector<std::pair<VBOID, GLuint>> RenderChunk(World::Chunk const& c);
+	std::vector<std::pair<VBOID, GLuint>> MergeFaceRenderChunk(World::Chunk const& c);
 }

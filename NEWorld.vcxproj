@@ -130,6 +130,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -146,6 +147,7 @@
       <SDLCheck>true</SDLCheck>
       <TreatWarningAsError>false</TreatWarningAsError>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -172,6 +174,7 @@
       </PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
       <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -199,6 +202,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -226,6 +230,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <PreprocessorDefinitions>NEWORLD_GAME;NEWORLD_DEBUG;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
@@ -255,6 +260,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <PreprocessorDefinitions>NEWORLD_GAME;NEWORLD_DEBUG;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
@@ -310,7 +316,6 @@
     <ClInclude Include="source\Renderer.h" />
     <ClInclude Include="source\Setup.h" />
     <ClInclude Include="source\Shader.h" />
-    <ClInclude Include="source\ShadowMaps.h" />
     <ClInclude Include="source\StdInclude.h" />
     <ClInclude Include="source\TextRenderer.h" />
     <ClInclude Include="source\Textures.h" />
@@ -362,7 +367,6 @@
     <ClCompile Include="source\Setup.cpp" />
     <ClCompile Include="source\Shader.cpp" />
     <ClCompile Include="source\ShaderOptionsMenu.cpp" />
-    <ClCompile Include="source\ShadowMaps.cpp" />
     <ClCompile Include="source\TextRenderer.cpp" />
     <ClCompile Include="source\Textures.cpp" />
     <ClCompile Include="source\World.cpp" />

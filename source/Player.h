@@ -19,10 +19,10 @@ public:
 	static bool save(string worldn);
 	static bool load(string worldn);
 
-	static bool addItem(item itemname, short amount = 1);
-	static bool putBlock(int x, int y, int z, block blockname);
+	static bool addItem(ItemID itemname, short amount = 1);
+	static bool putBlock(int x, int y, int z, BlockID blockname);
 
-	//修改游戏模式
+	//锟睫革拷锟斤拷戏模式
 	static void changeGameMode(int gamemode);
 
 	static PlayerPacket convertToPlayerPacket();
@@ -30,7 +30,7 @@ public:
 	static vector<Hitbox::AABB> Hitboxes;
 	static double xa, ya, za, xd, yd, zd;
 	static double health, healthMax, healSpeed, dropDamage;
-	static onlineid onlineID;
+	static OnlineID onlineID;
 	static string name;
 	static FrustumTest ViewFrustum;
 
@@ -49,7 +49,7 @@ public:
 
 	static double speed;
 	static int AirJumps;
-	static int cxt, cyt, czt, cxtl, cytl, cztl;
+	static int cxt, cyt, czt;
 	static double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
 	static double xlookspeed, ylookspeed;
 	static int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
@@ -57,9 +57,9 @@ public:
 	static float height;
 	static float heightExt;
 
-	static item BlockInHand;
-	static ubyte indexInHand;
-	static item inventory[4][10];
+	static ItemID BlockInHand;
+	static uint8_t indexInHand;
+	static ItemID inventory[4][10];
 	static short inventoryAmount[4][10];
 
 	static double glidingEnergy, glidingSpeed;

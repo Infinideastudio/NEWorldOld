@@ -37,11 +37,11 @@ void clearTransition() {
 void screenBlur() {
 	static int szl = 0, rl = 0;
 	static float* mat = nullptr;
-	static ubyte *scr; //��Ļ���ػ���
+	static uint8_t* scr;
 
-	int w = windowwidth; //Width
-	int h = windowheight; //Height
-	int r = 2; //��Χ
+	int w = windowwidth; // Width
+	int h = windowheight; // Height
+	int r = 2;
 	int sz = 1;
 	float scale = 2;
 	TextureID bgTex;
@@ -50,7 +50,7 @@ void screenBlur() {
 	if (sz != szl) {
 		szl = sz;
 		delete[] scr;
-		scr = new ubyte[sz * sz * 3];
+		scr = new uint8_t[sz * sz * 3];
 	}
 
 	if (rl != r) {
@@ -82,13 +82,16 @@ void screenBlur() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sz, sz, 0, GL_RGB, GL_UNSIGNED_BYTE, scr);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClearDepth(1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	for (int x = -r; x <= r; x++) {
 		for (int y = -r; y <= r; y++) {
 			float d = mat[(x + r) * (r * 2 + 1) + y + r];
-			glColor4f(1.0f, 1.0f, 1.0f, d);
 			glBegin(GL_QUADS);
+			glColor4f(1.0f, 1.0f, 1.0f, d);
 			glTexCoord2f(0.0f, (float)h / sz);
 			glVertex2f(x * scale, y * scale);
 			glTexCoord2f((float)w / sz, (float)h / sz);
@@ -105,8 +108,6 @@ void screenBlur() {
 	glDeleteTextures(1, &bgTex);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-	//glColorMask(true, true, true, true);
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 void drawBackground() {
@@ -122,51 +123,64 @@ void drawBackground() {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);
-	glClearColor(0.0, 0.0, 0.0, 0.0);
+
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClearDepth(1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	glDepthFunc(GL_LEQUAL);
 	glDisable(GL_CULL_FACE);
 	glEnable(GL_TEXTURE_2D);
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
 	//Begin to draw a cube
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[0]);
 	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
 	glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
 	glEnd();
+
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[1]);
 	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
 	glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
 	glEnd();
+
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[2]);
 	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 	glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
 	glEnd();
+
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[3]);
 	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
 	glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
 	glEnd();
+
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[4]);
 	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
 	glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
 	glEnd();
+
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[5]);
 	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
 	glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
@@ -826,7 +840,6 @@ void Form::render() {
 	glLoadIdentity();
 	if (GUIScreenBlur) screenBlur();
 	glDisable(GL_TEXTURE_2D);
-	glDisable(GL_LINE_SMOOTH);
 
 	if (TimeDelta <= 0.3 && transitionList != 0) {
 		if (transitionForward) glTranslatef(-transitionAnim * windowwidth, 0.0f, 0.0f);

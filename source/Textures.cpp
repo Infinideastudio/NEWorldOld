@@ -35,22 +35,22 @@ namespace Textures {
         BLOCKTEXTURE_UNITS = 8;
     }
 
-    ubyte getTextureIndex(block blockname, ubyte side) {
+    uint8_t getTextureIndex(BlockID blockname, uint8_t side) {
         side--;
         if (blockname > UNKNOWN || side >= 3) return NULLBLOCK;
         return Indexes[blockname][side];
     }
 
-    double getTexcoordX(item item, ubyte side) {
+    float getTexcoordX(ItemID item, uint8_t side) {
         if (isBlock(item)) //如果为方块
-            return (getTextureIndex(item, side) & 7) / 8.0;
+            return (getTextureIndex(item, side) & 7) / 8.0f;
         else
             return NULLBLOCK;
     }
 
-    double getTexcoordY(item item, ubyte side) {
+    float getTexcoordY(ItemID item, uint8_t side) {
         if (isBlock(item)) //如果为方块
-            return (getTextureIndex(item, side) >> 3) / 8.0;
+            return (getTextureIndex(item, side) >> 3) / 8.0f;
         else
             return NULLBLOCK;
     }
@@ -71,7 +71,7 @@ namespace Textures {
         bmpfile.read((char*)&bih, sizeof(BITMAPINFOHEADER));
         bitmap.sizeX = bih.biWidth;
         bitmap.sizeY = bih.biHeight;
-        bitmap.buffer = unique_ptr<ubyte[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 3]);
+        bitmap.buffer = unique_ptr<uint8_t[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 3]);
         //¶ÁÈ¡Êý¾Ý
         bmpfile.read((char*)bitmap.buffer.get(), bitmap.sizeX*bitmap.sizeY * 3);
         bmpfile.close();
@@ -113,7 +113,7 @@ namespace Textures {
         bmpfile.read((char*)&bih, sizeof(BITMAPINFOHEADER)); //Ëü½«¸²¸ÇÖ®Ç°´ÓmaskÎÄ¼þ¶Á³öÀ´µÄinfoÊý¾Ý
         bitmap.sizeX = bih.biWidth;
         bitmap.sizeY = bih.biHeight;
-        bitmap.buffer = unique_ptr<ubyte[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 4]);
+        bitmap.buffer = unique_ptr<uint8_t[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 4]);
         //¶ÁÈ¡Êý¾Ý
         rgb = new unsigned char[bitmap.sizeX * bitmap.sizeY * 3];
         bmpfile.read((char*)rgb, bitmap.sizeX*bitmap.sizeY * 3);
@@ -151,12 +151,12 @@ namespace Textures {
     TextureID LoadFontTexture(string Filename) {
         TEXTURE_RGBA Texture;
         TEXTURE_RGB image;
-        ubyte *ip, *tp;
+        uint8_t *ip, *tp;
         TextureID ret;
         LoadRGBImage(image, Filename);
         Texture.sizeX = image.sizeX;
         Texture.sizeY = image.sizeY;
-        Texture.buffer = unique_ptr<ubyte[]>(new unsigned char[image.sizeX * image.sizeY * 4]);
+        Texture.buffer = unique_ptr<uint8_t[]>(new unsigned char[image.sizeX * image.sizeY * 4]);
         if (Texture.buffer == nullptr) {
             printf("[console][Warning] Cannot alloc memory when loading %s\n", Filename.c_str());
             return 0;
@@ -192,14 +192,14 @@ namespace Textures {
     TextureID LoadBlock3DTexture(string Filename, string MkFilename) {
         int sz = BLOCKTEXTURE_UNITSIZE, cnt = BLOCKTEXTURE_UNITS*BLOCKTEXTURE_UNITS;
         //int mipmapLevel = (int)log2(BLOCKTEXTURE_UNITSIZE), sum = 0, cursize = 0, scale = 1;
-        ubyte *src, *cur;
+        uint8_t *src, *cur;
         glDisable(GL_TEXTURE_2D);
         glEnable(GL_TEXTURE_3D);
         TextureID ret;
         TEXTURE_RGBA image;
         LoadRGBAImage(image, Filename, MkFilename);
         src = image.buffer.get();
-        cur = new ubyte[sz*sz*cnt * 4];
+        cur = new uint8_t[sz*sz*cnt * 4];
         glGenTextures(1, &ret);
         glBindTexture(GL_TEXTURE_3D, ret);
         glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -245,22 +245,22 @@ namespace Textures {
         bitmapinfoheader.biSizeImage = image.sizeX*image.sizeY * 3;
         for (unsigned int i = 0; i != image.sizeX*image.sizeY * 3; i += 3) {
             //°ÑRGB¸ñÊ½×ª»»ÎªBGR¸ñÊ½
-            ubyte t = image.buffer.get()[i];
+            uint8_t t = image.buffer.get()[i];
             image.buffer.get()[i] = image.buffer.get()[i + 2];
             image.buffer.get()[i + 2] = t;
         }
         std::ofstream ofs(filename, std::ios::out | std::ios::binary);
         ofs.write((char*)&bitmapfileheader, sizeof(bitmapfileheader));
         ofs.write((char*)&bitmapinfoheader, sizeof(bitmapinfoheader));
-        ofs.write((char*)image.buffer.get(), sizeof(ubyte)*image.sizeX*image.sizeY * 3);
+        ofs.write((char*)image.buffer.get(), sizeof(uint8_t)*image.sizeX*image.sizeY * 3);
         ofs.close();
     }
 
-    void Build2DMipmaps(GLenum format, int w, int h, int level, const ubyte* src) {
+    void Build2DMipmaps(GLenum format, int w, int h, int level, const uint8_t* src) {
         int sum = 0, scale = 1, cur_w = 0, cur_h = 0, cc = 0;
         if (format == GL_RGBA) cc = 4;
         else if (format == GL_RGB) cc = 3;
-        ubyte *cur = new ubyte[w*h*cc];
+        uint8_t *cur = new uint8_t[w*h*cc];
         memset(cur, 0, w*h*cc);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, level);
@@ -275,7 +275,7 @@ namespace Textures {
                         sum = 0;
                         for (int yy = 0; yy < scale; yy++) for (int xx = 0; xx < scale; xx++)
                                 sum += src[((y * scale + yy) * w + x * scale + xx) * cc + col];
-                        cur[(y * cur_w + x) * cc + col] = (ubyte)(sum / (scale*scale));
+                        cur[(y * cur_w + x) * cc + col] = (uint8_t)(sum / (scale*scale));
                     }
                 }
             glTexImage2D(GL_TEXTURE_2D, i, format, cur_w, cur_h, 0, format, GL_UNSIGNED_BYTE, cur);

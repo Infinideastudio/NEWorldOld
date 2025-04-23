@@ -8,11 +8,12 @@
 
 void splashScreen() {
 	TextureID splTex = Textures::LoadRGBTexture("Textures/GUI/splashscreen.bmp");
-	glEnable(GL_TEXTURE_2D);
+
 	for (int i = 0; i < 256; i += 2) {
-		glfwSwapBuffers(MainWindow);
-		glfwPollEvents();
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClearDepth(1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		glBindTexture(GL_TEXTURE_2D, splTex);
 		glColor4f((float)i / 256, (float)i / 256, (float)i / 256, 1.0);
 		glBegin(GL_QUADS);
@@ -21,10 +22,12 @@ void splashScreen() {
 		glTexCoord2f(850.0f / 1024.0f, 1.0 - 480.0f / 1024.0f); glVertex2i(1, -1);
 		glTexCoord2f(0.0, 1.0 - 480.0f / 1024.0f); glVertex2i(-1, -1);
 		glEnd();
+
+		glfwSwapBuffers(MainWindow);
+		glfwPollEvents();
+
 		Sleep(10);
 	}
-	glfwSwapBuffers(MainWindow);
-	glfwPollEvents();
 }
 
 void createWindow() {
@@ -68,7 +71,7 @@ void ToggleFullScreen() {
 }
 
 // OpenGL debug callback
-void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* msg, const void* data) {
+void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, const GLchar* msg, const void*) {
 	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) cout << "[Console][OpenGL]" << msg << endl;
 }
 
@@ -103,7 +106,6 @@ void setupScreen() {
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_ALPHA_TEST);
 	glEnable(GL_BLEND);
-	glEnable(GL_LINE_SMOOTH);
 	glDepthFunc(GL_LEQUAL);
 	glAlphaFunc(GL_GREATER, 0.0); //<--��һ������ȣ�(�����濴�������ȵĶ�����)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -179,15 +181,10 @@ void MouseButtonFunc(GLFWwindow *, int button, int action, int) {
 
 void CharInputFunc(GLFWwindow *, unsigned int c) {
 	if (c >= 128) {
-		wchar_t* pwszUnicode = new wchar_t[2];
-		pwszUnicode[0] = (wchar_t)c;
-		pwszUnicode[1] = '\0';
-		char* pszMultiByte;
-		pszMultiByte = (char*)malloc((unsigned int)4);
-		pszMultiByte = (char*)realloc(pszMultiByte, WCharToMByte(pszMultiByte, pwszUnicode, 4));
-		inputstr += pszMultiByte;
-		free(pszMultiByte);
-		delete[] pwszUnicode;
+		static char buffer[64];
+		wchar_t unicode = static_cast<wchar_t>(c);
+		int size = WCharToMByte(buffer, &unicode, 64, 1);
+		inputstr += std::string(buffer, size);
 	}
 	else inputstr += (char)c;
 }

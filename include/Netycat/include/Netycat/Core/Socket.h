@@ -69,7 +69,7 @@ namespace Netycat {
             
             uintptr_t getSendBufferSize();
             
-            void recv(Buffer& buffer, BufferCondition& condition);
+            void recv(Buffer& buffer, BufferCondition const& condition);
 			int recvInt();
 			void send(Buffer& buffer, uintptr_t len = 0);
             

@@ -10,7 +10,7 @@ private:
 	float mFOV = 0, mAspect = 0, mNear = 0, mFar = 0;
 
 public:
-	//AABB with Float32 coords
+	// AABB with Float32 coords
 	struct ChunkBox {
 		float xmin, ymin, zmin;
 		float xmax, ymax, zmax;

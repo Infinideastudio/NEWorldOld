@@ -2,26 +2,26 @@
 
 namespace World {
 	
-	void chunkPtrArray::setSize(int s){
+	void ChunkPtrArray::setSize(int s){
 		size = s;
 		size2 = size*size;
 		size3 = size*size*size;
 	}
 
-	bool chunkPtrArray::create(){
-		array = new chunk*[size3];
+	bool ChunkPtrArray::create(){
+		array = new Chunk*[size3];
 		if (array == nullptr) return false;
-		memset(array, (int)nullptr, size3*sizeof(chunk*));
+		memset(array, (int)nullptr, size3*sizeof(Chunk*));
 		return true;
 	}
 
-	void chunkPtrArray::destroy(){
+	void ChunkPtrArray::destroy(){
 		delete[] array;
 		array = nullptr;
 	}
 
-	void chunkPtrArray::move(int xd, int yd, int zd){
-		chunk** arrTemp = new chunk*[size3];
+	void ChunkPtrArray::move(int xd, int yd, int zd){
+		Chunk** arrTemp = new Chunk*[size3];
 		for (int x = 0; x < size; x++) {
 			for (int y = 0; y < size; y++) {
 				for (int z = 0; z < size; z++) {
@@ -35,21 +35,11 @@ namespace World {
 		originX += xd; originY += yd; originZ += zd;
 	}
 
-	void chunkPtrArray::moveTo(int x, int y, int z){
+	void ChunkPtrArray::moveTo(int x, int y, int z) {
 		move(x - originX, y - originY, z - originZ);
 	}
 
-	void chunkPtrArray::AddChunk(chunk* cptr, int cx, int cy, int cz) {
-		cx -= originX; cy -= originY; cz -= originZ;
-		if (elementExists(cx, cy, cz)) array[cx*size2 + cy*size + cz] = cptr;
-	}
-
-	void chunkPtrArray::DeleteChunk(int cx, int cy, int cz){
-		cx -= originX; cy -= originY; cz -= originZ;
-		if (elementExists(cx, cy, cz)) array[cx*size2 + cy*size + cz] = nullptr;
-	}
-
-	chunk* chunkPtrArray::getChunkPtr(int x, int y, int z){
+	Chunk* ChunkPtrArray::getChunkPtr(int x, int y, int z) {
 		x -= originX; y -= originY; z -= originZ;
 		if (!elementExists(x, y, z)) return nullptr;
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
@@ -58,9 +48,8 @@ namespace World {
 		return array[x*size2 + y*size + z];
 	}
 
-	void chunkPtrArray::setChunkPtr(int x, int y, int z, chunk* c) {
+	void ChunkPtrArray::setChunkPtr(int x, int y, int z, Chunk* c) {
 		x -= originX; y -= originY; z -= originZ;
-		if (!elementExists(x, y, z)) return;
-		array[x*size2 + y*size + z] = c;
+		if (elementExists(x, y, z)) array[x*size2 + y*size + z] = c;
 	}
 }

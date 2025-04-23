@@ -23,6 +23,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <cstring>
+#include <cassert>
 #include "Vec3.h"
 
 template <typename T>

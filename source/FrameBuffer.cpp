@@ -25,8 +25,8 @@ void FrameBuffer::create(int size_, int cnt, bool depth, bool shadow) {
 		glBindTexture(GL_TEXTURE_2D, depthAttachment);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE);
 		if (shadow) {
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
@@ -38,10 +38,10 @@ void FrameBuffer::create(int size_, int cnt, bool depth, bool shadow) {
 	} else {
 		// Create depth renderbuffer
 		glGenRenderbuffersEXT(1, &depthAttachment);
-		glBindRenderbufferEXT(GL_RENDERBUFFER, depthAttachment);
-		glRenderbufferStorageEXT(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24_ARB, size, size);
+		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depthAttachment);
+		glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24_ARB, size, size);
 		// Attach
-		glFramebufferRenderbufferEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER, depthAttachment);
+		glFramebufferRenderbufferEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depthAttachment);
 	}
 
 	// Create color textures
@@ -54,7 +54,7 @@ void FrameBuffer::create(int size_, int cnt, bool depth, bool shadow) {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, size, size, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 		// Attach
-		glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorTexture[i], 0);
+		glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_2D, colorTexture[i], 0);
 	}
 
 	if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) DebugError("Framebuffer creation error!");
@@ -77,29 +77,25 @@ void FrameBuffer::destroy() {
 }
 
 void FrameBuffer::bindTargetBuffer(int index, int width, int height) {
-	glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER, id);
+	glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, id);
 	if (colorAttachCount == 0) {
 		glDrawBuffer(GL_NONE);
-		glReadBuffer(GL_NONE);
 	} else {
-		GLuint arr = GL_COLOR_ATTACHMENT0 + index;
+		GLuint arr = GL_COLOR_ATTACHMENT0_EXT + index;
 		glDrawBuffersARB(1, &arr);
-		glReadBuffer(GL_NONE);
 	}
 	if (width == -1) glViewport(0, 0, size, size);
 	else glViewport(0, 0, width, height);
 }
 
 void FrameBuffer::bindTarget(int width, int height) {
-	glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER, id);
+	glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, id);
 	if (colorAttachCount == 0) {
 		glDrawBuffer(GL_NONE);
-		glReadBuffer(GL_NONE);
 	} else {
-		GLuint arr[16];
-		for (int i = 0; i < colorAttachCount; i++) arr[i] = GL_COLOR_ATTACHMENT0 + i;
-		glDrawBuffersARB(colorAttachCount, arr);
-		glReadBuffer(GL_NONE);
+		std::vector<GLuint> arr(colorAttachCount);
+		for (int i = 0; i < colorAttachCount; i++) arr[i] = GL_COLOR_ATTACHMENT0_EXT + i;
+		glDrawBuffersARB(colorAttachCount, arr.data());
 	}
 	if (width == -1) glViewport(0, 0, size, size);
 	else glViewport(0, 0, width, height);

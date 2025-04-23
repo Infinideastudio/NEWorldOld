@@ -4,7 +4,7 @@
 
 extern double stretch;
 
-//³£ÓÃº¯Êý
+//ï¿½ï¿½ï¿½Ãºï¿½ï¿½ï¿½
 vector<string> split(string str, string pattern);
 
 inline void UITrans(double x, double y) {
@@ -98,8 +98,8 @@ inline unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n) 
 	int res = MultiByteToWideChar(CP_ACP, 0, src, n, dst, n);
 	return res;
 }
-inline unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n) {
-	return WideCharToMultiByte(CP_ACP, 0, src, n, dst, n * 2, NULL, NULL);
+inline unsigned int WCharToMByte(char* dst, const wchar_t* src, int dstSize, int srcCount) {
+	return WideCharToMultiByte(CP_ACP, 0, src, srcCount, dst, dstSize, NULL, NULL);
 }
 inline unsigned int wstrlen(const wchar_t* wstr) { return lstrlenW(wstr); }
 inline double timer() {

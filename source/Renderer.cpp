@@ -6,42 +6,6 @@
 
 namespace Renderer {
 
-	/*
-	�þ��ᰡ�þ��ᣬ���߼�����Ⱦģʽ�����������Ҫ��Ҫ����VertexAttribArray��������
-	Ȼ���һ��ǱȽ������������Գ��ˡ����ӡ��Ķ�������֮�⣬�������ԣ�������ɫ���������꣩������ԭ�������ˡ�����
-
-	˵��ΪɶҪ�á����ӡ��Ķ������ԡ�������������Shadow Map�ľ������⡣����
-	�е�ʱ�򱳹������Ȧ�������⡣�������ѿ�����������Ҫ��Shader�ѱ�����Ū��������
-	���������shader֪������泯�����أ�������NormalArray���Ҿ�����һ�����ӵĶ������ԡ�����
-	0.0f��ʾǰ��(z+)��1.0f��ʾ����(z-)��2.0f��ʾ����(x+)��3.0f��ʾ����(x-)��4.0f��ʾ����(y+)��5.0f��ʾ����(y-)
-
-	    ��û�п����������Щֵ������ȫ����
-
-	        ����
-	            �㣡
-	                �ͣ�
-	                    �ģ�������������
-
-	�ӵ���GLSL��֧��������Ϊ�������ԡ�����ֻ���ø����ʹ�����(�s�F����)�s��ߩ���
-	Ȼ��Ϊ�˽���������ľ������⣬����shader��д�˸���������ȡ��������
-	��˵�ˡ�����
-
-	�ȵ��һ�û��ǩ���ء�����
-	--qiaozhanrong
-
-	====================================================
-	���԰壺
-
-	1¥. qiaozhanrong: �Լ�����ɳ����
-	2¥. Null: ���������Դ����д��ôһ���������ɣ�23333333333
-	3¥. qiaozhanrong: ���İ�233333333333
-
-	4¥. [����������]: [������ظ�����]
-
-	[�ظ�]
-	====================================================
-	*/
-
 	int Vertexes, Texcoordc, Colorc, Normalc, Attribc;
 	float* VertexArray = nullptr;
 	float* VA = nullptr;
@@ -58,7 +22,7 @@ namespace Renderer {
 
 	const int gBufferCount = 3;
 	int gWidth, gHeight, gSize;
-	FrameBuffer shadow, gBuffers;
+	FrameBuffer shadow, gBuffers, dBuffer;
 	bool VolumetricClouds = false;
 
 	int log2Ceil(int x) {
@@ -81,10 +45,11 @@ namespace Renderer {
 		size = (tc + cc + nc + ac + 3) * 4;
 	}
 
-	void resizeGBuffers(int w, int h) {
+	void resizeGDBuffers(int w, int h) {
 		gWidth = w, gHeight = h;
 		gSize = 1 << log2Ceil(max(gWidth, gHeight));
 		gBuffers.create(gSize, gBufferCount, true, false);
+		dBuffer.create(gSize, 0, true, false);
 	}
 
 	void Vertex3f(float x, float y, float z) {
@@ -109,7 +74,7 @@ namespace Renderer {
 	void Normal3f(float x, float y, float z) { Normals[0] = x; Normals[1] = y; Normals[2] = z; }
 	void Attrib1f(float a) { Attribs = a; }
 
-	void Flush(VBOID& buffer, vtxCount& vtxs) {
+	void Flush(VBOID& buffer, GLuint& vtxs) {
 
 		//�ϴβ�֪��ԭ��Flush���г��������˼QAQ
 		//OpenGL�и�����glFlush()�������������GL�����() ��_��
@@ -125,7 +90,7 @@ namespace Renderer {
 		}
 	}
 
-	void renderbuffer(VBOID buffer, vtxCount vtxs, int tc, int cc, int nc, int ac) {
+	void renderbuffer(VBOID buffer, GLuint vtxs, int tc, int cc, int nc, int ac) {
 
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
 		int cnt = tc + cc + 3;
@@ -167,8 +132,8 @@ namespace Renderer {
 	GLuint getNoiseTexture() {
 		static GLuint noiseTex = 0;
 		if (noiseTex == 0) {
-			unique_ptr<ubyte[]> a(new ubyte[256 * 256 * 4]);
-			for (int i = 0; i < 256 * 256; i++) a[i * 4] = a[i * 4 + 1] = int(rnd() * 256);
+			unique_ptr<uint8_t[]> a(new uint8_t[256 * 256 * 4]);
+			for (int i = 0; i < 256 * 256; i++) a[i * 4] = a[i * 4 + 1] = static_cast<uint8_t>(rnd() * 256);
 
 			const int OffsetX = 37, OffsetY = 17;
 			for (int x = 0; x < 256; x++) for (int y = 0; y < 256; y++) {
@@ -195,18 +160,22 @@ namespace Renderer {
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
 		shaders.clear();
-		shaders.push_back(Shader("Shaders/Main.vsh", "Shaders/Main.fsh", true, defines));
+		shaders.push_back(Shader("Shaders/Base.vsh", "Shaders/Base.fsh", true, defines));
+		shaders.push_back(Shader("Shaders/Translucent.vsh", "Shaders/Translucent.fsh", true, defines));
 		shaders.push_back(Shader("Shaders/Final.vsh", "Shaders/Final.fsh", false, defines));
 		shaders.push_back(Shader("Shaders/Shadow.vsh", "Shaders/Shadow.fsh", true, defines));
 		shaders.push_back(Shader("Shaders/ShowDepth.vsh", "Shaders/ShowDepth.fsh", false, defines));
 
 		// Create framebuffers
 		shadow.create(ShadowRes, 0, true, true);
-		resizeGBuffers(windowwidth, windowheight);
+		resizeGDBuffers(windowwidth, windowheight);
 
 		// Set constant uniforms
-		shaders[MainShader].bind();
-		shaders[MainShader].setUniform(MergeFace ? "Texture3D" : "Texture", 0);
+		shaders[BaseShader].bind();
+		shaders[BaseShader].setUniform(MergeFace ? "Texture3D" : "Texture", 0);
+
+		shaders[TranslucentShader].bind();
+		shaders[TranslucentShader].setUniform(MergeFace ? "Texture3D" : "Texture", 0);
 
 		float fisheyeFactor = MergeFace ? 0.0f : 0.85f;
 		shaders[FinalShader].bind();
@@ -242,7 +211,7 @@ namespace Renderer {
 		return res;
 	}
 
-	FrustumTest getShadowMapFrustum(double xpos, double ypos, double zpos, double heading, double pitch, int shadowdist, const FrustumTest& frus) {
+	FrustumTest getShadowMapFrustum(double heading, double pitch, int shadowdist, const FrustumTest& frus) {
 		FrustumTest lightSpace = getLightFrustum();
 		std::vector<Vec3f> vertexes;
 		float halfHeight = std::tan(frus.getFOV() / 2.0f);
@@ -258,7 +227,7 @@ namespace Renderer {
 		vertexes.push_back(Vec3f(fw, -fh, -pfar));
 		vertexes.push_back(Vec3f(fw, fh, -pfar));
 		vertexes.push_back(Vec3f(-fw, fh, -pfar));
-		Mat4f frustumRotate = Mat4f::rotation(pitch, Vec3f(1, 0, 0)) * Mat4f::rotation(heading, Vec3f(0, 1, 0));
+		Mat4f frustumRotate = Mat4f::rotation(static_cast<float>(pitch), Vec3f(1, 0, 0)) * Mat4f::rotation(static_cast<float>(heading), Vec3f(0, 1, 0));
 		Mat4f toLightSpace = frustumRotate * Mat4f(lightSpace.getProjMatrix()) * Mat4f(lightSpace.getModlMatrix());
 		for (size_t i = 0; i < vertexes.size(); i++) vertexes[i] = toLightSpace.transformVec3(vertexes[i]);
 		Vec3f nearCenter = toLightSpace.transformVec3(Vec3f(0, 0, -pnear));
@@ -292,53 +261,125 @@ namespace Renderer {
 		return res;
 	}
 
-	void ClearBuffer() {
+	void ClearSGDBuffers() {
+		shadow.bindTarget();
+		glClearDepth(1.0f);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		shadow.unbindTarget();
+
 		gBuffers.bindTarget();
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClearDepth(1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		gBuffers.unbindTarget();
+
+		dBuffer.bindTarget();
+		glClearDepth(1.0f);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		dBuffer.unbindTarget();
 	}
 
 	void StartShadowPass() {
+		// Bind output target buffers
 		shadow.bindTarget();
+
+		// Enable shader
 		bindShader(ShadowShader);
+
+		// Enable arrays for additional vertex attributes
 		glEnableVertexAttribArrayARB(ShaderAttribLoc);
-	}
 
-	void EndShadowPass() {
-		shadow.unbindTarget();
-		Shader::unbind();
-		glDisableVertexAttribArrayARB(ShaderAttribLoc);
-	}
-
-	void StartMainPass(float gameTime) {
-		gBuffers.bindTargetBuffer(0);
-		glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		gBuffers.bindTarget(gWidth, gHeight);
-
-		//Enable shader
-		Shader& shader = shaders[MainShader];
-		bindShader(MainShader);
-
-		//Set uniform
-		shader.setUniform("GameTime", gameTime);
-
-		//Enable arrays for additional vertex attributes
-		glEnableClientState(GL_NORMAL_ARRAY);
-		glEnableVertexAttribArrayARB(ShaderAttribLoc);
+		// Disable unwanted defaults
+		glDisable(GL_ALPHA_TEST);
+		glDisable(GL_BLEND);
+		glDisable(GL_CULL_FACE);
 		glDisable(GL_FOG);
 	}
 
-	void EndMainPass() {
-		gBuffers.unbindTarget();
+	void EndShadowPass() {
+		// Unbind output target buffers
+		shadow.unbindTarget();
 
-		//Disable shader
+		// Disable shader
 		Shader::unbind();
 
-		//Disable arrays for additional vertex attributes
+		// Disable arrays for additional vertex attributes
+		glDisableVertexAttribArrayARB(ShaderAttribLoc);
+
+		// Enable defaults
+		glEnable(GL_ALPHA_TEST);
+		glEnable(GL_BLEND);
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_FOG);
+	}
+
+	void StartBasePass(float gameTime) {
+		// Bind output target buffers
+		gBuffers.bindTarget(gWidth, gHeight);
+
+		// Enable shader
+		bindShader(BaseShader);
+		Shader& shader = shaders[BaseShader];
+		shader.setUniform("GameTime", gameTime);
+
+		// Enable arrays for additional vertex attributes
+		glEnableClientState(GL_NORMAL_ARRAY);
+		glEnableVertexAttribArrayARB(ShaderAttribLoc);
+
+		// Disable unwanted defaults
+		glDisable(GL_ALPHA_TEST);
+		glDisable(GL_FOG);
+	}
+
+	void EndBasePass() {
+		// Unbind output target buffers
+		gBuffers.unbindTarget();
+
+		// Disable shader
+		Shader::unbind();
+
+		// Disable arrays for additional vertex attributes
 		glDisableClientState(GL_NORMAL_ARRAY);
 		glDisableVertexAttribArrayARB(ShaderAttribLoc);
+
+		// Enable defaults
+		glEnable(GL_ALPHA_TEST);
+		glEnable(GL_FOG);
+	}
+
+	void StartTranslucentPass(float gameTime) {
+		// Copy the depth component of the G-buffer to the D-buffer, bind output target buffers
+		// gBuffers.copyDepthTexture(dBuffer);
+		gBuffers.bindTarget(gWidth, gHeight);
+
+		// Enable shader
+		bindShader(TranslucentShader);
+		Shader& shader = shaders[TranslucentShader];
+		shader.setUniform("GameTime", gameTime);
+
+		// Enable arrays for additional vertex attributes
+		glEnableClientState(GL_NORMAL_ARRAY);
+		glEnableVertexAttribArrayARB(ShaderAttribLoc);
+
+		// Disable unwanted defaults
+		glDisable(GL_ALPHA_TEST);
+		// glDisable(GL_BLEND);
+		glDisable(GL_FOG);
+	}
+
+	void EndTranslucentPass() {
+		gBuffers.unbindTarget();
+
+		// Disable shader
+		Shader::unbind();
+
+		// Disable arrays for additional vertex attributes
+		glDisableClientState(GL_NORMAL_ARRAY);
+		glDisableVertexAttribArrayARB(ShaderAttribLoc);
+
+		// Enable defaults
+		glEnable(GL_ALPHA_TEST);
+		// glEnable(GL_BLEND);
 		glEnable(GL_FOG);
 	}
 
@@ -367,7 +408,7 @@ namespace Renderer {
 		int shadowdist = min(MaxShadowDist, viewdistance);
 		shader.setUniform("RenderDistance", viewdistance * 16.0f);
 		shader.setUniform("ShadowDistance", shadowdist * 16.0f);
-		FrustumTest frus = getShadowMapFrustum(xpos, ypos, zpos, heading, pitch, shadowdist, viewFrustum);
+		FrustumTest frus = getShadowMapFrustum(heading, pitch, shadowdist, viewFrustum);
 		shader.setUniform("ShadowMapProjection", frus.getProjMatrix());
 		shader.setUniform("ShadowMapModelView", frus.getModlMatrix());
 
@@ -377,7 +418,7 @@ namespace Renderer {
 		shader.setUniform("SunlightDirection", lightdir.x, lightdir.y, lightdir.z);
 		shader.setUniform("GameTime", gameTime);
 		shader.setUniformI("PlayerPositionInt", int(floor(xpos)), int(floor(ypos)), int(floor(zpos)));
-		shader.setUniform("PlayerPositionFrac", xpos - floor(xpos), ypos - floor(ypos), zpos - floor(zpos));
+		shader.setUniform("PlayerPositionFrac", float(xpos - floor(xpos)), float(ypos - floor(ypos)), float(zpos - floor(zpos)));
 	}
 
 	void EndFinalPass() {
@@ -386,14 +427,11 @@ namespace Renderer {
 
 	void DrawFullscreen() {
 		glBegin(GL_QUADS);
-		glTexCoord2f(0.0f, 0.0f);
-		glVertex2i(0, windowheight);
-		glTexCoord2f(1.0f, 0.0f);
-		glVertex2i(windowwidth, windowheight);
-		glTexCoord2f(1.0f, 1.0f);
-		glVertex2i(windowwidth, 0);
-		glTexCoord2f(0.0f, 1.0f);
-		glVertex2i(0, 0);
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		glTexCoord2f(0.0f, 0.0f); glVertex2i(0, windowheight);
+		glTexCoord2f(1.0f, 0.0f); glVertex2i(windowwidth, windowheight);
+		glTexCoord2f(1.0f, 1.0f); glVertex2i(windowwidth, 0);
+		glTexCoord2f(0.0f, 1.0f); glVertex2i(0, 0);
 		glEnd();
 	}
 }
