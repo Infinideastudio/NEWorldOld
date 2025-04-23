@@ -12,10 +12,7 @@ varying vec3 normal;
 varying vec4 cameraSpacePosition;
 varying vec4 screenSpacePosition;
 
-const float Pi = 3.141593;
 const float Gamma = 2.2;
-const float MaxBlockID = 4096.0;
-const int LeafID = 8, GlassID = 9, WaterID = 10;
 
 vec2 encodeu16(int v) {
 	int high = v / 256;
@@ -33,14 +30,10 @@ void main() {
 	vec4 texel = texture2D(Texture, gl_TexCoord[0].st);
 #endif
 	texel.rgb = pow(texel.rgb, vec3(Gamma));
-	if (blockID == WaterID) {
-		texel.a *= 0.01;
-	} else if (blockID == LeafID || blockID == GlassID) {
-		texel.a = step(0.5, texel.a);
-	}
+	if (texel.a < 0.5) discard;
+	texel.a = 1.0;
 
 	vec4 color = gl_Color * texel;
-	float depth = screenSpacePosition.z / screenSpacePosition.w * 0.5 + 0.5;
 
 	gl_FragData[0] = color;
 	gl_FragData[1] = vec4(normal * 0.5 + vec3(0.5), 1.0);

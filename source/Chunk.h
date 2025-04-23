@@ -9,107 +9,127 @@ class Object;
 namespace World {
 
 extern string worldname;
-extern brightness BRIGHTNESSMIN;
-extern brightness skylight;
+extern Brightness BRIGHTNESSMIN;
+extern Brightness skylight;
 
-class chunk;
-chunkid getChunkID(int x, int y, int z);
-void explode(int x, int y, int z, int r, chunk* c);
+class Chunk;
+ChunkID getChunkID(int x, int y, int z);
+void explode(int x, int y, int z, int r, Chunk* c);
 
-class chunk {
+class Chunk {
 private:
-	block* pblocks;
-	brightness* pbrightness;
-	vector<Object*> objects;
+	int cx, cy, cz;
+	ChunkID cid;
+
+	std::unique_ptr<BlockID[]> pblocks;
+	std::unique_ptr<Brightness[]> pbrightness;
+	std::vector<Object*> objects;
+
+	bool isEmpty = false;
+	bool isUpdated = false;
+	bool isModified = false;
+	bool isDetailGenerated = false;
+	bool isMeshed = false;
+
+	std::vector<std::pair<VBOID, GLuint>> meshes;
+	float loadAnim = 0.0f;
+
 	static double relBaseX, relBaseY, relBaseZ;
 	static FrustumTest TestFrustum;
 
-public:
-	//竟然一直都没有构造函数/析构函数 还要手动调用Init...我受不了啦(╯‵□′)╯︵┻━┻ --Null
-	//2333 --qiaozhanrong
-	chunk(int cxi, int cyi, int czi, chunkid idi) : cx(cxi), cy(cyi), cz(czi), id(idi),
-		Modified(false), Empty(false), updated(false), renderBuilt(false), DetailGenerated(false), loadAnim(0.0) {
-		memset(vertexes, 0, sizeof(vertexes)); memset(vbuffer, 0, sizeof(vbuffer));
-	}
-	int cx, cy, cz;
-	Hitbox::AABB aabb;
-	bool Empty, updated, renderBuilt, Modified, DetailGenerated;
-	chunkid id;
-	vtxCount vertexes[3];
-	VBOID vbuffer[3];
-	double loadAnim;
-	bool visible;
-
-	void create();
-	void destroy();
-	void Load(bool initIfEmpty = true);
-	void Unload();
-	void buildTerrain(bool initIfEmpty = true);
+	void buildTerrain();
 	void buildDetail();
-	void build(bool initIfEmpty = true);
-	inline string getChunkPath() {
-		//assert(Empty == false);
-		std::stringstream ss;
-		ss << "Worlds/" << worldname << "/chunks/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldChunk";
-		return ss.str();
+	void build();
+	std::string getChunkPath() const;
+	std::string getObjectsPath() const;
+
+public:
+	Chunk(int cx, int cy, int cz, ChunkID cid);
+	~Chunk();
+
+	int x() const { return cx; }
+	int y() const { return cy; }
+	int z() const { return cz; }
+	ChunkID id() const { return cid; }
+
+	// Hint of content
+	bool empty() const { return isEmpty; }
+	// Render is dirty
+	bool updated() const { return isUpdated; }
+	// Disk save is dirty
+	bool modified() const { return isModified; }
+	// All details generated
+	bool ready() const { return true; /* return isDetailGenerated; */ }
+	// Meshes are available
+	bool meshed() const { return isMeshed; }
+
+	bool loadFromFile();
+	bool saveToFile();
+	void buildMeshes();
+	void destroyMeshes();
+	void markNeighborUpdated() { isUpdated = true; }
+
+	float loadAnimOffset() const { return loadAnim; }
+	void updateLoadAnimOffset() {
+		if (loadAnim <= 0.3f) loadAnim = 0.0f;
+		else loadAnim *= 0.6f;
 	}
-	inline string getObjectsPath() {
-		std::stringstream ss;
-		ss << "Worlds/" << worldname << "/objects/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldObjects";
-		return ss.str();
+
+	std::pair<VBOID, GLuint> mesh(size_t index) const {
+		assert(index < meshes.size());
+		return meshes[index];
 	}
-	inline bool fileExist(string path) {
-		//assert(Empty == false);
-		std::fstream file;
-		file.open(path, std::ios::in);
-		bool ret = file.is_open();
-		file.close();
-		return ret;
-	}
-	bool LoadFromFile(); //返回true代表区块文件打开成功
-	void SaveToFile();
-	void buildRender();
-	void destroyRender();
-	inline block getblock(int x, int y, int z) {
-		//»ñÈ¡Çø¿éÄÚµÄ·½¿é
-		//assert(Empty == false);
+
+	BlockID getblock(int x, int y, int z) const {
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr) { DebugWarning("chunk.getblock() error: Empty pointer"); return; }
 		if (x > 15 || x < 0 || y > 15 || y < 0 || z > 15 || z < 0) { DebugWarning("chunk.getblock() error: Out of range"); return; }
 #endif
+		if (isEmpty) return Blocks::AIR;
 		return pblocks[(x << 8) ^ (y << 4) ^ z];
 	}
-	inline brightness getbrightness(int x, int y, int z) {
-		//»ñÈ¡Çø¿éÄÚµÄÁÁ¶È
-		//assert(Empty == false);
+
+	Brightness getbrightness(int x, int y, int z) const {
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pbrightness == nullptr) { DebugWarning("chunk.getbrightness() error: Empty pointer"); return; }
 		if (x > 15 || x < 0 || y > 15 || y < 0 || z > 15 || z < 0) { DebugWarning("chunk.getbrightness() error: Out of range"); return; }
 #endif
+		if (isEmpty) return cy < 0 ? BRIGHTNESSMIN : skylight;
 		return pbrightness[(x << 8) ^ (y << 4) ^ z];
 	}
-	inline void setblock(int x, int y, int z, block iblock) {
+
+	void setblock(int x, int y, int z, BlockID iblock) {
+		if (isEmpty) {
+			std::fill(pblocks.get(), pblocks.get() + 4096, Blocks::AIR);
+			std::fill(pbrightness.get(), pbrightness.get() + 4096, cy < 0 ? BRIGHTNESSMIN : skylight);
+			isEmpty = false;
+		}
 		if (iblock == Blocks::TNT) {
 			World::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 8, this);
 			return;
 		}
 		pblocks[(x << 8) ^ (y << 4) ^ z] = iblock;
-		Modified = true;
-	}
-	inline void setbrightness(int x, int y, int z, brightness ibrightness) {
-		//ÉèÖÃÁÁ¶È
-		//assert(Empty == false);
-		pbrightness[(x << 8) ^ (y << 4) ^ z] = ibrightness;
-		Modified = true;
+		isUpdated = true;
+		isModified = true;
 	}
 
-	static void setRelativeBase(double x, double y, double z, FrustumTest& frus) {
+	void setbrightness(int x, int y, int z, Brightness ibrightness) {
+		if (isEmpty) {
+			std::fill(pblocks.get(), pblocks.get() + 4096, Blocks::AIR);
+			std::fill(pbrightness.get(), pbrightness.get() + 4096, cy < 0 ? BRIGHTNESSMIN : skylight);
+			isEmpty = false;
+		}
+		pbrightness[(x << 8) ^ (y << 4) ^ z] = ibrightness;
+		isUpdated = true;
+		isModified = true;
+	}
+
+	static void setVisibilityBase(double x, double y, double z, FrustumTest const& frus) {
 		relBaseX = x; relBaseY = y; relBaseZ = z; TestFrustum = frus;
 	}
 
-	Hitbox::AABB getBaseAABB();
-	FrustumTest::ChunkBox getRelativeAABB();
-	inline void calcVisible() { visible = TestFrustum.test(getRelativeAABB()); }
-
+	Hitbox::AABB baseAABB() const;
+	FrustumTest::ChunkBox relativeAABB() const;
+	bool visible() const { return TestFrustum.test(relativeAABB()); }
 };
 }

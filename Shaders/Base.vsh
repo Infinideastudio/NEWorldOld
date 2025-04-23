@@ -23,13 +23,13 @@ void main() {
 		float a = GameTime * 0.2;
 		vertex += vec4(sin(vertex.x + a), sin(vertex.y * 10.0 + a + Pi / 3.0 * 2.0), sin(vertex.z * 10.0 + a + Pi / 3.0 * 4.0), 0.0) * 0.005;
 	}
-	
-    // Results
+
+	// Results
 	vertexCoords = vertex;
 	normal = gl_Normal;
 	gl_FrontColor = gl_Color;
 	gl_TexCoord[0] = gl_MultiTexCoord0;
 	cameraSpacePosition = gl_ModelViewMatrix * vertex;
 	screenSpacePosition = gl_ProjectionMatrix * gl_ModelViewMatrix * vertex;
-	gl_Position = gl_ProjectionMatrix * gl_ModelViewMatrix * vertex;//((gl_Vertex + offset) / gl_Vertex.w);
+	gl_Position = gl_ProjectionMatrix * gl_ModelViewMatrix * vertex;
 }

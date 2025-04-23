@@ -452,7 +452,7 @@ namespace Netycat {
         }
         
         
-        void Socket::recv(Buffer& buffer, BufferCondition& condition) {
+        void Socket::recv(Buffer& buffer, BufferCondition const& condition) {
             
             uintptr_t len;
             

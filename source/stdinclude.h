@@ -18,6 +18,7 @@
 #include <math.h>
 #include <time.h>
 #include <io.h>
+#include <array>
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -25,12 +26,18 @@
 #include <memory>
 #include <iomanip>
 #include <fstream>
-#include <map>
-#include <set>
-#include <queue>
 #include <functional>
 #include <algorithm>
+#include <utility>
+#include <optional>
+#include <variant>
+#include <tuple>
 #include <cassert>
+#include <map>
+#include <unordered_map>
+#include <set>
+#include <unordered_set>
+#include <queue>
 #include <stdarg.h>
 #include <direct.h>
 

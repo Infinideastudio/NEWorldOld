@@ -3,11 +3,11 @@
 #include "stdinclude.h"
 #include "PlayerPacket.h"
 
-extern map<SkinID, pair<VBOID, vtxCount>> playerSkins;
+extern map<SkinID, pair<VBOID, GLuint>> playerSkins;
 
 class OnlinePlayer : public Object {
 public:
-	OnlinePlayer(double x, double y, double z, string name, onlineid onlineID, SkinID skinID, double lookupdown, double heading) :
+	OnlinePlayer(double x, double y, double z, string name, OnlineID onlineID, SkinID skinID, double lookupdown, double heading) :
 		Object(x, y, z), _name(name), _onlineID(onlineID), _skinID(skinID), _lookupdown(lookupdown), _heading(heading) {}
 	
 	OnlinePlayer(PlayerPacket& p) :
@@ -15,7 +15,7 @@ public:
 
 	const string& getName() const { return _name; }
 
-	const onlineid getOnlineID() const { return _onlineID; }
+	const OnlineID getOnlineID() const { return _onlineID; }
 
 	void GenVAOVBO(int skinID);
 
@@ -25,7 +25,7 @@ public:
 
 private:
 	string _name;
-	onlineid _onlineID;
+	OnlineID _onlineID;
 	SkinID _skinID;
 	double _lookupdown, _heading;
 };

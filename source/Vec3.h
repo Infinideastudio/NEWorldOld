@@ -72,9 +72,9 @@ public:
     // Normalize vector
     void normalize() {
         double l = length();
-        x /= l;
-        y /= l;
-        z /= l;
+        x = static_cast<T>(x / l);
+        y = static_cast<T>(y / l);
+        z = static_cast<T>(z / l);
     }
 
     bool operator< (const Vec3& rhs) const {

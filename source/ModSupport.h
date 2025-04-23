@@ -6,9 +6,9 @@
 #include "Command.h"
 #include "Chunk.h"
 typedef unsigned char ubyte;
-typedef unsigned int onlineid;
-typedef unsigned short item;
-typedef unsigned short block;
+typedef unsigned int OnlineID;
+typedef unsigned short ItemID;
+typedef unsigned short BlockID;
 
 struct ModInfo {
 	char name[128];
@@ -22,7 +22,7 @@ struct PlayerData {
 	//std::vector<Hitbox::AABB> Hitboxes;
 	double xa, ya, za, xd, yd, zd;
 	double health, healthMax, healSpeed, dropDamage;
-	onlineid onlineID;
+	OnlineID onlineID;
 	//std::string name;
 	FrustumTest ViewFrustum;
 	bool Glide;
@@ -36,27 +36,27 @@ struct PlayerData {
 	bool glidingNow;
 	double speed;
 	int AirJumps;
-	int cxt, cyt, czt, cxtl, cytl, cztl;
+	int cxt, cyt, czt;
 	double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
 	double xlookspeed, ylookspeed;
 	float height;
 	float heightExt;
-	item BlockInHand;
+	ItemID BlockInHand;
 	ubyte indexInHand;
-	item* inventory;
+	ItemID* inventory;
 	short* inventoryAmount;
 	double glidingEnergy, glidingSpeed;
 };
 
 struct APIPackage {
-	std::function<World::chunk*(int cx, int cy, int cz)> getChunk;
-	std::function<block(int cx, int cy, int cz)> getBlock;
-	std::function<void(int x, int y, int z, block Block)> setBlock;
+	std::function<World::Chunk*(int cx, int cy, int cz)> getChunk;
+	std::function<BlockID(int cx, int cy, int cz)> getBlock;
+	std::function<void(int x, int y, int z, BlockID Block)> setBlock;
 	std::function<Command*(string commandName)> getCommand;
 	std::function<bool(Command command)> registerCommand;
 	std::function<void*(std::string key)> getSharedData;
 	std::function<void(std::string key, void* value)> setSharedData;
 	std::function<PlayerData()> getPlayerData;
 	std::function<void(int x, int y, int z, bool blockchanged)> updateBlock;
-	std::function<void(int x, int y, int z, bool value)> setChunkUpdated;
+	std::function<void(int x, int y, int z)> markChunkNeighborUpdated;
 };

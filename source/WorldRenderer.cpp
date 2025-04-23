@@ -3,33 +3,34 @@
 namespace WorldRenderer {
     vector<RenderChunk> RenderChunkList;
 
-    int ListRenderChunks(int cx, int cy, int cz, int renderdistance, double curtime, bool frustest) {
-        int renderedChunks = 0;
+    void ListRenderChunks(double x, double y, double z, int renderdistance, double curtime, std::optional<FrustumTest> frustum) {
+        int cx = getchunkpos((int)x);
+        int cy = getchunkpos((int)y);
+        int cz = getchunkpos((int)z);
+
         RenderChunkList.clear();
-        for (int i = 0; i < World::loadedChunks; i++) {
-            if (!World::chunks[i]->renderBuilt || World::chunks[i]->Empty) continue;
-            if (World::chunkInRange(World::chunks[i]->cx, World::chunks[i]->cy, World::chunks[i]->cz,
-                                    cx, cy, cz, renderdistance)) {
-                if (!frustest || World::chunks[i]->visible) {
-                    renderedChunks++;
-                    RenderChunkList.push_back(RenderChunk(World::chunks[i], (curtime - lastupdate) * 30.0));
+        if (frustum) World::Chunk::setVisibilityBase(x, y, z, *frustum);
+        for (auto const& [_, c]: World::chunks) {
+            if (!c->meshed()) continue;
+            if (World::chunkInRange(c->x(), c->y(), c->z(), cx, cy, cz, renderdistance)) {
+                if (!frustum || c->visible()) {
+                    RenderChunkList.push_back(RenderChunk(c.get(), float(curtime - lastupdate) * 30.0f));
                 }
             }
         }
-        return renderedChunks;
     }
 
-    void RenderChunks(double x, double y, double z, int buffer) {
+    void RenderChunks(double x, double y, double z, int index) {
+        assert(index >= 0 && index < 2);
         int TexcoordCount = MergeFace ? 3 : 2, ColorCount = 3;
         float m[16];
-        if (buffer != 3) {
-            memset(m, 0, sizeof(m));
-            m[0] = m[5] = m[10] = m[15] = 1.0f;
-        } else TexcoordCount = ColorCount = 0;
+        memset(m, 0, sizeof(m));
+        m[0] = m[5] = m[10] = m[15] = 1.0f;
 
         for (unsigned int i = 0; i < RenderChunkList.size(); i++) {
-            RenderChunk cr = RenderChunkList[i];
-            if (cr.vertexes[buffer] == 0) continue;
+            RenderChunk const& cr = RenderChunkList[i];
+            auto mesh = cr.meshes[index];
+            if (mesh.first == 0 || mesh.second == 0) continue;
             glPushMatrix();
             glTranslated(cr.cx * 16.0 - x, cr.cy * 16.0 - cr.loadAnim - y, cr.cz * 16.0 - z);
             if (Renderer::AdvancedRender) {
@@ -37,8 +38,8 @@ namespace WorldRenderer {
                 m[13] = cr.cy * 16.0f - (float)cr.loadAnim - (float)y;
                 m[14] = cr.cz * 16.0f - (float)z;
                 Renderer::shaders[Renderer::ActiveShader].setUniform("Translation", m);
-                Renderer::renderbuffer(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount, 3, 1);
-            } else Renderer::renderbuffer(cr.vbuffers[buffer], cr.vertexes[buffer], TexcoordCount, ColorCount);
+                Renderer::renderbuffer(mesh.first, mesh.second, TexcoordCount, ColorCount, 3, 1);
+            } else Renderer::renderbuffer(mesh.first, mesh.second, TexcoordCount, ColorCount);
             glPopMatrix();
         }
 

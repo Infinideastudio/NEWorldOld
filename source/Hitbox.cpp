@@ -1,7 +1,7 @@
 #include "Hitbox.h"
 #include "Definitions.h"
 
-namespace Hitbox{
+namespace Hitbox {
 
 	bool stuck = false;
 	AABB Emptybox;
@@ -29,29 +29,23 @@ namespace Hitbox{
 	}
 
 	double MaxMoveOnXclip(const AABB& boxA, const AABB& boxB, double movedist){
-		//用boxA去撞boxB，别搞反了
 		if (!(inYclip(boxA, boxB) && inZclip(boxA, boxB))) return movedist;
 		else if (boxA.xmin >= boxB.xmax && movedist < 0.0) return max(boxB.xmax - boxA.xmin, movedist);
 		else if (boxA.xmax <= boxB.xmin && movedist > 0.0) return min(boxB.xmin - boxA.xmax, movedist);
-		//assert(false);
 		return !stuck ? movedist : 0.0;
 	}
 
 	double MaxMoveOnYclip(const AABB& boxA, const AABB& boxB, double movedist){
-		//用boxA去撞boxB，别搞反了 （这好像是句废话）
 		if (!(inXclip(boxA, boxB) && inZclip(boxA, boxB))) return movedist;
 		else if (boxA.ymin >= boxB.ymax && movedist < 0.0) return max(boxB.ymax - boxA.ymin, movedist);
 		else if (boxA.ymax <= boxB.ymin && movedist > 0.0) return min(boxB.ymin - boxA.ymax, movedist);
-		//assert(false);
 		return !stuck ? movedist : 0.0;
 	}
 
 	double MaxMoveOnZclip(const AABB& boxA, const AABB& boxB, double movedist){
-		//用boxA去撞boxB，别搞反了 （这好像还是句废话）
 		if (!(inXclip(boxA, boxB) && inYclip(boxA, boxB))) return movedist;
 		else if (boxA.zmin >= boxB.zmax && movedist < 0.0) return max(boxB.zmax - boxA.zmin, movedist);
 		else if (boxA.zmax <= boxB.zmin && movedist > 0.0) return min(boxB.zmin - boxA.zmax, movedist);
-		//assert(false);
 		return !stuck ? movedist : 0.0;
 	}
 
@@ -70,17 +64,15 @@ namespace Hitbox{
 
 	void MoveTo(AABB &box, double x, double y, double z){
 		double l, w, h;
-		//注意在执行这个过程时，参数中的xyz坐标将成为移动后的AABB的中心，而不是初始化AABB时的原点！
 		l = (box.xmax - box.xmin) / 2;
 		w = (box.ymax - box.ymin) / 2;
 		h = (box.zmax - box.zmin) / 2;
 		box.xmin = x - l; box.ymin = y - w; box.zmin = z - h;
 		box.xmax = x + l; box.ymax = y + w; box.zmax = z + h;
 	}
+
+	// Debug only!
 	void renderAABB(const AABB& box, float colR, float colG, float colB, int mode, double EPS){
-		//Debug only!
-		//碰撞箱渲染出来很瞎狗眼的QAQ而且又没用QAQ
-		
 		glEnable(GL_LINE_SMOOTH);
 		glColor4f(colR, colG, colB, 1.0);
 
@@ -153,6 +145,7 @@ namespace Hitbox{
 			glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmin - EPS);
 			glEnd();
 		}
-	}
 
+		glDisable(GL_LINE_SMOOTH);
+	}
 }

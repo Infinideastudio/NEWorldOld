@@ -8,7 +8,7 @@ APIPackage Mod::getPackage() {
 	static bool init = false;
 	if (init) return api;
 	api.getChunk = World::getChunkPtr;
-	api.getBlock = std::bind(World::getblock, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, 0, nullptr);
+	api.getBlock = std::bind(World::getblock, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, Blocks::AIR, nullptr);
 	api.setBlock = std::bind(World::setblock, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, nullptr);
 	api.getCommand = [](string s) -> Command* {
 		for (size_t i = 0; i < commands.size(); i++)
@@ -35,11 +35,8 @@ APIPackage Mod::getPackage() {
 		player.BlockInHand = Player::BlockInHand;
 		player.CrossWall = Player::CrossWall;
 		player.cxt = Player::cxt;
-		player.cxtl = Player::cxtl;
 		player.cyt = Player::cyt;
-		player.cytl = Player::cytl;
 		player.czt = Player::czt;
-		player.cztl = Player::cztl;
 		player.dropDamage = Player::dropDamage;
 		player.Flying = Player::Flying;
 		player.Glide = Player::Glide;
@@ -55,7 +52,7 @@ APIPackage Mod::getPackage() {
 		player.heightExt = Player::heightExt;
 		//player.Hitboxes = Player::Hitboxes;
 		player.indexInHand = Player::indexInHand;
-		player.inventory = (item*)Player::inventory;
+		player.inventory = (ItemID*)Player::inventory;
 		player.inventoryAmount = (short*)Player::inventoryAmount;
 		player.inWater = Player::inWater;
 		player.jump= Player::jump;
@@ -85,7 +82,7 @@ APIPackage Mod::getPackage() {
 		return player;
 	};
 	api.updateBlock = std::bind(World::updateblock, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, 0);
-	api.setChunkUpdated = World::setChunkUpdated;
+	api.markChunkNeighborUpdated = World::markChunkNeighborUpdated;
 	init = true;
 	return api;
 }

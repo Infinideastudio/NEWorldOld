@@ -2,6 +2,7 @@
 #include "StdInclude.h"
 #include "World.h"
 #include "Renderer.h"
+#include "FrustumTest.h"
 
 namespace WorldRenderer {
 	enum {
@@ -10,17 +11,16 @@ namespace WorldRenderer {
 
 	struct RenderChunk {
 		int cx, cy, cz;
-		vtxCount vertexes[4];
-		VBOID vbuffers[4];
-		double loadAnim;
-		RenderChunk(World::chunk* c, double TimeDelta) :
-			cx(c->cx), cy(c->cy), cz(c->cz), loadAnim(c->loadAnim * pow(0.6, TimeDelta)) {
-			memcpy(vbuffers, c->vbuffer, sizeof(vbuffers));
-			memcpy(vertexes, c->vertexes, sizeof(vertexes));
+		std::array<std::pair<VBOID, GLuint>, 2> meshes;
+		float loadAnim;
+		RenderChunk(World::Chunk* c, float TimeDelta) :
+			cx(c->x()), cy(c->y()), cz(c->z()), loadAnim(c->loadAnimOffset() * std::pow(0.6f, TimeDelta)) {
+			meshes[0] = c->mesh(0);
+			meshes[1] = c->mesh(1);
 		}
 	};
 	extern vector<RenderChunk> RenderChunkList;
 
-	int ListRenderChunks(int cx, int cy, int cz, int renderdistance, double curtime, bool frustest = true);
+	void ListRenderChunks(double x, double y, double z, int renderdistance, double curtime, std::optional<FrustumTest> frustum);
 	void RenderChunks(double x, double y, double z, int buffer);
 }

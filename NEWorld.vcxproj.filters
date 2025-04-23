@@ -158,9 +158,6 @@
     <ClInclude Include="source\Blocks.h">
       <Filter>Source\Game</Filter>
     </ClInclude>
-    <ClInclude Include="source\ShadowMaps.h">
-      <Filter>Source\Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="source\WorldRenderer.h">
       <Filter>Source\Renderer</Filter>
     </ClInclude>
@@ -328,9 +325,6 @@
     </ClCompile>
     <ClCompile Include="source\Items.cpp">
       <Filter>Source\Game</Filter>
-    </ClCompile>
-    <ClCompile Include="source\ShadowMaps.cpp">
-      <Filter>Source\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="source\WorldRenderer.cpp">
       <Filter>Source\Renderer</Filter>

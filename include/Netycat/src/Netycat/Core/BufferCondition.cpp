@@ -57,7 +57,7 @@ namespace Netycat {
             
         }
         
-        uintptr_t BufferConditionExactLength::control(Buffer& buffer, uintptr_t recvBufferSize) {
+        uintptr_t BufferConditionExactLength::control(Buffer & buffer, uintptr_t recvBufferSize) const {
             
             uintptr_t remaining = buffer.getRemaining();
             
@@ -88,7 +88,7 @@ namespace Netycat {
             
         }
         
-        uintptr_t BufferConditionLeastLength::control(Buffer& buffer, uintptr_t recvBufferSize) {
+        uintptr_t BufferConditionLeastLength::control(Buffer& buffer, uintptr_t recvBufferSize) const {
             
             uintptr_t remaining = buffer.getRemaining();
             
@@ -133,7 +133,7 @@ namespace Netycat {
             
         }
         
-        uintptr_t BufferConditionMeetkeyword::control(Buffer& buffer, uintptr_t recvBufferSize) {
+        uintptr_t BufferConditionMeetkeyword::control(Buffer& buffer, uintptr_t recvBufferSize) const {
             
             uintptr_t remaining = buffer.getRemaining();
             bool found = false;

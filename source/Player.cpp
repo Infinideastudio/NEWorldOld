@@ -15,28 +15,28 @@ bool Player::Running = false;
 bool Player::NearWall = false;
 bool Player::inWater = false;
 bool Player::glidingNow = false;
-item Player::BlockInHand = Blocks::AIR;
-ubyte Player::indexInHand = 0;
+ItemID Player::BlockInHand = Blocks::AIR;
+uint8_t Player::indexInHand = 0;
 
 Hitbox::AABB Player::playerbox;
 vector<Hitbox::AABB> Player::Hitboxes;
 
 double Player::xa, Player::ya, Player::za, Player::xd, Player::yd, Player::zd;
 double Player::health = 20, Player::healthMax = 20, Player::healSpeed = 0.01, Player::dropDamage = 5.0;
-onlineid Player::onlineID;
+OnlineID Player::onlineID;
 string Player::name;
 FrustumTest Player::ViewFrustum;
 
 double Player::speed;
 int Player::AirJumps;
-int Player::cxt, Player::cyt, Player::czt, Player::cxtl, Player::cytl, Player::cztl;
+int Player::cxt, Player::cyt, Player::czt;
 double Player::lookupdown, Player::heading, Player::xpos, Player::ypos, Player::zpos;
 double Player::xposold, Player::yposold, Player::zposold, Player::jump;
 double Player::xlookspeed, Player::ylookspeed;
 int Player::intxpos, Player::intypos, Player::intzpos;
 int Player::intxposold, Player::intyposold, Player::intzposold;
 
-item Player::inventory[4][10];
+ItemID Player::inventory[4][10];
 short Player::inventoryAmount[4][10];
 
 double Player::glidingEnergy, Player::glidingSpeed;
@@ -54,9 +54,9 @@ void InitPosition() {
 	Player::xposold = Player::xpos;
 	Player::yposold = Player::ypos;
 	Player::zposold = Player::zpos;
-	Player::cxt = getchunkpos((int)Player::xpos); Player::cxtl = Player::cxt;
-	Player::cyt = getchunkpos((int)Player::ypos); Player::cytl = Player::cyt;
-	Player::czt = getchunkpos((int)Player::zpos); Player::cztl = Player::czt;
+	Player::cxt = getchunkpos((int)Player::xpos);
+	Player::cyt = getchunkpos((int)Player::ypos);
+	Player::czt = getchunkpos((int)Player::zpos);
 }
 
 void MoveHitbox(double x, double y, double z) {
@@ -123,7 +123,7 @@ void Player::updatePosition() {
 	if (ya != yal && yal > 0.0) jump = 0.0;
 	if (xa != xal || za != zal) NearWall = true; else NearWall = false;
 
-	//Ïû³ý¸¡µãÊý¾«¶È´øÀ´µÄÓ°Ïì£¨²éÁËºÃ¾ÃµÄ´©Ç½bug²Å·¢ÏÖÊÇÔÚÕâÀïÓÐÎÊÌâ(¨s¨F¡õ¡ä)¨s¦à©ß©¥©ß£©
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½ì£¨ï¿½ï¿½ï¿½ËºÃ¾ÃµÄ´ï¿½Ç½bugï¿½Å·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½sï¿½Fï¿½ï¿½ï¿½ï¿½)ï¿½sï¿½ï¿½ß©ï¿½ï¿½ß£ï¿½
 	//  --qiaozhanrong
 	xa = (double)((int)(xa * 100000)) / 100000.0;
 	ya = (double)((int)(ya * 100000)) / 100000.0;
@@ -136,11 +136,12 @@ void Player::updatePosition() {
 	if (OnGround) xa *= 0.7, ya = 0.0, za *= 0.7;
 	updateHitbox();
 
-	cxtl = cxt; cytl = cyt; cztl = czt;
-	cxt = getchunkpos((int)xpos); cyt = getchunkpos((int)ypos); czt = getchunkpos((int)zpos);
+	cxt = getchunkpos((int)xpos);
+	cyt = getchunkpos((int)ypos);
+	czt = getchunkpos((int)zpos);
 }
 
-bool Player::putBlock(int x, int y, int z, block blockname) {
+bool Player::putBlock(int x, int y, int z, BlockID blockname) {
 	Hitbox::AABB blockbox;
 	bool success = false;
 	blockbox.xmin = x - 0.5; blockbox.ymin = y - 0.5; blockbox.zmin = z - 0.5;
@@ -155,7 +156,7 @@ bool Player::putBlock(int x, int y, int z, block blockname) {
 }
 
 bool Player::save(string worldn) {
-	uint32 curversion = VERSION;
+	uint32_t curversion = VERSION;
 	std::stringstream ss;
 	ss << "Worlds/" << worldn << "/player.NEWorldPlayer";
 	std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
@@ -183,7 +184,7 @@ bool Player::save(string worldn) {
 }
 
 bool Player::load(string worldn) {
-	uint32 targetVersion;
+	uint32_t targetVersion;
 	std::stringstream ss;
 	ss << "Worlds/" << worldn << "/player.NEWorldPlayer";
 	std::ifstream iload(ss.str().c_str(), std::ios::binary | std::ios::in);
@@ -211,13 +212,13 @@ bool Player::load(string worldn) {
 	return true;
 }
 
-bool Player::addItem(item itemname, short amount) {
-	//Ïò±³°üÀï¼ÓÈëÎïÆ·
+bool Player::addItem(ItemID itemname, short amount) {
+	//ï¿½ò±³°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ·
 	const int InvMaxStack = 255;
 	for (int i = 3; i >= 0; i--) {
 		for (int j = 0; j != 10; j++) {
 			if (inventory[i][j] == itemname && inventoryAmount[i][j] < InvMaxStack) {
-				//ÕÒµ½Ò»¸öÍ¬Àà¸ñ×Ó
+				//ï¿½Òµï¿½Ò»ï¿½ï¿½Í¬ï¿½ï¿½ï¿½ï¿½ï¿½
 				if (amount + inventoryAmount[i][j] <= InvMaxStack) {
 					inventoryAmount[i][j] += amount;
 					return true;
@@ -231,7 +232,7 @@ bool Player::addItem(item itemname, short amount) {
 	for (int i = 3; i >= 0; i--) {
 		for (int j = 0; j != 10; j++) {
 			if (inventory[i][j] == Blocks::AIR) {
-				//ÕÒµ½Ò»¸ö¿Õ°×¸ñ×Ó
+				//ï¿½Òµï¿½Ò»ï¿½ï¿½ï¿½Õ°×¸ï¿½ï¿½ï¿½
 				inventory[i][j] = itemname;
 				if (amount <= InvMaxStack) {
 					inventoryAmount[i][j] = amount;
