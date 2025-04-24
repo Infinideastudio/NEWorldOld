@@ -24,7 +24,7 @@ namespace Network{
 	};
 	extern Mutex_t mutex;
 	void init(string ip, unsigned short port);
-	int getRequestCount();
+	size_t getRequestCount();
 	Net::Socket& getClientSocket();
 	ThreadFunc networkThread(void*);
 	void pushRequest(Request& r);

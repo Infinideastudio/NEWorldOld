@@ -2,6 +2,7 @@
 #include "Definitions.h"
 #include "Blocks.h"
 #include "Textures.h"
+#include "Renderer.h"
 
 namespace World { class Chunk; }
 
@@ -20,12 +21,12 @@ namespace ChunkRenderer {
 		int col0, col1, col2, col3;
 		// Block ID
 		BlockID blk;
-		// Texture ID
-		TextureID tex;
+		// Texture index
+		TextureIndex tex;
 		QuadPrimitive() : x(0), y(0), z(0), length(0), direction(0), once(false),
 			blk(Blocks::AIR), tex(Textures::NULLBLOCK), col0(0), col1(0), col2(0), col3(0) {}
 	};
 	
-	std::vector<std::pair<VBOID, GLuint>> RenderChunk(World::Chunk const& c);
-	std::vector<std::pair<VBOID, GLuint>> MergeFaceRenderChunk(World::Chunk const& c);
+	std::vector<Renderer::VertexBuffer> RenderChunk(World::Chunk const& c);
+	std::vector<Renderer::VertexBuffer> MergeFaceRenderChunk(World::Chunk const& c);
 }

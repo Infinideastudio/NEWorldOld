@@ -3,15 +3,10 @@
 
 namespace TextRenderer {
 	struct UnicodeChar {
-		bool aval;
-		TextureID tex;
-		VBOID buffer;
-		unsigned int vtxs;
-		int xpos, ypos;
-		int width, height, advance;
-		UnicodeChar() :aval(false), tex(0), buffer(0),
-			vtxs(0), xpos(0), ypos(0),
-			width(0), height(0), advance(0) {}
+		bool aval = false;
+		TextureID tex = 0;
+		int xpos = 0, ypos = 0;
+		int width = 0, height = 0, advance = 0;
 	};
 
 	extern FT_Library library;

@@ -215,8 +215,6 @@ namespace World {
 		}
 
 		// Build new VBOs
-		for (auto [id, _] : meshes)
-			if (id != 0) glDeleteBuffersARB(1, &id);
 		meshes = MergeFace ? ChunkRenderer::MergeFaceRenderChunk(*this) : ChunkRenderer::RenderChunk(*this);
 
 		// Update flags
@@ -229,10 +227,7 @@ namespace World {
 	}
 
 	void Chunk::destroyMeshes() {
-		for (auto [id, _] : meshes)
-			if (id != 0) glDeleteBuffersARB(1, &id);
 		meshes.clear();
-
 		isMeshed = false;
 		isUpdated = true;
 	}

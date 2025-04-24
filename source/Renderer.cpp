@@ -6,10 +6,9 @@
 
 namespace Renderer {
 
-	int Vertexes, Texcoordc, Colorc, Normalc, Attribc;
+	int Vertexes, Coordc, Texcoordc, Colorc, Normalc, Attribc;
 	float* VertexArray = nullptr;
-	float* VA = nullptr;
-	float TexCoords[3], Colors[4], Normals[3], Attribs;
+	float Coords[3], TexCoords[3], Colors[4], Normals[3], Attribs[1];
 	//unsigned int Buffers[3];
 	bool AdvancedRender;
 	int ShadowRes = 4096;
@@ -18,7 +17,6 @@ namespace Renderer {
 	vector<Shader> shaders;
 	int ActiveShader;
 	int index = 0, size = 0;
-	unsigned int ShaderAttribLoc = 0;
 
 	const int gBufferCount = 3;
 	int gWidth, gHeight, gSize;
@@ -26,23 +24,23 @@ namespace Renderer {
 	bool VolumetricClouds = false;
 
 	int log2Ceil(int x) {
-		if (x <= 1)return 0;
+		if (x <= 1) return 0;
 		x--;
 		int res = 1;
-		while (x != 1)res++, x >>= 1;
+		while (x != 1) res++, x >>= 1;
 		return res;
 	}
 
-	void Init(int tc, int cc, int nc, int ac) {
+	void Begin(int tc, int cc, int nc, int ac) {
+		Coordc = 3;
 		Texcoordc = tc;
 		Colorc = cc;
 		Normalc = nc;
 		Attribc = ac;
 		if (VertexArray == nullptr) VertexArray = new float[ArraySize];
 		index = 0;
-		VA = VertexArray;
 		Vertexes = 0;
-		size = (tc + cc + nc + ac + 3) * 4;
+		size = (3 + tc + cc + nc + ac) * 4;
 	}
 
 	void resizeGDBuffers(int w, int h) {
@@ -53,81 +51,26 @@ namespace Renderer {
 	}
 
 	void Vertex3f(float x, float y, float z) {
-		if ((Vertexes + 1) * (Attribc + Texcoordc + Colorc + Normalc + 3) > ArraySize) return;
-		if (Attribc != 0) VertexArray[index++] = Attribs;
+		Coords[0] = x; Coords[1] = y; Coords[2] = z;
+		if ((Vertexes + 1) * (Coordc + Texcoordc + Colorc + Normalc + Attribc) > ArraySize) return;
+		Vertexes++;
+		if (Coordc != 0) memcpy(VertexArray + index, Coords, Coordc * sizeof(float));
+		index += Coordc;
 		if (Texcoordc != 0) memcpy(VertexArray + index, TexCoords, Texcoordc * sizeof(float));
 		index += Texcoordc;
 		if (Colorc != 0) memcpy(VertexArray + index, Colors, Colorc * sizeof(float));
 		index += Colorc;
 		if (Normalc != 0) memcpy(VertexArray + index, Normals, Normalc * sizeof(float));
 		index += Normalc;
-		VertexArray[index++] = x;
-		VertexArray[index++] = y;
-		VertexArray[index++] = z;
-		Vertexes++;
+		if (Attribc != 0) memcpy(VertexArray + index, Attribs, Attribc * sizeof(float));
+		index += Attribc;
 	}
-
 	void TexCoord2f(float x, float y) { TexCoords[0] = x; TexCoords[1] = y; }
 	void TexCoord3f(float x, float y, float z) { TexCoords[0] = x; TexCoords[1] = y; TexCoords[2] = z; }
 	void Color3f(float r, float g, float b) { Colors[0] = r; Colors[1] = g; Colors[2] = b; }
 	void Color4f(float r, float g, float b, float a) { Colors[0] = r; Colors[1] = g; Colors[2] = b; Colors[3] = a; }
 	void Normal3f(float x, float y, float z) { Normals[0] = x; Normals[1] = y; Normals[2] = z; }
-	void Attrib1f(float a) { Attribs = a; }
-
-	void Flush(VBOID& buffer, GLuint& vtxs) {
-
-		//�ϴβ�֪��ԭ��Flush���г��������˼QAQ
-		//OpenGL�и�����glFlush()�������������GL�����() ��_��
-
-		vtxs = Vertexes;
-		if (Vertexes != 0) {
-			if (buffer == 0) glGenBuffersARB(1, &buffer);
-			glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
-			glBufferDataARB(GL_ARRAY_BUFFER_ARB,
-							Vertexes * ((Texcoordc + Colorc + Normalc + Attribc + 3) * sizeof(float)),
-							VertexArray, GL_STATIC_DRAW_ARB);
-			glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-		}
-	}
-
-	void renderbuffer(VBOID buffer, GLuint vtxs, int tc, int cc, int nc, int ac) {
-
-		glBindBufferARB(GL_ARRAY_BUFFER_ARB, buffer);
-		int cnt = tc + cc + 3;
-		if (!AdvancedRender || nc == 0 || ac == 0) {
-			if (tc != 0) {
-				if (cc != 0) {
-					glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float*)0);
-					glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)(tc * sizeof(float)));
-					glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((tc + cc) * sizeof(float)));
-				} else {
-					glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float*)0);
-					glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(tc * sizeof(float)));
-				}
-			} else {
-				if (cc != 0) {
-					glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)0);
-					glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)(cc * sizeof(float)));
-				} else glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)0);
-			}
-		} else {
-			cnt += nc + ac;
-			glVertexAttribPointerARB(ShaderAttribLoc, ac, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float*)0);
-			glTexCoordPointer(tc, GL_FLOAT, cnt * sizeof(float), (float*)(ac * sizeof(float)));
-			glColorPointer(cc, GL_FLOAT, cnt * sizeof(float), (float*)((ac + tc) * sizeof(float)));
-			glNormalPointer(GL_FLOAT, cnt * sizeof(float), (float*)((ac + tc + cc) * sizeof(float)));
-			glVertexPointer(3, GL_FLOAT, cnt * sizeof(float), (float*)((ac + tc + cc + nc) * sizeof(float)));
-		}
-
-		//������ǲ��Ǻ�װ��2333 --qiaozhanrong
-		//====================================================================================================//
-		/**/                                                                                                /**/
-		/**/                                                                                                /**/
-		/**/                                glDrawArrays(GL_QUADS, 0, vtxs);                                /**/
-		/**/                                                                                                /**/
-		/**/                                                                                                /**/
-		//====================================================================================================//
-	}
+	void Attrib1f(float a) { Attribs[0] = a; }
 
 	GLuint getNoiseTexture() {
 		static GLuint noiseTex = 0;
@@ -152,45 +95,48 @@ namespace Renderer {
 	}
 
 	void initShaders() {
-		ShaderAttribLoc = 1;
 		std::set<string> defines;
-		if (MergeFace) defines.insert("MergeFace");
-		if (VolumetricClouds) defines.insert("VolumetricClouds");
+		if (MergeFace) defines.insert("MERGE_FACE");
+		if (VolumetricClouds) defines.insert("VOLUMETRIC_CLOUDS");
 
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
 		shaders.clear();
-		shaders.push_back(Shader("Shaders/Base.vsh", "Shaders/Base.fsh", true, defines));
+		shaders.push_back(Shader("Shaders/Default.vsh", "Shaders/Default.fsh", true, defines));
+		shaders.push_back(Shader("Shaders/Opaque.vsh", "Shaders/Opaque.fsh", true, defines));
 		shaders.push_back(Shader("Shaders/Translucent.vsh", "Shaders/Translucent.fsh", true, defines));
 		shaders.push_back(Shader("Shaders/Final.vsh", "Shaders/Final.fsh", false, defines));
 		shaders.push_back(Shader("Shaders/Shadow.vsh", "Shaders/Shadow.fsh", true, defines));
-		shaders.push_back(Shader("Shaders/ShowDepth.vsh", "Shaders/ShowDepth.fsh", false, defines));
+		shaders.push_back(Shader("Shaders/DebugShadow.vsh", "Shaders/DebugShadow.fsh", false, defines));
 
 		// Create framebuffers
 		shadow.create(ShadowRes, 0, true, true);
 		resizeGDBuffers(windowwidth, windowheight);
 
 		// Set constant uniforms
-		shaders[BaseShader].bind();
-		shaders[BaseShader].setUniform(MergeFace ? "Texture3D" : "Texture", 0);
+		shaders[DefaultShader].bind();
+		shaders[DefaultShader].setUniform(MergeFace ? "u_diffuse_3d" : "u_diffuse", 0);
+
+		shaders[OpqaueShader].bind();
+		shaders[OpqaueShader].setUniform(MergeFace ? "u_diffuse_3d" : "u_diffuse", 0);
 
 		shaders[TranslucentShader].bind();
-		shaders[TranslucentShader].setUniform(MergeFace ? "Texture3D" : "Texture", 0);
+		shaders[TranslucentShader].setUniform(MergeFace ? "u_diffuse_3d" : "u_diffuse", 0);
 
 		float fisheyeFactor = MergeFace ? 0.0f : 0.85f;
 		shaders[FinalShader].bind();
-		shaders[FinalShader].setUniform("Texture0", 0);
-		shaders[FinalShader].setUniform("Texture1", 1);
-		shaders[FinalShader].setUniform("Texture2", 2);
-		shaders[FinalShader].setUniform("DepthTexture", gBufferCount + 0);
-		shaders[FinalShader].setUniform("ShadowTexture", gBufferCount + 1);
-		shaders[FinalShader].setUniform("NoiseTexture", gBufferCount + 2);
-		shaders[FinalShader].setUniform("ShadowMapResolution", float(ShadowRes));
-		shaders[FinalShader].setUniform("ShadowFisheyeFactor", fisheyeFactor);
+		shaders[FinalShader].setUniform("u_diffuse_buffer", 0);
+		shaders[FinalShader].setUniform("u_normal_buffer", 1);
+		shaders[FinalShader].setUniform("u_material_buffer", 2);
+		shaders[FinalShader].setUniform("u_depth_buffer", gBufferCount + 0);
+		shaders[FinalShader].setUniform("u_shadow_texture", gBufferCount + 1);
+		shaders[FinalShader].setUniform("u_noise_texture", gBufferCount + 2);
+		shaders[FinalShader].setUniform("u_shadow_texture_resolution", float(ShadowRes));
+		shaders[FinalShader].setUniform("u_shadow_fisheye_factor", fisheyeFactor);
 
 		shaders[ShadowShader].bind();
-		shaders[ShadowShader].setUniform("Texture", 0);
-		shaders[ShadowShader].setUniform("ShadowFisheyeFactor", fisheyeFactor);
+		shaders[ShadowShader].setUniform(MergeFace ? "u_diffuse_3d" : "u_diffuse", 0);
+		shaders[ShadowShader].setUniform("u_shadow_fisheye_factor", fisheyeFactor);
 
 		Shader::unbind();
 	}
@@ -279,159 +225,190 @@ namespace Renderer {
 		dBuffer.unbindTarget();
 	}
 
-	void StartShadowPass() {
+	void StartShadowPass(const FrustumTest& lightFrustum, float gameTime) {
+		assert(AdvancedRender);
+
 		// Bind output target buffers
 		shadow.bindTarget();
 
-		// Enable shader
+		// Set dynamic uniforms
+		Shader& shader = shaders[ShadowShader];
 		bindShader(ShadowShader);
-
-		// Enable arrays for additional vertex attributes
-		glEnableVertexAttribArrayARB(ShaderAttribLoc);
+		shader.setUniform("u_proj", lightFrustum.getProjMatrix());
+		shader.setUniform("u_modl", lightFrustum.getModlMatrix());
+		shader.setUniform("u_game_time", gameTime);
 
 		// Disable unwanted defaults
-		glDisable(GL_ALPHA_TEST);
 		glDisable(GL_BLEND);
 		glDisable(GL_CULL_FACE);
-		glDisable(GL_FOG);
 	}
 
 	void EndShadowPass() {
+		assert(AdvancedRender);
+
 		// Unbind output target buffers
 		shadow.unbindTarget();
 
 		// Disable shader
 		Shader::unbind();
 
-		// Disable arrays for additional vertex attributes
-		glDisableVertexAttribArrayARB(ShaderAttribLoc);
-
 		// Enable defaults
-		glEnable(GL_ALPHA_TEST);
 		glEnable(GL_BLEND);
 		glEnable(GL_CULL_FACE);
-		glEnable(GL_FOG);
 	}
 
-	void StartBasePass(float gameTime) {
+	void StartOpqauePass(const FrustumTest& viewFrustum, float gameTime) {
 		// Bind output target buffers
-		gBuffers.bindTarget(gWidth, gHeight);
+		if (AdvancedRender) gBuffers.bindTarget(gWidth, gHeight);
 
-		// Enable shader
-		bindShader(BaseShader);
-		Shader& shader = shaders[BaseShader];
-		shader.setUniform("GameTime", gameTime);
-
-		// Enable arrays for additional vertex attributes
-		glEnableClientState(GL_NORMAL_ARRAY);
-		glEnableVertexAttribArrayARB(ShaderAttribLoc);
+		// Set dynamic uniforms
+		Shader& shader = shaders[AdvancedRender ? OpqaueShader : DefaultShader];
+		bindShader(AdvancedRender ? OpqaueShader : DefaultShader);
+		shader.setUniform("u_proj", viewFrustum.getProjMatrix());
+		shader.setUniform("u_modl", viewFrustum.getModlMatrix());
+		shader.setUniform("u_game_time", gameTime);
 
 		// Disable unwanted defaults
-		glDisable(GL_ALPHA_TEST);
-		glDisable(GL_FOG);
+		glDisable(GL_BLEND);
 	}
 
-	void EndBasePass() {
+	void EndOpaquePass() {
 		// Unbind output target buffers
-		gBuffers.unbindTarget();
+		if (AdvancedRender) gBuffers.unbindTarget();
 
 		// Disable shader
 		Shader::unbind();
 
-		// Disable arrays for additional vertex attributes
-		glDisableClientState(GL_NORMAL_ARRAY);
-		glDisableVertexAttribArrayARB(ShaderAttribLoc);
-
 		// Enable defaults
-		glEnable(GL_ALPHA_TEST);
-		glEnable(GL_FOG);
+		glEnable(GL_BLEND);
 	}
 
-	void StartTranslucentPass(float gameTime) {
+	void StartTranslucentPass(const FrustumTest& viewFrustum, float gameTime) {
 		// Copy the depth component of the G-buffer to the D-buffer, bind output target buffers
-		// gBuffers.copyDepthTexture(dBuffer);
-		gBuffers.bindTarget(gWidth, gHeight);
+		if (AdvancedRender) {
+			// gBuffers.copyDepthTexture(dBuffer);
+			gBuffers.bindTarget(gWidth, gHeight);
+		}
 
-		// Enable shader
-		bindShader(TranslucentShader);
-		Shader& shader = shaders[TranslucentShader];
-		shader.setUniform("GameTime", gameTime);
-
-		// Enable arrays for additional vertex attributes
-		glEnableClientState(GL_NORMAL_ARRAY);
-		glEnableVertexAttribArrayARB(ShaderAttribLoc);
+		// Set dynamic uniforms
+		Shader& shader = shaders[AdvancedRender ? TranslucentShader : DefaultShader];
+		bindShader(AdvancedRender ? TranslucentShader : DefaultShader);
+		shader.setUniform("u_proj", viewFrustum.getProjMatrix());
+		shader.setUniform("u_modl", viewFrustum.getModlMatrix());
+		shader.setUniform("u_game_time", gameTime);
 
 		// Disable unwanted defaults
-		glDisable(GL_ALPHA_TEST);
-		// glDisable(GL_BLEND);
-		glDisable(GL_FOG);
+		glDisable(GL_CULL_FACE);
 	}
 
 	void EndTranslucentPass() {
-		gBuffers.unbindTarget();
+		// Unbind output target buffers
+		if (AdvancedRender) gBuffers.unbindTarget();
 
 		// Disable shader
 		Shader::unbind();
 
-		// Disable arrays for additional vertex attributes
-		glDisableClientState(GL_NORMAL_ARRAY);
-		glDisableVertexAttribArrayARB(ShaderAttribLoc);
-
 		// Enable defaults
-		glEnable(GL_ALPHA_TEST);
-		// glEnable(GL_BLEND);
-		glEnable(GL_FOG);
+		glEnable(GL_CULL_FACE);
 	}
 
 	void StartFinalPass(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& viewFrustum, float gameTime) {
+		assert(AdvancedRender);
+
 		// Bind textures to pre-defined slots
 		gBuffers.bindColorTextures(0);
 		gBuffers.bindDepthTexture(gBufferCount + 0);
 		shadow.bindDepthTexture(gBufferCount + 1);
-		glActiveTextureARB(GL_TEXTURE0 + gBufferCount + 2);
+		glActiveTexture(GL_TEXTURE0 + gBufferCount + 2);
 		glBindTexture(GL_TEXTURE_2D, getNoiseTexture());
-		glActiveTextureARB(GL_TEXTURE0);
+		glActiveTexture(GL_TEXTURE0);
 
 		// Set dynamic uniforms
+		int shadowdist = min(MaxShadowDist, viewdistance);
+		FrustumTest frus = getShadowMapFrustum(heading, pitch, shadowdist, viewFrustum);
+		Vec3f lightdir = (Mat4f::rotation(-sunlightXrot, Vec3f(1, 0, 0)) * Mat4f::rotation(-sunlightYrot, Vec3f(0, 1, 0))).transformVec3(Vec3f(0, 0, -1));
+		lightdir.normalize();
+
 		Shader& shader = shaders[FinalShader];
 		bindShader(FinalShader);
-		shader.setUniform("ScreenWidth", float(gWidth));
-		shader.setUniform("ScreenHeight", float(gHeight));
-		shader.setUniform("BufferSize", float(gSize));
-		shader.setUniform("ProjectionMatrix", viewFrustum.getProjMatrix());
-		shader.setUniform("ModelViewMatrix", viewFrustum.getModlMatrix());
-		shader.setUniform("ProjectionInverse", Mat4f(viewFrustum.getProjMatrix()).inverse().data);
-		shader.setUniform("ModelViewInverse", Mat4f(viewFrustum.getModlMatrix()).inverse().data);
-		//shader.setUniform("FOVx", viewFrustum.getFOV() * viewFrustum.getAspect());
-		//shader.setUniform("FOVy", viewFrustum.getFOV());
-
-		int shadowdist = min(MaxShadowDist, viewdistance);
-		shader.setUniform("RenderDistance", viewdistance * 16.0f);
-		shader.setUniform("ShadowDistance", shadowdist * 16.0f);
-		FrustumTest frus = getShadowMapFrustum(heading, pitch, shadowdist, viewFrustum);
-		shader.setUniform("ShadowMapProjection", frus.getProjMatrix());
-		shader.setUniform("ShadowMapModelView", frus.getModlMatrix());
-
-		Mat4f trans = Mat4f::rotation(-sunlightXrot, Vec3f(1, 0, 0)) * Mat4f::rotation(-sunlightYrot, Vec3f(0, 1, 0));
-		Vec3f lightdir = trans.transformVec3(Vec3f(0, 0, -1));
-		lightdir.normalize();
-		shader.setUniform("SunlightDirection", lightdir.x, lightdir.y, lightdir.z);
-		shader.setUniform("GameTime", gameTime);
-		shader.setUniformI("PlayerPositionInt", int(floor(xpos)), int(floor(ypos)), int(floor(zpos)));
-		shader.setUniform("PlayerPositionFrac", float(xpos - floor(xpos)), float(ypos - floor(ypos)), float(zpos - floor(zpos)));
+		shader.setUniform("u_buffer_view_width", float(gWidth));
+		shader.setUniform("u_buffer_view_height", float(gHeight));
+		shader.setUniform("u_buffer_size", float(gSize));
+		shader.setUniform("u_proj", viewFrustum.getProjMatrix());
+		shader.setUniform("u_modl", viewFrustum.getModlMatrix());
+		shader.setUniform("u_proj_inv", Mat4f(viewFrustum.getProjMatrix()).inverse().data);
+		shader.setUniform("u_modl_inv", Mat4f(viewFrustum.getModlMatrix()).inverse().data);
+		//shader.setUniform("u_fov_x", viewFrustum.getFOV() * viewFrustum.getAspect());
+		//shader.setUniform("u_fov_y", viewFrustum.getFOV());
+		shader.setUniform("u_render_distance", viewdistance * 16.0f);
+		shader.setUniform("u_shadow_distance", shadowdist * 16.0f);
+		shader.setUniform("u_shadow_proj", frus.getProjMatrix());
+		shader.setUniform("u_shadow_modl", frus.getModlMatrix());
+		shader.setUniform("u_sunlight_dir", lightdir.x, lightdir.y, lightdir.z);
+		shader.setUniform("u_game_time", gameTime);
+		shader.setUniformI("u_player_coord_int", int(floor(xpos)), int(floor(ypos)), int(floor(zpos)));
+		shader.setUniform("u_player_coord_frac", float(xpos - floor(xpos)), float(ypos - floor(ypos)), float(zpos - floor(zpos)));
 	}
 
 	void EndFinalPass() {
+		assert(AdvancedRender);
+
 		Shader::unbind();
 	}
 
 	void DrawFullscreen() {
-		glBegin(GL_QUADS);
-		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		glTexCoord2f(0.0f, 0.0f); glVertex2i(0, windowheight);
-		glTexCoord2f(1.0f, 0.0f); glVertex2i(windowwidth, windowheight);
-		glTexCoord2f(1.0f, 1.0f); glVertex2i(windowwidth, 0);
-		glTexCoord2f(0.0f, 1.0f); glVertex2i(0, 0);
-		glEnd();
+		Renderer::Begin(2, 0, 0, 0);
+		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(-1.0f, -1.0f, 0.0f);
+		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(1.0f, -1.0f, 0.0f);
+		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(1.0f, 1.0f, 0.0f);
+		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(-1.0f, 1.0f, 0.0f);
+		Renderer::End().render();
+	}
+
+	VertexBuffer VertexBuffer::upload() {
+		VertexBuffer res;
+		res.numVertices = Vertexes;
+
+		int vc = Coordc, tc = Texcoordc, cc = Colorc, nc = Normalc, ac = Attribc;
+		int cnt = vc + tc + cc + nc + ac;
+
+		glGenVertexArrays(1, &res.vao);
+		glBindVertexArray(res.vao);
+
+		glGenBuffers(1, &res.vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, res.vbo);
+		glBufferData(GL_ARRAY_BUFFER, Vertexes * (cnt * sizeof(float)), VertexArray, GL_STATIC_DRAW);
+
+		GLuint arrays = 0;
+		if (vc > 0) {
+			glEnableVertexAttribArray(arrays);
+			glVertexAttribPointer(arrays++, vc, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float*)(0 * sizeof(float)));
+		}
+		if (tc > 0) {
+			glEnableVertexAttribArray(arrays);
+			glVertexAttribPointer(arrays++, tc, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float*)(vc * sizeof(float)));
+		}
+		if (cc > 0) {
+			glEnableVertexAttribArray(arrays);
+			glVertexAttribPointer(arrays++, cc, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float*)((vc + tc) * sizeof(float)));
+		}
+		if (nc > 0) {
+			glEnableVertexAttribArray(arrays);
+			glVertexAttribPointer(arrays++, nc, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float*)((vc + tc + cc) * sizeof(float)));
+		}
+		if (ac > 0) {
+			glEnableVertexAttribArray(arrays);
+			glVertexAttribPointer(arrays++, ac, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float*)((vc + tc + cc + nc) * sizeof(float)));
+		}
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+		return res;
+	}
+
+	void VertexBuffer::render() const {
+		glBindVertexArray(vao);
+		glDrawArrays(GL_QUADS, 0, numVertices);
+		glBindVertexArray(0);
 	}
 }

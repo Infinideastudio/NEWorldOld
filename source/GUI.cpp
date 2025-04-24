@@ -8,7 +8,6 @@ extern string inputstr;
 namespace GUI {
 
 int nScreenWidth, nScreenHeight;
-float linewidth = 1.0f;
 float linealpha = 0.9f;
 float FgR = 0.2f;
 float FgG = 0.2f;
@@ -243,7 +242,6 @@ void label::render() {
 	if (focused) {                                                 //Focus
 		glDisable(GL_TEXTURE_2D);
 		glColor4f(FgR * 0.6f, FgG * 0.6f, FgB * 0.6f, linealpha);
-		glLineWidth(linewidth);
 		//glBegin(GL_POINTS)
 		//UIVertex(xmin - 1, ymin)
 		//glEnd()
@@ -310,7 +308,6 @@ void button::render() {
 	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
 
 	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
-	glLineWidth(linewidth);
 	glBegin(GL_LINE_LOOP);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
@@ -503,7 +500,6 @@ void textbox::render() {
 	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
 
 	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
-	glLineWidth(linewidth);
 	glBegin(GL_LINE_LOOP);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
@@ -689,7 +685,6 @@ void vscroll::render() {
 
 	glEnd();
 
-	glLineWidth(3.0);
 	glBegin(GL_LINES);
 	glColor4f(FgR, FgG, FgB, 1.0);
 	if (psup) glColor4f(1.0f - FgR, 1.0f - FgG, 1.0f - FgB, 1.0f);

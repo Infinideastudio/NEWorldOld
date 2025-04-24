@@ -3,120 +3,125 @@
 #include "GLProc.h"
 
 Shader::Shader(string vshPath, string fshPath, bool bindLocation, std::set<string> defines) {
-    shaderVertex = loadShader(vshPath, GL_VERTEX_SHADER_ARB, defines);
-    shaderFragment = loadShader(fshPath, GL_FRAGMENT_SHADER_ARB, defines);
-    shaderProgram = glCreateProgramObjectARB();
-    glAttachObjectARB(shaderProgram, shaderVertex);
-    glAttachObjectARB(shaderProgram, shaderFragment);
-    if (bindLocation) glBindAttribLocationARB(shaderProgram, 1, "VertexAttrib");
-    glLinkProgramARB(shaderProgram);
-
-    //������
-    checkErrors(shaderProgram, GL_LINK_STATUS, "Shader linking error!");
+    shaderVertex = loadShader(vshPath, GL_VERTEX_SHADER, defines);
+    shaderFragment = loadShader(fshPath, GL_FRAGMENT_SHADER, defines);
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, shaderVertex);
+    glAttachShader(shaderProgram, shaderFragment);
+    if (bindLocation) glBindAttribLocation(shaderProgram, 1, "VertexAttrib");
+    glLinkProgram(shaderProgram);
+    checkLinkingErrors(shaderProgram, "Shader linking error!");
 }
 
 void Shader::release() {
-    glDetachObjectARB(shaderProgram, shaderVertex);
-    glDetachObjectARB(shaderProgram, shaderFragment);
-    glDeleteObjectARB(shaderVertex);
-    glDeleteObjectARB(shaderFragment);
-    glDeleteObjectARB(shaderProgram);
+    glDetachShader(shaderProgram, shaderVertex);
+    glDetachShader(shaderProgram, shaderFragment);
+    glDeleteShader(shaderVertex);
+    glDeleteShader(shaderFragment);
+    glDeleteProgram(shaderProgram);
 }
 
 bool Shader::setUniform(const char* uniform, float value) {
-    int loc = glGetUniformLocationARB(shaderProgram, uniform);
-	//  assert(loc != -1);
+    int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1) return false;
-    glUniform1fARB(loc, value);
+    glUniform1f(loc, value);
     return true;
-}
-bool Shader::setUniform(const char* uniform, int value) {
-    int loc = glGetUniformLocationARB(shaderProgram, uniform);
-	//  assert(loc != -1);
-    if (loc == -1) return false;
-    glUniform1iARB(loc, value);
-    return true;
-}
-bool Shader::setUniform(const char* uniform, float v0, float v1, float v2) {
-	int loc = glGetUniformLocationARB(shaderProgram, uniform);
-	//  assert(loc != -1);
-	if (loc == -1) return false;
-	glUniform3fARB(loc, v0, v1, v2);
-	return true;
-}
-bool Shader::setUniform(const char* uniform, float v0, float v1, float v2, float v3) {
-	int loc = glGetUniformLocationARB(shaderProgram, uniform);
-	//  assert(loc != -1);
-	if (loc == -1) return false;
-	glUniform4fARB(loc, v0, v1, v2, v3);
-	return true;
-}
-bool Shader::setUniform(const char* uniform, const float * value) {
-    int loc = glGetUniformLocationARB(shaderProgram, uniform);
-	//  assert(loc != -1);
-    if (loc == -1) return false;
-    glUniformMatrix4fvARB(loc, 1, GL_FALSE, value);
-    return true;
-}
-bool Shader::setUniformI(const char* uniform, int v0, int v1, int v2) {
-	int loc = glGetUniformLocationARB(shaderProgram, uniform);
-	//  assert(loc != -1);
-	if (loc == -1) return false;
-	glUniform3iARB(loc, v0, v1, v2);
-	return true;
 }
 
-GLhandleARB Shader::loadShader(string filename, unsigned int mode, std::set<string> defines) {
-    GLhandleARB res;
-    string cur, var, macro;
-    int lines = 0, curlen;
-    char* curline;
-    std::vector<char*> source;
-    std::vector<int> length;
+bool Shader::setUniform(const char* uniform, int value) {
+    int loc = glGetUniformLocation(shaderProgram, uniform);
+    if (loc == -1) return false;
+    glUniform1i(loc, value);
+    return true;
+}
+
+bool Shader::setUniform(const char* uniform, float v0, float v1, float v2) {
+    int loc = glGetUniformLocation(shaderProgram, uniform);
+    if (loc == -1) return false;
+    glUniform3f(loc, v0, v1, v2);
+    return true;
+}
+
+bool Shader::setUniform(const char* uniform, float v0, float v1, float v2, float v3) {
+    int loc = glGetUniformLocation(shaderProgram, uniform);
+    if (loc == -1) return false;
+    glUniform4f(loc, v0, v1, v2, v3);
+    return true;
+}
+
+bool Shader::setUniform(const char* uniform, const float * value) {
+    int loc = glGetUniformLocation(shaderProgram, uniform);
+    if (loc == -1) return false;
+    glUniformMatrix4fv(loc, 1, GL_FALSE, value);
+    return true;
+}
+
+bool Shader::setUniformI(const char* uniform, int v0, int v1, int v2) {
+    int loc = glGetUniformLocation(shaderProgram, uniform);
+    if (loc == -1) return false;
+    glUniform3i(loc, v0, v1, v2);
+    return true;
+}
+
+GLuint Shader::loadShader(string filename, unsigned int mode, std::set<string> defines) {
+    GLuint res;
+    std::vector<std::string> lines;
+    std::vector<GLchar const*> ptr;
+    std::vector<GLint> length;
     std::ifstream filein(filename);
-    if (!filein.is_open()) return 0;
+    if (!filein.is_open()) {
+        std::stringstream ss;
+        ss << "Could not load shader " << filename;
+        DebugWarning(ss.str());
+        return 0;
+    }
+    bool defs = false;
     while (!filein.eof()) {
-        std::getline(filein, cur);
-        if (beginWith(cur, "#")) {
-            std::stringstream ss(cur);
-            ss >> macro;
-            if (macro == "##NEWORLD_SHADER_DEFINES") {
-                ss >> var >> macro;
-                if (defines.find(var) != defines.end()) cur = "#define " + macro;
-                else cur = "";
+        std::string line;
+        std::getline(filein, line);
+        line += "\n";
+        bool insert_defs = !defs && line.starts_with("#version");
+        lines.emplace_back(std::move(line));
+        if (insert_defs) {
+            defs = true;
+            for (auto const& define : defines) {
+                lines.emplace_back("#define " + define + "\n");
             }
         }
-        cur += '\n';
-        curlen = cur.size();
-        curline = new char[curlen];
-        memcpy(curline, cur.c_str(), curlen);
-        lines++;
-        source.push_back(curline);
-        length.push_back(curlen);
     }
-    filein.close();
-    
-    res = glCreateShaderObjectARB(mode);
-    glShaderSourceARB(res, lines, (const GLchar**)source.data(), length.data());
-    glCompileShaderARB(res);
-    
-    for (int i = 0; i < lines; i++) delete[] source[i];
-    
-    checkErrors(res, GL_COMPILE_STATUS, "Shader compilation error! File: " + filename);
+    for (auto const& line : lines) {
+        ptr.emplace_back(line.data());
+        length.emplace_back(static_cast<GLint>(line.size()));
+    }
+    res = glCreateShader(mode);
+    glShaderSource(res, static_cast<GLsizei>(ptr.size()), ptr.data(), length.data());
+    glCompileShader(res);
+    checkCompileErrors(res, "Shader compilation error: " + filename);
     return res;
 }
 
-void Shader::checkErrors(GLhandleARB res, int status, string errorMessage) {
+void Shader::checkCompileErrors(GLuint res, string errorMessage) {
     int st = GL_TRUE;
-    glGetObjectParameterivARB(res, status, &st);
+    glGetShaderiv(res, GL_COMPILE_STATUS, &st);
     if (st == GL_FALSE) DebugWarning(errorMessage);
     int infologLength, charsWritten;
-    char* infoLog;
-    glGetObjectParameterivARB(res, GL_OBJECT_INFO_LOG_LENGTH_ARB, &infologLength);
+    glGetShaderiv(res, GL_INFO_LOG_LENGTH, &infologLength);
     if (infologLength > 1) {
-        infoLog = new char[infologLength];
-        glGetInfoLogARB(res, infologLength, &charsWritten, infoLog);
-        cout << infoLog << endl;
-        delete[] infoLog;
+        std::unique_ptr<char[]> infoLog = std::make_unique<char[]>(infologLength + 1);
+        glGetShaderInfoLog(res, infologLength + 1, &charsWritten, infoLog.get());
+        cout << infoLog.get() << endl;
+    }
+}
+
+void Shader::checkLinkingErrors(GLuint res, string errorMessage) {
+    int st = GL_TRUE;
+    glGetProgramiv(res, GL_LINK_STATUS, &st);
+    if (st == GL_FALSE) DebugWarning(errorMessage);
+    int infologLength, charsWritten;
+    glGetProgramiv(res, GL_INFO_LOG_LENGTH, &infologLength);
+    if (infologLength > 1) {
+        std::unique_ptr<char[]> infoLog = std::make_unique<char[]>(infologLength + 1);
+        glGetProgramInfoLog(res, infologLength + 1, &charsWritten, infoLog.get());
+        cout << infoLog.get() << endl;
     }
 }

@@ -24,16 +24,16 @@ namespace Particles {
 		dz = ptc.zsp;
 
 		vector<Hitbox::AABB> Hitboxes = World::getHitboxes(Hitbox::Expand(ptc.hb, dx, dy, dz));
-		int hitnum = Hitboxes.size();
-		for (int i = 0; i < hitnum; i++){
+		size_t hitnum = Hitboxes.size();
+		for (size_t i = 0; i < hitnum; i++){
 			dy = Hitbox::MaxMoveOnYclip(ptc.hb, Hitboxes[i], dy);
 		}
 		Hitbox::Move(ptc.hb, 0.0, dy, 0.0);
-		for (int i = 0; i < hitnum; i++){
+		for (size_t i = 0; i < hitnum; i++){
 			dx = Hitbox::MaxMoveOnXclip(ptc.hb, Hitboxes[i], dx);
 		}
 		Hitbox::Move(ptc.hb, dx, 0.0, 0.0);
-		for (int i = 0; i < hitnum; i++){
+		for (size_t i = 0; i < hitnum; i++){
 			dz = Hitbox::MaxMoveOnZclip(ptc.hb, Hitboxes[i], dz);
 		}
 		Hitbox::Move(ptc.hb, 0.0, 0.0, dz);

@@ -31,7 +31,8 @@ void main() {
 	vec4 texel = texture(u_diffuse, tex_coord.st);
 #endif
 	texel.rgb = pow(texel.rgb, vec3(GAMMA));
-	texel.a = 0.01;
+	if (texel.a < 0.5) discard;
+	texel.a = 1.0;
 
 	o_frag_color = vec4(color, 1.0) * texel;
 	o_normal = vec4(normal * 0.5 + vec3(0.5), 1.0);

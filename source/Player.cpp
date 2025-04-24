@@ -99,15 +99,15 @@ void Player::updatePosition() {
 	if (!CrossWall) {
 		Hitboxes.clear();
 		Hitboxes = World::getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
-		int num = Hitboxes.size();
+		size_t num = Hitboxes.size();
 		if (num > 0) {
-			for (int i = 0; i < num; i++)
+			for (size_t i = 0; i < num; i++)
 				ya = Hitbox::MaxMoveOnYclip(playerbox, Hitboxes[i], ya);
 			Hitbox::Move(playerbox, 0.0, ya, 0.0);
-			for (int i = 0; i < num; i++)
+			for (size_t i = 0; i < num; i++)
 				xa = Hitbox::MaxMoveOnXclip(playerbox, Hitboxes[i], xa);
 			Hitbox::Move(playerbox, xa, 0.0, 0.0);
-			for (int i = 0; i < num; i++)
+			for (size_t i = 0; i < num; i++)
 				za = Hitbox::MaxMoveOnZclip(playerbox, Hitboxes[i], za);
 			Hitbox::Move(playerbox, 0.0, 0.0, za);
 		}

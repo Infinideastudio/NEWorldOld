@@ -7,7 +7,7 @@ int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, BLOCKTEXTURE_UNITS;
 
 namespace Textures {
 
-    const int Indexes[UNKNOWN + 1][3] = {
+    const TextureIndex Indexes[UNKNOWN + 1][3] = {
         { NULLBLOCK,NULLBLOCK,NULLBLOCK },
         { ROCK,ROCK,ROCK },
         { GRASS_TOP,GRASS_SIDE,DIRT },
@@ -35,7 +35,7 @@ namespace Textures {
         BLOCKTEXTURE_UNITS = 8;
     }
 
-    uint8_t getTextureIndex(BlockID blockname, uint8_t side) {
+    TextureIndex getTextureIndex(BlockID blockname, uint8_t side) {
         side--;
         if (blockname > UNKNOWN || side >= 3) return NULLBLOCK;
         return Indexes[blockname][side];

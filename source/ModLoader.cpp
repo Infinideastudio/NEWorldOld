@@ -11,9 +11,10 @@ std::vector<ModInfo> Mod::ModLoader::mods;
 //查找一个文件夹下所有的子目录
 std::vector<std::string> findFolders(std::string path) {
 	std::vector<std::string> ret;
-	long hFile = 0;
+	intptr_t hFile = 0;
 	_finddata_t fileinfo;
-	if ((hFile = _findfirst((path+"*").c_str(), &fileinfo)) != -1) {
+	path += "*";
+	if ((hFile = _findfirst(path.c_str(), &fileinfo)) != -1) {
 		do {
 			if ((fileinfo.attrib &  _A_SUBDIR)) {
 				if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0) {
@@ -54,7 +55,7 @@ Mod::ModLoader::ModLoadStatus Mod::ModLoader::loadSingleMod(std::string modPath)
 	if (strcmp(info.dependence, "") != 0) { //判断并检查依赖项
 		bool foundDependence = false;
 		for (std::vector<ModInfo>::iterator iter = mods.begin(); iter != mods.end(); ++iter) {
-			if (iter->name == info.dependence) {
+			if (std::string(iter->name) == std::string(info.dependence)) {
 				foundDependence = true;
 				break;
 			}

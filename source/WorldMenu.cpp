@@ -75,7 +75,7 @@ namespace Menus {
 				gamebegin = true;
 			}
 			if (deletebtn.clicked) {
-				//É¾³ýÊÀ½çÎÄ¼þ
+				//É¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½
 				system((string("rd /s/q \"Worlds\\") + chosenWorldName + "\"").c_str());
 				deletebtn.clicked = false;
 				World::worldname = "";
@@ -93,9 +93,9 @@ namespace Menus {
 				mouseon = -1;
 				vscroll.barpos = 0;
 				chosenWorldName = "";
-				//²éÕÒËùÓÐÊÀ½ç´æµµ
+				//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½æµµ
 				Textures::TEXTURE_RGB tmb;
-				long hFile = 0;
+				intptr_t hFile = 0;
 				_finddata_t fileinfo;
 				if ((hFile = _findfirst("Worlds\\*", &fileinfo)) != -1) {
 					do {
@@ -162,7 +162,7 @@ namespace Menus {
 				else {
 					bool marginOnSides;
 					float w, h;
-					//¼ÆËã²ÄÖÊ×ø±ê£¬±£³Ö¸ß¿í±È£¨°´Å¥´óÐ¡Îª500x60£©£¬ÓÐÐ¡Ñ§ÊýÑ§»ù´¡µÄÈË×ÐÏ¸ÏëÒ»ÏëÓ¦¸ÃÄÜ¶®QAQ
+					//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ê£¬ï¿½ï¿½ï¿½Ö¸ß¿ï¿½È£ï¿½ï¿½ï¿½Å¥ï¿½ï¿½Ð¡Îª500x60ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡Ñ§ï¿½ï¿½Ñ§ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ï¿½Ò»ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½Ü¶ï¿½QAQ
 					if (texSizeX[i] * 60 / 500 < texSizeY[i]) {
 						marginOnSides = true;
 						w = 1.0f, h = texSizeX[i] * 60 / 500.0f / texSizeY[i];

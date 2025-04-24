@@ -31,6 +31,8 @@ ThreadFunc updateThreadFunc(void*);
 void updategame();
 
 void render();
+void present();
+void readback();
 // void drawCloud(double px, double pz);
 void drawBorder(int x, int y, int z);
 void drawBreaking(float level, int x, int y, int z);
@@ -169,7 +171,6 @@ main_menu:
 	GUIrenderswitch = true;
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_CULL_FACE);
-	setupNormalFog();
 
 	printf("[Console][Game]");
 	printf("Game start!\n");
@@ -183,21 +184,31 @@ main_menu:
 	updateThreadRun = true;
 	fctime = uctime = lastupdate = timer();
 
+	// 主循环，被简化成这样，惨不忍睹啊！
 	do {
-		//主循环，被简化成这样，惨不忍睹啊！
-
+		// 等待上一帧完成后渲染下一帧
 		MutexUnlock(Mutex);
+		present();
 		MutexLock(Mutex);
+		readback();
+		render();
+		fpsc++;
 
-		if (isPressed(GLFW_KEY_F7)) ToggleFullScreen();
+		// 检测帧速率
+		if (timer() - fctime >= 1.0) {
+			fps = fpsc;
+			fpsc = 0;
+			fctime = timer();
+		}
 
-		if ((timer() - uctime) >= 1.0) {
+		// 检测更新速率
+		if (timer() - uctime >= 1.0) {
 			uctime = timer();
 			ups = upsc;
 			upsc = 0;
 		}
 
-		render();
+		if (isPressed(GLFW_KEY_F7)) ToggleFullScreen();
 
 		if (glfwGetKey(MainWindow, GLFW_KEY_ESCAPE) == 1) {
 			updateThreadPaused = true;
@@ -208,7 +219,6 @@ main_menu:
 				glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 				glDepthFunc(GL_LEQUAL);
 				glEnable(GL_CULL_FACE);
-				setupNormalFog();
 				glfwGetCursorPos(MainWindow, &mx, &my);
 				mxl = mx;
 				myl = my;
@@ -239,6 +249,7 @@ main_menu:
 		}
 
 	} while (!glfwWindowShouldClose(MainWindow));
+
 	saveGame();
 	Mod::ModLoader::unloadMods();
 
@@ -294,13 +305,6 @@ ThreadFunc updateThreadFunc(void*) {
 			updategame();
 			FirstUpdateThisFrame = false;
 		}
-
-		if ((timer() - uctime) >= 1.0) {
-			uctime = timer();
-			ups = upsc;
-			upsc = 0;
-		}
-
 	}
 	MutexUnlock(Mutex);
 
@@ -486,22 +490,23 @@ void updategame() {
 	if (World::HMap.originX != (Player::cxt - viewdistance - 2) * 16 || World::HMap.originZ != (Player::czt - viewdistance - 2) * 16)
 		World::HMap.moveTo((Player::cxt - viewdistance - 2) * 16, (Player::czt - viewdistance - 2) * 16);
 
-	// 加载动画
-	for (auto const& [_, c] : World::chunks) c->updateLoadAnimOffset();
-
-	// 随机状态更新
 	for (auto const& [_, c] : World::chunks) {
-		int x, y, z, gx, gy, gz;
-		int cx = c->x();
-		int cy = c->y();
-		int cz = c->z();
-		x = int(rnd() * 16);
-		gx = x + cx * 16;
-		y = int(rnd() * 16);
-		gy = y + cy * 16;
-		z = int(rnd() * 16);
-		gz = z + cz * 16;
-		if (c->getblock(x, y, z) == Blocks::DIRT &&
+		// 加载动画
+		c->updateLoadAnimOffset();
+
+		// 随机状态更新
+		if (rnd() < 1.0 / 8.0) {
+			int x, y, z, gx, gy, gz;
+			int cx = c->x();
+			int cy = c->y();
+			int cz = c->z();
+			x = int(rnd() * 16);
+			gx = x + cx * 16;
+			y = int(rnd() * 16);
+			gy = y + cy * 16;
+			z = int(rnd() * 16);
+			gz = z + cz * 16;
+			if (c->getblock(x, y, z) == Blocks::DIRT &&
 				World::getblock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR && (
 					World::getblock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
 					World::getblock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
@@ -515,14 +520,15 @@ void updategame() {
 					World::getblock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
 					World::getblock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
 					World::getblock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)) {
-			// 长草
-			c->setblock(x, y, z, Blocks::GRASS);
-			World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
-		}
-		if (c->getblock(x, y, z) == Blocks::GRASS && World::getblock(gx, gy + 1, gz, Blocks::AIR) != Blocks::AIR) {
-			// 草被覆盖
-			c->setblock(x, y, z, Blocks::DIRT);
-			World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
+				// 长草
+				c->setblock(x, y, z, Blocks::GRASS);
+				World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
+			}
+			if (c->getblock(x, y, z) == Blocks::GRASS && World::getblock(gx, gy + 1, gz, Blocks::AIR) != Blocks::AIR) {
+				// 草被覆盖
+				c->setblock(x, y, z, Blocks::DIRT);
+				World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
+			}
 		}
 	}
 
@@ -753,7 +759,10 @@ void updategame() {
 				Player::changeGameMode(Player::gamemode == Player::Creative ?
 									   Player::Survival : Player::Creative);
 			}
-			if (isPressed(GLFW_KEY_F2)) shouldGetScreenshot = true;
+			if (isPressed(GLFW_KEY_F2)) {
+				shouldGetScreenshot = true;
+				screenshotAnimTimer = timer();
+			}
 			if (isPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
 			if (isPressed(GLFW_KEY_H) && glfwGetKey(MainWindow, GLFW_KEY_F3) == GLFW_PRESS) {
 				DebugHitbox = !DebugHitbox;
@@ -898,6 +907,7 @@ void render() {
 	double curtime = timer();
 	double TimeDelta;
 	double xpos, ypos, zpos;
+
 	// int TexcoordCount = MergeFace ? 3 : 2;
 	/*
 	static vector<GLint> multiDrawArrays[3];
@@ -948,12 +958,6 @@ void render() {
 	ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + interp * Player::yd;
 	zpos = Player::zpos - Player::zd + interp * Player::zd;
 
-	// Calculate sun position
-	float interpolatedTime = gametime - 1.0f + static_cast<float>(interp);
-	// daylight = clamp((1.0 - cos((double)gametime / gameTimeMax * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
-	// Renderer::sunlightXrot = 90 * daylight;
-	Renderer::sunlightYrot = interpolatedTime / gameTimeMax * 360.0f;
-
 	if (!bagOpened) {
 		// 转头！你治好了我多年的颈椎病！
 		if (mx != mxl) Player::xlookspeed -= (mx - mxl) * mousemove;
@@ -967,17 +971,16 @@ void render() {
 		if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
 	}
 
-	// Unload chunks
-	World::sortChunkUnloadList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
-	for (auto unload : World::chunkUnloadList) {
-		int cx = std::get<1>(unload);
-		int cy = std::get<2>(unload);
-		int cz = std::get<3>(unload);
-		World::DeleteChunk(cx, cy, cz);
-	}
+	// Calculate sun position
+	float interpolatedTime = gametime - 1.0f + static_cast<float>(interp);
+	// daylight = clamp((1.0 - cos((double)gametime / gameTimeMax * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
+	// Renderer::sunlightXrot = 90 * daylight;
+	Renderer::sunlightYrot = interpolatedTime / gameTimeMax * 360.0f;
+
+	// Find chunks for unloading & loading & meshing
+	World::sortChunkUpdateLists(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
 
 	// Load chunks
-	World::sortChunkLoadList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
 	for (auto load : World::chunkLoadList) {
 		int cx = std::get<1>(load);
 		int cy = std::get<2>(load);
@@ -989,10 +992,17 @@ void render() {
 		}
 	}
 
+	// Unload chunks
+	for (auto unload : World::chunkUnloadList) {
+		int cx = std::get<1>(unload);
+		int cy = std::get<2>(unload);
+		int cz = std::get<3>(unload);
+		World::DeleteChunk(cx, cy, cz);
+	}
+
 	// Mesh updated chunks
-	World::sortChunkMeshingList(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
-	for (auto build : World::chunkMeshingList) {
-		build.second->buildMeshes();
+	for (auto meshing : World::chunkMeshingList) {
+		meshing.second->buildMeshes();
 	}
 
 	double plookupdown = Player::lookupdown + Player::ylookspeed;
@@ -1016,77 +1026,37 @@ void render() {
 	if (MergeFace) glEnable(GL_TEXTURE_3D);
 	if (DebugMergeFace) glPolygonMode(GL_FRONT, GL_LINE);
 
-	glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
 	glBindTexture(GL_TEXTURE_2D, BlockTextures);
+	glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
 
 	if (Renderer::AdvancedRender) {
+		int shadowdist = min(Renderer::MaxShadowDist, viewdistance);
+		FrustumTest lightFrustum = Renderer::getShadowMapFrustum(pheading, plookupdown, shadowdist, Player::ViewFrustum);
+
 		// Clear shadow buffer, G-buffers and D-buffer
 		Renderer::ClearSGDBuffers();
 
 		// Build shadow map
-		int shadowdist = min(Renderer::MaxShadowDist, viewdistance);
-		FrustumTest frus = Renderer::getShadowMapFrustum(pheading, plookupdown, shadowdist, Player::ViewFrustum);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glMultMatrixf(frus.getProjMatrix());
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glMultMatrixf(frus.getModlMatrix());
-
-		glEnableClientState(GL_VERTEX_ARRAY);
-		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
 		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, shadowdist + 2, curtime, {});
-		Renderer::StartShadowPass();
+		Renderer::StartShadowPass(lightFrustum, interpolatedTime);
 		WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
 		Particles::renderall(xpos, ypos, zpos);
 		Renderer::EndShadowPass();
-
-		glDisableClientState(GL_VERTEX_ARRAY);
-		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	}
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glMultMatrixf(Player::ViewFrustum.getProjMatrix());
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glRotated(plookupdown, 1, 0, 0);
-	glRotated(360.0 - pheading, 0, 1, 0);
-
-	glEnableClientState(GL_COLOR_ARRAY);
-	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-	glEnableClientState(GL_VERTEX_ARRAY);
-
 	WorldRenderer::ListRenderChunks(xpos, ypos, zpos, viewdistance, curtime, Player::ViewFrustum);
-
-	glDisable(GL_BLEND);
-	if (Renderer::AdvancedRender) Renderer::StartBasePass(interpolatedTime);
+	Renderer::StartOpqauePass(Player::ViewFrustum, interpolatedTime);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
-	if (Renderer::AdvancedRender) Renderer::EndBasePass();
-	glEnable(GL_BLEND);
+	Renderer::EndOpaquePass();
 
-	glDisable(GL_CULL_FACE);
-	if (Renderer::AdvancedRender) Renderer::StartTranslucentPass(interpolatedTime);
+	Renderer::StartTranslucentPass(Player::ViewFrustum, interpolatedTime);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
-	if (Renderer::AdvancedRender) Renderer::EndTranslucentPass();
-	glEnable(GL_CULL_FACE);
-
-	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-	glDisableClientState(GL_COLOR_ARRAY);
-	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-	glDisableClientState(GL_VERTEX_ARRAY);
+	Renderer::EndTranslucentPass();
 
 	if (MergeFace) glDisable(GL_TEXTURE_3D);
 	if (DebugMergeFace) glPolygonMode(GL_FRONT, GL_FILL);
 
 	if (Renderer::AdvancedRender) {
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-
 		Renderer::StartFinalPass(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, interpolatedTime);
 		Renderer::DrawFullscreen();
 		Renderer::EndFinalPass();
@@ -1097,18 +1067,17 @@ void render() {
 	glMultMatrixf(Player::ViewFrustum.getProjMatrix());
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	glRotated(plookupdown, 1, 0, 0);
-	glRotated(360.0 - pheading, 0, 1, 0);
+	glMultMatrixf(Player::ViewFrustum.getModlMatrix());
 
 	if (seldes > 0.0) {
 		glTranslated(selx - xpos, sely - ypos, selz - zpos);
 		drawBreaking(seldes, 0, 0, 0);
 		glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
 	}
+
 	glBindTexture(GL_TEXTURE_2D, BlockTextures);
 	Particles::renderall(xpos, ypos, zpos);
 
-	glDisable(GL_TEXTURE_2D);
 	if (GUIrenderswitch && sel) {
 		glTranslated(selx - xpos, sely - ypos, selz - zpos);
 		drawBorder(0, 0, 0);
@@ -1123,6 +1092,7 @@ void render() {
 	if (DebugHitbox) {
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_TEXTURE_2D);
+
 		for (unsigned int i = 0; i < Player::Hitboxes.size(); i++)
 			Hitbox::renderAABB(Player::Hitboxes[i], GUI::FgR, GUI::FgG, GUI::FgB, 3, 0.002);
 
@@ -1133,10 +1103,10 @@ void render() {
 
 		Hitbox::renderAABB(Player::playerbox, 1.0f, 1.0f, 1.0f, 1);
 		Hitbox::renderAABB(Hitbox::Expand(Player::playerbox, Player::xd, Player::yd, Player::zd), 1.0f, 1.0f, 1.0f, 1);
-	}
 
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_TEXTURE_2D);
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_TEXTURE_2D);
+	}
 
 	//Time_renderscene = timer() - Time_renderscene;
 	//Time_renderGUI_ = timer();
@@ -1184,9 +1154,19 @@ void render() {
 	}
 	glEnable(GL_TEXTURE_2D);
 
+	lastframe = curtime;
+	// Time_screensync = timer() - Time_screensync;
+}
+
+void present() {
+	// 屏幕刷新，千万别删，后果自负！！！
+	glfwSwapBuffers(MainWindow);
+	glfwPollEvents();
+}
+
+void readback() {
 	if (shouldGetScreenshot) {
 		shouldGetScreenshot = false;
-		screenshotAnimTimer = curtime;
 		time_t t = time(0);
 		char tmp[64];
 		tm* timeinfo;
@@ -1202,29 +1182,11 @@ void render() {
 		ss << "Screenshots/" << tmp << ".bmp";
 		saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
 	}
+
 	if (shouldGetThumbnail) {
 		shouldGetThumbnail = false;
 		createThumbnail();
 	}
-
-	// 屏幕刷新，千万别删，后果自负！！！
-	//==== refresh ====//
-	MutexUnlock(Mutex);
-	glfwSwapBuffers(MainWindow);
-	glfwPollEvents();
-	MutexLock(Mutex);
-	//== refresh end ==//
-
-	// 检测帧速率
-	if (timer() - fctime >= 1.0) {
-		fps = fpsc;
-		fpsc = 0;
-		fctime = timer();
-	}
-	fpsc++;
-
-	lastframe = curtime;
-	// Time_screensync = timer() - Time_screensync;
 }
 
 /*
@@ -1475,7 +1437,7 @@ void drawGUI() {
 	}
 
 	glBegin(GL_QUADS);
-	glColor4f(0.0, 0.0, 0.0, 0.9);
+	glColor4f(0.0f, 0.0f, 0.0f, 0.9f);
 	glVertex2i(windowwidth / 2 - 16, windowheight / 2 - 2);
 	glVertex2i(windowwidth / 2 - 16, windowheight / 2 + 2);
 	glVertex2i(windowwidth / 2 + 16, windowheight / 2 + 2);
@@ -1487,7 +1449,7 @@ void drawGUI() {
 	glEnd();
 
 	glBegin(GL_QUADS);
-	glColor4f(1.0, 1.0, 1.0, 0.9);
+	glColor4f(1.0f, 1.0f, 1.0f, 0.9f);
 	glVertex2i(windowwidth / 2 - 15, windowheight / 2 - 1);
 	glVertex2i(windowwidth / 2 - 15, windowheight / 2 + 1);
 	glVertex2i(windowwidth / 2 + 15, windowheight / 2 + 1);
@@ -1555,10 +1517,10 @@ void drawGUI() {
 		TextRenderer::renderString(0, windowheight - 50, chatword);
 	}
 	int posy = 0;
-	int size = chatMessages.size();
+	size_t size = chatMessages.size();
 	if (size != 0) {
-		for (int i = size - 1; i >= (size - 10 > 0 ? size - 10 : 0); --i)
-			TextRenderer::renderString(0, windowheight - 80 - 18 * posy++, chatMessages[i]);
+		for (size_t i = size; i > (size > 10 ? size - 10 : 0); --i)
+			TextRenderer::renderString(0, windowheight - 80 - 18 * posy++, chatMessages[i - 1]);
 	}
 
 	//if (DebugShadow) ShadowMaps::DrawShadowMap(windowwidth / 2, windowheight / 2, windowwidth, windowheight);
@@ -1891,32 +1853,22 @@ void drawBag() {
 }
 
 void drawShadowMap() {
-	int xi = windowwidth - windowheight / 2;
-	int yi = 0;
-	int xa = windowwidth;
-	int ya = windowheight / 2;
-
-	glDisable(GL_TEXTURE_2D);
-	glBegin(GL_QUADS);
-	glColor4f(0.2f, 0.2f, 0.2f, 0.5f);
-	glVertex2i(xi, ya);
-	glVertex2i(xa, ya);
-	glVertex2i(xa, yi);
-	glVertex2i(xi, yi);
-	glEnd();
+	float xi = 1.0f - static_cast<float>(windowheight) / windowwidth;
+	float yi = 1.0f;
+	float xa = 1.0f;
+	float ya = 0.0f;
 
 	glEnable(GL_TEXTURE_2D);
 	Renderer::shadow.bindDepthTexture(0);
-	Renderer::shaders[Renderer::ShowDepthShader].bind();
-	Renderer::shaders[Renderer::ShowDepthShader].setUniform("Tex", 0);
+	Renderer::shaders[Renderer::DebugShadowShader].bind();
+	Renderer::shaders[Renderer::DebugShadowShader].setUniform("ShadowTexture", 0);
 
-	glBegin(GL_QUADS);
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glTexCoord2f(0.0f, 0.0f); glVertex2i(xi, ya);
-	glTexCoord2f(1.0f, 0.0f); glVertex2i(xa, ya);
-	glTexCoord2f(1.0f, 1.0f); glVertex2i(xa, yi);
-	glTexCoord2f(0.0f, 1.0f); glVertex2i(xi, yi);
-	glEnd();
+	Renderer::Begin(2, 0, 0, 0);
+	Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(xi, ya, 0.0f);
+	Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(xa, ya, 0.0f);
+	Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(xa, yi, 0.0f);
+	Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(xi, yi, 0.0f);
+	Renderer::End().render();
 
 	Shader::unbind();
 }

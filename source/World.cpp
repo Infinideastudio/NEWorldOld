@@ -7,15 +7,14 @@
 namespace World {
 
 string worldname;
-Brightness skylight = 15;         // Sky light level
-Brightness BRIGHTNESSMAX = 15;    // Maximum brightness
-Brightness BRIGHTNESSMIN = 2;     // Mimimum brightness
-Brightness BRIGHTNESSDEC = 1;     // Brightness decrease
+Brightness skylight = 15;
+Brightness BRIGHTNESSMAX = 15;
+Brightness BRIGHTNESSMIN = 2;
+Brightness BRIGHTNESSDEC = 1;
 Chunk* EmptyChunkPtr;
-unsigned int EmptyBuffer;
 size_t MaxChunkLoads = 64;
 size_t MaxChunkUnloads = 64;
-size_t MaxChunkMeshings = 32;
+size_t MaxChunkMeshings = 16;
 
 std::unordered_map<ChunkID, std::unique_ptr<Chunk>> chunks;
 Chunk* cpCachePtr = nullptr;
@@ -42,8 +41,7 @@ void Init() {
 	ss << "Worlds/" << worldname << "/chunks";
 	_mkdir(ss.str().c_str());
 
-	//EmptyChunkPtr = new chunk(0, 0, 0, getChunkID(0, 0, 0));
-	//EmptyChunkPtr->Empty = true;
+	// Create pointer for indicating empty chunks
 	EmptyChunkPtr = (Chunk*)~0;
 
 	WorldGen::perlinNoiseInit(3404);
@@ -341,25 +339,32 @@ void markChunkNeighborUpdated(int x, int y, int z) {
 	i->markNeighborUpdated();
 }
 
-void sortChunkLoadList(int xpos, int ypos, int zpos) {
+void sortChunkUpdateLists(int xpos, int ypos, int zpos) {
 	int cxp = getchunkpos(xpos);
 	int cyp = getchunkpos(ypos);
 	int czp = getchunkpos(zpos);
 
-	using Elem = std::tuple<double, int, int, int>;
-	std::priority_queue<Elem, std::vector<Elem>, std::less<Elem>> pq;
+	using LoadElem = std::tuple<double, int, int, int>;
+	using UnloadElem = std::tuple<double, int, int, int>;
+	using MeshingElem = std::pair<double, Chunk*>;
+
+	std::priority_queue<LoadElem, std::vector<LoadElem>, std::less<LoadElem>> loads;
+	std::priority_queue<UnloadElem, std::vector<UnloadElem>, std::greater<UnloadElem>> unloads;
+	std::priority_queue<MeshingElem, std::vector<MeshingElem>, std::less<MeshingElem>> meshings;
 
 	// Update loaded core center
-	int xd = std::abs(cxp - loadedCore.cx);
-	int yd = std::abs(cyp - loadedCore.cy);
-	int zd = std::abs(czp - loadedCore.cz);
-	size_t dist = static_cast<size_t>(max(max(xd, yd), zd));
+	if (loadedCore.radius > 0) {
+		int xd = std::abs(cxp - loadedCore.cx);
+		int yd = std::abs(cyp - loadedCore.cy);
+		int zd = std::abs(czp - loadedCore.cz);
+		size_t dist = static_cast<size_t>(max(max(xd, yd), zd));
+		loadedCore.radius -= min(loadedCore.radius, dist);
+	}
 	loadedCore.cx = cxp;
 	loadedCore.cy = cyp;
 	loadedCore.cz = czp;
-	loadedCore.radius -= min(loadedCore.radius, dist);
 
-	// Enumerate in cubical shells of increasing radii
+	// Sort chunk load list by enumerating in cubical shells of increasing radii
 	for (int radius = int(loadedCore.radius) + 1; radius <= viewdistance + 1; radius++) {
 		// Enumerate cubical shell with side length (dist * 2)
 		for (int cx = cxp - radius; cx < cxp + radius; cx++) {
@@ -376,33 +381,19 @@ void sortChunkLoadList(int xpos, int ypos, int zpos) {
 						double yd = cy * 16 + 7 - ypos;
 						double zd = cz * 16 + 7 - zpos;
 						double distSqr = xd * xd + yd * yd + zd * zd;
-						pq.emplace(distSqr, cx, cy, cz);
-						if (pq.size() > MaxChunkLoads) pq.pop();
+						loads.emplace(distSqr, cx, cy, cz);
+						if (loads.size() > MaxChunkLoads) loads.pop();
 					}
 				}
 			}
 		}
 		// Update loaded core radius for the known part
-		if (pq.empty()) loadedCore.radius = radius;
+		if (loads.empty()) loadedCore.radius = radius;
 		// Break if already complete
-		if (pq.size() == MaxChunkLoads) break;
+		if (loads.size() == MaxChunkLoads) break;
 	}
 
-	chunkLoadList.clear();
-	while (!pq.empty()) {
-		chunkLoadList.emplace_back(pq.top());
-		pq.pop();
-	}
-}
-
-void sortChunkUnloadList(int xpos, int ypos, int zpos) {
-	int cxp = getchunkpos(xpos);
-	int cyp = getchunkpos(ypos);
-	int czp = getchunkpos(zpos);
-
-	using Elem = std::tuple<double, int, int, int>;
-	std::priority_queue<Elem, std::vector<Elem>, std::greater<Elem>> pq;
-
+	// Sort chunk unload and meshing lists simultaneously
 	for (auto const& [_, c] : chunks) {
 		int cx = c->x();
 		int cy = c->y();
@@ -412,45 +403,34 @@ void sortChunkUnloadList(int xpos, int ypos, int zpos) {
 			double yd = cy * 16 + 7 - ypos;
 			double zd = cz * 16 + 7 - zpos;
 			double distSqr = xd * xd + yd * yd + zd * zd;
-			pq.emplace(distSqr, cx, cy, cz);
-			if (pq.size() > MaxChunkUnloads) pq.pop();
+			unloads.emplace(distSqr, cx, cy, cz);
+			if (unloads.size() > MaxChunkUnloads) unloads.pop();
 		}
-	}
-
-	chunkUnloadList.clear();
-	while (!pq.empty()) {
-		chunkUnloadList.emplace_back(pq.top());
-		pq.pop();
-	}
-}
-
-void sortChunkMeshingList(int xpos, int ypos, int zpos) {
-	int cxp = getchunkpos(xpos);
-	int cyp = getchunkpos(ypos);
-	int czp = getchunkpos(zpos);
-
-	using Elem = std::pair<double, Chunk*>;
-	std::priority_queue<Elem, std::vector<Elem>, std::less<Elem>> pq;
-
-	for (auto const& [_, c] : chunks) {
-		if (c->updated()) {
-			int cx = c->x();
-			int cy = c->y();
-			int cz = c->z();
-			if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance)) continue;
+		else if (chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance) && c->updated()) {
 			double xd = cx * 16 + 7 - xpos;
 			double yd = cy * 16 + 7 - ypos;
 			double zd = cz * 16 + 7 - zpos;
 			double distSqr = xd * xd + yd * yd + zd * zd;
-			pq.emplace(distSqr, c.get());
-			if (pq.size() > MaxChunkMeshings) pq.pop();
+			meshings.emplace(distSqr, c.get());
+			if (meshings.size() > MaxChunkMeshings) meshings.pop();
 		}
 	}
 
+	chunkLoadList.clear();
+	chunkUnloadList.clear();
 	chunkMeshingList.clear();
-	while (!pq.empty()) {
-		chunkMeshingList.emplace_back(pq.top());
-		pq.pop();
+
+	while (!loads.empty()) {
+		chunkLoadList.emplace_back(loads.top());
+		loads.pop();
+	}
+	while (!unloads.empty()) {
+		chunkUnloadList.emplace_back(unloads.top());
+		unloads.pop();
+	}
+	while (!meshings.empty()) {
+		chunkMeshingList.emplace_back(meshings.top());
+		meshings.pop();
 	}
 }
 

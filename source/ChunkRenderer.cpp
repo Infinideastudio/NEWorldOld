@@ -98,7 +98,7 @@ namespace ChunkRenderer {
 				Renderer::Attrib1f((float)bl);
 			}
 			else {
-				col1 *= 0.7, col2 *= 0.7, col3 *= 0.7, col4 *= 0.7;
+				col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
 			}
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(tcx + size, tcy); Renderer::Vertex3f(0.5f + x, -0.5f + y, -0.5f + z);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(tcx + size, tcy + size); Renderer::Vertex3f(0.5f + x, 0.5f + y, -0.5f + z);
@@ -131,7 +131,7 @@ namespace ChunkRenderer {
 				Renderer::Attrib1f((float)bl);
 			}
 			else {
-				col1 *= 0.7, col2 *= 0.7, col3 *= 0.7, col4 *= 0.7;
+				col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
 			}
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(-0.5f + x, -0.5f + y, -0.5f + z);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(tcx + size, tcy); Renderer::Vertex3f(-0.5f + x, -0.5f + y, 0.5f + z);
@@ -422,29 +422,29 @@ namespace ChunkRenderer {
 #endif // NERDMODE1
 	}
 
-	std::vector<std::pair<VBOID, GLuint>> RenderChunk(World::Chunk const& c) {
-		std::vector<std::pair<VBOID, GLuint>> res(2);
+	std::vector<Renderer::VertexBuffer> RenderChunk(World::Chunk const& c) {
+		std::vector<Renderer::VertexBuffer> res;
 		ChunkRenderData rd(c);
 
 		for (int steps = 0; steps < 2; steps++) {
-			if (Renderer::AdvancedRender) Renderer::Init(2, 3, 3, 1); else Renderer::Init(2, 3);
+			if (Renderer::AdvancedRender) Renderer::Begin(2, 3, 3, 1); else Renderer::Begin(2, 3);
 			for (int x = 0; x < 16; x++) for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) {
 				const Blocks::SingleBlock& info = BlockInfo(rd.getblock(x, y, z));
 				if (steps == 0 && !info.isTranslucent() || steps == 1 && info.isTranslucent()) {
 					RenderBlock(x, y, z, rd);
 				}
 			}
-			Renderer::Flush(res[steps].first, res[steps].second);
+			res.emplace_back(Renderer::End());
 		}
 		return res;
 	}
 
-	std::vector<std::pair<VBOID, GLuint>> MergeFaceRenderChunk(World::Chunk const& c) {
-		std::vector<std::pair<VBOID, GLuint>> res(2);
+	std::vector<Renderer::VertexBuffer> MergeFaceRenderChunk(World::Chunk const& c) {
+		std::vector<Renderer::VertexBuffer> res;
 		ChunkRenderData rd(c);
 
 		for (int steps = 0; steps < 2; steps++) {
-			if (Renderer::AdvancedRender) Renderer::Init(3, 3, 3, 1); else Renderer::Init(3, 3);
+			if (Renderer::AdvancedRender) Renderer::Begin(3, 3, 3, 1); else Renderer::Begin(3, 3);
 			for (int d = 0; d < 6; d++) {
 				uint8_t face = 0;
 				if (d == 2) face = 1;
@@ -527,7 +527,7 @@ namespace ChunkRenderer {
 						}
 						// Get block ID
 						BlockID bl = rd.getblock(x, y, z);
-						uint8_t tex = Textures::getTextureIndex(bl, face);
+						TextureIndex tex = Textures::getTextureIndex(bl, face);
 						BlockID neighbour = rd.getblock(x + delta[d][0], y + delta[d][1], z + delta[d][2]);
 						if (NiceGrass && bl == Blocks::GRASS) {
 							if (d == 0 && rd.getblock(x + 1, y - 1, z) == Blocks::GRASS) tex = Textures::getTextureIndex(bl, 1);
@@ -570,7 +570,7 @@ namespace ChunkRenderer {
 					}
 				}
 			}
-			Renderer::Flush(res[steps].first, res[steps].second);
+			res.emplace_back(Renderer::End());
 		}
 		return res;
 	}

@@ -310,10 +310,10 @@ namespace Netycat {
             for(uintptr_t i = 0; i < len; i++) {
                 
                 uint32_t d = dat[i];
-                uint8_t b1 = (d & 0x000000FF);
-                uint8_t b2 = (d & 0x0000FF00) >> 8;
-                uint8_t b3 = (d & 0x00FF0000) >> 16;
-                uint8_t b4 = (d & 0xFF000000) >> 24;
+                uint8_t b1 = static_cast<uint8_t>((d & 0x000000FF));
+                uint8_t b2 = static_cast<uint8_t>((d & 0x0000FF00) >> 8);
+                uint8_t b3 = static_cast<uint8_t>((d & 0x00FF0000) >> 16);
+                uint8_t b4 = static_cast<uint8_t>((d & 0xFF000000) >> 24);
                 
                 data[writepos] = b1;
                 writepos++;

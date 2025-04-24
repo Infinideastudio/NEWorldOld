@@ -191,8 +191,9 @@ namespace NNN {
 		}
 		
 		virtual void print(std::ostream& out) const {
-			for (Vector::const_iterator iter = data.begin(); iter != data.end(); ++iter)
+			for (auto iter = data.begin(); iter != data.end(); ++iter) {
 				out << *iter << " ";
+			}
 		}
 
 		inline virtual NodeType getType() { return type; }
@@ -201,8 +202,8 @@ namespace NNN {
 		inline const Vector& getArray() const { return data; }
 		void setArray(Vector data_) { data = data_; };
 
-		inline ArrayType& get(size_t index_) { return data[index_] }
-		inline const ArrayType& get(size_t index_) const { return data[index_] }
+		inline ArrayType& get(size_t index_) { return data[index_]; }
+		inline const ArrayType& get(size_t index_) const { return data[index_]; }
 		inline void set(size_t index_, ArrayType data_) { data[index_] = data_; }
 		inline void add(ArrayType data_) { data.push_back(data_); }
 		inline void remove(size_t index_) { data.erase(index_); }
@@ -221,19 +222,19 @@ namespace NNN {
 		}
 
 	public:
-		NodePackage::NodePackage() { type = NNN::getType(this); }
-		NodePackage::NodePackage(const NodeMap& data_) { data = data_; type = NNN::getType(this); }
-		NodePackage::NodePackage(const NodePackage& src) {
+		NodePackage() { type = NNN::getType(this); }
+		NodePackage(const NodeMap& data_) { data = data_; type = NNN::getType(this); }
+		NodePackage(const NodePackage& src) {
 			data = src.data;
 			for (NodeMap::iterator it = data.begin(); it != data.end(); ++it) {
 				if (it->second != nullptr) it->second = it->second->clone();
 			}
 		}
-		virtual NodePackage::~NodePackage() {
+		virtual ~NodePackage() {
 			cleanMap(data);
 		}
 
-		inline virtual Node* NodePackage::clone() { return new NodePackage(*this); }
+		inline virtual Node* clone() { return new NodePackage(*this); }
 
 		bool read(std::istream& in, Information& info);
 		bool write(std::ostream& out, Information& info);

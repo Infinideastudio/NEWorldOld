@@ -7,8 +7,8 @@ public:
 	Shader(string vshPath, string fshPath, bool bindLocation = false) :Shader(vshPath, fshPath, bindLocation, std::set<string>()) {}
 	Shader(string vshPath, string fshPath, bool bindLocation, std::set<string> defines);
 
-	inline void bind() { glUseProgramObjectARB(shaderProgram); }
-	static inline void unbind() { glUseProgramObjectARB(0); }
+	inline void bind() { glUseProgram(shaderProgram); }
+	static inline void unbind() { glUseProgram(0); }
 	void release();
 
 	bool setUniform(const char* uniform, float value);
@@ -19,10 +19,11 @@ public:
 	bool setUniformI(const char* uniform, int v0, int v1, int v2);
 
 private:
-	GLhandleARB loadShader(string filename, unsigned int mode, std::set<string> defines);
-	void checkErrors(GLhandleARB res, int status, string errorMessage);
+	static GLuint loadShader(string filename, unsigned int mode, std::set<string> defines);
+	static void checkCompileErrors(GLuint res, string errorMessage);
+	static void checkLinkingErrors(GLuint res, string errorMessage);
 
-	GLhandleARB shaderFragment;
-	GLhandleARB shaderVertex;
-	GLhandleARB shaderProgram;
+	GLuint shaderFragment;
+	GLuint shaderVertex;
+	GLuint shaderProgram;
 };
