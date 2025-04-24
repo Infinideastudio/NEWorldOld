@@ -10,8 +10,6 @@ void ToggleFullScreen();
 
 void setupScreen();
 
-void setupNormalFog();
-
 void loadTextures();
 
 void WindowSizeFunc(GLFWwindow* win, int width, int height);

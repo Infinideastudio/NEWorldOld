@@ -3,6 +3,7 @@
 #include "Hitbox.h"
 #include "Blocks.h"
 #include "FrustumTest.h"
+#include "Renderer.h"
 
 class Object;
 
@@ -31,7 +32,7 @@ private:
 	bool isDetailGenerated = false;
 	bool isMeshed = false;
 
-	std::vector<std::pair<VBOID, GLuint>> meshes;
+	std::vector<Renderer::VertexBuffer> meshes;
 	float loadAnim = 0.0f;
 
 	static double relBaseX, relBaseY, relBaseZ;
@@ -75,7 +76,7 @@ public:
 		else loadAnim *= 0.6f;
 	}
 
-	std::pair<VBOID, GLuint> mesh(size_t index) const {
+	Renderer::VertexBuffer const& mesh(size_t index) const {
 		assert(index < meshes.size());
 		return meshes[index];
 	}

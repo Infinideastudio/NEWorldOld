@@ -22,27 +22,24 @@ namespace WorldRenderer {
 
     void RenderChunks(double x, double y, double z, int index) {
         assert(index >= 0 && index < 2);
-        int TexcoordCount = MergeFace ? 3 : 2, ColorCount = 3;
         float m[16];
         memset(m, 0, sizeof(m));
         m[0] = m[5] = m[10] = m[15] = 1.0f;
 
         for (unsigned int i = 0; i < RenderChunkList.size(); i++) {
             RenderChunk const& cr = RenderChunkList[i];
-            auto mesh = cr.meshes[index];
-            if (mesh.first == 0 || mesh.second == 0) continue;
-            glPushMatrix();
-            glTranslated(cr.cx * 16.0 - x, cr.cy * 16.0 - cr.loadAnim - y, cr.cz * 16.0 - z);
-            if (Renderer::AdvancedRender) {
-                m[12] = cr.cx * 16.0f - (float)x;
-                m[13] = cr.cy * 16.0f - (float)cr.loadAnim - (float)y;
-                m[14] = cr.cz * 16.0f - (float)z;
-                Renderer::shaders[Renderer::ActiveShader].setUniform("Translation", m);
-                Renderer::renderbuffer(mesh.first, mesh.second, TexcoordCount, ColorCount, 3, 1);
-            } else Renderer::renderbuffer(mesh.first, mesh.second, TexcoordCount, ColorCount);
-            glPopMatrix();
-        }
+            auto const& mesh = *cr.meshes[index];
+            if (mesh.empty()) continue;
+            
+            double xd = cr.cx * 16.0 - x;
+            double yd = cr.cy * 16.0 - cr.loadAnim - y;
+            double zd = cr.cz * 16.0 - z;
 
-        glFlush();
+            m[12] = float(xd);
+            m[13] = float(yd);
+            m[14] = float(zd);
+            Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", m);
+            mesh.render();
+        }
     }
 }

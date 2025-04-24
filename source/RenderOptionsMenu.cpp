@@ -35,7 +35,7 @@ namespace Menus {
 				else glfwSwapInterval(0);
 			}
 			if (backbtn.clicked) {
-				if (Renderer::AdvancedRender) Renderer::initShaders();
+				Renderer::initShaders();
 				ExitSignal = true;
 			}
 			std::stringstream ss; ss << Multisample;

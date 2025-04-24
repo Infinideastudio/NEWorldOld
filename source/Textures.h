@@ -35,14 +35,14 @@ namespace Textures{
 	};
 #pragma pack(pop)
 
-	enum BlockTextureID {
+	enum TextureIndices: TextureIndex {
 		ROCK, GRASS_TOP, GRASS_SIDE, DIRT, STONE, PLANK, WOOD_TOP, WOOD_SIDE, BEDROCK, LEAF,
 		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON, TNT, UNKNOWN
 	};
 	const int NULLBLOCK = 63;
 
 	void Init();
-	uint8_t getTextureIndex(BlockID blockname, uint8_t side);
+	TextureIndex getTextureIndex(BlockID blockname, uint8_t side);
 	float getTexcoordX(ItemID item, uint8_t side);
 	float getTexcoordY(ItemID item, uint8_t side);
 	void LoadRGBImage(TEXTURE_RGB& tex, string Filename);

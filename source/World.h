@@ -19,12 +19,11 @@ struct LoadedCore {
 extern string worldname;
 const int worldsize = 134217728;
 const int worldheight = 128;
-extern Brightness skylight;         //Sky light level
-extern Brightness BRIGHTNESSMAX;    //Maximum brightness
-extern Brightness BRIGHTNESSMIN;    //Mimimum brightness
-extern Brightness BRIGHTNESSDEC;    //Brightness decree
+extern Brightness skylight;         // Sky light level
+extern Brightness BRIGHTNESSMAX;    // Maximum brightness
+extern Brightness BRIGHTNESSMIN;    // Minimum brightness
+extern Brightness BRIGHTNESSDEC;    // Brightness decrease
 extern Chunk* EmptyChunkPtr;
-extern unsigned int EmptyBuffer;
 extern size_t MaxChunkLoads;
 extern size_t MaxChunkUnloads;
 extern size_t MaxChunkMeshings;
@@ -86,9 +85,7 @@ inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) 
 }
 bool chunkUpdated(int x, int y, int z);
 void markChunkNeighborUpdated(int x, int y, int z);
-void sortChunkLoadList(int xpos, int ypos, int zpos);
-void sortChunkUnloadList(int xpos, int ypos, int zpos);
-void sortChunkMeshingList(int xpos, int ypos, int zpos);
+void sortChunkUpdateLists(int xpos, int ypos, int zpos);
 
 void saveAllChunks();
 void destroyAllChunks();

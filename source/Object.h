@@ -1,9 +1,10 @@
 #pragma once
 #include "Definitions.h"
+#include "Renderer.h"
 
 class Object {
 public:
-	Object(double x, double y, double z) :_x(x), _y(y), _z(z), VBO(0), vtxs(0) {};
+	Object(double x, double y, double z, Renderer::VertexBuffer&& vbo) : _x(x), _y(y), _z(z), vbo(std::move(vbo)) {};
 	virtual ~Object() {};
 	virtual void render() const = 0;
 	const double getXPos() const { return _x; }
@@ -12,7 +13,6 @@ public:
 
 protected:
 	int _id;
-	double _x, _y, _z;  //λ��
-	GLuint vtxs;
-	VBOID VBO;
+	double _x, _y, _z;
+	Renderer::VertexBuffer vbo;
 };

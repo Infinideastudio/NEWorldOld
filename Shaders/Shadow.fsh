@@ -1,22 +1,21 @@
-#version 110
+#version 330 core
 
-##NEWORLD_SHADER_DEFINES MergeFace MERGE_FACE
+in vec3 coord;
+in vec3 tex_coord;
 
-uniform sampler2D Texture;
-uniform sampler3D Texture3D;
+layout(location = 0) out vec4 o_frag_color;
 
-const float Gamma = 2.2;
+uniform sampler2D u_texture;
+uniform sampler3D u_texture_3d;
 
 void main() {
 	// Texture color
 #ifdef MERGE_FACE
-	vec4 texel = texture3D(Texture3D, gl_TexCoord[0].stp);
+	vec4 texel = texture(u_texture_3d, tex_coord.stp);
 #else
-	vec4 texel = texture2D(Texture, gl_TexCoord[0].st);
+	vec4 texel = texture(u_texture, tex_coord.st);
 #endif
-	texel.rgb = pow(texel.rgb, vec3(Gamma));
 	if (texel.a < 0.5) discard;
-	texel.a = 1.0;
 
-	gl_FragColor = texel;
+	o_frag_color = vec4(1.0);
 }

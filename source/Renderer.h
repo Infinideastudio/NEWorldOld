@@ -7,15 +7,11 @@
 #include "FrameBuffer.h"
 
 namespace Renderer {
-	//�Ҳ���϶����ҿ�Renderer.cpp  --qiaozhanrong
-	//�¶���  --Null
-
-	enum {
-		BaseShader,	TranslucentShader, FinalShader, ShadowShader, ShowDepthShader
+	enum Shaders {
+		DefaultShader, OpqaueShader, TranslucentShader, FinalShader, ShadowShader, DebugShadowShader
 	};
 
 	const int ArraySize = 4194304;
-	extern float* VA;
 	extern int size;
 	extern int Vertexes;
 	extern bool AdvancedRender;
@@ -29,7 +25,42 @@ namespace Renderer {
 	extern FrameBuffer shadow;
 	extern bool VolumetricClouds;
 
-	void Init(int tc, int cc, int nc = 0, int ac = 0);
+	class VertexBuffer {
+	public:
+		VertexBuffer() : vao(0), vbo(0), numVertices(0) {}
+		VertexBuffer(VertexBuffer const&) = delete;
+		VertexBuffer(VertexBuffer&& from) noexcept : VertexBuffer() {
+			swap(*this, from);
+		}
+		VertexBuffer& operator=(VertexBuffer const&) = delete;
+		VertexBuffer& operator=(VertexBuffer&& from) noexcept {
+			swap(*this, from);
+			return *this;
+		}
+
+		~VertexBuffer() {
+			if (vbo != 0) glDeleteBuffers(1, &vbo);
+			if (vao != 0) glDeleteVertexArrays(1, &vao);
+		}
+		
+		friend void swap(VertexBuffer& first, VertexBuffer& second) {
+			using std::swap;
+			swap(first.vao, second.vao);
+			swap(first.vbo, second.vbo);
+			swap(first.numVertices, second.numVertices);
+		}
+
+		static VertexBuffer upload();
+		bool empty() const { return numVertices == 0; }
+		void render() const;
+
+	private:
+		GLuint vao;
+		GLuint vbo;
+		GLuint numVertices;
+	};
+
+	void Begin(int tc, int cc, int nc = 0, int ac = 0);
 	void Vertex3f(float x, float y, float z);
 	void TexCoord2f(float x, float y);
 	void TexCoord3f(float x, float y, float z);
@@ -37,14 +68,9 @@ namespace Renderer {
 	void Color4f(float r, float g, float b, float a);
 	void Normal3f(float x, float y, float z);
 	void Attrib1f(float attr);
-
-	inline void Quad(float *geomentry) {
-		memcpy(VA, geomentry, size * sizeof(float)); VA += size;
-		Vertexes += 4;
+	inline VertexBuffer End() {
+		return VertexBuffer::upload();
 	}
-
-	void Flush(VBOID& buffer, GLuint& vtxs);
-	void renderbuffer(VBOID buffer, GLuint vtxs, int tc, int cc, int nc = 0, int ac = 0);
 
 	void initShaders();
 	inline void bindShader(int shaderID) {
@@ -56,11 +82,11 @@ namespace Renderer {
 	FrustumTest getShadowMapFrustum(double heading, double pitch, int shadowdist, const FrustumTest& playerFrustum);
 	
 	void ClearSGDBuffers();
-	void StartShadowPass();
+	void StartShadowPass(const FrustumTest& lightFrustum, float gameTime);
 	void EndShadowPass();
-	void StartBasePass(float gametime);
-	void EndBasePass();
-	void StartTranslucentPass(float gametime);
+	void StartOpqauePass(const FrustumTest& viewFrustum, float gametime);
+	void EndOpaquePass();
+	void StartTranslucentPass(const FrustumTest& viewFrustum, float gametime);
 	void EndTranslucentPass();
 	void StartFinalPass(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& viewFrustum, float gameTime);
 	void EndFinalPass();

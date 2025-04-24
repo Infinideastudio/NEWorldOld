@@ -1,31 +1,48 @@
-#version 110
+#version 330 core
 
-uniform float ShadowFisheyeFactor;
-uniform float GameTime;
+layout(location = 0) in vec3 a_coord;
+#ifdef MERGE_FACE
+layout(location = 1) in vec3 a_tex_coord;
+#else
+layout(location = 1) in vec2 a_tex_coord;
+#endif
+layout(location = 2) in vec3 a_color;
+layout(location = 3) in vec3 a_normal;
+layout(location = 4) in float a_block_id;
 
-attribute float VertexAttrib;
+out vec3 coord;
+out vec3 tex_coord;
 
-const float Pi = 3.1415926;
-const int LeafID = 8;
+uniform mat4 u_proj;
+uniform mat4 u_modl;
+uniform mat4 u_translation;
+uniform float u_game_time;
+uniform float u_shadow_fisheye_factor;
 
-vec2 fisheyeProjection(vec2 position) {
+const float PI = 3.1415926f;
+const int LEAF_ID = 8;
+
+vec2 fisheye_projection(vec2 position) {
 	float dist = length(position);
-    float distortFactor = (1.0 - ShadowFisheyeFactor) + dist * ShadowFisheyeFactor;
-    position /= distortFactor;
+	float distort_factor = (1.0f - u_shadow_fisheye_factor) + dist * u_shadow_fisheye_factor;
+	position /= distort_factor;
 	return position;
 }
 
 void main() {
-	vec4 vertex = gl_Vertex;
-	float blockIDf = VertexAttrib;
-	
-	int blockID = int(blockIDf + 0.5);
-	if (blockID == LeafID) {
-		float a = GameTime * 0.2;
-		vertex += vec4(sin(vertex.x + a), sin(vertex.y * 10.0 + a + Pi / 3.0 * 2.0), sin(vertex.z * 10.0 + a + Pi / 3.0 * 4.0), 0.0) * 0.005;
+	coord = a_coord;
+	int block_id_i = int(a_block_id + 0.5f);
+	if (block_id_i == LEAF_ID) {
+		float a = u_game_time * 0.2f;
+		coord += vec3(sin(coord.x + a), sin(coord.y * 10.0f + a + PI / 3.0f * 2.0f), sin(coord.z * 10.0f + a + PI / 3.0f * 4.0f)) * 0.005f;
 	}
-	
-	gl_TexCoord[0] = gl_MultiTexCoord0;
-	gl_Position = gl_ProjectionMatrix * gl_ModelViewMatrix * vertex;
-	gl_Position = vec4(fisheyeProjection(gl_Position.xy), gl_Position.zw);
+#ifdef MERGE_FACE
+	tex_coord = a_tex_coord;
+#else
+	tex_coord = vec3(a_tex_coord, 0.0f);
+#endif
+
+	gl_Position = u_proj * u_modl * u_translation * vec4(coord, 1.0f);
+	gl_Position /= gl_Position.w;
+	gl_Position = vec4(fisheye_projection(gl_Position.xy), gl_Position.zw);
 }

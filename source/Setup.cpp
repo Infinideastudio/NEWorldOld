@@ -76,12 +76,9 @@ void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, 
 }
 
 void setupScreen() {
-
-	//��ȡOpenGL�汾
 	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
 	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
 	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
-	//��ȡOpenGL������ַ
 	InitGLProc();
 
 #ifdef NEWORLD_DEBUG
@@ -93,50 +90,25 @@ void setupScreen() {
 	}
 #endif
 
-	//��Ⱦ��������
 	glViewport(0, 0, windowwidth, windowheight);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glShadeModel(GL_SMOOTH);
-	glDisable(GL_DITHER);
 	glEnable(GL_CULL_FACE);
-	glEnable(GL_TEXTURE_2D);
+	glCullFace(GL_BACK);
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_ALPHA_TEST);
-	glEnable(GL_BLEND);
 	glDepthFunc(GL_LEQUAL);
-	glAlphaFunc(GL_GREATER, 0.0); //<--��һ������ȣ�(�����濴�������ȵĶ�����)
+	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
-	glHint(GL_FOG_HINT, GL_FASTEST);
+	glEnable(GL_TEXTURE_2D);
 	glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
-	if (Multisample != 0) glEnable(GL_MULTISAMPLE_ARB);
+	if (Multisample != 0) glEnable(GL_MULTISAMPLE);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-	glColor4f(0.0, 0.0, 0.0, 1.0);
 	TextRenderer::BuildFont(windowwidth, windowheight);
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-	glClearColor(0.0, 0.0, 0.0, 1.0);
-	glClearDepth(1.0);
-	glGenBuffersARB(1, &World::EmptyBuffer);
-	if (Renderer::AdvancedRender) Renderer::initShaders();
-	if (vsync) glfwSwapInterval(1);
-	else glfwSwapInterval(0);
-}
-
-void setupNormalFog() {
-	float fogColor[4] = { skycolorR, skycolorG, skycolorB, 1.0f };
-	glEnable(GL_FOG);
-	glFogi(GL_FOG_MODE, GL_LINEAR);
-	glFogfv(GL_FOG_COLOR, fogColor);
-	glFogf(GL_FOG_START, viewdistance * 16.0f - 32.0f);
-	glFogf(GL_FOG_END, viewdistance * 16.0f);
+	Renderer::initShaders();
+	glfwSwapInterval(vsync ? 1 : 0);
 }
 
 void loadTextures() {
-	//��������
 	Textures::Init();
 
 	tex_select = Textures::LoadRGBATexture("Textures/GUI/select.bmp", "");

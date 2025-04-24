@@ -19,9 +19,8 @@ inline string Var2Str(T var) {
 	std::stringstream ss; ss << var; return ss.str();
 }
 
-//Í¼ĞÎ½çÃæÏµÍ³¡£¡£¡£Õı×ÚOOP£¡£¡£¡
+//Í¼ï¿½Î½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½OOPï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 namespace GUI {
-	extern float linewidth;
 	extern float linealpha;
 	extern float FgR;
 	extern float FgG;
@@ -48,12 +47,12 @@ namespace GUI {
 	class Form;
 	class controls {
 	public:
-		//¿Ø¼ş»ùÀà£¬Ö»ÒªÊÇ¿Ø¼ş¶¼µÃ¼Ì³ĞÕâ¸ö
+		//ï¿½Ø¼ï¿½ï¿½ï¿½ï¿½à£¬Ö»Òªï¿½Ç¿Ø¼ï¿½ï¿½ï¿½ï¿½Ã¼Ì³ï¿½ï¿½ï¿½ï¿½
 		virtual ~controls() {}
 		int id, xmin, ymin, xmax, ymax;
 		Form* parent;
-		virtual void update() {} //Äª·ÇÕâ¸ö¾ÍÊÇ´«ËµÖĞµÄĞéº¯Êı£¿
-		virtual void render() {} //Ã²ËÆÊÇµÄ£¡
+		virtual void update() {} //Äªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç´ï¿½Ëµï¿½Ğµï¿½ï¿½éº¯ï¿½ï¿½ï¿½ï¿½
+		virtual void render() {} //Ã²ï¿½ï¿½ï¿½ÇµÄ£ï¿½
 		virtual void destroy() {}
 		void updatepos();
 		void resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
@@ -64,7 +63,7 @@ namespace GUI {
 
 	class label :public controls {
 	public:
-		//±êÇ©
+		//ï¿½ï¿½Ç©
 		string text;
 		bool mouseon, focused;
 		label() : mouseon(false), focused(false) {};
@@ -76,7 +75,7 @@ namespace GUI {
 
 	class button :public controls {
 	public:
-		//°´Å¥
+		//ï¿½ï¿½Å¥
 		string text;
 		bool mouseon, focused, pressed, clicked, enabled;
 		button() : mouseon(false), focused(false), pressed(false), clicked(false), enabled(false) {};
@@ -88,7 +87,7 @@ namespace GUI {
 
 	class trackbar :public controls {
 	public:
-		//¸Ã¿Ø¼şµÄÖĞÎÄÃûÎÒ²»Ôì
+		//ï¿½Ã¿Ø¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½
 		string text;
 		int barwidth;
 		int barpos;
@@ -102,7 +101,7 @@ namespace GUI {
 
 	class textbox :public controls {
 	public:
-		//ÎÄ±¾¿ò
+		//ï¿½Ä±ï¿½ï¿½ï¿½
 		string text;
 		bool mouseon, focused, pressed, enabled;
 		textbox() : mouseon(false), focused(false), pressed(false), enabled(false) {};
@@ -114,7 +113,7 @@ namespace GUI {
 
 	class vscroll :public controls {
 	public:
-		//´¹Ö±¹ö¶¯Ìõ
+		//ï¿½ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		int barheight, barpos;
 		bool mouseon, focused, pressed, enabled;
 		bool defaultv, msup, msdown, psup, psdown;
@@ -127,7 +126,7 @@ namespace GUI {
 
 	class imagebox :public controls {
 	public:
-		//Í¼Æ¬¿ò
+		//Í¼Æ¬ï¿½ï¿½
 		float txmin, txmax, tymin, tymax;
 		TextureID imageid;
 		imagebox() : imageid(0) {};
@@ -139,7 +138,7 @@ namespace GUI {
 
 	typedef void(*UIVoidF)();
 
-	// ´°Ìå / ÈİÆ÷
+	// ï¿½ï¿½ï¿½ï¿½ / ï¿½ï¿½ï¿½ï¿½
 	class Form {
 	public:
 		vector<controls*> children;

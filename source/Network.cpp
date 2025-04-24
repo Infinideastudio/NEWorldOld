@@ -23,7 +23,7 @@ namespace Network {
 		t = ThreadCreate(networkThread, NULL);
 	}
 
-	int getRequestCount() { return reqs.size(); }
+	size_t getRequestCount() { return reqs.size(); }
 	Net::Socket& getClientSocket() { return socketClient; }
 
 	ThreadFunc networkThread(void *) {
@@ -55,13 +55,13 @@ namespace Network {
 				buffer.write((void*)&r._signal, sizeof(int));
 				getClientSocket().send(buffer);
 			}
-			if (r._callback) { //ÅÐ¶ÏÓÐÎÞ»Øµ÷º¯Êý
+			if (r._callback) { //ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½Þ»Øµï¿½ï¿½ï¿½ï¿½ï¿½
 				auto callback = r._callback;
 				MutexUnlock(mutex);
-				int len = getClientSocket().recvInt();   //»ñµÃÊý¾Ý³¤¶È
+				int len = getClientSocket().recvInt();   //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý³ï¿½ï¿½ï¿½
 				Net::Buffer buffer(len);
 				getClientSocket().recv(buffer, Net::BufferConditionExactLength(len));
-				if (len > 0) callback(buffer.getData(), len); //µ÷ÓÃ»Øµ÷º¯Êý
+				if (len > 0) callback(buffer.getData(), len); //ï¿½ï¿½ï¿½Ã»Øµï¿½ï¿½ï¿½ï¿½ï¿½
 				MutexLock(mutex);
 			}
 			reqs.pop();
@@ -71,10 +71,10 @@ namespace Network {
 	}
 
 	void pushRequest(Request& r) {
-		if (reqs.size() + 1 > networkRequestMax) {  //³¬¹ýÇëÇó¶ÓÁÐ³¤¶È£¬ÊÔÍ¼¾«¼ò¶ÓÁÐ
+		if (reqs.size() + 1 > networkRequestMax) {  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½È£ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			if (!reqs.front().isImportant()) reqs.pop();
 		}
-		if (reqs.size() + 1 > networkRequestMax * 2) {  //´óÁ¿³¬¹ýÇëÇó¶ÓÁÐ³¤¶È£¬Ö»±£ÁôÖØÒªÇëÇó
+		if (reqs.size() + 1 > networkRequestMax * 2) {  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½È£ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½
 			std::queue<Request> q;
 			while (reqs.size() != 0) {
 				if (reqs.front().isImportant()) q.push(reqs.front());

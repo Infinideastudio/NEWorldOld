@@ -15,7 +15,7 @@ public:
 	void bindTargetBuffer(int index, int width = -1, int height = -1);
 	void bindTarget(int width = -1, int height = -1);
 	void unbindTarget() {
-		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, 0);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 		glDrawBuffer(GL_BACK);
 		glReadBuffer(GL_BACK);
 		glViewport(0, 0, windowwidth, windowheight);
@@ -23,23 +23,23 @@ public:
 
 	void bindColorTextures(int startNumber) {
 		for (int i = 0; i < colorAttachCount; i++) {
-			glActiveTextureARB(GL_TEXTURE0 + startNumber + i);
+			glActiveTexture(GL_TEXTURE0 + startNumber + i);
 			glBindTexture(GL_TEXTURE_2D, colorTexture[i]);
-			glActiveTextureARB(GL_TEXTURE0);
+			glActiveTexture(GL_TEXTURE0);
 		}
 	}
 
 	void bindDepthTexture(int number) {
 		assert(depthAttach);
-		glActiveTextureARB(GL_TEXTURE0 + number);
+		glActiveTexture(GL_TEXTURE0 + number);
 		glBindTexture(GL_TEXTURE_2D, depthAttachment);
-		glActiveTextureARB(GL_TEXTURE0);
+		glActiveTexture(GL_TEXTURE0);
 	}
 
 	void copyDepthTexture(FrameBuffer& target) {
 		assert(depthAttach && target.depthAttach && size == target.size);
-		glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, id);
-		glReadBuffer(GL_DEPTH_ATTACHMENT_EXT);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, id);
+		glReadBuffer(GL_DEPTH_ATTACHMENT);
 		GLint saved;
 		glGetIntegerv(GL_TEXTURE_BINDING_2D, &saved);
 		glBindTexture(GL_TEXTURE_2D, target.depthAttachment);

@@ -96,7 +96,7 @@ namespace TextRenderer {
 	void MBToWC(const char* lpcszStr, wchar_t*& lpwszStr, int dwSize){
 		lpwszStr = (wchar_t*)malloc(dwSize);
 		memset(lpwszStr, 0, dwSize);
-		int iSize = (MByteToWChar(lpwszStr, lpcszStr, strlen(lpcszStr)) + 1)*sizeof(wchar_t);
+		int iSize = (MByteToWChar(lpwszStr, lpcszStr, dwSize, (int) strlen(lpcszStr)) + 1)*sizeof(wchar_t);
 		lpwszStr = (wchar_t*)realloc(lpwszStr, iSize);
 	}
 

@@ -43,7 +43,7 @@ namespace Netycat {
             
             private:
             
-            int sock;
+            long long sock;
             InetAddress* address;
             
             Buffer recvBuffer;

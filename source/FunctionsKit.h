@@ -94,12 +94,11 @@ inline void MutexUnlock(Mutex_t _hMutex) { ReleaseMutex(_hMutex); }
 inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return CreateThread(NULL, 0, func, param, 0, NULL); }
 inline void ThreadWait(Thread_t _hThread) { WaitForSingleObject(_hThread, INFINITE); }
 inline void ThreadDestroy(Thread_t _hThread) { CloseHandle(_hThread); }
-inline unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n) {
-	int res = MultiByteToWideChar(CP_ACP, 0, src, n, dst, n);
-	return res;
+inline unsigned int MByteToWChar(wchar_t* dst, const char* src, int dstSize, int srcSize) {
+	return MultiByteToWideChar(CP_ACP, 0, src, srcSize, dst, dstSize);
 }
-inline unsigned int WCharToMByte(char* dst, const wchar_t* src, int dstSize, int srcCount) {
-	return WideCharToMultiByte(CP_ACP, 0, src, srcCount, dst, dstSize, NULL, NULL);
+inline unsigned int WCharToMByte(char* dst, const wchar_t* src, int dstSize, int srcSize) {
+	return WideCharToMultiByte(CP_ACP, 0, src, srcSize, dst, dstSize, NULL, NULL);
 }
 inline unsigned int wstrlen(const wchar_t* wstr) { return lstrlenW(wstr); }
 inline double timer() {
