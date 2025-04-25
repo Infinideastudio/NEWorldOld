@@ -5,6 +5,7 @@
 PFNGLTEXIMAGE3DPROC glTexImage3D;
 PFNGLTEXSUBIMAGE3DPROC glTexSubImage3D;
 PFNGLACTIVETEXTUREPROC glActiveTexture;
+PFNGLGENERATEMIPMAPPROC glGenerateMipmap;
 
 PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray;
 PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray;
@@ -25,7 +26,6 @@ PFNGLGENFRAMEBUFFERSPROC glGenFramebuffers;
 PFNGLBINDFRAMEBUFFERPROC glBindFramebuffer;
 PFNGLDELETEFRAMEBUFFERSPROC glDeleteFramebuffers;
 PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;
-PFNGLFRAMEBUFFERTEXTURE3DPROC glFramebufferTexture3D;
 PFNGLGENRENDERBUFFERSPROC glGenRenderbuffers;
 PFNGLDELETERENDERBUFFERSPROC glDeleteRenderbuffers;
 PFNGLBINDRENDERBUFFERPROC glBindRenderbuffer;
@@ -80,6 +80,7 @@ void InitGLProc() {
 	glTexImage3D = reinterpret_cast<PFNGLTEXIMAGE3DPROC>(glfwGetProcAddress("glTexImage3D"));
 	glTexSubImage3D = reinterpret_cast<PFNGLTEXSUBIMAGE3DPROC>(glfwGetProcAddress("glTexSubImage3D"));
 	glActiveTexture = reinterpret_cast<PFNGLACTIVETEXTUREPROC>(glfwGetProcAddress("glActiveTexture"));
+	glGenerateMipmap = reinterpret_cast<PFNGLGENERATEMIPMAPPROC>(glfwGetProcAddress("glGenerateMipmap"));
 
 	glEnableVertexAttribArray = reinterpret_cast<PFNGLENABLEVERTEXATTRIBARRAYPROC>(glfwGetProcAddress("glEnableVertexAttribArray"));
 	glDisableVertexAttribArray = reinterpret_cast<PFNGLDISABLEVERTEXATTRIBARRAYPROC>(glfwGetProcAddress("glDisableVertexAttribArray"));
@@ -100,7 +101,6 @@ void InitGLProc() {
 	glBindFramebuffer = reinterpret_cast<PFNGLBINDFRAMEBUFFERPROC>(glfwGetProcAddress("glBindFramebuffer"));
 	glDeleteFramebuffers = reinterpret_cast<PFNGLDELETEFRAMEBUFFERSPROC>(glfwGetProcAddress("glDeleteFramebuffers"));
 	glFramebufferTexture2D = reinterpret_cast<PFNGLFRAMEBUFFERTEXTURE2DPROC>(glfwGetProcAddress("glFramebufferTexture2D"));
-	glFramebufferTexture3D = reinterpret_cast<PFNGLFRAMEBUFFERTEXTURE3DPROC>(glfwGetProcAddress("glFramebufferTexture3D"));
 	glGenRenderbuffers = reinterpret_cast<PFNGLGENRENDERBUFFERSPROC>(glfwGetProcAddress("glGenRenderbuffers"));
 	glDeleteRenderbuffers = reinterpret_cast<PFNGLDELETERENDERBUFFERSPROC>(glfwGetProcAddress("glDeleteRenderbuffers"));
 	glBindRenderbuffer = reinterpret_cast<PFNGLBINDRENDERBUFFERPROC>(glfwGetProcAddress("glBindRenderbuffer"));

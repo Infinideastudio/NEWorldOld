@@ -1,14 +1,14 @@
 #include "Particles.h"
 #include "World.h"
 #include "Textures.h"
+#include "Renderer.h"
 
 namespace Particles {
-	vector<Particle> ptcs;
+	std::vector<Particle> ptcs;
 	int ptcsrendered;
 	double pxpos, pypos, pzpos;
 
 	void update(Particle &ptc) {
-
 		double dx, dy, dz;
 		float psz = ptc.psize;
 
@@ -19,6 +19,7 @@ namespace Particles {
 		ptc.hb.zmin = ptc.zpos - psz;
 		ptc.hb.zmax = ptc.zpos + psz;
 
+		ptc.ysp -= 0.01f;
 		dx = ptc.xsp;
 		dy = ptc.ysp;
 		dz = ptc.zsp;
@@ -41,120 +42,116 @@ namespace Particles {
 		ptc.xpos += dx;
 		ptc.ypos += dy;
 		ptc.zpos += dz;
-		if (dy != ptc.ysp) ptc.ysp = 0.0;
 		ptc.xsp *= 0.6f;
 		ptc.zsp *= 0.6f;
-		ptc.ysp -= 0.01f;
+		if (dy != ptc.ysp) ptc.ysp = 0.0;
 		ptc.lasts -= 1;
-
 	}
 
 	void updateall(){
-		for (vector<Particle>::iterator iter = ptcs.begin(); iter < ptcs.end();){
-			if (!iter->exist) continue;
-			update(*iter);
-			if (iter->lasts <= 0){
-				iter->exist = false;
-				iter = ptcs.erase(iter);
-			}
-			else{
-				iter++;
-			}
+		std::vector<Particle> next;
+		for (auto& ptc: ptcs){
+			update(ptc);
+			if (ptc.lasts > 0) next.emplace_back(std::move(ptc));
 		}
+		ptcs = std::move(next);
 	}
 
-	void render(Particle &ptc) {
-		//if (!Frustum::aabbInFrustum(ptc.hb)) return;
-		ptcsrendered++;
-		float size = (float)BLOCKTEXTURE_UNITSIZE / BLOCKTEXTURE_SIZE * (ptc.psize <= 1.0f ? ptc.psize : 1.0f);
-		float col = World::getbrightness(RoundInt(ptc.xpos), RoundInt(ptc.ypos), RoundInt(ptc.zpos)) / (float)World::BRIGHTNESSMAX;
-		float col1 = col * 0.5f;
-		float col2 = col * 0.7f;
-		float tcx = ptc.tcX;
-		float tcy = ptc.tcY;
+	void mesh(Particle const& ptc, double interp) {
 		float psize = ptc.psize;
-		double palpha = (ptc.lasts < 30 ? ptc.lasts / 30.0 : 1.0);
-		double xpos = ptc.xpos - pxpos;
-		double ypos = ptc.ypos - pypos;
-		double zpos = ptc.zpos - pzpos;
+		float bl = static_cast<float>(ptc.bl);
+		float tex = static_cast<float>(ptc.tex);
+		float tcx = ptc.tcx;
+		float tcy = ptc.tcy;
+		// float palpha = (ptc.lasts < 30 ? ptc.lasts / 30.0f : 1.0f);
+		float xpos = static_cast<float>(ptc.xpos - ptc.xsp + ptc.xsp * interp - pxpos);
+		float ypos = static_cast<float>(ptc.ypos - ptc.ysp + ptc.ysp * interp - pypos);
+		float zpos = static_cast<float>(ptc.zpos - ptc.zsp + ptc.zsp * interp - pzpos);
 
-		glBegin(GL_QUADS);
-			glColor4d(col1, col1, col1, palpha);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
-			glVertex3d(xpos - psize, ypos - psize, zpos + psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
-			glVertex3d(xpos + psize, ypos - psize, zpos + psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
-			glVertex3d(xpos + psize, ypos + psize, zpos + psize);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
-			glVertex3d(xpos - psize, ypos + psize, zpos + psize);
+		float col = World::getbrightness(RoundInt(ptc.xpos), RoundInt(ptc.ypos), RoundInt(ptc.zpos)) / (float)World::BRIGHTNESSMAX;
+		float col1 = col, col2 = col;
+		if (!Renderer::AdvancedRender) {
+			col1 *= 0.5f;
+			col2 *= 0.7f;
+		}
+		Renderer::TexCoord3f(0.0f, 0.0f, tex);
 
-			glColor4d(col1, col1, col1, palpha);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
-			glVertex3d(xpos - psize, ypos + psize, zpos - psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
-			glVertex3d(xpos + psize, ypos + psize, zpos - psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
-			glVertex3d(xpos + psize, ypos - psize, zpos - psize);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
-			glVertex3d(xpos - psize, ypos - psize, zpos - psize);
+		if (Renderer::AdvancedRender) {
+			Renderer::Normal3f(1.0f, 0.0f, 0.0f);
+			Renderer::Attrib1f(bl);
+		}
+		Renderer::Color3f(col2, col2, col2);
+		Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(xpos + psize, ypos + psize, zpos - psize);
+		Renderer::TexCoord2f(tcx + psize, tcy); Renderer::Vertex3f(xpos + psize, ypos + psize, zpos + psize);
+		Renderer::TexCoord2f(tcx + psize, tcy + psize); Renderer::Vertex3f(xpos + psize, ypos - psize, zpos + psize);
+		Renderer::TexCoord2f(tcx, tcy + psize); Renderer::Vertex3f(xpos + psize, ypos - psize, zpos - psize);
 
-			glColor4d(col, col, col, palpha);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
-			glVertex3d(xpos + psize, ypos + psize, zpos - psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
-			glVertex3d(xpos - psize, ypos + psize, zpos - psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
-			glVertex3d(xpos - psize, ypos + psize, zpos + psize);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
-			glVertex3d(xpos + psize, ypos + psize, zpos + psize);
+		if (Renderer::AdvancedRender) {
+			Renderer::Normal3f(-1.0f, 0.0f, 0.0f);
+			Renderer::Attrib1f(bl);
+		}
+		Renderer::Color3f(col2, col2, col2);
+		Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(xpos - psize, ypos - psize, zpos - psize);
+		Renderer::TexCoord2f(tcx + psize, tcy); Renderer::Vertex3f(xpos - psize, ypos - psize, zpos + psize);
+		Renderer::TexCoord2f(tcx + psize, tcy + psize); Renderer::Vertex3f(xpos - psize, ypos + psize, zpos + psize);
+		Renderer::TexCoord2f(tcx, tcy + psize); Renderer::Vertex3f(xpos - psize, ypos + psize, zpos - psize);
 
-			glColor4d(col, col, col, palpha);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
-			glVertex3d(xpos - psize, ypos - psize, zpos - psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
-			glVertex3d(xpos + psize, ypos - psize, zpos - psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
-			glVertex3d(xpos + psize, ypos - psize, zpos + psize);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
-			glVertex3d(xpos - psize, ypos - psize, zpos + psize);
+		if (Renderer::AdvancedRender) {
+			Renderer::Normal3f(0.0f, 1.0f, 0.0f);
+			Renderer::Attrib1f(bl);
+		}
+		Renderer::Color3f(col, col, col);
+		Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(xpos + psize, ypos + psize, zpos - psize);
+		Renderer::TexCoord2f(tcx + psize, tcy); Renderer::Vertex3f(xpos - psize, ypos + psize, zpos - psize);
+		Renderer::TexCoord2f(tcx + psize, tcy + psize); Renderer::Vertex3f(xpos - psize, ypos + psize, zpos + psize);
+		Renderer::TexCoord2f(tcx, tcy + psize); Renderer::Vertex3f(xpos + psize, ypos + psize, zpos + psize);
 
-			glColor4d(col2, col2, col2, palpha);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
-			glVertex3d(xpos + psize, ypos + psize, zpos - psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
-			glVertex3d(xpos + psize, ypos + psize, zpos + psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
-			glVertex3d(xpos + psize, ypos - psize, zpos + psize);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
-			glVertex3d(xpos + psize, ypos - psize, zpos - psize);
+		if (Renderer::AdvancedRender) {
+			Renderer::Normal3f(0.0f, -1.0f, 0.0f);
+			Renderer::Attrib1f(bl);
+		}
+		Renderer::Color3f(col, col, col);
+		Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(xpos - psize, ypos - psize, zpos - psize);
+		Renderer::TexCoord2f(tcx + psize, tcy); Renderer::Vertex3f(xpos + psize, ypos - psize, zpos - psize);
+		Renderer::TexCoord2f(tcx + psize, tcy + psize); Renderer::Vertex3f(xpos + psize, ypos - psize, zpos + psize);
+		Renderer::TexCoord2f(tcx, tcy + psize); Renderer::Vertex3f(xpos - psize, ypos - psize, zpos + psize);
 
-			glColor4d(col2, col2, col2, palpha);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 0.0);
-			glVertex3d(xpos - psize, ypos - psize, zpos - psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 0.0);
-			glVertex3d(xpos - psize, ypos - psize, zpos + psize);
-			glTexCoord2d(tcx + size * 1.0, tcy + size * 1.0);
-			glVertex3d(xpos - psize, ypos + psize, zpos + psize);
-			glTexCoord2d(tcx + size * 0.0, tcy + size * 1.0);
-			glVertex3d(xpos - psize, ypos + psize, zpos - psize);
-		glEnd();
+		if (Renderer::AdvancedRender) {
+			Renderer::Normal3f(0.0f, 0.0f, 1.0f);
+			Renderer::Attrib1f(bl);
+		}
+		Renderer::Color3f(col1, col1, col1);
+		Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(xpos - psize, ypos - psize, zpos + psize);
+		Renderer::TexCoord2f(tcx + psize, tcy); Renderer::Vertex3f(xpos + psize, ypos - psize, zpos + psize);
+		Renderer::TexCoord2f(tcx + psize, tcy + psize); Renderer::Vertex3f(xpos + psize, ypos + psize, zpos + psize);
+		Renderer::TexCoord2f(tcx, tcy + psize); Renderer::Vertex3f(xpos - psize, ypos + psize, zpos + psize);
+
+		if (Renderer::AdvancedRender) {
+			Renderer::Normal3f(0.0f, 0.0f, -1.0f);
+			Renderer::Attrib1f(bl);
+		}
+		Renderer::Color3f(col1, col1, col1);
+		Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(xpos - psize, ypos + psize, zpos - psize);
+		Renderer::TexCoord2f(tcx + psize, tcy); Renderer::Vertex3f(xpos + psize, ypos + psize, zpos - psize);
+		Renderer::TexCoord2f(tcx + psize, tcy + psize); Renderer::Vertex3f(xpos + psize, ypos - psize, zpos - psize);
+		Renderer::TexCoord2f(tcx, tcy + psize); Renderer::Vertex3f(xpos - psize, ypos - psize, zpos - psize);
 	}
 
-	void renderall(double xpos, double ypos, double zpos) {
+	void renderall(double xpos, double ypos, double zpos, double interp) {
 		pxpos = xpos; pypos = ypos; pzpos = zpos;
 		ptcsrendered = 0;
-		for (unsigned int i = 0; i != ptcs.size(); i++){
-			if (!ptcs[i].exist) continue;
-			render(ptcs[i]);
+
+		if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 3, 3, 1);
+		else Renderer::Begin(GL_QUADS, 3, 3, 3);
+		for (auto const& ptc: ptcs) {
+			mesh(ptc, interp);
+			ptcsrendered++;
 		}
+		Renderer::End().render();
 	}
 
 	void throwParticle(BlockID pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last){
-		float tcX1 = (float)Textures::getTexcoordX(pt, 2);
-		float tcY1 = (float)Textures::getTexcoordY(pt, 2);
 		Particle ptc;
-		ptc.exist = true;
 		ptc.xpos = x;
 		ptc.ypos = y;
 		ptc.zpos = z;
@@ -169,8 +166,10 @@ namespace Particles {
 		ptc.hb.zmin = z - psz;
 		ptc.hb.zmax = z + psz;
 		ptc.lasts = last;
-		ptc.tcX = tcX1 + (float)rnd()*((float)BLOCKTEXTURE_UNITSIZE / BLOCKTEXTURE_SIZE)*(1.0f - psz);
-		ptc.tcY = tcY1 + (float)rnd()*((float)BLOCKTEXTURE_UNITSIZE / BLOCKTEXTURE_SIZE)*(1.0f - psz);
-		ptcs.push_back(ptc);
+		ptc.bl = pt;
+		ptc.tex = Textures::getTextureIndex(pt, 2);
+		ptc.tcx = static_cast<float>(rnd()) * (1.0f - psz);
+		ptc.tcy = static_cast<float>(rnd()) * (1.0f - psz);
+		ptcs.emplace_back(std::move(ptc));
 	}
 }

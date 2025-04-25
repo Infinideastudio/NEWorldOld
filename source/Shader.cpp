@@ -2,13 +2,12 @@
 #include "FunctionsKit.h"
 #include "GLProc.h"
 
-Shader::Shader(string vshPath, string fshPath, bool bindLocation, std::set<string> defines) {
+Shader::Shader(string vshPath, string fshPath, std::set<string> defines) {
     shaderVertex = loadShader(vshPath, GL_VERTEX_SHADER, defines);
     shaderFragment = loadShader(fshPath, GL_FRAGMENT_SHADER, defines);
     shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, shaderVertex);
     glAttachShader(shaderProgram, shaderFragment);
-    if (bindLocation) glBindAttribLocation(shaderProgram, 1, "VertexAttrib");
     glLinkProgram(shaderProgram);
     checkLinkingErrors(shaderProgram, "Shader linking error!");
 }
@@ -25,13 +24,6 @@ bool Shader::setUniform(const char* uniform, float value) {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1) return false;
     glUniform1f(loc, value);
-    return true;
-}
-
-bool Shader::setUniform(const char* uniform, int value) {
-    int loc = glGetUniformLocation(shaderProgram, uniform);
-    if (loc == -1) return false;
-    glUniform1i(loc, value);
     return true;
 }
 
@@ -54,6 +46,13 @@ bool Shader::setUniform(const char* uniform, const float * value) {
     if (loc == -1) return false;
     glUniformMatrix4fv(loc, 1, GL_FALSE, value);
     return true;
+}
+
+bool Shader::setUniformI(const char* uniform, int value) {
+  int loc = glGetUniformLocation(shaderProgram, uniform);
+  if (loc == -1) return false;
+  glUniform1i(loc, value);
+  return true;
 }
 
 bool Shader::setUniformI(const char* uniform, int v0, int v1, int v2) {

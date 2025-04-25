@@ -61,7 +61,7 @@ namespace ChunkRenderer {
 	};
 
 	void RenderBlock(int x, int y, int z, ChunkRenderData& rd) {
-		float col1, col2, col3, col4, tcx, tcy, size = 1 / 8.0f;
+		float col1, col2, col3, col4;
 
 		BlockID bl = rd.getblock(x, y, z);
 		BlockID neighbors[6] = {
@@ -72,18 +72,12 @@ namespace ChunkRenderer {
 			rd.getblock(x, y, z + 1),
 			rd.getblock(x, y, z - 1),
 		};
-
-		if (NiceGrass && bl == Blocks::GRASS && rd.getblock(x + 1, y - 1, z) == Blocks::GRASS) {
-			tcx = Textures::getTexcoordX(bl, 1);
-			tcy = Textures::getTexcoordY(bl, 1);
-		}
-		else {
-			tcx = Textures::getTexcoordX(bl, 2);
-			tcy = Textures::getTexcoordY(bl, 2);
-		}
+		TextureIndex tex;
 
 		// Right face
 		if (!(bl == Blocks::AIR || bl == neighbors[0] && bl != Blocks::LEAF || BlockInfo(neighbors[0]).isOpaque())) {
+			if (NiceGrass && bl == Blocks::GRASS && rd.getblock(x + 1, y - 1, z) == Blocks::GRASS) tex = Textures::getTextureIndex(bl, 1);
+			else tex = Textures::getTextureIndex(bl, 2);
 			col1 = col2 = col3 = col4 = rd.getbrightness(x + 1, y, z);
 			if (SmoothLighting) {
 				col1 = (col1 + rd.getbrightness(x + 1, y - 1, z) + rd.getbrightness(x + 1, y, z - 1) + rd.getbrightness(x + 1, y - 1, z - 1)) / 4.0f;
@@ -93,6 +87,7 @@ namespace ChunkRenderer {
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
 
+			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
 			if (Renderer::AdvancedRender) {
 				Renderer::Normal3f(1.0f, 0.0f, 0.0f);
 				Renderer::Attrib1f((float)bl);
@@ -100,23 +95,16 @@ namespace ChunkRenderer {
 			else {
 				col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
 			}
-			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(tcx + size, tcy); Renderer::Vertex3f(0.5f + x, -0.5f + y, -0.5f + z);
-			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(tcx + size, tcy + size); Renderer::Vertex3f(0.5f + x, 0.5f + y, -0.5f + z);
-			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(tcx, tcy + size); Renderer::Vertex3f(0.5f + x, 0.5f + y, 0.5f + z);
-			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(0.5f + x, -0.5f + y, 0.5f + z);
-		}
-
-		if (NiceGrass && bl == Blocks::GRASS && rd.getblock(x - 1, y - 1, z) == Blocks::GRASS) {
-			tcx = Textures::getTexcoordX(bl, 1);
-			tcy = Textures::getTexcoordY(bl, 1);
-		}
-		else {
-			tcx = Textures::getTexcoordX(bl, 2);
-			tcy = Textures::getTexcoordY(bl, 2);
+			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(0.5f + x, -0.5f + y, -0.5f + z);
+			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, -0.5f + z);
+			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, 0.5f + z);
+			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(0.5f + x, -0.5f + y, 0.5f + z);
 		}
 
 		// Left Face
 		if (!(bl == Blocks::AIR || bl == neighbors[1] && bl != Blocks::LEAF || BlockInfo(neighbors[1]).isOpaque())) {
+			if (NiceGrass && bl == Blocks::GRASS && rd.getblock(x - 1, y - 1, z) == Blocks::GRASS) tex = Textures::getTextureIndex(bl, 1);
+			else tex = Textures::getTextureIndex(bl, 2);
 			col1 = col2 = col3 = col4 = rd.getbrightness(x - 1, y, z);
 			if (SmoothLighting) {
 				col1 = (col1 + rd.getbrightness(x - 1, y - 1, z) + rd.getbrightness(x - 1, y, z - 1) + rd.getbrightness(x - 1, y - 1, z - 1)) / 4.0f;
@@ -126,6 +114,7 @@ namespace ChunkRenderer {
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
 
+			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
 			if (Renderer::AdvancedRender) {
 				Renderer::Normal3f(-1.0f, 0.0f, 0.0f);
 				Renderer::Attrib1f((float)bl);
@@ -133,17 +122,15 @@ namespace ChunkRenderer {
 			else {
 				col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
 			}
-			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(-0.5f + x, -0.5f + y, -0.5f + z);
-			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(tcx + size, tcy); Renderer::Vertex3f(-0.5f + x, -0.5f + y, 0.5f + z);
-			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(tcx + size, tcy + size); Renderer::Vertex3f(-0.5f + x, 0.5f + y, 0.5f + z);
-			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(tcx, tcy + size); Renderer::Vertex3f(-0.5f + x, 0.5f + y, -0.5f + z);
+			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, -0.5f + z);
+			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, 0.5f + z);
+			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(-0.5f + x, 0.5f + y, 0.5f + z);
+			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(-0.5f + x, 0.5f + y, -0.5f + z);
 		}
-
-		tcx = Textures::getTexcoordX(bl, 1);
-		tcy = Textures::getTexcoordY(bl, 1);
 
 		// Top Face
 		if (!(bl == Blocks::AIR || bl == neighbors[2] && bl != Blocks::LEAF || BlockInfo(neighbors[2]).isOpaque())) {
+			tex = Textures::getTextureIndex(bl, 1);
 			col1 = col2 = col3 = col4 = rd.getbrightness(x, y + 1, z);
 			if (SmoothLighting) {
 				col1 = (col1 + rd.getbrightness(x, y + 1, z - 1) + rd.getbrightness(x - 1, y + 1, z) + rd.getbrightness(x - 1, y + 1, z - 1)) / 4.0f;
@@ -153,21 +140,20 @@ namespace ChunkRenderer {
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
 
+			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
 			if (Renderer::AdvancedRender) {
 				Renderer::Normal3f(0.0f, 1.0f, 0.0f);
 				Renderer::Attrib1f((float)bl);
 			}
-			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(tcx, tcy + size); Renderer::Vertex3f(-0.5f + x, 0.5f + y, -0.5f + z);
-			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(-0.5f + x, 0.5f + y, 0.5f + z);
-			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(tcx + size, tcy); Renderer::Vertex3f(0.5f + x, 0.5f + y, 0.5f + z);
-			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(tcx + size, tcy + size); Renderer::Vertex3f(0.5f + x, 0.5f + y, -0.5f + z);
+			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(-0.5f + x, 0.5f + y, -0.5f + z);
+			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, 0.5f + y, 0.5f + z);
+			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, 0.5f + z);
+			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, -0.5f + z);
 		}
-
-		tcx = Textures::getTexcoordX(bl, 3);
-		tcy = Textures::getTexcoordY(bl, 3);
 
 		// Bottom Face
 		if (!(bl == Blocks::AIR || bl == neighbors[3] && bl != Blocks::LEAF || BlockInfo(neighbors[3]).isOpaque())) {
+			tex = Textures::getTextureIndex(bl, 3);
 			col1 = col2 = col3 = col4 = rd.getbrightness(x, y - 1, z);
 			if (SmoothLighting) {
 				col1 = (col1 + rd.getbrightness(x, y - 1, z - 1) + rd.getbrightness(x - 1, y - 1, z) + rd.getbrightness(x - 1, y - 1, z - 1)) / 4.0f;
@@ -177,27 +163,21 @@ namespace ChunkRenderer {
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
 
+			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
 			if (Renderer::AdvancedRender) {
 				Renderer::Normal3f(0.0f, -1.0f, 0.0f);
 				Renderer::Attrib1f((float)bl);
 			}
-			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(tcx + size, tcy + size); Renderer::Vertex3f(-0.5f + x, -0.5f + y, -0.5f + z);
-			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(tcx, tcy + size); Renderer::Vertex3f(0.5f + x, -0.5f + y, -0.5f + z);
-			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(0.5f + x, -0.5f + y, 0.5f + z);
-			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(tcx + size, tcy); Renderer::Vertex3f(-0.5f + x, -0.5f + y, 0.5f + z);
-		}
-
-		if (NiceGrass && bl == Blocks::GRASS && rd.getblock(x, y - 1, z + 1) == Blocks::GRASS) {
-			tcx = Textures::getTexcoordX(bl, 1);
-			tcy = Textures::getTexcoordY(bl, 1);
-		}
-		else {
-			tcx = Textures::getTexcoordX(bl, 2);
-			tcy = Textures::getTexcoordY(bl, 2);
+			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, -0.5f + z);
+			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(0.5f + x, -0.5f + y, -0.5f + z);
+			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(0.5f + x, -0.5f + y, 0.5f + z);
+			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, 0.5f + z);
 		}
 
 		// Front Face
 		if (!(bl == Blocks::AIR || bl == neighbors[4] && bl != Blocks::LEAF || BlockInfo(neighbors[4]).isOpaque())) {
+			if (NiceGrass && bl == Blocks::GRASS && rd.getblock(x, y - 1, z + 1) == Blocks::GRASS) tex = Textures::getTextureIndex(bl, 1);
+			else tex = Textures::getTextureIndex(bl, 2);
 			col1 = col2 = col3 = col4 = rd.getbrightness(x, y, z + 1);
 			if (SmoothLighting) {
 				col1 = (col1 + rd.getbrightness(x, y - 1, z + 1) + rd.getbrightness(x - 1, y, z + 1) + rd.getbrightness(x - 1, y - 1, z + 1)) / 4.0f;
@@ -207,6 +187,7 @@ namespace ChunkRenderer {
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
 
+			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
 			if (Renderer::AdvancedRender) {
 				Renderer::Normal3f(0.0f, 0.0f, 1.0f);
 				Renderer::Attrib1f((float)bl);
@@ -214,23 +195,16 @@ namespace ChunkRenderer {
 			else {
 				col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
 			}
-			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(-0.5f + x, -0.5f + y, 0.5f + z);
-			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(tcx + size, tcy); Renderer::Vertex3f(0.5f + x, -0.5f + y, 0.5f + z);
-			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(tcx + size, tcy + size); Renderer::Vertex3f(0.5f + x, 0.5f + y, 0.5f + z);
-			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(tcx, tcy + size); Renderer::Vertex3f(-0.5f + x, 0.5f + y, 0.5f + z);
-		}
-
-		if (NiceGrass && bl == Blocks::GRASS && rd.getblock(x, y - 1, z - 1) == Blocks::GRASS) {
-			tcx = Textures::getTexcoordX(bl, 1);
-			tcy = Textures::getTexcoordY(bl, 1);
-		}
-		else {
-			tcx = Textures::getTexcoordX(bl, 2);
-			tcy = Textures::getTexcoordY(bl, 2);
+			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, 0.5f + z);
+			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(0.5f + x, -0.5f + y, 0.5f + z);
+			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, 0.5f + z);
+			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(-0.5f + x, 0.5f + y, 0.5f + z);
 		}
 
 		// Back Face
 		if (!(bl == Blocks::AIR || bl == neighbors[5] && bl != Blocks::LEAF || BlockInfo(neighbors[5]).isOpaque())) {
+			if (NiceGrass && bl == Blocks::GRASS && rd.getblock(x, y - 1, z - 1) == Blocks::GRASS) tex = Textures::getTextureIndex(bl, 1);
+			else tex = Textures::getTextureIndex(bl, 2);
 			col1 = col2 = col3 = col4 = rd.getbrightness(x, y, z - 1);
 			if (SmoothLighting) {
 				col1 = (col1 + rd.getbrightness(x, y - 1, z - 1) + rd.getbrightness(x - 1, y, z - 1) + rd.getbrightness(x - 1, y - 1, z - 1)) / 4.0f;
@@ -240,6 +214,7 @@ namespace ChunkRenderer {
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
 
+			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
 			if (Renderer::AdvancedRender) {
 				Renderer::Normal3f(0.0f, 0.0f, -1.0f);
 				Renderer::Attrib1f((float)bl);
@@ -247,10 +222,10 @@ namespace ChunkRenderer {
 			else {
 				col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
 			}
-			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(tcx + size, tcy); Renderer::Vertex3f(-0.5f + x, -0.5f + y, -0.5f + z);
-			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(tcx + size, tcy + size); Renderer::Vertex3f(-0.5f + x, 0.5f + y, -0.5f + z);
-			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(tcx, tcy + size); Renderer::Vertex3f(0.5f + x, 0.5f + y, -0.5f + z);
-			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(tcx, tcy); Renderer::Vertex3f(0.5f + x, -0.5f + y, -0.5f + z);
+			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, -0.5f + z);
+			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(-0.5f + x, 0.5f + y, -0.5f + z);
+			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, -0.5f + z);
+			Renderer::Color3f(col4, col4, col4); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(0.5f + x, -0.5f + y, -0.5f + z);
 		}
 	}
 
@@ -276,8 +251,7 @@ namespace ChunkRenderer {
 		float col2 = (float)p.col2 * 0.25f / World::BRIGHTNESSMAX;
 		float col3 = (float)p.col3 * 0.25f / World::BRIGHTNESSMAX;
 		int x = p.x, y = p.y, z = p.z, length = p.length;
-#ifdef NERDMODE1
-		Renderer::TexCoord3f(0.0f, 0.0f, (p.tex + 0.5f) / 64.0f);
+		Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(p.tex));
 		if (p.direction == 0) {
 			if (Renderer::AdvancedRender) {
 				Renderer::Normal3f(1.0f, 0.0f, 0.0f);
@@ -350,76 +324,6 @@ namespace ChunkRenderer {
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(length + 1.0f, 1.0f); Renderer::Vertex3f(x + length + 0.5f, y + 0.5f, z - 0.5f);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(length + 1.0f, 0.0f); Renderer::Vertex3f(x + length + 0.5f, y - 0.5f, z - 0.5f);
 		}
-#else
-		float T3d = (Textures::getTextureIndex(p.block, face) - 0.5) / 64.0;
-		switch (p.direction)
-		{
-		case 0: {
-			col *= 0.7;
-			float geomentry[] = {
-				0.0, 0.0, T3d, col, col, col, x + 0.5, y - 0.5, z - 0.5,
-				0.0, 1.0, T3d, col, col, col, x + 0.5, y + 0.5, z - 0.5,
-				length + 1.0, 1.0, T3d, col, col, col, x + 0.5, y + 0.5, z + length + 0.5,
-				length + 1.0, 0.0, T3d, col, col, col, x + 0.5, y - 0.5, z + length + 0.5
-			};
-			Renderer::Quad(geomentry);
-		}
-		break;
-		case 1: {
-			col *= 0.7;
-			float geomentry[] = {
-				0.0, 1.0, T3d, col, col, col, x - 0.5, y + 0.5, z - 0.5,
-				0.0, 0.0, T3d, col, col, col, x - 0.5, y - 0.5, z - 0.5,
-				length + 1.0, 0.0, T3d, col, col, col, x - 0.5, y - 0.5, z + length + 0.5,
-				length + 1.0, 1.0, T3d, col, col, col, x - 0.5, y + 0.5, z + length + 0.5
-			};
-			Renderer::Quad(geomentry);
-		}
-		break;
-		case 2: {
-			float geomentry[] = {
-				0.0, 0.0, T3d, col, col, col, x + 0.5, y + 0.5, z - 0.5,
-				0.0, 1.0, T3d, col, col, col, x - 0.5, y + 0.5, z - 0.5,
-				length + 1.0, 1.0, T3d, col, col, col, x - 0.5, y + 0.5, z + length + 0.5,
-				length + 1.0, 0.0, T3d, col, col, col, x + 0.5, y + 0.5, z + length + 0.5
-			};
-			Renderer::Quad(geomentry);
-		}
-		break;
-		case 3: {
-			float geomentry[] = {
-				0.0, 0.0, T3d, col, col, col, x - 0.5, y - 0.5, z - 0.5,
-				0.0, 1.0, T3d, col, col, col, x + 0.5, y - 0.5, z - 0.5,
-				length + 1.0, 1.0, T3d, col, col, col, x + 0.5, y - 0.5, z + length + 0.5,
-				length + 1.0, 0.0, T3d, col, col, col, x - 0.5, y - 0.5, z + length + 0.5
-			};
-			Renderer::Quad(geomentry);
-		}
-		break;
-		case 4: {
-			col *= 0.5;
-			float geomentry[] = {
-				0.0, 1.0, T3d, col, col, col, x - 0.5, y + 0.5, z + 0.5,
-				0.0, 0.0, T3d, col, col, col, x - 0.5, y - 0.5, z + 0.5,
-				length + 1.0, 0.0, T3d, col, col, col, x + length + 0.5, y - 0.5, z + 0.5,
-				length + 1.0, 1.0, T3d, col, col, col, x + length + 0.5, y + 0.5, z + 0.5
-			};
-			Renderer::Quad(geomentry);
-		}
-		break;
-		case 5: {
-			col *= 0.5;
-			float geomentry[] = {
-				0.0, 0.0, T3d, col, col, col, x - 0.5, y - 0.5, z - 0.5,
-				0.0, 1.0, T3d, col, col, col, x - 0.5, y + 0.5, z - 0.5,
-				length + 1.0, 1.0, T3d, col, col, col, x + length + 0.5, y + 0.5, z - 0.5,
-				length + 1.0, 0.0, T3d, col, col, col, x + length + 0.5, y - 0.5, z - 0.5
-			};
-			Renderer::Quad(geomentry);
-		}
-		break;
-		}
-#endif // NERDMODE1
 	}
 
 	std::vector<Renderer::VertexBuffer> RenderChunk(World::Chunk const& c) {
@@ -427,14 +331,15 @@ namespace ChunkRenderer {
 		ChunkRenderData rd(c);
 
 		for (int steps = 0; steps < 2; steps++) {
-			if (Renderer::AdvancedRender) Renderer::Begin(2, 3, 3, 1); else Renderer::Begin(2, 3);
+			if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 3, 3, 1);
+			else Renderer::Begin(GL_QUADS, 3, 3, 3);
 			for (int x = 0; x < 16; x++) for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) {
 				const Blocks::SingleBlock& info = BlockInfo(rd.getblock(x, y, z));
 				if (steps == 0 && !info.isTranslucent() || steps == 1 && info.isTranslucent()) {
 					RenderBlock(x, y, z, rd);
 				}
 			}
-			res.emplace_back(Renderer::End());
+			res.emplace_back(Renderer::End(true));
 		}
 		return res;
 	}
@@ -444,7 +349,8 @@ namespace ChunkRenderer {
 		ChunkRenderData rd(c);
 
 		for (int steps = 0; steps < 2; steps++) {
-			if (Renderer::AdvancedRender) Renderer::Begin(3, 3, 3, 1); else Renderer::Begin(3, 3);
+			if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 3, 3, 1);
+			else Renderer::Begin(GL_QUADS, 3, 3, 3);
 			for (int d = 0; d < 6; d++) {
 				uint8_t face = 0;
 				if (d == 2) face = 1;
@@ -570,7 +476,7 @@ namespace ChunkRenderer {
 					}
 				}
 			}
-			res.emplace_back(Renderer::End());
+			res.emplace_back(Renderer::End(true));
 		}
 		return res;
 	}

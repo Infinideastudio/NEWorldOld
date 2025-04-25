@@ -9,7 +9,7 @@ Renderer::VertexBuffer OnlinePlayer::genVertexBuffer(SkinID) {
 	using Renderer::Vertex3f;
 	using Renderer::Color3f;
 	
-	Renderer::Begin(2, 3);
+	Renderer::Begin(GL_QUADS, 3, 2, 3);
 	/*
 	//===Head===
 	//Left
@@ -268,7 +268,7 @@ Renderer::VertexBuffer OnlinePlayer::genVertexBuffer(SkinID) {
 	TexCoord2f(1.0f / 8 * 4, 1.0f / 8 * 1); Vertex3f(0.25f, -0.625f, -0.0625f);
 	*/
 
-	return Renderer::End();
+	return Renderer::End(true);
 }
 
 void OnlinePlayer::render() const {

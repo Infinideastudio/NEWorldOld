@@ -7,20 +7,18 @@
 #include "Items.h"
 
 void splashScreen() {
-	TextureID splTex = Textures::LoadRGBTexture("Textures/GUI/splashscreen.bmp");
-
 	for (int i = 0; i < 256; i += 2) {
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClearDepth(1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glBindTexture(GL_TEXTURE_2D, splTex);
-		glColor4f((float)i / 256, (float)i / 256, (float)i / 256, 1.0);
+		glBindTexture(GL_TEXTURE_2D, tex_splash);
 		glBegin(GL_QUADS);
-		glTexCoord2f(0.0, 1.0); glVertex2i(-1, 1);
-		glTexCoord2f(850.0f / 1024.0f, 1.0); glVertex2i(1, 1);
-		glTexCoord2f(850.0f / 1024.0f, 1.0 - 480.0f / 1024.0f); glVertex2i(1, -1);
-		glTexCoord2f(0.0, 1.0 - 480.0f / 1024.0f); glVertex2i(-1, -1);
+		glColor4f((float)i / 256, (float)i / 256, (float)i / 256, 1.0);
+		glTexCoord2f(0.0f, 1.0f); glVertex2i(-1, 1);
+		glTexCoord2f(1.0f, 1.0f); glVertex2i(1, 1);
+		glTexCoord2f(1.0f, 0.0f); glVertex2i(1, -1);
+		glTexCoord2f(0.0f, 0.0f); glVertex2i(-1, -1);
 		glEnd();
 
 		glfwSwapBuffers(MainWindow);
@@ -79,6 +77,8 @@ void setupScreen() {
 	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
 	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
 	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
+	glfwSwapInterval(vsync ? 1 : 0);
+
 	InitGLProc();
 
 #ifdef NEWORLD_DEBUG
@@ -105,36 +105,33 @@ void setupScreen() {
 	TextRenderer::BuildFont(windowwidth, windowheight);
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 	Renderer::initShaders();
-	glfwSwapInterval(vsync ? 1 : 0);
+	Textures::Init();
 }
 
 void loadTextures() {
-	Textures::Init();
+	tex_select = Textures::LoadRGBTexture("textures/ui/select.bmp");
+	tex_unselect = Textures::LoadRGBTexture("textures/ui/unselect.bmp");
+	tex_title = Textures::LoadRGBATexture("textures/ui/title.bmp", "textures/ui/title_mask.bmp");
 
-	tex_select = Textures::LoadRGBATexture("Textures/GUI/select.bmp", "");
-	tex_unselect = Textures::LoadRGBATexture("Textures/GUI/unselect.bmp", "");
-	tex_title = Textures::LoadRGBATexture("Textures/GUI/title.bmp", "Textures/GUI/titlemask.bmp");
 	for (int i = 0; i < 6; i++) {
 		std::stringstream ss;
-		ss << "Textures/GUI/mainmenu" << i << ".bmp";
+		ss << "textures/ui/background_" << i << ".bmp";
 		tex_mainmenu[i] = Textures::LoadRGBTexture(ss.str());
 	}
 
-	DefaultSkin = Textures::LoadRGBATexture("Textures/Player/skin_xiaoqiao.bmp", "Textures/Player/skinmask_xiaoqiao.bmp");
-
-	for (int gloop = 1; gloop <= 10; gloop++) {
-		string path = "Textures/blocks/destroy_" + itos(gloop) + ".bmp";
-		DestroyImage[gloop] = Textures::LoadRGBATexture(path, path);
+	for (int i = 0; i < 10; i++) {
+		string path = "textures/blocks/breaking_" + itos(i) + ".bmp";
+		DestroyImage[i + 1] = Textures::LoadRGBATexture(path, path);
 	}
 
-	BlockTextures = Textures::LoadRGBATexture("Textures/blocks/Terrain.bmp", "Textures/blocks/Terrainmask.bmp");
-	BlockTextures3D = Textures::LoadBlock3DTexture("Textures/blocks/Terrain3D.bmp", "Textures/blocks/Terrain3Dmask.bmp");
+	BlockTextureArray = Textures::LoadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
 	loadItemsTextures();
+	DefaultSkin = Textures::LoadRGBATexture("textures/skins/skin_xiaoqiao.bmp", "textures/skins/skin_xiaoqiao_mask.bmp");
 }
 
-void WindowSizeFunc(GLFWwindow * win, int width, int height) {
-	if (width<640) width = 640;
-	if (height<360) height = 360;
+void WindowSizeFunc(GLFWwindow* win, int width, int height) {
+	if (width < 640) width = 640;
+	if (height < 360) height = 360;
 	windowwidth = width;
 	windowheight = height > 0 ? height : 1;
 	glfwSetWindowSize(win, width, height);
