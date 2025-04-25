@@ -51,8 +51,8 @@ extern int windowwidth;
 extern int windowheight;
 extern bool gamebegin, gameexit, bagOpened;
 
-extern TextureID BlockTextures, BlockTextures3D;
-extern TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
+extern TextureID BlockTextureArray;
+extern TextureID tex_select, tex_unselect, tex_splash, tex_title, tex_mainmenu[6];
 extern TextureID DestroyImage[11];
 extern TextureID DefaultSkin;
 
@@ -69,8 +69,6 @@ extern bool updateThreadRun, updateThreadPaused;
 extern bool mpclient, mpserver;
 extern bool shouldGetScreenshot;
 extern bool shouldGetThumbnail;
-extern bool FirstUpdateThisFrame;
-extern bool FirstFrameThisUpdate;
 extern double SpeedupAnimTimer;
 extern double TouchdownAnimTimer;
 extern double screenshotAnimTimer;
@@ -80,7 +78,7 @@ extern double bagAnimDuration;
 extern int GLVersionMajor, GLVersionMinor, GLVersionRev;
 extern GLFWwindow* MainWindow;
 extern GLFWcursor* MouseCursor;
-extern double mx, my, mxl, myl;
+extern int mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
 extern double mxdelta, mydelta;
 extern string inputstr;

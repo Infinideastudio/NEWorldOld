@@ -2,36 +2,35 @@
 #include "Definitions.h"
 #include "GLProc.h"
 
-extern int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_UNITSIZE, filter;
+extern int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_COUNT;
 const short BITMAP_ID = 0x4D42;
 
-namespace Textures{
+namespace Textures {
+	struct ImageRGB {
+		unsigned int sizeX;
+		unsigned int sizeY;
+		unique_ptr<uint8_t[]> buffer;
+	};
+
+	struct ImageRGBA {
+		unsigned int sizeX;
+		unsigned int sizeY;
+		unique_ptr<uint8_t[]> buffer;
+	};
 
 #pragma pack(push)
 #pragma pack(1)
-	struct TEXTURE_RGB {
-		unsigned int sizeX;
-		unsigned int sizeY;
-		unique_ptr<uint8_t[]> buffer;
-	};
-
-	struct TEXTURE_RGBA {
-		unsigned int sizeX;
-		unsigned int sizeY;
-		unique_ptr<uint8_t[]> buffer;
-	};
-
-	struct BITMAPINFOHEADER {
-		int biSize = 40, biWidth, biHeight;
-		short biPlanes = 1, biBitCount = 24;
-		int biCompression = 0, biSizeImage, biXPelsPerMeter = 0, biYPelsPerMeter = 0, biClrUsed = 0, biClrImportant = 0;
-	};
-
-	struct BITMAPFILEHEADER {
+	struct BitmapFileHeader {
 		short bfType = BITMAP_ID;
 		int bfSize;
 		short bfReserved1 = 0, bfReserved2 = 0;
 		int bfOffBits = 54;
+	};
+
+	struct BitmapInfoHeader {
+		int biSize = 40, biWidth, biHeight;
+		short biPlanes = 1, biBitCount = 24;
+		int biCompression = 0, biSizeImage, biXPelsPerMeter = 0, biYPelsPerMeter = 0, biClrUsed = 0, biClrImportant = 0;
 	};
 #pragma pack(pop)
 
@@ -43,18 +42,12 @@ namespace Textures{
 
 	void Init();
 	TextureIndex getTextureIndex(BlockID blockname, uint8_t side);
-	float getTexcoordX(ItemID item, uint8_t side);
-	float getTexcoordY(ItemID item, uint8_t side);
-	void LoadRGBImage(TEXTURE_RGB& tex, string Filename);
-	void LoadRGBAImage(TEXTURE_RGBA& tex, string Filename, string MkFilename);
+	void LoadRGBImage(ImageRGB& tex, string Filename);
+	void LoadRGBAImage(ImageRGBA& tex, string Filename, string MkFilename);
 
 	TextureID LoadRGBTexture(string Filename);
-	TextureID LoadFontTexture(string Filename);
 	TextureID LoadRGBATexture(string Filename, string MkFilename);
-	TextureID LoadBlock3DTexture(string Filename, string MkFilename);
-
-	void SaveRGBImage(string filename, TEXTURE_RGB& image);
-
-	void Build2DMipmaps(GLenum format, int w, int h, int level, const uint8_t* src);
-
+	TextureID LoadFontTexture(string Filename);
+	TextureID LoadBlockTextureArray(string Filename, string MkFilename);
+	void SaveRGBImage(string filename, ImageRGB& image);
 }

@@ -33,7 +33,6 @@ void updategame();
 void render();
 void present();
 void readback();
-// void drawCloud(double px, double pz);
 void drawBorder(int x, int y, int z);
 void drawBreaking(float level, int x, int y, int z);
 void drawGUI();
@@ -97,29 +96,19 @@ bool isPressed(int key, bool setFalse = false) {
 //==============================     主程序     ================================//
 
 int main() {
-	//终于进入main函数了！激动人心的一刻！！！
+	// 终于进入main函数了！激动人心的一刻！！！
 
 #ifndef NEWORLD_USE_WINAPI
 	setlocale(LC_ALL, "zh_CN.UTF-8");
-#else
-	//提交OpenGL信息
-	{
-		std::ifstream postexe("Post.exe");
-		if (postexe.is_open()) {
-			postexe.close();
-			WinExec("Post.exe", SW_SHOWDEFAULT);
-			Sleep(3000);
-		} else postexe.close();
-	}
 #endif
 
 	loadOptions();
 	Globalization::Load();
 
-	_mkdir("Configs");
-	_mkdir("Worlds");
-	_mkdir("Screenshots");
-	_mkdir("Mods");
+	_mkdir("configs");
+	_mkdir("worlds");
+	_mkdir("screenshots");
+	_mkdir("mods");
 
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
@@ -219,7 +208,6 @@ main_menu:
 				glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 				glDepthFunc(GL_LEQUAL);
 				glEnable(GL_CULL_FACE);
-				glfwGetCursorPos(MainWindow, &mx, &my);
 				mxl = mx;
 				myl = my;
 			}
@@ -259,17 +247,17 @@ main_menu:
 	ThreadDestroy(updateThread);
 	MutexDestroy(Mutex);
 
-	//结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
-	//不对啊这不是FB！！！这是正宗的C++！！！！！！
-	//楼上的楼上在瞎说！！！别信他的！！！
+	// 结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
+	// 不对啊这不是FB！！！这是正宗的C++！！！！！！
+	// 楼上的楼上在瞎说！！！别信他的！！！
 	glfwTerminate();
 	return 0;
-	//This is the END of the program!
+	// This is the END of the program!
 }
 
 ThreadFunc updateThreadFunc(void*) {
 
-	//Wait until start...
+	// Wait until start...
 	MutexLock(Mutex);
 	while (!updateThreadRun) {
 		MutexUnlock(Mutex);
@@ -278,24 +266,23 @@ ThreadFunc updateThreadFunc(void*) {
 	}
 	MutexUnlock(Mutex);
 
-	//Thread start
+	// Thread start
 	MutexLock(Mutex);
 	lastupdate = timer();
 
 	while (updateThreadRun) {
 
 		MutexUnlock(Mutex);
-		Sleep(1); //Don't make it always busy
+		Sleep(1); // Don't make it always busy
 		MutexLock(Mutex);
 
 		while (updateThreadPaused) {
 			MutexUnlock(Mutex);
-			Sleep(1); //Same as before
+			Sleep(1); // Same as before
 			MutexLock(Mutex);
 			lastupdate = updateTimer = timer();
 		}
 
-		FirstUpdateThisFrame = true;
 		updateTimer = timer();
 		if (updateTimer - lastupdate >= 5.0) lastupdate = updateTimer;
 
@@ -303,7 +290,6 @@ ThreadFunc updateThreadFunc(void*) {
 			lastupdate += 1.0 / 30.0;
 			upsc++;
 			updategame();
-			FirstUpdateThisFrame = false;
 		}
 	}
 	MutexUnlock(Mutex);
@@ -461,10 +447,8 @@ bool doCommand(const vector<string>& command) {
 }
 
 void updategame() {
-	//Time_updategame_ = timer();
-	static double Wprstm;
-	static bool WP;
-	//bool chunkupdated = false;
+	static double wPressTimer;
+	static bool wPressedOnce;
 
 	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
 	//生命值相关
@@ -637,16 +621,17 @@ void updategame() {
 		if (!chatmode) {
 			// 移动！(生命在于运动)
 			if (glfwGetKey(MainWindow, GLFW_KEY_W) || Player::glidingNow) {
-				if (!WP) {
-					if (Wprstm == 0.0)
-						Wprstm = timer();
+				if (!wPressedOnce) {
+					if (wPressTimer == 0.0) {
+						wPressTimer = timer();
+					}
 					else {
-						if (timer() - Wprstm <= 0.5) { Player::Running = true; Wprstm = 0.0; }
-						else Wprstm = timer();
+						if (timer() - wPressTimer <= 0.5) { Player::Running = true; wPressTimer = 0.0; }
+						else wPressTimer = timer();
 					}
 				}
-				if (Wprstm != 0.0 && timer() - Wprstm > 0.5) Wprstm = 0.0;
-				WP = true;
+				if (wPressTimer != 0.0 && timer() - wPressTimer > 0.5) wPressTimer = 0.0;
+				wPressedOnce = true;
 				if (!Player::glidingNow) {
 					Player::xa += -sin(Player::heading * M_PI / 180.0) * Player::speed;
 					Player::za += -cos(Player::heading * M_PI / 180.0) * Player::speed;
@@ -658,7 +643,7 @@ void updategame() {
 				}
 			} else {
 				Player::Running = false;
-				WP = false;
+				wPressedOnce = false;
 			}
 			if (Player::Running)Player::speed = runspeed;
 			else Player::speed = walkspeed;
@@ -666,19 +651,19 @@ void updategame() {
 			if (glfwGetKey(MainWindow, GLFW_KEY_S) == GLFW_PRESS && !Player::glidingNow) {
 				Player::xa += sin(Player::heading * M_PI / 180.0) * Player::speed;
 				Player::za += cos(Player::heading * M_PI / 180.0) * Player::speed;
-				Wprstm = 0.0;
+				wPressTimer = 0.0;
 			}
 
 			if (glfwGetKey(MainWindow, GLFW_KEY_A) == GLFW_PRESS && !Player::glidingNow) {
 				Player::xa += sin((Player::heading - 90) * M_PI / 180.0) * Player::speed;
 				Player::za += cos((Player::heading - 90) * M_PI / 180.0) * Player::speed;
-				Wprstm = 0.0;
+				wPressTimer = 0.0;
 			}
 
 			if (glfwGetKey(MainWindow, GLFW_KEY_D) == GLFW_PRESS && !Player::glidingNow) {
 				Player::xa += -sin((Player::heading - 90) * M_PI / 180.0) * Player::speed;
 				Player::za += -cos((Player::heading - 90) * M_PI / 180.0) * Player::speed;
-				Wprstm = 0.0;
+				wPressTimer = 0.0;
 			}
 
 			if (!Player::Flying && !Player::CrossWall) {
@@ -735,7 +720,7 @@ void updategame() {
 						Player::ya += walkspeed / 2;
 						isPressed(GLFW_KEY_SPACE, true);
 					}
-					Wprstm = 0.0;
+					wPressTimer = 0.0;
 				} else {
 					Player::ya = walkspeed;
 					isPressed(GLFW_KEY_SPACE, true);
@@ -744,7 +729,7 @@ void updategame() {
 
 			if ((glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) && !Player::glidingNow) {
 				if (Player::CrossWall || Player::Flying) Player::ya -= walkspeed / 2;
-				Wprstm = 0.0;
+				wPressTimer = 0.0;
 			}
 
 			if (glfwGetKey(MainWindow, GLFW_KEY_K) && Player::Glide && !Player::OnGround && !Player::glidingNow) {
@@ -823,7 +808,6 @@ void updategame() {
 		bagOpened = !bagOpened;
 		bagAnimTimer = timer();
 		if (!bagOpened) {
-			glfwGetCursorPos(MainWindow, &mx, &my);
 			mxl = mx;
 			myl = my;
 			mwl = mw;
@@ -868,7 +852,7 @@ void updategame() {
 	}
 
 	// 爬墙
-	//if (Player::NearWall && Player::Flying == false && Player::CrossWall == false){
+	//if (Player::NearWall && Player::Flying == false && Player::CrossWall == false) {
 	//  Player::ya += walkspeed
 	//  Player::jump = 0.0
 	//}
@@ -885,7 +869,6 @@ void updategame() {
 	}
 
 	mbp = mb;
-	FirstFrameThisUpdate = true;
 	Particles::updateall();
 
 	Player::intxpos = RoundInt(Player::xpos);
@@ -898,8 +881,6 @@ void updategame() {
 	Player::intxposold = RoundInt(Player::xpos);
 	Player::intyposold = RoundInt(Player::ypos);
 	Player::intzposold = RoundInt(Player::zpos);
-
-	// Time_updategame += timer() - Time_updategame;
 }
 
 // Render the whole scene and HUD
@@ -907,20 +888,12 @@ void render() {
 	double curtime = timer();
 	double TimeDelta;
 	double xpos, ypos, zpos;
-
-	// int TexcoordCount = MergeFace ? 3 : 2;
-	/*
-	static vector<GLint> multiDrawArrays[3];
-	static vector<GLsizei> multiDrawCounts[3];
-	for (int i = 0; i < 3; i++) {
-		multiDrawArrays[i].clear();
-		multiDrawCounts[i].clear();
-	}
-	*/
-
+	double mxd, myd;
+	glfwGetCursorPos(MainWindow, &mxd, &myd);
 	mxl = mx;
 	myl = my;
-	glfwGetCursorPos(MainWindow, &mx, &my);
+	mx = static_cast<int>(mxd);
+	my = static_cast<int>(myd);
 
 	if (Player::Running) {
 		if (FOVyExt < 9.8) {
@@ -1022,12 +995,9 @@ void render() {
 	glClearDepth(1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glEnable(GL_TEXTURE_2D);
-	if (MergeFace) glEnable(GL_TEXTURE_3D);
-	if (DebugMergeFace) glPolygonMode(GL_FRONT, GL_LINE);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
 
-	glBindTexture(GL_TEXTURE_2D, BlockTextures);
-	glBindTexture(GL_TEXTURE_3D, BlockTextures3D);
+	if (DebugMergeFace) glPolygonMode(GL_FRONT, GL_LINE);
 
 	if (Renderer::AdvancedRender) {
 		int shadowdist = min(Renderer::MaxShadowDist, viewdistance);
@@ -1040,25 +1010,32 @@ void render() {
 		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, shadowdist + 2, curtime, {});
 		Renderer::StartShadowPass(lightFrustum, interpolatedTime);
 		WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
-		Particles::renderall(xpos, ypos, zpos);
+		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f(1.0f).data);
+		Particles::renderall(xpos, ypos, zpos, interp);
 		Renderer::EndShadowPass();
 	}
 
 	WorldRenderer::ListRenderChunks(xpos, ypos, zpos, viewdistance, curtime, Player::ViewFrustum);
-	Renderer::StartOpqauePass(Player::ViewFrustum, interpolatedTime);
+	Renderer::StartOpaquePass(Player::ViewFrustum, interpolatedTime);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
+	Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f(1.0f).data);
+	Particles::renderall(xpos, ypos, zpos, interp);
 	Renderer::EndOpaquePass();
 
 	Renderer::StartTranslucentPass(Player::ViewFrustum, interpolatedTime);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
 	Renderer::EndTranslucentPass();
 
-	if (MergeFace) glDisable(GL_TEXTURE_3D);
 	if (DebugMergeFace) glPolygonMode(GL_FRONT, GL_FILL);
 
 	if (Renderer::AdvancedRender) {
 		Renderer::StartFinalPass(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, interpolatedTime);
-		Renderer::DrawFullscreen();
+		Renderer::Begin(GL_QUADS, 2, 2, 0);
+		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(0, 0);
+		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, windowheight);
+		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(windowwidth, windowheight);
+		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(windowwidth, 0);
+		Renderer::End().render();
 		Renderer::EndFinalPass();
 	}
 
@@ -1074,9 +1051,6 @@ void render() {
 		drawBreaking(seldes, 0, 0, 0);
 		glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
 	}
-
-	glBindTexture(GL_TEXTURE_2D, BlockTextures);
-	Particles::renderall(xpos, ypos, zpos);
 
 	if (GUIrenderswitch && sel) {
 		glTranslated(selx - xpos, sely - ypos, selz - zpos);
@@ -1108,9 +1082,6 @@ void render() {
 		glEnable(GL_TEXTURE_2D);
 	}
 
-	//Time_renderscene = timer() - Time_renderscene;
-	//Time_renderGUI_ = timer();
-
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
@@ -1120,42 +1091,40 @@ void render() {
 	glDepthFunc(GL_ALWAYS);
 
 	if (World::getblock(RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)) == Blocks::WATER) {
-		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		glBindTexture(GL_TEXTURE_2D, BlockTextures);
-		double tcX = Textures::getTexcoordX(Blocks::WATER, 1);
-		double tcY = Textures::getTexcoordY(Blocks::WATER, 1);
-		glBegin(GL_QUADS);
-		glTexCoord2d(tcX, tcY + 1 / 8.0);
-		glVertex2i(0, 0);
-		glTexCoord2d(tcX, tcY);
-		glVertex2i(0, windowheight);
-		glTexCoord2d(tcX + 1 / 8.0, tcY);
-		glVertex2i(windowwidth, windowheight);
-		glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-		glVertex2i(windowwidth, 0);
-		glEnd();
+		auto& shader = Renderer::shaders[Renderer::UIShader];
+		shader.bind();
+		glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
+		Renderer::Begin(GL_QUADS, 2, 3, 4);
+		Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
+		Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Blocks::WATER, 1)));
+		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(0, 0);
+		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, windowheight);
+		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(windowwidth, windowheight);
+		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(windowwidth, 0);
+		Renderer::End().render();
+		shader.unbind();
 	}
+
 	if (GUIrenderswitch) {
 		drawGUI();
 		if (Renderer::AdvancedRender && DebugShadow) drawShadowMap();
 		drawBag();
 	}
 
-	glDisable(GL_TEXTURE_2D);
 	if (curtime - screenshotAnimTimer <= 1.0 && !shouldGetScreenshot) {
 		float col = 1.0f - (float)(curtime - screenshotAnimTimer);
-		glColor4f(1.0f, 1.0f, 1.0f, col);
+		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
+		glColor4f(1.0f, 1.0f, 1.0f, col);
 		glVertex2i(0, 0);
 		glVertex2i(0, windowheight);
 		glVertex2i(windowwidth, windowheight);
 		glVertex2i(windowwidth, 0);
 		glEnd();
+		glEnable(GL_TEXTURE_2D);
 	}
-	glEnable(GL_TEXTURE_2D);
 
 	lastframe = curtime;
-	// Time_screensync = timer() - Time_screensync;
 }
 
 void present() {
@@ -1179,7 +1148,7 @@ void readback() {
 		strftime(tmp, sizeof(tmp), "%Y-%m-%d %H-%M-%S", timeinfo);
 		delete timeinfo;
 		std::stringstream ss;
-		ss << "Screenshots/" << tmp << ".bmp";
+		ss << "screenshots/" << tmp << ".bmp";
 		saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
 	}
 
@@ -1189,66 +1158,10 @@ void readback() {
 	}
 }
 
-/*
-// Draw the clouds (deprecated)
-void drawCloud(double px, double pz) {
-	//glFogf(GL_FOG_START, 100.0);
-	//glFogf(GL_FOG_END, 300.0);
-	static double ltimer;
-	static bool generated;
-	static unsigned int cloudvb[128];
-	static int vtxs[128];
-	static float f;
-	static int l;
-	if (ltimer == 0.0) ltimer = timer();
-	f += (float)(timer() - ltimer) * 0.25f;
-	ltimer = timer();
-	if (f >= 1.0) {
-		l += int(f);
-		f -= int(f);
-		l %= 128;
-	}
-
-	if (!generated) {
-		generated = true;
-		for (int i = 0; i != 128; i++) {
-			for (int j = 0; j != 128; j++)
-				World::cloud[i][j] = int(rnd() * 2);
-		}
-		glGenBuffersARB(128, cloudvb);
-		for (int i = 0; i != 128; i++) {
-			Renderer::Init(0, 0);
-			for (int j = 0; j != 128; j++) {
-				if (World::cloud[i][j] != 0) {
-					Renderer::Vertex3d(j * cloudwidth, 128.0, 0.0);
-					Renderer::Vertex3d(j * cloudwidth, 128.0, cloudwidth);
-					Renderer::Vertex3d((j + 1)*cloudwidth, 128.0, cloudwidth);
-					Renderer::Vertex3d((j + 1)*cloudwidth, 128.0, 0.0);
-				}
-			}
-			Renderer::Flush(cloudvb[i], vtxs[i]);
-		}
-	}
-
-	glDisable(GL_TEXTURE_2D);
-	glDisable(GL_CULL_FACE);
-	glColor4f(1.0, 1.0, 1.0, 0.5);
-	for (int i = 0; i < 128; i++) {
-		glPushMatrix();
-		glTranslated(-64.0 * cloudwidth - px, 0.0, cloudwidth * ((l + i) % 128 + f) - 64.0 * cloudwidth - pz);
-		Renderer::renderbuffer(cloudvb[i], vtxs[i], 0, 0);
-		glPopMatrix();
-	}
-	//setupNormalFog();
-}
-*/
-
 // Draw the block selection border
 void drawBorder(int x, int y, int z) {
-	static float eps = 0.002f;
-
+	const float eps = 0.005f;
 	glDisable(GL_TEXTURE_2D);
-	glEnable(GL_LINE_SMOOTH);
 
 	glBegin(GL_LINES);
 	glColor4f(0.2f, 0.2f, 0.2f, 1.0f);
@@ -1323,11 +1236,10 @@ void drawBorder(int x, int y, int z) {
 	glEnd();
 
 	glEnable(GL_TEXTURE_2D);
-	glDisable(GL_LINE_SMOOTH);
 }
 
 void drawBreaking(float level, int x, int y, int z) {
-	static float eps = 0.002f;
+	const float eps = 0.005f;
 
 	int index = int(level / 10) + 1;
 	if (index < 1) index = 1;
@@ -1664,35 +1576,30 @@ void drawGUI() {
 
 void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha) {
 	// 画出背包的一行
+	auto& shader = Renderer::shaders[Renderer::UIShader];
 	for (int i = 0; i < 10; i++) {
-		if (i == itemid) glBindTexture(GL_TEXTURE_2D, tex_select);
-		else glBindTexture(GL_TEXTURE_2D, tex_unselect);
-		glColor4f(1.0f, 1.0f, 1.0f, alpha);
+		glBindTexture(GL_TEXTURE_2D, i == itemid ? tex_select : tex_unselect);
 		glBegin(GL_QUADS);
-		glTexCoord2f(0.0, 1.0);
-		glVertex2d(xbase + i * (32 + spac), ybase);
-		glTexCoord2f(0.0, 0.0);
-		glVertex2d(xbase + i * (32 + spac) + 32, ybase);
-		glTexCoord2f(1.0, 0.0);
-		glVertex2d(xbase + i * (32 + spac) + 32, ybase + 32);
-		glTexCoord2f(1.0, 1.0);
-		glVertex2d(xbase + i * (32 + spac), ybase + 32);
+		glColor4f(1.0f, 1.0f, 1.0f, alpha);
+		glTexCoord2f(0.0f, 1.0f); glVertex2i(xbase + i * (32 + spac), ybase);
+		glTexCoord2f(0.0f, 0.0f); glVertex2i(xbase + i * (32 + spac) + 32, ybase);
+		glTexCoord2f(1.0f, 0.0f); glVertex2i(xbase + i * (32 + spac) + 32, ybase + 32);
+		glTexCoord2f(1.0f, 1.0f); glVertex2i(xbase + i * (32 + spac), ybase + 32);
 		glEnd();
-		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
 		if (Player::inventory[row][i] != Blocks::AIR) {
-			glBindTexture(GL_TEXTURE_2D, BlockTextures);
-			double tcX = Textures::getTexcoordX(Player::inventory[row][i], 1);
-			double tcY = Textures::getTexcoordY(Player::inventory[row][i], 1);
-			glBegin(GL_QUADS);
-			glTexCoord2d(tcX, tcY + 1 / 8.0);
-			glVertex2d(xbase + i * (32 + spac) + 2, ybase + 2);
-			glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-			glVertex2d(xbase + i * (32 + spac) + 30, ybase + 2);
-			glTexCoord2d(tcX + 1 / 8.0, tcY);
-			glVertex2d(xbase + i * (32 + spac) + 30, ybase + 30);
-			glTexCoord2d(tcX, tcY);
-			glVertex2d(xbase + i * (32 + spac) + 2, ybase + 30);
-			glEnd();
+			shader.bind();
+			glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
+			Renderer::Begin(GL_QUADS, 2, 3, 4);
+			Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
+			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Player::inventory[row][i], 1)));
+			Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 2);
+			Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 30, ybase + 2);
+			Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 30, ybase + 30);
+			Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 30);
+			Renderer::End().render();
+			shader.unbind();
+
 			std::stringstream ss;
 			ss << (int)Player::inventoryAmount[row][i];
 			TextRenderer::renderString(xbase + i * (32 + spac), ybase, ss.str());
@@ -1724,6 +1631,7 @@ void drawBag() {
 
 		if (curtime - bagAnimTimer > bagAnimDuration) glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
 		else glColor4f(0.2f, 0.2f, 0.2f, 0.6f * bagAnim);
+
 		glBegin(GL_QUADS);
 		glVertex2i(0, 0);
 		glVertex2i(windowwidth, 0);
@@ -1777,19 +1685,19 @@ void drawBag() {
 			}
 		}
 		if (indexselected != Blocks::AIR) {
-			glBindTexture(GL_TEXTURE_2D, BlockTextures);
-			double tcX = Textures::getTexcoordX(indexselected, 1);
-			double tcY = Textures::getTexcoordY(indexselected, 1);
-			glBegin(GL_QUADS);
-			glTexCoord2d(tcX, tcY + 1 / 8.0);
-			glVertex2d(mx - 16, my - 16);
-			glTexCoord2d(tcX + 1 / 8.0, tcY + 1 / 8.0);
-			glVertex2d(mx + 16, my - 16);
-			glTexCoord2d(tcX + 1 / 8.0, tcY);
-			glVertex2d(mx + 16, my + 16);
-			glTexCoord2d(tcX, tcY);
-			glVertex2d(mx - 16, my + 16);
-			glEnd();
+			auto& shader = Renderer::shaders[Renderer::UIShader];
+			shader.bind();
+			glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
+			Renderer::Begin(GL_QUADS, 2, 3, 4);
+			Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
+			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(indexselected, 1)));
+			Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(mx - 16, my - 16);
+			Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(mx + 16, my - 16);
+			Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(mx + 16, my + 16);
+			Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(mx - 16, my + 16);
+			Renderer::End().render();
+			shader.unbind();
+
 			std::stringstream ss;
 			ss << Amountselected;
 			TextRenderer::renderString((int)mx - 16, (int)my - 16, ss.str());
@@ -1858,23 +1766,21 @@ void drawShadowMap() {
 	float xa = 1.0f;
 	float ya = 0.0f;
 
-	glEnable(GL_TEXTURE_2D);
 	Renderer::shadow.bindDepthTexture(0);
-	Renderer::shaders[Renderer::DebugShadowShader].bind();
-	Renderer::shaders[Renderer::DebugShadowShader].setUniform("ShadowTexture", 0);
-
-	Renderer::Begin(2, 0, 0, 0);
-	Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(xi, ya, 0.0f);
-	Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(xa, ya, 0.0f);
-	Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(xa, yi, 0.0f);
-	Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(xi, yi, 0.0f);
+	auto& shader = Renderer::shaders[Renderer::DebugShadowShader];
+	shader.bind();
+	shader.setUniformI("u_shadow_texture", 0);
+	Renderer::Begin(GL_QUADS, 2, 2, 0);
+	Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2f(xi, ya);
+	Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2f(xa, ya);
+	Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2f(xa, yi);
+	Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2f(xi, yi);
 	Renderer::End().render();
-
-	Shader::unbind();
+	shader.unbind();
 }
 
 void saveScreenshot(int x, int y, int w, int h, string filename) {
-	Textures::TEXTURE_RGB scrBuffer;
+	Textures::ImageRGB scrBuffer;
 	int bufw = w, bufh = h;
 	while (bufw % 4 != 0)  bufw += 1;
 	while (bufh % 4 != 0)  bufh += 1;
@@ -1901,7 +1807,7 @@ void loadoption(std::map<string, string> &m, const char* name, T &value) {
 
 void loadOptions() {
 	std::map<string, string> options;
-	std::ifstream filein("Configs/options.ini", std::ios::in);
+	std::ifstream filein("configs/options.ini", std::ios::in);
 	if (!filein.is_open()) return;
 	string name, value;
 	while (!filein.eof()) {
@@ -1934,7 +1840,7 @@ void saveoption(std::ofstream &out, const char* name, T &value) {
 
 void saveOptions() {
 	std::map<string, string> options;
-	std::ofstream fileout("Configs/options.ini", std::ios::out);
+	std::ofstream fileout("configs/options.ini", std::ios::out);
 	if (!fileout.is_open()) return;
 	saveoption(fileout, "Language", Globalization::Cur_Lang);
 	saveoption(fileout, "FOV", FOVyNormal);

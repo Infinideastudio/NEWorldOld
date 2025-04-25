@@ -36,8 +36,8 @@ bool multiplayer = false;
 string serverip;
 unsigned short port = 30001;
 
-TextureID BlockTextures, BlockTextures3D;
-TextureID tex_select, tex_unselect, tex_title, tex_mainmenu[6];
+TextureID BlockTextureArray;
+TextureID tex_select, tex_unselect, tex_splash, tex_title, tex_mainmenu[6];
 TextureID DestroyImage[11];
 TextureID DefaultSkin;
 
@@ -50,8 +50,6 @@ bool updateThreadRun, updateThreadPaused;
 
 bool shouldGetScreenshot;
 bool shouldGetThumbnail;
-bool FirstUpdateThisFrame;
-bool FirstFrameThisUpdate;
 double SpeedupAnimTimer;
 double TouchdownAnimTimer;
 double screenshotAnimTimer;
@@ -65,7 +63,7 @@ GLFWwindow* MainWindow;
 GLFWcursor* MouseCursor;
 
 //�����������
-double mx, my, mxl, myl;
+int mx, my, mxl, myl;
 int mw, mb, mbp, mbl, mwl;
 double mxdelta, mydelta;
 //������������

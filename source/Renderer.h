@@ -8,7 +8,7 @@
 
 namespace Renderer {
 	enum Shaders {
-		DefaultShader, OpqaueShader, TranslucentShader, FinalShader, ShadowShader, DebugShadowShader
+		UIShader, DefaultShader, OpqaueShader, TranslucentShader, FinalShader, ShadowShader, DebugShadowShader
 	};
 
 	const int ArraySize = 4194304;
@@ -22,12 +22,12 @@ namespace Renderer {
 	extern vector<Shader> shaders;
 	extern int ActiveShader;
 
-	extern FrameBuffer shadow;
+	extern Framebuffer shadow;
 	extern bool VolumetricClouds;
 
 	class VertexBuffer {
 	public:
-		VertexBuffer() : vao(0), vbo(0), numVertices(0) {}
+		VertexBuffer() : vao(0), vbo(0), primitive(GL_TRIANGLES), numVertices(0) {}
 		VertexBuffer(VertexBuffer const&) = delete;
 		VertexBuffer(VertexBuffer&& from) noexcept : VertexBuffer() {
 			swap(*this, from);
@@ -47,20 +47,24 @@ namespace Renderer {
 			using std::swap;
 			swap(first.vao, second.vao);
 			swap(first.vbo, second.vbo);
+			swap(first.primitive, second.primitive);
 			swap(first.numVertices, second.numVertices);
 		}
 
-		static VertexBuffer upload();
-		bool empty() const { return numVertices == 0; }
+		static VertexBuffer upload(bool staticDraw);
+		bool empty() const { return vao == 0 || vbo == 0 || numVertices == 0; }
 		void render() const;
 
 	private:
 		GLuint vao;
 		GLuint vbo;
+		GLenum primitive;
 		GLuint numVertices;
 	};
 
-	void Begin(int tc, int cc, int nc = 0, int ac = 0);
+	void Begin(GLenum primitive, int coords, int texCoords, int colors, int normals = 0, int attributes = 0);
+	void Vertex2i(int x, int y);
+	void Vertex2f(float x, float y);
 	void Vertex3f(float x, float y, float z);
 	void TexCoord2f(float x, float y);
 	void TexCoord3f(float x, float y, float z);
@@ -68,8 +72,8 @@ namespace Renderer {
 	void Color4f(float r, float g, float b, float a);
 	void Normal3f(float x, float y, float z);
 	void Attrib1f(float attr);
-	inline VertexBuffer End() {
-		return VertexBuffer::upload();
+	inline VertexBuffer End(bool staticDraw = false) {
+		return VertexBuffer::upload(staticDraw);
 	}
 
 	void initShaders();
@@ -84,12 +88,10 @@ namespace Renderer {
 	void ClearSGDBuffers();
 	void StartShadowPass(const FrustumTest& lightFrustum, float gameTime);
 	void EndShadowPass();
-	void StartOpqauePass(const FrustumTest& viewFrustum, float gametime);
+	void StartOpaquePass(const FrustumTest& viewFrustum, float gametime);
 	void EndOpaquePass();
 	void StartTranslucentPass(const FrustumTest& viewFrustum, float gametime);
 	void EndTranslucentPass();
 	void StartFinalPass(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& viewFrustum, float gameTime);
 	void EndFinalPass();
-
-	void DrawFullscreen();
 }

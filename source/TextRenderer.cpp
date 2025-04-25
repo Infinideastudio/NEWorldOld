@@ -18,7 +18,7 @@ namespace TextRenderer {
 	void BuildFont(int w, int h){
 		ww = w;
 		wh = h;
-		Font = Textures::LoadFontTexture("Fonts/ASCII.bmp");
+		Font = Textures::LoadFontTexture("fonts/ascii.bmp");
 
 		float cx, cy;
 		gbe = glGenLists(256);
@@ -47,7 +47,7 @@ namespace TextRenderer {
 		if (FT_Init_FreeType(&library)) {
 			//assert(false);
 		}
-		if (FT_New_Face(library, "Fonts/Font.ttf", 0, &fontface)) {
+		if (FT_New_Face(library, "fonts/unicode.ttf", 0, &fontface)) {
 			//assert(false);
 		}
 		if (FT_Set_Pixel_Sizes(fontface, 16, 16)) {
@@ -137,7 +137,7 @@ namespace TextRenderer {
 			else {
 				if (!unicodeTexAval[uc / 256]) {
 					std::stringstream ss;
-					ss << "Textures/Fonts/unicode/unicode_glyph_" << uc / 256 << ".bmp";
+					ss << "Textures/fonts/unicode/unicode_glyph_" << uc / 256 << ".bmp";
 					ftex = Textures::LoadFontTexture(ss.str());
 					unicodeTex[uc / 256] = ftex;
 					unicodeTexAval[uc / 256] = true;

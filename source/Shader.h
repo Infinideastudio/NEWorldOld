@@ -4,18 +4,18 @@
 
 class Shader {
 public:
-	Shader(string vshPath, string fshPath, bool bindLocation = false) :Shader(vshPath, fshPath, bindLocation, std::set<string>()) {}
-	Shader(string vshPath, string fshPath, bool bindLocation, std::set<string> defines);
+	Shader(string vshPath, string fshPath): Shader(vshPath, fshPath, std::set<string>()) {}
+	Shader(string vshPath, string fshPath, std::set<string> defines);
 
 	inline void bind() { glUseProgram(shaderProgram); }
 	static inline void unbind() { glUseProgram(0); }
 	void release();
 
 	bool setUniform(const char* uniform, float value);
-	bool setUniform(const char* uniform, int value);
 	bool setUniform(const char* uniform, float v0, float v1, float v2);
 	bool setUniform(const char* uniform, float v0, float v1, float v2, float v3);
 	bool setUniform(const char* uniform, const float* value);
+	bool setUniformI(const char* uniform, int value);
 	bool setUniformI(const char* uniform, int v0, int v1, int v2);
 
 private:

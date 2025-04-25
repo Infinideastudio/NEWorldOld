@@ -8,7 +8,7 @@ namespace Globalization {
 	map<string, int> keys;
 
 	bool LoadLang(string lang) {
-		std::ifstream f("Lang/" + lang + ".lang");
+		std::ifstream f("lang/" + lang + ".lang");
 		if (f.bad()) {
 			exit(-101);
 			return false;
@@ -25,7 +25,7 @@ namespace Globalization {
 	}
 
 	bool Load() {
-		std::ifstream f("Lang/Keys.lk");
+		std::ifstream f("lang/Keys.lk");
 		if (f.bad()) return false;
 		f >> count; f.get();
 		for (int i = 0; i < count; i++) {

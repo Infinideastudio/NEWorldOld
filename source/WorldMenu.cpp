@@ -94,7 +94,7 @@ namespace Menus {
 				vscroll.barpos = 0;
 				chosenWorldName = "";
 				//������������浵
-				Textures::TEXTURE_RGB tmb;
+				Textures::ImageRGB tmb;
 				intptr_t hFile = 0;
 				_finddata_t fileinfo;
 				if ((hFile = _findfirst("Worlds\\*", &fileinfo)) != -1) {

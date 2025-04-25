@@ -6,10 +6,10 @@
 
 namespace Renderer {
 
+	GLenum Primitive;
 	int Vertexes, Coordc, Texcoordc, Colorc, Normalc, Attribc;
 	float* VertexArray = nullptr;
-	float Coords[3], TexCoords[3], Colors[4], Normals[3], Attribs[1];
-	//unsigned int Buffers[3];
+	float Coords[4], TexCoords[4], Colors[4], Normals[4], Attribs[4];
 	bool AdvancedRender;
 	int ShadowRes = 4096;
 	int MaxShadowDist = 6;
@@ -19,39 +19,24 @@ namespace Renderer {
 	int index = 0, size = 0;
 
 	const int gBufferCount = 3;
-	int gWidth, gHeight, gSize;
-	FrameBuffer shadow, gBuffers, dBuffer;
+	int gWidth, gHeight;
+	Framebuffer shadow, gBuffers, dBuffer;
 	bool VolumetricClouds = false;
 
-	int log2Ceil(int x) {
-		if (x <= 1) return 0;
-		x--;
-		int res = 1;
-		while (x != 1) res++, x >>= 1;
-		return res;
-	}
-
-	void Begin(int tc, int cc, int nc, int ac) {
-		Coordc = 3;
-		Texcoordc = tc;
-		Colorc = cc;
-		Normalc = nc;
-		Attribc = ac;
+	void Begin(GLenum primitive, int coords, int texCoords, int colors, int normals, int attributes) {
+		Primitive = primitive;
+		Coordc = coords;
+		Texcoordc = texCoords;
+		Colorc = colors;
+		Normalc = normals;
+		Attribc = attributes;
 		if (VertexArray == nullptr) VertexArray = new float[ArraySize];
 		index = 0;
 		Vertexes = 0;
-		size = (3 + tc + cc + nc + ac) * 4;
+		size = (Coordc + Texcoordc + Colorc + Normalc + Attribc) * 4;
 	}
 
-	void resizeGDBuffers(int w, int h) {
-		gWidth = w, gHeight = h;
-		gSize = 1 << log2Ceil(max(gWidth, gHeight));
-		gBuffers.create(gSize, gBufferCount, true, false);
-		dBuffer.create(gSize, 0, true, false);
-	}
-
-	void Vertex3f(float x, float y, float z) {
-		Coords[0] = x; Coords[1] = y; Coords[2] = z;
+	void addVertex() {
 		if ((Vertexes + 1) * (Coordc + Texcoordc + Colorc + Normalc + Attribc) > ArraySize) return;
 		Vertexes++;
 		if (Coordc != 0) memcpy(VertexArray + index, Coords, Coordc * sizeof(float));
@@ -65,6 +50,10 @@ namespace Renderer {
 		if (Attribc != 0) memcpy(VertexArray + index, Attribs, Attribc * sizeof(float));
 		index += Attribc;
 	}
+
+	void Vertex2i(int x, int y) { Vertex2f(static_cast<float>(x), static_cast<float>(y)); }
+	void Vertex2f(float x, float y) { Coords[0] = x; Coords[1] = y; addVertex(); }
+	void Vertex3f(float x, float y, float z) { Coords[0] = x; Coords[1] = y; Coords[2] = z; addVertex(); }
 	void TexCoord2f(float x, float y) { TexCoords[0] = x; TexCoords[1] = y; }
 	void TexCoord3f(float x, float y, float z) { TexCoords[0] = x; TexCoords[1] = y; TexCoords[2] = z; }
 	void Color3f(float r, float g, float b) { Colors[0] = r; Colors[1] = g; Colors[2] = b; }
@@ -102,40 +91,54 @@ namespace Renderer {
 		sunlightXrot = 30.0f;
 		sunlightYrot = 60.0f;
 		shaders.clear();
-		shaders.push_back(Shader("Shaders/Default.vsh", "Shaders/Default.fsh", true, defines));
-		shaders.push_back(Shader("Shaders/Opaque.vsh", "Shaders/Opaque.fsh", true, defines));
-		shaders.push_back(Shader("Shaders/Translucent.vsh", "Shaders/Translucent.fsh", true, defines));
-		shaders.push_back(Shader("Shaders/Final.vsh", "Shaders/Final.fsh", false, defines));
-		shaders.push_back(Shader("Shaders/Shadow.vsh", "Shaders/Shadow.fsh", true, defines));
-		shaders.push_back(Shader("Shaders/DebugShadow.vsh", "Shaders/DebugShadow.fsh", false, defines));
+		shaders.push_back(Shader("shaders/ui.vsh", "shaders/ui.fsh", defines));
+		shaders.push_back(Shader("shaders/default.vsh", "shaders/default.fsh", defines));
+		shaders.push_back(Shader("shaders/opaque.vsh", "shaders/opaque.fsh", defines));
+		shaders.push_back(Shader("shaders/translucent.vsh", "shaders/translucent.fsh", defines));
+		shaders.push_back(Shader("shaders/final.vsh", "shaders/final.fsh", defines));
+		shaders.push_back(Shader("shaders/shadow.vsh", "shaders/shadow.fsh", defines));
+		shaders.push_back(Shader("shaders/debug_shadow.vsh", "shaders/debug_shadow.fsh", defines));
 
 		// Create framebuffers
-		shadow.create(ShadowRes, 0, true, true);
-		resizeGDBuffers(windowwidth, windowheight);
+		gWidth = windowwidth;
+		gHeight = windowheight;
+		shadow = Framebuffer(ShadowRes, ShadowRes, 0, true, true);
+		gBuffers = Framebuffer(gWidth, gHeight, gBufferCount, true, false);
+		dBuffer = Framebuffer(gWidth, gHeight, 0, true, false);
 
 		// Set constant uniforms
+		shaders[UIShader].bind();
+		shaders[UIShader].setUniformI("u_texture_array", 0);
+		shaders[UIShader].setUniform("u_buffer_width", float(windowwidth));
+		shaders[UIShader].setUniform("u_buffer_height", float(windowheight));
+
 		shaders[DefaultShader].bind();
-		shaders[DefaultShader].setUniform(MergeFace ? "u_diffuse_3d" : "u_diffuse", 0);
+		shaders[DefaultShader].setUniformI("u_diffuse", 0);
 
 		shaders[OpqaueShader].bind();
-		shaders[OpqaueShader].setUniform(MergeFace ? "u_diffuse_3d" : "u_diffuse", 0);
+		shaders[OpqaueShader].setUniformI("u_diffuse", 0);
 
 		shaders[TranslucentShader].bind();
-		shaders[TranslucentShader].setUniform(MergeFace ? "u_diffuse_3d" : "u_diffuse", 0);
+		shaders[TranslucentShader].setUniformI("u_diffuse", 0);
 
-		float fisheyeFactor = MergeFace ? 0.0f : 0.85f;
+		float fisheyeFactor = MergeFace ? 0.6f : 0.8f;
+		int shadowdist = min(MaxShadowDist, viewdistance);
 		shaders[FinalShader].bind();
-		shaders[FinalShader].setUniform("u_diffuse_buffer", 0);
-		shaders[FinalShader].setUniform("u_normal_buffer", 1);
-		shaders[FinalShader].setUniform("u_material_buffer", 2);
-		shaders[FinalShader].setUniform("u_depth_buffer", gBufferCount + 0);
-		shaders[FinalShader].setUniform("u_shadow_texture", gBufferCount + 1);
-		shaders[FinalShader].setUniform("u_noise_texture", gBufferCount + 2);
+		shaders[FinalShader].setUniformI("u_diffuse_buffer", 0);
+		shaders[FinalShader].setUniformI("u_normal_buffer", 1);
+		shaders[FinalShader].setUniformI("u_material_buffer", 2);
+		shaders[FinalShader].setUniformI("u_depth_buffer", gBufferCount + 0);
+		shaders[FinalShader].setUniformI("u_shadow_texture", gBufferCount + 1);
+		shaders[FinalShader].setUniformI("u_noise_texture", gBufferCount + 2);
+		shaders[FinalShader].setUniform("u_buffer_width", float(gWidth));
+		shaders[FinalShader].setUniform("u_buffer_height", float(gHeight));
 		shaders[FinalShader].setUniform("u_shadow_texture_resolution", float(ShadowRes));
 		shaders[FinalShader].setUniform("u_shadow_fisheye_factor", fisheyeFactor);
+		shaders[FinalShader].setUniform("u_shadow_distance", shadowdist * 16.0f);
+		shaders[FinalShader].setUniform("u_render_distance", viewdistance * 16.0f);
 
 		shaders[ShadowShader].bind();
-		shaders[ShadowShader].setUniform(MergeFace ? "u_diffuse_3d" : "u_diffuse", 0);
+		shaders[ShadowShader].setUniformI("u_diffuse", 0);
 		shaders[ShadowShader].setUniform("u_shadow_fisheye_factor", fisheyeFactor);
 
 		Shader::unbind();
@@ -145,7 +148,6 @@ namespace Renderer {
 		for (size_t i = 0; i != shaders.size(); i++)
 			shaders[i].release();
 		shaders.clear();
-		shadow.destroy();
 	}
 
 	FrustumTest getLightFrustum() {
@@ -257,9 +259,9 @@ namespace Renderer {
 		glEnable(GL_CULL_FACE);
 	}
 
-	void StartOpqauePass(const FrustumTest& viewFrustum, float gameTime) {
+	void StartOpaquePass(const FrustumTest& viewFrustum, float gameTime) {
 		// Bind output target buffers
-		if (AdvancedRender) gBuffers.bindTarget(gWidth, gHeight);
+		if (AdvancedRender) gBuffers.bindTarget();
 
 		// Set dynamic uniforms
 		Shader& shader = shaders[AdvancedRender ? OpqaueShader : DefaultShader];
@@ -287,7 +289,7 @@ namespace Renderer {
 		// Copy the depth component of the G-buffer to the D-buffer, bind output target buffers
 		if (AdvancedRender) {
 			// gBuffers.copyDepthTexture(dBuffer);
-			gBuffers.bindTarget(gWidth, gHeight);
+			gBuffers.bindTarget();
 		}
 
 		// Set dynamic uniforms
@@ -331,17 +333,10 @@ namespace Renderer {
 
 		Shader& shader = shaders[FinalShader];
 		bindShader(FinalShader);
-		shader.setUniform("u_buffer_view_width", float(gWidth));
-		shader.setUniform("u_buffer_view_height", float(gHeight));
-		shader.setUniform("u_buffer_size", float(gSize));
 		shader.setUniform("u_proj", viewFrustum.getProjMatrix());
 		shader.setUniform("u_modl", viewFrustum.getModlMatrix());
 		shader.setUniform("u_proj_inv", Mat4f(viewFrustum.getProjMatrix()).inverse().data);
 		shader.setUniform("u_modl_inv", Mat4f(viewFrustum.getModlMatrix()).inverse().data);
-		//shader.setUniform("u_fov_x", viewFrustum.getFOV() * viewFrustum.getAspect());
-		//shader.setUniform("u_fov_y", viewFrustum.getFOV());
-		shader.setUniform("u_render_distance", viewdistance * 16.0f);
-		shader.setUniform("u_shadow_distance", shadowdist * 16.0f);
 		shader.setUniform("u_shadow_proj", frus.getProjMatrix());
 		shader.setUniform("u_shadow_modl", frus.getModlMatrix());
 		shader.setUniform("u_sunlight_dir", lightdir.x, lightdir.y, lightdir.z);
@@ -356,17 +351,9 @@ namespace Renderer {
 		Shader::unbind();
 	}
 
-	void DrawFullscreen() {
-		Renderer::Begin(2, 0, 0, 0);
-		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(-1.0f, -1.0f, 0.0f);
-		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(1.0f, -1.0f, 0.0f);
-		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(1.0f, 1.0f, 0.0f);
-		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(-1.0f, 1.0f, 0.0f);
-		Renderer::End().render();
-	}
-
-	VertexBuffer VertexBuffer::upload() {
+	VertexBuffer VertexBuffer::upload(bool staticDraw) {
 		VertexBuffer res;
+		res.primitive = Primitive;
 		res.numVertices = Vertexes;
 
 		int vc = Coordc, tc = Texcoordc, cc = Colorc, nc = Normalc, ac = Attribc;
@@ -377,7 +364,7 @@ namespace Renderer {
 
 		glGenBuffers(1, &res.vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, res.vbo);
-		glBufferData(GL_ARRAY_BUFFER, Vertexes * (cnt * sizeof(float)), VertexArray, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, Vertexes * (cnt * sizeof(float)), VertexArray, staticDraw ? GL_STATIC_DRAW : GL_STREAM_DRAW);
 
 		GLuint arrays = 0;
 		if (vc > 0) {
@@ -400,15 +387,11 @@ namespace Renderer {
 			glEnableVertexAttribArray(arrays);
 			glVertexAttribPointer(arrays++, ac, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float*)((vc + tc + cc + nc) * sizeof(float)));
 		}
-
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindVertexArray(0);
 		return res;
 	}
 
 	void VertexBuffer::render() const {
 		glBindVertexArray(vao);
-		glDrawArrays(GL_QUADS, 0, numVertices);
-		glBindVertexArray(0);
+		glDrawArrays(primitive, 0, numVertices);
 	}
 }
