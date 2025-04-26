@@ -25,13 +25,15 @@ uniform mat4 u_shadow_proj;
 uniform mat4 u_shadow_modl;
 uniform vec3 u_sunlight_dir;
 uniform float u_game_time;
+uniform int u_repeat_length;
 uniform ivec3 u_player_coord_int;
+uniform ivec3 u_player_coord_mod;
 uniform vec3 u_player_coord_frac;
 
 const float PI = 3.141593;
 const float GAMMA = 2.2;
 const int LEAF_ID = 8, GLASS_ID = 9, WATER_ID = 10, LAVA_ID = 11, GLOWSTONE_ID = 12, ICE_ID = 15, IRON_ID = 17;
-const int REPEAT_LENGTH = 1024;
+const float NOISE_TEXTURE_SIZE = 256.0;
 const vec2 NOISE_TEXTURE_OFFSET = vec2(37.0, 17.0);
 
 // Shadow map
@@ -63,16 +65,8 @@ const float CLOUD_BOTTOM = 120.0, CLOUD_TOP = 480.0, CLOUD_TRANSITION = 40.0;
 const int CLOUD_ITERATIONS = 32;
 const float CLOUD_STEP_SCALE = 512.0 / 32.0;
 
-ivec3 player_coord_mod;
-
 float rand(vec2 v) {
 	return fract(sin(dot(v, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
-int mod_int(int v, int m) {
-	int res = v - v / m * m;
-	if (res < 0) return res + m;
-	return res;
 }
 
 int decode_u16(vec2 v) {
@@ -139,13 +133,14 @@ vec2 fisheye_inverse(vec2 position) {
 	return position;
 }
 
+// Repeat period = NOISE_TEXTURE_SIZE
 float interpolated_noise(vec3 x) {
 	vec3 p = floor(x);
 	vec3 f = fract(x);
 //	f = smoothstep(0.0, 1.0, f);
-	vec2 uv = (p.xy + NOISE_TEXTURE_OFFSET * p.z) + f.xy;
-	vec2 v = texture(u_noise_texture, uv / 256.0).rb;
-	return mix(v.x, v.y, f.z);
+	vec2 uv = (p.xz + NOISE_TEXTURE_OFFSET * p.y) + f.xz;
+	vec4 v = texture(u_noise_texture, uv / NOISE_TEXTURE_SIZE);
+	return mix(v.r, v.b, f.y);
 }
 
 float sample_shadow(vec4 coord, float bias) {
@@ -197,7 +192,7 @@ vec4 diffuse(vec2 tex_coord, float quality) {
 	vec3 normal = get_scene_normal(tex_coord);
 	vec3 tangent = normalize(cross(normal, vec3(1.0, 1.0, 1.0)));
 	vec3 bitangent = cross(normal, tangent);
-	vec3 translation = vec3(player_coord_mod) + u_player_coord_frac;
+	vec3 translation = vec3(u_player_coord_mod) + u_player_coord_frac;
 
 	vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
 	vec4 camera_space_coord = u_proj_inv * screen_space_coord;
@@ -346,6 +341,7 @@ vec4 ssr(vec4 org, vec4 dir, bool inside) {
 	return color;
 }
 
+// Repeat period = NOISE_TEXTURE_SIZE
 float cloud_noise(vec3 c) {
 	float res = 0.0;
 	res += interpolated_noise(c * 1.0) / 1.0;
@@ -419,17 +415,12 @@ vec3 aces(vec3 x) {
 }
 
 void main() {
-	player_coord_mod = ivec3(
-		mod_int(u_player_coord_int.x, REPEAT_LENGTH * int(CLOUD_SCALE.x + 0.5)),
-		mod_int(u_player_coord_int.y, REPEAT_LENGTH * int(CLOUD_SCALE.y + 0.5)),
-		mod_int(u_player_coord_int.z, REPEAT_LENGTH * int(CLOUD_SCALE.z + 0.5))
-	);
 	int block_id_i = get_scene_material(tex_coord);
 	
 	vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
 	vec4 camera_space_coord = u_proj_inv * screen_space_coord;
 
-	vec3 view_origin = vec3(player_coord_mod) + u_player_coord_frac;
+	vec3 view_origin = vec3(u_player_coord_mod) + u_player_coord_frac;
 	vec3 view_dir = normalize(divide(u_modl_inv * camera_space_coord));
 	vec3 normal = get_scene_normal(tex_coord);
 	vec3 color = get_sky_color(view_dir);
