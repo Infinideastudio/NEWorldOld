@@ -76,6 +76,8 @@ namespace Renderer {
 
 			glGenTextures(1, &noiseTex);
 			glBindTexture(GL_TEXTURE_2D, noiseTex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, a.get());
@@ -320,6 +322,8 @@ namespace Renderer {
 		glActiveTexture(GL_TEXTURE0);
 
 		// Set dynamic uniforms
+		int repeat = 25600;
+		int ixpos = int(floor(xpos)), iypos = int(floor(ypos)), izpos = int(floor(zpos));
 		int shadowdist = min(MaxShadowDist, viewdistance);
 		FrustumTest frus = getShadowMapFrustum(heading, pitch, shadowdist, viewFrustum);
 		Vec3f lightdir = (Mat4f::rotation(-sunlightXrot, Vec3f(1, 0, 0)) * Mat4f::rotation(-sunlightYrot, Vec3f(0, 1, 0))).transformVec3(Vec3f(0, 0, -1));
@@ -335,8 +339,10 @@ namespace Renderer {
 		shader.setUniform("u_shadow_modl", frus.getModlMatrix());
 		shader.setUniform("u_sunlight_dir", lightdir.x, lightdir.y, lightdir.z);
 		shader.setUniform("u_game_time", gameTime);
-		shader.setUniformI("u_player_coord_int", int(floor(xpos)), int(floor(ypos)), int(floor(zpos)));
-		shader.setUniform("u_player_coord_frac", float(xpos - floor(xpos)), float(ypos - floor(ypos)), float(zpos - floor(zpos)));
+		shader.setUniformI("u_repeat_length", repeat);
+		shader.setUniformI("u_player_coord_int", ixpos, iypos, izpos);
+		shader.setUniformI("u_player_coord_mod", ixpos % repeat, iypos % repeat, izpos % repeat);
+		shader.setUniform("u_player_coord_frac", float(xpos - ixpos), float(ypos - iypos), float(zpos - izpos));
 	}
 
 	void EndFinalPass() {
