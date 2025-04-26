@@ -24,7 +24,9 @@ namespace Renderer {
 	extern int ActiveShader;
 
 	extern Framebuffer shadow;
+	extern bool SoftShadow;
 	extern bool VolumetricClouds;
+	extern bool AmbientOcclusion;
 
 	class VertexBuffer {
 	public:

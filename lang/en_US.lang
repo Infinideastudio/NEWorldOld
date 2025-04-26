@@ -28,8 +28,10 @@ Vertical sync:
 ============< Advanced rendering >============
 Enabled: 
 Shadow map resolution: 
-Max shadow distance:
+Max shadow distance: 
+Soft shadow: 
 Volumetric clouds: 
+Ambient occlusion: 
 << Back to render options
 ===============< GUI options >================
 Force Unicode font: 

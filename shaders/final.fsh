@@ -37,15 +37,10 @@ const float NOISE_TEXTURE_SIZE = 256.0;
 const vec2 NOISE_TEXTURE_OFFSET = vec2(37.0, 17.0);
 
 // Shadow map
-const mat4 SHADOW_NORM = mat4(
-	0.5, 0.0, 0.0, 0.0,
-	0.0, 0.5, 0.0, 0.0,
-	0.0, 0.0, 0.5, 0.0,
-	0.5, 0.5, 0.5, 1.0
-);
 const float SHADOW_UNITS = 32.0;
-const float SHADOW_SMOOTH = 0.2;
-const int SHADOW_SAMPLES = 16;
+const int SHADOW_SAMPLES = 4;
+const float SSAO_RADIUS = 0.5;
+const int SSAO_SAMPLES = 32;
 
 // Water reflection
 const float WAVE_UNITS = 32.0;
@@ -61,7 +56,7 @@ const float REFL_STEP_SCALE = 2.0 / 32.0;
 // Volumetric clouds
 const float CLOUD_UNITS = 32.0; // 1.0 / 16.0;
 const vec3 CLOUD_SCALE = vec3(100.0, 80.0, 100.0);
-const float CLOUD_BOTTOM = 120.0, CLOUD_TOP = 480.0, CLOUD_TRANSITION = 40.0;
+const float CLOUD_BOTTOM = 160.0, CLOUD_TOP = 480.0, CLOUD_TRANSITION = 40.0;
 const int CLOUD_ITERATIONS = 32;
 const float CLOUD_STEP_SCALE = 512.0 / 32.0;
 
@@ -143,17 +138,42 @@ float interpolated_noise(vec3 x) {
 	return mix(v.r, v.b, f.y);
 }
 
-float sample_shadow(vec4 coord, float bias) {
-	coord.z -= bias;
-	coord = SHADOW_NORM * coord;
-	return texture(u_shadow_texture, divide(coord));
+float get_shadow(vec3 tex_coord, vec2 offset) {
+  return texture(u_shadow_texture, vec3(tex_coord.xy + offset / u_shadow_texture_resolution * 2.0, tex_coord.z));
+}
+
+float sample_shadow(vec3 tex_coord) {
+#ifdef SOFT_SHADOW
+	/*
+	// See: https://developer.nvidia.com/gpugems/gpugems/part-ii-lighting-and-shadows/chapter-11-shadow-map-antialiasing
+	vec2 offset = vec2(greaterThan(fract(divide(gl_FragCoord).xy * 0.5), vec2(0.5)));
+	float res = 0.0;
+	res += get_shadow(tex_coord, offset + vec2(-1.5, 0.5));
+	res += get_shadow(tex_coord, offset + vec2(0.5, 0.5));
+	res += get_shadow(tex_coord, offset + vec2(-1.5, -1.5));
+	res += get_shadow(tex_coord, offset + vec2(0.5, -1.5));
+	return res * 0.25;
+	*/
+	float res = 0.0;
+	for (int i = 0; i < SHADOW_SAMPLES; i++) {
+		float ratio = float(i) / float(SHADOW_SAMPLES);
+		vec2 offset = vec2(
+			rand(gl_FragCoord.xy + vec2(ratio, 0.0)),
+			rand(gl_FragCoord.xy + vec2(0.0, ratio))
+		);
+		offset = offset * 2.0 - vec2(1.0);
+		res += get_shadow(tex_coord, offset);
+	}
+	return res / float(SHADOW_SAMPLES);
+#else
+	return get_shadow(tex_coord, vec2(0.0));
+#endif
 }
 
 float shadow(vec3 coord, float slope) {
 	// Shadow calculation
-	vec4 shadow_coord = vec4(coord, 1.0);
-	shadow_coord = u_shadow_proj * u_shadow_modl * shadow_coord;
-	shadow_coord = vec4(fisheye_projection(shadow_coord.xy), shadow_coord.zw);
+	vec3 shadow_coord = divide(u_shadow_proj * u_shadow_modl * vec4(coord, 1.0));
+	shadow_coord = vec3(fisheye_projection(shadow_coord.xy), shadow_coord.z);
 
 	if (shadow_coord.x >= -1.0 && shadow_coord.x < 1.0 && shadow_coord.y >= -1.0 && shadow_coord.y < 1.0 && shadow_coord.z < 1.0) {
 		float dist = length(divide(u_modl * vec4(coord, 1.0)));
@@ -163,11 +183,44 @@ float shadow(vec3 coord, float slope) {
 		shift = length(fisheye_inverse(shadow_coord.xy + shift * normalize(shadow_coord.xy)) - fisheye_inverse(shadow_coord.xy));
 
 		// Combined bias
+#ifdef SOFT_SHADOW
+		float bias = slope * shift * 0.8;
+#else
 		float bias = slope * shift * 0.4;
+#endif
+		shadow_coord.z -= bias;
+		vec3 tex_coord = shadow_coord * 0.5 + vec3(0.5);
+
+		// Sample shadow map
+		float res = sample_shadow(tex_coord);
 		float factor = 1.0 - smoothstep(0.8, 1.0, dist / u_shadow_distance);
-		return mix(1.0, sample_shadow(shadow_coord, bias), factor);
+		return mix(1.0, res, factor);
 	}
 	return 1.0;
+}
+
+float ssao(vec3 coord, vec3 normal) {
+	vec3 tangent = normalize(cross(normal, vec3(1.0, 1.0, 1.0)));
+	vec3 bitangent = cross(normal, tangent);
+
+	float res = 0.0;
+	for (int i = 0; i < SSAO_SAMPLES; i++) {
+		float ratio = float(i) / float(SSAO_SAMPLES);
+		vec3 offset = vec3(
+			rand(gl_FragCoord.xy + vec2(ratio, 0.0)) * 2.0 - 1.0,
+			rand(gl_FragCoord.xy + vec2(0.0, ratio)) * 2.0 - 1.0,
+			rand(gl_FragCoord.xy + vec2(ratio, ratio))
+		);
+		offset = normalize(offset) * SSAO_RADIUS;
+
+		vec3 sample_coord = coord + mat3(tangent, bitangent, normal) * offset;
+		vec4 screen_space_sample_coord = u_proj * u_modl * vec4(sample_coord, 1.0);
+		vec2 tex_space_sample_coord = screen_space_coord_to_tex_coord(screen_space_sample_coord);
+		if (get_scene_depth(tex_space_sample_coord) < divide(screen_space_sample_coord).z) {
+			res += 1.0 - smoothstep(0.8, 1.0, 1.0 - distance_to_edge(tex_space_sample_coord) * 2.0);
+		}
+	}
+	return 1.0 - res / float(SSAO_SAMPLES);
 }
 
 vec3 get_sky_color(vec3 dir) {
@@ -180,18 +233,16 @@ vec3 get_sky_color(vec3 dir) {
 	}
 	return mix(
 		vec3(1.2, 1.6, 2.0),
-		vec3(0.25, 0.4, 1.0),
+		vec3(0.3, 0.5, 1.2),
 		smoothstep(0.0, 1.0, normalize(dir).y * 2.0)
 	) * 1.0;
 }
 
-vec4 diffuse(vec2 tex_coord, float quality) {
+vec4 diffuse(vec2 tex_coord) {
 	int block_id_i = get_scene_material(tex_coord);
 	if (block_id_i == 0) return vec4(0.0);
 	vec4 color = get_scene_diffuse(tex_coord);
 	vec3 normal = get_scene_normal(tex_coord);
-	vec3 tangent = normalize(cross(normal, vec3(1.0, 1.0, 1.0)));
-	vec3 bitangent = cross(normal, tangent);
 	vec3 translation = vec3(u_player_coord_mod) + u_player_coord_frac;
 
 	vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
@@ -200,6 +251,7 @@ vec4 diffuse(vec2 tex_coord, float quality) {
 	vec3 shadow_coord = floor(world_space_coord * SHADOW_UNITS + normal * 0.5) / SHADOW_UNITS - translation;
 
 	float sunlight = 0.0;
+	float ambient = 1.0;
 	float cos_theta = dot(normal, -u_sunlight_dir);
 	float slope = sqrt(1.0 - cos_theta * cos_theta) / cos_theta;
 
@@ -211,32 +263,24 @@ vec4 diffuse(vec2 tex_coord, float quality) {
 	}
 	*/
 
-	// Sample shadow map
-	if (block_id_i != WATER_ID && cos_theta > 0.0) {
-		for (int i = 0; i < SHADOW_SAMPLES; i++) {
-			float ratio = float(i) / float(SHADOW_SAMPLES);
-			if (ratio > quality) {
-				sunlight /= ratio;
-				break;
-			}
-			vec3 offset = (
-				rand(gl_FragCoord.xy + vec2(ratio, ratio)) * normal +
-				(2.0 * rand(gl_FragCoord.xy + vec2(ratio, 0.0)) - vec3(1.0)) * tangent +
-				(2.0 * rand(gl_FragCoord.xy + vec2(0.0, ratio)) - vec3(1.0)) * bitangent) * SHADOW_SMOOTH;
-			sunlight += shadow(shadow_coord + offset, slope);
+	if (block_id_i != WATER_ID) {
+		if (cos_theta > 0.0) {
+			sunlight = shadow(shadow_coord, slope);
+			sunlight *= cos_theta;
 		}
-		sunlight /= float(SHADOW_SAMPLES);
-		sunlight *= cos_theta;
+#ifdef AMBIENT_OCCLUSION
+		ambient = ssao(shadow_coord, normal);
+#endif
 	}
 
 	float glow = 0.0;
 	if (block_id_i == GLOWSTONE_ID) glow = 5.0;
 
-	return vec4(max(vec3(3.5, 3.0, 2.9) * sunlight + vec3(0.35, 0.56, 0.96) * 0.5, glow) * color.rgb, color.a);
+	return vec4(max(vec3(3.5, 3.0, 2.9) * sunlight + vec3(0.35, 0.56, 0.96) * ambient, glow) * color.rgb, color.a);
 }
 
-vec4 diffuse_with_fade(vec2 tex_coord, float quality) {
-	vec4 color = diffuse(tex_coord, quality);
+vec4 diffuse_with_fade(vec2 tex_coord) {
+	vec4 color = diffuse(tex_coord);
 	if (get_scene_material(tex_coord) != 0) {
 		vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
 		vec4 camera_space_coord = u_proj_inv * screen_space_coord;
@@ -336,7 +380,7 @@ vec4 ssr(vec4 org, vec4 dir, bool inside) {
 	}
 
 	if (!found) return vec4(0.0);
-	vec4 color = diffuse_with_fade(best, 0.5);
+	vec4 color = diffuse_with_fade(best);
 	color.a *= 1.0 - smoothstep(0.8, 1.0, max(1.0 - distance_to_edge(best) * 2.0, found_ratio));
 	return color;
 }
@@ -394,7 +438,7 @@ vec4 cloud(vec3 org, vec3 dir, float dist, vec3 center, float quality) {
 				scattering *= pow(1.0 - calc_cloud_opacity(curr - u_sunlight_dir * 16.0), 8.0);
 				// scattering *= pow(1.0 - calc_cloud_opacity(curr - u_sunlight_dir * 32.0), 16.0);
 				// scattering *= pow(1.0 - calc_cloud_opacity(curr - u_sunlight_dir * 64.0), 32.0);
-				vec3 col = vec3(3.5, 3.0, 2.9) * scattering + vec3(0.25, 0.4, 1.0) * 0.5;
+				vec3 col = vec3(3.5, 3.0, 2.9) * 0.8 * scattering + vec3(1.2, 1.2, 2.0) * 0.3;
 				res += remaining * (1.0 - transmittence) * col;
 				remaining *= transmittence;
 			}
@@ -424,7 +468,7 @@ void main() {
 	vec3 view_dir = normalize(divide(u_modl_inv * camera_space_coord));
 	vec3 normal = get_scene_normal(tex_coord);
 	vec3 color = get_sky_color(view_dir);
-	color = blend(diffuse_with_fade(tex_coord, 1.0), color);
+	color = blend(diffuse_with_fade(tex_coord), color);
 	
 	if (block_id_i == WATER_ID || block_id_i == ICE_ID || block_id_i == IRON_ID) {
 		vec3 reflect_origin = view_origin + divide(u_modl_inv * camera_space_coord);
@@ -490,7 +534,7 @@ void main() {
 	// Component-wise tone mapping
 	// color = color / (color + vec3(1.0)); // Reinhard tone mapping
 	// color = vec3(1.0) - exp(-color * 0.8); // Exposure tone mapping
-	color = aces(color * 0.8);
+	color = aces(color * 0.5);
 
 	// Luminance-based tone mapping
 	// float luminance = color.r * 0.2125 + color.g * 0.7154 + color.b * 0.0721;

@@ -21,7 +21,9 @@ namespace Renderer {
 	const int gBufferCount = 3;
 	int gWidth, gHeight;
 	Framebuffer shadow, gBuffers, dBuffer;
+	bool SoftShadow = false;
 	bool VolumetricClouds = false;
+	bool AmbientOcclusion = false;
 
 	void Begin(GLenum primitive, int coords, int texCoords, int colors, int normals, int attributes) {
 		Primitive = primitive;
@@ -88,8 +90,9 @@ namespace Renderer {
 	void initShaders(bool reload) {
 		if (shaders.empty() || reload) {
 			std::set<string> defines;
-			if (MergeFace) defines.insert("MERGE_FACE");
+			if (SoftShadow) defines.insert("SOFT_SHADOW");
 			if (VolumetricClouds) defines.insert("VOLUMETRIC_CLOUDS");
+			if (AmbientOcclusion) defines.insert("AMBIENT_OCCLUSION");
 			shaders.clear();
 			shaders.push_back(Shader("shaders/ui.vsh", "shaders/ui.fsh", defines));
 			shaders.push_back(Shader("shaders/filter.vsh", "shaders/filter.fsh", defines));
