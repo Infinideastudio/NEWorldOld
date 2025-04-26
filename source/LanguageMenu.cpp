@@ -18,20 +18,21 @@ namespace Menus {
 			backbtn = GUI::button(GetStrbyKey("NEWorld.language.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(2, &title, &backbtn); 
 			std::ifstream index("lang/langs.txt");
-			int count;
-			index >> count;
-			Langinfo Info;
-			for (int i = 0; i < count; i++) {
-				index >> Info.Symbol;
-				std::ifstream LF("lang/" + Info.Symbol + ".lang");
-				getline(LF, Info.EngSymbol);
-				getline(LF, Info.Name);
+			std::string line;
+			int count = 0;
+			while (std::getline(index, line)) {
+				if (line.empty()) break;
+				Langinfo info;
+				info.Symbol = line;
+				std::ifstream LF("lang/" + info.Symbol + ".lang");
+				std::getline(LF, info.EngSymbol);
+				std::getline(LF, info.Name);
 				LF.close();
-				Info.Button = new GUI::button(Info.EngSymbol + "--" + Info.Name, -200, 200, i * 36 + 42, i * 36 + 72, 0.5, 0.5, 0.0, 0.0);
-				registerControls(1, Info.Button);
-				Langs.push_back(Info);
+				info.Button = new GUI::button(info.EngSymbol + " -- " + info.Name, -200, 200, count * 36 + 42, count * 36 + 72, 0.5, 0.5, 0.0, 0.0);
+				registerControls(1, info.Button);
+				Langs.push_back(info);
+				count++;
 			}
-			index.close();
 		}
 
 		void onUpdate() {

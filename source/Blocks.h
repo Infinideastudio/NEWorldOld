@@ -15,39 +15,41 @@ namespace Blocks {
 		bool solid;
 		bool opaque;
 		bool translucent;
+		float hardness;
 
 	public:
-		SingleBlock(string name, bool solid, bool opaque, bool translucent) :
-			name(name), solid(solid), opaque(opaque), translucent(translucent) {};
+		SingleBlock(string name, bool solid, bool opaque, bool translucent, float hardness) :
+			name(name), solid(solid), opaque(opaque), translucent(translucent), hardness(hardness) {};
 
 		inline string getBlockName() const { return name; }
 		inline bool isSolid() const { return solid; }
 		inline bool isOpaque() const { return opaque; }
 		inline bool isTranslucent() const { return translucent; }
+		inline float getHardness() const { return hardness; }
 	};
 
 	const SingleBlock blockData[BLOCK_DEF_END + 1] = {
-		//          方块名称          固体     不透明    半透明
-		SingleBlock("Air", false, false, false),
-		SingleBlock("Rock", true, true, false),
-		SingleBlock("Grass", true, true, false),
-		SingleBlock("Dirt", true, true, false),
-		SingleBlock("Stone", true, true, false),
-		SingleBlock("Plank", true, true, false),
-		SingleBlock("Wood", true, true, false),
-		SingleBlock("Bedrock", true, true, false),
-		SingleBlock("Leaf", true, false, false),
-		SingleBlock("Glass", true, false, false),
-		SingleBlock("Water", false, false, true),
-		SingleBlock("Lava", false, false, true),
-		SingleBlock("GlowStone", true, true, false),
-		SingleBlock("Sand", true, true, false),
-		SingleBlock("Cement", true, true, false),
-		SingleBlock("Ice", true, false, true),
-		SingleBlock("Coal Block", true, true, false),
-		SingleBlock("Iron Block", true, true, false),
-		SingleBlock("TNT", true, true, false),
-		SingleBlock("Null Block", true, true, false),
+		// 方块名称 固体 不透明 半透明 硬度
+		SingleBlock("air", false, false, false, 0.0f),
+		SingleBlock("rock", true, true, false, 2.0f),
+		SingleBlock("grass", true, true, false, 0.3f),
+		SingleBlock("dirt", true, true, false, 0.3f),
+		SingleBlock("stone", true, true, false, 1.0f),
+		SingleBlock("plank", true, true, false, 1.0f),
+		SingleBlock("wood", true, true, false, 2.0f),
+		SingleBlock("bedrock", true, true, false, 10.0f),
+		SingleBlock("leaf", true, false, false, 0.2f),
+		SingleBlock("glass", true, false, false, 0.2f),
+		SingleBlock("water", false, false, true, 0.0f),
+		SingleBlock("lava", false, false, true, 0.0f),
+		SingleBlock("glowstone", true, true, false, 1.0f),
+		SingleBlock("sand", true, true, false, 0.2f),
+		SingleBlock("cement", true, true, false, 3.0f),
+		SingleBlock("ice", true, false, true, 0.2f),
+		SingleBlock("coal block", true, true, false, 0.2f),
+		SingleBlock("iron block", true, true, false, 3.0f),
+		SingleBlock("tnt", true, true, false, 0.2f),
+		SingleBlock("null block", true, true, false, 0.2f),
 	};
 }
 

@@ -13,7 +13,7 @@ namespace Renderer {
 	bool AdvancedRender;
 	int ShadowRes = 4096;
 	int MaxShadowDist = 6;
-	float sunlightXrot, sunlightYrot;
+	float sunlightXrot = 30.0f, sunlightYrot = 60.0f;
 	vector<Shader> shaders;
 	int ActiveShader;
 	int index = 0, size = 0;
@@ -83,21 +83,21 @@ namespace Renderer {
 		return noiseTex;
 	}
 
-	void initShaders() {
-		std::set<string> defines;
-		if (MergeFace) defines.insert("MERGE_FACE");
-		if (VolumetricClouds) defines.insert("VOLUMETRIC_CLOUDS");
-
-		sunlightXrot = 30.0f;
-		sunlightYrot = 60.0f;
-		shaders.clear();
-		shaders.push_back(Shader("shaders/ui.vsh", "shaders/ui.fsh", defines));
-		shaders.push_back(Shader("shaders/default.vsh", "shaders/default.fsh", defines));
-		shaders.push_back(Shader("shaders/opaque.vsh", "shaders/opaque.fsh", defines));
-		shaders.push_back(Shader("shaders/translucent.vsh", "shaders/translucent.fsh", defines));
-		shaders.push_back(Shader("shaders/final.vsh", "shaders/final.fsh", defines));
-		shaders.push_back(Shader("shaders/shadow.vsh", "shaders/shadow.fsh", defines));
-		shaders.push_back(Shader("shaders/debug_shadow.vsh", "shaders/debug_shadow.fsh", defines));
+	void initShaders(bool reload) {
+		if (shaders.empty() || reload) {
+			std::set<string> defines;
+			if (MergeFace) defines.insert("MERGE_FACE");
+			if (VolumetricClouds) defines.insert("VOLUMETRIC_CLOUDS");
+			shaders.clear();
+			shaders.push_back(Shader("shaders/ui.vsh", "shaders/ui.fsh", defines));
+			shaders.push_back(Shader("shaders/filter.vsh", "shaders/filter.fsh", defines));
+			shaders.push_back(Shader("shaders/default.vsh", "shaders/default.fsh", defines));
+			shaders.push_back(Shader("shaders/opaque.vsh", "shaders/opaque.fsh", defines));
+			shaders.push_back(Shader("shaders/translucent.vsh", "shaders/translucent.fsh", defines));
+			shaders.push_back(Shader("shaders/final.vsh", "shaders/final.fsh", defines));
+			shaders.push_back(Shader("shaders/shadow.vsh", "shaders/shadow.fsh", defines));
+			shaders.push_back(Shader("shaders/debug_shadow.vsh", "shaders/debug_shadow.fsh", defines));
+		}
 
 		// Create framebuffers
 		gWidth = windowwidth;
@@ -142,12 +142,6 @@ namespace Renderer {
 		shaders[ShadowShader].setUniform("u_shadow_fisheye_factor", fisheyeFactor);
 
 		Shader::unbind();
-	}
-
-	void destroyShaders() {
-		for (size_t i = 0; i != shaders.size(); i++)
-			shaders[i].release();
-		shaders.clear();
 	}
 
 	FrustumTest getLightFrustum() {
@@ -210,18 +204,18 @@ namespace Renderer {
 	}
 
 	void ClearSGDBuffers() {
-		shadow.bindTarget();
+		shadow.bindTargets();
 		glClearDepth(1.0f);
 		glClear(GL_DEPTH_BUFFER_BIT);
 		shadow.unbindTarget();
 
-		gBuffers.bindTarget();
+		gBuffers.bindTargets();
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClearDepth(1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		gBuffers.unbindTarget();
 
-		dBuffer.bindTarget();
+		dBuffer.bindTargets();
 		glClearDepth(1.0f);
 		glClear(GL_DEPTH_BUFFER_BIT);
 		dBuffer.unbindTarget();
@@ -231,7 +225,7 @@ namespace Renderer {
 		assert(AdvancedRender);
 
 		// Bind output target buffers
-		shadow.bindTarget();
+		shadow.bindTargets();
 
 		// Set dynamic uniforms
 		Shader& shader = shaders[ShadowShader];
@@ -261,7 +255,7 @@ namespace Renderer {
 
 	void StartOpaquePass(const FrustumTest& viewFrustum, float gameTime) {
 		// Bind output target buffers
-		if (AdvancedRender) gBuffers.bindTarget();
+		if (AdvancedRender) gBuffers.bindTargets();
 
 		// Set dynamic uniforms
 		Shader& shader = shaders[AdvancedRender ? OpqaueShader : DefaultShader];
@@ -289,7 +283,7 @@ namespace Renderer {
 		// Copy the depth component of the G-buffer to the D-buffer, bind output target buffers
 		if (AdvancedRender) {
 			// gBuffers.copyDepthTexture(dBuffer);
-			gBuffers.bindTarget();
+			gBuffers.bindTargets();
 		}
 
 		// Set dynamic uniforms

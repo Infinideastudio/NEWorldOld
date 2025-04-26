@@ -8,7 +8,8 @@
 
 namespace Renderer {
 	enum Shaders {
-		UIShader, DefaultShader, OpqaueShader, TranslucentShader, FinalShader, ShadowShader, DebugShadowShader
+		UIShader, FilterShader,
+		DefaultShader, OpqaueShader, TranslucentShader, FinalShader, ShadowShader, DebugShadowShader
 	};
 
 	const int ArraySize = 4194304;
@@ -76,12 +77,11 @@ namespace Renderer {
 		return VertexBuffer::upload(staticDraw);
 	}
 
-	void initShaders();
+	void initShaders(bool reload = false);
 	inline void bindShader(int shaderID) {
 		shaders[shaderID].bind();
 		ActiveShader = shaderID;
 	}
-	void destroyShaders();
 	FrustumTest getLightFrustum();
 	FrustumTest getShadowMapFrustum(double heading, double pitch, int shadowdist, const FrustumTest& playerFrustum);
 	

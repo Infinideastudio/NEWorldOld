@@ -1,6 +1,8 @@
 #include "GUI.h"
 #include "TextRenderer.h"
 #include "FrustumTest.h"
+#include "Renderer.h"
+#include "Framebuffer.h"
 
 extern string inputstr;
 
@@ -33,82 +35,6 @@ void clearTransition() {
 	}
 }
 
-void screenBlur() {
-	static int szl = 0, rl = 0;
-	static float* mat = nullptr;
-	static uint8_t* scr;
-
-	int w = windowwidth; // Width
-	int h = windowheight; // Height
-	int r = 2;
-	int sz = 1;
-	float scale = 2;
-	TextureID bgTex;
-
-	while (sz < w || sz < h) sz *= 2;
-	if (sz != szl) {
-		szl = sz;
-		delete[] scr;
-		scr = new uint8_t[sz * sz * 3];
-	}
-
-	if (rl != r) {
-		if (mat != nullptr) delete[] mat;
-		int size = r * 2 + 1;
-		int size2 = size * size;
-		float sum = 0.0f;
-		int index = 0;
-		mat = new float[size2];
-		for (int x = -r; x <= r; x++) {
-			for (int y = -r; y <= r; y++) {
-				float val = 1.0f / (float)(abs(x) + abs(y) + 1);
-				mat[index++] = val;
-				sum += val;
-			}
-		}
-		sum = 1.0f / sum;
-		for (int i = 0; i < size2; i++) mat[i] *= sum;
-	}
-
-	glPixelStorei(GL_PACK_ALIGNMENT, 1);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glReadPixels(0, 0, sz, sz, GL_RGB, GL_UNSIGNED_BYTE, scr);
-	//glColorMask(true, true, true, false);
-
-	glGenTextures(1, &bgTex);
-	glBindTexture(GL_TEXTURE_2D, bgTex);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sz, sz, 0, GL_RGB, GL_UNSIGNED_BYTE, scr);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	glClearDepth(1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	for (int x = -r; x <= r; x++) {
-		for (int y = -r; y <= r; y++) {
-			float d = mat[(x + r) * (r * 2 + 1) + y + r];
-			glBegin(GL_QUADS);
-			glColor4f(1.0f, 1.0f, 1.0f, d);
-			glTexCoord2f(0.0f, (float)h / sz);
-			glVertex2f(x * scale, y * scale);
-			glTexCoord2f((float)w / sz, (float)h / sz);
-			glVertex2f(w + x * scale, y * scale);
-			glTexCoord2f((float)w / sz, 0.0f);
-			glVertex2f(w + x * scale, h + y * scale);
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex2f(x * scale, h + y * scale);
-			glEnd();
-		}
-	}
-
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glDeleteTextures(1, &bgTex);
-	glPixelStorei(GL_PACK_ALIGNMENT, 4);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-}
-
 void drawBackground() {
 	static FrustumTest frus;
 	static double startTimer = timer();
@@ -123,67 +49,59 @@ void drawBackground() {
 	glLoadIdentity();
 	glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);
 
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	glClearDepth(1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glDepthFunc(GL_LEQUAL);
-	glDisable(GL_CULL_FACE);
-	glEnable(GL_TEXTURE_2D);
-
-	//Begin to draw a cube
+	// Begin to draw a cube
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[0]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
 	glEnd();
 
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[1]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
 	glEnd();
 
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[2]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 	glEnd();
 
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[3]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
 	glEnd();
 
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[4]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(1.0f, -1.0f, 1.0f);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f(1.0f, -1.0f, -1.0f);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
 	glEnd();
 
 	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[5]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
 	glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
+	glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
+	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
 	glEnd();
 }
 double stdppi = 96.0f;
@@ -241,18 +159,15 @@ void label::render() {
 	}
 	if (focused) {                                                 //Focus
 		glDisable(GL_TEXTURE_2D);
-		glColor4f(FgR * 0.6f, FgG * 0.6f, FgB * 0.6f, linealpha);
-		//glBegin(GL_POINTS)
-		//UIVertex(xmin - 1, ymin)
-		//glEnd()
 		glBegin(GL_LINE_LOOP);
+		glColor4f(FgR * 0.6f, FgG * 0.6f, FgB * 0.6f, linealpha);
 		UIVertex(xmin, ymin);
 		UIVertex(xmin, ymax);
 		UIVertex(xmax, ymax);
 		UIVertex(xmax, ymin);
 		glEnd();
+		glEnable(GL_TEXTURE_2D);
 	}
-	glEnable(GL_TEXTURE_2D);
 	TextRenderer::setFontColor(fcR, fcG, fcB, fcA);
 	TextRenderer::renderString(xmin, ymin, text);
 }
@@ -296,19 +211,20 @@ void button::render() {
 	if (!enabled) {
 		fcR = FgR * 0.5f; fcG = FgG * 0.5f; fcB = FgB * 0.5f; fcA = FgA * 0.3f;
 	}
-	glColor4f(fcR, fcG, fcB, fcA);
 
 	glDisable(GL_TEXTURE_2D);    //Button
+
 	glBegin(GL_QUADS);
+	glColor4f(fcR, fcG, fcB, fcA);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
 	UIVertex(xmax, ymax);
 	UIVertex(xmax, ymin);
 	glEnd();
+
+	glBegin(GL_LINE_LOOP);
 	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
-
 	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
-	glBegin(GL_LINE_LOOP);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
 	UIVertex(xmax, ymax);
@@ -316,26 +232,22 @@ void button::render() {
 	glEnd();
 
 	glBegin(GL_LINE_LOOP);
-
 	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 	UIVertex(xmin + 1, ymin + 1);
-
 	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 	UIVertex(xmin + 1, ymax - 1);
-
 	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 	UIVertex(xmax - 1, ymax - 1);
-
 	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 	UIVertex(xmax - 1, ymin + 1);
-
 	glEnd();
 
 	glEnable(GL_TEXTURE_2D);
+
 	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
 	if (!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
 	TextRenderer::renderString((xmin + xmax - TextRenderer::getStrWidth(text)) / 2, (ymin + ymax - 20) / 2, text);
@@ -385,67 +297,56 @@ void trackbar::render() {
 	if (!enabled) {
 		fcR = FgR * 0.5f; fcG = FgG * 0.5f; fcB = FgB * 0.5f; fcA = FgA * 0.3f;
 	}
+
+	glDisable(GL_TEXTURE_2D);
+
+	glBegin(GL_QUADS);
 	glColor4f(bcR, bcG, bcB, bcA);
-	glDisable(GL_TEXTURE_2D);
-	glBegin(GL_QUADS);
 	UIVertex(xmin, ymin);
-	UIVertex(xmax, ymin);
-	UIVertex(xmax, ymax);
 	UIVertex(xmin, ymax);
+	UIVertex(xmax, ymax);
+	UIVertex(xmax, ymin);
 	glEnd();
-	glDisable(GL_TEXTURE_2D);
+
+	glBegin(GL_QUADS);
 	glColor4f(fcR, fcG, fcB, fcA);
-	glBegin(GL_QUADS);
 	UIVertex(xmin + barpos, ymin);
-	UIVertex(xmin + barpos + barwidth, ymin);
-	UIVertex(xmin + barpos + barwidth, ymax);
 	UIVertex(xmin + barpos, ymax);
+	UIVertex(xmin + barpos + barwidth, ymax);
+	UIVertex(xmin + barpos + barwidth, ymin);
 	glEnd();
-	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
 
-	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 	glBegin(GL_LINE_LOOP);
+	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
+	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
 	UIVertex(xmax, ymax);
 	UIVertex(xmax, ymin);
 	glEnd();
 
+	glBegin(GL_LINE_LOOP);
 	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-
-	glBegin(GL_LINE_LOOP);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.8f, 0.8f, 0.8f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 	UIVertex(xmin + 1, ymin + 1);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.4f, 0.4f, 0.4f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 	UIVertex(xmin + 1, ymax - 1);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.4f, 0.4f, 0.4f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 	UIVertex(xmax - 1, ymax - 1);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.8f, 0.8f, 0.8f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 	UIVertex(xmax - 1, ymin + 1);
-
 	glEnd();
+
 	glEnable(GL_TEXTURE_2D);
+
 	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
 	if (!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
 	TextRenderer::renderString((xmin + xmax - TextRenderer::getStrWidth(text)) / 2, ymin, text);
-
 }
 
 void textbox::update() {
@@ -488,19 +389,20 @@ void textbox::render() {
 	if (!enabled) {
 		bcR = BgR * 0.5f; bcG = BgG * 0.5f; bcB = BgB * 0.5f; bcA = BgA * 0.3f;
 	}
-	glColor4f(bcR, bcG, bcB, bcA);
 
 	glDisable(GL_TEXTURE_2D);
+
 	glBegin(GL_QUADS);
+	glColor4f(bcR, bcG, bcB, bcA);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
 	UIVertex(xmax, ymax);
 	UIVertex(xmax, ymin);
 	glEnd();
+
+	glBegin(GL_LINE_LOOP);
 	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
-
 	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
-	glBegin(GL_LINE_LOOP);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
 	UIVertex(xmax, ymax);
@@ -508,38 +410,25 @@ void textbox::render() {
 	glEnd();
 
 	glBegin(GL_LINE_LOOP);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.8f, 0.8f, 0.8f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 	UIVertex(xmin + 1, ymin + 1);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.4f, 0.4f, 0.4f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 	UIVertex(xmin + 1, ymax - 1);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.4f, 0.4f, 0.4f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 	UIVertex(xmax - 1, ymax - 1);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.8f, 0.8f, 0.8f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 	UIVertex(xmax - 1, ymin + 1);
-
 	glEnd();
 
 	glEnable(GL_TEXTURE_2D);
+
 	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
 	if (!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
 	TextRenderer::renderString(xmin, (ymin + ymax - 20) / 2, text);
-
 }
 
 void vscroll::update() {
@@ -610,17 +499,18 @@ void vscroll::render() {
 		fcR = FgR * 0.5f; fcG = FgG * 0.5f; fcB = FgB * 0.5f; fcA = FgA * 0.3f;
 	}
 
-	glColor4f(bcR, bcG, bcB, bcA);                                              //Track
 	glDisable(GL_TEXTURE_2D);
+
+	glColor4f(bcR, bcG, bcB, bcA);
 	glBegin(GL_QUADS);
 	UIVertex(xmin, ymin);
-	UIVertex(xmax, ymin);
-	UIVertex(xmax, ymax);
 	UIVertex(xmin, ymax);
+	UIVertex(xmax, ymax);
+	UIVertex(xmax, ymin);
 	glEnd();
-	glDisable(GL_TEXTURE_2D);                                                //Bar
-	glColor4f(fcR, fcG, fcB, fcA);
+
 	glBegin(GL_QUADS);
+	glColor4f(fcR, fcG, fcB, fcA);
 	UIVertex(xmin, ymin + barpos + 20);
 	UIVertex(xmin, ymin + barpos + barheight + 20);
 	UIVertex(xmax, ymin + barpos + barheight + 20);
@@ -628,9 +518,9 @@ void vscroll::render() {
 	glEnd();
 
 	if (msup) {
+		glBegin(GL_QUADS);
 		glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
 		if (psup) glColor4f(FgR, FgG, FgB, 0.9f);
-		glBegin(GL_QUADS);
 		UIVertex(xmin, ymin);
 		UIVertex(xmin, ymin + 20);
 		UIVertex(xmax, ymin + 20);
@@ -638,9 +528,9 @@ void vscroll::render() {
 		glEnd();
 	}
 	if (msdown) {
+		glBegin(GL_QUADS);
 		glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
 		if (psdown) glColor4f(FgR, FgG, FgB, 0.9f);
-		glBegin(GL_QUADS);
 		UIVertex(xmin, ymax - 20);
 		UIVertex(xmin, ymax);
 		UIVertex(xmax, ymax);
@@ -648,9 +538,9 @@ void vscroll::render() {
 		glEnd();
 	}
 
-	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
-	if (!enabled)  glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 	glBegin(GL_LINE_LOOP);
+	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
+	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
 	UIVertex(xmax, ymax);
@@ -658,31 +548,18 @@ void vscroll::render() {
 	glEnd();
 
 	glBegin(GL_LINE_LOOP);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.8f, 0.8f, 0.8f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 	UIVertex(xmin + 1, ymin + 1);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.4f, 0.4f, 0.4f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 	UIVertex(xmin + 1, ymax - 1);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.4f, 0.4f, 0.4f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
 	UIVertex(xmax - 1, ymax - 1);
-
-	if (focused)
-		glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else
-		glColor4f(0.8f, 0.8f, 0.8f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
+	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
 	UIVertex(xmax - 1, ymin + 1);
-
 	glEnd();
 
 	glBegin(GL_LINES);
@@ -699,6 +576,8 @@ void vscroll::render() {
 	UIVertex((xmin + xmax) / 2, ymax - 8);
 	UIVertex((xmin + xmax) / 2 + 4, ymax - 12);
 	glEnd();
+
+	glEnable(GL_TEXTURE_2D);
 }
 
 void imagebox::update() {
@@ -706,7 +585,6 @@ void imagebox::update() {
 }
 
 void imagebox::render() {
-	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, imageid);
 	glBegin(GL_QUADS);
 	glTexCoord2f(txmin, tymax); UIVertex(xmin, ymin);
@@ -822,7 +700,84 @@ void Form::update() {
 }
 
 void Form::render() {
-	Background();
+	if (GUIScreenBlur) {
+		static Framebuffer fbo;
+		float step = 2.0f;
+		float upscaling = 2.0f;
+		float sigma = 16.0f / upscaling; // Standard deviation
+
+		int width = int(windowwidth / upscaling);
+		int height = int(windowheight / upscaling);
+		if (fbo.width() != width || fbo.height() != height) {
+			fbo = Framebuffer(width, height, 2, false, false, true);
+		}
+
+		// Background
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClearDepth(1.0f);
+		fbo.bindTarget({0});
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		Background();
+
+		auto& shader = Renderer::shaders[Renderer::FilterShader];
+		shader.bind();
+		shader.setUniformI("u_buffer", 0);
+		shader.setUniform("u_buffer_width", static_cast<float>(fbo.width()));
+		shader.setUniform("u_buffer_height", static_cast<float>(fbo.height()));
+		shader.setUniform("u_gaussian_blur_radius", 2.0f * sigma);
+		shader.setUniform("u_gaussian_blur_step_size", step);
+		shader.setUniform("u_gaussian_blur_sigma", sigma);
+
+		// Horizontal pass
+		fbo.bindColorTexture(0);
+		fbo.bindTarget({1});
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		shader.setUniformI("u_filter_id", 1);
+		Renderer::Begin(GL_QUADS, 2, 2, 0);
+		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(0, 0);
+		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, fbo.height());
+		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(fbo.width(), fbo.height());
+		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(fbo.width(), 0);
+		Renderer::End().render();
+
+		// Vertical pass
+		fbo.bindColorTexture(1);
+		fbo.bindTarget({0});
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		shader.setUniformI("u_filter_id", 2);
+		Renderer::Begin(GL_QUADS, 2, 2, 0);
+		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(0, 0);
+		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, fbo.height());
+		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(fbo.width(), fbo.height());
+		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(fbo.width(), 0);
+		Renderer::End().render();
+
+		// Bilinear upscaling
+		fbo.bindColorTexture(0);
+		fbo.unbindTarget();
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		shader.unbind();
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+
+		glBegin(GL_QUADS);
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		glTexCoord2f(0.0f, 1.0f); glVertex2i(0, 0);
+		glTexCoord2f(0.0f, 0.0f); glVertex2i(0, windowheight);
+		glTexCoord2f(1.0f, 0.0f); glVertex2i(windowwidth, windowheight);
+		glTexCoord2f(1.0f, 1.0f); glVertex2i(windowwidth, 0);
+		glEnd();
+	}
+	else {
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClearDepth(1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		Background();
+	}
 
 	double TimeDelta = timer() - transitionTimer;
 	float transitionAnim = (float)(1.0 - pow(0.8, TimeDelta * 60.0) + pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);
@@ -831,10 +786,7 @@ void Form::render() {
 	glLoadIdentity();
 	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
 	glMatrixMode(GL_MODELVIEW);
-	glDepthFunc(GL_ALWAYS);
 	glLoadIdentity();
-	if (GUIScreenBlur) screenBlur();
-	glDisable(GL_TEXTURE_2D);
 
 	if (TimeDelta <= 0.3 && transitionList != 0) {
 		if (transitionForward) glTranslatef(-transitionAnim * windowwidth, 0.0f, 0.0f);
@@ -856,7 +808,6 @@ void Form::render() {
 	glEndList();
 	glCallList(displaylist);
 	lastdisplaylist = displaylist;
-
 }
 
 label::label(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
@@ -924,32 +875,30 @@ controls* Form::getControlByID(int cid) {
 Form::Form() { Init(); Background = &drawBackground; }
 
 void Form::singleloop() {
-	double dmx, dmy;
+	glfwSwapBuffers(MainWindow);
+	render();
+	glfwPollEvents();
 	//if (reentry) { ExitSignal = true; }
 	mxl = mx; myl = my; mwl = mw; mbl = mb;
 	mb = getMouseButton();
 	mw = getMouseScroll();
+	double dmx, dmy;
 	glfwGetCursorPos(MainWindow, &dmx, &dmy);
 	dmx /= stretch;
 	dmy /= stretch;
 	mx = (int)dmx, my = (int)dmy;
-	update();
-	render();
-	glFinish();
-	glfwSwapBuffers(MainWindow);
-	glfwPollEvents();
 	if (ExitSignal) onLeaving();
 	if (glfwWindowShouldClose(MainWindow)) {
 		onLeave();
 		exit(0);
 	}
+	update();
 }
+
 void Form::start() {
 	GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwSetCursor(MainWindow, Cursor);
-	glClearColor(0.0, 0.0, 0.0, 1.0);
-	glDisable(GL_CULL_FACE);
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 	onLoad();
 	do {
@@ -958,6 +907,7 @@ void Form::start() {
 	onLeave();
 	glfwDestroyCursor(Cursor); //Added to fix the glitch
 }
+
 Form::~Form() { cleanup(); }
 
 }

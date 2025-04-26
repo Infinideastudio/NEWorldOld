@@ -3,7 +3,7 @@
 namespace WorldRenderer {
     vector<RenderChunk> RenderChunkList;
 
-    void ListRenderChunks(double x, double y, double z, int renderdistance, double curtime, std::optional<FrustumTest> frustum) {
+    void ListRenderChunks(double x, double y, double z, int renderdistance, double interp, std::optional<FrustumTest> frustum) {
         int cx = getchunkpos((int)x);
         int cy = getchunkpos((int)y);
         int cz = getchunkpos((int)z);
@@ -14,7 +14,7 @@ namespace WorldRenderer {
             if (!c->meshed()) continue;
             if (World::chunkInRange(c->x(), c->y(), c->z(), cx, cy, cz, renderdistance)) {
                 if (!frustum || c->visible()) {
-                    RenderChunkList.push_back(RenderChunk(c.get(), float(curtime - lastupdate) * 30.0f));
+                    RenderChunkList.push_back(RenderChunk(c.get(), float(interp)));
                 }
             }
         }

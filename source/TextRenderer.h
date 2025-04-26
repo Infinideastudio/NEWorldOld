@@ -27,6 +27,6 @@ namespace TextRenderer {
 	void setFontColor(float r, float g, float b, float a);
 	void loadchar(unsigned int uc);
 	int getStrWidth(string s);
-	void renderString(int x, int y, string glstring);
-	void renderASCIIString(int x, int y, string glstring);
+	void renderString(int x, int y, string s);
+	void renderASCIIString(int x, int y, string s);
 }

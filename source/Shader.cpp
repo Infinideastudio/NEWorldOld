@@ -12,14 +12,6 @@ Shader::Shader(string vshPath, string fshPath, std::set<string> defines) {
     checkLinkingErrors(shaderProgram, "Shader linking error!");
 }
 
-void Shader::release() {
-    glDetachShader(shaderProgram, shaderVertex);
-    glDetachShader(shaderProgram, shaderFragment);
-    glDeleteShader(shaderVertex);
-    glDeleteShader(shaderFragment);
-    glDeleteProgram(shaderProgram);
-}
-
 bool Shader::setUniform(const char* uniform, float value) {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1) return false;

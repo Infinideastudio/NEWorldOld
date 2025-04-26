@@ -19,8 +19,7 @@ namespace Menus {
 			langbtn = GUI::button(GetStrbyKey("NEWorld.options.languagemenu"), -250, -10, 240, 264, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button(GetStrbyKey("NEWorld.options.back"), -250, -10, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			savebtn = GUI::button(GetStrbyKey("NEWorld.options.save"), 10, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-			registerControls(9, &title, &FOVyBar, &mmsBar, &viewdistBar, &rdstbtn, &gistbtn, &backbtn, &savebtn, &langbtn);
-			//registerControls(8, &title, &FOVyBar, &mmsBar, &viewdistBar, &rdstbtn, &gistbtn, &backbtn, &savebtn);
+			registerControls(9, &title, &FOVyBar, &mmsBar, &viewdistBar, &rdstbtn, &gistbtn, &langbtn, &backbtn, &savebtn);
 		}
 		void onUpdate() {
 			FOVyNormal = (float)(FOVyBar.barpos + 1);

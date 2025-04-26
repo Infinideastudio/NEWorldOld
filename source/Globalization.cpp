@@ -9,31 +9,28 @@ namespace Globalization {
 
 	bool LoadLang(string lang) {
 		std::ifstream f("lang/" + lang + ".lang");
-		if (f.bad()) {
-			exit(-101);
-			return false;
-		}
+		if (!f.is_open()) return false;
+		std::getline(f, Cur_Symbol);
+		std::getline(f, Cur_Name);
+		std::string line;
 		Lines.clear();
 		Cur_Lang = lang;
-		f >> Cur_Symbol; f.get();
-		getline(f, Cur_Name);
 		for (int i = 0; i < count; i++) {
 			getline(f, Lines[i].str);
 		}
-		f.close();
 		return true;
 	}
 
 	bool Load() {
 		std::ifstream f("lang/Keys.lk");
-		if (f.bad()) return false;
-		f >> count; f.get();
-		for (int i = 0; i < count; i++) {
-			string temp;
-			getline(f, temp);
-			keys[temp] = i;
+		if (!f.is_open()) return false;
+		std::string line;
+		keys.clear();
+		count = 0;
+		while (std::getline(f, line)) {
+			if (line.empty()) break;
+			keys[line] = count++;
 		}
-		f.close();
 		return LoadLang(Cur_Lang);
 	}
 

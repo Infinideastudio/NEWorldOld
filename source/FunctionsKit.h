@@ -27,7 +27,7 @@ inline int fastRand() {
 }
 inline void fastSrand(int seed) { g_seed = seed; }
 vector<string> split(string str, string pattern);
-inline string boolstr(bool b) { return b ? "True" : "False"; }
+inline string boolstr(bool b) { return b ? "true" : "false"; }
 inline double rnd() { return (double)fastRand() / (RAND_MAX + 1); }
 inline int RoundInt(double d) { return int(floor(d + 0.5)); }
 
@@ -95,10 +95,10 @@ inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return CreateThre
 inline void ThreadWait(Thread_t _hThread) { WaitForSingleObject(_hThread, INFINITE); }
 inline void ThreadDestroy(Thread_t _hThread) { CloseHandle(_hThread); }
 inline unsigned int MByteToWChar(wchar_t* dst, const char* src, int dstSize, int srcSize) {
-	return MultiByteToWideChar(CP_ACP, 0, src, srcSize, dst, dstSize);
+	return MultiByteToWideChar(CP_UTF8, 0, src, srcSize, dst, dstSize);
 }
 inline unsigned int WCharToMByte(char* dst, const wchar_t* src, int dstSize, int srcSize) {
-	return WideCharToMultiByte(CP_ACP, 0, src, srcSize, dst, dstSize, NULL, NULL);
+	return WideCharToMultiByte(CP_UTF8, 0, src, srcSize, dst, dstSize, NULL, NULL);
 }
 inline unsigned int wstrlen(const wchar_t* wstr) { return lstrlenW(wstr); }
 inline double timer() {

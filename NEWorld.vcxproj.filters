@@ -140,9 +140,6 @@
     <ClInclude Include="source\TextRenderer.h">
       <Filter>Source\Renderer\GUIRenderer</Filter>
     </ClInclude>
-    <ClInclude Include="source\Effect.h">
-      <Filter>Source\Renderer\GUIRenderer</Filter>
-    </ClInclude>
     <ClInclude Include="source\HeightMap.h">
       <Filter>Source\Game\World\TerrainGen</Filter>
     </ClInclude>
@@ -225,6 +222,9 @@
     </ClInclude>
     <ClInclude Include="source\GUI.h" />
     <ClInclude Include="source\Menus.h" />
+    <ClInclude Include="source\VertexAllocator.h">
+      <Filter>Source\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\NEWorld.cpp">
@@ -311,9 +311,6 @@
     <ClCompile Include="source\TextRenderer.cpp">
       <Filter>Source\Renderer\GUIRenderer</Filter>
     </ClCompile>
-    <ClCompile Include="source\Effect.cpp">
-      <Filter>Source\Renderer\GUIRenderer</Filter>
-    </ClCompile>
     <ClCompile Include="source\HeightMap.cpp">
       <Filter>Source\Game\World\TerrainGen</Filter>
     </ClCompile>
@@ -373,6 +370,9 @@
     </ClCompile>
     <ClCompile Include="source\GUI.cpp">
       <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\VertexAllocator.cpp">
+      <Filter>Source\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

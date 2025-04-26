@@ -44,8 +44,6 @@ extern int Multisample;
 extern bool vsync;
 extern double stretch;
 extern int gametime;
-const int gameTimeMax = 43200;
-//extern float daylight;
 
 extern int windowwidth;
 extern int windowheight;
@@ -53,27 +51,12 @@ extern bool gamebegin, gameexit, bagOpened;
 
 extern TextureID BlockTextureArray;
 extern TextureID tex_select, tex_unselect, tex_splash, tex_title, tex_mainmenu[6];
-extern TextureID DestroyImage[11];
+extern TextureID DestroyImage[8];
 extern TextureID DefaultSkin;
 
 extern bool multiplayer;
 extern string serverip;
 extern unsigned short port;
-
-extern Mutex_t Mutex;
-extern Thread_t updateThread;
-extern double lastupdate, updateTimer;
-extern double lastframe;
-extern bool updateThreadRun, updateThreadPaused;
-
-extern bool mpclient, mpserver;
-extern bool shouldGetScreenshot;
-extern bool shouldGetThumbnail;
-extern double SpeedupAnimTimer;
-extern double TouchdownAnimTimer;
-extern double screenshotAnimTimer;
-extern double bagAnimTimer;
-extern double bagAnimDuration;
 
 extern int GLVersionMajor, GLVersionMinor, GLVersionRev;
 extern GLFWwindow* MainWindow;

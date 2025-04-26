@@ -290,7 +290,6 @@
     <ClInclude Include="source\ChunkPacket.h" />
     <ClInclude Include="source\ChunkPtrArray.h" />
     <ClInclude Include="source\Command.h" />
-    <ClInclude Include="source\Effect.h" />
     <ClInclude Include="source\ChunkRenderer.h" />
     <ClInclude Include="source\Framebuffer.h" />
     <ClInclude Include="source\Frustum.h" />
@@ -323,6 +322,7 @@
     <ClInclude Include="source\Textures.h" />
     <ClInclude Include="source\Typedefs.h" />
     <ClInclude Include="source\Vec3.h" />
+    <ClInclude Include="source\VertexAllocator.h" />
     <ClInclude Include="source\World.h" />
     <ClInclude Include="source\WorldGen.h" />
     <ClInclude Include="source\WorldRenderer.h" />
@@ -339,7 +339,6 @@
     <ClCompile Include="source\ChunkPtrArray.cpp" />
     <ClCompile Include="source\ChunkRenderer.cpp" />
     <ClCompile Include="source\CreateWorldMenu.cpp" />
-    <ClCompile Include="source\Effect.cpp" />
     <ClCompile Include="source\Framebuffer.cpp" />
     <ClCompile Include="source\Frustum.cpp" />
     <ClCompile Include="source\FunctionsKit.cpp" />
@@ -371,6 +370,7 @@
     <ClCompile Include="source\ShaderOptionsMenu.cpp" />
     <ClCompile Include="source\TextRenderer.cpp" />
     <ClCompile Include="source\Textures.cpp" />
+    <ClCompile Include="source\VertexAllocator.cpp" />
     <ClCompile Include="source\World.cpp" />
     <ClCompile Include="source\WorldGen.cpp" />
     <ClCompile Include="source\WorldMenu.cpp" />

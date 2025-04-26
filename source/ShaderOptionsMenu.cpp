@@ -15,7 +15,6 @@ namespace Menus {
 			cloudsbtn = GUI::button("", 10, 250, 96, 120, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button(GetStrbyKey("NEWorld.render.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(6, &title, &enablebtn, &shadowresbar, &shadowdistbar, &cloudsbtn, &backbtn);
-			Renderer::destroyShaders();
 			if (!Renderer::AdvancedRender) shadowresbar.enabled = shadowdistbar.enabled = cloudsbtn.enabled = false;
 		}
 		void onUpdate() {
@@ -28,7 +27,7 @@ namespace Menus {
 			Renderer::MaxShadowDist = (shadowdistbar.barpos + 1) / 4 + 2;
 			if (cloudsbtn.clicked) Renderer::VolumetricClouds = !Renderer::VolumetricClouds;
 			if (backbtn.clicked) {
-				Renderer::initShaders();
+				Renderer::initShaders(true);
 				ExitSignal = true;
 			}
 			enablebtn.text = GetStrbyKey("NEWorld.shaders.enable") + BoolYesNo(Renderer::AdvancedRender);
