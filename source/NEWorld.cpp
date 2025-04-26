@@ -1824,7 +1824,9 @@ void loadOptions() {
 	loadoption(options, "AdvancedRender", Renderer::AdvancedRender);
 	loadoption(options, "ShadowMapRes", Renderer::ShadowRes);
 	loadoption(options, "ShadowDistance", Renderer::MaxShadowDist);
+	loadoption(options, "SoftShadow", Renderer::SoftShadow);
 	loadoption(options, "VolumetricClouds", Renderer::VolumetricClouds);
+	loadoption(options, "AmbientOcclusion", Renderer::AmbientOcclusion);
 	loadoption(options, "VerticalSync", vsync);
 	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
@@ -1851,7 +1853,9 @@ void saveOptions() {
 	saveoption(fileout, "AdvancedRender", Renderer::AdvancedRender);
 	saveoption(fileout, "ShadowMapRes", Renderer::ShadowRes);
 	saveoption(fileout, "ShadowDistance", Renderer::MaxShadowDist);
+	saveoption(fileout, "SoftShadow", Renderer::SoftShadow);
 	saveoption(fileout, "VolumetricClouds", Renderer::VolumetricClouds);
+	saveoption(fileout, "AmbientOcclusion", Renderer::AmbientOcclusion);
 	saveoption(fileout, "VerticalSync", vsync);
 	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);

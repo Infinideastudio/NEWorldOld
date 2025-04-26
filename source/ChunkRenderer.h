@@ -7,8 +7,6 @@
 namespace World { class Chunk; }
 
 namespace ChunkRenderer {
-	const int delta[6][3] = { { 1,0,0 },{ -1,0,0 },{ 0,1,0 },{ 0,-1,0 },{ 0,0,1 },{ 0,0,-1 } };
-
 	// One face in merge face
 	struct QuadPrimitive {
 		int x, y, z, length, direction;
