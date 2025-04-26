@@ -32,9 +32,6 @@ namespace Textures {
     void Init() {
         BLOCKTEXTURE_SIZE = 32;
         BLOCKTEXTURE_COUNT = 64;
-
-        // Pre-load splash screen texture before all others
-        tex_splash = Textures::LoadRGBTexture("textures/ui/splash.bmp");
     }
 
     TextureIndex getTextureIndex(BlockID blockname, uint8_t side) {
@@ -116,27 +113,31 @@ namespace Textures {
         }
     }
 
-    TextureID LoadRGBTexture(string Filename) {
+    TextureID LoadRGBTexture(string Filename, bool bilinear) {
         ImageRGB image;
         TextureID ret;
         LoadRGBImage(image, Filename);
         glGenTextures(1, &ret);
         glBindTexture(GL_TEXTURE_2D, ret);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, bilinear ? GL_LINEAR : GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, bilinear ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.sizeX, image.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, image.buffer.get());
         glGenerateMipmap(GL_TEXTURE_2D);
         return ret;
     }
 
-    TextureID LoadRGBATexture(string Filename, string MkFilename) {
+    TextureID LoadRGBATexture(string Filename, string MkFilename, bool bilinear) {
         TextureID ret;
         ImageRGBA image;
         LoadRGBAImage(image, Filename, MkFilename);
         glGenTextures(1, &ret);
         glBindTexture(GL_TEXTURE_2D, ret);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, bilinear ? GL_LINEAR : GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, bilinear ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.sizeX, image.sizeY, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.buffer.get());
         glGenerateMipmap(GL_TEXTURE_2D);
         return ret;
@@ -166,8 +167,11 @@ namespace Textures {
         glGenTextures(1, &ret);
         glBindTexture(GL_TEXTURE_2D, ret);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Texture.sizeX, Texture.sizeY, 0, GL_RGBA, GL_UNSIGNED_BYTE, Texture.buffer.get());
+        glGenerateMipmap(GL_TEXTURE_2D);
         return ret;
     }
 

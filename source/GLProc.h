@@ -19,6 +19,7 @@ extern PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays;
 extern PFNGLGENBUFFERSPROC glGenBuffers;
 extern PFNGLBINDBUFFERPROC glBindBuffer;
 extern PFNGLBUFFERDATAPROC glBufferData;
+extern PFNGLBUFFERSTORAGEPROC glBufferStorage;
 extern PFNGLDELETEBUFFERSPROC glDeleteBuffers;
 
 extern PFNGLGENFRAMEBUFFERSPROC glGenFramebuffers;

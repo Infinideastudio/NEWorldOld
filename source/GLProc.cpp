@@ -20,6 +20,7 @@ PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays;
 PFNGLGENBUFFERSPROC glGenBuffers;
 PFNGLBINDBUFFERPROC glBindBuffer;
 PFNGLBUFFERDATAPROC glBufferData;
+PFNGLBUFFERSTORAGEPROC glBufferStorage;
 PFNGLDELETEBUFFERSPROC glDeleteBuffers;
 
 PFNGLGENFRAMEBUFFERSPROC glGenFramebuffers;
@@ -95,6 +96,7 @@ void InitGLProc() {
 	glGenBuffers = reinterpret_cast<PFNGLGENBUFFERSPROC>(glfwGetProcAddress("glGenBuffers"));
 	glBindBuffer = reinterpret_cast<PFNGLBINDBUFFERPROC>(glfwGetProcAddress("glBindBuffer"));
 	glBufferData = reinterpret_cast<PFNGLBUFFERDATAPROC>(glfwGetProcAddress("glBufferData"));
+	glBufferStorage = reinterpret_cast<PFNGLBUFFERSTORAGEPROC>(glfwGetProcAddress("glBufferStorage"));
 	glDeleteBuffers = reinterpret_cast<PFNGLDELETEBUFFERSPROC>(glfwGetProcAddress("glDeleteBuffers"));
 
 	glGenFramebuffers = reinterpret_cast<PFNGLGENFRAMEBUFFERSPROC>(glfwGetProcAddress("glGenFramebuffers"));

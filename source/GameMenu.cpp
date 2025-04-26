@@ -14,9 +14,6 @@ namespace Menus {
 			registerControls(3, &title, &resumebtn, &exitbtn);
 		}
 		void onUpdate() {
-			MutexUnlock(Mutex);
-			//Make update thread realize that it should pause
-			MutexLock(Mutex);
 			if (resumebtn.clicked) ExitSignal = true;
 			if (exitbtn.clicked) gameexit = ExitSignal = true;
 		}

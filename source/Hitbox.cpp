@@ -73,7 +73,6 @@ namespace Hitbox {
 
 	// Debug only!
 	void renderAABB(const AABB& box, float colR, float colG, float colB, int mode, double EPS){
-		glEnable(GL_LINE_SMOOTH);
 		glColor4f(colR, colG, colB, 1.0);
 
 		if (mode == 1 || mode == 3){
@@ -145,7 +144,5 @@ namespace Hitbox {
 			glVertex3d(box.xmax + EPS, box.ymax + EPS, box.zmin - EPS);
 			glEnd();
 		}
-
-		glDisable(GL_LINE_SMOOTH);
 	}
 }

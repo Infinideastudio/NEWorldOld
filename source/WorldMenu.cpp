@@ -75,7 +75,6 @@ namespace Menus {
 				gamebegin = true;
 			}
 			if (deletebtn.clicked) {
-				//ɾ�������ļ�
 				system((string("rd /s/q \"Worlds\\") + chosenWorldName + "\"").c_str());
 				deletebtn.clicked = false;
 				World::worldname = "";
@@ -93,7 +92,6 @@ namespace Menus {
 				mouseon = -1;
 				vscroll.barpos = 0;
 				chosenWorldName = "";
-				//������������浵
 				Textures::ImageRGB tmb;
 				intptr_t hFile = 0;
 				_finddata_t fileinfo;
@@ -138,26 +136,28 @@ namespace Menus {
 				int xmin, xmax, ymin, ymax;
 				xmin = midp - 250, xmax = midp + 250;
 				ymin = top + i * itemHeight, ymax = top + (i + 1) * itemHeight;
-				glDisable(GL_TEXTURE_2D);
 				if (selected == (int)i) {
-					glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
+					glDisable(GL_TEXTURE_2D);
 					glBegin(GL_QUADS);
-					UIVertex(midp + 255, top + i * itemHeight);
+					glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
 					UIVertex(midp - 255, top + i * itemHeight);
 					UIVertex(midp - 255, top + (i + 1) * itemHeight);
 					UIVertex(midp + 255, top + (i + 1) * itemHeight);
+					UIVertex(midp + 255, top + i * itemHeight);
 					glEnd();
+					glEnable(GL_TEXTURE_2D);
 				}
 				if (thumbnails[i] == -1) {
 					glDisable(GL_TEXTURE_2D);
+					glBegin(GL_QUADS);
 					if (mouseon == i) glColor4f(0.5, 0.5, 0.5, GUI::FgA);
 					else glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
-					glBegin(GL_QUADS);
 					UIVertex(midp - 250, top + i * itemHeight + borderWidth);
-					UIVertex(midp + 250, top + i * itemHeight + borderWidth);
-					UIVertex(midp + 250, top + (i + 1) * itemHeight - borderWidth);
 					UIVertex(midp - 250, top + (i + 1) * itemHeight - borderWidth);
+					UIVertex(midp + 250, top + (i + 1) * itemHeight - borderWidth);
+					UIVertex(midp + 250, top + i * itemHeight + borderWidth);
 					glEnd();
+					glEnable(GL_TEXTURE_2D);
 				}
 				else {
 					bool marginOnSides;
@@ -172,20 +172,19 @@ namespace Menus {
 						w = texSizeY[i] * 500 / 60.0f / texSizeX[i];
 						h = 1.0f;
 					}
-					glEnable(GL_TEXTURE_2D);
 					glBindTexture(GL_TEXTURE_2D, thumbnails[i]);
 					if (mouseon == (int)i) glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 					else glColor4f(0.8f, 0.8f, 0.8f, 0.9f);
 					glBegin(GL_QUADS);
 					glTexCoord2f(0.5f - w / 2, 0.5f + h / 2), UIVertex(midp - 250, top + i * itemHeight + borderWidth);
-					glTexCoord2f(0.5f + w / 2, 0.5f + h / 2), UIVertex(midp + 250, top + i * itemHeight + borderWidth);
-					glTexCoord2f(0.5f + w / 2, 0.5f - h / 2), UIVertex(midp + 250, top + (i + 1) * itemHeight - borderWidth);
 					glTexCoord2f(0.5f - w / 2, 0.5f - h / 2), UIVertex(midp - 250, top + (i + 1) * itemHeight - borderWidth);
+					glTexCoord2f(0.5f + w / 2, 0.5f - h / 2), UIVertex(midp + 250, top + (i + 1) * itemHeight - borderWidth);
+					glTexCoord2f(0.5f + w / 2, 0.5f + h / 2), UIVertex(midp + 250, top + i * itemHeight + borderWidth);
 					glEnd();
 				}
-				glColor4f(GUI::FgR*0.9f, GUI::FgG*0.9f, GUI::FgB*0.9f, 0.9f);
 				/*
 				glBegin(GL_LINE_LOOP);
+				glColor4f(GUI::FgR*0.9f, GUI::FgG*0.9f, GUI::FgB*0.9f, 0.9f);
 				UIVertex(xmin, ymin);
 				UIVertex(xmin, ymax);
 				UIVertex(xmax, ymax);
@@ -197,21 +196,21 @@ namespace Menus {
 			}
 			int i = worldcount;
 			glDisable(GL_TEXTURE_2D);
-			if (mouseon == i) glColor4f(0.5f, 0.5f, 0.5f, GUI::FgA); else glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
 			glBegin(GL_QUADS);
+			if (mouseon == i) glColor4f(0.5f, 0.5f, 0.5f, GUI::FgA); else glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
 			UIVertex(midp - 250, top + i * itemHeight + borderWidth);
-			UIVertex(midp + 250, top + i * itemHeight + borderWidth);
-			UIVertex(midp + 250, top + (i + 1) * itemHeight - borderWidth);
 			UIVertex(midp - 250, top + (i + 1) * itemHeight - borderWidth);
+			UIVertex(midp + 250, top + (i + 1) * itemHeight - borderWidth);
+			UIVertex(midp + 250, top + i * itemHeight + borderWidth);
 			glEnd();
-			glColor4f(GUI::FgR*0.9f, GUI::FgG*0.9f, GUI::FgB*0.9f, 0.9f);
-			glDisable(GL_TEXTURE_2D);
 			glBegin(GL_LINE_LOOP);
+			glColor4f(GUI::FgR * 0.9f, GUI::FgG * 0.9f, GUI::FgB * 0.9f, 0.9f);
 			UIVertex(midp - 250, top + i * itemHeight + borderWidth);
-			UIVertex(midp + 250, top + i * itemHeight + borderWidth);
-			UIVertex(midp + 250, top + (i + 1) * itemHeight - borderWidth);
 			UIVertex(midp - 250, top + (i + 1) * itemHeight - borderWidth);
+			UIVertex(midp + 250, top + (i + 1) * itemHeight - borderWidth);
+			UIVertex(midp + 250, top + i * itemHeight + borderWidth);
 			glEnd();
+			glEnable(GL_TEXTURE_2D);
 			TextRenderer::renderString(static_cast<int>(windowwidth / stretch - TextRenderer::getStrWidth(GetStrbyKey("NEWorld.worlds.new"))) / 2,
 				top + i * itemHeight + (itemHeight - lineHeight) / 2, GetStrbyKey("NEWorld.worlds.new"));
 			glDisable(GL_SCISSOR_TEST);

@@ -45,8 +45,8 @@ namespace Textures {
 	void LoadRGBImage(ImageRGB& tex, string Filename);
 	void LoadRGBAImage(ImageRGBA& tex, string Filename, string MkFilename);
 
-	TextureID LoadRGBTexture(string Filename);
-	TextureID LoadRGBATexture(string Filename, string MkFilename);
+	TextureID LoadRGBTexture(string Filename, bool bilinear = false);
+	TextureID LoadRGBATexture(string Filename, string MkFilename, bool bilinear = false);
 	TextureID LoadFontTexture(string Filename);
 	TextureID LoadBlockTextureArray(string Filename, string MkFilename);
 	void SaveRGBImage(string filename, ImageRGB& image);

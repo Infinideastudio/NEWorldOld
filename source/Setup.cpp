@@ -6,38 +6,24 @@
 #include "World.h"
 #include "Items.h"
 
-void splashScreen() {
-	for (int i = 0; i < 256; i += 2) {
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClearDepth(1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		glBindTexture(GL_TEXTURE_2D, tex_splash);
-		glBegin(GL_QUADS);
-		glColor4f((float)i / 256, (float)i / 256, (float)i / 256, 1.0);
-		glTexCoord2f(0.0f, 1.0f); glVertex2i(-1, 1);
-		glTexCoord2f(1.0f, 1.0f); glVertex2i(1, 1);
-		glTexCoord2f(1.0f, 0.0f); glVertex2i(1, -1);
-		glTexCoord2f(0.0f, 0.0f); glVertex2i(-1, -1);
-		glEnd();
-
-		glfwSwapBuffers(MainWindow);
-		glfwPollEvents();
-
-		Sleep(10);
-	}
+// OpenGL debug callback
+void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, const GLchar* msg, const void*) {
+	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) cout << "[Console][OpenGL]" << msg << endl;
 }
 
 void createWindow() {
-	//glfwSetErrorCallback([](int, const char* desc) { cout << "[Debug][GLFW]" << desc << endl; });
+	// glfwSetErrorCallback([](int, const char* desc) { cout << "[Debug][GLFW]" << desc << endl; });
 	std::stringstream title;
 	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
+
 	if (Multisample != 0) glfwWindowHint(GLFW_SAMPLES, Multisample);
 #ifdef NEWORLD_DEBUG
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 #endif
+
 	MainWindow = glfwCreateWindow(windowwidth, windowheight, title.str().c_str(), NULL, NULL);
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+
 	glfwMakeContextCurrent(MainWindow);
 	glfwSetCursor(MainWindow, MouseCursor);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -45,12 +31,29 @@ void createWindow() {
 	glfwSetMouseButtonCallback(MainWindow, &MouseButtonFunc);
 	glfwSetScrollCallback(MainWindow, &MouseScrollFunc);
 	glfwSetCharCallback(MainWindow, &CharInputFunc);
+	glfwSwapInterval(vsync ? 1 : 0);
+
+	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
+	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
+	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
+
+	InitGLProc();
+
+#ifdef NEWORLD_DEBUG
+	if (!glDebugMessageCallback) {
+		DebugWarning("Note that you're in debug mode, but GL_KHR_debug is not supported.");
+	}
+	else {
+		glDebugMessageCallback(glDebugCallback, nullptr);
+		DebugInfo("GL_KHR_debug enabled.");
+	}
+#endif
 }
 
-void ToggleFullScreen() {
+void toggleFullScreen() {
 	static bool fullscreen = false;
 	static int ww = 0, wh = 0;
-	
+
 	const GLFWvidmode* mode;
 	mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 
@@ -60,7 +63,8 @@ void ToggleFullScreen() {
 		windowwidth = mode->width;
 		windowheight = mode->height;
 		glfwSetWindowMonitor(MainWindow, glfwGetPrimaryMonitor(), 0, 0, windowwidth, windowheight, mode->refreshRate);
-	} else {
+	}
+	else {
 		windowwidth = ww, windowheight = wh;
 		glfwSetWindowMonitor(MainWindow, nullptr, (mode->width - ww) / 2, (mode->height - wh) / 2, windowwidth, windowheight, mode->refreshRate);
 	}
@@ -68,40 +72,21 @@ void ToggleFullScreen() {
 	setupScreen();
 }
 
-// OpenGL debug callback
-void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, const GLchar* msg, const void*) {
-	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) cout << "[Console][OpenGL]" << msg << endl;
-}
-
 void setupScreen() {
-	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
-	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
-	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
-	glfwSwapInterval(vsync ? 1 : 0);
-
-	InitGLProc();
-
-#ifdef NEWORLD_DEBUG
-	if (!glDebugMessageCallback) {
-		DebugWarning("Note that you're in debug mode, but GL_KHR_debug is not supported.");
-	} else {
-		glDebugMessageCallback(glDebugCallback, nullptr);
-		DebugInfo("GL_KHR_debug enabled.");
-	}
-#endif
-
+	// Set up default GL context states
 	glViewport(0, 0, windowwidth, windowheight);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_TEXTURE_2D);
-	glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
 	if (Multisample != 0) glEnable(GL_MULTISAMPLE);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+	// Make sure everything is initialised
 	TextRenderer::BuildFont(windowwidth, windowheight);
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 	Renderer::initShaders();
@@ -111,17 +96,19 @@ void setupScreen() {
 void loadTextures() {
 	tex_select = Textures::LoadRGBTexture("textures/ui/select.bmp");
 	tex_unselect = Textures::LoadRGBTexture("textures/ui/unselect.bmp");
-	tex_title = Textures::LoadRGBATexture("textures/ui/title.bmp", "textures/ui/title_mask.bmp");
+	tex_title = Textures::LoadRGBATexture("textures/ui/title.bmp", "textures/ui/title_mask.bmp", true);
 
 	for (int i = 0; i < 6; i++) {
 		std::stringstream ss;
 		ss << "textures/ui/background_" << i << ".bmp";
-		tex_mainmenu[i] = Textures::LoadRGBTexture(ss.str());
+		tex_mainmenu[i] = Textures::LoadRGBTexture(ss.str(), true);
 	}
 
-	for (int i = 0; i < 10; i++) {
-		string path = "textures/blocks/breaking_" + itos(i) + ".bmp";
-		DestroyImage[i + 1] = Textures::LoadRGBATexture(path, path);
+	for (int i = 0; i < 8; i++) {
+		std::stringstream ss, ssm;
+		ss << "textures/blocks/breaking.bmp";
+		ssm << "textures/blocks/breaking_" << i << "_mask.bmp";
+		DestroyImage[i] = Textures::LoadRGBATexture(ss.str(), ssm.str());
 	}
 
 	BlockTextureArray = Textures::LoadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
@@ -160,4 +147,37 @@ void CharInputFunc(GLFWwindow *, unsigned int c) {
 
 void MouseScrollFunc(GLFWwindow *, double, double yoffset) {
 	mw += (int)yoffset;
+}
+
+void splashScreen() {
+	if (tex_splash == 0) {
+		tex_splash = Textures::LoadRGBTexture("textures/ui/splash.bmp", true);
+	}
+
+	for (int i = 0; i < 256; i += 2) {
+		float ratio = static_cast<float>(i) / 256.0f;
+
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClearDepth(1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+
+		glBindTexture(GL_TEXTURE_2D, tex_splash);
+		glBegin(GL_QUADS);
+		glColor4f(ratio, ratio, ratio, 1.0f);
+		glTexCoord2f(0.0f, 1.0f); glVertex2i(-1, 1);
+		glTexCoord2f(0.0f, 0.0f); glVertex2i(-1, -1);
+		glTexCoord2f(1.0f, 0.0f); glVertex2i(1, -1);
+		glTexCoord2f(1.0f, 1.0f); glVertex2i(1, 1);
+		glEnd();
+
+		glfwSwapBuffers(MainWindow);
+		glfwPollEvents();
+
+		Sleep(10);
+	}
 }

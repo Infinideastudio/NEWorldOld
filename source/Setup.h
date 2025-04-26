@@ -2,11 +2,9 @@
 
 struct GLFWwindow;
 
-void splashScreen();
-
 void createWindow();
 
-void ToggleFullScreen();
+void toggleFullScreen();
 
 void setupScreen();
 
@@ -19,3 +17,5 @@ void MouseButtonFunc(GLFWwindow*, int button, int action, int);
 void CharInputFunc(GLFWwindow*, unsigned int c);
 
 void MouseScrollFunc(GLFWwindow*, double, double yoffset);
+
+void splashScreen();

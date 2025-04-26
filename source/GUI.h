@@ -39,7 +39,6 @@ namespace GUI {
 	extern bool transitionForward;
 
 	void clearTransition();
-	void screenBlur();
 	void drawBackground();
 	void InitStretch();
 	void EndStretch();

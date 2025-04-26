@@ -1,4 +1,3 @@
-48
 NEWorld.yes
 NEWorld.no
 NEWorld.enabled
@@ -6,6 +5,7 @@ NEWorld.disabled
 NEWorld.main.start
 NEWorld.main.options
 NEWorld.main.exit
+NEWorld.main.help
 NEWorld.options.caption
 NEWorld.options.fov
 NEWorld.options.sensitivity

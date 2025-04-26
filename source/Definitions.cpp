@@ -38,23 +38,8 @@ unsigned short port = 30001;
 
 TextureID BlockTextureArray;
 TextureID tex_select, tex_unselect, tex_splash, tex_title, tex_mainmenu[6];
-TextureID DestroyImage[11];
+TextureID DestroyImage[8];
 TextureID DefaultSkin;
-
-//�߳�
-Mutex_t Mutex;
-Thread_t updateThread;
-double lastupdate, updateTimer;
-double lastframe;
-bool updateThreadRun, updateThreadPaused;
-
-bool shouldGetScreenshot;
-bool shouldGetThumbnail;
-double SpeedupAnimTimer;
-double TouchdownAnimTimer;
-double screenshotAnimTimer;
-double bagAnimTimer;
-double bagAnimDuration = 0.5;
 
 //OpenGL
 int GLVersionMajor, GLVersionMinor, GLVersionRev;
