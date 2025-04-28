@@ -4,7 +4,6 @@
 #include "Definitions.h"
 #include "Blocks.h"
 #include "Textures.h"
-#include "GLProc.h"
 #include "Renderer.h"
 #include "TextRenderer.h"
 #include "Player.h"
@@ -27,10 +26,10 @@ void registerCommands();
 bool loadGame();
 void saveGame();
 ThreadFunc updateThreadFunc(void*);
-void updategame();
+void gameUpdate();
+void frameLinkedUpdate();
 
 void render();
-void present();
 void readback();
 void drawBorder(float x, float y, float z);
 void drawBreaking(float level, float x, float y, float z);
@@ -48,9 +47,8 @@ int getMouseButton() { return mb; }
 
 Mutex_t Mutex;
 Thread_t updateThread;
-double lastupdate, updateTimer;
-double lastframe;
-bool updateThreadRun, updateThreadPaused;
+double updateTimer;
+bool updateThreadRun;
 
 double SpeedupAnimTimer;
 double TouchdownAnimTimer;
@@ -130,132 +128,118 @@ int main() {
 
 	windowwidth = defaultwindowwidth;
 	windowheight = defaultwindowheight;
-	cout << "[Console][Event]Initialize GLFW" << (glfwInit() == 1 ? "" : " - Failed!") << endl;
+
 	createWindow();
 	setupScreen();
 	splashScreen();
 	loadTextures();
-	Mod::ModLoader::loadMods();
-main_menu:
-	gamebegin = gameexit = false;
-	GUI::clearTransition();
-	Menus::mainmenu();
-	glEnable(GL_TEXTURE_2D);
-
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	glClearDepth(1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glfwSwapBuffers(MainWindow);
-	glfwPollEvents();
-
-	Mutex = MutexCreate();
-	MutexLock(Mutex);
-	updateThreadRun = true;
-	updateThreadPaused = true;
-	updateThread = ThreadCreate(&updateThreadFunc, NULL);
-	if (multiplayer) {
-		fastSrand((unsigned int)time(NULL));
-		Player::name = "";
-		Player::onlineID = rand();
-		Network::init(serverip, port);
-	}
-	//初始化游戏状态
-	printf("[Console][Game]");
-	printf("Init player...\n");
-	if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
-	else Player::spawn();
-	printf("[Console][Game]");
-	printf("Init world...\n");
-	World::Init();
 	registerCommands();
+
 	printf("[Console][Game]");
 	printf("Loading Mods...\n");
+	Mod::ModLoader::loadMods();
 
-	//这才是游戏开始!
-	mxl = mx;
-	myl = my;
-	printf("[Console][Game]");
-	printf("Main loop started\n");
-	shouldShowCursor = false;
-	updateThreadPaused = false;
-	fctime = uctime = timer();
+	// 菜单游戏循环
+	while (!glfwWindowShouldClose(MainWindow)) {
+		gamebegin = gameexit = false;
+		GUI::clearTransition();
+		Menus::mainmenu();
 
-	// 主循环，被简化成这样，惨不忍睹啊！
-	do {
-		glfwSetInputMode(MainWindow, GLFW_CURSOR, shouldShowCursor ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+		// 初始化游戏状态
+		if (multiplayer) {
+			printf("[Console][Game]");
+			printf("Init networking...\n");
+			fastSrand((unsigned int)time(NULL));
+			Player::name = "";
+			Player::onlineID = rand();
+			Network::init(serverip, port);
+		}
 
-		// 等待上一帧完成后渲染下一帧
-		MutexUnlock(Mutex);
-		present();
+		printf("[Console][Game]");
+		printf("Init player...\n");
+		if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
+		else Player::spawn();
+
+		printf("[Console][Game]");
+		printf("Init world...\n");
+		World::Init();
+
+		// 初始化游戏更新线程
+		Mutex = MutexCreate();
 		MutexLock(Mutex);
-		readback();
-		render();
-		fpsc++;
+		updateThreadRun = true;
+		updateThread = ThreadCreate(&updateThreadFunc, NULL);
+		updateTimer = timer();
 
-		// 检测帧速率
-		if (timer() - fctime >= 1.0) {
-			fps = fpsc;
-			fpsc = 0;
-			fctime = timer();
-		}
+		// 这才是游戏开始!
+		printf("[Console][Game]");
+		printf("Main loop started\n");
+		mxl = mx;
+		myl = my;
+		shouldShowCursor = false;
+		fctime = uctime = timer();
 
-		// 检测更新速率
-		if (timer() - uctime >= 1.0) {
-			uctime = timer();
-			ups = upsc;
-			upsc = 0;
-		}
+		// 主循环，被简化成这样，惨不忍睹啊！
+		while (!glfwWindowShouldClose(MainWindow) && !gameexit) {
+			// 等待上一帧完成后渲染下一帧
+			MutexUnlock(Mutex);
+			glfwSwapBuffers(MainWindow); // 屏幕刷新，千万别删，后果自负！！！
+			MutexLock(Mutex);
+			readback();
+			render();
+			fpsc++;
 
-		if (shouldToggleFullscreen) {
-			shouldToggleFullscreen = false;
-			toggleFullScreen();
-		}
-
-		if (isKeyDown(GLFW_KEY_ESCAPE)) {
-			updateThreadPaused = true;
-			createThumbnail();
-			GUI::clearTransition();
-			Menus::gamemenu();
-			if (!gameexit) {
-				mxl = mx;
-				myl = my;
+			// 检测帧速率
+			if (timer() - fctime >= 1.0) {
+				fps = fpsc;
+				fpsc = 0;
+				fctime = timer();
 			}
-			updateThreadPaused = false;
-		}
 
-		if (gameexit) {
-			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-			glClearDepth(1.0f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-			TextRenderer::renderString(0, 0, "Saving world...");
-			glfwSwapBuffers(MainWindow);
+			// 检测更新速率
+			if (timer() - uctime >= 1.0) {
+				uctime = timer();
+				ups = upsc;
+				upsc = 0;
+			}
+
+			// 切换全屏状态
+			if (shouldToggleFullscreen) {
+				shouldToggleFullscreen = false;
+				toggleFullScreen();
+			}
+
+			// 检测所有窗口事件
+			glfwSetInputMode(MainWindow, GLFW_CURSOR, shouldShowCursor ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 			glfwPollEvents();
 
-			printf("[Console][Game]");
-			printf("Terminate threads\n");
-			updateThreadRun = false;
-			MutexUnlock(Mutex);
-			ThreadWait(updateThread);
-			ThreadDestroy(updateThread);
-			MutexDestroy(Mutex);
-			saveGame();
-			World::destroyAllChunks();
-			if (multiplayer) Network::cleanUp();
-			goto main_menu;
-		}
+			// 须每帧处理的输入和游戏更新
+			frameLinkedUpdate();
+		};
 
-	} while (!glfwWindowShouldClose(MainWindow));
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClearDepth(1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
+		TextRenderer::renderString(0, 0, "Saving world...");
+		glfwSwapBuffers(MainWindow);
 
-	saveGame();
+		// 停止游戏更新线程
+		printf("[Console][Game]");
+		printf("Terminate threads\n");
+		updateThreadRun = false;
+		MutexUnlock(Mutex);
+		ThreadWait(updateThread);
+		ThreadDestroy(updateThread);
+		MutexDestroy(Mutex);
+
+		// 保存并卸载世界
+		saveGame();
+		World::destroyAllChunks();
+		if (multiplayer) Network::cleanUp();
+	}
+
 	Mod::ModLoader::unloadMods();
-
-	updateThreadRun = false;
-	MutexUnlock(Mutex);
-	ThreadWait(updateThread);
-	ThreadDestroy(updateThread);
-	MutexDestroy(Mutex);
 
 	// 结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
 	// 不对啊这不是FB！！！这是正宗的C++！！！！！！
@@ -267,29 +251,18 @@ main_menu:
 
 ThreadFunc updateThreadFunc(void*) {
 	MutexLock(Mutex);
-	lastupdate = timer();
-
-	while (true) {
-wait:
+	while (updateThreadRun) {
+		double currTimer = timer();
+		if (currTimer - updateTimer >= 5.0) updateTimer = currTimer;
+		while (currTimer - updateTimer >= 1.0 / 30.0 && upsc < 60) {
+			updateTimer += 1.0 / 30.0;
+			upsc++;
+			gameUpdate();
+		}
 		MutexUnlock(Mutex);
 		Sleep(1);
 		MutexLock(Mutex);
-		if (!updateThreadRun) break;
-		if (updateThreadPaused) {
-			lastupdate = timer();
-			goto wait;
-		}
-
-		updateTimer = timer();
-		if (updateTimer - lastupdate >= 5.0) lastupdate = updateTimer;
-
-		while ((updateTimer - lastupdate) >= 1.0 / 30.0 && upsc < 60) {
-			lastupdate += 1.0 / 30.0;
-			upsc++;
-			updategame();
-		}
 	}
-
 	MutexUnlock(Mutex);
 	return 0;
 }
@@ -469,19 +442,20 @@ bool doCommand(const vector<string>& command) {
 	return false;
 }
 
-void updategame() {
+void gameUpdate() {
 	static double wPressTimer;
 	static bool wPressedOnce;
 
 	Player::BlockInHand = Player::inventory[3][Player::indexInHand];
-	//生命值相关
+
+	// 生命值相关
 	if (Player::health > 0 || Player::gamemode == Player::Creative) {
 		if (Player::ypos < -100) Player::health -= ((-100) - Player::ypos) / 100;
 		if (Player::health < Player::healthMax) Player::health += Player::healSpeed;
 		if (Player::health > Player::healthMax) Player::health = Player::healthMax;
 	} else Player::spawn();
 
-	//时间
+	// 时间
 	gametime++;
 
 	World::meshedChunks = 0;
@@ -925,75 +899,7 @@ void updategame() {
 	Player::intzposold = RoundInt(Player::zpos);
 }
 
-// Render the whole scene and HUD
-void render() {
-	double curtime = timer();
-	double TimeDelta;
-	double xpos, ypos, zpos;
-	double mxd, myd;
-	glfwGetCursorPos(MainWindow, &mxd, &myd);
-	mxl = mx;
-	myl = my;
-	mx = static_cast<int>(mxd);
-	my = static_cast<int>(myd);
-
-	if (Player::Running) {
-		if (FOVyExt < 9.8) {
-			TimeDelta = curtime - SpeedupAnimTimer;
-			FOVyExt = 10.0f - (10.0f - FOVyExt) * (float)pow(0.8, TimeDelta * 30);
-			SpeedupAnimTimer = curtime;
-		} else FOVyExt = 10.0;
-	} else {
-		if (FOVyExt > 0.2) {
-			TimeDelta = curtime - SpeedupAnimTimer;
-			FOVyExt *= (float)pow(0.8, TimeDelta * 30);
-			SpeedupAnimTimer = curtime;
-		} else FOVyExt = 0.0;
-	}
-	SpeedupAnimTimer = curtime;
-
-	if (Player::OnGround) {
-		// 半蹲特效
-		if (Player::jump < -0.005) {
-			if (Player::jump <= -(Player::height - 0.5f))
-				Player::heightExt = -(Player::height - 0.5f);
-			else
-				Player::heightExt = (float)Player::jump;
-			TouchdownAnimTimer = curtime;
-		} else {
-			if (Player::heightExt <= -0.005) {
-				Player::heightExt *= (float)pow(0.8, (curtime - TouchdownAnimTimer) * 30);
-				TouchdownAnimTimer = curtime;
-			}
-		}
-	}
-
-	double interp = (curtime - lastupdate) * 30.0;
-	xpos = Player::xpos - Player::xd + interp * Player::xd;
-	ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + interp * Player::yd;
-	zpos = Player::zpos - Player::zd + interp * Player::zd;
-
-	if (!shouldShowCursor) {
-		// 转头！你治好了我多年的颈椎病！
-		if (mx != mxl) Player::xlookspeed -= (mx - mxl) * mousemove;
-		if (my != myl) Player::ylookspeed += (my - myl) * mousemove;
-		/*
-		if (isKeyDown(GLFW_KEY_RIGHT) == 1) Player::xlookspeed -= mousemove * 16 * (curtime - lastframe) * 30.0;
-		if (isKeyDown(GLFW_KEY_LEFT) == 1) Player::xlookspeed += mousemove * 16 * (curtime - lastframe) * 30.0;
-		if (isKeyDown(GLFW_KEY_UP) == 1) Player::ylookspeed -= mousemove * 16 * (curtime - lastframe) * 30.0;
-		if (isKeyDown(GLFW_KEY_DOWN) == 1) Player::ylookspeed += mousemove * 16 * (curtime - lastframe) * 30.0;
-		*/
-		// 限制角度，别把头转掉下来了 ←_←
-		if (Player::lookupdown + Player::ylookspeed < -90.0) Player::ylookspeed = -90.0 - Player::lookupdown;
-		if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
-	}
-
-	// Calculate sun position
-	float interpolatedTime = gametime - 1.0f + static_cast<float>(interp);
-	// daylight = clamp((1.0 - cos((double)gametime / 43200.0f * 2.0 * M_PI) * 2.0) / 2.0, 0.05, 1.0);
-	// Renderer::sunlightXrot = 90 * daylight;
-	Renderer::sunlightYrot = interpolatedTime / 43200.0f * 360.0f;
-
+void frameLinkedUpdate() {
 	// Find chunks for unloading & loading & meshing
 	World::sortChunkUpdateLists(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
 
@@ -1021,6 +927,83 @@ void render() {
 	for (auto meshing : World::chunkMeshingList) {
 		meshing.second->buildMeshes();
 	}
+
+	// 处理计时
+	double currTimer = timer();
+
+	// 视野特效
+	if (Player::Running) {
+		if (FOVyExt < 9.8f) {
+			float timeDelta = static_cast<float>(currTimer - SpeedupAnimTimer);
+			FOVyExt = 10.0f - (10.0f - FOVyExt) * std::pow(0.8f, timeDelta * 30.0f);
+		}
+		else FOVyExt = 10.0f;
+	}
+	else {
+		if (FOVyExt > 0.2f) {
+			float timeDelta = static_cast<float>(currTimer - SpeedupAnimTimer);
+			FOVyExt *= std::pow(0.8f, timeDelta * 30.0f);
+		}
+		else FOVyExt = 0.0f;
+	}
+	SpeedupAnimTimer = currTimer;
+
+	// 半蹲特效
+	if (Player::OnGround) {
+		if (Player::jump < -0.005) {
+			if (Player::jump <= -(Player::height - 0.5f))
+				Player::heightExt = -(Player::height - 0.5f);
+			else
+				Player::heightExt = static_cast<float>(Player::jump);
+		}
+		else {
+			if (Player::heightExt <= -0.005) {
+				float timeDelta = static_cast<float>(currTimer - TouchdownAnimTimer);
+				Player::heightExt *= std::pow(0.8f, timeDelta * 30.0f);
+			}
+		}
+	}
+	TouchdownAnimTimer = currTimer;
+
+	// 鼠标位置
+	double mxd, myd;
+	glfwGetCursorPos(MainWindow, &mxd, &myd);
+	mxl = mx;
+	myl = my;
+	mx = static_cast<int>(mxd);
+	my = static_cast<int>(myd);
+
+	// 转头！你治好了我多年的颈椎病！
+	if (!shouldShowCursor) {
+		if (mx != mxl) Player::xlookspeed -= (mx - mxl) * mousemove;
+		if (my != myl) Player::ylookspeed += (my - myl) * mousemove;
+		// 限制角度，别把头转掉下来了 ←_←
+		if (Player::lookupdown + Player::ylookspeed < -90.0) Player::ylookspeed = -90.0 - Player::lookupdown;
+		if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
+	}
+
+	// 暂停菜单
+	if (isKeyDown(GLFW_KEY_ESCAPE)) {
+		createThumbnail();
+		GUI::clearTransition();
+		Menus::gamemenu();
+		mxl = mx;
+		myl = my;
+		updateTimer = timer();
+	}
+}
+
+// Render the whole scene and HUD
+void render() {
+	double currTimer = timer();
+	double interp = (currTimer - updateTimer) * 30.0;
+	double xpos = Player::xpos - Player::xd + interp * Player::xd;
+	double ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + interp * Player::yd;
+	double zpos = Player::zpos - Player::zd + interp * Player::zd;
+
+	// Calculate sun position (temporary: horizontal movement only)
+	float interpolatedTime = gametime - 1.0f + static_cast<float>(interp);
+	Renderer::sunlightYrot = interpolatedTime / 43200.0f * 360.0f;
 
 	// World rendering starts here
 	double plookupdown = Player::lookupdown + Player::ylookspeed;
@@ -1075,7 +1058,7 @@ void render() {
 		float z = static_cast<float>(selz - zpos);
 		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f::translation(Vec3f(x, y, z)).getTranspose().data);
 		if (GUIrenderswitch) {
-			// Temporary solution pre GL 4.0 (glBlendFunci)
+			// Temporary solution pre GL 4.0 (glBlendFuncSeparatei)
 			glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 			drawBorder(0, 0, 0);
 			glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -1084,6 +1067,7 @@ void render() {
 			glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
 			drawBorder(0, 0, 0);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 			glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 			glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 		}
@@ -1163,8 +1147,8 @@ void render() {
 		drawBag();
 	}
 
-	if (curtime - screenshotAnimTimer <= 1.0 && !shouldGetScreenshot) {
-		float col = 1.0f - (float)(curtime - screenshotAnimTimer);
+	if (currTimer - screenshotAnimTimer <= 1.0 && !shouldGetScreenshot) {
+		float col = 1.0f - static_cast<float>(currTimer - screenshotAnimTimer);
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
 		glColor4f(1.0f, 1.0f, 1.0f, col);
@@ -1175,14 +1159,6 @@ void render() {
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
 	}
-
-	lastframe = curtime;
-}
-
-void present() {
-	// 屏幕刷新，千万别删，后果自负！！！
-	glfwSwapBuffers(MainWindow);
-	glfwPollEvents();
 }
 
 void readback() {
@@ -1220,19 +1196,19 @@ const float centers[6][3] = {
 };
 
 const float cube[6][4][3] = {
-	{ { 0.5f, -0.5f, -0.5f }, { 0.5f, 0.5f, -0.5f }, { 0.5f, 0.5f, 0.5f }, { 0.5f, -0.5f, 0.5f } },
-	{ { -0.5f, -0.5f, -0.5f }, { -0.5f, -0.5f, 0.5f }, { -0.5f, 0.5f, 0.5f }, { -0.5f, 0.5f, -0.5f } },
-	{ { -0.5f, 0.5f, -0.5f },	{ -0.5f, 0.5f, 0.5f },	{ 0.5f, 0.5f, 0.5f },	{ 0.5f, 0.5f, -0.5f } },
-	{ { -0.5f, -0.5f, -0.5f },	{ 0.5f, -0.5f, -0.5f },	{ 0.5f, -0.5f, 0.5f },	{ -0.5f, -0.5f, 0.5f } },
-	{ { -0.5f, -0.5f, 0.5f },	{ 0.5f, -0.5f, 0.5f },	{ 0.5f, 0.5f, 0.5f },	{ -0.5f, 0.5f, 0.5f } },
-	{ { -0.5f, -0.5f, -0.5f },	{ -0.5f, 0.5f, -0.5f },	{ 0.5f, 0.5f, -0.5f },	{ 0.5f, -0.5f, -0.5f } },
+	{ { +0.5f, -0.5f, +0.5f }, { +0.5f, -0.5f, -0.5f }, { +0.5f, +0.5f, -0.5f }, { +0.5f, +0.5f, +0.5f } },
+	{ { -0.5f, -0.5f, -0.5f }, { -0.5f, -0.5f, +0.5f }, { -0.5f, +0.5f, +0.5f }, { -0.5f, +0.5f, -0.5f } },
+	{ { -0.5f, +0.5f, +0.5f }, { +0.5f, +0.5f, +0.5f }, { +0.5f, +0.5f, -0.5f }, { -0.5f, +0.5f, -0.5f } },
+	{ { -0.5f, -0.5f, -0.5f }, { +0.5f, -0.5f, -0.5f }, { +0.5f, -0.5f, +0.5f }, { -0.5f, -0.5f, +0.5f } },
+	{ { -0.5f, -0.5f, +0.5f }, { +0.5f, -0.5f, +0.5f }, { +0.5f, +0.5f, +0.5f }, { -0.5f, +0.5f, +0.5f } },
+	{ { +0.5f, -0.5f, -0.5f }, { -0.5f, -0.5f, -0.5f }, { -0.5f, +0.5f, -0.5f }, { +0.5f, +0.5f, -0.5f } },
 };
 
 const float texcoords[4][2] = {
+	{ 0.0f, 0.0f },
 	{ 1.0f, 0.0f },
 	{ 1.0f, 1.0f },
 	{ 0.0f, 1.0f },
-	{ 0.0f, 0.0f },
 };
 
 // Draw the block selection border
@@ -1301,7 +1277,6 @@ void drawGUI() {
 	int disti = (int)(seldes * linedist);
 
 	glDisable(GL_TEXTURE_2D);
-
 	glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
 
 	if (DebugMode) {
@@ -1366,6 +1341,7 @@ void drawGUI() {
 	}
 
 	glEnable(GL_TEXTURE_2D);
+
 	if (Renderer::AdvancedRender && DebugShadow) {
 		float xi = 1.0f - static_cast<float>(windowheight) / windowwidth;
 		float yi = 1.0f;

@@ -276,7 +276,7 @@ vec4 diffuse(vec2 tex_coord) {
 	int block_id_i = get_scene_material(tex_coord);
 	if (block_id_i == 0) return vec4(0.0);
 	vec4 color = get_scene_diffuse(tex_coord);
-	if (block_id_i == INDICATOR_ID) color.a = 1.0;
+	if (block_id_i == INDICATOR_ID) return vec4(color.rgb, 1.0);
 	vec3 normal = get_scene_normal(tex_coord);
 	vec3 translation = vec3(u_player_coord_mod) + u_player_coord_frac;
 
@@ -296,7 +296,6 @@ vec4 diffuse(vec2 tex_coord) {
 	}
 
 	if (block_id_i == GLOWSTONE_ID) glow = 5.0;
-	else if (block_id_i == INDICATOR_ID) glow = 1.0;
 
 	return vec4(max(vec3(3.5, 3.0, 2.9) * sunlight + vec3(0.4, 0.5, 0.8) * ambient, glow) * color.rgb, color.a);
 }
@@ -542,6 +541,7 @@ void main() {
 			// TODO: make this more realistic
 			albedo *= smoothstep(0.0, 1.0, 1.0 - cos_theta * cos_theta);
 		}
+
 		color = mix(color, reflection, albedo);
 	}
 	

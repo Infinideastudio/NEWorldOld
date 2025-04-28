@@ -131,11 +131,11 @@
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeaderFile />
-      <PreprocessorDefinitions>NEWORLD_DEBUG;NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME;NEWORLD_DEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glew32.lib;glfw3dll.lib;freetype2.lib;ws2_32.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -149,11 +149,11 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeaderFile />
-      <PreprocessorDefinitions>NEWORLD_DEBUG;NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME;NEWORLD_DEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glew32.lib;glfw3dll.lib;freetype2.lib;ws2_32.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -177,13 +177,13 @@
       </PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glew32.lib;glfw3dll.lib;freetype2.lib;ws2_32.lib</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
     </Link>
   </ItemDefinitionGroup>
@@ -205,13 +205,13 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PreprocessorDefinitions>NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glew32.lib;glfw3dll.lib;freetype2.lib;ws2_32.lib</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
     </Link>
   </ItemDefinitionGroup>
@@ -233,13 +233,13 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PreprocessorDefinitions>NEWORLD_DEBUG;NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME;NEWORLD_DEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glew32.lib;glfw3dll.lib;freetype2.lib;ws2_32.lib</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <AssemblyDebug>true</AssemblyDebug>
     </Link>
@@ -262,13 +262,13 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PreprocessorDefinitions>NEWORLD_DEBUG;NEWORLD_GAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME;NEWORLD_DEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;glfw3dll.lib;ws2_32.lib;freetype2.lib</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glew32.lib;glfw3dll.lib;freetype2.lib;ws2_32.lib</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <AssemblyDebug>true</AssemblyDebug>
     </Link>
@@ -294,7 +294,6 @@
     <ClInclude Include="source\Framebuffer.h" />
     <ClInclude Include="source\Frustum.h" />
     <ClInclude Include="source\FunctionsKit.h" />
-    <ClInclude Include="source\GLProc.h" />
     <ClInclude Include="source\HeightMap.h" />
     <ClInclude Include="source\Definitions.h" />
     <ClInclude Include="source\FrustumTest.h" />
@@ -343,7 +342,6 @@
     <ClCompile Include="source\Frustum.cpp" />
     <ClCompile Include="source\FunctionsKit.cpp" />
     <ClCompile Include="source\GameMenu.cpp" />
-    <ClCompile Include="source\GLProc.cpp" />
     <ClCompile Include="source\GUIOptionsMenu.cpp" />
     <ClCompile Include="source\HeightMap.cpp" />
     <ClCompile Include="source\Definitions.cpp" />

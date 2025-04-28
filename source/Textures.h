@@ -1,6 +1,5 @@
 #pragma once
 #include "Definitions.h"
-#include "GLProc.h"
 
 const short BITMAP_ID = 0x4D42;
 

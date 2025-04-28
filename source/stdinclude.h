@@ -52,14 +52,11 @@ using std::max;
 using std::min;
 
 #ifdef NEWORLD_GAME
-
-//GLFW
-#define GLFW_DLL
+// GLEW
+#include <GL/glew.h>
+// GLFW
 #include <GLFW/glfw3.h>
-//GLEXT
-#include <GL/glext.h>
-//FREETYPE
+// FREETYPE
 #include <ft2build.h>
 #include FT_FREETYPE_H
-
 #endif

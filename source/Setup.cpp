@@ -12,11 +12,13 @@ void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, 
 }
 
 void createWindow() {
-	// glfwSetErrorCallback([](int, const char* desc) { cout << "[Debug][GLFW]" << desc << endl; });
 	std::stringstream title;
 	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
 
-	if (Multisample != 0) glfwWindowHint(GLFW_SAMPLES, Multisample);
+	auto glfwStatus = glfwInit();
+	assert(glfwStatus == GLFW_TRUE);
+
+	glfwWindowHint(GLFW_SAMPLES, Multisample);
 #ifdef NEWORLD_DEBUG
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 #endif
@@ -33,11 +35,12 @@ void createWindow() {
 	glfwSetCharCallback(MainWindow, &CharInputFunc);
 	glfwSwapInterval(vsync ? 1 : 0);
 
+	auto glewStatus = glewInit();
+	assert(glewStatus == GLEW_OK);
+
 	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
 	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
 	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
-
-	InitGLProc();
 
 #ifdef NEWORLD_DEBUG
 	if (!glDebugMessageCallback) {

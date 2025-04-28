@@ -1,5 +1,7 @@
 #pragma once
-#include "GLProc.h"
+#include <GL/glew.h>
+#include <utility>
+#include <vector>
 
 namespace Renderer {
 	// TODO: implement this in VXRT first?

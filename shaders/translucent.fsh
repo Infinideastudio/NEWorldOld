@@ -26,7 +26,7 @@ void main() {
 
 	vec4 texel = texture(u_diffuse, tex_coord.stp);
 	if (texel.a <= 0.0) discard;
-	if (block_id_i == WATER_ID || block_id_i == ICE_ID) texel.a = 0.0;
+	if (block_id_i == WATER_ID || block_id_i == ICE_ID) texel.a = 0.02;
 	texel.rgb = pow(texel.rgb, vec3(GAMMA));
 
 	o_frag_color = vec4(color, 1.0) * texel;
