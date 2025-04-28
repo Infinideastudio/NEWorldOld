@@ -26,15 +26,16 @@ namespace Menus {
 		const int borderWidth = 5;
 		void onLoad() {
 			title = GUI::label(GetStrbyKey("NEWorld.worlds.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			title.centered = true;
 			vscroll = GUI::vscroll(100, 0, 275, 295, 36, -20, 0.5, 0.5, 0.0, 1.0);
+			vscroll.defaultv = true;
 			enterbtn = GUI::button(GetStrbyKey("NEWorld.worlds.enter"), -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
+			enterbtn.enabled = false;
 			deletebtn = GUI::button(GetStrbyKey("NEWorld.worlds.delete"), 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
+			deletebtn.enabled = false;
 			backbtn = GUI::button(GetStrbyKey("NEWorld.worlds.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(5, &title, &vscroll, &enterbtn, &deletebtn, &backbtn);
 			World::worldname = "";
-			enterbtn.enabled = false;
-			deletebtn.enabled = false;
-			vscroll.defaultv = true;
 		}
 		void onUpdate() {
 			worldcount = (int)worldnames.size();

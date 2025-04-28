@@ -2,7 +2,6 @@
 #include "Definitions.h"
 #include "GLProc.h"
 
-extern int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_COUNT;
 const short BITMAP_ID = 0x4D42;
 
 namespace Textures {
@@ -35,12 +34,12 @@ namespace Textures {
 #pragma pack(pop)
 
 	enum TextureIndices: TextureIndex {
+		WHITE, BREAKING_0, BREAKING_1, BREAKING_2, BREAKING_3, BREAKING_4, BREAKING_5, BREAKING_6, BREAKING_7, NULLBLOCK,
 		ROCK, GRASS_TOP, GRASS_SIDE, DIRT, STONE, PLANK, WOOD_TOP, WOOD_SIDE, BEDROCK, LEAF,
-		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON, TNT, UNKNOWN
+		GLASS, WATER, LAVA, GLOWSTONE, SAND, CEMENT, ICE, COAL, IRON, TNT,
+		TEXTURE_INDICES_COUNT
 	};
-	const int NULLBLOCK = 63;
 
-	void Init();
 	TextureIndex getTextureIndex(BlockID blockname, uint8_t side);
 	void LoadRGBImage(ImageRGB& tex, string Filename);
 	void LoadRGBAImage(ImageRGBA& tex, string Filename, string MkFilename);

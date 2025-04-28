@@ -16,9 +16,9 @@ bool MergeFace = false;         //�ϲ�����Ⱦ
 bool GUIScreenBlur = false;      //GUI����ģ��  Void:����㷨�����ˣ��ҹص���
 int linelength = 10;            //��F3��׼���йء�����
 int linedist = 30;              //��F3��׼���йء�����
-float skycolorR = 0.65f;         //�����ɫRed
-float skycolorG = 0.95f;         //�����ɫGreen
-float skycolorB = 0.95f;         //�����ɫBlue
+float skycolorR = 0.70f;         //�����ɫRed
+float skycolorG = 0.80f;         //�����ɫGreen
+float skycolorB = 0.86f;         //�����ɫBlue
 float FOVyRunning = 8.0f;
 float FOVyExt;
 double stretch = 1.0f;          //ppi���ű�������gui����ʹ�ã�
@@ -38,7 +38,6 @@ unsigned short port = 30001;
 
 TextureID BlockTextureArray;
 TextureID tex_select, tex_unselect, tex_splash, tex_title, tex_mainmenu[6];
-TextureID DestroyImage[8];
 TextureID DefaultSkin;
 
 //OpenGL

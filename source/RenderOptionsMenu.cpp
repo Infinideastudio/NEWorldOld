@@ -11,6 +11,7 @@ namespace Menus {
 		GUI::trackbar msaabar;
 		void onLoad() {
 			title = GUI::label(GetStrbyKey("NEWorld.render.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			title.centered = true;
 			smoothlightingbtn = GUI::button("", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
 			fancygrassbtn = GUI::button("", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
 			mergefacebtn = GUI::button("", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
@@ -34,10 +35,7 @@ namespace Menus {
 				if (vsync) glfwSwapInterval(1);
 				else glfwSwapInterval(0);
 			}
-			if (backbtn.clicked) {
-				Renderer::initShaders(true);
-				ExitSignal = true;
-			}
+			if (backbtn.clicked) ExitSignal = true;
 			std::stringstream ss; ss << Multisample;
 			smoothlightingbtn.text = GetStrbyKey("NEWorld.render.smooth") + BoolEnabled(SmoothLighting);
 			fancygrassbtn.text = GetStrbyKey("NEWorld.render.grasstex") + BoolYesNo(NiceGrass);

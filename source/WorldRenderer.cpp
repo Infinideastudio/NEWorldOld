@@ -25,16 +25,13 @@ namespace WorldRenderer {
         float m[16];
         memset(m, 0, sizeof(m));
         m[0] = m[5] = m[10] = m[15] = 1.0f;
-
         for (unsigned int i = 0; i < RenderChunkList.size(); i++) {
             RenderChunk const& cr = RenderChunkList[i];
             auto const& mesh = *cr.meshes[index];
             if (mesh.empty()) continue;
-            
             double xd = cr.cx * 16.0 - x;
             double yd = cr.cy * 16.0 - cr.loadAnim - y;
             double zd = cr.cz * 16.0 - z;
-
             m[12] = float(xd);
             m[13] = float(yd);
             m[14] = float(zd);

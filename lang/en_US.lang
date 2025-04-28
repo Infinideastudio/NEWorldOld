@@ -8,16 +8,16 @@ Start game
 >> Options...
 Exit
 Press ENTER and type "/help" in-game for more instructions!
-=================< Options >==================
+< OPTIONS >
 Field of view: 
 Mouse sensitivity: 
 Render distance: 
 >> Render options...
->> GUI options...
+>> UI options...
 >> Select language...
 << Back to main menu
 Save options
-=============< Render options >===============
+< RENDER OPTIONS >
 Smooth lighting: 
 Connect grass texture: 
 Merge face rendering: 
@@ -25,7 +25,7 @@ Multi-sample AA:
 >> Advanced rendering ...
 Vertical sync: 
 << Back to options menu
-============< Advanced rendering >============
+< ADVANCED SHADING >
 Enabled: 
 Shadow map resolution: 
 Max shadow distance: 
@@ -33,22 +33,22 @@ Soft shadow:
 Volumetric clouds: 
 Ambient occlusion: 
 << Back to render options
-===============< GUI options >================
+< UI OPTIONS >
 Force Unicode font: 
 Background blur: 
 PPI stretch (EXPERIMENTAL)
 << Back to options menu
-==============< Select world >================
+< SELECT WORLD >
 Enter this world
 Delete this world
 >> Create a new world ...
 << Back to main menu
-================< Game menu >=================
+< GAME PAUSED >
 Continue game
 << Back to main menu
-==============< Create a world >==============
+< CREATE A NEW WORLD >
 Input world name
 OK
 << Back to world menu
-================< Languages >=================
+< LANGUAGES >
 << Back to options menu

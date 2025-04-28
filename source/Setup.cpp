@@ -90,7 +90,6 @@ void setupScreen() {
 	TextRenderer::BuildFont(windowwidth, windowheight);
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 	Renderer::initShaders();
-	Textures::Init();
 }
 
 void loadTextures() {
@@ -102,13 +101,6 @@ void loadTextures() {
 		std::stringstream ss;
 		ss << "textures/ui/background_" << i << ".bmp";
 		tex_mainmenu[i] = Textures::LoadRGBTexture(ss.str(), true);
-	}
-
-	for (int i = 0; i < 8; i++) {
-		std::stringstream ss, ssm;
-		ss << "textures/blocks/breaking.bmp";
-		ssm << "textures/blocks/breaking_" << i << "_mask.bmp";
-		DestroyImage[i] = Textures::LoadRGBATexture(ss.str(), ssm.str());
 	}
 
 	BlockTextureArray = Textures::LoadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");

@@ -86,15 +86,10 @@ namespace ChunkRenderer {
 				col4 = (col4 + rd.getbrightness(x + 1, y - 1, z) + rd.getbrightness(x + 1, y, z + 1) + rd.getbrightness(x + 1, y - 1, z + 1)) / 4.0f;
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
-
+			if (!Renderer::AdvancedRender) col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
+			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
-			if (Renderer::AdvancedRender) {
-				Renderer::Normal3f(1.0f, 0.0f, 0.0f);
-				Renderer::Attrib1f((float)bl);
-			}
-			else {
-				col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
-			}
+			Renderer::Normal3f(1.0f, 0.0f, 0.0f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(0.5f + x, -0.5f + y, -0.5f + z);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, -0.5f + z);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, 0.5f + z);
@@ -113,15 +108,10 @@ namespace ChunkRenderer {
 				col4 = (col4 + rd.getbrightness(x - 1, y + 1, z) + rd.getbrightness(x - 1, y, z - 1) + rd.getbrightness(x - 1, y + 1, z - 1)) / 4.0f;
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
-
+			if (!Renderer::AdvancedRender) col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
+			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
-			if (Renderer::AdvancedRender) {
-				Renderer::Normal3f(-1.0f, 0.0f, 0.0f);
-				Renderer::Attrib1f((float)bl);
-			}
-			else {
-				col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
-			}
+			Renderer::Normal3f(-1.0f, 0.0f, 0.0f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, -0.5f + z);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, 0.5f + z);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(-0.5f + x, 0.5f + y, 0.5f + z);
@@ -139,12 +129,9 @@ namespace ChunkRenderer {
 				col4 = (col4 + rd.getbrightness(x, y + 1, z - 1) + rd.getbrightness(x + 1, y + 1, z) + rd.getbrightness(x + 1, y + 1, z - 1)) / 4.0f;
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
-
+			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
-			if (Renderer::AdvancedRender) {
-				Renderer::Normal3f(0.0f, 1.0f, 0.0f);
-				Renderer::Attrib1f((float)bl);
-			}
+			Renderer::Normal3f(0.0f, 1.0f, 0.0f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(-0.5f + x, 0.5f + y, -0.5f + z);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, 0.5f + y, 0.5f + z);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, 0.5f + z);
@@ -162,12 +149,9 @@ namespace ChunkRenderer {
 				col4 = (col4 + rd.getbrightness(x, y - 1, z + 1) + rd.getbrightness(x - 1, y - 1, z) + rd.getbrightness(x - 1, y - 1, z + 1)) / 4.0f;
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
-
+			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
-			if (Renderer::AdvancedRender) {
-				Renderer::Normal3f(0.0f, -1.0f, 0.0f);
-				Renderer::Attrib1f((float)bl);
-			}
+			Renderer::Normal3f(0.0f, -1.0f, 0.0f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, -0.5f + z);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(0.5f + x, -0.5f + y, -0.5f + z);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(0.5f + x, -0.5f + y, 0.5f + z);
@@ -186,15 +170,10 @@ namespace ChunkRenderer {
 				col4 = (col4 + rd.getbrightness(x, y + 1, z + 1) + rd.getbrightness(x - 1, y, z + 1) + rd.getbrightness(x - 1, y + 1, z + 1)) / 4.0f;
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
-
+			if (!Renderer::AdvancedRender) col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
+			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
-			if (Renderer::AdvancedRender) {
-				Renderer::Normal3f(0.0f, 0.0f, 1.0f);
-				Renderer::Attrib1f((float)bl);
-			}
-			else {
-				col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
-			}
+			Renderer::Normal3f(0.0f, 0.0f, 1.0f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, 0.5f + z);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(0.5f + x, -0.5f + y, 0.5f + z);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, 0.5f + z);
@@ -213,15 +192,10 @@ namespace ChunkRenderer {
 				col4 = (col4 + rd.getbrightness(x, y - 1, z - 1) + rd.getbrightness(x + 1, y, z - 1) + rd.getbrightness(x + 1, y - 1, z - 1)) / 4.0f;
 			}
 			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
-
+			if (!Renderer::AdvancedRender) col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
+			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
-			if (Renderer::AdvancedRender) {
-				Renderer::Normal3f(0.0f, 0.0f, -1.0f);
-				Renderer::Attrib1f((float)bl);
-			}
-			else {
-				col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
-			}
+			Renderer::Normal3f(0.0f, 0.0f, -1.0f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex3f(-0.5f + x, -0.5f + y, -0.5f + z);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex3f(-0.5f + x, 0.5f + y, -0.5f + z);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(0.5f + x, 0.5f + y, -0.5f + z);
@@ -252,51 +226,51 @@ namespace ChunkRenderer {
 		float col3 = (float)p.col3 * 0.25f / World::BRIGHTNESSMAX;
 		int x = p.x, y = p.y, z = p.z, length = p.length;
 
-		if (Renderer::AdvancedRender) Renderer::Attrib1f(static_cast<float>(p.blk));
+		Renderer::Attrib1f(static_cast<float>(p.blk));
 		Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(p.tex));
 
 		switch (p.direction) {
 		case 0:
-			if (Renderer::AdvancedRender) Renderer::Normal3f(1.0f, 0.0f, 0.0f);
-			else col0 *= 0.7f, col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f;
+			if (!Renderer::AdvancedRender) col0 *= 0.7f, col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f;
+			Renderer::Normal3f(1.0f, 0.0f, 0.0f);
 			Renderer::Color3f(col0, col0, col0); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(x + 0.5f, y - 0.5f, z - 0.5f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(x + 0.5f, y + 0.5f, z - 0.5f);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(length + 1.0f, 1.0f); Renderer::Vertex3f(x + 0.5f, y + 0.5f, z + length + 0.5f);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(length + 1.0f, 0.0f); Renderer::Vertex3f(x + 0.5f, y - 0.5f, z + length + 0.5f);
 			break;
 		case 1:
-			if (Renderer::AdvancedRender) Renderer::Normal3f(-1.0f, 0.0f, 0.0f);
-			else col0 *= 0.7f, col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f;
+			if (!Renderer::AdvancedRender) col0 *= 0.7f, col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f;
+			Renderer::Normal3f(-1.0f, 0.0f, 0.0f);
 			Renderer::Color3f(col0, col0, col0); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(x - 0.5f, y + 0.5f, z - 0.5f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(x - 0.5f, y - 0.5f, z - 0.5f);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(length + 1.0f, 0.0f); Renderer::Vertex3f(x - 0.5f, y - 0.5f, z + length + 0.5f);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(length + 1.0f, 1.0f); Renderer::Vertex3f(x - 0.5f, y + 0.5f, z + length + 0.5f);
 			break;
 		case 2:
-			if (Renderer::AdvancedRender) Renderer::Normal3f(0.0f, 1.0f, 0.0f);
+			Renderer::Normal3f(0.0f, 1.0f, 0.0f);
 			Renderer::Color3f(col0, col0, col0); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(x + 0.5f, y + 0.5f, z - 0.5f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(x - 0.5f, y + 0.5f, z - 0.5f);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(length + 1.0f, 1.0f); Renderer::Vertex3f(x - 0.5f, y + 0.5f, z + length + 0.5f);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(length + 1.0f, 0.0f); Renderer::Vertex3f(x + 0.5f, y + 0.5f, z + length + 0.5f);
 			break;
 		case 3:
-			if (Renderer::AdvancedRender) Renderer::Normal3f(0.0f, -1.0f, 0.0f);
+			Renderer::Normal3f(0.0f, -1.0f, 0.0f);
 			Renderer::Color3f(col0, col0, col0); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(x - 0.5f, y - 0.5f, z - 0.5f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(x + 0.5f, y - 0.5f, z - 0.5f);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(length + 1.0f, 1.0f); Renderer::Vertex3f(x + 0.5f, y - 0.5f, z + length + 0.5f);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(length + 1.0f, 0.0f); Renderer::Vertex3f(x - 0.5f, y - 0.5f, z + length + 0.5f);
 			break;
 		case 4:
-			if (Renderer::AdvancedRender) Renderer::Normal3f(0.0f, 0.0f, 1.0f);
-			else col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
+			if (!Renderer::AdvancedRender) col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
+			Renderer::Normal3f(0.0f, 0.0f, 1.0f);
 			Renderer::Color3f(col0, col0, col0); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(x - 0.5f, y + 0.5f, z + 0.5f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(x - 0.5f, y - 0.5f, z + 0.5f);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(length + 1.0f, 0.0f); Renderer::Vertex3f(x + length + 0.5f, y - 0.5f, z + 0.5f);
 			Renderer::Color3f(col3, col3, col3); Renderer::TexCoord2f(length + 1.0f, 1.0f); Renderer::Vertex3f(x + length + 0.5f, y + 0.5f, z + 0.5f);
 			break;
 		case 5:
-			if (Renderer::AdvancedRender) Renderer::Normal3f(0.0f, 0.0f, -1.0f);
-			else col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
+			if (!Renderer::AdvancedRender) col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
+			Renderer::Normal3f(0.0f, 0.0f, -1.0f);
 			Renderer::Color3f(col0, col0, col0); Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex3f(x - 0.5f, y - 0.5f, z - 0.5f);
 			Renderer::Color3f(col1, col1, col1); Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex3f(x - 0.5f, y + 0.5f, z - 0.5f);
 			Renderer::Color3f(col2, col2, col2); Renderer::TexCoord2f(length + 1.0f, 1.0f); Renderer::Vertex3f(x + length + 0.5f, y + 0.5f, z - 0.5f);
@@ -310,8 +284,8 @@ namespace ChunkRenderer {
 		ChunkRenderData rd(c);
 
 		for (int steps = 0; steps < 2; steps++) {
-			if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 3, 3, 1);
-			else Renderer::Begin(GL_QUADS, 3, 3, 3);
+			if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
+			else Renderer::Begin(GL_QUADS, 3, 3, 1);
 			for (int x = 0; x < 16; x++) for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) {
 				const Blocks::SingleBlock& info = BlockInfo(rd.getblock(x, y, z));
 				if (steps == 0 && !info.isTranslucent() || steps == 1 && info.isTranslucent()) {
@@ -328,8 +302,8 @@ namespace ChunkRenderer {
 		ChunkRenderData rd(c);
 
 		for (int steps = 0; steps < 2; steps++) {
-			if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 3, 3, 1);
-			else Renderer::Begin(GL_QUADS, 3, 3, 3);
+			if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
+			else Renderer::Begin(GL_QUADS, 3, 3, 1);
 			for (int d = 0; d < 6; d++) {
 				uint8_t face = 0;
 				if (d == 2) face = 1;
