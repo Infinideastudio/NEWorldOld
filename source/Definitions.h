@@ -5,13 +5,13 @@
 #include "StdInclude.h"
 #include "Typedefs.h"
 #include "FunctionsKit.h"
-//#ifdef NEWORLD_DEBUG
-//#define NEWORLD_DEBUG_CONSOLE_OUTPUT
-//#define NEWORLD_DEBUG_NO_FILEIO
-//#define NEWORLD_DEBUG_PERFORMANCE_REC
-//#endif
+// #ifdef NEWORLD_DEBUG
+// #define NEWORLD_DEBUG_CONSOLE_OUTPUT
+// #define NEWORLD_DEBUG_NO_FILEIO
+// #define NEWORLD_DEBUG_PERFORMANCE_REC
+// #endif
 
-//Global Vars
+// Global Vars
 const unsigned int VERSION = 39;
 const string MAJOR_VERSION = "Alpha 0.";
 const string MINOR_VERSION = "5";

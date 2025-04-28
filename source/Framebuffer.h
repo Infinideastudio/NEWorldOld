@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Definitions.h"
-#include "GLProc.h"
 
 class Framebuffer {
 public:

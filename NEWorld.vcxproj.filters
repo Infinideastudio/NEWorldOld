@@ -29,9 +29,6 @@
     <Filter Include="Source\Common">
       <UniqueIdentifier>{2942a024-6889-447e-9918-2cd547c7a601}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Common\OpenGL">
-      <UniqueIdentifier>{f6aa1cb9-6009-404f-b1cc-68775a8f0ece}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source\Game">
       <UniqueIdentifier>{ef7833db-0c84-4c19-a567-6c4833d0e663}</UniqueIdentifier>
     </Filter>
@@ -163,9 +160,6 @@
     </ClInclude>
     <ClInclude Include="source\Blocks.h">
       <Filter>源代码\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="source\GLProc.h">
-      <Filter>Source\Common\OpenGL</Filter>
     </ClInclude>
     <ClInclude Include="source\ModLoader.h">
       <Filter>Source\Mod</Filter>
@@ -331,9 +325,6 @@
     </ClCompile>
     <ClCompile Include="source\Hitbox.cpp">
       <Filter>源代码\Game\Hitbox</Filter>
-    </ClCompile>
-    <ClCompile Include="source\GLProc.cpp">
-      <Filter>Source\Common\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="source\ModLoader.cpp">
       <Filter>Source\Mod</Filter>

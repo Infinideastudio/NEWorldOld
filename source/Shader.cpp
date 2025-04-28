@@ -1,6 +1,5 @@
 #include "Shader.h"
 #include "FunctionsKit.h"
-#include "GLProc.h"
 
 Shader::Shader(string vshPath, string fshPath, std::set<string> defines) {
     shaderVertex = loadShader(vshPath, GL_VERTEX_SHADER, defines);

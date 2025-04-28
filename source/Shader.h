@@ -1,6 +1,5 @@
 #pragma once
 #include "StdInclude.h"
-#include "GLProc.h"
 
 class Shader {
 public:
