@@ -1,23 +1,9 @@
 #pragma once
-#define NEWORLD_USE_WINAPI
-#define NERDMODE1
-#ifdef NEWORLD_USE_WINAPI
-	#ifdef NEWORLD_SERVER
-	#include <thread>
-	#include <mutex>
-	using std::thread;
-	using std::mutex;
-	#endif
-	#include <WinSock2.h>
-	#include <Windows.h>
-#else
-	#include <thread>
-	#include <mutex>
-#endif
-#define _USE_MATH_DEFINES
-#include <math.h>
-#include <time.h>
-#include <io.h>
+#include <cassert>
+#include <cmath>
+#include <cstdarg>
+#include <cstdlib>
+#include <ctime>
 #include <array>
 #include <string>
 #include <iostream>
@@ -32,24 +18,31 @@
 #include <optional>
 #include <variant>
 #include <tuple>
-#include <cassert>
 #include <map>
 #include <unordered_map>
 #include <set>
 #include <unordered_set>
 #include <queue>
-#include <stdarg.h>
-#include <direct.h>
+#include <numbers>
 
-using std::string;
-using std::vector;
-using std::pair;
-using std::unique_ptr;
-using std::map;
-using std::cout;
-using std::endl;
-using std::max;
-using std::min;
+#ifdef NEWORLD_USE_WINAPI
+#ifdef NEWORLD_SERVER
+#include <thread>
+#include <mutex>
+using std::thread;
+using std::mutex;
+#endif
+#define NOMINMAX
+#include <WinSock2.h>
+#include <Windows.h>
+#include <direct.h>
+#include <io.h>
+#undef near
+#undef far
+#else
+#include <thread>
+#include <mutex>
+#endif
 
 #ifdef NEWORLD_GAME
 // GLEW
@@ -60,3 +53,6 @@ using std::min;
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #endif
+
+using std::string;
+using std::vector;

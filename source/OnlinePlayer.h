@@ -3,7 +3,7 @@
 #include "stdinclude.h"
 #include "PlayerPacket.h"
 
-extern map<SkinID, Renderer::VertexBuffer> playerSkins;
+extern std::map<SkinID, Renderer::VertexBuffer> playerSkins;
 
 class OnlinePlayer : public Object {
 public:
@@ -28,4 +28,4 @@ private:
 	static Renderer::VertexBuffer genVertexBuffer(SkinID skinID);
 };
 
-extern vector<OnlinePlayer> players;
+extern std::vector<OnlinePlayer> players;

@@ -2,22 +2,22 @@
 #include "StdInclude.h"
 #include "Typedefs.h"
 
-extern double stretch;
+extern double Stretch;
 
 //���ú���
-vector<string> split(string str, string pattern);
+std::vector<std::string> split(std::string str, std::string pattern);
 
 inline void UITrans(double x, double y) {
-	glTranslated(x*stretch, y*stretch, 0);
+	glTranslated(x*Stretch, y*Stretch, 0);
 }
 inline void UITrans(int x, int y) {
-	glTranslated((static_cast<double>(x))*stretch, (static_cast<double>(y))*stretch, 0);
+	glTranslated((static_cast<double>(x))*Stretch, (static_cast<double>(y))*Stretch, 0);
 }
 inline void UIVertex(double x, double y) {
-	glVertex2d(x*stretch, y*stretch);
+	glVertex2d(x*Stretch, y*Stretch);
 }
 inline void UIVertex(int x, int y) {
-	glVertex2i(static_cast<int>(x*stretch), static_cast<int>(y*stretch));
+	glVertex2i(static_cast<int>(x*Stretch), static_cast<int>(y*Stretch));
 }
 
 extern unsigned int g_seed;
@@ -26,23 +26,23 @@ inline int fastRand() {
 	return (g_seed >> 16) & 0x7FFF;
 }
 inline void fastSrand(int seed) { g_seed = seed; }
-vector<string> split(string str, string pattern);
-inline string boolstr(bool b) { return b ? "true" : "false"; }
+std::vector<std::string> split(std::string str, std::string pattern);
+inline std::string boolstr(bool b) { return b ? "true" : "false"; }
 inline double rnd() { return (double)fastRand() / (RAND_MAX + 1); }
 inline int RoundInt(double d) { return int(floor(d + 0.5)); }
 
-inline string itos(int i) {
+inline std::string itos(int i) {
 	std::stringstream ss;
 	ss << i;
-	return string(ss.str());
+	return std::string(ss.str());
 }
 
-inline bool beginWith(string str, string begin) {
+inline bool beginWith(std::string str, std::string begin) {
 	if (str.size() < begin.size()) return false;
 	return str.substr(0, begin.size()) == begin;
 }
 
-inline void DebugInfo(string msg) {
+inline void DebugInfo(std::string msg) {
 #ifdef NEWORLD_USE_WINAPI
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);
 	printf("[Debug][Info]");
@@ -53,7 +53,7 @@ inline void DebugInfo(string msg) {
 #endif
 }
 
-inline void DebugWarning(string msg) {
+inline void DebugWarning(std::string msg) {
 #ifdef NEWORLD_USE_WINAPI
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
 	printf("[Debug][Warning]");
@@ -64,7 +64,7 @@ inline void DebugWarning(string msg) {
 #endif
 }
 
-inline void DebugError(string msg) {
+inline void DebugError(std::string msg) {
 #ifdef NEWORLD_USE_WINAPI
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
 	printf("[Debug][Error]");
@@ -75,7 +75,7 @@ inline void DebugError(string msg) {
 #endif
 }
 
-template<class T> inline void conv(string str, T& ret) {
+template<class T> inline void conv(std::string str, T& ret) {
 	std::stringstream s(str);
 	s >> ret;
 }

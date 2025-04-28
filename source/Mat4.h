@@ -20,8 +20,7 @@
 #ifndef MAT4_H_
 #define MAT4_H_
 
-#define _USE_MATH_DEFINES
-#include <math.h>
+#include <cmath>
 #include <cstring>
 #include <cassert>
 #include "Vec3.h"
@@ -165,55 +164,55 @@ public:
 	static Mat4 rotation(T degrees, Vec3<T> vec) {
 		Mat4 res;
 		vec.normalize();
-		T alpha = degrees * T(M_PI) / T(180.0), s = sin(alpha), c = cos(alpha), t = 1.0f - c;
+		T alpha = degrees * std::numbers::pi_v<T> / T(180.0), s = std::sin(alpha), c = std::cos(alpha), t = 1.0f - c;
 		res.data[0] = t * vec.x * vec.x + c;
-		res.data[1] = t * vec.x * vec.y + s * vec.z;
-		res.data[2] = t * vec.x * vec.z - s * vec.y;
-		res.data[4] = t * vec.x * vec.y - s * vec.z;
+		res.data[1] = t * vec.x * vec.y - s * vec.z;
+		res.data[2] = t * vec.x * vec.z + s * vec.y;
+		res.data[4] = t * vec.x * vec.y + s * vec.z;
 		res.data[5] = t * vec.y * vec.y + c;
-		res.data[6] = t * vec.y * vec.z + s * vec.x;
-		res.data[8] = t * vec.x * vec.z + s * vec.y;
-		res.data[9] = t * vec.y * vec.z - s * vec.x;
+		res.data[6] = t * vec.y * vec.z - s * vec.x;
+		res.data[8] = t * vec.x * vec.z - s * vec.y;
+		res.data[9] = t * vec.y * vec.z + s * vec.x;
 		res.data[10] = t * vec.z * vec.z + c;
 		res.data[15] = T(1.0);
 		return res;
 	}
 
 	// Construct a perspective projection matrix
-	static Mat4 perspective(T fov, T aspect, T zNear, T zFar) {
+	static Mat4 perspective(T fov, T aspect, T near, T far) {
 		Mat4 res;
-		T f = T(1.0) / tan(fov * T(M_PI) / T(180.0) / T(2.0));
-		T a = zNear - zFar;
+		T f = T(1.0) / std::tan(fov * std::numbers::pi_v<T> / T(180.0) / T(2.0));
+		T a = near - far;
 		res.data[0] = f / aspect;
 		res.data[5] = f;
-		res.data[10] = (zFar + zNear) / a;
-		res.data[11] = T(2.0) * zFar * zNear / a;
+		res.data[10] = (far + near) / a;
+		res.data[11] = T(2.0) * far * near / a;
 		res.data[14] = T(-1.0);
 		return res;
 	}
 
 	// Construct an orthogonal projection matrix
-	static Mat4 ortho(T left, T right, T top, T bottom, T zNear, T zFar) {
+	static Mat4 ortho(T left, T right, T bottom, T top, T near, T far) {
 		T a = right - left;
 		T b = top - bottom;
-		T c = zFar - zNear;
+		T c = far - near;
 		Mat4 res;
 		res.data[0] = T(2.0) / a;
 		res.data[3] = -(right + left) / a;
 		res.data[5] = T(2.0) / b;
 		res.data[7] = -(top + bottom) / b;
 		res.data[10] = T(-2.0) / c;
-		res.data[11] = -(zFar + zNear) / c;
+		res.data[11] = -(far + near) / c;
 		res.data[15] = T(1.0);
 		return res;
 	}
 
-	// Multiply with Vec3 (with homogeneous coords normalized)
+	// Multiply with Vec3 (with homogeneous coords divided)
 	Vec3<T> transformVec3(const Vec3<T>& vec) const {
-		Vec3<T> res(data[0] * vec.x + data[4] * vec.y + data[8] * vec.z + data[12],
-					data[1] * vec.x + data[5] * vec.y + data[9] * vec.z + data[13],
-					data[2] * vec.x + data[6] * vec.y + data[10] * vec.z + data[14]);
-		T homoCoord = data[3] * vec.x + data[7] * vec.y + data[11] * vec.z + data[15];
+		Vec3<T> res(data[0] * vec.x + data[1] * vec.y + data[2] * vec.z + data[3],
+					data[4] * vec.x + data[5] * vec.y + data[6] * vec.z + data[7],
+					data[8] * vec.x + data[9] * vec.y + data[10] * vec.z + data[11]);
+		T homoCoord = data[12] * vec.x + data[13] * vec.y + data[14] * vec.z + data[15];
 		return res / homoCoord;
 	}
 };

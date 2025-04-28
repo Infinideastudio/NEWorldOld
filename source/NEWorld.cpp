@@ -45,13 +45,13 @@ void saveOptions();
 int getMouseScroll() { return mw; }
 int getMouseButton() { return mb; }
 
-Mutex_t Mutex;
+Mutex_t updateMutex;
 Thread_t updateThread;
 double updateTimer;
 bool updateThreadRun;
 
-double SpeedupAnimTimer;
-double TouchdownAnimTimer;
+double speedupAnimTimer;
+double touchdownAnimTimer;
 double screenshotAnimTimer;
 double bagAnimTimer;
 double bagAnimDuration = 0.5;
@@ -63,11 +63,12 @@ bool shouldToggleFullscreen;
 int fps, fpsc, ups, upsc;
 double fctime, uctime;
 
-bool GUIrenderswitch = true;
-bool DebugMode = false;
-bool DebugHitbox = false;
-bool DebugShadow = false;
-bool DebugMergeFace = false;
+bool bagOpened = false;
+bool showHUD = true;
+bool showDebugPanel = false;
+bool showHitboxes = false;
+bool showShadowMap = false;
+bool showMeshWireframe = false;
 
 int selx, sely, selz, oldselx, oldsely, oldselz, selface;
 bool sel;
@@ -76,6 +77,7 @@ BlockID selb;
 Brightness selbr;
 bool selce;
 int selbx, selby, selbz, selcx, selcy, selcz;
+float FOVyExt;
 
 string chatword;
 bool chatmode = false;
@@ -126,8 +128,8 @@ int main() {
 	_mkdir("screenshots");
 	_mkdir("mods");
 
-	windowwidth = defaultwindowwidth;
-	windowheight = defaultwindowheight;
+	WindowWidth = DefaultWindowWidth;
+	WindowHeight = DefaultWindowHeight;
 
 	createWindow();
 	setupScreen();
@@ -141,18 +143,18 @@ int main() {
 
 	// 菜单游戏循环
 	while (!glfwWindowShouldClose(MainWindow)) {
-		gamebegin = gameexit = false;
+		GameBegin = GameExit = false;
 		GUI::clearTransition();
 		Menus::mainmenu();
 
 		// 初始化游戏状态
-		if (multiplayer) {
+		if (Multiplayer) {
 			printf("[Console][Game]");
 			printf("Init networking...\n");
 			fastSrand((unsigned int)time(NULL));
 			Player::name = "";
 			Player::onlineID = rand();
-			Network::init(serverip, port);
+			Network::init(ServerIP, ServerPort);
 		}
 
 		printf("[Console][Game]");
@@ -165,8 +167,8 @@ int main() {
 		World::Init();
 
 		// 初始化游戏更新线程
-		Mutex = MutexCreate();
-		MutexLock(Mutex);
+		updateMutex = MutexCreate();
+		MutexLock(updateMutex);
 		updateThreadRun = true;
 		updateThread = ThreadCreate(&updateThreadFunc, NULL);
 		updateTimer = timer();
@@ -180,11 +182,11 @@ int main() {
 		fctime = uctime = timer();
 
 		// 主循环，被简化成这样，惨不忍睹啊！
-		while (!glfwWindowShouldClose(MainWindow) && !gameexit) {
+		while (!glfwWindowShouldClose(MainWindow) && !GameExit) {
 			// 等待上一帧完成后渲染下一帧
-			MutexUnlock(Mutex);
+			MutexUnlock(updateMutex);
 			glfwSwapBuffers(MainWindow); // 屏幕刷新，千万别删，后果自负！！！
-			MutexLock(Mutex);
+			MutexLock(updateMutex);
 			readback();
 			render();
 			fpsc++;
@@ -228,15 +230,15 @@ int main() {
 		printf("[Console][Game]");
 		printf("Terminate threads\n");
 		updateThreadRun = false;
-		MutexUnlock(Mutex);
+		MutexUnlock(updateMutex);
 		ThreadWait(updateThread);
 		ThreadDestroy(updateThread);
-		MutexDestroy(Mutex);
+		MutexDestroy(updateMutex);
 
 		// 保存并卸载世界
 		saveGame();
 		World::destroyAllChunks();
-		if (multiplayer) Network::cleanUp();
+		if (Multiplayer) Network::cleanUp();
 	}
 
 	Mod::ModLoader::unloadMods();
@@ -250,7 +252,7 @@ int main() {
 }
 
 ThreadFunc updateThreadFunc(void*) {
-	MutexLock(Mutex);
+	MutexLock(updateMutex);
 	while (updateThreadRun) {
 		double currTimer = timer();
 		if (currTimer - updateTimer >= 5.0) updateTimer = currTimer;
@@ -259,11 +261,11 @@ ThreadFunc updateThreadFunc(void*) {
 			upsc++;
 			gameUpdate();
 		}
-		MutexUnlock(Mutex);
+		MutexUnlock(updateMutex);
 		Sleep(1);
-		MutexLock(Mutex);
+		MutexLock(updateMutex);
 	}
-	MutexUnlock(Mutex);
+	MutexUnlock(updateMutex);
 	return 0;
 }
 
@@ -422,7 +424,7 @@ void registerCommands() {
 		int time;
 		conv(command[1], time);
 		if (time < 0) return false;
-		gametime = time;
+		GameTime = time;
 		return true;
 	}));
 	commands.push_back(Command("/gamemode", [](const vector<string>& command) {
@@ -443,6 +445,12 @@ bool doCommand(const vector<string>& command) {
 }
 
 void gameUpdate() {
+	const int SelectPrecision = 32;
+	const int SelectDistance = 8;
+	const float WalkSpeed = 0.15f;
+	const float RunSpeed = 0.3f;
+	const int MaxAirJumps = 3 - 1;
+
 	static double wPressTimer;
 	static bool wPressedOnce;
 
@@ -456,18 +464,18 @@ void gameUpdate() {
 	} else Player::spawn();
 
 	// 时间
-	gametime++;
+	GameTime++;
 
 	World::meshedChunks = 0;
 	World::updatedChunks = 0;
 
 	// Move chunk pointer array
-	if (World::cpArray.originX != Player::cxt - viewdistance - 2 || World::cpArray.originY != Player::cyt - viewdistance - 2 || World::cpArray.originZ != Player::czt - viewdistance - 2)
-		World::cpArray.moveTo(Player::cxt - viewdistance - 2, Player::cyt - viewdistance - 2, Player::czt - viewdistance - 2);
+	if (World::cpArray.originX != Player::cxt - RenderDistance - 2 || World::cpArray.originY != Player::cyt - RenderDistance - 2 || World::cpArray.originZ != Player::czt - RenderDistance - 2)
+		World::cpArray.moveTo(Player::cxt - RenderDistance - 2, Player::cyt - RenderDistance - 2, Player::czt - RenderDistance - 2);
 
 	// Move height map
-	if (World::HMap.originX != (Player::cxt - viewdistance - 2) * 16 || World::HMap.originZ != (Player::czt - viewdistance - 2) * 16)
-		World::HMap.moveTo((Player::cxt - viewdistance - 2) * 16, (Player::czt - viewdistance - 2) * 16);
+	if (World::HMap.originX != (Player::cxt - RenderDistance - 2) * 16 || World::HMap.originZ != (Player::czt - RenderDistance - 2) * 16)
+		World::HMap.moveTo((Player::cxt - RenderDistance - 2) * 16, (Player::czt - RenderDistance - 2) * 16);
 
 	for (auto const& [_, c] : World::chunks) {
 		// 加载动画
@@ -580,15 +588,15 @@ void gameUpdate() {
 		inputstr = "";
 
 		// 从玩家位置发射一条线段
-		for (int i = 0; i < selectPrecision * selectDistance; i++) {
+		for (int i = 0; i < SelectPrecision * SelectDistance; i++) {
 			lxl = lx;
 			lyl = ly;
 			lzl = lz;
 
 			// 线段延伸
-			lx += sin(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
-			ly += cos(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
-			lz += cos(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) / (double)selectPrecision;
+			lx += std::sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) / SelectPrecision;
+			ly += std::cos(Pi / 180 * (Player::lookupdown + 90)) / SelectPrecision;
+			lz += std::cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) / SelectPrecision;
 
 			// 碰到方块
 			if (BlockInfo(World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
@@ -687,36 +695,36 @@ void gameUpdate() {
 			if (wPressTimer != 0.0 && timer() - wPressTimer > 0.5) wPressTimer = 0.0;
 			wPressedOnce = true;
 			if (!Player::glidingNow) {
-				Player::xa += -sin(Player::heading * M_PI / 180.0) * Player::speed;
-				Player::za += -cos(Player::heading * M_PI / 180.0) * Player::speed;
+				Player::xa += -sin(Player::heading * Pi / 180.0) * Player::speed;
+				Player::za += -cos(Player::heading * Pi / 180.0) * Player::speed;
 			} else {
-				Player::xa = sin(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
-				Player::ya = cos(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
-				Player::za = cos(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
+				Player::xa = sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
+				Player::ya = cos(Pi / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
+				Player::za = cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
 				if (Player::ya < 0) Player::ya *= 2;
 			}
 		} else {
 			Player::Running = false;
 			wPressedOnce = false;
 		}
-		if (Player::Running)Player::speed = runspeed;
-		else Player::speed = walkspeed;
+		if (Player::Running) Player::speed = RunSpeed;
+		else Player::speed = WalkSpeed;
 
 		if (isKeyDown(GLFW_KEY_S) && !Player::glidingNow) {
-			Player::xa += sin(Player::heading * M_PI / 180.0) * Player::speed;
-			Player::za += cos(Player::heading * M_PI / 180.0) * Player::speed;
+			Player::xa += sin(Player::heading * Pi / 180.0) * Player::speed;
+			Player::za += cos(Player::heading * Pi / 180.0) * Player::speed;
 			wPressTimer = 0.0;
 		}
 
 		if (isKeyDown(GLFW_KEY_A) && !Player::glidingNow) {
-			Player::xa += sin((Player::heading - 90) * M_PI / 180.0) * Player::speed;
-			Player::za += cos((Player::heading - 90) * M_PI / 180.0) * Player::speed;
+			Player::xa += sin((Player::heading - 90) * Pi / 180.0) * Player::speed;
+			Player::za += cos((Player::heading - 90) * Pi / 180.0) * Player::speed;
 			wPressTimer = 0.0;
 		}
 
 		if (isKeyDown(GLFW_KEY_D) && !Player::glidingNow) {
-			Player::xa += -sin((Player::heading - 90) * M_PI / 180.0) * Player::speed;
-			Player::za += -cos((Player::heading - 90) * M_PI / 180.0) * Player::speed;
+			Player::xa += -sin((Player::heading - 90) * Pi / 180.0) * Player::speed;
+			Player::za += -cos((Player::heading - 90) * Pi / 180.0) * Player::speed;
 			wPressTimer = 0.0;
 		}
 
@@ -729,23 +737,23 @@ void gameUpdate() {
 		} else {
 			if (isKeyDown(GLFW_KEY_R) && !Player::glidingNow) {
 				if (isKeyDown(GLFW_KEY_LEFT_CONTROL)) {
-					Player::xa = -sin(Player::heading * M_PI / 180.0) * runspeed * 10;
-					Player::za = -cos(Player::heading * M_PI / 180.0) * runspeed * 10;
+					Player::xa = -sin(Player::heading * Pi / 180.0) * RunSpeed * 10;
+					Player::za = -cos(Player::heading * Pi / 180.0) * RunSpeed * 10;
 				} else {
-					Player::xa = sin(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-					Player::ya = cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-					Player::za = cos(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+					Player::xa = sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+					Player::ya = cos(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+					Player::za = cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
 				}
 			}
 
 			if (isKeyDown(GLFW_KEY_F) && !Player::glidingNow) {
 				if (isKeyDown(GLFW_KEY_LEFT_CONTROL)) {
-					Player::xa = sin(Player::heading * M_PI / 180.0) * runspeed * 10;
-					Player::za = cos(Player::heading * M_PI / 180.0) * runspeed * 10;
+					Player::xa = sin(Player::heading * Pi / 180.0) * RunSpeed * 10;
+					Player::za = cos(Player::heading * Pi / 180.0) * RunSpeed * 10;
 				} else {
-					Player::xa = -sin(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-					Player::ya = -cos(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
-					Player::za = -cos(M_PI / 180 * (Player::heading - 180)) * sin(M_PI / 180 * (Player::lookupdown + 90)) * runspeed * 20;
+					Player::xa = -sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+					Player::ya = -cos(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+					Player::za = -cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
 				}
 			}
 		}
@@ -778,17 +786,17 @@ void gameUpdate() {
 				}
 			}
 			else {
-				Player::ya += walkspeed / 2;
+				Player::ya += WalkSpeed / 2;
 			}
 		}
 
 		if ((isKeyDown(GLFW_KEY_LEFT_SHIFT) || isKeyDown(GLFW_KEY_RIGHT_SHIFT)) && !Player::glidingNow) {
-			if (Player::CrossWall || Player::Flying) Player::ya -= walkspeed / 2;
+			if (Player::CrossWall || Player::Flying) Player::ya -= WalkSpeed / 2;
 			wPressTimer = 0.0;
 		}
 
 		// Open inventory
-		if (isKeyPressed(GLFW_KEY_E) && GUIrenderswitch) {
+		if (isKeyPressed(GLFW_KEY_E) && showHUD) {
 			bagOpened = true;
 			bagAnimTimer = timer();
 			shouldGetThumbnail = true;
@@ -813,26 +821,26 @@ void gameUpdate() {
 			shouldGetScreenshot = true;
 			screenshotAnimTimer = timer();
 		}
-		if (isKeyPressed(GLFW_KEY_F3)) DebugMode = !DebugMode;
+		if (isKeyPressed(GLFW_KEY_F3)) showDebugPanel = !showDebugPanel;
 		if (isKeyPressed(GLFW_KEY_H) && isKeyDown(GLFW_KEY_F3)) {
-			DebugHitbox = !DebugHitbox;
-			DebugMode = true;
+			showHitboxes = !showHitboxes;
+			showDebugPanel = true;
 		}
 		if (Renderer::AdvancedRender) {
 			if (isKeyPressed(GLFW_KEY_M) && isKeyDown(GLFW_KEY_F3)) {
-				DebugShadow = !DebugShadow;
-				DebugMode = true;
+				showShadowMap = !showShadowMap;
+				showDebugPanel = true;
 			}
-		} else DebugShadow = false;
+		} else showShadowMap = false;
 		if (isKeyPressed(GLFW_KEY_G) && isKeyDown(GLFW_KEY_F3)) {
-			DebugMergeFace = !DebugMergeFace;
-			DebugMode = true;
+			showMeshWireframe = !showMeshWireframe;
+			showDebugPanel = true;
 		}
 		if (isKeyPressed(GLFW_KEY_F4) && Player::gamemode == Player::GameMode::Creative) Player::CrossWall = !Player::CrossWall;
-		if (isKeyPressed(GLFW_KEY_F5)) GUIrenderswitch = !GUIrenderswitch;
+		if (isKeyPressed(GLFW_KEY_F5)) showHUD = !showHUD;
 		if (isKeyPressed(GLFW_KEY_F6)) Player::Glide = !Player::Glide;
 		if (isKeyPressed(GLFW_KEY_F7)) shouldToggleFullscreen = true;
-		if (isKeyDown(GLFW_KEY_F8)) gametime += 30;
+		if (isKeyDown(GLFW_KEY_F8)) GameTime += 30;
 		if (isKeyPressed(GLFW_KEY_ENTER)) chatmode = true;
 		if (isKeyPressed(GLFW_KEY_SLASH)) {
 			chatmode = true;
@@ -934,19 +942,19 @@ void frameLinkedUpdate() {
 	// 视野特效
 	if (Player::Running) {
 		if (FOVyExt < 9.8f) {
-			float timeDelta = static_cast<float>(currTimer - SpeedupAnimTimer);
+			float timeDelta = static_cast<float>(currTimer - speedupAnimTimer);
 			FOVyExt = 10.0f - (10.0f - FOVyExt) * std::pow(0.8f, timeDelta * 30.0f);
 		}
 		else FOVyExt = 10.0f;
 	}
 	else {
 		if (FOVyExt > 0.2f) {
-			float timeDelta = static_cast<float>(currTimer - SpeedupAnimTimer);
+			float timeDelta = static_cast<float>(currTimer - speedupAnimTimer);
 			FOVyExt *= std::pow(0.8f, timeDelta * 30.0f);
 		}
 		else FOVyExt = 0.0f;
 	}
-	SpeedupAnimTimer = currTimer;
+	speedupAnimTimer = currTimer;
 
 	// 半蹲特效
 	if (Player::OnGround) {
@@ -958,12 +966,12 @@ void frameLinkedUpdate() {
 		}
 		else {
 			if (Player::heightExt <= -0.005) {
-				float timeDelta = static_cast<float>(currTimer - TouchdownAnimTimer);
+				float timeDelta = static_cast<float>(currTimer - touchdownAnimTimer);
 				Player::heightExt *= std::pow(0.8f, timeDelta * 30.0f);
 			}
 		}
 	}
-	TouchdownAnimTimer = currTimer;
+	touchdownAnimTimer = currTimer;
 
 	// 鼠标位置
 	double mxd, myd;
@@ -975,8 +983,8 @@ void frameLinkedUpdate() {
 
 	// 转头！你治好了我多年的颈椎病！
 	if (!shouldShowCursor) {
-		if (mx != mxl) Player::xlookspeed -= (mx - mxl) * mousemove;
-		if (my != myl) Player::ylookspeed += (my - myl) * mousemove;
+		if (mx != mxl) Player::xlookspeed -= (mx - mxl) * MouseSpeed;
+		if (my != myl) Player::ylookspeed += (my - myl) * MouseSpeed;
 		// 限制角度，别把头转掉下来了 ←_←
 		if (Player::lookupdown + Player::ylookspeed < -90.0) Player::ylookspeed = -90.0 - Player::lookupdown;
 		if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
@@ -995,6 +1003,10 @@ void frameLinkedUpdate() {
 
 // Render the whole scene and HUD
 void render() {
+	const float SkyColorR = 0.70f;
+	const float SkyColorG = 0.80f;
+	const float SkyColorB = 0.86f;
+
 	double currTimer = timer();
 	double interp = (currTimer - updateTimer) * 30.0;
 	double xpos = Player::xpos - Player::xd + interp * Player::xd;
@@ -1002,8 +1014,8 @@ void render() {
 	double zpos = Player::zpos - Player::zd + interp * Player::zd;
 
 	// Calculate sun position (temporary: horizontal movement only)
-	float interpolatedTime = gametime - 1.0f + static_cast<float>(interp);
-	Renderer::sunlightYrot = interpolatedTime / 43200.0f * 360.0f;
+	float interpolatedTime = GameTime - 1.0f + static_cast<float>(interp);
+	Renderer::sunlightHeading = interpolatedTime / 43200.0f * 360.0f;
 
 	// World rendering starts here
 	double plookupdown = Player::lookupdown + Player::ylookspeed;
@@ -1011,29 +1023,27 @@ void render() {
 
 	// Calculate matrices
 	Player::ViewFrustum.LoadIdentity();
-	Player::ViewFrustum.SetPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
-	Player::ViewFrustum.MultRotate((float)plookupdown, 1, 0, 0);
-	Player::ViewFrustum.MultRotate(360.0f - (float)pheading, 0, 1, 0);
-	Player::ViewFrustum.update();
+	Player::ViewFrustum.MultRotate(-static_cast<float>(pheading), 0.0f, 1.0f, 0.0f);
+	Player::ViewFrustum.MultRotate(static_cast<float>(plookupdown), 1.0f, 0.0f, 0.0f);
+	Player::ViewFrustum.MultPerspective(FOVyNormal + FOVyExt, static_cast<float>(WindowWidth) / WindowHeight, 0.05f, RenderDistance * 16.0f);
 
 	// Clear framebuffers
 	if (Renderer::AdvancedRender) Renderer::ClearSGDBuffers();
 
-	glClearColor(skycolorR, skycolorG, skycolorB, 1.0f);
+	glClearColor(SkyColorR, SkyColorG, SkyColorB, 1.0f);
 	glClearDepth(1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Bind main texture array
 	glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
 
-	if (DebugMergeFace) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	if (showMeshWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	// Build shadow map
+	int shadowDistance = std::min(Renderer::MaxShadowDistance, RenderDistance);
+	FrustumTest lightFrustum = Renderer::getShadowMapFrustum(pheading, plookupdown, shadowDistance, Player::ViewFrustum);
 	if (Renderer::AdvancedRender) {
-		int shadowdist = min(Renderer::MaxShadowDist, viewdistance);
-		FrustumTest lightFrustum = Renderer::getShadowMapFrustum(pheading, plookupdown, shadowdist, Player::ViewFrustum);
-
-		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, shadowdist + 2, interp, {});
+		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, shadowDistance, interp, lightFrustum);
 		Renderer::StartShadowPass(lightFrustum, interpolatedTime);
 		WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
 		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f(1.0f).data);
@@ -1042,7 +1052,7 @@ void render() {
 	}
 
 	// Draw the opaque parts of the world
-	WorldRenderer::ListRenderChunks(xpos, ypos, zpos, viewdistance, interp, Player::ViewFrustum);
+	WorldRenderer::ListRenderChunks(xpos, ypos, zpos, RenderDistance, interp, Player::ViewFrustum);
 	Renderer::StartOpaquePass(Player::ViewFrustum, interpolatedTime);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
 	Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f(1.0f).data);
@@ -1056,8 +1066,8 @@ void render() {
 		float x = static_cast<float>(selx - xpos);
 		float y = static_cast<float>(sely - ypos);
 		float z = static_cast<float>(selz - zpos);
-		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f::translation(Vec3f(x, y, z)).getTranspose().data);
-		if (GUIrenderswitch) {
+		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f::translation(Vec3f(x, y, z)).data);
+		if (showHUD) {
 			// Temporary solution pre GL 4.0 (glBlendFuncSeparatei)
 			glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 			drawBorder(0, 0, 0);
@@ -1077,16 +1087,16 @@ void render() {
 	glEnable(GL_CULL_FACE);
 	Renderer::EndTranslucentPass();
 
-	if (DebugMergeFace) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	if (showMeshWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	// Full screen passes
 	if (Renderer::AdvancedRender) {
-		Renderer::StartFinalPass(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, interpolatedTime);
+		Renderer::StartFinalPass(xpos, ypos, zpos, Player::ViewFrustum, lightFrustum, interpolatedTime);
 		Renderer::Begin(GL_QUADS, 2, 2, 0);
 		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(0, 0);
-		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, windowheight);
-		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(windowwidth, windowheight);
-		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(windowwidth, 0);
+		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, WindowHeight);
+		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(WindowWidth, WindowHeight);
+		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(WindowWidth, 0);
 		Renderer::End().render();
 		Renderer::EndFinalPass();
 	}
@@ -1120,7 +1130,7 @@ void render() {
 	// HUD rendering starts here
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
+	glOrtho(0, WindowWidth, WindowHeight, 0, -1.0, 1.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
@@ -1135,14 +1145,14 @@ void render() {
 		Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
 		Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Blocks::WATER, 1)));
 		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(0, 0);
-		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, windowheight);
-		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(windowwidth, windowheight);
-		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(windowwidth, 0);
+		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, WindowHeight);
+		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(WindowWidth, WindowHeight);
+		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(WindowWidth, 0);
 		Renderer::End().render();
 		shader.unbind();
 	}
 
-	if (GUIrenderswitch) {
+	if (showHUD) {
 		drawGUI();
 		drawBag();
 	}
@@ -1153,9 +1163,9 @@ void render() {
 		glBegin(GL_QUADS);
 		glColor4f(1.0f, 1.0f, 1.0f, col);
 		glVertex2i(0, 0);
-		glVertex2i(0, windowheight);
-		glVertex2i(windowwidth, windowheight);
-		glVertex2i(windowwidth, 0);
+		glVertex2i(0, WindowHeight);
+		glVertex2i(WindowWidth, WindowHeight);
+		glVertex2i(WindowWidth, 0);
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
 	}
@@ -1177,7 +1187,7 @@ void readback() {
 		delete timeinfo;
 		std::stringstream ss;
 		ss << "screenshots/" << tmp << ".bmp";
-		saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
+		saveScreenshot(0, 0, WindowWidth, WindowHeight, ss.str());
 	}
 
 	if (shouldGetThumbnail) {
@@ -1274,49 +1284,51 @@ void drawBreaking(float level, float x, float y, float z) {
 }
 
 void drawGUI() {
+	const int linelength = 10;
+	const int linedist = 30;
 	int disti = (int)(seldes * linedist);
 
 	glDisable(GL_TEXTURE_2D);
 	glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
 
-	if (DebugMode) {
+	if (showDebugPanel) {
 		glBegin(GL_LINES);
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 - linedist + disti);
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 - linedist + linelength + disti);
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 - linedist + disti);
-		glVertex2i(windowwidth / 2 - linedist + linelength + disti, windowheight / 2 - linedist + disti);
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 - linedist + disti);
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 - linedist + linelength + disti);
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 - linedist + disti);
-		glVertex2i(windowwidth / 2 + linedist - linelength - disti, windowheight / 2 - linedist + disti);
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 + linedist - disti);
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 + linedist - linelength - disti);
-		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 + linedist - disti);
-		glVertex2i(windowwidth / 2 - linedist + linelength + disti, windowheight / 2 + linedist - disti);
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 + linedist - disti);
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 + linedist - linelength - disti);
-		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 + linedist - disti);
-		glVertex2i(windowwidth / 2 + linedist - linelength - disti, windowheight / 2 + linedist - disti);
+		glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti);
+		glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + linelength + disti);
+		glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti);
+		glVertex2i(WindowWidth / 2 - linedist + linelength + disti, WindowHeight / 2 - linedist + disti);
+		glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + disti);
+		glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + linelength + disti);
+		glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + disti);
+		glVertex2i(WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 - linedist + disti);
+		glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - disti);
+		glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - linelength - disti);
+		glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - disti);
+		glVertex2i(WindowWidth / 2 - linedist + linelength + disti, WindowHeight / 2 + linedist - disti);
+		glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti);
+		glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - linelength - disti);
+		glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti);
+		glVertex2i(WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 + linedist - disti);
 		if (selb != Blocks::AIR) {
-			glVertex2i(windowwidth / 2, windowheight / 2);
-			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
-			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
-			glVertex2i(windowwidth / 2 + 250, windowheight / 2 + 50);
+			glVertex2i(WindowWidth / 2, WindowHeight / 2);
+			glVertex2i(WindowWidth / 2 + 50, WindowHeight / 2 + 50);
+			glVertex2i(WindowWidth / 2 + 50, WindowHeight / 2 + 50);
+			glVertex2i(WindowWidth / 2 + 250, WindowHeight / 2 + 50);
 		}
 		glEnd();
 	}
 
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glVertex2i(windowwidth / 2 - 10, windowheight / 2 - 1);
-	glVertex2i(windowwidth / 2 - 10, windowheight / 2 + 1);
-	glVertex2i(windowwidth / 2 + 10, windowheight / 2 + 1);
-	glVertex2i(windowwidth / 2 + 10, windowheight / 2 - 1);
-	glVertex2i(windowwidth / 2 - 1, windowheight / 2 - 10);
-	glVertex2i(windowwidth / 2 - 1, windowheight / 2 + 10);
-	glVertex2i(windowwidth / 2 + 1, windowheight / 2 + 10);
-	glVertex2i(windowwidth / 2 + 1, windowheight / 2 - 10);
+	glVertex2i(WindowWidth / 2 - 10, WindowHeight / 2 - 1);
+	glVertex2i(WindowWidth / 2 - 10, WindowHeight / 2 + 1);
+	glVertex2i(WindowWidth / 2 + 10, WindowHeight / 2 + 1);
+	glVertex2i(WindowWidth / 2 + 10, WindowHeight / 2 - 1);
+	glVertex2i(WindowWidth / 2 - 1, WindowHeight / 2 - 10);
+	glVertex2i(WindowWidth / 2 - 1, WindowHeight / 2 + 10);
+	glVertex2i(WindowWidth / 2 + 1, WindowHeight / 2 + 10);
+	glVertex2i(WindowWidth / 2 + 1, WindowHeight / 2 - 10);
 	glEnd();
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1342,8 +1354,8 @@ void drawGUI() {
 
 	glEnable(GL_TEXTURE_2D);
 
-	if (Renderer::AdvancedRender && DebugShadow) {
-		float xi = 1.0f - static_cast<float>(windowheight) / windowwidth;
+	if (Renderer::AdvancedRender && showShadowMap) {
+		float xi = 1.0f - static_cast<float>(WindowHeight) / WindowWidth;
 		float yi = 1.0f;
 		float xa = 1.0f;
 		float ya = 0.0f;
@@ -1362,41 +1374,41 @@ void drawGUI() {
 	}
 
 	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
-	if (DebugMode && selb != Blocks::AIR) {
+	if (showDebugPanel && selb != Blocks::AIR) {
 		std::stringstream ss;
 		ss << BlockInfo(selb).getBlockName() << " (id: " << (int)selb << ")";
-		TextRenderer::renderASCIIString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, ss.str());
+		TextRenderer::renderASCIIString(WindowWidth / 2 + 50, WindowHeight / 2 + 50 - 16, ss.str());
 	}
 	if (chatmode) {
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
 		glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
-		glVertex2i(1, windowheight - 51);
-		glVertex2i(1, windowheight - 33);
-		glVertex2i(windowwidth - 1, windowheight - 33);
-		glVertex2i(windowwidth - 1, windowheight - 51);
+		glVertex2i(1, WindowHeight - 51);
+		glVertex2i(1, WindowHeight - 33);
+		glVertex2i(WindowWidth - 1, WindowHeight - 33);
+		glVertex2i(WindowWidth - 1, WindowHeight - 51);
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
-		TextRenderer::renderString(0, windowheight - 50, chatword);
+		TextRenderer::renderString(0, WindowHeight - 50, chatword);
 	}
 	int count = 0;
 	for (size_t i = chatMessages.size(); i-- > 0 && count < 10; ) {
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
 		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA);
-		glVertex2i(1, windowheight - 80 - 18 * count);
+		glVertex2i(1, WindowHeight - 80 - 18 * count);
 		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA);
-		glVertex2i(1, windowheight - 80 - 18 * (count - 1));
+		glVertex2i(1, WindowHeight - 80 - 18 * (count - 1));
 		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA);
-		glVertex2i(windowwidth - 1, windowheight - 80 - 18 * (count - 1));
+		glVertex2i(WindowWidth - 1, WindowHeight - 80 - 18 * (count - 1));
 		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA);
-		glVertex2i(windowwidth - 1, windowheight - 80 - 18 * count);
+		glVertex2i(WindowWidth - 1, WindowHeight - 80 - 18 * count);
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
-		TextRenderer::renderString(0, windowheight - 80 - 18 * count++, chatMessages[i]);
+		TextRenderer::renderString(0, WindowHeight - 80 - 18 * count++, chatMessages[i]);
 	}
 
-	if (DebugMode) {
+	if (showDebugPanel) {
 		int textPos = 0;
 		auto debugText = [textPos](string s) mutable {
 			TextRenderer::renderASCIIString(0, 16 * textPos, s);
@@ -1406,7 +1418,7 @@ void drawGUI() {
 		std::stringstream ss;
 		ss << std::fixed << std::setprecision(4);
 
-		ss << "v" << VERSION << " [GL " << GLVersionMajor << "." << GLVersionMinor << "." << GLVersionRev << "]";
+		ss << "v" << GameVersion << " [GL " << GLMajorVersion << "." << GLMinorVersion << "." << GLRevisionVersion << "]";
 		debugText(ss.str());
 		ss.str("");
 		ss << fps << " fps, " << ups << " ups";
@@ -1417,7 +1429,7 @@ void drawGUI() {
 		debugText(ss.str());
 		ss.str("");
 		if (Renderer::AdvancedRender) {
-			ss << "shadow view: " << boolstr(DebugShadow);
+			ss << "shadow view: " << boolstr(showShadowMap);
 			debugText(ss.str());
 			ss.str("");
 		}
@@ -1440,14 +1452,14 @@ void drawGUI() {
 		ss << "near wall: " << boolstr(Player::NearWall) << ", in water: " << boolstr(Player::inWater);
 		debugText(ss.str());
 		ss.str("");
-		int h = (gametime / 30 / 60) % 24;
-		int m = (gametime / 30) % 60;
-		int s = gametime % 30 * 2;
+		int h = (GameTime / 30 / 60) % 24;
+		int m = (GameTime / 30) % 60;
+		int s = GameTime % 30 * 2;
 		ss << "time: "
 			<< (h < 10 ? "0" : "") << h << ":"
 			<< (m < 10 ? "0" : "") << m << ":"
 			<< (s < 10 ? "0" : "") << s
-			<< " (" << gametime << "/" << 30 * 60 * 24 << ")";
+			<< " (" << GameTime << "/" << 30 * 60 * 24 << ")";
 		debugText(ss.str());
 		ss.str("");
 		/*
@@ -1475,9 +1487,9 @@ void drawGUI() {
 		debugText(ss.str());
 		ss.str("");
 
-		if (multiplayer) {
+		if (Multiplayer) {
 			MutexLock(Network::mutex);
-			ss << Network::getRequestCount() << "/" << networkRequestMax << " network requests";
+			ss << Network::getRequestCount() << "/" << NetworkRequestMax << " network requests";
 			debugText(ss.str());
 			ss.str("");
 			MutexUnlock(Network::mutex);
@@ -1501,7 +1513,7 @@ void drawGUI() {
 	else {
 		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 		std::stringstream ss;
-		ss << "v" << VERSION;
+		ss << "v" << GameVersion;
 		TextRenderer::renderASCIIString(0, 0, ss.str());
 		ss.str("");
 		ss << fps << " fps";
@@ -1517,7 +1529,7 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 	// 画出背包的一行
 	auto& shader = Renderer::shaders[Renderer::UIShader];
 	for (int i = 0; i < 10; i++) {
-		glBindTexture(GL_TEXTURE_2D, i == itemid ? tex_select : tex_unselect);
+		glBindTexture(GL_TEXTURE_2D, i == itemid ? SelectedTexture : UnselectedTexture);
 		glBegin(GL_QUADS);
 		glColor4f(1.0f, 1.0f, 1.0f, alpha);
 		glTexCoord2f(0.0f, 1.0f); glVertex2i(xbase + i * (32 + spac), ybase);
@@ -1550,8 +1562,8 @@ void drawBag() {
 	// 背包界面与更新
 	static int si, sj, sf;
 	int csi = -1, csj = -1;
-	int leftp = (windowwidth - 392) / 2;
-	int upp = windowheight - 152 - 16;
+	int leftp = (WindowWidth - 392) / 2;
+	int upp = WindowHeight - 152 - 16;
 	static int mousew, mouseb, mousebl;
 	static BlockID indexselected = Blocks::AIR;
 	static short Amountselected = 0;
@@ -1568,9 +1580,9 @@ void drawBag() {
 		if (curtime - bagAnimTimer > bagAnimDuration) glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
 		else glColor4f(0.2f, 0.2f, 0.2f, 0.6f * bagAnim);
 		glVertex2i(0, 0);
-		glVertex2i(0, windowheight);
-		glVertex2i(windowwidth, windowheight);
-		glVertex2i(windowwidth, 0);
+		glVertex2i(0, WindowHeight);
+		glVertex2i(WindowWidth, WindowHeight);
+		glVertex2i(WindowWidth, 0);
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
 
@@ -1612,7 +1624,7 @@ void drawBag() {
 						if (Player::inventory[i][j] == Blocks::AIR) Player::inventoryAmount[i][j] = 0;
 					}
 				}
-				drawBagRow(i, (csi == i ? csj : -1), (windowwidth - 392) / 2, windowheight - 152 - 16 + i * 40, 8, 1.0f);
+				drawBagRow(i, (csi == i ? csj : -1), (WindowWidth - 392) / 2, WindowHeight - 152 - 16 + i * 40, 8, 1.0f);
 			}
 		}
 
@@ -1641,12 +1653,12 @@ void drawBag() {
 		int xbase = 0, ybase = 0, spac = 0;
 		float alpha = 0.5f + 0.5f * bagAnim;
 		if (curtime - bagAnimTimer <= bagAnimDuration) {
-			xbase = (int)round(((windowwidth - 392) / 2) * bagAnim);
-			ybase = (int)round((windowheight - 152 - 16 + 120 - (windowheight - 32)) * bagAnim + (windowheight - 32));
+			xbase = (int)round(((WindowWidth - 392) / 2) * bagAnim);
+			ybase = (int)round((WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
 			spac = (int)round(8 * bagAnim);
 			drawBagRow(3, -1, xbase, ybase, spac, alpha);
-			xbase = (int)round(((windowwidth - 392) / 2 - windowwidth) * bagAnim + windowwidth);
-			ybase = (int)round((windowheight - 152 - 16 - (windowheight - 32)) * bagAnim + (windowheight - 32));
+			xbase = (int)round(((WindowWidth - 392) / 2 - WindowWidth) * bagAnim + WindowWidth);
+			ybase = (int)round((WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
 			for (int i = 0; i < 3; i++) {
 				drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
 			}
@@ -1661,24 +1673,24 @@ void drawBag() {
 			glColor4f(0.2f, 0.2f, 0.2f, 0.6f - 0.6f * bagAnim);
 			glBegin(GL_QUADS);
 			glVertex2i(0, 0);
-			glVertex2i(0, windowheight);
-			glVertex2i(windowwidth, windowheight);
-			glVertex2i(windowwidth, 0);
+			glVertex2i(0, WindowHeight);
+			glVertex2i(WindowWidth, WindowHeight);
+			glVertex2i(WindowWidth, 0);
 			glEnd();
 			glEnable(GL_TEXTURE_2D);
 
 			int xbase = 0, ybase = 0, spac = 0;
 			float alpha = 1.0f - 0.5f * bagAnim;
-			xbase = (int)round(((windowwidth - 392) / 2) - ((windowwidth - 392) / 2) * bagAnim);
-			ybase = (int)round((windowheight - 152 - 16 + 120 - (windowheight - 32)) - (windowheight - 152 - 16 + 120 - (windowheight - 32)) * bagAnim + (windowheight - 32));
+			xbase = (int)round(((WindowWidth - 392) / 2) - ((WindowWidth - 392) / 2) * bagAnim);
+			ybase = (int)round((WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) - (WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
 			spac = (int)round(8 - 8 * bagAnim);
 			drawBagRow(3, Player::indexInHand, xbase, ybase, spac, alpha);
-			xbase = (int)round(((windowwidth - 392) / 2 - windowwidth) - ((windowwidth - 392) / 2 - windowwidth) * bagAnim + windowwidth);
-			ybase = (int)round((windowheight - 152 - 16 - (windowheight - 32)) - (windowheight - 152 - 16 - (windowheight - 32)) * bagAnim + (windowheight - 32));
+			xbase = (int)round(((WindowWidth - 392) / 2 - WindowWidth) - ((WindowWidth - 392) / 2 - WindowWidth) * bagAnim + WindowWidth);
+			ybase = (int)round((WindowHeight - 152 - 16 - (WindowHeight - 32)) - (WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
 			for (int i = 0; i < 3; i++) {
 				drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
 			}
-		} else drawBagRow(3, Player::indexInHand, 0, windowheight - 32, 0, 0.5f);
+		} else drawBagRow(3, Player::indexInHand, 0, WindowHeight - 32, 0, 0.5f);
 	}
 }
 
@@ -1689,7 +1701,7 @@ void saveScreenshot(int x, int y, int w, int h, string filename) {
 	while (bufh % 4 != 0)  bufh += 1;
 	scrBuffer.sizeX = bufw;
 	scrBuffer.sizeY = bufh;
-	scrBuffer.buffer = unique_ptr<ubyte[]>(new ubyte[bufw * bufh * 3]);
+	scrBuffer.buffer = std::unique_ptr<ubyte[]>(new ubyte[bufw * bufh * 3]);
 	glReadPixels(x, y, bufw, bufh, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
 	Textures::SaveRGBImage(filename, scrBuffer);
 }
@@ -1697,7 +1709,7 @@ void saveScreenshot(int x, int y, int w, int h, string filename) {
 void createThumbnail() {
 	std::stringstream ss;
 	ss << "Worlds/" << World::worldname << "/Thumbnail.bmp";
-	saveScreenshot(0, 0, windowwidth, windowheight, ss.str());
+	saveScreenshot(0, 0, WindowWidth, WindowHeight, ss.str());
 }
 
 template<typename T>
@@ -1709,10 +1721,10 @@ void loadoption(std::map<string, string> &m, const char* name, T &value) {
 }
 
 void loadOptions() {
-	std::map<string, string> options;
+	std::map<std::string, std::string> options;
 	std::ifstream filein("configs/options.ini", std::ios::in);
 	if (!filein.is_open()) return;
-	string name, value;
+	std::string name, value;
 	while (!filein.eof()) {
 		filein >> name >> value;
 		options[name] = value;
@@ -1720,50 +1732,48 @@ void loadOptions() {
 	filein.close();
 	loadoption(options, "Language", Globalization::Cur_Lang);
 	loadoption(options, "FOV", FOVyNormal);
-	loadoption(options, "RenderDistance", viewdistance);
-	loadoption(options, "Sensitivity", mousemove);
-	loadoption(options, "CloudWidth", cloudwidth);
+	loadoption(options, "RenderDistance", RenderDistance);
+	loadoption(options, "Sensitivity", MouseSpeed);
 	loadoption(options, "SmoothLighting", SmoothLighting);
 	loadoption(options, "FancyGrass", NiceGrass);
 	loadoption(options, "MergeFaceRendering", MergeFace);
 	loadoption(options, "MultiSample", Multisample);
 	loadoption(options, "AdvancedRender", Renderer::AdvancedRender);
 	loadoption(options, "ShadowMapRes", Renderer::ShadowRes);
-	loadoption(options, "ShadowDistance", Renderer::MaxShadowDist);
+	loadoption(options, "ShadowDistance", Renderer::MaxShadowDistance);
 	loadoption(options, "SoftShadow", Renderer::SoftShadow);
 	loadoption(options, "VolumetricClouds", Renderer::VolumetricClouds);
 	loadoption(options, "AmbientOcclusion", Renderer::AmbientOcclusion);
-	loadoption(options, "VerticalSync", vsync);
-	loadoption(options, "GUIBackgroundBlur", GUIScreenBlur);
+	loadoption(options, "VerticalSync", VerticalSync);
+	loadoption(options, "GUIBackgroundBlur", UIBackgroundBlur);
 	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 }
 
 template<typename T>
 void saveoption(std::ofstream &out, const char* name, T &value) {
-	out << string(name) << " " << value << endl;
+	out << std::string(name) << " " << value << std::endl;
 }
 
 void saveOptions() {
-	std::map<string, string> options;
+	std::map<std::string, std::string> options;
 	std::ofstream fileout("configs/options.ini", std::ios::out);
 	if (!fileout.is_open()) return;
 	saveoption(fileout, "Language", Globalization::Cur_Lang);
 	saveoption(fileout, "FOV", FOVyNormal);
-	saveoption(fileout, "RenderDistance", viewdistance);
-	saveoption(fileout, "Sensitivity", mousemove);
-	saveoption(fileout, "CloudWidth", cloudwidth);
+	saveoption(fileout, "RenderDistance", RenderDistance);
+	saveoption(fileout, "Sensitivity", MouseSpeed);
 	saveoption(fileout, "SmoothLighting", SmoothLighting);
 	saveoption(fileout, "FancyGrass", NiceGrass);
 	saveoption(fileout, "MergeFaceRendering", MergeFace);
 	saveoption(fileout, "MultiSample", Multisample);
 	saveoption(fileout, "AdvancedRender", Renderer::AdvancedRender);
 	saveoption(fileout, "ShadowMapRes", Renderer::ShadowRes);
-	saveoption(fileout, "ShadowDistance", Renderer::MaxShadowDist);
+	saveoption(fileout, "ShadowDistance", Renderer::MaxShadowDistance);
 	saveoption(fileout, "SoftShadow", Renderer::SoftShadow);
 	saveoption(fileout, "VolumetricClouds", Renderer::VolumetricClouds);
 	saveoption(fileout, "AmbientOcclusion", Renderer::AmbientOcclusion);
-	saveoption(fileout, "VerticalSync", vsync);
-	saveoption(fileout, "GUIBackgroundBlur", GUIScreenBlur);
+	saveoption(fileout, "VerticalSync", VerticalSync);
+	saveoption(fileout, "GUIBackgroundBlur", UIBackgroundBlur);
 	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
 	fileout.close();
 }

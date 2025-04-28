@@ -50,7 +50,7 @@ namespace Textures {
         bmpfile.read((char*)&bih, sizeof(BitmapInfoHeader));
         bitmap.sizeX = bih.biWidth;
         bitmap.sizeY = bih.biHeight;
-        bitmap.buffer = unique_ptr<uint8_t[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 3]);
+        bitmap.buffer = std::unique_ptr<uint8_t[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 3]);
         bmpfile.read((char*)bitmap.buffer.get(), bitmap.sizeX*bitmap.sizeY * 3);
         bmpfile.close();
         for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
@@ -88,7 +88,7 @@ namespace Textures {
         bmpfile.read((char*)&bih, sizeof(BitmapInfoHeader));
         bitmap.sizeX = bih.biWidth;
         bitmap.sizeY = bih.biHeight;
-        bitmap.buffer = unique_ptr<uint8_t[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 4]);
+        bitmap.buffer = std::unique_ptr<uint8_t[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 4]);
         rgb = new unsigned char[bitmap.sizeX * bitmap.sizeY * 3];
         bmpfile.read((char*)rgb, bitmap.sizeX*bitmap.sizeY * 3);
         bmpfile.close();
@@ -145,7 +145,7 @@ namespace Textures {
         LoadRGBImage(image, Filename);
         Texture.sizeX = image.sizeX;
         Texture.sizeY = image.sizeY;
-        Texture.buffer = unique_ptr<uint8_t[]>(new unsigned char[image.sizeX * image.sizeY * 4]);
+        Texture.buffer = std::unique_ptr<uint8_t[]>(new unsigned char[image.sizeX * image.sizeY * 4]);
         if (Texture.buffer == nullptr) {
             printf("[console][Warning] Cannot alloc memory when loading %s\n", Filename.c_str());
             return 0;

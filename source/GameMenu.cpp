@@ -16,10 +16,10 @@ namespace Menus {
 		}
 		void onUpdate() {
 			if (resumebtn.clicked) ExitSignal = true;
-			if (exitbtn.clicked) gameexit = ExitSignal = true;
+			if (exitbtn.clicked) GameExit = ExitSignal = true;
 		}
 		void onLeave() {
-			if (gameexit) {
+			if (GameExit) {
 				World::saveAllChunks();
 				World::destroyAllChunks();
 			}

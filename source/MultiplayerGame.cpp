@@ -30,9 +30,9 @@ namespace Menus {
 			if (runbtn.clicked) WinExec("NEWorldServer.exe", SW_SHOWDEFAULT);
 #endif
 			if (okbtn.clicked) {
-				serverip = serveriptb.text;
-				gamebegin = true;
-				multiplayer = true;
+				ServerIP = serveriptb.text;
+				GameBegin = true;
+				Multiplayer = true;
 			}
 			if (backbtn.clicked) ExitSignal = true;
 			if (serveriptb.pressed && !serveripChanged) {

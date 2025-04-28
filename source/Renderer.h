@@ -16,8 +16,8 @@ namespace Renderer {
 	extern int Vertexes;
 	extern bool AdvancedRender;
 	extern int ShadowRes;
-	extern int MaxShadowDist;
-	extern float sunlightXrot, sunlightYrot;
+	extern int MaxShadowDistance;
+	extern float sunlightPitch, sunlightHeading;
 	extern Frustum playerFrustum;
 	extern vector<Shader> shaders;
 	extern int ActiveShader;
@@ -84,7 +84,7 @@ namespace Renderer {
 		ActiveShader = shaderID;
 	}
 	FrustumTest getLightFrustum();
-	FrustumTest getShadowMapFrustum(double heading, double pitch, int shadowdist, const FrustumTest& playerFrustum);
+	FrustumTest getShadowMapFrustum(double heading, double pitch, int shadowdist, const FrustumTest& viewFrustum);
 	
 	void ClearSGDBuffers();
 	void StartShadowPass(const FrustumTest& lightFrustum, float gameTime);
@@ -93,6 +93,6 @@ namespace Renderer {
 	void EndOpaquePass();
 	void StartTranslucentPass(const FrustumTest& viewFrustum, float gametime);
 	void EndTranslucentPass();
-	void StartFinalPass(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& viewFrustum, float gameTime);
+	void StartFinalPass(double xpos, double ypos, double zpos, const FrustumTest& viewFrustum, const FrustumTest& lightFrustum, float gameTime);
 	void EndFinalPass();
 }

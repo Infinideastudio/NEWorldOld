@@ -7,13 +7,13 @@ namespace Textures {
 	struct ImageRGB {
 		unsigned int sizeX;
 		unsigned int sizeY;
-		unique_ptr<uint8_t[]> buffer;
+		std::unique_ptr<uint8_t[]> buffer;
 	};
 
 	struct ImageRGBA {
 		unsigned int sizeX;
 		unsigned int sizeY;
-		unique_ptr<uint8_t[]> buffer;
+		std::unique_ptr<uint8_t[]> buffer;
 	};
 
 #pragma pack(push)

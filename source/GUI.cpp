@@ -36,21 +36,18 @@ void clearTransition() {
 }
 
 void drawBackground() {
-	static FrustumTest frus;
 	static double startTimer = timer();
 	double elapsed = timer() - startTimer;
-	frus.LoadIdentity();
-	frus.SetPerspective(90.0f, (float)windowwidth / windowheight, 0.1f, 10.0f);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glMultMatrixf(frus.getProjMatrix());
+	glMultMatrixf(Mat4f::perspective(90.0f, (float)WindowWidth / WindowHeight, 0.1f, 10.0f).getTranspose().data);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);
 
 	// Begin to draw a cube
-	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[0]);
+	glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[0]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
@@ -59,7 +56,7 @@ void drawBackground() {
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
 	glEnd();
 
-	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[1]);
+	glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[1]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
@@ -68,7 +65,7 @@ void drawBackground() {
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
 	glEnd();
 
-	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[2]);
+	glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[2]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
@@ -77,7 +74,7 @@ void drawBackground() {
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
 	glEnd();
 
-	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[3]);
+	glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[3]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, 1.0f, 1.0f);
@@ -86,7 +83,7 @@ void drawBackground() {
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, 1.0f, -1.0f);
 	glEnd();
 
-	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[4]);
+	glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[4]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f, 1.0f);
@@ -95,7 +92,7 @@ void drawBackground() {
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
 	glEnd();
 
-	glBindTexture(GL_TEXTURE_2D, tex_mainmenu[5]);
+	glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[5]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	glTexCoord2f(0.0f, 1.0f); glVertex3f(1.0f, 1.0f, 1.0f);
@@ -113,25 +110,25 @@ void InitStretch() {
 	int vmc;
 	const GLFWvidmode* mode = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
 	double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth) / 25.4f);
-	stretch = ppi / stdppi;
+	Stretch = ppi / stdppi;
 	//Compute the stretch and reset the window size
-	windowwidth = static_cast<int>(windowwidth * stretch);
-	windowheight = static_cast<int>(windowheight * stretch);
-	glfwSetWindowSize(MainWindow, windowwidth, windowheight);
+	WindowWidth = static_cast<int>(WindowWidth * Stretch);
+	WindowHeight = static_cast<int>(WindowHeight * Stretch);
+	glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
 }
 
 void EndStretch() {
-	windowwidth = static_cast<int>(windowwidth / stretch);
-	windowheight = static_cast<int>(windowheight / stretch);
-	stretch = 1.0;
-	glfwSetWindowSize(MainWindow, windowwidth, windowheight);
+	WindowWidth = static_cast<int>(WindowWidth / Stretch);
+	WindowHeight = static_cast<int>(WindowHeight / Stretch);
+	Stretch = 1.0;
+	glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
 }
 
 void controls::updatepos() {
-	xmin = (int)(windowwidth * _xmin_b / stretch) + _xmin_r;
-	ymin = (int)(windowheight * _ymin_b / stretch) + _ymin_r;
-	xmax = (int)(windowwidth * _xmax_b / stretch) + _xmax_r;
-	ymax = (int)(windowheight * _ymax_b / stretch) + _ymax_r;
+	xmin = (int)(WindowWidth * _xmin_b / Stretch) + _xmin_r;
+	ymin = (int)(WindowHeight * _ymin_b / Stretch) + _ymin_r;
+	xmax = (int)(WindowWidth * _xmax_b / Stretch) + _xmax_r;
+	ymax = (int)(WindowHeight * _ymax_b / Stretch) + _ymax_r;
 }
 
 void controls::resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
@@ -701,14 +698,14 @@ void Form::update() {
 }
 
 void Form::render() {
-	if (GUIScreenBlur) {
+	if (UIBackgroundBlur) {
 		static Framebuffer fbo;
 		float step = 2.0f;
 		float upscaling = 2.0f;
 		float sigma = 16.0f / upscaling; // Standard deviation
 
-		int width = int(windowwidth / upscaling);
-		int height = int(windowheight / upscaling);
+		int width = int(WindowWidth / upscaling);
+		int height = int(WindowHeight / upscaling);
 		if (fbo.width() != width || fbo.height() != height) {
 			fbo = Framebuffer(width, height, 2, false, false, true);
 		}
@@ -761,16 +758,16 @@ void Form::render() {
 
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
+		glOrtho(0, WindowWidth, WindowHeight, 0, -1.0, 1.0);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 
 		glBegin(GL_QUADS);
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		glTexCoord2f(0.0f, 1.0f); glVertex2i(0, 0);
-		glTexCoord2f(0.0f, 0.0f); glVertex2i(0, windowheight);
-		glTexCoord2f(1.0f, 0.0f); glVertex2i(windowwidth, windowheight);
-		glTexCoord2f(1.0f, 1.0f); glVertex2i(windowwidth, 0);
+		glTexCoord2f(0.0f, 0.0f); glVertex2i(0, WindowHeight);
+		glTexCoord2f(1.0f, 0.0f); glVertex2i(WindowWidth, WindowHeight);
+		glTexCoord2f(1.0f, 1.0f); glVertex2i(WindowWidth, 0);
 		glEnd();
 	}
 	else {
@@ -785,17 +782,17 @@ void Form::render() {
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
+	glOrtho(0, WindowWidth, WindowHeight, 0, -1.0, 1.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
 	if (TimeDelta <= 0.3 && transitionList != 0) {
-		if (transitionForward) glTranslatef(-transitionAnim * windowwidth, 0.0f, 0.0f);
-		else glTranslatef(transitionAnim * windowwidth, 0.0f, 0.0f);
+		if (transitionForward) glTranslatef(-transitionAnim * WindowWidth, 0.0f, 0.0f);
+		else glTranslatef(transitionAnim * WindowWidth, 0.0f, 0.0f);
 		glCallList(transitionList);
 		glLoadIdentity();
-		if (transitionForward) glTranslatef(windowwidth - transitionAnim * windowwidth, 0.0f, 0.0f);
-		else glTranslatef(transitionAnim * windowwidth - windowwidth, 0.0f, 0.0f);
+		if (transitionForward) glTranslatef(WindowWidth - transitionAnim * WindowWidth, 0.0f, 0.0f);
+		else glTranslatef(transitionAnim * WindowWidth - WindowWidth, 0.0f, 0.0f);
 	} else if (transitionList != 0) {
 		glDeleteLists(transitionList, 1);
 		transitionList = 0;
@@ -885,8 +882,8 @@ void Form::singleloop() {
 	mw = getMouseScroll();
 	double dmx, dmy;
 	glfwGetCursorPos(MainWindow, &dmx, &dmy);
-	dmx /= stretch;
-	dmy /= stretch;
+	dmx /= Stretch;
+	dmy /= Stretch;
 	mx = (int)dmx, my = (int)dmy;
 	if (ExitSignal) onLeaving();
 	if (glfwWindowShouldClose(MainWindow)) {

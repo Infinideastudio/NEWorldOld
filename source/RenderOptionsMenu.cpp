@@ -31,8 +31,8 @@ namespace Menus {
 			else Multisample = 1 << ((msaabar.barpos + 1) / 40 + 1);
 			if (shaderbtn.clicked) Shaderoptions();
 			if (vsyncbtn.clicked) {
-				vsync = !vsync;
-				if (vsync) glfwSwapInterval(1);
+				VerticalSync = !VerticalSync;
+				if (VerticalSync) glfwSwapInterval(1);
 				else glfwSwapInterval(0);
 			}
 			if (backbtn.clicked) ExitSignal = true;
@@ -41,7 +41,7 @@ namespace Menus {
 			fancygrassbtn.text = GetStrbyKey("NEWorld.render.grasstex") + BoolYesNo(NiceGrass);
 			mergefacebtn.text = GetStrbyKey("NEWorld.render.merge") + BoolEnabled(MergeFace);
 			msaabar.text = GetStrbyKey("NEWorld.render.multisample") + (Multisample != 0 ? ss.str() + "x" : BoolEnabled(false));
-			vsyncbtn.text = GetStrbyKey("NEWorld.render.vsync") + BoolEnabled(vsync);
+			vsyncbtn.text = GetStrbyKey("NEWorld.render.vsync") + BoolEnabled(VerticalSync);
 		}
 	};
 	void Renderoptions() { RenderOptionsMenu Menu; Menu.start(); }

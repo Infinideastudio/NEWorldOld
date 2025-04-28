@@ -156,7 +156,7 @@ bool Player::putBlock(int x, int y, int z, BlockID blockname) {
 }
 
 bool Player::save(string worldn) {
-	uint32_t curversion = VERSION;
+	uint32_t curversion = GameVersion;
 	std::stringstream ss;
 	ss << "Worlds/" << worldn << "/player.NEWorldPlayer";
 	std::ofstream isave(ss.str().c_str(), std::ios::binary | std::ios::out);
@@ -176,7 +176,7 @@ bool Player::save(string worldn) {
 	isave.write((char*)&indexInHand, sizeof(indexInHand));
 	isave.write((char*)&health, sizeof(health));
 	isave.write((char*)&gamemode, sizeof(gamemode));
-	isave.write((char*)&gametime, sizeof(gametime));
+	isave.write((char*)&GameTime, sizeof(GameTime));
 	isave.write((char*)inventory, sizeof(inventory));
 	isave.write((char*)inventoryAmount, sizeof(inventoryAmount));
 	isave.close();
@@ -190,7 +190,7 @@ bool Player::load(string worldn) {
 	std::ifstream iload(ss.str().c_str(), std::ios::binary | std::ios::in);
 	if (!iload.is_open()) return false;
 	iload.read((char*)&targetVersion, sizeof(targetVersion));
-	if (targetVersion != VERSION) return false;
+	if (targetVersion != GameVersion) return false;
 	iload.read((char*)&xpos, sizeof(xpos));
 	iload.read((char*)&ypos, sizeof(ypos));
 	iload.read((char*)&zpos, sizeof(zpos));
@@ -205,7 +205,7 @@ bool Player::load(string worldn) {
 	iload.read((char*)&indexInHand, sizeof(indexInHand));
 	iload.read((char*)&health, sizeof(health));
 	iload.read((char*)&gamemode, sizeof(gamemode));
-	iload.read((char*)&gametime, sizeof(gametime));
+	iload.read((char*)&GameTime, sizeof(GameTime));
 	iload.read((char*)inventory, sizeof(inventory));
 	iload.read((char*)inventoryAmount, sizeof(inventoryAmount));
 	iload.close();

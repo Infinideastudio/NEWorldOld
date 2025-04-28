@@ -71,10 +71,10 @@ namespace Network {
 	}
 
 	void pushRequest(Request& r) {
-		if (reqs.size() + 1 > networkRequestMax) {  //����������г��ȣ���ͼ�������
+		if (reqs.size() + 1 > NetworkRequestMax) {  //����������г��ȣ���ͼ�������
 			if (!reqs.front().isImportant()) reqs.pop();
 		}
-		if (reqs.size() + 1 > networkRequestMax * 2) {  //��������������г��ȣ�ֻ������Ҫ����
+		if (reqs.size() + 1 > NetworkRequestMax * 2) {  //��������������г��ȣ�ֻ������Ҫ����
 			std::queue<Request> q;
 			while (reqs.size() != 0) {
 				if (reqs.front().isImportant()) q.push(reqs.front());

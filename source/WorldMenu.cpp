@@ -6,10 +6,10 @@
 namespace Menus {
 	class WorldMenu :public GUI::Form {
 	private:
-		int leftp = static_cast<int>(windowwidth / 2.0 / stretch - 200);
-		int midp = static_cast<int>(windowwidth / 2.0 / stretch);
-		int rightp = static_cast<int>(windowwidth / 2.0 / stretch + 200);
-		int downp = static_cast<int>(windowheight / stretch - 20);
+		int leftp = static_cast<int>(WindowWidth / 2.0 / Stretch - 200);
+		int midp = static_cast<int>(WindowWidth / 2.0 / Stretch);
+		int rightp = static_cast<int>(WindowWidth / 2.0 / Stretch + 200);
+		int downp = static_cast<int>(WindowHeight / Stretch - 20);
 		bool refresh = true;
 		int selected = 0, mouseon;
 		int worldcount;
@@ -39,10 +39,10 @@ namespace Menus {
 		}
 		void onUpdate() {
 			worldcount = (int)worldnames.size();
-			leftp = static_cast<int>(windowwidth / 2.0 / stretch - 250);
-			midp = static_cast<int>(windowwidth / 2.0 / stretch);
-			rightp = static_cast<int>(windowwidth / 2.0 / stretch + 250);
-			downp = static_cast<int>(windowheight / stretch - 20);
+			leftp = static_cast<int>(WindowWidth / 2.0 / Stretch - 250);
+			midp = static_cast<int>(WindowWidth / 2.0 / Stretch);
+			rightp = static_cast<int>(WindowWidth / 2.0 / Stretch + 250);
+			downp = static_cast<int>(WindowHeight / Stretch - 20);
 
 			vscroll.barheight = (downp - 72 - top) * (downp - 36 - 40) / (itemHeight * (worldcount + 1));
 			if (vscroll.barheight > downp - 36 - 40) {
@@ -73,7 +73,7 @@ namespace Menus {
 			}
 			if (enterbtn.clicked) {
 				World::worldname = chosenWorldName;
-				gamebegin = true;
+				GameBegin = true;
 			}
 			if (deletebtn.clicked) {
 				system((string("rd /s/q \"Worlds\\") + chosenWorldName + "\"").c_str());
@@ -127,11 +127,11 @@ namespace Menus {
 			enterbtn.enabled = chosenWorldName != "";
 			deletebtn.enabled = chosenWorldName != "";
 			if (backbtn.clicked) ExitSignal = true;
-			if (gamebegin) ExitSignal = true;
+			if (GameBegin) ExitSignal = true;
 		}
 		void onRender() {
 			glEnable(GL_SCISSOR_TEST);
-			glScissor(0, windowheight - static_cast<int>((downp - 72) * stretch), windowwidth, static_cast<int>((downp - 72 - top + 1) * stretch));
+			glScissor(0, WindowHeight - static_cast<int>((downp - 72) * Stretch), WindowWidth, static_cast<int>((downp - 72 - top + 1) * Stretch));
 			glTranslatef(0.0f, (float)-trs, 0.0f);
 			for (int i = 0; i < worldcount; i++) {
 				int xmin, xmax, ymin, ymax;
@@ -192,7 +192,7 @@ namespace Menus {
 				UIVertex(xmax, ymin);
 				glEnd();
 				*/
-				TextRenderer::renderString(static_cast<int>(windowwidth / stretch - TextRenderer::getStrWidth(worldnames[i])) / 2,
+				TextRenderer::renderString(static_cast<int>(WindowWidth / Stretch - TextRenderer::getStrWidth(worldnames[i])) / 2,
 					top + i * itemHeight + (itemHeight - lineHeight) / 2, worldnames[i]);
 			}
 			int i = worldcount;
@@ -212,7 +212,7 @@ namespace Menus {
 			UIVertex(midp + 250, top + i * itemHeight + borderWidth);
 			glEnd();
 			glEnable(GL_TEXTURE_2D);
-			TextRenderer::renderString(static_cast<int>(windowwidth / stretch - TextRenderer::getStrWidth(GetStrbyKey("NEWorld.worlds.new"))) / 2,
+			TextRenderer::renderString(static_cast<int>(WindowWidth / Stretch - TextRenderer::getStrWidth(GetStrbyKey("NEWorld.worlds.new"))) / 2,
 				top + i * itemHeight + (itemHeight - lineHeight) / 2, GetStrbyKey("NEWorld.worlds.new"));
 			glDisable(GL_SCISSOR_TEST);
 		}

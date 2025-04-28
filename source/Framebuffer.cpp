@@ -75,7 +75,7 @@ void Framebuffer::bindTargets() {
 void Framebuffer::unbindTarget() const {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	glDrawBuffer(GL_BACK);
-	glViewport(0, 0, windowwidth, windowheight);
+	glViewport(0, 0, WindowWidth, WindowHeight);
 }
 
 void Framebuffer::bindDepthTexture(GLuint number) const {

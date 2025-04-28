@@ -48,11 +48,11 @@ void Init() {
 	cpCachePtr = nullptr;
 	cpCacheID = 0;
 
-	cpArray.setSize((viewdistance + 2) * 2);
+	cpArray.setSize((RenderDistance + 2) * 2);
 	if (!cpArray.create())
 		DebugError("Chunk Pointer Array not available because it couldn't be created.");
 
-	HMap.setSize((viewdistance + 2) * 2 * 16);
+	HMap.setSize((RenderDistance + 2) * 2 * 16);
 	HMap.create();
 
 }
@@ -95,8 +95,8 @@ void DeleteChunk(int x, int y, int z) {
 	int xd = std::abs(x - loadedCore.cx);
 	int yd = std::abs(y - loadedCore.cy);
 	int zd = std::abs(z - loadedCore.cz);
-	size_t dist = static_cast<size_t>(max(max(xd, yd), zd));
-	loadedCore.radius = min(loadedCore.radius, dist);
+	size_t dist = static_cast<size_t>(std::max(std::max(xd, yd), zd));
+	loadedCore.radius = std::min(loadedCore.radius, dist);
 }
 
 Chunk* getChunkPtr(int x, int y, int z) {
@@ -357,15 +357,15 @@ void sortChunkUpdateLists(int xpos, int ypos, int zpos) {
 		int xd = std::abs(cxp - loadedCore.cx);
 		int yd = std::abs(cyp - loadedCore.cy);
 		int zd = std::abs(czp - loadedCore.cz);
-		size_t dist = static_cast<size_t>(max(max(xd, yd), zd));
-		loadedCore.radius -= min(loadedCore.radius, dist);
+		size_t dist = static_cast<size_t>(std::max(std::max(xd, yd), zd));
+		loadedCore.radius -= std::min(loadedCore.radius, dist);
 	}
 	loadedCore.cx = cxp;
 	loadedCore.cy = cyp;
 	loadedCore.cz = czp;
 
 	// Sort chunk load list by enumerating in cubical shells of increasing radii
-	for (int radius = int(loadedCore.radius) + 1; radius <= viewdistance + 1; radius++) {
+	for (int radius = int(loadedCore.radius) + 1; radius <= RenderDistance + 1; radius++) {
 		// Enumerate cubical shell with side length (dist * 2)
 		for (int cx = cxp - radius; cx < cxp + radius; cx++) {
 			for (int cy = cyp - radius; cy < cyp + radius; cy++) {
@@ -398,7 +398,7 @@ void sortChunkUpdateLists(int xpos, int ypos, int zpos) {
 		int cx = c->x();
 		int cy = c->y();
 		int cz = c->z();
-		if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance + 1)) {
+		if (!chunkInRange(cx, cy, cz, cxp, cyp, czp, RenderDistance + 1)) {
 			double xd = cx * 16 + 7 - xpos;
 			double yd = cy * 16 + 7 - ypos;
 			double zd = cz * 16 + 7 - zpos;
@@ -406,7 +406,7 @@ void sortChunkUpdateLists(int xpos, int ypos, int zpos) {
 			unloads.emplace(distSqr, cx, cy, cz);
 			if (unloads.size() > MaxChunkUnloads) unloads.pop();
 		}
-		else if (chunkInRange(cx, cy, cz, cxp, cyp, czp, viewdistance) && c->updated()) {
+		else if (chunkInRange(cx, cy, cz, cxp, cyp, czp, RenderDistance) && c->updated()) {
 			double xd = cx * 16 + 7 - xpos;
 			double yd = cy * 16 + 7 - ypos;
 			double zd = cz * 16 + 7 - zpos;

@@ -1,8 +1,8 @@
 #include "OnlinePlayer.h"
 #include "Renderer.h"
 
-map<SkinID, Renderer::VertexBuffer> playerSkins;
-vector<OnlinePlayer> players;
+std::map<SkinID, Renderer::VertexBuffer> playerSkins;
+std::vector<OnlinePlayer> players;
 
 Renderer::VertexBuffer OnlinePlayer::genVertexBuffer(SkinID) {
 	using Renderer::TexCoord2f;
