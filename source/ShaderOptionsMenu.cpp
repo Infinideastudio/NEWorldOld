@@ -9,6 +9,7 @@ namespace Menus {
 		GUI::trackbar shadowresbar, shadowdistbar;
 		void onLoad() {
 			title = GUI::label(GetStrbyKey("NEWorld.shaders.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			title.centered = true;
 			enablebtn = GUI::button("", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
 			shadowresbar = GUI::trackbar("", 120, (int)(log2(Renderer::ShadowRes) - 10) * 40 - 1, 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
 			shadowdistbar = GUI::trackbar("", 120, (Renderer::MaxShadowDist - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
@@ -25,10 +26,7 @@ namespace Menus {
 			if (softshadowbtn.clicked) Renderer::SoftShadow = !Renderer::SoftShadow;
 			if (cloudsbtn.clicked) Renderer::VolumetricClouds = !Renderer::VolumetricClouds;
 			if (ssaobtn.clicked) Renderer::AmbientOcclusion = !Renderer::AmbientOcclusion;
-			if (backbtn.clicked) {
-				Renderer::initShaders(true);
-				ExitSignal = true;
-			}
+			if (backbtn.clicked) ExitSignal = true;
 			enablebtn.text = GetStrbyKey("NEWorld.shaders.enable") + BoolYesNo(Renderer::AdvancedRender);
 			std::stringstream ss; ss << Renderer::ShadowRes;
 			shadowresbar.text = GetStrbyKey("NEWorld.shaders.shadowres") + ss.str() + "x";

@@ -8,13 +8,14 @@ namespace Menus {
 		GUI::button fontbtn, blurbtn, ppistretchbtn, backbtn;
 		void onLoad() {
 			title = GUI::label(GetStrbyKey("NEWorld.gui.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			title.centered = true;
 			fontbtn = GUI::button("", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
+			fontbtn.enabled = false;
 			blurbtn = GUI::button("", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
 			ppistretchbtn = GUI::button(GetStrbyKey("NEWorld.gui.stretch"), -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
 			ppistat = GUI::label("", -250, 250, 120, 144, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button(GetStrbyKey("NEWorld.gui.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(6, &title, &fontbtn, &blurbtn, &ppistretchbtn, &ppistat, &backbtn);
-			fontbtn.enabled = false;
 		}
 		void onUpdate() {
 			//if (fontbtn.clicked) TextRenderer::useUnicodeASCIIFont = !TextRenderer::useUnicodeASCIIFont;

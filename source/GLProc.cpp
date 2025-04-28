@@ -2,6 +2,10 @@
 
 // OpenGL Procedures
 
+PFNGLBLENDFUNCIPROC glBlendFunci;
+PFNGLBLENDCOLORPROC glBlendColor;
+PFNGLCOLORMASKIPROC glColorMaski;
+
 PFNGLTEXIMAGE3DPROC glTexImage3D;
 PFNGLTEXSUBIMAGE3DPROC glTexSubImage3D;
 PFNGLACTIVETEXTUREPROC glActiveTexture;
@@ -77,7 +81,10 @@ PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
 
 // Now requires OpenGL 3.3!
 void InitGLProc() {
-
+	glBlendFunci = reinterpret_cast<PFNGLBLENDFUNCIPROC>(glfwGetProcAddress("glBlendFunci"));
+	glBlendColor = reinterpret_cast<PFNGLBLENDCOLORPROC>(glfwGetProcAddress("glBlendColor"));
+	glColorMaski = reinterpret_cast<PFNGLCOLORMASKIPROC>(glfwGetProcAddress("glColorMaski"));
+	
 	glTexImage3D = reinterpret_cast<PFNGLTEXIMAGE3DPROC>(glfwGetProcAddress("glTexImage3D"));
 	glTexSubImage3D = reinterpret_cast<PFNGLTEXSUBIMAGE3DPROC>(glfwGetProcAddress("glTexSubImage3D"));
 	glActiveTexture = reinterpret_cast<PFNGLACTIVETEXTUREPROC>(glfwGetProcAddress("glActiveTexture"));
@@ -149,5 +156,5 @@ void InitGLProc() {
 	glGetUniformfv = reinterpret_cast<PFNGLGETUNIFORMFVPROC>(glfwGetProcAddress("glGetUniformfv"));
 	glGetUniformiv = reinterpret_cast<PFNGLGETUNIFORMIVPROC>(glfwGetProcAddress("glGetUniformiv"));
 
-	glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKPROC)glfwGetProcAddress("glDebugMessageCallback");
+	glDebugMessageCallback = reinterpret_cast<PFNGLDEBUGMESSAGECALLBACKPROC>(glfwGetProcAddress("glDebugMessageCallback"));
 }

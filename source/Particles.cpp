@@ -141,8 +141,8 @@ namespace Particles {
 		pxpos = xpos; pypos = ypos; pzpos = zpos;
 		ptcsrendered = 0;
 
-		if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 3, 3, 1);
-		else Renderer::Begin(GL_QUADS, 3, 3, 3);
+		if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
+		else Renderer::Begin(GL_QUADS, 3, 3, 1);
 		for (auto const& ptc: ptcs) {
 			mesh(ptc, interp);
 			ptcsrendered++;

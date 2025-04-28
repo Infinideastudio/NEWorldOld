@@ -15,6 +15,7 @@ namespace Menus {
 		GUI::button runbtn, okbtn, backbtn;
 		void onLoad() {
 			title = GUI::label("============================", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			title.centered = true;
 			serveriptb = GUI::textbox("[serveriptb]", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			runbtn = GUI::button("[runbtn]", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			okbtn = GUI::button("[okbtn]", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);

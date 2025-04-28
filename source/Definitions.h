@@ -51,7 +51,6 @@ extern bool gamebegin, gameexit, bagOpened;
 
 extern TextureID BlockTextureArray;
 extern TextureID tex_select, tex_unselect, tex_splash, tex_title, tex_mainmenu[6];
-extern TextureID DestroyImage[8];
 extern TextureID DefaultSkin;
 
 extern bool multiplayer;

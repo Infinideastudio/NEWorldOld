@@ -13,6 +13,7 @@ layout(location = 2) out vec4 o_block_id;
 uniform sampler2DArray u_diffuse;
 
 const float GAMMA = 2.2;
+const int WATER_ID = 10, ICE_ID = 15;
 
 vec2 encode_u16(int v) {
 	int high = v / 256;
@@ -23,10 +24,10 @@ vec2 encode_u16(int v) {
 void main() {
 	int block_id_i = int(block_id + 0.5);
 
-	// Texture color
 	vec4 texel = texture(u_diffuse, tex_coord.stp);
+	if (texel.a <= 0.0) discard;
+	if (block_id_i == WATER_ID || block_id_i == ICE_ID) texel.a = 0.0;
 	texel.rgb = pow(texel.rgb, vec3(GAMMA));
-	texel.a = 0.01;
 
 	o_frag_color = vec4(color, 1.0) * texel;
 	o_normal = vec4(normal * 0.5 + vec3(0.5), 1.0);

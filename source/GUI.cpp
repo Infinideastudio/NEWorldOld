@@ -169,7 +169,8 @@ void label::render() {
 		glEnable(GL_TEXTURE_2D);
 	}
 	TextRenderer::setFontColor(fcR, fcG, fcB, fcA);
-	TextRenderer::renderString(xmin, ymin, text);
+	if (centered) TextRenderer::renderString((xmin + xmax - TextRenderer::getStrWidth(text)) / 2, (ymin + ymax - 20) / 2, text);
+	else TextRenderer::renderString(xmin, ymin, text);
 }
 
 void button::update() {

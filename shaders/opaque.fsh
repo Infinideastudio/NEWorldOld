@@ -23,11 +23,10 @@ vec2 encode_u16(int v) {
 void main() {
 	int block_id_i = int(block_id + 0.5);
 
-	// Texture color
 	vec4 texel = texture(u_diffuse, tex_coord.stp);
-	texel.rgb = pow(texel.rgb, vec3(GAMMA));
-	if (texel.a < 0.5) discard;
+	if (texel.a <= 0.0) discard;
 	texel.a = 1.0;
+	texel.rgb = pow(texel.rgb, vec3(GAMMA));
 
 	o_frag_color = vec4(color, 1.0) * texel;
 	o_normal = vec4(normal * 0.5 + vec3(0.5), 1.0);

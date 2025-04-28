@@ -64,8 +64,8 @@ namespace GUI {
 	public:
 		//��ǩ
 		string text;
-		bool mouseon, focused;
-		label() : mouseon(false), focused(false) {};
+		bool mouseon, focused, centered;
+		label() : mouseon(false), focused(false), centered(false) {};
 		label(string t,
 			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();

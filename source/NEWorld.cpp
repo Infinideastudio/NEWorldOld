@@ -32,12 +32,11 @@ void updategame();
 void render();
 void present();
 void readback();
-void drawBorder(int x, int y, int z);
-void drawBreaking(float level, int x, int y, int z);
+void drawBorder(float x, float y, float z);
+void drawBreaking(float level, float x, float y, float z);
 void drawGUI();
 void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha);
 void drawBag();
-void drawShadowMap();
 
 void saveScreenshot(int x, int y, int w, int h, string filename);
 void createThumbnail();
@@ -1023,31 +1022,34 @@ void render() {
 		meshing.second->buildMeshes();
 	}
 
+	// World rendering starts here
 	double plookupdown = Player::lookupdown + Player::ylookspeed;
 	double pheading = Player::heading + Player::xlookspeed;
 
+	// Calculate matrices
 	Player::ViewFrustum.LoadIdentity();
 	Player::ViewFrustum.SetPerspective(FOVyNormal + FOVyExt, (float)windowwidth / windowheight, 0.05f, viewdistance * 16.0f);
 	Player::ViewFrustum.MultRotate((float)plookupdown, 1, 0, 0);
 	Player::ViewFrustum.MultRotate(360.0f - (float)pheading, 0, 1, 0);
 	Player::ViewFrustum.update();
 
+	// Clear framebuffers
+	if (Renderer::AdvancedRender) Renderer::ClearSGDBuffers();
+
 	glClearColor(skycolorR, skycolorG, skycolorB, 1.0f);
 	glClearDepth(1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	// Bind main texture array
 	glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
 
-	if (DebugMergeFace) glPolygonMode(GL_FRONT, GL_LINE);
+	if (DebugMergeFace) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+	// Build shadow map
 	if (Renderer::AdvancedRender) {
 		int shadowdist = min(Renderer::MaxShadowDist, viewdistance);
 		FrustumTest lightFrustum = Renderer::getShadowMapFrustum(pheading, plookupdown, shadowdist, Player::ViewFrustum);
 
-		// Clear shadow buffer, G-buffers and D-buffer
-		Renderer::ClearSGDBuffers();
-
-		// Build shadow map
 		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, shadowdist + 2, interp, {});
 		Renderer::StartShadowPass(lightFrustum, interpolatedTime);
 		WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
@@ -1056,6 +1058,7 @@ void render() {
 		Renderer::EndShadowPass();
 	}
 
+	// Draw the opaque parts of the world
 	WorldRenderer::ListRenderChunks(xpos, ypos, zpos, viewdistance, interp, Player::ViewFrustum);
 	Renderer::StartOpaquePass(Player::ViewFrustum, interpolatedTime);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
@@ -1063,12 +1066,36 @@ void render() {
 	Particles::renderall(xpos, ypos, zpos, interp);
 	Renderer::EndOpaquePass();
 
+	// Draw the translucent parts of the world
 	Renderer::StartTranslucentPass(Player::ViewFrustum, interpolatedTime);
+	glDisable(GL_CULL_FACE);
+	if (sel) {
+		float x = static_cast<float>(selx - xpos);
+		float y = static_cast<float>(sely - ypos);
+		float z = static_cast<float>(selz - zpos);
+		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f::translation(Vec3f(x, y, z)).getTranspose().data);
+		if (GUIrenderswitch) {
+			// Temporary solution pre GL 4.0 (glBlendFunci)
+			glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+			drawBorder(0, 0, 0);
+			glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+			glColorMaski(2, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+			glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
+			drawBorder(0, 0, 0);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		}
+		drawBreaking(seldes, 0, 0, 0);
+	}
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 1);
+	glEnable(GL_CULL_FACE);
 	Renderer::EndTranslucentPass();
 
-	if (DebugMergeFace) glPolygonMode(GL_FRONT, GL_FILL);
+	if (DebugMergeFace) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+	// Full screen passes
 	if (Renderer::AdvancedRender) {
 		Renderer::StartFinalPass(xpos, ypos, zpos, pheading, plookupdown, Player::ViewFrustum, interpolatedTime);
 		Renderer::Begin(GL_QUADS, 2, 2, 0);
@@ -1080,31 +1107,13 @@ void render() {
 		Renderer::EndFinalPass();
 	}
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glMultMatrixf(Player::ViewFrustum.getProjMatrix());
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glMultMatrixf(Player::ViewFrustum.getModlMatrix());
-
-	if (seldes > 0.0f) {
-		glTranslated(selx - xpos, sely - ypos, selz - zpos);
-		drawBreaking(seldes, 0, 0, 0);
-		glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
-	}
-
-	if (GUIrenderswitch && sel) {
-		glTranslated(selx - xpos, sely - ypos, selz - zpos);
-		drawBorder(0, 0, 0);
-		glTranslated(-selx + xpos, -sely + ypos, -selz + zpos);
-	}
-
-	glLoadIdentity();
-	glRotated(plookupdown, 1, 0, 0);
-	glRotated(360.0 - pheading, 0, 1, 0);
-	glTranslated(-xpos, -ypos, -zpos);
-
+	/*
 	if (DebugHitbox) {
+		glLoadIdentity();
+		glRotated(plookupdown, 1, 0, 0);
+		glRotated(360.0 - pheading, 0, 1, 0);
+		glTranslated(-xpos, -ypos, -zpos);
+
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_TEXTURE_2D);
 
@@ -1122,7 +1131,9 @@ void render() {
 		glEnable(GL_CULL_FACE);
 		glEnable(GL_TEXTURE_2D);
 	}
+	*/
 
+	// HUD rendering starts here
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, windowwidth, windowheight, 0, -1.0, 1.0);
@@ -1149,7 +1160,6 @@ void render() {
 
 	if (GUIrenderswitch) {
 		drawGUI();
-		if (Renderer::AdvancedRender && DebugShadow) drawShadowMap();
 		drawBag();
 	}
 
@@ -1200,237 +1210,141 @@ void readback() {
 	}
 }
 
+const float centers[6][3] = {
+	{ +0.5f, 0.0f, 0.0f },
+	{ -0.5f, 0.0f, 0.0f },
+	{ 0.0f, +0.5f, 0.0f },
+	{ 0.0f, -0.5f, 0.0f },
+	{ 0.0f, 0.0f, +0.5f },
+	{ 0.0f, 0.0f, -0.5f },
+};
+
+const float cube[6][4][3] = {
+	{ { 0.5f, -0.5f, -0.5f }, { 0.5f, 0.5f, -0.5f }, { 0.5f, 0.5f, 0.5f }, { 0.5f, -0.5f, 0.5f } },
+	{ { -0.5f, -0.5f, -0.5f }, { -0.5f, -0.5f, 0.5f }, { -0.5f, 0.5f, 0.5f }, { -0.5f, 0.5f, -0.5f } },
+	{ { -0.5f, 0.5f, -0.5f },	{ -0.5f, 0.5f, 0.5f },	{ 0.5f, 0.5f, 0.5f },	{ 0.5f, 0.5f, -0.5f } },
+	{ { -0.5f, -0.5f, -0.5f },	{ 0.5f, -0.5f, -0.5f },	{ 0.5f, -0.5f, 0.5f },	{ -0.5f, -0.5f, 0.5f } },
+	{ { -0.5f, -0.5f, 0.5f },	{ 0.5f, -0.5f, 0.5f },	{ 0.5f, 0.5f, 0.5f },	{ -0.5f, 0.5f, 0.5f } },
+	{ { -0.5f, -0.5f, -0.5f },	{ -0.5f, 0.5f, -0.5f },	{ 0.5f, 0.5f, -0.5f },	{ 0.5f, -0.5f, -0.5f } },
+};
+
+const float texcoords[4][2] = {
+	{ 1.0f, 0.0f },
+	{ 1.0f, 1.0f },
+	{ 0.0f, 1.0f },
+	{ 0.0f, 0.0f },
+};
+
 // Draw the block selection border
-void drawBorder(int x, int y, int z) {
+void drawBorder(float x, float y, float z) {
 	const float eps = 0.005f;
-	glDisable(GL_TEXTURE_2D);
+	const float width = 1.0f / 32.0f;
 
-	glBegin(GL_LINES);
-	glColor4f(0.2f, 0.2f, 0.2f, 1.0f);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glEnd();
-
-	glBegin(GL_LINES);
-	glColor4f(0.2f, 0.2f, 0.2f, 1.0f);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glEnd();
-
-	glBegin(GL_LINES);
-	glColor4f(0.2f, 0.2f, 0.2f, 1.0f);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glEnd();
-
-	glBegin(GL_LINES);
-	glColor4f(0.2f, 0.2f, 0.2f, 1.0f);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glEnd();
-
-	glBegin(GL_LINES);
-	glColor4f(0.2f, 0.2f, 0.2f, 1.0f);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glEnd();
-
-	glBegin(GL_LINES);
-	glColor4f(0.2f, 0.2f, 0.2f, 1.0f);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glEnd();
-
-	glEnable(GL_TEXTURE_2D);
+	if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
+	else Renderer::Begin(GL_QUADS, 3, 3, 1);
+	Renderer::Attrib1f(65535.0f); // For indicator elements
+	Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::WHITE));
+	Renderer::Color3f(1.0f, 1.0f, 1.0f);
+	for (int i = 0; i < 6; i++) {
+		float const* center = centers[i];
+		float xc = center[0], yc = center[1], zc = center[2];
+		Renderer::Normal3f(xc * 2.0f, yc * 2.0f, zc * 2.0f);
+		for (int j = 0; j < 4; j++) {
+			float const* first = cube[i][j];
+			float const* second = cube[i][(j + 1) % 4];
+			float x0 = first[0], y0 = first[1], z0 = first[2];
+			float x1 = second[0], y1 = second[1], z1 = second[2];
+			float xd0 = (x0 - xc) * 2.0f, yd0 = (y0 - yc) * 2.0f, zd0 = (z0 - zc) * 2.0f;
+			float xd1 = (x1 - xc) * 2.0f, yd1 = (y1 - yc) * 2.0f, zd1 = (z1 - zc) * 2.0f;
+			x0 += (x0 > 0.0f ? eps : -eps), y0 += (y0 > 0.0f ? eps : -eps), z0 += (z0 > 0.0f ? eps : -eps);
+			x1 += (x1 > 0.0f ? eps : -eps), y1 += (y1 > 0.0f ? eps : -eps), z1 += (z1 > 0.0f ? eps : -eps);
+			Renderer::Vertex3f(x + x0, y + y0, z + z0);
+			Renderer::Vertex3f(x + x1, y + y1, z + z1);
+			Renderer::Vertex3f(x + x1 - xd1 * width, y + y1 - yd1 * width, z + z1 - zd1 * width);
+			Renderer::Vertex3f(x + x0 - xd0 * width, y + y0 - yd0 * width, z + z0 - zd0 * width);
+		}
+	}
+	Renderer::End().render();
 }
 
-void drawBreaking(float level, int x, int y, int z) {
+void drawBreaking(float level, float x, float y, float z) {
 	const float eps = 0.005f;
 
+	if (level <= 0.0f) return;
 	int index = int(level * 8);
 	if (index < 0) index = 0;
 	if (index > 7) index = 7;
 
-	glBindTexture(GL_TEXTURE_2D, DestroyImage[index]);
-
-	glBegin(GL_QUADS);
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f((0.5f + eps) + x, (0.5f + eps) + y, -(0.5f + eps) + z);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	glTexCoord2f(1.0f, 1.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 1.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, -(0.5f + eps) + z);
-	glTexCoord2f(0.0f, 0.0f); glVertex3f((0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glTexCoord2f(1.0f, 0.0f); glVertex3f(-(0.5f + eps) + x, -(0.5f + eps) + y, (0.5f + eps) + z);
-	glEnd();
+	if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
+	else Renderer::Begin(GL_QUADS, 3, 3, 1);
+	Renderer::Attrib1f(65535.0f); // For indicator elements
+	Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::BREAKING_0 + index));
+	Renderer::Color3f(1.0f, 1.0f, 1.0f);
+	for (int i = 0; i < 6; i++) {
+		float const* center = centers[i];
+		float xc = center[0], yc = center[1], zc = center[2];
+		Renderer::Normal3f(xc * 2.0f, yc * 2.0f, zc * 2.0f);
+		for (int j = 0; j < 4; j++) {
+			float const* texcoord = texcoords[j];
+			float const* point = cube[i][j];
+			float u0 = texcoord[0], v0 = texcoord[1];
+			float x0 = point[0], y0 = point[1], z0 = point[2];
+			x0 += (x0 > 0.0f ? eps : -eps), y0 += (y0 > 0.0f ? eps : -eps), z0 += (z0 > 0.0f ? eps : -eps);
+			Renderer::TexCoord2f(u0, v0);
+			Renderer::Vertex3f(x + x0, y + y0, z + z0);
+		}
+	}
+	Renderer::End().render();
 }
 
 void drawGUI() {
 	int disti = (int)(seldes * linedist);
 
+	glDisable(GL_TEXTURE_2D);
+
+	glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
+
 	if (DebugMode) {
-		if (selb != Blocks::AIR) {
-			glBegin(GL_LINES);
-			glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, 0.8f);
-			glVertex2i(windowwidth / 2, windowheight / 2);
-			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
-			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
-			glVertex2i(windowwidth / 2 + 250, windowheight / 2 + 50);
-			glEnd();
-			TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
-			std::stringstream ss;
-			ss << BlockInfo(selb).getBlockName() << " (id: " << (int)selb << ")";
-			TextRenderer::renderASCIIString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, ss.str());
-		}
-
-		glDisable(GL_TEXTURE_2D);
-
 		glBegin(GL_LINES);
-		glColor4f(0.0f, 0.0f, 0.0f, 0.9f);
-
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 - linedist + disti);
 		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 - linedist + linelength + disti);
 		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 - linedist + disti);
 		glVertex2i(windowwidth / 2 - linedist + linelength + disti, windowheight / 2 - linedist + disti);
-
 		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 - linedist + disti);
 		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 - linedist + linelength + disti);
 		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 - linedist + disti);
 		glVertex2i(windowwidth / 2 + linedist - linelength - disti, windowheight / 2 - linedist + disti);
-
 		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 + linedist - disti);
 		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 + linedist - linelength - disti);
 		glVertex2i(windowwidth / 2 - linedist + disti, windowheight / 2 + linedist - disti);
 		glVertex2i(windowwidth / 2 - linedist + linelength + disti, windowheight / 2 + linedist - disti);
-
 		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 + linedist - disti);
 		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 + linedist - linelength - disti);
 		glVertex2i(windowwidth / 2 + linedist - disti, windowheight / 2 + linedist - disti);
 		glVertex2i(windowwidth / 2 + linedist - linelength - disti, windowheight / 2 + linedist - disti);
-		glEnd();
-
-		glEnable(GL_TEXTURE_2D);
-	}
-
-	glDisable(GL_TEXTURE_2D);
-
-	glBegin(GL_QUADS);
-	glColor4f(0.0f, 0.0f, 0.0f, 0.9f);
-	glVertex2i(windowwidth / 2 - 16, windowheight / 2 - 2);
-	glVertex2i(windowwidth / 2 - 16, windowheight / 2 + 2);
-	glVertex2i(windowwidth / 2 + 16, windowheight / 2 + 2);
-	glVertex2i(windowwidth / 2 + 16, windowheight / 2 - 2);
-	glVertex2i(windowwidth / 2 - 2, windowheight / 2 - 16);
-	glVertex2i(windowwidth / 2 - 2, windowheight / 2 + 16);
-	glVertex2i(windowwidth / 2 + 2, windowheight / 2 + 16);
-	glVertex2i(windowwidth / 2 + 2, windowheight / 2 - 16);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	glColor4f(1.0f, 1.0f, 1.0f, 0.9f);
-	glVertex2i(windowwidth / 2 - 15, windowheight / 2 - 1);
-	glVertex2i(windowwidth / 2 - 15, windowheight / 2 + 1);
-	glVertex2i(windowwidth / 2 + 15, windowheight / 2 + 1);
-	glVertex2i(windowwidth / 2 + 15, windowheight / 2 - 1);
-	glVertex2i(windowwidth / 2 - 1, windowheight / 2 - 15);
-	glVertex2i(windowwidth / 2 - 1, windowheight / 2 + 15);
-	glVertex2i(windowwidth / 2 + 1, windowheight / 2 + 15);
-	glVertex2i(windowwidth / 2 + 1, windowheight / 2 - 15);
-	glEnd();
-
-	/*
-	if (seldes > 0.0f) {
-		glBegin(GL_QUADS);
-		glColor4f(0.5, 0.5, 0.5, 1.0);
-		glVertex2i(windowwidth / 2 - 15, windowheight / 2 - 1);
-		glVertex2i(windowwidth / 2 - 15, windowheight / 2 + 1);
-		glVertex2i(windowwidth / 2 - 15 + (int)(seldes * 15), windowheight / 2 + 1);
-		glVertex2i(windowwidth / 2 - 15 + (int)(seldes * 15), windowheight / 2 - 1);
-		glVertex2i(windowwidth / 2 + 15 - (int)(seldes * 15), windowheight / 2 - 1);
-		glVertex2i(windowwidth / 2 + 15 - (int)(seldes * 15), windowheight / 2 + 1);
-		glVertex2i(windowwidth / 2 + 15, windowheight / 2 + 1);
-		glVertex2i(windowwidth / 2 + 15, windowheight / 2 - 1);
-		glVertex2i(windowwidth / 2 - 1, windowheight / 2 - 15);
-		glVertex2i(windowwidth / 2 - 1, windowheight / 2 - 15 + (int)(seldes * 15));
-		glVertex2i(windowwidth / 2 + 1, windowheight / 2 - 15 + (int)(seldes * 15));
-		glVertex2i(windowwidth / 2 + 1, windowheight / 2 - 15);
-		glVertex2i(windowwidth / 2 - 1, windowheight / 2 + 15 - (int)(seldes * 15));
-		glVertex2i(windowwidth / 2 - 1, windowheight / 2 + 15);
-		glVertex2i(windowwidth / 2 + 1, windowheight / 2 + 15);
-		glVertex2i(windowwidth / 2 + 1, windowheight / 2 + 15 - (int)(seldes * 15));
+		if (selb != Blocks::AIR) {
+			glVertex2i(windowwidth / 2, windowheight / 2);
+			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
+			glVertex2i(windowwidth / 2 + 50, windowheight / 2 + 50);
+			glVertex2i(windowwidth / 2 + 250, windowheight / 2 + 50);
+		}
 		glEnd();
 	}
-	*/
+
+	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	glVertex2i(windowwidth / 2 - 10, windowheight / 2 - 1);
+	glVertex2i(windowwidth / 2 - 10, windowheight / 2 + 1);
+	glVertex2i(windowwidth / 2 + 10, windowheight / 2 + 1);
+	glVertex2i(windowwidth / 2 + 10, windowheight / 2 - 1);
+	glVertex2i(windowwidth / 2 - 1, windowheight / 2 - 10);
+	glVertex2i(windowwidth / 2 - 1, windowheight / 2 + 10);
+	glVertex2i(windowwidth / 2 + 1, windowheight / 2 + 10);
+	glVertex2i(windowwidth / 2 + 1, windowheight / 2 - 10);
+	glEnd();
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	if (Player::gamemode == Player::Survival) {
 		glColor4d(0.8, 0.0, 0.0, 0.3);
@@ -1452,12 +1366,35 @@ void drawGUI() {
 	}
 
 	glEnable(GL_TEXTURE_2D);
+	if (Renderer::AdvancedRender && DebugShadow) {
+		float xi = 1.0f - static_cast<float>(windowheight) / windowwidth;
+		float yi = 1.0f;
+		float xa = 1.0f;
+		float ya = 0.0f;
 
-	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
+		Renderer::shadow.bindDepthTexture(0);
+		auto& shader = Renderer::shaders[Renderer::DebugShadowShader];
+		shader.bind();
+		shader.setUniformI("u_shadow_texture", 0);
+		Renderer::Begin(GL_QUADS, 2, 2, 0);
+		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2f(xi, yi);
+		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2f(xi, ya);
+		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2f(xa, ya);
+		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2f(xa, yi);
+		Renderer::End().render();
+		shader.unbind();
+	}
+
+	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
+	if (DebugMode && selb != Blocks::AIR) {
+		std::stringstream ss;
+		ss << BlockInfo(selb).getBlockName() << " (id: " << (int)selb << ")";
+		TextRenderer::renderASCIIString(windowwidth / 2 + 50, windowheight / 2 + 50 - 16, ss.str());
+	}
 	if (chatmode) {
-		glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
+		glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
 		glVertex2i(1, windowheight - 51);
 		glVertex2i(1, windowheight - 33);
 		glVertex2i(windowwidth - 1, windowheight - 33);
@@ -1466,9 +1403,21 @@ void drawGUI() {
 		glEnable(GL_TEXTURE_2D);
 		TextRenderer::renderString(0, windowheight - 50, chatword);
 	}
-	int posy = 0;
-	for (size_t i = chatMessages.size(); i-- > 0; ) {
-		TextRenderer::renderString(0, windowheight - 80 - 18 * posy++, chatMessages[i]);
+	int count = 0;
+	for (size_t i = chatMessages.size(); i-- > 0 && count < 10; ) {
+		glDisable(GL_TEXTURE_2D);
+		glBegin(GL_QUADS);
+		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA);
+		glVertex2i(1, windowheight - 80 - 18 * count);
+		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA);
+		glVertex2i(1, windowheight - 80 - 18 * (count - 1));
+		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA);
+		glVertex2i(windowwidth - 1, windowheight - 80 - 18 * (count - 1));
+		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA);
+		glVertex2i(windowwidth - 1, windowheight - 80 - 18 * count);
+		glEnd();
+		glEnable(GL_TEXTURE_2D);
+		TextRenderer::renderString(0, windowheight - 80 - 18 * count++, chatMessages[i]);
 	}
 
 	if (DebugMode) {
@@ -1755,25 +1704,6 @@ void drawBag() {
 			}
 		} else drawBagRow(3, Player::indexInHand, 0, windowheight - 32, 0, 0.5f);
 	}
-}
-
-void drawShadowMap() {
-	float xi = 1.0f - static_cast<float>(windowheight) / windowwidth;
-	float yi = 1.0f;
-	float xa = 1.0f;
-	float ya = 0.0f;
-
-	Renderer::shadow.bindDepthTexture(0);
-	auto& shader = Renderer::shaders[Renderer::DebugShadowShader];
-	shader.bind();
-	shader.setUniformI("u_shadow_texture", 0);
-	Renderer::Begin(GL_QUADS, 2, 2, 0);
-	Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2f(xi, yi);
-	Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2f(xi, ya);
-	Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2f(xa, ya);
-	Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2f(xa, yi);
-	Renderer::End().render();
-	shader.unbind();
 }
 
 void saveScreenshot(int x, int y, int w, int h, string filename) {

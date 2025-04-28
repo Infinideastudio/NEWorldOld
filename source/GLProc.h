@@ -1,6 +1,10 @@
 #pragma once
 #include "StdInclude.h"
 
+extern PFNGLBLENDFUNCIPROC glBlendFunci;
+extern PFNGLBLENDCOLORPROC glBlendColor;
+extern PFNGLCOLORMASKIPROC glColorMaski;
+
 extern PFNGLTEXIMAGE3DPROC glTexImage3D;
 extern PFNGLTEXSUBIMAGE3DPROC glTexSubImage3D;
 extern PFNGLACTIVETEXTUREPROC glActiveTexture;

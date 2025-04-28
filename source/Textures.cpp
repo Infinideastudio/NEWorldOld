@@ -3,12 +3,10 @@
 #include "Blocks.h"
 #include <fstream>
 
-int BLOCKTEXTURE_SIZE, BLOCKTEXTURE_COUNT;
-
 namespace Textures {
 
-    const TextureIndex Indexes[UNKNOWN + 1][3] = {
-        { NULLBLOCK,NULLBLOCK,NULLBLOCK },
+    const TextureIndex Indexes[Blocks::BLOCKS_COUNT][3] = {
+        { WHITE,WHITE,WHITE },
         { ROCK,ROCK,ROCK },
         { GRASS_TOP,GRASS_SIDE,DIRT },
         { DIRT,DIRT,DIRT },
@@ -26,17 +24,13 @@ namespace Textures {
         { ICE,ICE,ICE },
         { COAL,COAL,COAL },
         { IRON,IRON,IRON },
-        { TNT,TNT,TNT }
+        { TNT,TNT,TNT },
+        { NULLBLOCK, NULLBLOCK, NULLBLOCK },
     };
-
-    void Init() {
-        BLOCKTEXTURE_SIZE = 32;
-        BLOCKTEXTURE_COUNT = 64;
-    }
 
     TextureIndex getTextureIndex(BlockID blockname, uint8_t side) {
         side--;
-        if (blockname > UNKNOWN || side >= 3) return NULLBLOCK;
+        if (blockname >= Blocks::BLOCKS_COUNT || side >= 3) return NULLBLOCK;
         return Indexes[blockname][side];
     }
 
@@ -176,10 +170,11 @@ namespace Textures {
     }
 
     TextureID LoadBlockTextureArray(string Filename, string MkFilename) {
-        int size = BLOCKTEXTURE_SIZE, count = BLOCKTEXTURE_COUNT;
         TextureID ret;
         ImageRGBA image;
         LoadRGBAImage(image, Filename, MkFilename);
+        int size = image.sizeX;
+        int count = image.sizeY / size;
         glGenTextures(1, &ret);
         glBindTexture(GL_TEXTURE_2D_ARRAY, ret);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

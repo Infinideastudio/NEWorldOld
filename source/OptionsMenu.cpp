@@ -1,4 +1,5 @@
 #include "Menus.h"
+#include "Renderer.h"
 
 void saveOptions();
 
@@ -11,6 +12,7 @@ namespace Menus {
 		//GUI::button rdstbtn, gistbtn, backbtn, savebtn;
 		void onLoad() {
 			title = GUI::label(GetStrbyKey("NEWorld.options.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+			title.centered = true;
 			FOVyBar = GUI::trackbar("", 120, (int)(FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
 			mmsBar = GUI::trackbar("", 120, (int)(mousemove * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
 			viewdistBar = GUI::trackbar("", 120, (viewdistance - 4) * 2 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
@@ -27,7 +29,10 @@ namespace Menus {
 			viewdistance = (viewdistBar.barpos + 1) / 2 + 4;
 			if (rdstbtn.clicked) Renderoptions();
 			if (gistbtn.clicked) GUIoptions();
-			if (backbtn.clicked) ExitSignal = true;
+			if (backbtn.clicked) {
+				Renderer::initShaders(true);
+				ExitSignal = true;
+			}
 			if (savebtn.clicked) saveOptions();
 			if (langbtn.clicked) {
 				languagemenu();

@@ -90,6 +90,7 @@ namespace Renderer {
 	void initShaders(bool reload) {
 		if (shaders.empty() || reload) {
 			std::set<string> defines;
+			if (MergeFace) defines.insert("MERGE_FACE");
 			if (SoftShadow) defines.insert("SOFT_SHADOW");
 			if (VolumetricClouds) defines.insert("VOLUMETRIC_CLOUDS");
 			if (AmbientOcclusion) defines.insert("AMBIENT_OCCLUSION");
@@ -126,7 +127,7 @@ namespace Renderer {
 		shaders[TranslucentShader].bind();
 		shaders[TranslucentShader].setUniformI("u_diffuse", 0);
 
-		float fisheyeFactor = MergeFace ? 0.6f : 0.8f;
+		float fisheyeFactor = 0.8f;
 		int shadowdist = min(MaxShadowDist, viewdistance);
 		shaders[FinalShader].bind();
 		shaders[FinalShader].setUniformI("u_diffuse_buffer", 0);
@@ -158,8 +159,11 @@ namespace Renderer {
 		return res;
 	}
 
-	FrustumTest getShadowMapFrustum(double heading, double pitch, int shadowdist, const FrustumTest& frus) {
+	FrustumTest getShadowMapFrustum(double /* heading */, double /* pitch */, int shadowdist, const FrustumTest& /* frus */) {
 		FrustumTest lightSpace = getLightFrustum();
+
+		// Minimal Bounding Box
+		/*
 		std::vector<Vec3f> vertexes;
 		float halfHeight = std::tan(frus.getFOV() / 2.0f);
 		float halfWidth = halfHeight * frus.getAspect();
@@ -180,12 +184,7 @@ namespace Renderer {
 		Vec3f nearCenter = toLightSpace.transformVec3(Vec3f(0, 0, -pnear));
 		Vec3f farCenter = toLightSpace.transformVec3(Vec3f(0, 0, -pfar));
 
-		FrustumTest res = lightSpace;
-
-		// Minimal Bounding Box
-		/*
 		float xmin = vertexes[0].x, xmax = vertexes[0].x, ymin = vertexes[0].y, ymax = vertexes[0].y, zmin = vertexes[0].z, zmax = vertexes[0].z;
-
 		for (size_t i = 0; i < vertexes.size(); i++) {
 			xmin = min(xmin, vertexes[i].x);
 			xmax = max(xmax, vertexes[i].x);
@@ -194,17 +193,17 @@ namespace Renderer {
 			zmin = min(zmin, vertexes[i].z);
 			zmax = max(zmax, vertexes[i].z);
 		}
-
 		float scale = 16.0f * sqrt(3.0f);
 		float length = shadowdist * scale;
+		FrustumTest res = lightSpace;
 		res.SetOrtho(xmin, xmax, ymin, ymax, -1000.0, 1000.0);
 		*/
 
 		// Original
-		float scale = 16.0f;// *sqrt(3.0f);
+		float scale = 16.0f; // * sqrt(3.0f);
 		float length = shadowdist * scale;
-		res.SetOrtho(-length, length, -length, length, -1000.0, 1000.0);
-
+		FrustumTest res = lightSpace;
+		res.SetOrtho(-length, length, -length, length, -1000.0f, 1000.0f);
 		return res;
 	}
 
@@ -297,9 +296,6 @@ namespace Renderer {
 		shader.setUniform("u_proj", viewFrustum.getProjMatrix());
 		shader.setUniform("u_modl", viewFrustum.getModlMatrix());
 		shader.setUniform("u_game_time", gameTime);
-
-		// Disable unwanted defaults
-		glDisable(GL_CULL_FACE);
 	}
 
 	void EndTranslucentPass() {
@@ -308,9 +304,6 @@ namespace Renderer {
 
 		// Disable shader
 		Shader::unbind();
-
-		// Enable defaults
-		glEnable(GL_CULL_FACE);
 	}
 
 	void StartFinalPass(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& viewFrustum, float gameTime) {
