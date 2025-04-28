@@ -11,17 +11,17 @@ namespace Blocks {
 
 	class SingleBlock {
 	private:
-		string name;
+		std::string name;
 		bool solid;
 		bool opaque;
 		bool translucent;
 		float hardness;
 
 	public:
-		SingleBlock(string name, bool solid, bool opaque, bool translucent, float hardness) :
+		SingleBlock(std::string name, bool solid, bool opaque, bool translucent, float hardness) :
 			name(name), solid(solid), opaque(opaque), translucent(translucent), hardness(hardness) {};
 
-		inline string getBlockName() const { return name; }
+		inline std::string getBlockName() const { return name; }
 		inline bool isSolid() const { return solid; }
 		inline bool isOpaque() const { return opaque; }
 		inline bool isTranslucent() const { return translucent; }

@@ -11,59 +11,53 @@
 // #define NEWORLD_DEBUG_PERFORMANCE_REC
 // #endif
 
-// Global Vars
-const unsigned int VERSION = 39;
-const string MAJOR_VERSION = "Alpha 0.";
-const string MINOR_VERSION = "5";
-const string EXT_VERSION = " [In Development]";
-const int defaultwindowwidth = 852; //Ĭ�ϴ��ڿ��
-const int defaultwindowheight = 480; //Ĭ�ϴ��ڸ߶�
-const int networkRequestFrequency = 3; //����Ƶ��
-const int networkRequestMax = 20; //�������������г���
+// Global constants
+const unsigned int GameVersion = 39;
+const std::string MajorVersion = "Alpha 0.";
+const std::string MinorVersion = "5";
+const std::string VersionSuffix = " [In Development]";
+const int DefaultWindowWidth = 852;
+const int DefaultWindowHeight = 480;
+const int NetworkRequestFrequency = 3;
+const int NetworkRequestMax = 20;
+const double Pi = std::numbers::pi_v<double>;
+
+// Global variables
 extern float FOVyNormal;
-extern float mousemove;
-extern int viewdistance;
-extern int cloudwidth;
-extern int selectPrecision;
-extern int selectDistance;
-extern float walkspeed;
-extern float runspeed;
-extern int MaxAirJumps;
+extern float FOVyRunning;
+extern float MouseSpeed;
+extern int RenderDistance;
 extern bool SmoothLighting;
 extern bool NiceGrass;
 extern bool MergeFace;
-extern bool GUIScreenBlur;
-extern int linelength;
-extern int linedist;
-extern float skycolorR;
-extern float skycolorG;
-extern float skycolorB;
-extern float FOVyRunning;
-extern float FOVyExt;
+extern bool UIBackgroundBlur;
 extern int Multisample;
-extern bool vsync;
-extern double stretch;
-extern int gametime;
+extern bool VerticalSync;
+extern int GameTime;
+extern int WindowWidth;
+extern int WindowHeight;
+extern double Stretch;
 
-extern int windowwidth;
-extern int windowheight;
-extern bool gamebegin, gameexit, bagOpened;
-
+extern TextureID SplashTexture;
+extern TextureID TitleTexture;
+extern TextureID UIBackgroundTextures[6];
+extern TextureID SelectedTexture;
+extern TextureID UnselectedTexture;
 extern TextureID BlockTextureArray;
-extern TextureID tex_select, tex_unselect, tex_splash, tex_title, tex_mainmenu[6];
 extern TextureID DefaultSkin;
 
-extern bool multiplayer;
-extern string serverip;
-extern unsigned short port;
-
-extern int GLVersionMajor, GLVersionMinor, GLVersionRev;
+extern int GLMajorVersion, GLMinorVersion, GLRevisionVersion;
 extern GLFWwindow* MainWindow;
 extern GLFWcursor* MouseCursor;
 extern int mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
 extern double mxdelta, mydelta;
-extern string inputstr;
+extern std::string inputstr;
+
+extern bool GameBegin, GameExit;
+extern bool Multiplayer;
+extern std::string ServerIP;
+extern unsigned short ServerPort;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 extern int c_getChunkPtrFromCPA;

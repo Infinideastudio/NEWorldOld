@@ -8,12 +8,12 @@
 
 // OpenGL debug callback
 void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, const GLchar* msg, const void*) {
-	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) cout << "[Console][OpenGL]" << msg << endl;
+	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) std::cerr << "[Console][OpenGL]" << msg << std::endl;
 }
 
 void createWindow() {
 	std::stringstream title;
-	title << "NEWorld " << MAJOR_VERSION << MINOR_VERSION << EXT_VERSION;
+	title << "NEWorld " << MajorVersion << MinorVersion << VersionSuffix;
 
 	auto glfwStatus = glfwInit();
 	assert(glfwStatus == GLFW_TRUE);
@@ -23,7 +23,7 @@ void createWindow() {
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 #endif
 
-	MainWindow = glfwCreateWindow(windowwidth, windowheight, title.str().c_str(), NULL, NULL);
+	MainWindow = glfwCreateWindow(WindowWidth, WindowHeight, title.str().c_str(), NULL, NULL);
 	MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 
 	glfwMakeContextCurrent(MainWindow);
@@ -33,14 +33,14 @@ void createWindow() {
 	glfwSetMouseButtonCallback(MainWindow, &MouseButtonFunc);
 	glfwSetScrollCallback(MainWindow, &MouseScrollFunc);
 	glfwSetCharCallback(MainWindow, &CharInputFunc);
-	glfwSwapInterval(vsync ? 1 : 0);
+	glfwSwapInterval(VerticalSync ? 1 : 0);
 
 	auto glewStatus = glewInit();
 	assert(glewStatus == GLEW_OK);
 
-	GLVersionMajor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
-	GLVersionMinor = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
-	GLVersionRev = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
+	GLMajorVersion = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
+	GLMinorVersion = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
+	GLRevisionVersion = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
 
 #ifdef NEWORLD_DEBUG
 	if (!glDebugMessageCallback) {
@@ -62,14 +62,14 @@ void toggleFullScreen() {
 
 	fullscreen = !fullscreen;
 	if (fullscreen) {
-		ww = windowwidth, wh = windowheight;
-		windowwidth = mode->width;
-		windowheight = mode->height;
-		glfwSetWindowMonitor(MainWindow, glfwGetPrimaryMonitor(), 0, 0, windowwidth, windowheight, mode->refreshRate);
+		ww = WindowWidth, wh = WindowHeight;
+		WindowWidth = mode->width;
+		WindowHeight = mode->height;
+		glfwSetWindowMonitor(MainWindow, glfwGetPrimaryMonitor(), 0, 0, WindowWidth, WindowHeight, mode->refreshRate);
 	}
 	else {
-		windowwidth = ww, windowheight = wh;
-		glfwSetWindowMonitor(MainWindow, nullptr, (mode->width - ww) / 2, (mode->height - wh) / 2, windowwidth, windowheight, mode->refreshRate);
+		WindowWidth = ww, WindowHeight = wh;
+		glfwSetWindowMonitor(MainWindow, nullptr, (mode->width - ww) / 2, (mode->height - wh) / 2, WindowWidth, WindowHeight, mode->refreshRate);
 	}
 
 	setupScreen();
@@ -77,7 +77,7 @@ void toggleFullScreen() {
 
 void setupScreen() {
 	// Set up default GL context states
-	glViewport(0, 0, windowwidth, windowheight);
+	glViewport(0, 0, WindowWidth, WindowHeight);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_CULL_FACE);
@@ -90,20 +90,20 @@ void setupScreen() {
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
 	// Make sure everything is initialised
-	TextRenderer::BuildFont(windowwidth, windowheight);
+	TextRenderer::BuildFont(WindowWidth, WindowHeight);
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 	Renderer::initShaders();
 }
 
 void loadTextures() {
-	tex_select = Textures::LoadRGBTexture("textures/ui/select.bmp");
-	tex_unselect = Textures::LoadRGBTexture("textures/ui/unselect.bmp");
-	tex_title = Textures::LoadRGBATexture("textures/ui/title.bmp", "textures/ui/title_mask.bmp", true);
+	SelectedTexture = Textures::LoadRGBTexture("textures/ui/select.bmp");
+	UnselectedTexture = Textures::LoadRGBTexture("textures/ui/unselect.bmp");
+	TitleTexture = Textures::LoadRGBATexture("textures/ui/title.bmp", "textures/ui/title_mask.bmp", true);
 
 	for (int i = 0; i < 6; i++) {
 		std::stringstream ss;
 		ss << "textures/ui/background_" << i << ".bmp";
-		tex_mainmenu[i] = Textures::LoadRGBTexture(ss.str(), true);
+		UIBackgroundTextures[i] = Textures::LoadRGBTexture(ss.str(), true);
 	}
 
 	BlockTextureArray = Textures::LoadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
@@ -114,8 +114,8 @@ void loadTextures() {
 void WindowSizeFunc(GLFWwindow* win, int width, int height) {
 	if (width < 640) width = 640;
 	if (height < 360) height = 360;
-	windowwidth = width;
-	windowheight = height > 0 ? height : 1;
+	WindowWidth = width;
+	WindowHeight = height > 0 ? height : 1;
 	glfwSetWindowSize(win, width, height);
 	setupScreen();
 }
@@ -145,8 +145,8 @@ void MouseScrollFunc(GLFWwindow *, double, double yoffset) {
 }
 
 void splashScreen() {
-	if (tex_splash == 0) {
-		tex_splash = Textures::LoadRGBTexture("textures/ui/splash.bmp", true);
+	if (SplashTexture == 0) {
+		SplashTexture = Textures::LoadRGBTexture("textures/ui/splash.bmp", true);
 	}
 
 	for (int i = 0; i < 256; i += 2) {
@@ -161,7 +161,7 @@ void splashScreen() {
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 
-		glBindTexture(GL_TEXTURE_2D, tex_splash);
+		glBindTexture(GL_TEXTURE_2D, SplashTexture);
 		glBegin(GL_QUADS);
 		glColor4f(ratio, ratio, ratio, 1.0f);
 		glTexCoord2f(0.0f, 1.0f); glVertex2i(-1, 1);

@@ -23,6 +23,7 @@
 #include <cmath>
 #include <type_traits>
 #include <utility>
+#include <numbers>
 
 template <typename T>
 class Vec3 {
@@ -51,7 +52,7 @@ public:
 
     // Get vector length
     double length() const {
-        return sqrt(double(lengthSqr()));
+        return std::sqrt(double(lengthSqr()));
     }
 
     // Get the Euclidean Distance between vectors
@@ -61,12 +62,12 @@ public:
 
     // Get the Chebyshev Distance between vectors
     T chebyshevDistance(const Vec3& rhs) const {
-        return max(max(abs(x - rhs.x), abs(y - rhs.y)), abs(z - rhs.z));
+        return std::max(std::max(std::abs(x - rhs.x), std::abs(y - rhs.y)), std::abs(z - rhs.z));
     }
 
     // Get the Manhattan Distance between vectors
     T manhattanDistance(const Vec3& rhs) const {
-        return abs(x - rhs.x) + abs(y - rhs.y) + abs(z - rhs.z);
+        return std::abs(x - rhs.x) + std::abs(y - rhs.y) + std::abs(z - rhs.z);
     }
 
     // Normalize vector
@@ -77,7 +78,7 @@ public:
         z = static_cast<T>(z / l);
     }
 
-    bool operator< (const Vec3& rhs) const {
+    bool operator<(const Vec3& rhs) const {
         if (x != rhs.x)
             return x < rhs.x;
         if (y != rhs.y)
@@ -87,78 +88,82 @@ public:
         return false;
     }
 
-    bool operator== (const Vec3& rhs) const {
+    bool operator==(const Vec3& rhs) const {
         return x == rhs.x && y == rhs.y && z == rhs.z;
     }
 
-    Vec3& operator+= (const Vec3& rhs) {
+    Vec3& operator+=(const Vec3& rhs) {
         x += rhs.x;
         y += rhs.y;
         z += rhs.z;
         return *this;
     }
 
-    Vec3& operator-= (const Vec3& rhs) {
+    Vec3& operator-=(const Vec3& rhs) {
         x -= rhs.x;
         y -= rhs.y;
         z -= rhs.z;
         return *this;
     }
 
-    Vec3<T>& operator*= (T value) {
+    Vec3<T>& operator*=(T value) {
         x *= value;
         y *= value;
         z *= value;
         return *this;
     }
 
-    Vec3<T>& operator/= (T value) {
+    Vec3<T>& operator/=(T value) {
         x /= value;
         y /= value;
         z /= value;
         return *this;
     }
 
-    Vec3<T> operator* (T value) const {
+    Vec3<T> operator*(T value) const {
         return Vec3<T>(x * value, y * value, z * value);
     }
 
-    Vec3<T> operator/ (T value) const {
+    Vec3<T> operator/(T value) const {
         return Vec3<T>(x / value, y / value, z / value);
     }
 
-    bool operator!= (const Vec3& rhs) const {
+    bool operator!=(const Vec3& rhs) const {
         return !(rhs == *this);
     }
 
-    const Vec3<T> operator+ (const Vec3<T>& rhs) const {
+    friend Vec3<T> operator-(const Vec3<T>& vec) {
+      return Vec3<T>(-vec.x, -vec.y, -vec.z);
+    }
+
+    const Vec3<T> operator+(const Vec3<T>& rhs) const {
         Vec3<T> tmp(*this);
         tmp += rhs;
         return tmp;
     };
 
-    const Vec3<T> operator- (const Vec3<T>& rhs) const {
+    const Vec3<T> operator-(const Vec3<T>& rhs) const {
         Vec3<T> tmp(*this);
         tmp -= rhs;
         return tmp;
     };
 
-    const Vec3<T> operator* (const Vec3<T>& rhs) const {
+    const Vec3<T> operator*(const Vec3<T>& rhs) const {
         Vec3<T> tmp(*this);
         tmp *= rhs;
         return tmp;
     };
 
-    const Vec3<T> operator/ (const Vec3<T>& rhs) const {
+    const Vec3<T> operator/(const Vec3<T>& rhs) const {
         Vec3<T> tmp(*this);
         tmp /= rhs;
         return tmp;
     };
 
-    void swap(Vec3& rhs) {
-        std::swap(x, rhs.x);
-        std::swap(y, rhs.y);
-        std::swap(z, rhs.z);
+    friend void swap(Vec3& lhs, Vec3& rhs) {
+        swap(lhs.x, rhs.x);
+        swap(lhs.y, rhs.y);
+        swap(lhs.z, rhs.z);
     }
 
     template <typename... ArgType, typename Func>
@@ -175,7 +180,6 @@ public:
         func(z, std::forward<ArgType>(args)...);
     }
 
-    //TODO: fix it. And tell if "for_each" will change the value of "this".
     template <typename Func>
     Vec3<T> transform(Func func) const {
         return Vec3<T>(func(x), func(y), func(z));
@@ -215,22 +219,6 @@ public:
         arg /= base;
         return Vec3<U>(arg / base, arg % base, z);
     }
-
-    friend Vec3<T> operator- (const Vec3<T>& vec) {
-        return Vec3<T>(-vec.x, -vec.y, -vec.z);
-    }
-
-    template<class Vec3Type>
-    Vec3Type conv() const {
-        return Vec3Type(x, y, z);
-    }
-
-private:
-    // to solve problems about `abs`, we need this.
-    static T abs(param_type arg) {
-        return arg >= 0 ? arg : -arg;
-    }
-
 };
 
 using Vec3i = Vec3<int>;

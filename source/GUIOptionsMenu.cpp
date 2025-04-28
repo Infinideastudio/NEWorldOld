@@ -19,20 +19,20 @@ namespace Menus {
 		}
 		void onUpdate() {
 			//if (fontbtn.clicked) TextRenderer::useUnicodeASCIIFont = !TextRenderer::useUnicodeASCIIFont;
-			if (blurbtn.clicked) GUIScreenBlur = !GUIScreenBlur;
+			if (blurbtn.clicked) UIBackgroundBlur = !UIBackgroundBlur;
 			if (ppistretchbtn.clicked) {
-				if (stretch == 1.0) GUI::InitStretch();
+				if (Stretch == 1.0) GUI::InitStretch();
 				else GUI::EndStretch();
 			}
 			if (backbtn.clicked) ExitSignal = true;
 			//fontbtn.text = GetStrbyKey("NEWorld.gui.unicode") + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
 			fontbtn.text = GetStrbyKey("NEWorld.gui.unicode") + BoolYesNo(true);
-			blurbtn.text = GetStrbyKey("NEWorld.gui.blur") + BoolEnabled(GUIScreenBlur);
+			blurbtn.text = GetStrbyKey("NEWorld.gui.blur") + BoolEnabled(UIBackgroundBlur);
 			int vmc;
 			const GLFWvidmode* m = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
 			ppistat.text = "phy:" + Var2Str(GUI::nScreenWidth) + "x" + Var2Str(GUI::nScreenHeight) +
 				" scr:" + Var2Str(m[vmc - 1].width) + "x" + Var2Str(m[vmc - 1].height) +
-				" win:" + Var2Str(windowwidth) + "x" + Var2Str(windowheight);
+				" win:" + Var2Str(WindowWidth) + "x" + Var2Str(WindowHeight);
 		}
 	};
 	void GUIoptions() { GUIOptionsMenu Menu; Menu.start(); }

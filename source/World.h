@@ -6,7 +6,7 @@
 #include "Hitbox.h"
 #include "Blocks.h"
 
-extern int viewdistance;
+extern int RenderDistance;
 class Frsutum;
 
 namespace World {

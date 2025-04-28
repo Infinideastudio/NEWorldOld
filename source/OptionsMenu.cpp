@@ -14,8 +14,8 @@ namespace Menus {
 			title = GUI::label(GetStrbyKey("NEWorld.options.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			title.centered = true;
 			FOVyBar = GUI::trackbar("", 120, (int)(FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-			mmsBar = GUI::trackbar("", 120, (int)(mousemove * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-			viewdistBar = GUI::trackbar("", 120, (viewdistance - 4) * 2 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
+			mmsBar = GUI::trackbar("", 120, (int)(MouseSpeed * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+			viewdistBar = GUI::trackbar("", 120, (RenderDistance - 4) * 2 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
 			rdstbtn = GUI::button(GetStrbyKey("NEWorld.options.rendermenu"), -250, -10, 204, 228, 0.5, 0.5, 0.0, 0.0);
 			gistbtn = GUI::button(GetStrbyKey("NEWorld.options.guimenu"), 10, 250, 204, 228, 0.5, 0.5, 0.0, 0.0);
 			langbtn = GUI::button(GetStrbyKey("NEWorld.options.languagemenu"), -250, -10, 240, 264, 0.5, 0.5, 0.0, 0.0);
@@ -25,8 +25,8 @@ namespace Menus {
 		}
 		void onUpdate() {
 			FOVyNormal = (float)(FOVyBar.barpos + 1);
-			mousemove = (mmsBar.barpos / 2 + 1) / 40.0f;
-			viewdistance = (viewdistBar.barpos + 1) / 2 + 4;
+			MouseSpeed = (mmsBar.barpos / 2 + 1) / 40.0f;
+			RenderDistance = (viewdistBar.barpos + 1) / 2 + 4;
 			if (rdstbtn.clicked) Renderoptions();
 			if (gistbtn.clicked) GUIoptions();
 			if (backbtn.clicked) {
@@ -44,8 +44,8 @@ namespace Menus {
 				savebtn.text = GetStrbyKey("NEWorld.options.save");
 			}
 			FOVyBar.text = strWithVar(GetStrbyKey("NEWorld.options.fov"), FOVyNormal);
-			mmsBar.text = strWithVar(GetStrbyKey("NEWorld.options.sensitivity"), mousemove);
-			viewdistBar.text = strWithVar(GetStrbyKey("NEWorld.options.distance"), viewdistance);
+			mmsBar.text = strWithVar(GetStrbyKey("NEWorld.options.sensitivity"), MouseSpeed);
+			viewdistBar.text = strWithVar(GetStrbyKey("NEWorld.options.distance"), RenderDistance);
 		}
 	};
 	void options() { OptionsMenu Menu; Menu.start(); }

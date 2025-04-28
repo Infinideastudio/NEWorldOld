@@ -3,11 +3,11 @@
 namespace Globalization {
 
 	int count;
-	string Cur_Lang = "zh_CN", Cur_Symbol = "", Cur_Name = "";
-	map<int, Line> Lines;
-	map<string, int> keys;
+	std::string Cur_Lang = "zh_CN", Cur_Symbol = "", Cur_Name = "";
+	std::map<int, Line> Lines;
+	std::map<std::string, int> keys;
 
-	bool LoadLang(string lang) {
+	bool LoadLang(std::string lang) {
 		std::ifstream f("lang/" + lang + ".lang");
 		if (!f.is_open()) return false;
 		std::getline(f, Cur_Symbol);
@@ -34,11 +34,11 @@ namespace Globalization {
 		return LoadLang(Cur_Lang);
 	}
 
-	string GetStrbyid(int id) {
+	std::string GetStrbyid(int id) {
 		return Lines[id].str;
 	}
 
-	string GetStrbyKey(string key) {
+	std::string GetStrbyKey(std::string key) {
 		return Lines[keys[key]].str;
 	}
 }

@@ -7,9 +7,11 @@ namespace WorldRenderer {
         int cx = getchunkpos((int)x);
         int cy = getchunkpos((int)y);
         int cz = getchunkpos((int)z);
-
+        if (frustum) {
+          frustum->update();
+          World::Chunk::setVisibilityBase(x, y, z, *frustum);
+        }
         RenderChunkList.clear();
-        if (frustum) World::Chunk::setVisibilityBase(x, y, z, *frustum);
         for (auto const& [_, c]: World::chunks) {
             if (!c->meshed()) continue;
             if (World::chunkInRange(c->x(), c->y(), c->z(), cx, cy, cz, renderdistance)) {
@@ -32,9 +34,9 @@ namespace WorldRenderer {
             double xd = cr.cx * 16.0 - x;
             double yd = cr.cy * 16.0 - cr.loadAnim - y;
             double zd = cr.cz * 16.0 - z;
-            m[12] = float(xd);
-            m[13] = float(yd);
-            m[14] = float(zd);
+            m[3] = float(xd);
+            m[7] = float(yd);
+            m[11] = float(zd);
             Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", m);
             mesh.render();
         }

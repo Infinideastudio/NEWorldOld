@@ -35,7 +35,7 @@ bool Shader::setUniform(const char* uniform, float v0, float v1, float v2, float
 bool Shader::setUniform(const char* uniform, const float * value) {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1) return false;
-    glUniformMatrix4fv(loc, 1, GL_FALSE, value);
+    glUniformMatrix4fv(loc, 1, GL_TRUE, value);
     return true;
 }
 
@@ -99,7 +99,7 @@ void Shader::checkCompileErrors(GLuint res, string errorMessage) {
     if (infologLength > 1) {
         std::unique_ptr<char[]> infoLog = std::make_unique<char[]>(infologLength + 1);
         glGetShaderInfoLog(res, infologLength + 1, &charsWritten, infoLog.get());
-        cout << infoLog.get() << endl;
+        std::cerr << infoLog.get() << std::endl;
     }
 }
 
@@ -112,6 +112,6 @@ void Shader::checkLinkingErrors(GLuint res, string errorMessage) {
     if (infologLength > 1) {
         std::unique_ptr<char[]> infoLog = std::make_unique<char[]>(infologLength + 1);
         glGetProgramInfoLog(res, infologLength + 1, &charsWritten, infoLog.get());
-        cout << infoLog.get() << endl;
+        std::cerr << infoLog.get() << std::endl;
     }
 }

@@ -12,8 +12,8 @@ namespace Renderer {
 	float Coords[4], TexCoords[4], Colors[4], Normals[4], Attribs[4];
 	bool AdvancedRender;
 	int ShadowRes = 4096;
-	int MaxShadowDist = 6;
-	float sunlightXrot = 30.0f, sunlightYrot = 60.0f;
+	int MaxShadowDistance = 6;
+	float sunlightPitch = 30.0f, sunlightHeading = 60.0f;
 	vector<Shader> shaders;
 	int ActiveShader;
 	int index = 0, size = 0;
@@ -66,7 +66,7 @@ namespace Renderer {
 	GLuint getNoiseTexture() {
 		static GLuint noiseTex = 0;
 		if (noiseTex == 0) {
-			unique_ptr<uint8_t[]> a(new uint8_t[256 * 256 * 4]);
+			std::unique_ptr<uint8_t[]> a(new uint8_t[256 * 256 * 4]);
 			for (int i = 0; i < 256 * 256; i++) a[i * 4] = a[i * 4 + 1] = static_cast<uint8_t>(rnd() * 256);
 
 			const int OffsetX = 37, OffsetY = 17;
@@ -106,8 +106,8 @@ namespace Renderer {
 		}
 
 		// Create framebuffers
-		gWidth = windowwidth;
-		gHeight = windowheight;
+		gWidth = WindowWidth;
+		gHeight = WindowHeight;
 		shadow = Framebuffer(ShadowRes, ShadowRes, 0, true, true);
 		gBuffers = Framebuffer(gWidth, gHeight, gBufferCount, true, false);
 		dBuffer = Framebuffer(gWidth, gHeight, 0, true, false);
@@ -115,8 +115,8 @@ namespace Renderer {
 		// Set constant uniforms
 		shaders[UIShader].bind();
 		shaders[UIShader].setUniformI("u_texture_array", 0);
-		shaders[UIShader].setUniform("u_buffer_width", float(windowwidth));
-		shaders[UIShader].setUniform("u_buffer_height", float(windowheight));
+		shaders[UIShader].setUniform("u_buffer_width", float(WindowWidth));
+		shaders[UIShader].setUniform("u_buffer_height", float(WindowHeight));
 
 		shaders[DefaultShader].bind();
 		shaders[DefaultShader].setUniformI("u_diffuse", 0);
@@ -128,7 +128,7 @@ namespace Renderer {
 		shaders[TranslucentShader].setUniformI("u_diffuse", 0);
 
 		float fisheyeFactor = 0.8f;
-		int shadowdist = min(MaxShadowDist, viewdistance);
+		int shadowDistance = std::min(MaxShadowDistance, RenderDistance);
 		shaders[FinalShader].bind();
 		shaders[FinalShader].setUniformI("u_diffuse_buffer", 0);
 		shaders[FinalShader].setUniformI("u_normal_buffer", 1);
@@ -140,8 +140,8 @@ namespace Renderer {
 		shaders[FinalShader].setUniform("u_buffer_height", float(gHeight));
 		shaders[FinalShader].setUniform("u_shadow_texture_resolution", float(ShadowRes));
 		shaders[FinalShader].setUniform("u_shadow_fisheye_factor", fisheyeFactor);
-		shaders[FinalShader].setUniform("u_shadow_distance", shadowdist * 16.0f);
-		shaders[FinalShader].setUniform("u_render_distance", viewdistance * 16.0f);
+		shaders[FinalShader].setUniform("u_shadow_distance", shadowDistance * 16.0f);
+		shaders[FinalShader].setUniform("u_render_distance", RenderDistance * 16.0f);
 
 		shaders[ShadowShader].bind();
 		shaders[ShadowShader].setUniformI("u_diffuse", 0);
@@ -153,57 +153,55 @@ namespace Renderer {
 	FrustumTest getLightFrustum() {
 		FrustumTest res;
 		res.LoadIdentity();
-		res.SetOrtho(-1, 1, -1, 1, -1, 1);
-		res.MultRotate(sunlightXrot, 1.0f, 0.0f, 0.0f);
-		res.MultRotate(sunlightYrot, 0.0f, 1.0f, 0.0f);
+		res.MultRotate(-sunlightHeading, 0.0f, 1.0f, 0.0f);
+		res.MultRotate(sunlightPitch, 1.0f, 0.0f, 0.0f);
 		return res;
 	}
 
-	FrustumTest getShadowMapFrustum(double /* heading */, double /* pitch */, int shadowdist, const FrustumTest& /* frus */) {
+	FrustumTest getShadowMapFrustum(double heading, double pitch, int shadowDistance, const FrustumTest& viewFrustum) {
 		FrustumTest lightSpace = getLightFrustum();
-
-		// Minimal Bounding Box
 		/*
-		std::vector<Vec3f> vertexes;
-		float halfHeight = std::tan(frus.getFOV() / 2.0f);
-		float halfWidth = halfHeight * frus.getAspect();
-		float pnear = frus.getNear(), pfar = shadowdist * 16.0f;
-		float nh = halfHeight * pnear, nw = halfWidth * pnear;
-		float fh = halfHeight * pfar, fw = halfWidth * pfar;
-		vertexes.push_back(Vec3f(-nw, -nh, -pnear));
-		vertexes.push_back(Vec3f(nw, -nh, -pnear));
-		vertexes.push_back(Vec3f(nw, nh, -pnear));
-		vertexes.push_back(Vec3f(-nw, nh, -pnear));
-		vertexes.push_back(Vec3f(-fw, -fh, -pfar));
-		vertexes.push_back(Vec3f(fw, -fh, -pfar));
-		vertexes.push_back(Vec3f(fw, fh, -pfar));
-		vertexes.push_back(Vec3f(-fw, fh, -pfar));
-		Mat4f frustumRotate = Mat4f::rotation(static_cast<float>(pitch), Vec3f(1, 0, 0)) * Mat4f::rotation(static_cast<float>(heading), Vec3f(0, 1, 0));
-		Mat4f toLightSpace = frustumRotate * Mat4f(lightSpace.getProjMatrix()) * Mat4f(lightSpace.getModlMatrix());
-		for (size_t i = 0; i < vertexes.size(); i++) vertexes[i] = toLightSpace.transformVec3(vertexes[i]);
-		Vec3f nearCenter = toLightSpace.transformVec3(Vec3f(0, 0, -pnear));
-		Vec3f farCenter = toLightSpace.transformVec3(Vec3f(0, 0, -pfar));
+		// Minimal Bounding Box
+		float halfHeight = std::tan(viewFrustum.getFov() * (std::numbers::pi_v<float> / 180.0f) / 2.0f);
+		float halfWidth = halfHeight * viewFrustum.getAspect();
+		float zNear = viewFrustum.getNear(), zFar = shadowDistance * 16.0f;
+		float xNear = halfWidth * zNear, yNear = halfHeight * zNear;
+		float xFar = halfWidth * zFar, yFar = halfHeight * zFar;
+		auto vertices = std::array<Vec3f, 8>{
+			Vec3f(-xNear, -yNear, -zNear),
+			Vec3f(xNear, -yNear, -zNear),
+			Vec3f(xNear, yNear, -zNear),
+			Vec3f(-xNear, yNear, -zNear),
+			Vec3f(-xFar, -yFar, -zFar),
+			Vec3f(xFar, -yFar, -zFar),
+			Vec3f(xFar, yFar, -zFar),
+			Vec3f(-xFar, yFar, -zFar),
+		};
+		Mat4f frustumRotate = Mat4f::rotation(static_cast<float>(heading), Vec3f(0, 1, 0)) * Mat4f::rotation(-static_cast<float>(pitch), Vec3f(1, 0, 0));
+		Mat4f toLightSpace = Mat4f(lightSpace.getProjMatrix()) * Mat4f(lightSpace.getModlMatrix()) * frustumRotate;
+		for (size_t i = 0; i < vertices.size(); i++) vertices[i] = toLightSpace.transformVec3(vertices[i]);
+		Vec3f nearCenter = toLightSpace.transformVec3(Vec3f(0, 0, -zNear));
+		Vec3f farCenter = toLightSpace.transformVec3(Vec3f(0, 0, -zFar));
 
-		float xmin = vertexes[0].x, xmax = vertexes[0].x, ymin = vertexes[0].y, ymax = vertexes[0].y, zmin = vertexes[0].z, zmax = vertexes[0].z;
-		for (size_t i = 0; i < vertexes.size(); i++) {
-			xmin = min(xmin, vertexes[i].x);
-			xmax = max(xmax, vertexes[i].x);
-			ymin = min(ymin, vertexes[i].y);
-			ymax = max(ymax, vertexes[i].y);
-			zmin = min(zmin, vertexes[i].z);
-			zmax = max(zmax, vertexes[i].z);
+		float xmin = vertices[0].x, xmax = vertices[0].x;
+		float ymin = vertices[0].y, ymax = vertices[0].y;
+		float zmin = vertices[0].z, zmax = vertices[0].z;
+		for (size_t i = 0; i < vertices.size(); i++) {
+			xmin = std::min(xmin, vertices[i].x);
+			xmax = std::max(xmax, vertices[i].x);
+			ymin = std::min(ymin, vertices[i].y);
+			ymax = std::max(ymax, vertices[i].y);
+			zmin = std::min(zmin, vertices[i].z);
+			zmax = std::max(zmax, vertices[i].z);
 		}
-		float scale = 16.0f * sqrt(3.0f);
-		float length = shadowdist * scale;
 		FrustumTest res = lightSpace;
-		res.SetOrtho(xmin, xmax, ymin, ymax, -1000.0, 1000.0);
+		res.MultOrtho(xmin, xmax, ymin, ymax, -1000.0f, 1000.0f);
 		*/
-
 		// Original
 		float scale = 16.0f; // * sqrt(3.0f);
-		float length = shadowdist * scale;
+		float length = shadowDistance * scale;
 		FrustumTest res = lightSpace;
-		res.SetOrtho(-length, length, -length, length, -1000.0f, 1000.0f);
+		res.MultOrtho(-length, length, -length, length, -1000.0f, 1000.0f);
 		return res;
 	}
 
@@ -306,7 +304,7 @@ namespace Renderer {
 		Shader::unbind();
 	}
 
-	void StartFinalPass(double xpos, double ypos, double zpos, double heading, double pitch, const FrustumTest& viewFrustum, float gameTime) {
+	void StartFinalPass(double xpos, double ypos, double zpos, const FrustumTest& viewFrustum, const FrustumTest& lightFrustum, float gameTime) {
 		assert(AdvancedRender);
 
 		// Bind textures to pre-defined slots
@@ -320,10 +318,7 @@ namespace Renderer {
 		// Set dynamic uniforms
 		int repeat = 25600;
 		int ixpos = int(floor(xpos)), iypos = int(floor(ypos)), izpos = int(floor(zpos));
-		int shadowdist = min(MaxShadowDist, viewdistance);
-		FrustumTest frus = getShadowMapFrustum(heading, pitch, shadowdist, viewFrustum);
-		Vec3f lightdir = (Mat4f::rotation(-sunlightXrot, Vec3f(1, 0, 0)) * Mat4f::rotation(-sunlightYrot, Vec3f(0, 1, 0))).transformVec3(Vec3f(0, 0, -1));
-		lightdir.normalize();
+		Vec3f lightdir = (Mat4f::rotation(sunlightHeading, Vec3f(0, 1, 0)) * Mat4f::rotation(-sunlightPitch, Vec3f(1, 0, 0))).transformVec3(Vec3f(0, 0, -1));
 
 		Shader& shader = shaders[FinalShader];
 		bindShader(FinalShader);
@@ -331,8 +326,8 @@ namespace Renderer {
 		shader.setUniform("u_modl", viewFrustum.getModlMatrix());
 		shader.setUniform("u_proj_inv", Mat4f(viewFrustum.getProjMatrix()).inverse().data);
 		shader.setUniform("u_modl_inv", Mat4f(viewFrustum.getModlMatrix()).inverse().data);
-		shader.setUniform("u_shadow_proj", frus.getProjMatrix());
-		shader.setUniform("u_shadow_modl", frus.getModlMatrix());
+		shader.setUniform("u_shadow_proj", lightFrustum.getProjMatrix());
+		shader.setUniform("u_shadow_modl", lightFrustum.getModlMatrix());
 		shader.setUniform("u_sunlight_dir", lightdir.x, lightdir.y, lightdir.z);
 		shader.setUniform("u_game_time", gameTime);
 		shader.setUniformI("u_repeat_length", repeat);

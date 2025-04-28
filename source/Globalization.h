@@ -3,18 +3,18 @@
 
 namespace Globalization {
 	struct Line {
-		string str;
+		std::string str;
 		int id;
 		GLuint PerRender;
 	};
 	
 	extern int count;
-	extern map<int, Line> Lines;
-	extern map<string, int> keys;
-	extern string Cur_Lang;
+	extern std::map<int, Line> Lines;
+	extern std::map<std::string, int> keys;
+	extern std::string Cur_Lang;
 	
-	bool LoadLang(string lang);
+	bool LoadLang(std::string lang);
 	bool Load();
-	string GetStrbyid(int id);
-	string GetStrbyKey(string key);
+	std::string GetStrbyid(int id);
+	std::string GetStrbyKey(std::string key);
 }

@@ -1,57 +1,41 @@
 #include "Definitions.h"
 
-//Global Vars
-float FOVyNormal = 70.0f;       //��Ұ�Ƕ�
-float mousemove = 0.2f;         //��������
-int viewdistance = 8;           //��Ұ����
-int cloudwidth = 10;            //�ƵĿ��
-int selectPrecision = 32;       //ѡ�񷽿�ľ���
-int selectDistance = 8;         //ѡ�񷽿�ľ���
-float walkspeed = 0.15f;        //���ǰ���ٶ�
-float runspeed = 0.3f;          //����ܲ��ٶ�
-int MaxAirJumps = 3 - 1;        //����N������
-bool SmoothLighting = true;     //ƽ������
-bool NiceGrass = true;          //�ݵز�������
-bool MergeFace = false;         //�ϲ�����Ⱦ
-bool GUIScreenBlur = false;      //GUI����ģ��  Void:����㷨�����ˣ��ҹص���
-int linelength = 10;            //��F3��׼���йء�����
-int linedist = 30;              //��F3��׼���йء�����
-float skycolorR = 0.70f;         //�����ɫRed
-float skycolorG = 0.80f;         //�����ɫGreen
-float skycolorB = 0.86f;         //�����ɫBlue
+float FOVyNormal = 70.0f;
 float FOVyRunning = 8.0f;
-float FOVyExt;
-double stretch = 1.0f;          //ppi���ű�������gui����ʹ�ã�
-int Multisample = 0;            //���ز��������
-bool vsync = false;             //��ֱͬ��
-int gametime = 0;				//��Ϸʱ�� 0~2592000
-//float daylight;
+float MouseSpeed = 0.1f;
+int RenderDistance = 8;
+bool SmoothLighting = true;
+bool NiceGrass = true;
+bool MergeFace = false;
+bool UIBackgroundBlur = false;
+int Multisample = 0;
+bool VerticalSync = false;
+int GameTime = 0;
+int WindowWidth = DefaultWindowWidth;
+int WindowHeight = DefaultWindowHeight;
+double Stretch = 1.0f;
 
-int windowwidth;     //���ڿ��
-int windowheight;    //���ڿ��
-bool gamebegin, gameexit, bagOpened;
-
-//������Ϸ
-bool multiplayer = false;
-string serverip;
-unsigned short port = 30001;
-
+TextureID SplashTexture;
+TextureID TitleTexture;
+TextureID UIBackgroundTextures[6];
+TextureID SelectedTexture;
+TextureID UnselectedTexture;
 TextureID BlockTextureArray;
-TextureID tex_select, tex_unselect, tex_splash, tex_title, tex_mainmenu[6];
 TextureID DefaultSkin;
 
-//OpenGL
-int GLVersionMajor, GLVersionMinor, GLVersionRev;
-//GLFW
+int GLMajorVersion, GLMinorVersion, GLRevisionVersion;
 GLFWwindow* MainWindow;
 GLFWcursor* MouseCursor;
 
-//�����������
 int mx, my, mxl, myl;
 int mw, mb, mbp, mbl, mwl;
 double mxdelta, mydelta;
-//������������
-string inputstr;
+std::string inputstr;
+
+bool GameBegin, GameExit;
+bool Multiplayer = false;
+std::string ServerIP;
+unsigned short ServerPort = 30001;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 int c_getChunkPtrFromCPA;
