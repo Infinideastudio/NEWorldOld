@@ -376,7 +376,7 @@ void registerCommands() {
 		conv(command[3], z);
 		BlockID b;
 		conv(command[4], b);
-		World::setblock(x, y, z, b);
+		World::setBlock(x, y, z, b);
 		return true;
 	}));
 	commands.push_back(Command("/tree", [](const vector<string>& command) {
@@ -477,28 +477,28 @@ void gameUpdate() {
 			gy = y + cy * 16;
 			z = int(rnd() * 16);
 			gz = z + cz * 16;
-			if (c->getblock(x, y, z) == Blocks::DIRT &&
-				World::getblock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR && (
-					World::getblock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx, gy, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx, gy, gz - 1, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx + 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx - 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx, gy + 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx, gy + 1, gz - 1, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx + 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-					World::getblock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)) {
+			if (c->getBlock(x, y, z) == Blocks::DIRT &&
+				World::getBlock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR && (
+					World::getBlock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx, gy, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx, gy, gz - 1, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx + 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx - 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx, gy + 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx, gy + 1, gz - 1, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx + 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
+					World::getBlock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)) {
 				// 长草
-				c->setblock(x, y, z, Blocks::GRASS);
-				World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
+				c->setBlock(x, y, z, Blocks::GRASS);
+				World::updateBlock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
 			}
-			if (c->getblock(x, y, z) == Blocks::GRASS && World::getblock(gx, gy + 1, gz, Blocks::AIR) != Blocks::AIR) {
+			if (c->getBlock(x, y, z) == Blocks::GRASS && World::getBlock(gx, gy + 1, gz, Blocks::AIR) != Blocks::AIR) {
 				// 草被覆盖
-				c->setblock(x, y, z, Blocks::DIRT);
-				World::updateblock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
+				c->setBlock(x, y, z, Blocks::DIRT);
+				World::updateBlock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
 			}
 		}
 	}
@@ -582,7 +582,7 @@ void gameUpdate() {
 			lz += std::cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) / SelectPrecision;
 
 			// 碰到方块
-			if (BlockInfo(World::getblock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
+			if (BlockInfo(World::getBlock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
 				int x, y, z, xl, yl, zl;
 				x = RoundInt(lx);
 				y = RoundInt(ly);
@@ -607,10 +607,10 @@ void gameUpdate() {
 				if (World::chunkOutOfBound(selcx, selcy, selcz) == false) {
 					World::Chunk* cp = World::getChunkPtr(selcx, selcy, selcz);
 					if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
-					selb = cp->getblock(selbx, selby, selbz);
+					selb = cp->getBlock(selbx, selby, selbz);
 				}
-				selbr = World::getbrightness(xl, yl, zl);
-				selb = World::getblock(x, y, z);
+				selbr = World::getBrightness(xl, yl, zl);
+				selb = World::getBlock(x, y, z);
 				if (mb == 1) { // 鼠标左键
 					Particles::throwParticle(selb,
 											 float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
@@ -631,7 +631,7 @@ void gameUpdate() {
 													 float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
 													 float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
 						}
-						World::pickblock(x, y, z);
+						World::setBlock(x, y, z, Blocks::AIR);
 					}
 				}
 				if (mb == 2 && mbp == false) { // 鼠标右键
@@ -1028,8 +1028,8 @@ void render() {
 	// Build shadow map
 	auto shadowMatrix = Renderer::getShadowMatrix();
 	if (Renderer::AdvancedRender) {
-		// Mat4f shadowMatrixTest = Renderer::getShadowMatrixExperimental(FOVyNormal + FOVyExt, static_cast<float>(WindowWidth) / WindowHeight, pheading, plookupdown, Player::ViewFrustum);
-		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, Renderer::getShadowDistance(), interp, FrustumTest(shadowMatrix));
+		auto shadowMatrixTest = Renderer::getShadowMatrixExperimental(FOVyNormal + FOVyExt, static_cast<float>(WindowWidth) / WindowHeight, pheading, plookupdown);
+		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, Renderer::getShadowDistance(), interp, FrustumTest(shadowMatrixTest));
 		Renderer::StartShadowPass(shadowMatrix, interpolatedTime);
 		WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
 		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(0.0f));
@@ -1123,7 +1123,7 @@ void render() {
 	glClearDepth(1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT);
 
-	if (World::getblock(RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)) == Blocks::WATER) {
+	if (World::getBlock(RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)) == Blocks::WATER) {
 		auto& shader = Renderer::shaders[Renderer::UIShader];
 		shader.bind();
 		glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);

@@ -144,8 +144,8 @@ bool Player::putBlock(int x, int y, int z, BlockID blockname) {
 	blockbox.xmax = x + 0.5; blockbox.ymax = y + 0.5; blockbox.zmax = z + 0.5;
 	int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
 	if (!World::chunkOutOfBound(cx, cy, cz) && (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall ||
-	        BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getblock(x, y, z)).isSolid() == false)) {
-		World::putblock(x, y, z, blockname);
+	        BlockInfo(blockname).isSolid() == false) && BlockInfo(World::getBlock(x, y, z)).isSolid() == false)) {
+		World::setBlock(x, y, z, blockname);
 		success = true;
 	}
 	return success;

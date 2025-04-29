@@ -10,7 +10,7 @@ namespace World {
 	struct HMapManager {
 		int H[16][16];
 		int low, high, count;
-		HMapManager() {};
+
 		HMapManager(int cx, int cz) {
 			int l = MAXINT, hi = WorldGen::WaterLevel, h;
 			for (int x = 0; x < 16; ++x) {
@@ -27,12 +27,6 @@ namespace World {
 	};
 
 	Chunk::Chunk(int cx, int cy, int cz, ChunkID cid) : cx(cx), cy(cy), cz(cz), cid(cid) {
-		blocks = std::make_unique<BlockID[]>(4096);
-		brightness = std::make_unique<Brightness[]>(4096);
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-		if (pblocks == nullptr || pbrightness == nullptr)
-			DebugError("Allocate memory failed!");
-#endif
 		if (!loadFromFile()) build();
 		if (!isEmpty) isUpdated = true;
 		loadedChunks++;
@@ -47,13 +41,7 @@ namespace World {
 	
 	std::string Chunk::getChunkPath() const {
 		std::stringstream ss;
-		ss << "Worlds/" << WorldName << "/chunks/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldChunk";
-		return ss.str();
-}
-
-	std::string Chunk::getObjectsPath() const {
-		std::stringstream ss;
-		ss << "Worlds/" << WorldName << "/objects/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldObjects";
+		ss << "worlds/" << WorldName << "/chunks/chunk_" << cx << "_" << cy << "_" << cz << ".neworldchunk";
 		return ss.str();
 	}
 
@@ -79,8 +67,8 @@ namespace World {
 			return;
 		}
 		if (cy < cur.low) {
-			for (int i = 0; i < 4096; i++) blocks[i] = Blocks::ROCK;
-			memset(brightness.get(), 0, 4096 * sizeof(Brightness));
+			std::fill(blocks.begin(), blocks.end(), Blocks::ROCK);
+			std::fill(brightness.begin(), brightness.end(), (Brightness)0);
 			if (cy == 0) for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) blocks[x * 256 + z] = Blocks::BEDROCK;
 			isEmpty = false;
 			return;
@@ -88,8 +76,8 @@ namespace World {
 
 		// Normal Calc
 		// Init
-		memset(blocks.get(), 0, 4096 * sizeof(BlockID)); //Empty the chunk
-		memset(brightness.get(), 0, 4096 * sizeof(Brightness)); //Set All Brightness to 0
+		std::fill(blocks.begin(), blocks.end(), Blocks::AIR); // Empty the chunk
+		std::fill(brightness.begin(), brightness.end(), (Brightness)0); // Set All Brightness to 0
 
 		int h = 0, sh = 0, wh = 0;
 		int minh, maxh, cur_br;
@@ -156,7 +144,7 @@ namespace World {
 
 	void Chunk::build() {
 		buildTerrain();
-		//if (!Empty) buildDetail();
+		// if (!Empty) buildDetail();
 	}
 
 	bool Chunk::loadFromFile() {
@@ -165,11 +153,10 @@ namespace World {
 		std::ifstream file(getChunkPath(), std::ios::in | std::ios::binary);
 		exists = file.is_open();
 		if (exists) {
-			file.read((char*)blocks.get(), 4096 * sizeof(BlockID));
-			file.read((char*)brightness.get(), 4096 * sizeof(Brightness));
+			file.read((char*)blocks.data(), 4096 * sizeof(BlockID));
+			file.read((char*)brightness.data(), 4096 * sizeof(Brightness));
 			file.read((char*)&isDetailGenerated, sizeof(bool));
 		}
-		// file.open(getObjectsPath(), std::ios::in | std::ios::binary);
 #endif
 		return exists;
 	}
@@ -181,23 +168,16 @@ namespace World {
 			std::ofstream file(getChunkPath(), std::ios::out | std::ios::binary);
 			success = file.is_open();
 			if (success) {
-				file.write((char*)blocks.get(), 4096 * sizeof(BlockID));
-				file.write((char*)brightness.get(), 4096 * sizeof(Brightness));
+				file.write((char*)blocks.data(), 4096 * sizeof(BlockID));
+				file.write((char*)brightness.data(), 4096 * sizeof(Brightness));
 				file.write((char*)&isDetailGenerated, sizeof(bool));
 			}
 		}
-		// if (objects.size() != 0) {}
 #endif
 		return success;
 	}
 
 	void Chunk::buildMeshes() {
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-		if (pblocks == nullptr || pbrightness == nullptr) {
-			DebugWarning("Empty pointer when building vertex buffers!");
-			return;
-		}
-#endif
 		// Require neighboring chunks to be loaded
 		int x, y, z;
 		for (x = -1; x <= 1; x++) {

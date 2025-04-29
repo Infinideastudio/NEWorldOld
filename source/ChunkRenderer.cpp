@@ -42,8 +42,8 @@ namespace ChunkRenderer {
 							pblocks[index] = Blocks::AIR;
 							pbrightness[index] = (cy + rcy < 0) ? World::MinBrightness : World::SkyBrightness;
 						} else {
-							pblocks[index] = p->getblock(bx, by, bz);
-							pbrightness[index] = p->getbrightness(bx, by, bz);
+							pblocks[index] = p->getBlock(bx, by, bz);
+							pbrightness[index] = p->getBrightness(bx, by, bz);
 						}
 						index++;
 					}

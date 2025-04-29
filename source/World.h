@@ -71,13 +71,10 @@ inline bool chunkLoaded(int x, int y, int z) {
 vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB& box);
 bool inWater(const Hitbox::AABB& box);
 
-void updateblock(int x, int y, int z, bool blockchanged, int depth = 0);
-BlockID getblock(int x, int y, int z, BlockID mask = Blocks::AIR, Chunk* cptr = nullptr);
-Brightness getbrightness(int x, int y, int z, Chunk* cptr = nullptr);
-void setblock(int x, int y, int z, BlockID Block, Chunk* cptr = nullptr);
-void setbrightness(int x, int y, int z, Brightness Brightness, Chunk* cptr = nullptr);
-inline void putblock(int x, int y, int z, BlockID Block) { setblock(x, y, z, Block); }
-inline void pickblock(int x, int y, int z) { setblock(x, y, z, Blocks::AIR); }
+void updateBlock(int x, int y, int z, bool blockChanged, int depth = 0);
+BlockID getBlock(int x, int y, int z, BlockID mask = Blocks::AIR);
+Brightness getBrightness(int x, int y, int z);
+void setBlock(int x, int y, int z, BlockID value);
 
 inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
 	if (x < px - dist || x > px + dist - 1 || y < py - dist || y > py + dist - 1 || z < pz - dist || z > pz + dist - 1) return false;
@@ -91,5 +88,5 @@ void saveAllChunks();
 void destroyAllChunks();
 
 void buildtree(int x, int y, int z);
-void explode(int x, int y, int z, int r, Chunk* c = nullptr);
+void explode(int x, int y, int z, int r);
 }

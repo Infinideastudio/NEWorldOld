@@ -13,15 +13,14 @@ extern Brightness SkyBrightness;
 
 class Chunk;
 ChunkID getChunkID(int x, int y, int z);
-void explode(int x, int y, int z, int r, Chunk* c);
 
 class Chunk {
 private:
 	int cx, cy, cz;
 	ChunkID cid;
 
-	std::unique_ptr<BlockID[]> blocks;
-	std::unique_ptr<Brightness[]> brightness;
+	std::array<BlockID, 4096> blocks;
+	std::array<Brightness, 4096> brightness;
 
 	bool isEmpty = false;
 	bool isUpdated = false;
@@ -36,7 +35,6 @@ private:
 	void buildDetail();
 	void build();
 	std::string getChunkPath() const;
-	std::string getObjectsPath() const;
 
 public:
 	Chunk(int cx, int cy, int cz, ChunkID cid);
@@ -75,46 +73,40 @@ public:
 		return meshes[index];
 	}
 
-	BlockID getblock(int x, int y, int z) const {
+	BlockID getBlock(size_t x, size_t y, size_t z) const {
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-		if (pblocks == nullptr) { DebugWarning("chunk.getblock() error: Empty pointer"); return; }
-		if (x > 15 || x < 0 || y > 15 || y < 0 || z > 15 || z < 0) { DebugWarning("chunk.getblock() error: Out of range"); return; }
+		if (x > 15 || y > 15 || z > 15) { DebugWarning("Chunk.getBlock() error: out of range"); return; }
 #endif
 		if (isEmpty) return Blocks::AIR;
 		return blocks[(x << 8) ^ (y << 4) ^ z];
 	}
 
-	Brightness getbrightness(int x, int y, int z) const {
+	Brightness getBrightness(size_t x, size_t y, size_t z) const {
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-		if (pbrightness == nullptr) { DebugWarning("chunk.getbrightness() error: Empty pointer"); return; }
-		if (x > 15 || x < 0 || y > 15 || y < 0 || z > 15 || z < 0) { DebugWarning("chunk.getbrightness() error: Out of range"); return; }
+		if (x > 15 || y > 15 || z > 15) { DebugWarning("Chunk.getBrightness() error: out of range"); return; }
 #endif
 		if (isEmpty) return cy < 0 ? MinBrightness : SkyBrightness;
 		return brightness[(x << 8) ^ (y << 4) ^ z];
 	}
 
-	void setblock(int x, int y, int z, BlockID iblock) {
+	void setBlock(size_t x, size_t y, size_t z, BlockID value) {
 		if (isEmpty) {
-			std::fill(blocks.get(), blocks.get() + 4096, Blocks::AIR);
-			std::fill(brightness.get(), brightness.get() + 4096, cy < 0 ? MinBrightness : SkyBrightness);
+			std::fill(blocks.begin(), blocks.end(), Blocks::AIR);
+			std::fill(brightness.begin(), brightness.end(), cy < 0 ? MinBrightness : SkyBrightness);
 			isEmpty = false;
 		}
-		if (iblock == Blocks::TNT) {
-			World::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 8, this);
-			return;
-		}
-		blocks[(x << 8) ^ (y << 4) ^ z] = iblock;
+		blocks[(x << 8) ^ (y << 4) ^ z] = value;
 		isUpdated = true;
 		isModified = true;
 	}
 
-	void setbrightness(int x, int y, int z, Brightness ibrightness) {
+	void setBrightness(size_t x, size_t y, size_t z, Brightness value) {
 		if (isEmpty) {
-			std::fill(blocks.get(), blocks.get() + 4096, Blocks::AIR);
-			std::fill(brightness.get(), brightness.get() + 4096, cy < 0 ? MinBrightness : SkyBrightness);
+			std::fill(blocks.begin(), blocks.end(), Blocks::AIR);
+			std::fill(brightness.begin(), brightness.end(), cy < 0 ? MinBrightness : SkyBrightness);
 			isEmpty = false;
 		}
-		brightness[(x << 8) ^ (y << 4) ^ z] = ibrightness;
+		brightness[(x << 8) ^ (y << 4) ^ z] = value;
 		isUpdated = true;
 		isModified = true;
 	}
