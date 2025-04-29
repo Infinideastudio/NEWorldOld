@@ -1,16 +1,13 @@
 # NEWorld
+
 NEWorld is an open-source game with similar game rules to Minecraft.  
+
 --------------------------------------------------  
-There is a Visual Studio 2015 solution. If you have installed VS2015 on your computer, you can use the solution.  
-If you don't have VS Platform Tools v140 for Windows XP, you can use your default platform tools.  
-You can also compile it with any C++ compiler that supports the ISO C++11 standards. But you need to set some directories.  
+
+There is a Visual Studio 2022 solution. If you have installed VS2022 on your computer, you can use the solution.
+
+You can also compile it with any C++ compiler that supports the ISO C++20 standards. But you need to set some directories.
   
-For client:  
-- Library headers are in the directory 'include'.  
-- Libraries are in 'libraries'. (These are MSVC static link libraries '.lib' . if you used G++, you must look for '.a' files.)  
-- Source code is in 'source'. (Maybe there are some encoding problems...)  
-  
-For server:  
-Just compile it and run!
---------------------------------------------------  
-Welcome to develop with us!  
+- Library headers are in the directory 'include'.
+- Libraries should go to 'libraries' (you must download them manually for now, this includes the latest versions of GLFW3, GLEW and FreeType2).
+- Source code is in 'source'.
