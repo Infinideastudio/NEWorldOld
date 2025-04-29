@@ -25,7 +25,6 @@ public:
 	//�޸���Ϸģʽ
 	static void changeGameMode(int gamemode);
 
-	static PlayerPacket convertToPlayerPacket();
 	static Hitbox::AABB playerbox;
 	static vector<Hitbox::AABB> Hitboxes;
 	static double xa, ya, za, xd, yd, zd;

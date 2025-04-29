@@ -57,9 +57,6 @@ extern std::u32string inputstr;
 extern bool backspace;
 
 extern bool GameBegin, GameExit;
-extern bool Multiplayer;
-extern std::string ServerIP;
-extern unsigned short ServerPort;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 extern int c_getChunkPtrFromCPA;

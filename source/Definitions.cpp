@@ -35,9 +35,6 @@ std::u32string inputstr;
 bool backspace;
 
 bool GameBegin, GameExit;
-bool Multiplayer = false;
-std::string ServerIP;
-unsigned short ServerPort = 30001;
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 int c_getChunkPtrFromCPA;

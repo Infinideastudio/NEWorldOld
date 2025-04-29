@@ -15,7 +15,6 @@
 #include "GUI.h"
 #include "Menus.h"
 #include "FrustumTest.h"
-#include "Network.h"
 #include "Items.h"
 #include "Globalization.h"
 #include "Command.h"
@@ -147,15 +146,6 @@ int main() {
 		Menus::mainmenu();
 
 		// 初始化游戏状态
-		if (Multiplayer) {
-			printf("[Console][Game]");
-			printf("Init networking...\n");
-			fastSrand((unsigned int)time(NULL));
-			Player::name = "";
-			Player::onlineID = rand();
-			Network::init(ServerIP, ServerPort);
-		}
-
 		printf("[Console][Game]");
 		printf("Init player...\n");
 		if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
@@ -241,7 +231,6 @@ int main() {
 		// 保存并卸载世界
 		saveGame();
 		World::destroyAllChunks();
-		if (Multiplayer) Network::cleanUp();
 	}
 
 	Mod::ModLoader::unloadMods();
@@ -1556,14 +1545,6 @@ void drawGUI() {
 		ss << World::updatedChunks << " chunks updated";
 		debugText(ss.str());
 		ss.str("");
-
-		if (Multiplayer) {
-			MutexLock(Network::mutex);
-			ss << Network::getRequestCount() << "/" << NetworkRequestMax << " network requests";
-			debugText(ss.str());
-			ss.str("");
-			MutexUnlock(Network::mutex);
-		}
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		ss << c_getChunkPtrFromCPA << " chunk pointer array requests";
