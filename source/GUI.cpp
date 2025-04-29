@@ -37,7 +37,7 @@ void drawBackground() {
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glMultMatrixf(Mat4f::perspective(90.0f, (float)WindowWidth / WindowHeight, 0.1f, 10.0f).getTranspose().data);
+	glMultMatrixf(Mat4f::perspective(90.0f, (float)WindowWidth / WindowHeight, 0.1f, 10.0f).transpose().data);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);

@@ -26,24 +26,8 @@
 #include <numbers>
 
 template <typename T>
-class Vec3 {
-public:
-    using param_type = T;
-
+struct Vec3 {
     T x, y, z;
-
-    Vec3() : x(), y(), z() {
-    }
-
-    Vec3(param_type x_, param_type y_, param_type z_) : x(x_), y(y_), z(z_) {
-    }
-
-    Vec3(param_type value) : x(value), y(value), z(value) {
-    }
-
-    template <typename U, std::enable_if_t<std::is_convertible<T, U>::value, int> = 0>
-    Vec3(const Vec3<U>& rhs) : x(T(rhs.x)), y(T(rhs.y)), z(T(rhs.z)) {
-    }
 
     // Get the square of vector length
     T lengthSqr() const {

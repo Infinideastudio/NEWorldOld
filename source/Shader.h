@@ -1,5 +1,7 @@
 #pragma once
 #include "StdInclude.h"
+#include "Vec3.h"
+#include "Mat4.h"
 
 class Shader {
 public:
@@ -32,11 +34,18 @@ public:
 	static inline void unbind() { glUseProgram(0); }
 
 	bool setUniform(const char* uniform, float value);
-	bool setUniform(const char* uniform, float v0, float v1, float v2);
-	bool setUniform(const char* uniform, float v0, float v1, float v2, float v3);
-	bool setUniform(const char* uniform, const float* value);
 	bool setUniformI(const char* uniform, int value);
+	bool setUniform(const char* uniform, float v0, float v1);
+	bool setUniformI(const char* uniform, int v0, int v1);
+	bool setUniform(const char* uniform, float v0, float v1, float v2);
 	bool setUniformI(const char* uniform, int v0, int v1, int v2);
+	bool setUniform(const char* uniform, float v0, float v1, float v2, float v3);
+	bool setUniformI(const char* uniform, int v0, int v1, int v2, int v3);
+	bool setUniform(const char* uniform, const float* value);
+
+	bool setUniform(const char* uniform, Vec3f const& value) { return setUniform(uniform, value.x, value.y, value.z); }
+	bool setUniformI(const char* uniform, Vec3i const& value) { return setUniformI(uniform, value.x, value.y, value.z); }
+	bool setUniform(const char* uniform, Mat4f const& value) { return setUniform(uniform, value.data); }
 
 private:
 	static GLuint loadShader(string filename, unsigned int mode, std::set<string> defines);

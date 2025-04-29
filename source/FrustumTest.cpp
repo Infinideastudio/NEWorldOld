@@ -1,77 +1,56 @@
 #include "FrustumTest.h"
 #include <memory>
 
-void FrustumTest::LoadIdentity() {
-	proj = Mat4f(1.0f);
-	modl = Mat4f(1.0f);
-}
+FrustumTest::FrustumTest(Mat4f const& mvp) {
+	// The following code assumes column-major matrices
+	auto m = mvp.transpose();
 
-void FrustumTest::MultPerspective(float fov, float aspect, float near, float far) {
-	proj = Mat4f::perspective(fov, aspect, near, far) * proj;
-	mFov = fov;
-	mAspect = aspect;
-	mNear = near;
-	mFar = far;
-}
+	auto normalize = [&](int side) {
+		float magnitude = std::sqrt(frus[side + 0] * frus[side + 0] + frus[side + 1] * frus[side + 1] + frus[side + 2] * frus[side + 2]);
+		frus[side + 0] /= magnitude;
+		frus[side + 1] /= magnitude;
+		frus[side + 2] /= magnitude;
+		frus[side + 3] /= magnitude;
+	};
 
-void FrustumTest::MultOrtho(float left, float right, float bottom, float top, float near, float far) {
-	modl = Mat4f::ortho(left, right, bottom, top, near, far) * modl;
-}
-
-void FrustumTest::MultRotate(float angle, float x, float y, float z) {
-	modl = Mat4f::rotation(angle, Vec3f(x, y, z)) * modl;
-}
-
-inline void FrustumTest::normalize(int side) {
-	float magnitude = std::sqrt(frus[side + 0] * frus[side + 0] + frus[side + 1] * frus[side + 1] + frus[side + 2] * frus[side + 2]);
-	frus[side + 0] /= magnitude;
-	frus[side + 1] /= magnitude;
-	frus[side + 2] /= magnitude;
-	frus[side + 3] /= magnitude;
-}
-
-void FrustumTest::update() {
-	Mat4f mvp = proj * modl;
-	mvp.transpose();
-
-	frus[0] = mvp.data[3] - mvp.data[0];
-	frus[1] = mvp.data[7] - mvp.data[4];
-	frus[2] = mvp.data[11] - mvp.data[8];
-	frus[3] = mvp.data[15] - mvp.data[12];
+	frus[0] = m.data[3] - m.data[0];
+	frus[1] = m.data[7] - m.data[4];
+	frus[2] = m.data[11] - m.data[8];
+	frus[3] = m.data[15] - m.data[12];
 	normalize(0);
 
-	frus[4] = mvp.data[3] + mvp.data[0];
-	frus[5] = mvp.data[7] + mvp.data[4];
-	frus[6] = mvp.data[11] + mvp.data[8];
-	frus[7] = mvp.data[15] + mvp.data[12];
+	frus[4] = m.data[3] + m.data[0];
+	frus[5] = m.data[7] + m.data[4];
+	frus[6] = m.data[11] + m.data[8];
+	frus[7] = m.data[15] + m.data[12];
 	normalize(4);
 
-	frus[8] = mvp.data[3] + mvp.data[1];
-	frus[9] = mvp.data[7] + mvp.data[5];
-	frus[10] = mvp.data[11] + mvp.data[9];
-	frus[11] = mvp.data[15] + mvp.data[13];
+	frus[8] = m.data[3] + m.data[1];
+	frus[9] = m.data[7] + m.data[5];
+	frus[10] = m.data[11] + m.data[9];
+	frus[11] = m.data[15] + m.data[13];
 	normalize(8);
 
-	frus[12] = mvp.data[3] - mvp.data[1];
-	frus[13] = mvp.data[7] - mvp.data[5];
-	frus[14] = mvp.data[11] - mvp.data[9];
-	frus[15] = mvp.data[15] - mvp.data[13];
+	frus[12] = m.data[3] - m.data[1];
+	frus[13] = m.data[7] - m.data[5];
+	frus[14] = m.data[11] - m.data[9];
+	frus[15] = m.data[15] - m.data[13];
 	normalize(12);
 
-	frus[16] = mvp.data[3] - mvp.data[2];
-	frus[17] = mvp.data[7] - mvp.data[6];
-	frus[18] = mvp.data[11] - mvp.data[10];
-	frus[19] = mvp.data[15] - mvp.data[14];
+	frus[16] = m.data[3] - m.data[2];
+	frus[17] = m.data[7] - m.data[6];
+	frus[18] = m.data[11] - m.data[10];
+	frus[19] = m.data[15] - m.data[14];
 	normalize(16);
 
-	frus[20] = mvp.data[3] + mvp.data[2];
-	frus[21] = mvp.data[7] + mvp.data[6];
-	frus[22] = mvp.data[11] + mvp.data[10];
-	frus[23] = mvp.data[15] + mvp.data[14];
+	frus[20] = m.data[3] + m.data[2];
+	frus[21] = m.data[7] + m.data[6];
+	frus[22] = m.data[11] + m.data[10];
+	frus[23] = m.data[15] + m.data[14];
 	normalize(20);
 }
 
-bool FrustumTest::test(const ChunkBox& aabb) {
+bool FrustumTest::test(AABBf const& aabb) const {
 	for (int i = 0; i < 24; i += 4) {
 		if (frus[i] * aabb.xmin + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f &&
 			frus[i] * aabb.xmax + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f &&

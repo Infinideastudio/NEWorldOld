@@ -5,13 +5,11 @@
 #include "FrustumTest.h"
 #include "Renderer.h"
 
-class Object;
-
 namespace World {
 
-extern string worldname;
-extern Brightness BRIGHTNESSMIN;
-extern Brightness skylight;
+extern string WorldName;
+extern Brightness MinBrightness;
+extern Brightness SkyBrightness;
 
 class Chunk;
 ChunkID getChunkID(int x, int y, int z);
@@ -22,9 +20,8 @@ private:
 	int cx, cy, cz;
 	ChunkID cid;
 
-	std::unique_ptr<BlockID[]> pblocks;
-	std::unique_ptr<Brightness[]> pbrightness;
-	std::vector<Object*> objects;
+	std::unique_ptr<BlockID[]> blocks;
+	std::unique_ptr<Brightness[]> brightness;
 
 	bool isEmpty = false;
 	bool isUpdated = false;
@@ -34,9 +31,6 @@ private:
 
 	std::vector<Renderer::VertexBuffer> meshes;
 	float loadAnim = 0.0f;
-
-	static double relBaseX, relBaseY, relBaseZ;
-	static FrustumTest TestFrustum;
 
 	void buildTerrain();
 	void buildDetail();
@@ -87,7 +81,7 @@ public:
 		if (x > 15 || x < 0 || y > 15 || y < 0 || z > 15 || z < 0) { DebugWarning("chunk.getblock() error: Out of range"); return; }
 #endif
 		if (isEmpty) return Blocks::AIR;
-		return pblocks[(x << 8) ^ (y << 4) ^ z];
+		return blocks[(x << 8) ^ (y << 4) ^ z];
 	}
 
 	Brightness getbrightness(int x, int y, int z) const {
@@ -95,42 +89,38 @@ public:
 		if (pbrightness == nullptr) { DebugWarning("chunk.getbrightness() error: Empty pointer"); return; }
 		if (x > 15 || x < 0 || y > 15 || y < 0 || z > 15 || z < 0) { DebugWarning("chunk.getbrightness() error: Out of range"); return; }
 #endif
-		if (isEmpty) return cy < 0 ? BRIGHTNESSMIN : skylight;
-		return pbrightness[(x << 8) ^ (y << 4) ^ z];
+		if (isEmpty) return cy < 0 ? MinBrightness : SkyBrightness;
+		return brightness[(x << 8) ^ (y << 4) ^ z];
 	}
 
 	void setblock(int x, int y, int z, BlockID iblock) {
 		if (isEmpty) {
-			std::fill(pblocks.get(), pblocks.get() + 4096, Blocks::AIR);
-			std::fill(pbrightness.get(), pbrightness.get() + 4096, cy < 0 ? BRIGHTNESSMIN : skylight);
+			std::fill(blocks.get(), blocks.get() + 4096, Blocks::AIR);
+			std::fill(brightness.get(), brightness.get() + 4096, cy < 0 ? MinBrightness : SkyBrightness);
 			isEmpty = false;
 		}
 		if (iblock == Blocks::TNT) {
 			World::explode(cx * 16 + x, cy * 16 + y, cz * 16 + z, 8, this);
 			return;
 		}
-		pblocks[(x << 8) ^ (y << 4) ^ z] = iblock;
+		blocks[(x << 8) ^ (y << 4) ^ z] = iblock;
 		isUpdated = true;
 		isModified = true;
 	}
 
 	void setbrightness(int x, int y, int z, Brightness ibrightness) {
 		if (isEmpty) {
-			std::fill(pblocks.get(), pblocks.get() + 4096, Blocks::AIR);
-			std::fill(pbrightness.get(), pbrightness.get() + 4096, cy < 0 ? BRIGHTNESSMIN : skylight);
+			std::fill(blocks.get(), blocks.get() + 4096, Blocks::AIR);
+			std::fill(brightness.get(), brightness.get() + 4096, cy < 0 ? MinBrightness : SkyBrightness);
 			isEmpty = false;
 		}
-		pbrightness[(x << 8) ^ (y << 4) ^ z] = ibrightness;
+		brightness[(x << 8) ^ (y << 4) ^ z] = ibrightness;
 		isUpdated = true;
 		isModified = true;
 	}
 
-	static void setVisibilityBase(double x, double y, double z, FrustumTest const& frus) {
-		relBaseX = x; relBaseY = y; relBaseZ = z; TestFrustum = frus;
-	}
-
 	Hitbox::AABB baseAABB() const;
-	FrustumTest::ChunkBox relativeAABB() const;
-	bool visible() const { return TestFrustum.test(relativeAABB()); }
+	FrustumTest::AABBf relativeAABB(Vec3d const& orig) const;
+	bool visible(Vec3d const& orig, FrustumTest const& frus) const { return frus.test(relativeAABB(orig)); }
 };
 }

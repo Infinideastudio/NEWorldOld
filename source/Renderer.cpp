@@ -149,38 +149,36 @@ namespace Renderer {
 		Shader::unbind();
 	}
 
-	FrustumTest getShadowMapFrustum() {
+	Mat4f getShadowMatrix() {
 		float length = getShadowDistance() * 16.0f;
-		FrustumTest res;
-		res.LoadIdentity();
-		res.MultRotate(-sunlightHeading, 0.0f, 1.0f, 0.0f);
-		res.MultRotate(sunlightPitch, 1.0f, 0.0f, 0.0f);
-		res.MultOrtho(-length, length, -length, length, -1000.0f, 1000.0f);
+		auto res = Mat4f(1.0f);
+		res = Mat4f::rotation(-sunlightHeading, { 0.0f, 1.0f, 0.0f }) * res;
+		res = Mat4f::rotation(sunlightPitch, { 1.0f, 0.0f, 0.0f })* res;
+		res = Mat4f::ortho(-length, length, -length, length, -1000.0f, 1000.0f) * res;
 		return res;
 	}
 
-	FrustumTest getShadowMapFrustumExperimental(double heading, double pitch, const FrustumTest& viewFrustum) {
+	Mat4f getShadowMatrixExperimental(float fov, float aspect, double heading, double pitch) {
 		float length = getShadowDistance() * 16.0f;
-		FrustumTest res;
-		res.LoadIdentity();
-		res.MultRotate(-sunlightHeading, 0.0f, 1.0f, 0.0f);
-		res.MultRotate(sunlightPitch, 1.0f, 0.0f, 0.0f);
+		auto res = Mat4f(1.0f);
+		res = Mat4f::rotation(-sunlightHeading, { 0.0f, 1.0f, 0.0f }) * res;
+		res = Mat4f::rotation(sunlightPitch, { 1.0f, 0.0f, 0.0f }) * res;
 
 		// Calculate view direction in light space, then rotate it to right (+1, 0)
 		auto viewRotate = Mat4f(1.0f);
 		viewRotate *= Mat4f::rotation(static_cast<float>(heading), Vec3f(0.0f, 1.0f, 0.0f));
 		viewRotate *= Mat4f::rotation(-static_cast<float>(pitch), Vec3f(1.0f, 0.0f, 0.0f));
-		auto viewDir = (Mat4f(res.getModlMatrix()) * viewRotate).transformVec3(Vec3f(0.0f, 0.0f, -1.0f));
+		auto viewDir = (res * viewRotate).transform(Vec3f(0.0f, 0.0f, -1.0f));
 		auto viewDirXY = Vec3f(viewDir.x, viewDir.y, 0.0f);
 		if (viewDirXY.length() > 0.01f) {
 			float radians = std::atan2(viewDir.y, viewDir.x);
-			res.MultRotate(-radians * 180.0f / std::numbers::pi_v<float>, 0.0f, 0.0f, 1.0f);
+			res = Mat4f::rotation(-radians * 180.0f / std::numbers::pi_v<float>, { 0.0f, 0.0f, 1.0f }) * res;
 		}
 
 		// Minimal bounding box containing a diamond-shaped convex hull
 		// (should approximate the visible parts better than the whole view frustum)
-		float halfHeight = std::tan(viewFrustum.getFov() * (std::numbers::pi_v<float> / 180.0f) / 2.0f);
-		float halfWidth = halfHeight * viewFrustum.getAspect();
+		float halfHeight = std::tan(static_cast<float>(fov) * (std::numbers::pi_v<float> / 180.0f) / 2.0f);
+		float halfWidth = halfHeight * static_cast<float>(aspect);
 		auto vertices = std::array{
 			Vec3f(0.0f, 0.0f, -1.0f),
 			Vec3f(-halfWidth, -halfHeight, -1.0f),
@@ -188,12 +186,12 @@ namespace Renderer {
 			Vec3f(halfWidth, halfHeight, -1.0f),
 			Vec3f(-halfWidth, halfHeight, -1.0f),
 		};
-		auto toLightSpace = Mat4f(res.getModlMatrix()) * viewRotate;
+		auto toLightSpace = res * viewRotate;
 		float xmin = 0.0f, xmax = 0.0f, ymin = 0.0f, ymax = 0.0f;
 		for (size_t i = 0; i < vertices.size(); i++) {
 			vertices[i].normalize();
 			vertices[i] *= length;
-			vertices[i] = toLightSpace.transformVec3(vertices[i]);
+			vertices[i] = toLightSpace.transform(vertices[i]);
 			xmin = std::min(xmin, vertices[i].x);
 			xmax = std::max(xmax, vertices[i].x);
 			ymin = std::min(ymin, vertices[i].y);
@@ -203,7 +201,7 @@ namespace Renderer {
 		xmax = std::min(xmax, length);
 		ymin = std::max(ymin, -length);
 		ymax = std::min(ymax, length);
-		res.MultOrtho(xmin, xmax, ymin, ymax, -1000.0f, 1000.0f);
+		res = Mat4f::ortho(xmin, xmax, ymin, ymax, -1000.0f, 1000.0f) * res;
 		return res;
 	}
 
@@ -225,7 +223,7 @@ namespace Renderer {
 		dBuffer.unbindTarget();
 	}
 
-	void StartShadowPass(const FrustumTest& lightFrustum, float gameTime) {
+	void StartShadowPass(const Mat4f& shadowMatrix, float gameTime) {
 		assert(AdvancedRender);
 
 		// Bind output target buffers
@@ -234,8 +232,7 @@ namespace Renderer {
 		// Set dynamic uniforms
 		Shader& shader = shaders[ShadowShader];
 		bindShader(ShadowShader);
-		shader.setUniform("u_proj", lightFrustum.getProjMatrix());
-		shader.setUniform("u_modl", lightFrustum.getModlMatrix());
+		shader.setUniform("u_mvp", shadowMatrix);
 		shader.setUniform("u_game_time", gameTime);
 
 		// Disable unwanted defaults
@@ -257,15 +254,14 @@ namespace Renderer {
 		glEnable(GL_CULL_FACE);
 	}
 
-	void StartOpaquePass(const FrustumTest& viewFrustum, float gameTime) {
+	void StartOpaquePass(const Mat4f& viewMatrix, float gameTime) {
 		// Bind output target buffers
 		if (AdvancedRender) gBuffers.bindTargets();
 
 		// Set dynamic uniforms
 		Shader& shader = shaders[AdvancedRender ? OpqaueShader : DefaultShader];
 		bindShader(AdvancedRender ? OpqaueShader : DefaultShader);
-		shader.setUniform("u_proj", viewFrustum.getProjMatrix());
-		shader.setUniform("u_modl", viewFrustum.getModlMatrix());
+		shader.setUniform("u_mvp", viewMatrix);
 		shader.setUniform("u_game_time", gameTime);
 
 		// Disable unwanted defaults
@@ -283,7 +279,7 @@ namespace Renderer {
 		glEnable(GL_BLEND);
 	}
 
-	void StartTranslucentPass(const FrustumTest& viewFrustum, float gameTime) {
+	void StartTranslucentPass(const Mat4f& viewMatrix, float gameTime) {
 		// Copy the depth component of the G-buffer to the D-buffer, bind output target buffers
 		if (AdvancedRender) {
 			// gBuffers.copyDepthTexture(dBuffer);
@@ -293,8 +289,7 @@ namespace Renderer {
 		// Set dynamic uniforms
 		Shader& shader = shaders[AdvancedRender ? TranslucentShader : DefaultShader];
 		bindShader(AdvancedRender ? TranslucentShader : DefaultShader);
-		shader.setUniform("u_proj", viewFrustum.getProjMatrix());
-		shader.setUniform("u_modl", viewFrustum.getModlMatrix());
+		shader.setUniform("u_mvp", viewMatrix);
 		shader.setUniform("u_game_time", gameTime);
 	}
 
@@ -306,7 +301,7 @@ namespace Renderer {
 		Shader::unbind();
 	}
 
-	void StartFinalPass(double xpos, double ypos, double zpos, const FrustumTest& viewFrustum, const FrustumTest& lightFrustum, float gameTime) {
+	void StartFinalPass(double xpos, double ypos, double zpos, const Mat4f& viewMatrix, const Mat4f& shadowMatrix, float gameTime) {
 		assert(AdvancedRender);
 
 		// Bind textures to pre-defined slots
@@ -320,16 +315,12 @@ namespace Renderer {
 		// Set dynamic uniforms
 		int repeat = 25600;
 		int ixpos = int(floor(xpos)), iypos = int(floor(ypos)), izpos = int(floor(zpos));
-		Vec3f lightdir = (Mat4f::rotation(sunlightHeading, Vec3f(0, 1, 0)) * Mat4f::rotation(-sunlightPitch, Vec3f(1, 0, 0))).transformVec3(Vec3f(0, 0, -1));
+		Vec3f lightdir = (Mat4f::rotation(sunlightHeading, Vec3f(0, 1, 0)) * Mat4f::rotation(-sunlightPitch, Vec3f(1, 0, 0))).transform(Vec3f(0, 0, -1));
 
 		Shader& shader = shaders[FinalShader];
 		bindShader(FinalShader);
-		shader.setUniform("u_proj", viewFrustum.getProjMatrix());
-		shader.setUniform("u_modl", viewFrustum.getModlMatrix());
-		shader.setUniform("u_proj_inv", Mat4f(viewFrustum.getProjMatrix()).inverse().data);
-		shader.setUniform("u_modl_inv", Mat4f(viewFrustum.getModlMatrix()).inverse().data);
-		shader.setUniform("u_shadow_proj", lightFrustum.getProjMatrix());
-		shader.setUniform("u_shadow_modl", lightFrustum.getModlMatrix());
+		shader.setUniform("u_mvp", viewMatrix);
+		shader.setUniform("u_shadow_mvp", shadowMatrix);
 		shader.setUniform("u_sunlight_dir", lightdir.x, lightdir.y, lightdir.z);
 		shader.setUniform("u_game_time", gameTime);
 		shader.setUniformI("u_repeat_length", repeat);

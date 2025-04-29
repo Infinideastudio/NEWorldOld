@@ -50,9 +50,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="source\Object.h">
-      <Filter>Source\Game\Objects</Filter>
-    </ClInclude>
     <ClInclude Include="source\Chunk.h">
       <Filter>Source\Game\World</Filter>
     </ClInclude>
@@ -70,9 +67,6 @@
     </ClInclude>
     <ClInclude Include="source\Player.h">
       <Filter>Source\Game\Player</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Mob.h">
-      <Filter>Source\Game\Objects</Filter>
     </ClInclude>
     <ClInclude Include="source\Particles.h">
       <Filter>Source\Game\Objects</Filter>
@@ -100,9 +94,6 @@
     </ClInclude>
     <ClInclude Include="source\Textures.h">
       <Filter>Source\Game\Textures</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Items.h">
-      <Filter>Source\Game</Filter>
     </ClInclude>
     <ClInclude Include="source\Blocks.h">
       <Filter>Source\Game</Filter>
@@ -138,9 +129,6 @@
       <Filter>Source\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\FrustumTest.h">
-      <Filter>Source\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Frustum.h">
       <Filter>Source\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="source\Framebuffer.h">
@@ -225,9 +213,6 @@
     <ClCompile Include="source\Textures.cpp">
       <Filter>Source\Game\Textures</Filter>
     </ClCompile>
-    <ClCompile Include="source\Items.cpp">
-      <Filter>Source\Game</Filter>
-    </ClCompile>
     <ClCompile Include="source\WorldRenderer.cpp">
       <Filter>Source\Renderer</Filter>
     </ClCompile>
@@ -252,9 +237,6 @@
     <ClCompile Include="source\FrustumTest.cpp">
       <Filter>Source\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="source\Frustum.cpp">
-      <Filter>Source\Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="source\Framebuffer.cpp">
       <Filter>Source\Renderer</Filter>
     </ClCompile>
@@ -267,10 +249,5 @@
     <ClCompile Include="source\VertexAllocator.cpp">
       <Filter>Source\Renderer</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="source\Resource.rc">
-      <Filter>Resources</Filter>
-    </ResourceCompile>
   </ItemGroup>
 </Project>

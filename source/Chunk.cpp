@@ -26,12 +26,9 @@ namespace World {
 		}
 	};
 
-	double Chunk::relBaseX, Chunk::relBaseY, Chunk::relBaseZ;
-	FrustumTest Chunk::TestFrustum;
-
 	Chunk::Chunk(int cx, int cy, int cz, ChunkID cid) : cx(cx), cy(cy), cz(cz), cid(cid) {
-		pblocks = std::make_unique<BlockID[]>(4096);
-		pbrightness = std::make_unique<Brightness[]>(4096);
+		blocks = std::make_unique<BlockID[]>(4096);
+		brightness = std::make_unique<Brightness[]>(4096);
 #ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
 		if (pblocks == nullptr || pbrightness == nullptr)
 			DebugError("Allocate memory failed!");
@@ -50,13 +47,13 @@ namespace World {
 	
 	std::string Chunk::getChunkPath() const {
 		std::stringstream ss;
-		ss << "Worlds/" << worldname << "/chunks/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldChunk";
+		ss << "Worlds/" << WorldName << "/chunks/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldChunk";
 		return ss.str();
 }
 
 	std::string Chunk::getObjectsPath() const {
 		std::stringstream ss;
-		ss << "Worlds/" << worldname << "/objects/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldObjects";
+		ss << "Worlds/" << WorldName << "/objects/chunk_" << cx << "_" << cy << "_" << cz << ".NEWorldObjects";
 		return ss.str();
 	}
 
@@ -82,17 +79,17 @@ namespace World {
 			return;
 		}
 		if (cy < cur.low) {
-			for (int i = 0; i < 4096; i++) pblocks[i] = Blocks::ROCK;
-			memset(pbrightness.get(), 0, 4096 * sizeof(Brightness));
-			if (cy == 0) for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) pblocks[x * 256 + z] = Blocks::BEDROCK;
+			for (int i = 0; i < 4096; i++) blocks[i] = Blocks::ROCK;
+			memset(brightness.get(), 0, 4096 * sizeof(Brightness));
+			if (cy == 0) for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) blocks[x * 256 + z] = Blocks::BEDROCK;
 			isEmpty = false;
 			return;
 		}
 
 		// Normal Calc
 		// Init
-		memset(pblocks.get(), 0, 4096 * sizeof(BlockID)); //Empty the chunk
-		memset(pbrightness.get(), 0, 4096 * sizeof(Brightness)); //Set All Brightness to 0
+		memset(blocks.get(), 0, 4096 * sizeof(BlockID)); //Empty the chunk
+		memset(brightness.get(), 0, 4096 * sizeof(Brightness)); //Set All Brightness to 0
 
 		int h = 0, sh = 0, wh = 0;
 		int minh, maxh, cur_br;
@@ -108,37 +105,37 @@ namespace World {
 				if (h >= 0 || wh >= 0) isEmpty = false;
 				if (h > sh && h > wh + 1) {
 					// Grass layer
-					if (h >= 0 && h < 16) pblocks[(h << 4) + base] = Blocks::GRASS;
+					if (h >= 0 && h < 16) blocks[(h << 4) + base] = Blocks::GRASS;
 					// Dirt layer
 					maxh = std::min(std::max(0, h), 16);
-					for (int y = std::min(std::max(0, h - 5), 16); y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::DIRT;
+					for (int y = std::min(std::max(0, h - 5), 16); y < maxh; ++y) blocks[(y << 4) + base] = Blocks::DIRT;
 				}
 				else {
 					// Sand layer
 					maxh = std::min(std::max(0, h + 1), 16);
-					for (int y = std::min(std::max(0, h - 5), 16); y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::SAND;
+					for (int y = std::min(std::max(0, h - 5), 16); y < maxh; ++y) blocks[(y << 4) + base] = Blocks::SAND;
 					// Water layer
 					minh = std::min(std::max(0, h + 1), 16);
 					maxh = std::min(std::max(0, wh + 1), 16);
-					cur_br = BRIGHTNESSMAX - (WorldGen::WaterLevel - (maxh - 1 + (cy << 4))) * 2;
-					if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
+					cur_br = MaxBrightness - (WorldGen::WaterLevel - (maxh - 1 + (cy << 4))) * 2;
+					if (cur_br < MinBrightness) cur_br = MinBrightness;
 					for (int y = maxh - 1; y >= minh; --y) {
-						pblocks[(y << 4) + base] = Blocks::WATER;
-						pbrightness[(y << 4) + base] = (Brightness)cur_br;
+						blocks[(y << 4) + base] = Blocks::WATER;
+						brightness[(y << 4) + base] = (Brightness)cur_br;
 						cur_br -= 2;
-						if (cur_br < BRIGHTNESSMIN) cur_br = BRIGHTNESSMIN;
+						if (cur_br < MinBrightness) cur_br = MinBrightness;
 					}
 				}
 				// Rock layer
 				maxh = std::min(std::max(0, h - 5), 16);
-				for (int y = 0; y < maxh; ++y) pblocks[(y << 4) + base] = Blocks::ROCK;
+				for (int y = 0; y < maxh; ++y) blocks[(y << 4) + base] = Blocks::ROCK;
 				// Air layer
 				for (int y = std::min(std::max(0, std::max(h + 1, wh + 1)), 16); y < 16; ++y) {
-					pblocks[(y << 4) + base] = Blocks::AIR;
-					pbrightness[(y << 4) + base] = skylight;
+					blocks[(y << 4) + base] = Blocks::AIR;
+					brightness[(y << 4) + base] = SkyBrightness;
 				}
 				// Bedrock layer (overwrite)
-				if (cy == 0) pblocks[base] = Blocks::BEDROCK;
+				if (cy == 0) blocks[base] = Blocks::BEDROCK;
 			}
 		}
 	}
@@ -149,7 +146,7 @@ namespace World {
 			for (int y = 0; y < 16; y++) {
 				for (int z = 0; z < 16; z++) {
 					// Tree
-					if (pblocks[index] == Blocks::GRASS && rnd() < 0.005)
+					if (blocks[index] == Blocks::GRASS && rnd() < 0.005)
 						buildtree(cx * 16 + x, cy * 16 + y, cz * 16 + z);
 					index++;
 				}
@@ -168,8 +165,8 @@ namespace World {
 		std::ifstream file(getChunkPath(), std::ios::in | std::ios::binary);
 		exists = file.is_open();
 		if (exists) {
-			file.read((char*)pblocks.get(), 4096 * sizeof(BlockID));
-			file.read((char*)pbrightness.get(), 4096 * sizeof(Brightness));
+			file.read((char*)blocks.get(), 4096 * sizeof(BlockID));
+			file.read((char*)brightness.get(), 4096 * sizeof(Brightness));
 			file.read((char*)&isDetailGenerated, sizeof(bool));
 		}
 		// file.open(getObjectsPath(), std::ios::in | std::ios::binary);
@@ -184,8 +181,8 @@ namespace World {
 			std::ofstream file(getChunkPath(), std::ios::out | std::ios::binary);
 			success = file.is_open();
 			if (success) {
-				file.write((char*)pblocks.get(), 4096 * sizeof(BlockID));
-				file.write((char*)pbrightness.get(), 4096 * sizeof(Brightness));
+				file.write((char*)blocks.get(), 4096 * sizeof(BlockID));
+				file.write((char*)brightness.get(), 4096 * sizeof(Brightness));
 				file.write((char*)&isDetailGenerated, sizeof(bool));
 			}
 		}
@@ -242,14 +239,14 @@ namespace World {
 		return ret;
 	}
 
-	FrustumTest::ChunkBox Chunk::relativeAABB() const {
-		FrustumTest::ChunkBox ret;
-		ret.xmin = (float)(cx * 16 - 0.5 - relBaseX);
-		ret.xmax = (float)(cx * 16 + 16 - 0.5 - relBaseX);
-		ret.ymin = (float)(cy * 16 - 0.5 - loadAnim - relBaseY);
-		ret.ymax = (float)(cy * 16 + 16 - 0.5 - loadAnim - relBaseY);
-		ret.zmin = (float)(cz * 16 - 0.5 - relBaseZ);
-		ret.zmax = (float)(cz * 16 + 16 - 0.5 - relBaseZ);
+	FrustumTest::AABBf Chunk::relativeAABB(Vec3d const& orig) const {
+		FrustumTest::AABBf ret;
+		ret.xmin = static_cast<float>(cx * 16 - 0.5 - orig.x);
+		ret.xmax = static_cast<float>(cx * 16 + 16 - 0.5 - orig.x);
+		ret.ymin = static_cast<float>(cy * 16 - 0.5 - loadAnim - orig.y);
+		ret.ymax = static_cast<float>(cy * 16 + 16 - 0.5 - loadAnim - orig.y);
+		ret.zmin = static_cast<float>(cz * 16 - 0.5 - orig.z);
+		ret.zmax = static_cast<float>(cz * 16 + 16 - 0.5 - orig.z);
 		return ret;
 	}
 }

@@ -22,9 +22,6 @@ vector<Hitbox::AABB> Player::Hitboxes;
 
 double Player::xa, Player::ya, Player::za, Player::xd, Player::yd, Player::zd;
 double Player::health = 20, Player::healthMax = 20, Player::healSpeed = 0.01, Player::dropDamage = 5.0;
-OnlineID Player::onlineID;
-string Player::name;
-FrustumTest Player::ViewFrustum;
 
 double Player::speed;
 int Player::AirJumps;

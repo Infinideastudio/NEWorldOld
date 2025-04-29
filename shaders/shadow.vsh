@@ -9,9 +9,8 @@ layout(location = 4) in float a_block_id;
 out vec3 coord;
 out vec3 tex_coord;
 
-uniform mat4 u_proj;
-uniform mat4 u_modl;
-uniform mat4 u_translation;
+uniform mat4 u_mvp;
+uniform vec3 u_translation;
 uniform float u_game_time;
 uniform float u_shadow_fisheye_factor;
 
@@ -36,9 +35,9 @@ void main() {
 	}
 	tex_coord = a_tex_coord;
 
-	fisheye_projection_origin = u_proj * u_modl * vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	fisheye_projection_origin = u_mvp * vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	fisheye_projection_origin /= fisheye_projection_origin.w;
-	gl_Position = u_proj * u_modl * u_translation * vec4(coord, 1.0f);
+	gl_Position = u_mvp * vec4(coord + u_translation, 1.0f);
 	gl_Position /= gl_Position.w;
 	gl_Position = vec4(fisheye_projection(gl_Position.xy), gl_Position.zw);
 }

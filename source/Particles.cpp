@@ -68,7 +68,7 @@ namespace Particles {
 		float ypos = static_cast<float>(ptc.ypos - ptc.ysp + ptc.ysp * interp - pypos);
 		float zpos = static_cast<float>(ptc.zpos - ptc.zsp + ptc.zsp * interp - pzpos);
 
-		float col = World::getbrightness(RoundInt(ptc.xpos), RoundInt(ptc.ypos), RoundInt(ptc.zpos)) / (float)World::BRIGHTNESSMAX;
+		float col = World::getbrightness(RoundInt(ptc.xpos), RoundInt(ptc.ypos), RoundInt(ptc.zpos)) / (float)World::MaxBrightness;
 		float col1 = col, col2 = col;
 		if (!Renderer::AdvancedRender) {
 			col1 *= 0.5f;
