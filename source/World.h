@@ -16,13 +16,13 @@ struct LoadedCore {
 	size_t radius = 0;
 };
 
-extern string worldname;
+extern string WorldName;
 const int worldsize = 134217728;
 const int worldheight = 128;
-extern Brightness skylight;         // Sky light level
-extern Brightness BRIGHTNESSMAX;    // Maximum brightness
-extern Brightness BRIGHTNESSMIN;    // Minimum brightness
-extern Brightness BRIGHTNESSDEC;    // Brightness decrease
+extern Brightness SkyBrightness;         // Sky light level
+extern Brightness MaxBrightness;    // Maximum brightness
+extern Brightness MinBrightness;    // Minimum brightness
+extern Brightness BrightnessAttenuation;    // Brightness decrease
 extern Chunk* EmptyChunkPtr;
 extern size_t MaxChunkLoads;
 extern size_t MaxChunkUnloads;

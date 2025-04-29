@@ -122,13 +122,11 @@ void loadTextures() {
 	SelectedTexture = Textures::LoadRGBTexture("textures/ui/select.bmp");
 	UnselectedTexture = Textures::LoadRGBTexture("textures/ui/unselect.bmp");
 	TitleTexture = Textures::LoadRGBATexture("textures/ui/title.bmp", "textures/ui/title_mask.bmp", true);
-
 	for (int i = 0; i < 6; i++) {
 		std::stringstream ss;
 		ss << "textures/ui/background_" << i << ".bmp";
 		UIBackgroundTextures[i] = Textures::LoadRGBTexture(ss.str(), true);
 	}
-
 	BlockTextureArray = Textures::LoadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
 }
 

@@ -34,7 +34,7 @@ namespace Menus {
 			deletebtn.enabled = false;
 			backbtn = GUI::button(GetStrbyKey("NEWorld.worlds.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(5, &title, &vscroll, &enterbtn, &deletebtn, &backbtn);
-			World::worldname = "";
+			World::WorldName = "";
 		}
 		void onUpdate() {
 			worldcount = (int)worldnames.size();
@@ -71,13 +71,13 @@ namespace Menus {
 				}
 			}
 			if (enterbtn.clicked) {
-				World::worldname = chosenWorldName;
+				World::WorldName = chosenWorldName;
 				GameBegin = true;
 			}
 			if (deletebtn.clicked) {
 				system((string("rd /s/q \"worlds\\") + chosenWorldName + "\"").c_str());
 				deletebtn.clicked = false;
-				World::worldname = "";
+				World::WorldName = "";
 				enterbtn.enabled = false;
 				deletebtn.enabled = false;
 				refresh = true;

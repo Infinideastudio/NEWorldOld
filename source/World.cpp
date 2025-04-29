@@ -6,11 +6,11 @@
 
 namespace World {
 
-string worldname;
-Brightness skylight = 15;
-Brightness BRIGHTNESSMAX = 15;
-Brightness BRIGHTNESSMIN = 2;
-Brightness BRIGHTNESSDEC = 1;
+string WorldName;
+Brightness SkyBrightness = 15;
+Brightness MaxBrightness = 15;
+Brightness MinBrightness = 2;
+Brightness BrightnessAttenuation = 1;
 Chunk* EmptyChunkPtr;
 size_t MaxChunkLoads = 64;
 size_t MaxChunkUnloads = 64;
@@ -35,10 +35,10 @@ int meshedChunks;
 void Init() {
 
 	std::stringstream ss;
-	ss << "Worlds/" << worldname << "/";
+	ss << "Worlds/" << WorldName << "/";
 	_mkdir(ss.str().c_str());
 	ss.clear(); ss.str("");
-	ss << "Worlds/" << worldname << "/chunks";
+	ss << "Worlds/" << WorldName << "/chunks";
 	_mkdir(ss.str().c_str());
 
 	// Create pointer for indicating empty chunks
@@ -224,15 +224,15 @@ void updateblock(int x, int y, int z, bool blockchanged, int depth) {
 			}
 			br = brts[maxbrightness];
 			if (blks[maxbrightness] == Blocks::WATER) {
-				if (br - 2 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br -= 2;
+				if (br - 2 < MinBrightness) br = MinBrightness; else br -= 2;
 			} else {
-				if (br - 1 < BRIGHTNESSMIN) br = BRIGHTNESSMIN; else br--;
+				if (br - 1 < MinBrightness) br = MinBrightness; else br--;
 			}
 
 			if (skylighted) {
-				if (br < skylight) br = skylight;
+				if (br < SkyBrightness) br = SkyBrightness;
 			}
-			if (br < BRIGHTNESSMIN) br = BRIGHTNESSMIN;
+			if (br < MinBrightness) br = MinBrightness;
 			//Set brightness
 			cptr->setbrightness(bx, by, bz, br);
 
@@ -241,7 +241,7 @@ void updateblock(int x, int y, int z, bool blockchanged, int depth) {
 			//Opaque block
 			cptr->setbrightness(bx, by, bz, 0);
 			if (getblock(x, y, z) == Blocks::GLOWSTONE || getblock(x, y, z) == Blocks::LAVA)
-				cptr->setbrightness(bx, by, bz, BRIGHTNESSMAX);
+				cptr->setbrightness(bx, by, bz, MaxBrightness);
 
 		}
 
@@ -281,14 +281,14 @@ BlockID getblock(int x, int y, int z, BlockID mask, Chunk* cptr) {
 Brightness getbrightness(int x, int y, int z, Chunk* cptr) {
 	//获取亮度
 	int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
-	if (chunkOutOfBound(cx, cy, cz)) return skylight;
+	if (chunkOutOfBound(cx, cy, cz)) return SkyBrightness;
 	int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
 	if (cptr != nullptr && cx == cptr->x() && cy == cptr->y() && cz == cptr->z())
 		return cptr->getbrightness(bx, by, bz);
 	Chunk* ci = getChunkPtr(cx, cy, cz);
-		if (ci == EmptyChunkPtr) if (cy < 0) return BRIGHTNESSMIN; else return skylight;
+		if (ci == EmptyChunkPtr) if (cy < 0) return MinBrightness; else return SkyBrightness;
 	if (ci != nullptr)return ci->getbrightness(bx, by, bz);
-	return skylight;
+	return SkyBrightness;
 }
 
 void setblock(int x, int y, int z, BlockID Blockname, Chunk* cptr) {

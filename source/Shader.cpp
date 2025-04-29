@@ -18,10 +18,38 @@ bool Shader::setUniform(const char* uniform, float value) {
     return true;
 }
 
+bool Shader::setUniformI(const char* uniform, int value) {
+    int loc = glGetUniformLocation(shaderProgram, uniform);
+    if (loc == -1) return false;
+    glUniform1i(loc, value);
+    return true;
+}
+
+bool Shader::setUniform(const char* uniform, float v0, float v1) {
+    int loc = glGetUniformLocation(shaderProgram, uniform);
+    if (loc == -1) return false;
+    glUniform2f(loc, v0, v1);
+    return true;
+}
+
+bool Shader::setUniformI(const char* uniform, int v0, int v1) {
+    int loc = glGetUniformLocation(shaderProgram, uniform);
+    if (loc == -1) return false;
+    glUniform2i(loc, v0, v1);
+    return true;
+}
+
 bool Shader::setUniform(const char* uniform, float v0, float v1, float v2) {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1) return false;
     glUniform3f(loc, v0, v1, v2);
+    return true;
+}
+
+bool Shader::setUniformI(const char* uniform, int v0, int v1, int v2) {
+    int loc = glGetUniformLocation(shaderProgram, uniform);
+    if (loc == -1) return false;
+    glUniform3i(loc, v0, v1, v2);
     return true;
 }
 
@@ -32,24 +60,17 @@ bool Shader::setUniform(const char* uniform, float v0, float v1, float v2, float
     return true;
 }
 
-bool Shader::setUniform(const char* uniform, const float * value) {
+bool Shader::setUniformI(const char* uniform, int v0, int v1, int v2, int v3) {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1) return false;
-    glUniformMatrix4fv(loc, 1, GL_TRUE, value);
+    glUniform4i(loc, v0, v1, v2, v3);
     return true;
 }
 
-bool Shader::setUniformI(const char* uniform, int value) {
-  int loc = glGetUniformLocation(shaderProgram, uniform);
-  if (loc == -1) return false;
-  glUniform1i(loc, value);
-  return true;
-}
-
-bool Shader::setUniformI(const char* uniform, int v0, int v1, int v2) {
+bool Shader::setUniform(const char* uniform, const float* value) {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1) return false;
-    glUniform3i(loc, v0, v1, v2);
+    glUniformMatrix4fv(loc, 1, GL_TRUE, value);
     return true;
 }
 

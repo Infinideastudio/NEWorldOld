@@ -2,7 +2,6 @@
 #include "Definitions.h"
 #include "FrustumTest.h"
 #include "Shader.h"
-#include "Frustum.h"
 #include "FrameBuffer.h"
 
 namespace Renderer {
@@ -18,7 +17,6 @@ namespace Renderer {
 	extern int ShadowRes;
 	extern int MaxShadowDistance;
 	extern float sunlightPitch, sunlightHeading;
-	extern Frustum playerFrustum;
 	extern vector<Shader> shaders;
 	extern int ActiveShader;
 
@@ -85,16 +83,16 @@ namespace Renderer {
 	}
 
 	inline int getShadowDistance() { return std::min(MaxShadowDistance, RenderDistance); }
-	FrustumTest getShadowMapFrustum();
-	FrustumTest getShadowMapFrustumExperimental(double heading, double pitch, const FrustumTest& viewFrustum);
+	Mat4f getShadowMatrix();
+	Mat4f getShadowMatrixExperimental(float fov, float aspect, double heading, double pitch);
 
 	void ClearSGDBuffers();
-	void StartShadowPass(const FrustumTest& lightFrustum, float gameTime);
+	void StartShadowPass(const Mat4f& shadowMatrix, float gameTime);
 	void EndShadowPass();
-	void StartOpaquePass(const FrustumTest& viewFrustum, float gametime);
+	void StartOpaquePass(const Mat4f& viewMatrix, float gametime);
 	void EndOpaquePass();
-	void StartTranslucentPass(const FrustumTest& viewFrustum, float gametime);
+	void StartTranslucentPass(const Mat4f& viewMatrix, float gametime);
 	void EndTranslucentPass();
-	void StartFinalPass(double xpos, double ypos, double zpos, const FrustumTest& viewFrustum, const FrustumTest& lightFrustum, float gameTime);
+	void StartFinalPass(double xpos, double ypos, double zpos, const Mat4f& viewMatrix, const Mat4f& shadowMatrix, float gameTime);
 	void EndFinalPass();
 }

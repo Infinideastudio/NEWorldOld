@@ -17,12 +17,8 @@ uniform float u_shadow_fisheye_factor;
 uniform float u_shadow_distance;
 uniform float u_render_distance;
 
-uniform mat4 u_proj;
-uniform mat4 u_modl;
-uniform mat4 u_proj_inv;
-uniform mat4 u_modl_inv;
-uniform mat4 u_shadow_proj;
-uniform mat4 u_shadow_modl;
+uniform mat4 u_mvp;
+uniform mat4 u_shadow_mvp;
 uniform vec3 u_sunlight_dir;
 uniform float u_game_time;
 uniform int u_repeat_length;
@@ -163,14 +159,14 @@ float get_shadow_quad(vec3 tex_coord, int i) {
 
 float calc_sunlight_inner(vec3 coord, bool quad, int i) {
 	// Shadow map coordinates
-	vec3 shadow_coord = divide(u_shadow_proj * u_shadow_modl * vec4(coord, 1.0));
+	vec3 shadow_coord = divide(u_shadow_mvp * vec4(coord, 1.0));
 	shadow_coord = vec3(fisheye_projection(shadow_coord.xy), shadow_coord.z);
 	if (shadow_coord.x < -1.0 || shadow_coord.x > 1.0 || shadow_coord.y < -1.0 || shadow_coord.y > 1.0) return 1.0;
 	vec3 tex_coord = shadow_coord * 0.5 + vec3(0.5);
 
 	// Sample shadow map
 	float res = quad ? get_shadow_quad(tex_coord, i) : get_shadow_offset(tex_coord, vec2(0.0));
-	float dist = length(divide(u_modl * vec4(coord, 1.0)));
+	float dist = length(divide(vec4(coord, 1.0)));
 	float factor = smoothstep(0.8, 1.0, dist / u_shadow_distance);
 	return mix(res, 1.0, factor);
 }
@@ -181,7 +177,7 @@ float calc_sunlight(vec3 coord, vec3 normal) {
 	coord -= u_sunlight_dir * 0.1;
 
 	// Light space coordinates
-	vec3 shadow_coord = divide(u_shadow_proj * u_shadow_modl * vec4(coord, 1.0));
+	vec3 shadow_coord = divide(u_shadow_mvp * vec4(coord, 1.0));
 	shadow_coord = vec3(fisheye_projection(shadow_coord.xy), shadow_coord.z);
 
 	// Neighbor pixel distance in light space
@@ -244,7 +240,7 @@ float calc_ambient(vec3 coord, vec3 normal) {
 		offset *= SSAO_RADIUS;
 
 		vec3 sample_coord = coord + mat3(tangent, bitangent, normal) * offset;
-		vec4 screen_space_sample_coord = u_proj * u_modl * vec4(sample_coord, 1.0);
+		vec4 screen_space_sample_coord = u_mvp * vec4(sample_coord, 1.0);
 		vec2 tex_space_sample_coord = screen_space_coord_to_tex_coord(screen_space_sample_coord);
 		if (get_scene_depth(tex_space_sample_coord) < divide(screen_space_sample_coord).z) {
 			res += smoothstep(0.8, 1.0, 1.0 - distance_to_edge(tex_space_sample_coord) * 2.0);
@@ -283,8 +279,8 @@ vec4 diffuse(vec2 tex_coord) {
 	vec3 translation = vec3(u_player_coord_mod) + u_player_coord_frac;
 
 	vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
-	vec4 camera_space_coord = u_proj_inv * screen_space_coord;
-	vec3 world_space_coord = divide(u_modl_inv * camera_space_coord) + translation;
+	vec4 relative_coord = inverse(u_mvp) * screen_space_coord;
+	vec3 world_space_coord = divide(relative_coord) + translation;
 	vec3 shadow_coord = floor(world_space_coord * SHADOW_UNITS + normal * 0.5) / SHADOW_UNITS - translation;
 	// vec3 shadow_coord = world_space_coord - translation;
 
@@ -306,8 +302,8 @@ vec4 diffuse_with_fade(vec2 tex_coord) {
 	vec4 color = diffuse(tex_coord);
 	if (get_scene_material(tex_coord) != 0) {
 		vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
-		vec4 camera_space_coord = u_proj_inv * screen_space_coord;
-		float dist = length(divide(camera_space_coord));
+		vec4 relative_coord = inverse(u_mvp) * screen_space_coord;
+		float dist = length(divide(relative_coord));
 		color.a *= clamp((u_render_distance - dist) / 32.0, 0.0, 1.0);
 	}
 	return color;
@@ -387,10 +383,10 @@ vec4 ssr(vec4 org, vec4 dir, bool inside) {
 		if (z <= next3.z) {
 			if (get_scene_material(tex_coord) != 0) {
 				// Filter out some false positives
-				vec4 camera_space_coord = u_proj_inv * vec4(next3.xy, z, 1.0);
-				vec4 camera_space_curr = u_proj_inv * vec4(curr3, 1.0);
-				vec3 camera_space_normal = (u_modl * vec4(get_scene_normal(tex_coord), 0.0)).xyz;
-				if (dot(divide(camera_space_curr) - divide(camera_space_coord), camera_space_normal) >= -0.1) {
+				vec4 relative_coord = inverse(u_mvp) * vec4(next3.xy, z, 1.0);
+				vec4 relative_curr = inverse(u_mvp) * vec4(curr3, 1.0);
+				vec3 normal = get_scene_normal(tex_coord);
+				if (dot(divide(relative_curr) - divide(relative_coord), normal) >= -0.1) {
 					if (!found) found_ratio = ratio;
 					found = true;
 					best = tex_coord;
@@ -482,21 +478,21 @@ vec3 aces(vec3 x) {
 }
 
 void main() {
-	fisheye_projection_origin = u_shadow_proj * u_shadow_modl * vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	fisheye_projection_origin = u_shadow_mvp * vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	fisheye_projection_origin /= fisheye_projection_origin.w;
 
 	vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
-	vec4 camera_space_coord = u_proj_inv * screen_space_coord;
+	vec4 relative_coord = inverse(u_mvp) * screen_space_coord;
 
 	vec3 view_origin = vec3(u_player_coord_mod) + u_player_coord_frac;
-	vec3 view_dir = normalize(divide(u_modl_inv * camera_space_coord));
+	vec3 view_dir = normalize(divide(relative_coord));
 	vec3 normal = get_scene_normal(tex_coord);
 	vec3 color = get_sky_color(view_dir);
 	color = blend(diffuse_with_fade(tex_coord), color);
 
 	int block_id_i = get_scene_material(tex_coord);
 	if (block_id_i == WATER_ID || block_id_i == ICE_ID || block_id_i == IRON_ID) {
-		vec3 reflect_origin = view_origin + divide(u_modl_inv * camera_space_coord);
+		vec3 reflect_origin = view_origin + divide(relative_coord);
 		bool inside = dot(view_origin - reflect_origin, normal) < 0.0;
 		
 		// Water wave effect
@@ -533,7 +529,7 @@ void main() {
 			reflection = blend(cloud(reflect_origin, reflect_dir, 65536.0, view_origin, 0.5), reflection);
 #endif
 		}
-		vec4 screen_space_reflect_dir = u_proj * u_modl * vec4(reflect_dir, 0.0);
+		vec4 screen_space_reflect_dir = u_mvp * vec4(reflect_dir, 0.0);
 		reflection = blend(ssr(screen_space_coord, screen_space_reflect_dir, inside), reflection);
 
 		// Fresnel-Schlick blending
@@ -552,7 +548,7 @@ void main() {
 	
 	// Fog
 	float dist = 65536.0;
-	if (block_id_i != 0) dist = length(divide(camera_space_coord));
+	if (block_id_i != 0) dist = length(divide(relative_coord));
 #ifdef VOLUMETRIC_CLOUDS
 	color = blend(cloud(view_origin, view_dir, dist, view_origin, 1.0), color);
 #endif

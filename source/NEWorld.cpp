@@ -255,7 +255,7 @@ ThreadFunc updateThreadFunc(void*) {
 
 void saveGame() {
 	World::saveAllChunks();
-	if (!Player::save(World::worldname)) {
+	if (!Player::save(World::WorldName)) {
 #ifdef NEWORLD_CONSOLE_OUTPUT
 		DebugWarning("Failed saving player info!");
 #endif
@@ -263,7 +263,7 @@ void saveGame() {
 }
 
 bool loadGame() {
-	if (!Player::load(World::worldname)) {
+	if (!Player::load(World::WorldName)) {
 #ifdef NEWORLD_CONSOLE_OUTPUT
 		DebugWarning("Failed loading player info!");
 #endif
@@ -1008,10 +1008,10 @@ void render() {
 	double pheading = Player::heading + Player::xlookspeed;
 
 	// Calculate matrices
-	Player::ViewFrustum.LoadIdentity();
-	Player::ViewFrustum.MultRotate(-static_cast<float>(pheading), 0.0f, 1.0f, 0.0f);
-	Player::ViewFrustum.MultRotate(static_cast<float>(plookupdown), 1.0f, 0.0f, 0.0f);
-	Player::ViewFrustum.MultPerspective(FOVyNormal + FOVyExt, static_cast<float>(WindowWidth) / WindowHeight, 0.05f, RenderDistance * 16.0f);
+	auto viewMatrix = Mat4f(1.0f);
+	viewMatrix = Mat4f::rotation(-static_cast<float>(pheading), { 0.0f, 1.0f, 0.0f }) * viewMatrix;
+	viewMatrix = Mat4f::rotation(static_cast<float>(plookupdown), { 1.0f, 0.0f, 0.0f }) * viewMatrix;
+	viewMatrix = Mat4f::perspective(FOVyNormal + FOVyExt, static_cast<float>(WindowWidth) / WindowHeight, 0.05f, RenderDistance * 16.0f) * viewMatrix;
 
 	// Clear framebuffers
 	if (Renderer::AdvancedRender) Renderer::ClearSGDBuffers();
@@ -1026,33 +1026,33 @@ void render() {
 	if (showMeshWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	// Build shadow map
-	FrustumTest lightFrustum = Renderer::getShadowMapFrustum();
+	auto shadowMatrix = Renderer::getShadowMatrix();
 	if (Renderer::AdvancedRender) {
-		FrustumTest lightFrustumTest = Renderer::getShadowMapFrustumExperimental(pheading, plookupdown, Player::ViewFrustum);
-		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, Renderer::getShadowDistance(), interp, lightFrustumTest);
-		Renderer::StartShadowPass(lightFrustum, interpolatedTime);
+		// Mat4f shadowMatrixTest = Renderer::getShadowMatrixExperimental(FOVyNormal + FOVyExt, static_cast<float>(WindowWidth) / WindowHeight, pheading, plookupdown, Player::ViewFrustum);
+		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, Renderer::getShadowDistance(), interp, FrustumTest(shadowMatrix));
+		Renderer::StartShadowPass(shadowMatrix, interpolatedTime);
 		WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
-		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f(1.0f).data);
+		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(0.0f));
 		Particles::renderall(xpos, ypos, zpos, interp);
 		Renderer::EndShadowPass();
 	}
 
 	// Draw the opaque parts of the world
-	WorldRenderer::ListRenderChunks(xpos, ypos, zpos, RenderDistance, interp, Player::ViewFrustum);
-	Renderer::StartOpaquePass(Player::ViewFrustum, interpolatedTime);
+	WorldRenderer::ListRenderChunks(xpos, ypos, zpos, RenderDistance, interp, FrustumTest(viewMatrix));
+	Renderer::StartOpaquePass(viewMatrix, interpolatedTime);
 	WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
-	Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f(1.0f).data);
+	Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(0.0f));
 	Particles::renderall(xpos, ypos, zpos, interp);
 	Renderer::EndOpaquePass();
 
 	// Draw the translucent parts of the world
-	Renderer::StartTranslucentPass(Player::ViewFrustum, interpolatedTime);
+	Renderer::StartTranslucentPass(viewMatrix, interpolatedTime);
 	glDisable(GL_CULL_FACE);
 	if (sel) {
 		float x = static_cast<float>(selx - xpos);
 		float y = static_cast<float>(sely - ypos);
 		float z = static_cast<float>(selz - zpos);
-		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f::translation(Vec3f(x, y, z)).data);
+		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(x, y, z));
 		if (showHUD) {
 			// Temporary solution pre GL 4.0 (glBlendFuncSeparatei)
 			glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
@@ -1077,7 +1077,7 @@ void render() {
 
 	// Full screen passes
 	if (Renderer::AdvancedRender) {
-		Renderer::StartFinalPass(xpos, ypos, zpos, Player::ViewFrustum, lightFrustum, interpolatedTime);
+		Renderer::StartFinalPass(xpos, ypos, zpos, viewMatrix, shadowMatrix, interpolatedTime);
 		Renderer::Begin(GL_QUADS, 2, 2, 0);
 		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(0, 0);
 		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, WindowHeight);
@@ -1191,7 +1191,7 @@ void readback() {
 	if (shouldGetThumbnail) {
 		shouldGetThumbnail = false;
 		std::stringstream ss;
-		ss << "worlds/" << World::worldname << "/thumbnail.bmp";
+		ss << "worlds/" << World::WorldName << "/thumbnail.bmp";
 		saveScreenshot(0, 0, WindowWidth, WindowHeight, ss.str());
 	}
 }

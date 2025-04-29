@@ -26,25 +26,13 @@
 #include "Vec3.h"
 
 template <typename T>
-class Mat4 {
-public:
-	T data[16];
+struct Mat4 {
+	T data[16] = {};
 
-	Mat4() {
-		memset(data, 0, sizeof(data));
-	}
-
-	Mat4(const Mat4& rhs) {
-		memcpy(data, rhs.data, sizeof(data));
-	}
+	Mat4() {}
 
 	explicit Mat4(T x) {
-		memset(data, 0, sizeof(data));
 		data[0] = data[5] = data[10] = data[15] = x; // Identity matrix
-	}
-
-	explicit Mat4(const T* src) {
-		memcpy(data, src, sizeof(data));
 	}
 
 	T* operator[](size_t index) {
@@ -77,18 +65,8 @@ public:
 		return *this;
 	}
 
-	// Transpose matrix
-	void transpose() {
-		std::swap(data[1], data[4]);
-		std::swap(data[2], data[8]);
-		std::swap(data[3], data[12]);
-		std::swap(data[6], data[9]);
-		std::swap(data[7], data[13]);
-		std::swap(data[11], data[14]);
-	}
-
 	// Get transposed matrix
-	Mat4 getTranspose() const {
+	Mat4 transpose() const {
 		Mat4 res;
 		res.data[0] = data[0], res.data[1] = data[4], res.data[2] = data[8], res.data[3] = data[12];
 		res.data[4] = data[1], res.data[5] = data[5], res.data[6] = data[9], res.data[7] = data[13];
@@ -124,9 +102,9 @@ public:
 		data[dst * 4 + 3] += data[src * 4 + 3] * k;
 	}
 
-	// Inverse matrix
-	Mat4& inverse() {
-		Mat4 res(T(1));
+	// Get inverse matrix
+	Mat4 inverse() const {
+		Mat4 res = Mat4(T(1));
 		for (int i = 0; i<4; i++) {
 			int p = i;
 			for (int j = i + 1; j < 4; j++)
@@ -147,8 +125,7 @@ public:
 				multAndAdd(i, j, -data[j * 4 + i]);
 			}
 		}
-		(*this) = res;
-		return *this;
+		return res;
 	}
 
 	// Construct a translation matrix
@@ -208,7 +185,7 @@ public:
 	}
 
 	// Multiply with Vec3 (with homogeneous coords divided)
-	Vec3<T> transformVec3(const Vec3<T>& vec) const {
+	Vec3<T> transform(const Vec3<T>& vec) const {
 		Vec3<T> res(data[0] * vec.x + data[1] * vec.y + data[2] * vec.z + data[3],
 					data[4] * vec.x + data[5] * vec.y + data[6] * vec.z + data[7],
 					data[8] * vec.x + data[9] * vec.y + data[10] * vec.z + data[11]);
@@ -218,7 +195,6 @@ public:
 };
 
 using Mat4f = Mat4<float>;
-// If you are doing rendering, it's recommended to use Mat4f instead of Mat4d
 using Mat4d = Mat4<double>;
 
 #endif // !MAT4_H_

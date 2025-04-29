@@ -29,9 +29,6 @@ public:
 	static vector<Hitbox::AABB> Hitboxes;
 	static double xa, ya, za, xd, yd, zd;
 	static double health, healthMax, healSpeed, dropDamage;
-	static OnlineID onlineID;
-	static string name;
-	static FrustumTest ViewFrustum;
 
 	enum GameMode { Survival, Creative };
 	static int gamemode;

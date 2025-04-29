@@ -275,7 +275,6 @@
     <ClInclude Include="source\Command.h" />
     <ClInclude Include="source\ChunkRenderer.h" />
     <ClInclude Include="source\Framebuffer.h" />
-    <ClInclude Include="source\Frustum.h" />
     <ClInclude Include="source\FunctionsKit.h" />
     <ClInclude Include="source\HeightMap.h" />
     <ClInclude Include="source\Definitions.h" />
@@ -306,7 +305,6 @@
     <ClCompile Include="source\ChunkRenderer.cpp" />
     <ClCompile Include="source\CreateWorldMenu.cpp" />
     <ClCompile Include="source\Framebuffer.cpp" />
-    <ClCompile Include="source\Frustum.cpp" />
     <ClCompile Include="source\FunctionsKit.cpp" />
     <ClCompile Include="source\GameMenu.cpp" />
     <ClCompile Include="source\GUIOptionsMenu.cpp" />

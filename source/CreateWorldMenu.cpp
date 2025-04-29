@@ -27,7 +27,7 @@ namespace Menus {
 			else okbtn.enabled = true;
 			if (okbtn.clicked) {
 				if (!worldnametb.text.empty()) {
-					World::worldname = UnicodeUTF8(worldnametb.text);
+					World::WorldName = UnicodeUTF8(worldnametb.text);
 					GameBegin = true;
 				}
 				ExitSignal = true;

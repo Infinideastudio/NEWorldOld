@@ -12,9 +12,8 @@ out vec3 color;
 out vec3 normal;
 out float block_id;
 
-uniform mat4 u_proj;
-uniform mat4 u_modl;
-uniform mat4 u_translation;
+uniform mat4 u_mvp;
+uniform vec3 u_translation;
 uniform float u_game_time;
 
 const float PI = 3.1415926f;
@@ -32,5 +31,5 @@ void main() {
 	normal = a_normal;
 	block_id = a_block_id;
 
-	gl_Position = u_proj * u_modl * u_translation * vec4(coord, 1.0f);
+	gl_Position = u_mvp * vec4(coord + u_translation, 1.0f);
 }

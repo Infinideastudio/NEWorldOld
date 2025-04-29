@@ -37,10 +37,10 @@ namespace ChunkRenderer {
 						World::Chunk* p = chunkptr[rcx + 1][rcy + 1][rcz + 1];
 						if (p == nullptr) {
 							pblocks[index] = Blocks::ROCK;
-							pbrightness[index] = World::skylight;
+							pbrightness[index] = World::SkyBrightness;
 						} else if(p == World::EmptyChunkPtr) {
 							pblocks[index] = Blocks::AIR;
-							pbrightness[index] = (cy + rcy < 0) ? World::BRIGHTNESSMIN : World::skylight;
+							pbrightness[index] = (cy + rcy < 0) ? World::MinBrightness : World::SkyBrightness;
 						} else {
 							pblocks[index] = p->getblock(bx, by, bz);
 							pbrightness[index] = p->getbrightness(bx, by, bz);
@@ -85,7 +85,7 @@ namespace ChunkRenderer {
 				col3 = (col3 + rd.getbrightness(x + 1, y + 1, z) + rd.getbrightness(x + 1, y, z + 1) + rd.getbrightness(x + 1, y + 1, z + 1)) / 4.0f;
 				col4 = (col4 + rd.getbrightness(x + 1, y - 1, z) + rd.getbrightness(x + 1, y, z + 1) + rd.getbrightness(x + 1, y - 1, z + 1)) / 4.0f;
 			}
-			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
+			col1 /= World::MaxBrightness, col2 /= World::MaxBrightness, col3 /= World::MaxBrightness, col4 /= World::MaxBrightness;
 			if (!Renderer::AdvancedRender) col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
 			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
@@ -107,7 +107,7 @@ namespace ChunkRenderer {
 				col3 = (col3 + rd.getbrightness(x - 1, y + 1, z) + rd.getbrightness(x - 1, y, z + 1) + rd.getbrightness(x - 1, y + 1, z + 1)) / 4.0f;
 				col4 = (col4 + rd.getbrightness(x - 1, y + 1, z) + rd.getbrightness(x - 1, y, z - 1) + rd.getbrightness(x - 1, y + 1, z - 1)) / 4.0f;
 			}
-			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
+			col1 /= World::MaxBrightness, col2 /= World::MaxBrightness, col3 /= World::MaxBrightness, col4 /= World::MaxBrightness;
 			if (!Renderer::AdvancedRender) col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
 			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
@@ -128,7 +128,7 @@ namespace ChunkRenderer {
 				col3 = (col3 + rd.getbrightness(x, y + 1, z + 1) + rd.getbrightness(x + 1, y + 1, z) + rd.getbrightness(x + 1, y + 1, z + 1)) / 4.0f;
 				col4 = (col4 + rd.getbrightness(x, y + 1, z - 1) + rd.getbrightness(x + 1, y + 1, z) + rd.getbrightness(x + 1, y + 1, z - 1)) / 4.0f;
 			}
-			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
+			col1 /= World::MaxBrightness, col2 /= World::MaxBrightness, col3 /= World::MaxBrightness, col4 /= World::MaxBrightness;
 			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
 			Renderer::Normal3f(0.0f, 1.0f, 0.0f);
@@ -148,7 +148,7 @@ namespace ChunkRenderer {
 				col3 = (col3 + rd.getbrightness(x, y - 1, z + 1) + rd.getbrightness(x + 1, y - 1, z) + rd.getbrightness(x + 1, y - 1, z + 1)) / 4.0f;
 				col4 = (col4 + rd.getbrightness(x, y - 1, z + 1) + rd.getbrightness(x - 1, y - 1, z) + rd.getbrightness(x - 1, y - 1, z + 1)) / 4.0f;
 			}
-			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
+			col1 /= World::MaxBrightness, col2 /= World::MaxBrightness, col3 /= World::MaxBrightness, col4 /= World::MaxBrightness;
 			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
 			Renderer::Normal3f(0.0f, -1.0f, 0.0f);
@@ -169,7 +169,7 @@ namespace ChunkRenderer {
 				col3 = (col3 + rd.getbrightness(x, y + 1, z + 1) + rd.getbrightness(x + 1, y, z + 1) + rd.getbrightness(x + 1, y + 1, z + 1)) / 4.0f;
 				col4 = (col4 + rd.getbrightness(x, y + 1, z + 1) + rd.getbrightness(x - 1, y, z + 1) + rd.getbrightness(x - 1, y + 1, z + 1)) / 4.0f;
 			}
-			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
+			col1 /= World::MaxBrightness, col2 /= World::MaxBrightness, col3 /= World::MaxBrightness, col4 /= World::MaxBrightness;
 			if (!Renderer::AdvancedRender) col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
 			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
@@ -191,7 +191,7 @@ namespace ChunkRenderer {
 				col3 = (col3 + rd.getbrightness(x, y + 1, z - 1) + rd.getbrightness(x + 1, y, z - 1) + rd.getbrightness(x + 1, y + 1, z - 1)) / 4.0f;
 				col4 = (col4 + rd.getbrightness(x, y - 1, z - 1) + rd.getbrightness(x + 1, y, z - 1) + rd.getbrightness(x + 1, y - 1, z - 1)) / 4.0f;
 			}
-			col1 /= World::BRIGHTNESSMAX, col2 /= World::BRIGHTNESSMAX, col3 /= World::BRIGHTNESSMAX, col4 /= World::BRIGHTNESSMAX;
+			col1 /= World::MaxBrightness, col2 /= World::MaxBrightness, col3 /= World::MaxBrightness, col4 /= World::MaxBrightness;
 			if (!Renderer::AdvancedRender) col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
 			Renderer::Attrib1f(static_cast<float>(bl));
 			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
@@ -220,10 +220,10 @@ namespace ChunkRenderer {
 	*/
 
 	void RenderPrimitive(QuadPrimitive& p) {
-		float col0 = (float)p.col0 * 0.25f / World::BRIGHTNESSMAX;
-		float col1 = (float)p.col1 * 0.25f / World::BRIGHTNESSMAX;
-		float col2 = (float)p.col2 * 0.25f / World::BRIGHTNESSMAX;
-		float col3 = (float)p.col3 * 0.25f / World::BRIGHTNESSMAX;
+		float col0 = (float)p.col0 * 0.25f / World::MaxBrightness;
+		float col1 = (float)p.col1 * 0.25f / World::MaxBrightness;
+		float col2 = (float)p.col2 * 0.25f / World::MaxBrightness;
+		float col3 = (float)p.col3 * 0.25f / World::MaxBrightness;
 		int x = p.x, y = p.y, z = p.z, length = p.length;
 
 		Renderer::Attrib1f(static_cast<float>(p.blk));
