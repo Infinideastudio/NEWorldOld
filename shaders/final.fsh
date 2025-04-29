@@ -58,6 +58,7 @@ const float CLOUD_BOTTOM = 100.0, CLOUD_TOP = 65536.0, CLOUD_TRANSITION = 120.0;
 const int CLOUD_ITERATIONS = 32;
 const float CLOUD_STEP_SCALE = 512.0 / 32.0;
 
+mat4 mvp_inverse;
 vec4 fisheye_projection_origin;
 
 float rand(vec2 v) {
@@ -279,7 +280,7 @@ vec4 diffuse(vec2 tex_coord) {
 	vec3 translation = vec3(u_player_coord_mod) + u_player_coord_frac;
 
 	vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
-	vec4 relative_coord = inverse(u_mvp) * screen_space_coord;
+	vec4 relative_coord = mvp_inverse * screen_space_coord;
 	vec3 world_space_coord = divide(relative_coord) + translation;
 	vec3 shadow_coord = floor(world_space_coord * SHADOW_UNITS + normal * 0.5) / SHADOW_UNITS - translation;
 	// vec3 shadow_coord = world_space_coord - translation;
@@ -302,7 +303,7 @@ vec4 diffuse_with_fade(vec2 tex_coord) {
 	vec4 color = diffuse(tex_coord);
 	if (get_scene_material(tex_coord) != 0) {
 		vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
-		vec4 relative_coord = inverse(u_mvp) * screen_space_coord;
+		vec4 relative_coord = mvp_inverse * screen_space_coord;
 		float dist = length(divide(relative_coord));
 		color.a *= clamp((u_render_distance - dist) / 32.0, 0.0, 1.0);
 	}
@@ -383,8 +384,8 @@ vec4 ssr(vec4 org, vec4 dir, bool inside) {
 		if (z <= next3.z) {
 			if (get_scene_material(tex_coord) != 0) {
 				// Filter out some false positives
-				vec4 relative_coord = inverse(u_mvp) * vec4(next3.xy, z, 1.0);
-				vec4 relative_curr = inverse(u_mvp) * vec4(curr3, 1.0);
+				vec4 relative_coord = mvp_inverse * vec4(next3.xy, z, 1.0);
+				vec4 relative_curr = mvp_inverse * vec4(curr3, 1.0);
 				vec3 normal = get_scene_normal(tex_coord);
 				if (dot(divide(relative_curr) - divide(relative_coord), normal) >= -0.1) {
 					if (!found) found_ratio = ratio;
@@ -478,11 +479,12 @@ vec3 aces(vec3 x) {
 }
 
 void main() {
+	mvp_inverse = inverse(u_mvp);
 	fisheye_projection_origin = u_shadow_mvp * vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	fisheye_projection_origin /= fisheye_projection_origin.w;
 
 	vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
-	vec4 relative_coord = inverse(u_mvp) * screen_space_coord;
+	vec4 relative_coord = mvp_inverse * screen_space_coord;
 
 	vec3 view_origin = vec3(u_player_coord_mod) + u_player_coord_frac;
 	vec3 view_dir = normalize(divide(relative_coord));

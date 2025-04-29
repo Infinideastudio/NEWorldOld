@@ -11,7 +11,7 @@ namespace Renderer {
 	float* VertexArray = nullptr;
 	float Coords[4], TexCoords[4], Colors[4], Normals[4], Attribs[4];
 	bool AdvancedRender;
-	int ShadowRes = 4096;
+	int ShadowRes = 2048;
 	int MaxShadowDistance = 16;
 	float sunlightPitch = 30.0f, sunlightHeading = 60.0f;
 	vector<Shader> shaders;
