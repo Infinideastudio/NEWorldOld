@@ -4,7 +4,6 @@
 #include "TextRenderer.h"
 #include "Renderer.h"
 #include "World.h"
-#include "Items.h"
 
 // OpenGL debug callback
 void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, const GLchar* msg, const void*) {
@@ -131,8 +130,6 @@ void loadTextures() {
 	}
 
 	BlockTextureArray = Textures::LoadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
-	loadItemsTextures();
-	DefaultSkin = Textures::LoadRGBATexture("textures/skins/skin_xiaoqiao.bmp", "textures/skins/skin_xiaoqiao_mask.bmp");
 }
 
 void WindowSizeFunc(GLFWwindow* win, int width, int height) {

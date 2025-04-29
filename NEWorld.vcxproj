@@ -128,7 +128,6 @@
       <TreatWarningAsError>false</TreatWarningAsError>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeaderFile />
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;NEWORLD_DEBUG</PreprocessorDefinitions>
@@ -171,7 +170,6 @@
       <OmitFramePointers>true</OmitFramePointers>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
-      <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
@@ -200,7 +198,6 @@
       <OmitFramePointers>false</OmitFramePointers>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
-      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
@@ -228,7 +225,6 @@
       <OmitFramePointers>false</OmitFramePointers>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
-      <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
@@ -257,7 +253,6 @@
       <OmitFramePointers>false</OmitFramePointers>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
-      <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
@@ -274,11 +269,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Camera.h" />
-    <ClInclude Include="source\API.h" />
     <ClInclude Include="source\Blocks.h" />
-    <ClInclude Include="source\ByteOrder.h" />
-    <ClInclude Include="source\Camera.h" />
     <ClInclude Include="source\Chunk.h" />
     <ClInclude Include="source\ChunkPtrArray.h" />
     <ClInclude Include="source\Command.h" />
@@ -292,14 +283,8 @@
     <ClInclude Include="source\GUI.h" />
     <ClInclude Include="source\Hitbox.h" />
     <ClInclude Include="source\Globalization.h" />
-    <ClInclude Include="source\Items.h" />
     <ClInclude Include="source\Mat4.h" />
     <ClInclude Include="source\Menus.h" />
-    <ClInclude Include="source\Mob.h" />
-    <ClInclude Include="source\ModSupport.h" />
-    <ClInclude Include="source\ModLoader.h" />
-    <ClInclude Include="source\NNN.h" />
-    <ClInclude Include="source\Object.h" />
     <ClInclude Include="source\Particles.h" />
     <ClInclude Include="source\Player.h" />
     <ClInclude Include="source\Renderer.h" />
@@ -316,7 +301,6 @@
     <ClInclude Include="source\WorldRenderer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="source\API.cpp" />
     <ClCompile Include="source\Chunk.cpp" />
     <ClCompile Include="source\ChunkPtrArray.cpp" />
     <ClCompile Include="source\ChunkRenderer.cpp" />
@@ -332,12 +316,9 @@
     <ClCompile Include="source\GUI.cpp" />
     <ClCompile Include="source\Hitbox.cpp" />
     <ClCompile Include="source\Globalization.cpp" />
-    <ClCompile Include="source\Items.cpp" />
     <ClCompile Include="source\LanguageMenu.cpp" />
     <ClCompile Include="source\MainMenu.cpp" />
-    <ClCompile Include="source\ModLoader.cpp" />
     <ClCompile Include="source\NEWorld.cpp" />
-    <ClCompile Include="source\NNN.cpp" />
     <ClCompile Include="source\OptionsMenu.cpp" />
     <ClCompile Include="source\Particles.cpp" />
     <ClCompile Include="source\Player.cpp" />
@@ -353,12 +334,6 @@
     <ClCompile Include="source\WorldGen.cpp" />
     <ClCompile Include="source\WorldMenu.cpp" />
     <ClCompile Include="source\WorldRenderer.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="source\resource.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="source\Icon.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

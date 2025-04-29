@@ -22,7 +22,6 @@ TextureID UIBackgroundTextures[6];
 TextureID SelectedTexture;
 TextureID UnselectedTexture;
 TextureID BlockTextureArray;
-TextureID DefaultSkin;
 
 int GLMajorVersion, GLMinorVersion, GLRevisionVersion;
 GLFWwindow* MainWindow;
