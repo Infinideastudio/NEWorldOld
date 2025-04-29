@@ -12,7 +12,7 @@ namespace Menus {
 			title.centered = true;
 			enablebtn = GUI::button("", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
 			shadowresbar = GUI::trackbar("", 120, (int)(log2(Renderer::ShadowRes) - 10) * 40 - 1, 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-			shadowdistbar = GUI::trackbar("", 120, (Renderer::MaxShadowDistance - 2) * 4 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
+			shadowdistbar = GUI::trackbar("", 120, (Renderer::MaxShadowDistance - 4) * 6 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
 			softshadowbtn = GUI::button("", 10, 250, 96, 120, 0.5, 0.5, 0.0, 0.0);
 			cloudsbtn = GUI::button("", -250, -10, 132, 156, 0.5, 0.5, 0.0, 0.0);
 			ssaobtn = GUI::button("", 10, 250, 132, 156, 0.5, 0.5, 0.0, 0.0);
@@ -22,7 +22,7 @@ namespace Menus {
 		void onUpdate() {
 			if (enablebtn.clicked) Renderer::AdvancedRender = !Renderer::AdvancedRender;
 			Renderer::ShadowRes = (int)pow(2, (shadowresbar.barpos + 1) / 40 + 10);
-			Renderer::MaxShadowDistance = (shadowdistbar.barpos + 1) / 4 + 2;
+			Renderer::MaxShadowDistance = (shadowdistbar.barpos + 1) / 6 + 4;
 			if (softshadowbtn.clicked) Renderer::SoftShadow = !Renderer::SoftShadow;
 			if (cloudsbtn.clicked) Renderer::VolumetricClouds = !Renderer::VolumetricClouds;
 			if (ssaobtn.clicked) Renderer::AmbientOcclusion = !Renderer::AmbientOcclusion;

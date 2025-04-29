@@ -62,6 +62,8 @@ const float CLOUD_BOTTOM = 100.0, CLOUD_TOP = 65536.0, CLOUD_TRANSITION = 120.0;
 const int CLOUD_ITERATIONS = 32;
 const float CLOUD_STEP_SCALE = 512.0 / 32.0;
 
+vec4 fisheye_projection_origin;
+
 float rand(vec2 v) {
 	return fract(sin(dot(v, vec2(12.9898, 78.233))) * 43758.5453);
 }
@@ -117,17 +119,17 @@ float distance_to_edge(vec2 v) {
 }
 
 vec2 fisheye_projection(vec2 position) {
+	position -= fisheye_projection_origin.xy;
 	float dist = length(position);
 	float distort_factor = (1.0 - u_shadow_fisheye_factor) + dist * u_shadow_fisheye_factor;
-	position /= distort_factor;
-	return position;
+	return position / distort_factor + fisheye_projection_origin.xy;
 }
 
 vec2 fisheye_inverse(vec2 position) {
+	position -= fisheye_projection_origin.xy;
 	float dist = length(position);
 	float distort_factor = (1.0 - dist * u_shadow_fisheye_factor) / (1.0 - u_shadow_fisheye_factor);
-	position /= distort_factor;
-	return position;
+	return position / distort_factor + fisheye_projection_origin.xy;
 }
 
 // Repeat period = NOISE_TEXTURE_SIZE
@@ -480,6 +482,9 @@ vec3 aces(vec3 x) {
 }
 
 void main() {
+	fisheye_projection_origin = u_shadow_proj * u_shadow_modl * vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	fisheye_projection_origin /= fisheye_projection_origin.w;
+
 	vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
 	vec4 camera_space_coord = u_proj_inv * screen_space_coord;
 

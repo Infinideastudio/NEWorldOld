@@ -4,12 +4,8 @@
 #include "Renderer.h"
 #include "Framebuffer.h"
 
-extern string inputstr;
-
-//ͼ�ν���ϵͳ����������OOP������
 namespace GUI {
 
-int nScreenWidth, nScreenHeight;
 float linealpha = 0.9f;
 float FgR = 0.2f;
 float FgG = 0.2f;
@@ -101,27 +97,43 @@ void drawBackground() {
 	glTexCoord2f(1.0f, 1.0f); glVertex3f(1.0f, 1.0f, -1.0f);
 	glEnd();
 }
-double stdppi = 96.0f;
-void InitStretch() {
-	//Get the Screen Physical Size and set stretch
-	//NEVER��CALL THIS FUNCTION BEFORE THE CONTEXT IS CREATED
-	glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth,
-	                           &nScreenHeight);
-	int vmc;
-	const GLFWvidmode* mode = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
-	double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth) / 25.4f);
-	Stretch = ppi / stdppi;
-	//Compute the stretch and reset the window size
-	WindowWidth = static_cast<int>(WindowWidth * Stretch);
-	WindowHeight = static_cast<int>(WindowHeight * Stretch);
-	glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
+
+void UITrans(double x, double y) {
+	glTranslated(x * Stretch, y * Stretch, 0);
 }
 
-void EndStretch() {
-	WindowWidth = static_cast<int>(WindowWidth / Stretch);
-	WindowHeight = static_cast<int>(WindowHeight / Stretch);
-	Stretch = 1.0;
-	glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
+void UITrans(int x, int y) {
+	glTranslated((static_cast<double>(x)) * Stretch, (static_cast<double>(y)) * Stretch, 0);
+}
+
+void UIVertex(double x, double y) {
+	glVertex2d(x * Stretch, y * Stretch);
+}
+
+void UIVertex(int x, int y) {
+	glVertex2i(static_cast<int>(x * Stretch), static_cast<int>(y * Stretch));
+}
+
+void UISetFontColor(float r, float g, float b, float a) {
+	TextRenderer::setFontColor(r, g, b, a);
+}
+
+void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::string const& s, bool centered) {
+	xmin = static_cast<int>(xmin * Stretch);
+	xmax = static_cast<int>(xmax * Stretch);
+	ymin = static_cast<int>(ymin * Stretch);
+	ymax = static_cast<int>(ymax * Stretch);
+	if (centered) TextRenderer::renderString((xmin + xmax - TextRenderer::getStringWidth(s)) / 2, (ymin + ymax - TextRenderer::getLineHeight()) / 2, s);
+	else TextRenderer::renderString(xmin, (ymin + ymax - TextRenderer::getLineHeight()) / 2, s);
+}
+
+void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::u32string const& s, bool centered) {
+	xmin = static_cast<int>(xmin * Stretch);
+	xmax = static_cast<int>(xmax * Stretch);
+	ymin = static_cast<int>(ymin * Stretch);
+	ymax = static_cast<int>(ymax * Stretch);
+	if (centered) TextRenderer::renderUnicodeString((xmin + xmax - TextRenderer::getUnicodeStringWidth(s)) / 2, (ymin + ymax - TextRenderer::getLineHeight()) / 2, s);
+	else TextRenderer::renderUnicodeString(xmin, (ymin + ymax - TextRenderer::getLineHeight()) / 2, s);
 }
 
 void controls::updatepos() {
@@ -165,9 +177,8 @@ void label::render() {
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
 	}
-	TextRenderer::setFontColor(fcR, fcG, fcB, fcA);
-	if (centered) TextRenderer::renderString((xmin + xmax - TextRenderer::getStrWidth(text)) / 2, (ymin + ymax - 20) / 2, text);
-	else TextRenderer::renderString(xmin, ymin, text);
+	UISetFontColor(fcR, fcG, fcB, fcA);
+	UIRenderString(xmin, xmax, ymin, ymax, text, centered);
 }
 
 void button::update() {
@@ -222,6 +233,7 @@ void button::render() {
 
 	glBegin(GL_LINE_LOOP);
 	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
@@ -229,26 +241,11 @@ void button::render() {
 	UIVertex(xmax, ymin);
 	glEnd();
 
-	glBegin(GL_LINE_LOOP);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-	UIVertex(xmin + 1, ymin + 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-	UIVertex(xmin + 1, ymax - 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-	UIVertex(xmax - 1, ymax - 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-	UIVertex(xmax - 1, ymin + 1);
-	glEnd();
-
 	glEnable(GL_TEXTURE_2D);
 
-	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-	if (!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
-	TextRenderer::renderString((xmin + xmax - TextRenderer::getStrWidth(text)) / 2, (ymin + ymax - 20) / 2, text);
+	UISetFontColor(1.0f, 1.0f, 1.0f, 1.0f);
+	if (!enabled) UISetFontColor(0.6f, 0.6f, 0.6f, 1.0f);
+	UIRenderString(xmin, xmax, ymin, ymax, text, true);
 }
 
 void trackbar::update() {
@@ -316,6 +313,7 @@ void trackbar::render() {
 
 	glBegin(GL_LINE_LOOP);
 	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
@@ -323,28 +321,11 @@ void trackbar::render() {
 	UIVertex(xmax, ymin);
 	glEnd();
 
-	glBegin(GL_LINE_LOOP);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-	UIVertex(xmin + 1, ymin + 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-	UIVertex(xmin + 1, ymax - 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-	UIVertex(xmax - 1, ymax - 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-	UIVertex(xmax - 1, ymin + 1);
-	glEnd();
-
 	glEnable(GL_TEXTURE_2D);
 
-	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-	if (!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
-	TextRenderer::renderString((xmin + xmax - TextRenderer::getStrWidth(text)) / 2, ymin, text);
+	UISetFontColor(1.0f, 1.0f, 1.0f, 1.0f);
+	if (!enabled) UISetFontColor(0.6f, 0.6f, 0.6f, 1.0f);
+	UIRenderString(xmin, xmax, ymin, ymax, text, true);
 }
 
 void textbox::update() {
@@ -352,10 +333,6 @@ void textbox::update() {
 		mouseon = false, focused = false, pressed = false;
 		return;
 	}
-	static int delt = 0;
-	static int ldel = 0;
-	if (delt > INT_MAX - 2) delt = 0;
-	if (ldel > INT_MAX - 2) delt = 0;
 	//�����ı���״̬
 	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
 		mouseon = true, parent->MouseOnTextbox = true;
@@ -366,17 +343,10 @@ void textbox::update() {
 
 	if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;       //�����ڴ�
 	if (parent->focusid == id) focused = true; else focused = false;                //����
-	if (focused && inputstr != "")
+	if (focused && !inputstr.empty())
 		text += inputstr;
-	delt++;
-	if (parent->backspacep && (delt - ldel > 5) && text.length() >= 1) {
-		ldel = delt;
-		int n = text[text.length() - 1];
-		if (n > 0 && n <= 127)
-			text = text.substr(0, text.length() - 1);
-		else
-			text = text.substr(0, text.length() - 2);
-	}
+	if (focused && backspace && !text.empty())
+		text = text.substr(0, text.length() - 1);
 }
 
 void textbox::render() {
@@ -400,6 +370,7 @@ void textbox::render() {
 
 	glBegin(GL_LINE_LOOP);
 	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
@@ -407,26 +378,11 @@ void textbox::render() {
 	UIVertex(xmax, ymin);
 	glEnd();
 
-	glBegin(GL_LINE_LOOP);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-	UIVertex(xmin + 1, ymin + 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-	UIVertex(xmin + 1, ymax - 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-	UIVertex(xmax - 1, ymax - 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-	UIVertex(xmax - 1, ymin + 1);
-	glEnd();
-
 	glEnable(GL_TEXTURE_2D);
 
-	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-	if (!enabled) TextRenderer::setFontColor(0.6f, 0.6f, 0.6f, 1.0f);
-	TextRenderer::renderString(xmin, (ymin + ymax - 20) / 2, text);
+	UISetFontColor(1.0f, 1.0f, 1.0f, 1.0f);
+	if (!enabled) UISetFontColor(0.6f, 0.6f, 0.6f, 1.0f);
+	UIRenderString(xmin, xmax, ymin, ymax, text, false);
 }
 
 void vscroll::update() {
@@ -538,26 +494,12 @@ void vscroll::render() {
 
 	glBegin(GL_LINE_LOOP);
 	glColor4f(FgR * 0.9f, FgG * 0.9f, FgB * 0.9f, linealpha);
+	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
 	if (!enabled) glColor4f(0.5f, 0.5f, 0.5f, linealpha);
 	UIVertex(xmin, ymin);
 	UIVertex(xmin, ymax);
 	UIVertex(xmax, ymax);
 	UIVertex(xmax, ymin);
-	glEnd();
-
-	glBegin(GL_LINE_LOOP);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-	UIVertex(xmin + 1, ymin + 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-	UIVertex(xmin + 1, ymax - 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.4f, 0.4f, 0.4f, linealpha);
-	UIVertex(xmax - 1, ymax - 1);
-	if (focused) glColor4f(1.0f, 1.0f, 1.0f, linealpha);
-	else glColor4f(0.8f, 0.8f, 0.8f, linealpha);
-	UIVertex(xmax - 1, ymin + 1);
 	glEnd();
 
 	glBegin(GL_LINES);
@@ -601,6 +543,8 @@ void Form::Init() {
 	transitionList = lastdisplaylist;
 	transitionForward = true;
 	transitionTimer = timer();
+	inputstr.clear();
+	backspace = false;
 }
 
 void Form::registerControl(controls* c) {
@@ -669,12 +613,6 @@ void Form::update() {
 	if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == GLFW_PRESS)
 		rightkp = true;
 	if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) != GLFW_PRESS) rightkp = false;
-
-	backspacepl = backspacep;
-	if (glfwGetKey(MainWindow, GLFW_KEY_BACKSPACE) == GLFW_PRESS)
-		backspacep = true;
-	else
-		backspacep = false;
 
 	if (mb == 1 && mbl == 0) focusid = -1;                                   //�յ��ʱʹ�������
 
@@ -830,9 +768,9 @@ trackbar::trackbar(string t, int w, int s, int xi_r, int xa_r, int yi_r, int ya_
 	resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 }
 
-textbox::textbox(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
+textbox::textbox(std::string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
 	: textbox() {
-	text = t;
+	text = UTF8Unicode(t);
 	enabled = true;
 	resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
 }
@@ -876,7 +814,7 @@ void Form::singleloop() {
 	glfwSwapBuffers(MainWindow);
 	render();
 	glfwPollEvents();
-	//if (reentry) { ExitSignal = true; }
+	// if (reentry) { ExitSignal = true; }
 	mxl = mx; myl = my; mwl = mw; mbl = mb;
 	mb = getMouseButton();
 	mw = getMouseScroll();
@@ -891,6 +829,8 @@ void Form::singleloop() {
 		exit(0);
 	}
 	update();
+	inputstr.clear();
+	backspace = false;
 }
 
 void Form::start() {

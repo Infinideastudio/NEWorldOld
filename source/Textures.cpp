@@ -137,38 +137,6 @@ namespace Textures {
         return ret;
     }
 
-    TextureID LoadFontTexture(string Filename) {
-        ImageRGBA Texture;
-        ImageRGB image;
-        uint8_t *ip, *tp;
-        TextureID ret;
-        LoadRGBImage(image, Filename);
-        Texture.sizeX = image.sizeX;
-        Texture.sizeY = image.sizeY;
-        Texture.buffer = std::unique_ptr<uint8_t[]>(new unsigned char[image.sizeX * image.sizeY * 4]);
-        if (Texture.buffer == nullptr) {
-            printf("[console][Warning] Cannot alloc memory when loading %s\n", Filename.c_str());
-            return 0;
-        }
-        ip = image.buffer.get();
-        tp = Texture.buffer.get();
-        for (unsigned int i = 0; i != image.sizeX*image.sizeY; i++) {
-            *tp = 255; tp++;
-            *tp = 255; tp++;
-            *tp = 255; tp++;
-            *tp = 255 - *ip; tp++; ip += 3;
-        }
-        glGenTextures(1, &ret);
-        glBindTexture(GL_TEXTURE_2D, ret);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Texture.sizeX, Texture.sizeY, 0, GL_RGBA, GL_UNSIGNED_BYTE, Texture.buffer.get());
-        glGenerateMipmap(GL_TEXTURE_2D);
-        return ret;
-    }
-
     TextureID LoadBlockTextureArray(string Filename, string MkFilename) {
         TextureID ret;
         ImageRGBA image;

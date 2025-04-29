@@ -22,8 +22,6 @@ namespace Menus {
 			registerControls(8, &title, &smoothlightingbtn, &fancygrassbtn, &mergefacebtn, &msaabar, &shaderbtn, &vsyncbtn, &backbtn);
 		}
 		void onUpdate() {
-			glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &GUI::nScreenWidth,
-				&GUI::nScreenHeight);
 			if (smoothlightingbtn.clicked) SmoothLighting = !SmoothLighting;
 			if (fancygrassbtn.clicked) NiceGrass = !NiceGrass;
 			if (mergefacebtn.clicked) MergeFace = !MergeFace;

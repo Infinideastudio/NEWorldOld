@@ -30,6 +30,7 @@ extern int RenderDistance;
 extern bool SmoothLighting;
 extern bool NiceGrass;
 extern bool MergeFace;
+extern bool UIStretch;
 extern bool UIBackgroundBlur;
 extern int Multisample;
 extern bool VerticalSync;
@@ -52,7 +53,8 @@ extern GLFWcursor* MouseCursor;
 extern int mx, my, mxl, myl;
 extern int mw, mb, mbp, mbl, mwl;
 extern double mxdelta, mydelta;
-extern std::string inputstr;
+extern std::u32string inputstr;
+extern bool backspace;
 
 extern bool GameBegin, GameExit;
 extern bool Multiplayer;

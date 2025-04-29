@@ -15,26 +15,24 @@ namespace Menus {
 			okbtn = GUI::button(GetStrbyKey("NEWorld.create.ok"), -250, 250, 84, 120, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button(GetStrbyKey("NEWorld.create.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 			registerControls(4, &title, &worldnametb, &okbtn, &backbtn);
-			inputstr = "";
 			okbtn.enabled = false;
 			worldnametbChanged = false;
 		}
 		void onUpdate() {
 			if (worldnametb.pressed && !worldnametbChanged) {
-				worldnametb.text = "";
+				worldnametb.text.clear();
 				worldnametbChanged = true;
 			}
-			if (worldnametb.text == "" || !worldnametbChanged) okbtn.enabled = false;
+			if (worldnametb.text.empty() || !worldnametbChanged) okbtn.enabled = false;
 			else okbtn.enabled = true;
 			if (okbtn.clicked) {
-				if (worldnametb.text != "") {
-					World::worldname = worldnametb.text;
+				if (!worldnametb.text.empty()) {
+					World::worldname = UnicodeUTF8(worldnametb.text);
 					GameBegin = true;
 				}
 				ExitSignal = true;
 			}
 			if (backbtn.clicked) ExitSignal = true;
-			inputstr = "";
 		}
 	};
 	void createworldmenu() { CreateWorldMenu Menu; Menu.start(); }

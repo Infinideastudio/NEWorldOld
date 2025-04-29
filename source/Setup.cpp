@@ -32,6 +32,7 @@ void createWindow() {
 	glfwSetWindowSizeCallback(MainWindow, &WindowSizeFunc);
 	glfwSetMouseButtonCallback(MainWindow, &MouseButtonFunc);
 	glfwSetScrollCallback(MainWindow, &MouseScrollFunc);
+	glfwSetKeyCallback(MainWindow, &KeyFunc);
 	glfwSetCharCallback(MainWindow, &CharInputFunc);
 	glfwSwapInterval(VerticalSync ? 1 : 0);
 
@@ -51,6 +52,29 @@ void createWindow() {
 		DebugInfo("GL_KHR_debug enabled.");
 	}
 #endif
+}
+
+void initStretch() {
+	const double stdppi = 96.0;
+	if (UIStretch && Stretch == 1.0) {
+		// Get the screen physical size and set stretch
+		int nScreenWidth, nScreenHeight;
+		glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth, &nScreenHeight);
+		int vmc;
+		const GLFWvidmode* mode = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
+		double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth) / 25.4f);
+		Stretch = ppi / stdppi;
+		// Compute the stretch and reset the window size
+		WindowWidth = static_cast<int>(WindowWidth * Stretch);
+		WindowHeight = static_cast<int>(WindowHeight * Stretch);
+		glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
+	}
+	else if (!UIStretch && Stretch != 1.0) {
+		WindowWidth = static_cast<int>(WindowWidth / Stretch);
+		WindowHeight = static_cast<int>(WindowHeight / Stretch);
+		Stretch = 1.0;
+		glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
+	}
 }
 
 void toggleFullScreen() {
@@ -90,9 +114,9 @@ void setupScreen() {
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
 	// Make sure everything is initialised
-	TextRenderer::BuildFont(WindowWidth, WindowHeight);
-	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 	Renderer::initShaders();
+	TextRenderer::initFont();
+	initStretch();
 }
 
 void loadTextures() {
@@ -123,21 +147,22 @@ void WindowSizeFunc(GLFWwindow* win, int width, int height) {
 void MouseButtonFunc(GLFWwindow *, int button, int action, int) {
 	mb = 0;
 	if (action == GLFW_PRESS) {
-		if (button == GLFW_MOUSE_BUTTON_LEFT)mb += 1;
-		if (button == GLFW_MOUSE_BUTTON_RIGHT)mb += 2;
-		if (button == GLFW_MOUSE_BUTTON_MIDDLE)mb += 4;
+		if (button == GLFW_MOUSE_BUTTON_LEFT) mb += 1;
+		if (button == GLFW_MOUSE_BUTTON_RIGHT) mb += 2;
+		if (button == GLFW_MOUSE_BUTTON_MIDDLE) mb += 4;
 	}
 	else mb = 0;
 }
 
-void CharInputFunc(GLFWwindow *, unsigned int c) {
-	if (c >= 128) {
-		static char buffer[64];
-		wchar_t unicode = static_cast<wchar_t>(c);
-		int size = WCharToMByte(buffer, &unicode, 64, 1);
-		inputstr += std::string(buffer, size);
+void KeyFunc(GLFWwindow*, int key, int /* scancode */, int action, int /* mods */) {
+	if (key == GLFW_KEY_BACKSPACE && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+		backspace = true;
 	}
-	else inputstr += (char)c;
+}
+
+void CharInputFunc(GLFWwindow *, unsigned int c) {
+	char32_t unicode = static_cast<char32_t>(c);
+	inputstr += unicode;
 }
 
 void MouseScrollFunc(GLFWwindow *, double, double yoffset) {

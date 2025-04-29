@@ -32,7 +32,7 @@ NEWorld.shaders.clouds
 NEWorld.shaders.ssao
 NEWorld.shaders.back
 NEWorld.gui.caption
-NEWorld.gui.unicode
+NEWorld.gui.fontsize
 NEWorld.gui.blur
 NEWorld.gui.stretch
 NEWorld.gui.back

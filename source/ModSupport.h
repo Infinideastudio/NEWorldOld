@@ -5,7 +5,7 @@
 #include "FrustumTest.h"
 #include "Command.h"
 #include "Chunk.h"
-typedef unsigned char ubyte;
+
 typedef unsigned int OnlineID;
 typedef unsigned short ItemID;
 typedef unsigned short BlockID;
@@ -42,7 +42,7 @@ struct PlayerData {
 	float height;
 	float heightExt;
 	ItemID BlockInHand;
-	ubyte indexInHand;
+	uint8_t indexInHand;
 	ItemID* inventory;
 	short* inventoryAmount;
 	double glidingEnergy, glidingSpeed;

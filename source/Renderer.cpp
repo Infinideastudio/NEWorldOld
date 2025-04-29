@@ -12,7 +12,7 @@ namespace Renderer {
 	float Coords[4], TexCoords[4], Colors[4], Normals[4], Attribs[4];
 	bool AdvancedRender;
 	int ShadowRes = 4096;
-	int MaxShadowDistance = 6;
+	int MaxShadowDistance = 16;
 	float sunlightPitch = 30.0f, sunlightHeading = 60.0f;
 	vector<Shader> shaders;
 	int ActiveShader;
@@ -128,7 +128,6 @@ namespace Renderer {
 		shaders[TranslucentShader].setUniformI("u_diffuse", 0);
 
 		float fisheyeFactor = 0.8f;
-		int shadowDistance = std::min(MaxShadowDistance, RenderDistance);
 		shaders[FinalShader].bind();
 		shaders[FinalShader].setUniformI("u_diffuse_buffer", 0);
 		shaders[FinalShader].setUniformI("u_normal_buffer", 1);
@@ -140,7 +139,7 @@ namespace Renderer {
 		shaders[FinalShader].setUniform("u_buffer_height", float(gHeight));
 		shaders[FinalShader].setUniform("u_shadow_texture_resolution", float(ShadowRes));
 		shaders[FinalShader].setUniform("u_shadow_fisheye_factor", fisheyeFactor);
-		shaders[FinalShader].setUniform("u_shadow_distance", shadowDistance * 16.0f);
+		shaders[FinalShader].setUniform("u_shadow_distance", getShadowDistance() * 16.0f);
 		shaders[FinalShader].setUniform("u_render_distance", RenderDistance * 16.0f);
 
 		shaders[ShadowShader].bind();
@@ -150,58 +149,61 @@ namespace Renderer {
 		Shader::unbind();
 	}
 
-	FrustumTest getLightFrustum() {
+	FrustumTest getShadowMapFrustum() {
+		float length = getShadowDistance() * 16.0f;
 		FrustumTest res;
 		res.LoadIdentity();
 		res.MultRotate(-sunlightHeading, 0.0f, 1.0f, 0.0f);
 		res.MultRotate(sunlightPitch, 1.0f, 0.0f, 0.0f);
+		res.MultOrtho(-length, length, -length, length, -1000.0f, 1000.0f);
 		return res;
 	}
 
-	FrustumTest getShadowMapFrustum(double heading, double pitch, int shadowDistance, const FrustumTest& viewFrustum) {
-		FrustumTest lightSpace = getLightFrustum();
-		/*
-		// Minimal Bounding Box
+	FrustumTest getShadowMapFrustumExperimental(double heading, double pitch, const FrustumTest& viewFrustum) {
+		float length = getShadowDistance() * 16.0f;
+		FrustumTest res;
+		res.LoadIdentity();
+		res.MultRotate(-sunlightHeading, 0.0f, 1.0f, 0.0f);
+		res.MultRotate(sunlightPitch, 1.0f, 0.0f, 0.0f);
+
+		// Calculate view direction in light space, then rotate it to right (+1, 0)
+		auto viewRotate = Mat4f(1.0f);
+		viewRotate *= Mat4f::rotation(static_cast<float>(heading), Vec3f(0.0f, 1.0f, 0.0f));
+		viewRotate *= Mat4f::rotation(-static_cast<float>(pitch), Vec3f(1.0f, 0.0f, 0.0f));
+		auto viewDir = (Mat4f(res.getModlMatrix()) * viewRotate).transformVec3(Vec3f(0.0f, 0.0f, -1.0f));
+		auto viewDirXY = Vec3f(viewDir.x, viewDir.y, 0.0f);
+		if (viewDirXY.length() > 0.01f) {
+			float radians = std::atan2(viewDir.y, viewDir.x);
+			res.MultRotate(-radians * 180.0f / std::numbers::pi_v<float>, 0.0f, 0.0f, 1.0f);
+		}
+
+		// Minimal bounding box containing a diamond-shaped convex hull
+		// (should approximate the visible parts better than the whole view frustum)
 		float halfHeight = std::tan(viewFrustum.getFov() * (std::numbers::pi_v<float> / 180.0f) / 2.0f);
 		float halfWidth = halfHeight * viewFrustum.getAspect();
-		float zNear = viewFrustum.getNear(), zFar = shadowDistance * 16.0f;
-		float xNear = halfWidth * zNear, yNear = halfHeight * zNear;
-		float xFar = halfWidth * zFar, yFar = halfHeight * zFar;
-		auto vertices = std::array<Vec3f, 8>{
-			Vec3f(-xNear, -yNear, -zNear),
-			Vec3f(xNear, -yNear, -zNear),
-			Vec3f(xNear, yNear, -zNear),
-			Vec3f(-xNear, yNear, -zNear),
-			Vec3f(-xFar, -yFar, -zFar),
-			Vec3f(xFar, -yFar, -zFar),
-			Vec3f(xFar, yFar, -zFar),
-			Vec3f(-xFar, yFar, -zFar),
+		auto vertices = std::array{
+			Vec3f(0.0f, 0.0f, -1.0f),
+			Vec3f(-halfWidth, -halfHeight, -1.0f),
+			Vec3f(halfWidth, -halfHeight, -1.0f),
+			Vec3f(halfWidth, halfHeight, -1.0f),
+			Vec3f(-halfWidth, halfHeight, -1.0f),
 		};
-		Mat4f frustumRotate = Mat4f::rotation(static_cast<float>(heading), Vec3f(0, 1, 0)) * Mat4f::rotation(-static_cast<float>(pitch), Vec3f(1, 0, 0));
-		Mat4f toLightSpace = Mat4f(lightSpace.getProjMatrix()) * Mat4f(lightSpace.getModlMatrix()) * frustumRotate;
-		for (size_t i = 0; i < vertices.size(); i++) vertices[i] = toLightSpace.transformVec3(vertices[i]);
-		Vec3f nearCenter = toLightSpace.transformVec3(Vec3f(0, 0, -zNear));
-		Vec3f farCenter = toLightSpace.transformVec3(Vec3f(0, 0, -zFar));
-
-		float xmin = vertices[0].x, xmax = vertices[0].x;
-		float ymin = vertices[0].y, ymax = vertices[0].y;
-		float zmin = vertices[0].z, zmax = vertices[0].z;
+		auto toLightSpace = Mat4f(res.getModlMatrix()) * viewRotate;
+		float xmin = 0.0f, xmax = 0.0f, ymin = 0.0f, ymax = 0.0f;
 		for (size_t i = 0; i < vertices.size(); i++) {
+			vertices[i].normalize();
+			vertices[i] *= length;
+			vertices[i] = toLightSpace.transformVec3(vertices[i]);
 			xmin = std::min(xmin, vertices[i].x);
 			xmax = std::max(xmax, vertices[i].x);
 			ymin = std::min(ymin, vertices[i].y);
 			ymax = std::max(ymax, vertices[i].y);
-			zmin = std::min(zmin, vertices[i].z);
-			zmax = std::max(zmax, vertices[i].z);
 		}
-		FrustumTest res = lightSpace;
+		xmin = std::max(xmin, -length);
+		xmax = std::min(xmax, length);
+		ymin = std::max(ymin, -length);
+		ymax = std::min(ymax, length);
 		res.MultOrtho(xmin, xmax, ymin, ymax, -1000.0f, 1000.0f);
-		*/
-		// Original
-		float scale = 16.0f; // * sqrt(3.0f);
-		float length = shadowDistance * scale;
-		FrustumTest res = lightSpace;
-		res.MultOrtho(-length, length, -length, length, -1000.0f, 1000.0f);
 		return res;
 	}
 

@@ -19,7 +19,6 @@ inline string Var2Str(T var) {
 	std::stringstream ss; ss << var; return ss.str();
 }
 
-//ͼ�ν���ϵͳ����������OOP������
 namespace GUI {
 	extern float linealpha;
 	extern float FgR;
@@ -31,8 +30,6 @@ namespace GUI {
 	extern float BgB;
 	extern float BgA;
 
-	extern int nScreenWidth;
-	extern int nScreenHeight;
 	extern unsigned int transitionList;
 	extern unsigned int lastdisplaylist;
 	extern double transitionTimer;
@@ -40,8 +37,14 @@ namespace GUI {
 
 	void clearTransition();
 	void drawBackground();
-	void InitStretch();
-	void EndStretch();
+
+	void UITrans(double x, double y);
+	void UITrans(int x, int y);
+	void UIVertex(double x, double y);
+	void UIVertex(int x, int y);
+	void UISetFontColor(float r, float g, float b, float a);
+	void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::string const& s, bool centered = false);
+	void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::u32string const& s, bool centered = false);
 
 	class Form;
 	class controls {
@@ -101,10 +104,10 @@ namespace GUI {
 	class textbox :public controls {
 	public:
 		//�ı���
-		string text;
+		std::u32string text;
 		bool mouseon, focused, pressed, enabled;
 		textbox() : mouseon(false), focused(false), pressed(false), enabled(false) {};
-		textbox(string t,
+		textbox(std::string t,
 			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
 		void update();
 		void render();
@@ -142,7 +145,7 @@ namespace GUI {
 	public:
 		vector<controls*> children;
 		bool tabp, shiftp, enterp, enterpl;
-		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, backspacep, backspacepl, updated;
+		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, updated;
 		int maxid, currentid, focusid, mx, my, mw, mb, mxl, myl, mwl, mbl;
 		unsigned int displaylist;
 		bool ExitSignal, MouseOnTextbox;
