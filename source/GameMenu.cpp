@@ -21,7 +21,7 @@ namespace Menus {
 		void onLeave() {
 			if (GameExit) {
 				World::saveAllChunks();
-				World::destroyAllChunks();
+				World::destroy();
 			}
 		}
 	};

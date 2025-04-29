@@ -1,5 +1,4 @@
 #include "FrustumTest.h"
-#include <memory>
 
 FrustumTest::FrustumTest(Mat4f const& mvp) {
 	// The following code assumes column-major matrices

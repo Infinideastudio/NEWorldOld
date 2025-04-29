@@ -149,7 +149,7 @@ namespace GUI {
 		int maxid, currentid, focusid, mx, my, mw, mb, mxl, myl, mwl, mbl;
 		unsigned int displaylist;
 		bool ExitSignal, MouseOnTextbox;
-		void Init();
+		void init();
 		void registerControl(controls* c);
 		void registerControls(int count, controls* c, ...);
 		void update();

@@ -26,12 +26,11 @@
 #include "Vec3.h"
 
 template <typename T>
-struct Mat4 {
+class Mat4 {
+public:
 	T data[16] = {};
 
-	Mat4() {}
-
-	explicit Mat4(T x) {
+	Mat4(T x = T(0)) {
 		data[0] = data[5] = data[10] = data[15] = x; // Identity matrix
 	}
 
@@ -129,8 +128,8 @@ struct Mat4 {
 	}
 
 	// Construct a translation matrix
-	static Mat4 translation(const Vec3<T>& delta) {
-		Mat4 res(T(1.0));
+	static Mat4 translate(Vec3<T> const& delta) {
+		Mat4 res = Mat4(T(1));
 		res.data[3] = delta.x;
 		res.data[7] = delta.y;
 		res.data[11] = delta.z;
@@ -138,10 +137,10 @@ struct Mat4 {
 	}
 
 	// Construct a rotation matrix
-	static Mat4 rotation(T degrees, Vec3<T> vec) {
+	static Mat4 rotate(T alpha, Vec3<T> const& vec) {
 		Mat4 res;
 		vec.normalize();
-		T alpha = degrees * std::numbers::pi_v<T> / T(180.0), s = std::sin(alpha), c = std::cos(alpha), t = 1.0f - c;
+		T s = std::sin(alpha), c = std::cos(alpha), t = T(1) - c;
 		res.data[0] = t * vec.x * vec.x + c;
 		res.data[1] = t * vec.x * vec.y - s * vec.z;
 		res.data[2] = t * vec.x * vec.z + s * vec.y;
@@ -151,20 +150,20 @@ struct Mat4 {
 		res.data[8] = t * vec.x * vec.z - s * vec.y;
 		res.data[9] = t * vec.y * vec.z + s * vec.x;
 		res.data[10] = t * vec.z * vec.z + c;
-		res.data[15] = T(1.0);
+		res.data[15] = T(1);
 		return res;
 	}
 
 	// Construct a perspective projection matrix
 	static Mat4 perspective(T fov, T aspect, T near, T far) {
 		Mat4 res;
-		T f = T(1.0) / std::tan(fov * std::numbers::pi_v<T> / T(180.0) / T(2.0));
+		T f = T(1) / std::tan(fov / T(2));
 		T a = near - far;
 		res.data[0] = f / aspect;
 		res.data[5] = f;
 		res.data[10] = (far + near) / a;
-		res.data[11] = T(2.0) * far * near / a;
-		res.data[14] = T(-1.0);
+		res.data[11] = T(2) * far * near / a;
+		res.data[14] = T(-1);
 		return res;
 	}
 
@@ -174,18 +173,18 @@ struct Mat4 {
 		T b = top - bottom;
 		T c = far - near;
 		Mat4 res;
-		res.data[0] = T(2.0) / a;
+		res.data[0] = T(2) / a;
 		res.data[3] = -(right + left) / a;
-		res.data[5] = T(2.0) / b;
+		res.data[5] = T(2) / b;
 		res.data[7] = -(top + bottom) / b;
-		res.data[10] = T(-2.0) / c;
+		res.data[10] = T(-2) / c;
 		res.data[11] = -(far + near) / c;
-		res.data[15] = T(1.0);
+		res.data[15] = T(1);
 		return res;
 	}
 
 	// Multiply with Vec3 (with homogeneous coords divided)
-	Vec3<T> transform(const Vec3<T>& vec) const {
+	Vec3<T> transform(Vec3<T> const& vec) const {
 		Vec3<T> res(data[0] * vec.x + data[1] * vec.y + data[2] * vec.z + data[3],
 					data[4] * vec.x + data[5] * vec.y + data[6] * vec.z + data[7],
 					data[8] * vec.x + data[9] * vec.y + data[10] * vec.z + data[11]);

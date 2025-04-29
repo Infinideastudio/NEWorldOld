@@ -27,10 +27,9 @@ namespace Textures {
         { NULLBLOCK, NULLBLOCK, NULLBLOCK },
     };
 
-    TextureIndex getTextureIndex(BlockID blockname, uint8_t side) {
-        side--;
-        if (blockname >= Blocks::BLOCKS_COUNT || side >= 3) return NULLBLOCK;
-        return Indexes[blockname][side];
+    TextureIndex getTextureIndex(BlockID blockname, size_t face) {
+        if (blockname >= Blocks::BLOCKS_COUNT || face >= 3) return NULLBLOCK;
+        return Indexes[blockname][face];
     }
 
     void LoadRGBImage(ImageRGB& tex, string Filename) {
@@ -49,8 +48,8 @@ namespace Textures {
         bmpfile.read((char*)&bih, sizeof(BitmapInfoHeader));
         bitmap.sizeX = bih.biWidth;
         bitmap.sizeY = bih.biHeight;
-        bitmap.buffer = std::unique_ptr<uint8_t[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 3]);
-        bmpfile.read((char*)bitmap.buffer.get(), bitmap.sizeX*bitmap.sizeY * 3);
+        bitmap.buffer = std::make_unique<uint8_t[]>(bitmap.sizeX * bitmap.sizeY * 3);
+        bmpfile.read((char*)bitmap.buffer.get(), bitmap.sizeX * bitmap.sizeY * 3);
         bmpfile.close();
         for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
             unsigned char t = bitmap.buffer[ind];
@@ -61,7 +60,6 @@ namespace Textures {
     }
 
     void LoadRGBAImage(ImageRGBA& tex, string Filename, string MkFilename) {
-        unsigned char *rgb = nullptr, *a = nullptr;
         unsigned int ind = 0;
         bool noMaskFile = (MkFilename == "");
         ImageRGBA& bitmap = tex;
@@ -85,15 +83,18 @@ namespace Textures {
         }
         bmpfile.read((char*)&bfh, sizeof(BitmapFileHeader));
         bmpfile.read((char*)&bih, sizeof(BitmapInfoHeader));
+
         bitmap.sizeX = bih.biWidth;
         bitmap.sizeY = bih.biHeight;
-        bitmap.buffer = std::unique_ptr<uint8_t[]>(new unsigned char[bitmap.sizeX * bitmap.sizeY * 4]);
-        rgb = new unsigned char[bitmap.sizeX * bitmap.sizeY * 3];
-        bmpfile.read((char*)rgb, bitmap.sizeX*bitmap.sizeY * 3);
+        bitmap.buffer = std::make_unique<uint8_t[]>(bitmap.sizeX * bitmap.sizeY * 4);
+
+        auto rgb = std::make_unique<uint8_t[]>(bitmap.sizeX * bitmap.sizeY * 3);
+        auto alpha = std::make_unique<uint8_t[]>(bitmap.sizeX * bitmap.sizeY * 3);
+
+        bmpfile.read((char*)rgb.get(), bitmap.sizeX * bitmap.sizeY * 3);
         bmpfile.close();
         if (!noMaskFile) {
-            a = new unsigned char[bitmap.sizeX*bitmap.sizeY * 3];
-            maskfile.read((char*)a, bitmap.sizeX*bitmap.sizeY * 3);
+            maskfile.read((char*)alpha.get(), bitmap.sizeX * bitmap.sizeY * 3);
             maskfile.close();
         }
         for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
@@ -101,7 +102,7 @@ namespace Textures {
             bitmap.buffer[ind + 1] = rgb[i * 3 + 1];
             bitmap.buffer[ind + 2] = rgb[i * 3];
             if (noMaskFile) bitmap.buffer[ind + 3] = 255;
-            else bitmap.buffer[ind + 3] = 255 - a[i * 3];
+            else bitmap.buffer[ind + 3] = 255 - alpha[i * 3];
             ind += 4;
         }
     }
@@ -157,15 +158,15 @@ namespace Textures {
         glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
         return ret;
     }
-
-    void SaveRGBImage(string filename, ImageRGB& image) {
+    
+    void SaveRGBImage(string filename, ImageRGB const& image) {
         BitmapFileHeader bitmapfileheader;
         BitmapInfoHeader bitmapinfoheader;
-        bitmapfileheader.bfSize = image.sizeX*image.sizeY * 3 + 54;
+        bitmapfileheader.bfSize = image.sizeX * image.sizeY * 3 + 54;
         bitmapinfoheader.biWidth = image.sizeX;
         bitmapinfoheader.biHeight = image.sizeY;
-        bitmapinfoheader.biSizeImage = image.sizeX*image.sizeY * 3;
-        for (unsigned int i = 0; i != image.sizeX*image.sizeY * 3; i += 3) {
+        bitmapinfoheader.biSizeImage = image.sizeX * image.sizeY * 3;
+        for (unsigned int i = 0; i != image.sizeX * image.sizeY * 3; i += 3) {
             uint8_t t = image.buffer.get()[i];
             image.buffer.get()[i] = image.buffer.get()[i + 2];
             image.buffer.get()[i + 2] = t;
@@ -173,7 +174,7 @@ namespace Textures {
         std::ofstream ofs(filename, std::ios::out | std::ios::binary);
         ofs.write((char*)&bitmapfileheader, sizeof(bitmapfileheader));
         ofs.write((char*)&bitmapinfoheader, sizeof(bitmapinfoheader));
-        ofs.write((char*)image.buffer.get(), sizeof(uint8_t)*image.sizeX*image.sizeY * 3);
+        ofs.write((char*)image.buffer.get(), sizeof(uint8_t) * image.sizeX * image.sizeY * 3);
         ofs.close();
     }
 }

@@ -29,7 +29,7 @@ namespace Menus {
 				std::getline(LF, info.EngSymbol);
 				std::getline(LF, info.Name);
 				LF.close();
-				info.Button = new GUI::button(info.EngSymbol + " -- " + info.Name, -200, 200, count * 36 + 42, count * 36 + 72, 0.5, 0.5, 0.0, 0.0);
+				info.Button = new GUI::button(info.Name, -200, 200, count * 36 + 60, count * 36 + 90, 0.5, 0.5, 0.0, 0.0);
 				registerControls(1, info.Button);
 				Langs.push_back(info);
 				count++;

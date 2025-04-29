@@ -5,14 +5,14 @@ const short BITMAP_ID = 0x4D42;
 
 namespace Textures {
 	struct ImageRGB {
-		unsigned int sizeX;
-		unsigned int sizeY;
+		unsigned int sizeX = 0;
+		unsigned int sizeY = 0;
 		std::unique_ptr<uint8_t[]> buffer;
 	};
 
 	struct ImageRGBA {
-		unsigned int sizeX;
-		unsigned int sizeY;
+		unsigned int sizeX = 0;
+		unsigned int sizeY = 0;
 		std::unique_ptr<uint8_t[]> buffer;
 	};
 
@@ -39,12 +39,12 @@ namespace Textures {
 		TEXTURE_INDICES_COUNT
 	};
 
-	TextureIndex getTextureIndex(BlockID blockname, uint8_t side);
+	TextureIndex getTextureIndex(BlockID blockname, size_t face);
 	void LoadRGBImage(ImageRGB& tex, string Filename);
 	void LoadRGBAImage(ImageRGBA& tex, string Filename, string MkFilename);
 
 	TextureID LoadRGBTexture(string Filename, bool bilinear = false);
 	TextureID LoadRGBATexture(string Filename, string MkFilename, bool bilinear = false);
 	TextureID LoadBlockTextureArray(string Filename, string MkFilename);
-	void SaveRGBImage(string filename, ImageRGB& image);
+	void SaveRGBImage(string filename, ImageRGB const& image);
 }

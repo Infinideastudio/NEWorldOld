@@ -24,6 +24,7 @@
 #include <unordered_set>
 #include <queue>
 #include <numbers>
+#include <random>
 
 #ifdef NEWORLD_USE_WINAPI
 #ifdef NEWORLD_SERVER

@@ -13,7 +13,8 @@ namespace Renderer {
 	bool AdvancedRender;
 	int ShadowRes = 2048;
 	int MaxShadowDistance = 16;
-	float sunlightPitch = 30.0f, sunlightHeading = 60.0f;
+	double sunlightPitch = 30.0;
+	double sunlightHeading = 60.0;
 	vector<Shader> shaders;
 	int ActiveShader;
 	int index = 0, size = 0;
@@ -152,8 +153,8 @@ namespace Renderer {
 	Mat4f getShadowMatrix() {
 		float length = getShadowDistance() * 16.0f;
 		auto res = Mat4f(1.0f);
-		res = Mat4f::rotation(-sunlightHeading, { 0.0f, 1.0f, 0.0f }) * res;
-		res = Mat4f::rotation(sunlightPitch, { 1.0f, 0.0f, 0.0f })* res;
+		res = Mat4f::rotate(-static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * res;
+		res = Mat4f::rotate(static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * res;
 		res = Mat4f::ortho(-length, length, -length, length, -1000.0f, 1000.0f) * res;
 		return res;
 	}
@@ -161,23 +162,23 @@ namespace Renderer {
 	Mat4f getShadowMatrixExperimental(float fov, float aspect, double heading, double pitch) {
 		float length = getShadowDistance() * 16.0f;
 		auto res = Mat4f(1.0f);
-		res = Mat4f::rotation(-sunlightHeading, { 0.0f, 1.0f, 0.0f }) * res;
-		res = Mat4f::rotation(sunlightPitch, { 1.0f, 0.0f, 0.0f }) * res;
+		res = Mat4f::rotate(-static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * res;
+		res = Mat4f::rotate(static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * res;
 
 		// Calculate view direction in light space, then rotate it to right (+1, 0)
 		auto viewRotate = Mat4f(1.0f);
-		viewRotate *= Mat4f::rotation(static_cast<float>(heading), Vec3f(0.0f, 1.0f, 0.0f));
-		viewRotate *= Mat4f::rotation(-static_cast<float>(pitch), Vec3f(1.0f, 0.0f, 0.0f));
+		viewRotate *= Mat4f::rotate(static_cast<float>(heading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f));
+		viewRotate *= Mat4f::rotate(-static_cast<float>(pitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f));
 		auto viewDir = (res * viewRotate).transform(Vec3f(0.0f, 0.0f, -1.0f));
 		auto viewDirXY = Vec3f(viewDir.x, viewDir.y, 0.0f);
 		if (viewDirXY.length() > 0.01f) {
 			float radians = std::atan2(viewDir.y, viewDir.x);
-			res = Mat4f::rotation(-radians * 180.0f / std::numbers::pi_v<float>, { 0.0f, 0.0f, 1.0f }) * res;
+			res = Mat4f::rotate(-radians, Vec3f(0.0f, 0.0f, 1.0f)) * res;
 		}
 
 		// Minimal bounding box containing a diamond-shaped convex hull
 		// (should approximate the visible parts better than the whole view frustum)
-		float halfHeight = std::tan(static_cast<float>(fov) * (std::numbers::pi_v<float> / 180.0f) / 2.0f);
+		float halfHeight = std::tan(static_cast<float>(fov * Pi / 180.0) / 2.0f);
 		float halfWidth = halfHeight * static_cast<float>(aspect);
 		auto vertices = std::array{
 			Vec3f(0.0f, 0.0f, -1.0f),
@@ -315,13 +316,15 @@ namespace Renderer {
 		// Set dynamic uniforms
 		int repeat = 25600;
 		int ixpos = int(floor(xpos)), iypos = int(floor(ypos)), izpos = int(floor(zpos));
-		Vec3f lightdir = (Mat4f::rotation(sunlightHeading, Vec3f(0, 1, 0)) * Mat4f::rotation(-sunlightPitch, Vec3f(1, 0, 0))).transform(Vec3f(0, 0, -1));
+		auto sunlightDir = (
+			Mat4f::rotate(static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) *
+			Mat4f::rotate(-static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f))).transform(Vec3f(0.0f, 0.0f, -1.0f));
 
 		Shader& shader = shaders[FinalShader];
 		bindShader(FinalShader);
 		shader.setUniform("u_mvp", viewMatrix);
 		shader.setUniform("u_shadow_mvp", shadowMatrix);
-		shader.setUniform("u_sunlight_dir", lightdir.x, lightdir.y, lightdir.z);
+		shader.setUniform("u_sunlight_dir", sunlightDir);
 		shader.setUniform("u_game_time", gameTime);
 		shader.setUniformI("u_repeat_length", repeat);
 		shader.setUniformI("u_player_coord_int", ixpos, iypos, izpos);

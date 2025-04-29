@@ -147,7 +147,7 @@ int main() {
 
 		printf("[Console][Game]");
 		printf("Init world...\n");
-		World::Init();
+		World::init();
 
 		// 初始化游戏更新线程
 		updateMutex = MutexCreate();
@@ -224,7 +224,7 @@ int main() {
 
 		// 保存并卸载世界
 		saveGame();
-		World::destroyAllChunks();
+		World::destroy();
 	}
 
 	// 结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
@@ -239,8 +239,8 @@ ThreadFunc updateThreadFunc(void*) {
 	MutexLock(updateMutex);
 	while (updateThreadRun) {
 		double currTimer = timer();
-		if (currTimer - updateTimer >= 5.0) updateTimer = currTimer;
-		while (currTimer - updateTimer >= 1.0 / 30.0 && upsc < 60) {
+		while (currTimer - updateTimer >= 1.0 / 30.0) {
+			if (upsc >= 60) updateTimer = currTimer;
 			updateTimer += 1.0 / 30.0;
 			upsc++;
 			gameUpdate();
@@ -454,12 +454,12 @@ void gameUpdate() {
 	World::updatedChunks = 0;
 
 	// Move chunk pointer array
-	if (World::cpArray.originX != Player::cxt - RenderDistance - 2 || World::cpArray.originY != Player::cyt - RenderDistance - 2 || World::cpArray.originZ != Player::czt - RenderDistance - 2)
-		World::cpArray.moveTo(Player::cxt - RenderDistance - 2, Player::cyt - RenderDistance - 2, Player::czt - RenderDistance - 2);
+	if (World::chunkPtrArray.originX != Player::cxt - RenderDistance - 2 || World::chunkPtrArray.originY != Player::cyt - RenderDistance - 2 || World::chunkPtrArray.originZ != Player::czt - RenderDistance - 2)
+		World::chunkPtrArray.moveTo(Player::cxt - RenderDistance - 2, Player::cyt - RenderDistance - 2, Player::czt - RenderDistance - 2);
 
 	// Move height map
-	if (World::HMap.originX != (Player::cxt - RenderDistance - 2) * 16 || World::HMap.originZ != (Player::czt - RenderDistance - 2) * 16)
-		World::HMap.moveTo((Player::cxt - RenderDistance - 2) * 16, (Player::czt - RenderDistance - 2) * 16);
+	if (World::heightMap.originX != (Player::cxt - RenderDistance - 2) * 16 || World::heightMap.originZ != (Player::czt - RenderDistance - 2) * 16)
+		World::heightMap.moveTo((Player::cxt - RenderDistance - 2) * 16, (Player::czt - RenderDistance - 2) * 16);
 
 	for (auto const& [_, c] : World::chunks) {
 		// 加载动画
@@ -502,6 +502,10 @@ void gameUpdate() {
 			}
 		}
 	}
+
+	// 更新世界方块
+	World::updatedBlocks = 0;
+	World::updateBlocks();
 
 	// 判断选中的方块
 	double lx, ly, lz, lxl, lyl, lzl;
@@ -899,10 +903,10 @@ void frameLinkedUpdate() {
 		int cx = std::get<1>(load);
 		int cy = std::get<2>(load);
 		int cz = std::get<3>(load);
-		World::Chunk* c = World::AddChunk(cx, cy, cz);
+		World::Chunk* c = World::addChunk(cx, cy, cz);
 		if (c->empty()) {
-			World::DeleteChunk(cx, cy, cz);
-			World::cpArray.setChunkPtr(cx, cy, cz, World::EmptyChunkPtr);
+			World::removeChunk(cx, cy, cz);
+			World::chunkPtrArray.setChunkPtr(cx, cy, cz, World::EmptyChunkPtr);
 		}
 	}
 
@@ -911,7 +915,7 @@ void frameLinkedUpdate() {
 		int cx = std::get<1>(unload);
 		int cy = std::get<2>(unload);
 		int cz = std::get<3>(unload);
-		World::DeleteChunk(cx, cy, cz);
+		World::removeChunk(cx, cy, cz);
 	}
 
 	// Mesh updated chunks
@@ -1009,9 +1013,13 @@ void render() {
 
 	// Calculate matrices
 	auto viewMatrix = Mat4f(1.0f);
-	viewMatrix = Mat4f::rotation(-static_cast<float>(pheading), { 0.0f, 1.0f, 0.0f }) * viewMatrix;
-	viewMatrix = Mat4f::rotation(static_cast<float>(plookupdown), { 1.0f, 0.0f, 0.0f }) * viewMatrix;
-	viewMatrix = Mat4f::perspective(FOVyNormal + FOVyExt, static_cast<float>(WindowWidth) / WindowHeight, 0.05f, RenderDistance * 16.0f) * viewMatrix;
+	viewMatrix = Mat4f::rotate(-static_cast<float>(pheading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * viewMatrix;
+	viewMatrix = Mat4f::rotate(static_cast<float>(plookupdown * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * viewMatrix;
+	viewMatrix = Mat4f::perspective(
+		static_cast<float>((FOVyNormal + FOVyExt) * Pi / 180.0),
+		static_cast<float>(WindowWidth) / WindowHeight,
+		0.05f,
+		RenderDistance * 16.0f) * viewMatrix;
 
 	// Clear framebuffers
 	if (Renderer::AdvancedRender) Renderer::ClearSGDBuffers();
@@ -1129,7 +1137,7 @@ void render() {
 		glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
 		Renderer::Begin(GL_QUADS, 2, 3, 4);
 		Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-		Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Blocks::WATER, 1)));
+		Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Blocks::WATER, 0)));
 		Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(0, 0);
 		Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, WindowHeight);
 		Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(WindowWidth, WindowHeight);
@@ -1537,6 +1545,9 @@ void drawGUI() {
 		ss << World::updatedChunks << " chunks updated";
 		debugText(ss.str());
 		ss.str("");
+		ss << World::updatedBlocks << "/" << World::blockUpdateQueue.size() << " blocks updated";
+		debugText(ss.str());
+		ss.str("");
 
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
 		ss << c_getChunkPtrFromCPA << " chunk pointer array requests";
@@ -1585,7 +1596,7 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
 			glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
 			Renderer::Begin(GL_QUADS, 2, 3, 4);
 			Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Player::inventory[row][i], 1)));
+			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Player::inventory[row][i], 0)));
 			Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 2);
 			Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 30);
 			Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 30, ybase + 30);
@@ -1676,7 +1687,7 @@ void drawBag() {
 			glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
 			Renderer::Begin(GL_QUADS, 2, 3, 4);
 			Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(indexselected, 1)));
+			Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(indexselected, 0)));
 			Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(mx - 16, my - 16);
 			Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(mx - 16, my + 16);
 			Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(mx + 16, my + 16);

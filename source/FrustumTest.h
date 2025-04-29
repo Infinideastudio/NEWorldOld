@@ -1,6 +1,4 @@
 #pragma once
-#include <vector>
-#include "Hitbox.h"
 #include "Mat4.h"
 
 class FrustumTest {
@@ -8,7 +6,7 @@ private:
 	float frus[24];
 
 public:
-	// AABB with Float32 coords
+	// AABB with 32-bit float coords
 	struct AABBf {
 		float xmin, ymin, zmin;
 		float xmax, ymax, zmax;
