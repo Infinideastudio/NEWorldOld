@@ -1,6 +1,5 @@
 #include "Player.h"
 #include "World.h"
-#include "OnlinePlayer.h"
 
 int Player::gamemode = GameMode::Survival;
 bool Player::Glide;
@@ -262,21 +261,3 @@ void Player::changeGameMode(int _gamemode) {
 		break;
 	}
 }
-
-PlayerPacket Player::convertToPlayerPacket() {
-	PlayerPacket p;
-	p.x = xpos;
-	p.y = ypos + height + heightExt;
-	p.z = zpos;
-	p.heading = heading;
-	p.lookupdown = lookupdown;
-	p.onlineID = onlineID;
-	p.skinID = 0;
-#ifdef NEWORLD_COMPILE_DISABLE_SECURE
-	strcpy(p.name, name.c_str());
-#else
-	strcpy_s(p.name, name.c_str());
-#endif
-	return p;
-}
-

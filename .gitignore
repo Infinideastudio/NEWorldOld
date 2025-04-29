@@ -199,10 +199,6 @@ FakesAssemblies/
 [Ww]orlds/
 [Ss]creen[Ss]hots/
 [Cc]onfigs/
-[Ff]onts/
-[Tt]extures/
-[Ii]nclude/
 *.lib
 *.exe
 *.dll
-
