@@ -15,8 +15,10 @@ namespace Globalization {
 		std::string line;
 		Lines.clear();
 		Cur_Lang = lang;
-		for (int i = 0; i < count; i++) {
-			getline(f, Lines[i].str);
+		int i = 0;
+		while (std::getline(f, line)) {
+			if (line.empty()) break;
+			Lines[i++].str = line;
 		}
 		return true;
 	}

@@ -37,8 +37,6 @@ void drawGUI();
 void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha);
 void drawBag();
 
-void saveScreenshot(int x, int y, int w, int h, string filename);
-void createThumbnail();
 void loadOptions();
 void saveOptions();
 
@@ -63,6 +61,7 @@ bool shouldToggleFullscreen;
 int fps, fpsc, ups, upsc;
 double fctime, uctime;
 
+bool paused = false;
 bool bagOpened = false;
 bool showHUD = true;
 bool showDebugPanel = false;
@@ -79,7 +78,7 @@ bool selce;
 int selbx, selby, selbz, selcx, selcy, selcz;
 float FOVyExt;
 
-string chatword;
+std::u32string chatword;
 bool chatmode = false;
 vector<Command> commands;
 vector<string> chatMessages;
@@ -205,18 +204,22 @@ int main() {
 				upsc = 0;
 			}
 
-			// 切换全屏状态
-			if (shouldToggleFullscreen) {
-				shouldToggleFullscreen = false;
-				toggleFullScreen();
-			}
-
 			// 检测所有窗口事件
-			glfwSetInputMode(MainWindow, GLFW_CURSOR, shouldShowCursor ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 			glfwPollEvents();
 
 			// 须每帧处理的输入和游戏更新
 			frameLinkedUpdate();
+
+			// 暂停菜单
+			if (paused) {
+				paused = false;
+				readback(); // Ensure creation of thumbnail
+				GUI::clearTransition();
+				Menus::gamemenu();
+				mxl = mx;
+				myl = my;
+				updateTimer = fctime = uctime = timer();
+			}
 		};
 
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -537,37 +540,35 @@ void gameUpdate() {
 			myl = my;
 			mwl = mw;
 			mbl = mb;
-			if (chatword != "") { // 指令的执行，或发出聊天文本
-				if (chatword.substr(0, 1) == "/") { // 指令
-					vector<string> command = split(chatword, " ");
+			if (!chatword.empty()) { // 指令的执行，或发出聊天文本
+				if (chatword[0] == '/') { // 指令
+					auto utf8 = UnicodeUTF8(chatword);
+					std::vector<string> command = split(utf8, " ");
 					if (!doCommand(command)) { // 执行失败
-						DebugWarning("Fail to execute the command: " + chatword);
-						chatMessages.push_back("Fail to execute the command: " + chatword);
+						DebugWarning("Fail to execute the command: " + utf8);
+						chatMessages.push_back("Fail to execute the command: " + utf8);
 					}
 				}
 				else
-					chatMessages.push_back(chatword);
+					chatMessages.push_back(UnicodeUTF8(chatword));
 			}
-			chatword = "";
+			chatword.clear();
 		}
 
-		if (isKeyPressed(GLFW_KEY_BACKSPACE) && chatword.length() > 0) {
-			int n = chatword[chatword.length() - 1];
-			if (n > 0 && n <= 127)
-				chatword = chatword.substr(0, chatword.length() - 1);
-			else
-				chatword = chatword.substr(0, chatword.length() - 2);
-		}
-		else {
+		if (!inputstr.empty()) {
 			chatword += inputstr;
-			inputstr = "";
+			inputstr.clear();
+		}
+		if (backspace && !chatword.empty()) {
+			chatword = chatword.substr(0, chatword.length() - 1);
+			backspace = false;
 		}
 
 		// 自动补全
-		if (isKeyPressed(GLFW_KEY_TAB) && chatmode && chatword.size() > 0 && chatword.substr(0, 1) == "/") {
+		if (isKeyPressed(GLFW_KEY_TAB) && chatmode && !chatword.empty() && chatword[0] == '/') {
 			for (unsigned int i = 0; i != commands.size(); i++) {
-				if (beginWith(commands[i].identifier, chatword))
-					chatword = commands[i].identifier;
+				if (beginWith(commands[i].identifier, UnicodeUTF8(chatword)))
+					chatword = UTF8Unicode(commands[i].identifier);
 			}
 		}
 	}
@@ -585,7 +586,8 @@ void gameUpdate() {
 	}
 	else {
 		shouldShowCursor = false;
-		inputstr = "";
+		inputstr.clear();
+		backspace = false;
 
 		// 从玩家位置发射一条线段
 		for (int i = 0; i < SelectPrecision * SelectDistance; i++) {
@@ -844,7 +846,7 @@ void gameUpdate() {
 		if (isKeyPressed(GLFW_KEY_ENTER)) chatmode = true;
 		if (isKeyPressed(GLFW_KEY_SLASH)) {
 			chatmode = true;
-			chatword = "/";
+			chatword = UTF8Unicode("/");
 		}
 	}
 
@@ -973,8 +975,9 @@ void frameLinkedUpdate() {
 	}
 	touchdownAnimTimer = currTimer;
 
-	// 鼠标位置
+	// 鼠标状态和位置
 	double mxd, myd;
+	glfwSetInputMode(MainWindow, GLFW_CURSOR, shouldShowCursor ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 	glfwGetCursorPos(MainWindow, &mxd, &myd);
 	mxl = mx;
 	myl = my;
@@ -990,14 +993,16 @@ void frameLinkedUpdate() {
 		if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
 	}
 
-	// 暂停菜单
+	// 切换全屏
+	if (shouldToggleFullscreen) {
+		shouldToggleFullscreen = false;
+		toggleFullScreen();
+	}
+
+	// 暂停按键
 	if (isKeyDown(GLFW_KEY_ESCAPE)) {
-		createThumbnail();
-		GUI::clearTransition();
-		Menus::gamemenu();
-		mxl = mx;
-		myl = my;
-		updateTimer = timer();
+		shouldGetThumbnail = true;
+		paused = true;
 	}
 }
 
@@ -1040,10 +1045,10 @@ void render() {
 	if (showMeshWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	// Build shadow map
-	int shadowDistance = std::min(Renderer::MaxShadowDistance, RenderDistance);
-	FrustumTest lightFrustum = Renderer::getShadowMapFrustum(pheading, plookupdown, shadowDistance, Player::ViewFrustum);
+	FrustumTest lightFrustum = Renderer::getShadowMapFrustum();
 	if (Renderer::AdvancedRender) {
-		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, shadowDistance, interp, lightFrustum);
+		FrustumTest lightFrustumTest = Renderer::getShadowMapFrustumExperimental(pheading, plookupdown, Player::ViewFrustum);
+		WorldRenderer::ListRenderChunks(xpos, ypos, zpos, Renderer::getShadowDistance(), interp, lightFrustumTest);
 		Renderer::StartShadowPass(lightFrustum, interpolatedTime);
 		WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
 		Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Mat4f(1.0f).data);
@@ -1171,6 +1176,18 @@ void render() {
 	}
 }
 
+void saveScreenshot(int x, int y, int w, int h, string filename) {
+	Textures::ImageRGB scrBuffer;
+	int bufw = w, bufh = h;
+	while (bufw % 4 != 0) bufw += 1;
+	while (bufh % 4 != 0) bufh += 1;
+	scrBuffer.sizeX = bufw;
+	scrBuffer.sizeY = bufh;
+	scrBuffer.buffer = std::make_unique<uint8_t[]>(bufw * bufh * 3);
+	glReadPixels(x, y, bufw, bufh, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
+	Textures::SaveRGBImage(filename, scrBuffer);
+}
+
 void readback() {
 	if (shouldGetScreenshot) {
 		shouldGetScreenshot = false;
@@ -1192,7 +1209,9 @@ void readback() {
 
 	if (shouldGetThumbnail) {
 		shouldGetThumbnail = false;
-		createThumbnail();
+		std::stringstream ss;
+		ss << "worlds/" << World::worldname << "/thumbnail.bmp";
+		saveScreenshot(0, 0, WindowWidth, WindowHeight, ss.str());
 	}
 }
 
@@ -1371,50 +1390,101 @@ void drawGUI() {
 		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2f(xa, yi);
 		Renderer::End().render();
 		shader.unbind();
+
+		/*
+		auto const& viewFrustum = Player::ViewFrustum;
+		auto lightFrustum = Renderer::getShadowMapFrustumExperimental(Player::heading, Player::lookupdown, Player::ViewFrustum);
+		float length = Renderer::getShadowDistance() * 16.0f;
+
+		auto viewRotate = Mat4f(1.0f);
+		viewRotate *= Mat4f::rotation(static_cast<float>(Player::heading), Vec3f(0.0f, 1.0f, 0.0f));
+		viewRotate *= Mat4f::rotation(-static_cast<float>(Player::lookupdown), Vec3f(1.0f, 0.0f, 0.0f));
+
+		float halfHeight = std::tan(viewFrustum.getFov() * (std::numbers::pi_v<float> / 180.0f) / 2.0f);
+		float halfWidth = halfHeight * viewFrustum.getAspect();
+		float zNear = 10.0f, zFar = length;
+		float xNear = halfWidth * zNear, yNear = halfHeight * zNear;
+		float xFar = halfWidth * zFar, yFar = halfHeight * zFar;
+		auto vertices = std::array<Vec3f, 8>{
+			Vec3f(-xNear, -yNear, -zNear),
+			Vec3f(xNear, -yNear, -zNear),
+			Vec3f(xNear, yNear, -zNear),
+			Vec3f(-xNear, yNear, -zNear),
+			Vec3f(-xFar, -yFar, -zFar),
+			Vec3f(xFar, -yFar, -zFar),
+			Vec3f(xFar, yFar, -zFar),
+			Vec3f(-xFar, yFar, -zFar),
+		};
+		auto indices = std::array<std::pair<int, int>, 12>{
+			std::pair{ 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 },
+			std::pair{ 4, 5 }, { 5, 6 }, { 6, 7 }, { 7, 4 },
+			std::pair{ 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 },
+		};
+		auto toLightSpace = Mat4f(lightFrustum.getModlMatrix()) * viewRotate;
+		for (size_t i = 0; i < vertices.size(); i++) vertices[i] = toLightSpace.transformVec3(vertices[i]);
+		float x0 = static_cast<float>(WindowWidth - WindowHeight / 4);
+		float y0 = static_cast<float>(WindowHeight / 4);
+		float xd = static_cast<float>(WindowHeight / 4);
+		float yd = static_cast<float>(-WindowHeight / 4);
+
+		glDisable(GL_TEXTURE_2D);
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		glBegin(GL_LINES);
+		for (auto [i, j] : indices) {
+			auto first = vertices[i];
+			auto second = vertices[j];
+			glVertex2f(x0 + first.x * xd, y0 + first.y * yd);
+			glVertex2f(x0 + second.x * xd, y0 + second.y * yd);
+		}
+		glEnd();
+		glEnable(GL_TEXTURE_2D);
+		*/
 	}
+
+	int lineHeight = TextRenderer::getLineHeight();
+	int textPos = 0;
+	auto debugText = [=](string s) mutable {
+		TextRenderer::renderString(0, lineHeight * textPos, s);
+		textPos++;
+	};
 
 	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
 	if (showDebugPanel && selb != Blocks::AIR) {
 		std::stringstream ss;
 		ss << BlockInfo(selb).getBlockName() << " (id: " << (int)selb << ")";
-		TextRenderer::renderASCIIString(WindowWidth / 2 + 50, WindowHeight / 2 + 50 - 16, ss.str());
+		TextRenderer::renderString(WindowWidth / 2 + 50, WindowHeight / 2 + 50 - TextRenderer::getLineHeight(), ss.str());
 	}
 	if (chatmode) {
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
 		glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
-		glVertex2i(1, WindowHeight - 51);
+		glVertex2i(1, WindowHeight - 33 - lineHeight);
 		glVertex2i(1, WindowHeight - 33);
 		glVertex2i(WindowWidth - 1, WindowHeight - 33);
-		glVertex2i(WindowWidth - 1, WindowHeight - 51);
+		glVertex2i(WindowWidth - 1, WindowHeight - 33 - lineHeight);
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
-		TextRenderer::renderString(0, WindowHeight - 50, chatword);
+		TextRenderer::renderUnicodeString(0, WindowHeight - 33 - lineHeight, chatword);
 	}
 	int count = 0;
-	for (size_t i = chatMessages.size(); i-- > 0 && count < 10; ) {
+	for (size_t i = chatMessages.size(); i-- > 0 && count < 10; count++) {
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_QUADS);
 		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA);
-		glVertex2i(1, WindowHeight - 80 - 18 * count);
+		glVertex2i(1, WindowHeight - 34 - lineHeight * (count + 2));
 		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA);
-		glVertex2i(1, WindowHeight - 80 - 18 * (count - 1));
+		glVertex2i(1, WindowHeight - 34 - lineHeight * (count + 1));
 		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA);
-		glVertex2i(WindowWidth - 1, WindowHeight - 80 - 18 * (count - 1));
+		glVertex2i(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 1));
 		glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA);
-		glVertex2i(WindowWidth - 1, WindowHeight - 80 - 18 * count);
+		glVertex2i(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 2));
 		glEnd();
 		glEnable(GL_TEXTURE_2D);
-		TextRenderer::renderString(0, WindowHeight - 80 - 18 * count++, chatMessages[i]);
+		TextRenderer::renderString(0, WindowHeight - 34 - lineHeight * (count + 2), chatMessages[i]);
 	}
 
+	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 	if (showDebugPanel) {
-		int textPos = 0;
-		auto debugText = [textPos](string s) mutable {
-			TextRenderer::renderASCIIString(0, 16 * textPos, s);
-			textPos++;
-		};
-
 		std::stringstream ss;
 		ss << std::fixed << std::setprecision(4);
 
@@ -1511,16 +1581,15 @@ void drawGUI() {
 #endif
 	}
 	else {
-		TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 		std::stringstream ss;
 		ss << "v" << GameVersion;
-		TextRenderer::renderASCIIString(0, 0, ss.str());
+		debugText(ss.str());
 		ss.str("");
 		ss << fps << " fps";
-		TextRenderer::renderASCIIString(0, 16, ss.str());
+		debugText(ss.str());
 		ss.str("");
 		ss << (Player::gamemode == Player::GameMode::Creative ? "creative" : "survival") << " mode";
-		TextRenderer::renderASCIIString(0, 32, ss.str());
+		debugText(ss.str());
 		ss.str("");
 	}
 }
@@ -1694,24 +1763,6 @@ void drawBag() {
 	}
 }
 
-void saveScreenshot(int x, int y, int w, int h, string filename) {
-	Textures::ImageRGB scrBuffer;
-	int bufw = w, bufh = h;
-	while (bufw % 4 != 0)  bufw += 1;
-	while (bufh % 4 != 0)  bufh += 1;
-	scrBuffer.sizeX = bufw;
-	scrBuffer.sizeY = bufh;
-	scrBuffer.buffer = std::unique_ptr<ubyte[]>(new ubyte[bufw * bufh * 3]);
-	glReadPixels(x, y, bufw, bufh, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
-	Textures::SaveRGBImage(filename, scrBuffer);
-}
-
-void createThumbnail() {
-	std::stringstream ss;
-	ss << "Worlds/" << World::worldname << "/Thumbnail.bmp";
-	saveScreenshot(0, 0, WindowWidth, WindowHeight, ss.str());
-}
-
 template<typename T>
 void loadoption(std::map<string, string> &m, const char* name, T &value) {
 	if (m.find(name) == m.end()) return;
@@ -1745,8 +1796,9 @@ void loadOptions() {
 	loadoption(options, "VolumetricClouds", Renderer::VolumetricClouds);
 	loadoption(options, "AmbientOcclusion", Renderer::AmbientOcclusion);
 	loadoption(options, "VerticalSync", VerticalSync);
-	loadoption(options, "GUIBackgroundBlur", UIBackgroundBlur);
-	loadoption(options, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
+	loadoption(options, "UIFontSize", TextRenderer::FontSize);
+	loadoption(options, "UIStretch", UIStretch);
+	loadoption(options, "UIBackgroundBlur", UIBackgroundBlur);
 }
 
 template<typename T>
@@ -1773,7 +1825,8 @@ void saveOptions() {
 	saveoption(fileout, "VolumetricClouds", Renderer::VolumetricClouds);
 	saveoption(fileout, "AmbientOcclusion", Renderer::AmbientOcclusion);
 	saveoption(fileout, "VerticalSync", VerticalSync);
-	saveoption(fileout, "GUIBackgroundBlur", UIBackgroundBlur);
-	saveoption(fileout, "ForceUnicodeFont", TextRenderer::useUnicodeASCIIFont);
+	saveoption(fileout, "UIFontSize", TextRenderer::FontSize);
+	saveoption(fileout, "UIStretch", UIStretch);
+	saveoption(fileout, "UIBackgroundBlur", UIBackgroundBlur);
 	fileout.close();
 }

@@ -7,6 +7,7 @@ int RenderDistance = 8;
 bool SmoothLighting = true;
 bool NiceGrass = true;
 bool MergeFace = false;
+bool UIStretch = false;
 bool UIBackgroundBlur = false;
 int Multisample = 0;
 bool VerticalSync = false;
@@ -30,7 +31,8 @@ GLFWcursor* MouseCursor;
 int mx, my, mxl, myl;
 int mw, mb, mbp, mbl, mwl;
 double mxdelta, mydelta;
-std::string inputstr;
+std::u32string inputstr;
+bool backspace;
 
 bool GameBegin, GameExit;
 bool Multiplayer = false;

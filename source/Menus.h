@@ -2,6 +2,7 @@
 #include "GUI.h"
 #include "Globalization.h"
 using Globalization::GetStrbyKey;
+
 namespace Menus {
 	void mainmenu();
 	void options();

@@ -131,7 +131,7 @@
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeaderFile />
-      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;NEWORLD_DEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;NEWORLD_DEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -149,7 +149,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeaderFile />
-      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;NEWORLD_DEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;NEWORLD_DEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -177,7 +177,7 @@
       </PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -205,7 +205,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -233,7 +233,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;NEWORLD_DEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;NEWORLD_DEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>
@@ -262,7 +262,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PreprocessorDefinitions>GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;NEWORLD_DEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;GLFW_DLL;NEWORLD_GAME;NEWORLD_USE_WINAPI;NEWORLD_DEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>Debug</GenerateDebugInformation>

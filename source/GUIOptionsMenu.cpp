@@ -1,38 +1,34 @@
 #include "Menus.h"
 #include "TextRenderer.h"
+#include "Setup.h"
 
 namespace Menus {
 	class GUIOptionsMenu :public GUI::Form {
 	private:
-		GUI::label title, ppistat;
-		GUI::button fontbtn, blurbtn, ppistretchbtn, backbtn;
+		GUI::label title;
+		GUI::trackbar fontbar;
+		GUI::button blurbtn, ppistretchbtn, backbtn;
 		void onLoad() {
 			title = GUI::label(GetStrbyKey("NEWorld.gui.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			title.centered = true;
-			fontbtn = GUI::button("", -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-			fontbtn.enabled = false;
+			fontbar = GUI::trackbar("", 120, (TextRenderer::FontSize - 16) * 5 - 1, -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
 			blurbtn = GUI::button("", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-			ppistretchbtn = GUI::button(GetStrbyKey("NEWorld.gui.stretch"), -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
-			ppistat = GUI::label("", -250, 250, 120, 144, 0.5, 0.5, 0.0, 0.0);
+			ppistretchbtn = GUI::button("", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button(GetStrbyKey("NEWorld.gui.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-			registerControls(6, &title, &fontbtn, &blurbtn, &ppistretchbtn, &ppistat, &backbtn);
+			registerControls(5, &title, &fontbar, &blurbtn, &ppistretchbtn, &backbtn);
 		}
 		void onUpdate() {
-			//if (fontbtn.clicked) TextRenderer::useUnicodeASCIIFont = !TextRenderer::useUnicodeASCIIFont;
+			TextRenderer::FontSize = (fontbar.barpos + 1) / 5 + 16;
 			if (blurbtn.clicked) UIBackgroundBlur = !UIBackgroundBlur;
-			if (ppistretchbtn.clicked) {
-				if (Stretch == 1.0) GUI::InitStretch();
-				else GUI::EndStretch();
+			if (ppistretchbtn.clicked) UIStretch = !UIStretch;
+			if (backbtn.clicked) {
+				initStretch();
+				TextRenderer::initFont(true);
+				ExitSignal = true;
 			}
-			if (backbtn.clicked) ExitSignal = true;
-			//fontbtn.text = GetStrbyKey("NEWorld.gui.unicode") + BoolYesNo(TextRenderer::useUnicodeASCIIFont);
-			fontbtn.text = GetStrbyKey("NEWorld.gui.unicode") + BoolYesNo(true);
+			fontbar.text = GetStrbyKey("NEWorld.gui.fontsize") + Var2Str(TextRenderer::FontSize);
 			blurbtn.text = GetStrbyKey("NEWorld.gui.blur") + BoolEnabled(UIBackgroundBlur);
-			int vmc;
-			const GLFWvidmode* m = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
-			ppistat.text = "phy:" + Var2Str(GUI::nScreenWidth) + "x" + Var2Str(GUI::nScreenHeight) +
-				" scr:" + Var2Str(m[vmc - 1].width) + "x" + Var2Str(m[vmc - 1].height) +
-				" win:" + Var2Str(WindowWidth) + "x" + Var2Str(WindowHeight);
+			ppistretchbtn.text = GetStrbyKey("NEWorld.gui.stretch") + BoolEnabled(UIStretch);
 		}
 	};
 	void GUIoptions() { GUIOptionsMenu Menu; Menu.start(); }

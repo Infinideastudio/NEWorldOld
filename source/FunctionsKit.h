@@ -1,24 +1,9 @@
 #pragma once
 #include "StdInclude.h"
 #include "Typedefs.h"
+#include <codecvt> // TODO: find a replacement?
 
-extern double Stretch;
-
-//���ú���
 std::vector<std::string> split(std::string str, std::string pattern);
-
-inline void UITrans(double x, double y) {
-	glTranslated(x*Stretch, y*Stretch, 0);
-}
-inline void UITrans(int x, int y) {
-	glTranslated((static_cast<double>(x))*Stretch, (static_cast<double>(y))*Stretch, 0);
-}
-inline void UIVertex(double x, double y) {
-	glVertex2d(x*Stretch, y*Stretch);
-}
-inline void UIVertex(int x, int y) {
-	glVertex2i(static_cast<int>(x*Stretch), static_cast<int>(y*Stretch));
-}
 
 extern unsigned int g_seed;
 inline int fastRand() {
@@ -94,13 +79,6 @@ inline void MutexUnlock(Mutex_t _hMutex) { ReleaseMutex(_hMutex); }
 inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return CreateThread(NULL, 0, func, param, 0, NULL); }
 inline void ThreadWait(Thread_t _hThread) { WaitForSingleObject(_hThread, INFINITE); }
 inline void ThreadDestroy(Thread_t _hThread) { CloseHandle(_hThread); }
-inline unsigned int MByteToWChar(wchar_t* dst, const char* src, int dstSize, int srcSize) {
-	return MultiByteToWideChar(CP_UTF8, 0, src, srcSize, dst, dstSize);
-}
-inline unsigned int WCharToMByte(char* dst, const wchar_t* src, int dstSize, int srcSize) {
-	return WideCharToMultiByte(CP_UTF8, 0, src, srcSize, dst, dstSize, NULL, NULL);
-}
-inline unsigned int wstrlen(const wchar_t* wstr) { return lstrlenW(wstr); }
 inline double timer() {
 	static LARGE_INTEGER counterFreq;
 	if (counterFreq.QuadPart == 0) QueryPerformanceFrequency(&counterFreq);
@@ -116,9 +94,16 @@ inline void MutexUnlock(Mutex_t _hMutex) { _hMutex->unlock(); }
 inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return new std::thread(func, param); }
 inline void ThreadWait(Thread_t _hThread) { _hThread->join(); }
 inline void ThreadDestroy(Thread_t _hThread) { delete _hThread; }
-inline unsigned int MByteToWChar(wchar_t* dst, const char* src, unsigned int n) { size_t res; mbstowcs_s(&res, dst, n, src, _TRUNCATE); return res; }
-inline unsigned int WCharToMByte(char* dst, const wchar_t* src, unsigned int n) { size_t res; wcstombs_s(&res, dst, n, src, _TRUNCATE); return res; }
-inline unsigned int wstrlen(const wchar_t* wstr) { return wcslen(wstr); }
 inline void Sleep(unsigned int ms) { unsigned int fr = clock(); while (clock() - fr <= ms); }
 inline double timer() { return (double)clock() / CLOCKS_PER_SEC; }
 #endif
+
+inline std::u32string UTF8Unicode(std::string const& s) {
+	std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> converter;
+	return converter.from_bytes(s);
+}
+
+inline std::string UnicodeUTF8(std::u32string const& s) {
+	std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> converter;
+	return converter.to_bytes(s);
+}

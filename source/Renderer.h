@@ -83,9 +83,11 @@ namespace Renderer {
 		shaders[shaderID].bind();
 		ActiveShader = shaderID;
 	}
-	FrustumTest getLightFrustum();
-	FrustumTest getShadowMapFrustum(double heading, double pitch, int shadowdist, const FrustumTest& viewFrustum);
-	
+
+	inline int getShadowDistance() { return std::min(MaxShadowDistance, RenderDistance); }
+	FrustumTest getShadowMapFrustum();
+	FrustumTest getShadowMapFrustumExperimental(double heading, double pitch, const FrustumTest& viewFrustum);
+
 	void ClearSGDBuffers();
 	void StartShadowPass(const FrustumTest& lightFrustum, float gameTime);
 	void EndShadowPass();

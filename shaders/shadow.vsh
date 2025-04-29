@@ -18,11 +18,13 @@ uniform float u_shadow_fisheye_factor;
 const float PI = 3.1415926f;
 const int LEAF_ID = 8;
 
+vec4 fisheye_projection_origin;
+
 vec2 fisheye_projection(vec2 position) {
+	position -= fisheye_projection_origin.xy;
 	float dist = length(position);
-	float distort_factor = (1.0f - u_shadow_fisheye_factor) + dist * u_shadow_fisheye_factor;
-	position /= distort_factor;
-	return position;
+	float distort_factor = (1.0 - u_shadow_fisheye_factor) + dist * u_shadow_fisheye_factor;
+	return position / distort_factor + fisheye_projection_origin.xy;
 }
 
 void main() {
@@ -34,6 +36,8 @@ void main() {
 	}
 	tex_coord = a_tex_coord;
 
+	fisheye_projection_origin = u_proj * u_modl * vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	fisheye_projection_origin /= fisheye_projection_origin.w;
 	gl_Position = u_proj * u_modl * u_translation * vec4(coord, 1.0f);
 	gl_Position /= gl_Position.w;
 	gl_Position = vec4(fisheye_projection(gl_Position.xy), gl_Position.zw);

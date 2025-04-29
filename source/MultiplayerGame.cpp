@@ -20,7 +20,6 @@ namespace Menus {
 			runbtn = GUI::button("[runbtn]", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			okbtn = GUI::button("[okbtn]", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			backbtn = GUI::button("[backbtn]", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-			inputstr = "";
 			okbtn.enabled = false;
 			registerControls(4, &title, &serveriptb, &runbtn, &okbtn, &backbtn);
 		}
@@ -30,18 +29,17 @@ namespace Menus {
 			if (runbtn.clicked) WinExec("NEWorldServer.exe", SW_SHOWDEFAULT);
 #endif
 			if (okbtn.clicked) {
-				ServerIP = serveriptb.text;
+				ServerIP = UnicodeUTF8(serveriptb.text);
 				GameBegin = true;
 				Multiplayer = true;
 			}
 			if (backbtn.clicked) ExitSignal = true;
 			if (serveriptb.pressed && !serveripChanged) {
-				serveriptb.text = "";
+				serveriptb.text.clear();
 				serveripChanged = true;
 			}
-			if (serveriptb.text == "" || !serveripChanged || getDotCount(serveriptb.text) != 3) okbtn.enabled = false;
+			if (serveriptb.text.empty() || !serveripChanged || getDotCount(UnicodeUTF8(serveriptb.text)) != 3) okbtn.enabled = false;
 			else okbtn.enabled = true;
-			inputstr = "";
 		}
 	};
 	void multiplayermenu() { MultiplayerMenu Menu; Menu.start(); }

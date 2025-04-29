@@ -1,12 +1,8 @@
 #pragma once
-#include "stdinclude.h"
+#include "StdInclude.h"
 
 namespace Globalization {
-	struct Line {
-		std::string str;
-		int id;
-		GLuint PerRender;
-	};
+	struct Line { std::string str; };
 	
 	extern int count;
 	extern std::map<int, Line> Lines;
