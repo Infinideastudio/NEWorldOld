@@ -15,10 +15,8 @@
 #include "GUI.h"
 #include "Menus.h"
 #include "FrustumTest.h"
-#include "Items.h"
 #include "Globalization.h"
 #include "Command.h"
-#include "ModLoader.h"
 #include "Setup.h"
 
 void registerCommands();
@@ -135,10 +133,6 @@ int main() {
 	loadTextures();
 	registerCommands();
 
-	printf("[Console][Game]");
-	printf("Loading Mods...\n");
-	Mod::ModLoader::loadMods();
-
 	// 菜单游戏循环
 	while (!glfwWindowShouldClose(MainWindow)) {
 		GameBegin = GameExit = false;
@@ -232,8 +226,6 @@ int main() {
 		saveGame();
 		World::destroyAllChunks();
 	}
-
-	Mod::ModLoader::unloadMods();
 
 	// 结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
 	// 不对啊这不是FB！！！这是正宗的C++！！！！！！
@@ -643,7 +635,7 @@ void gameUpdate() {
 					}
 				}
 				if (mb == 2 && mbp == false) { // 鼠标右键
-					if ( Player::inventoryAmount[3][Player::indexInHand] > 0 && isBlock(Player::inventory[3][Player::indexInHand])) {
+					if (Player::inventoryAmount[3][Player::indexInHand] > 0) {
 						// 放置方块
 						if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
 							Player::inventoryAmount[3][Player::indexInHand]--;

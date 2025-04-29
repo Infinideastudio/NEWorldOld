@@ -45,7 +45,6 @@ extern TextureID UIBackgroundTextures[6];
 extern TextureID SelectedTexture;
 extern TextureID UnselectedTexture;
 extern TextureID BlockTextureArray;
-extern TextureID DefaultSkin;
 
 extern int GLMajorVersion, GLMinorVersion, GLRevisionVersion;
 extern GLFWwindow* MainWindow;

@@ -44,12 +44,6 @@
     <Filter Include="Source\Game\Hitbox">
       <UniqueIdentifier>{e671892d-d7a8-41a7-81ad-57abd5613c9c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\DataStorage">
-      <UniqueIdentifier>{949e684e-b65c-4015-82ab-e4bb1972035c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Mod">
-      <UniqueIdentifier>{f2eb1263-1080-487c-afb0-6d937680ea10}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Resources">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -122,23 +116,8 @@
     <ClInclude Include="source\Blocks.h">
       <Filter>源代码\Game</Filter>
     </ClInclude>
-    <ClInclude Include="source\ModLoader.h">
-      <Filter>Source\Mod</Filter>
-    </ClInclude>
-    <ClInclude Include="source\API.h">
-      <Filter>Source\Mod</Filter>
-    </ClInclude>
     <ClInclude Include="source\Hitbox.h">
       <Filter>源代码\Game\Hitbox</Filter>
-    </ClInclude>
-    <ClInclude Include="source\ModSupport.h">
-      <Filter>Source\Mod</Filter>
-    </ClInclude>
-    <ClInclude Include="source\NNN.h">
-      <Filter>Source\DataStorage</Filter>
-    </ClInclude>
-    <ClInclude Include="source\ByteOrder.h">
-      <Filter>Source\DataStorage</Filter>
     </ClInclude>
     <ClInclude Include="source\Setup.h">
       <Filter>Source\Common</Filter>
@@ -164,8 +143,6 @@
     <ClInclude Include="source\Frustum.h">
       <Filter>Source\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h" />
-    <ClInclude Include="source\Camera.h" />
     <ClInclude Include="source\Framebuffer.h">
       <Filter>Source\Renderer</Filter>
     </ClInclude>
@@ -260,15 +237,6 @@
     <ClCompile Include="source\Hitbox.cpp">
       <Filter>源代码\Game\Hitbox</Filter>
     </ClCompile>
-    <ClCompile Include="source\ModLoader.cpp">
-      <Filter>Source\Mod</Filter>
-    </ClCompile>
-    <ClCompile Include="source\API.cpp">
-      <Filter>Source\Mod</Filter>
-    </ClCompile>
-    <ClCompile Include="source\NNN.cpp">
-      <Filter>Source\DataStorage</Filter>
-    </ClCompile>
     <ClCompile Include="source\Setup.cpp">
       <Filter>Source\Common</Filter>
     </ClCompile>
@@ -301,13 +269,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="source\resource.rc">
+    <ResourceCompile Include="source\Resource.rc">
       <Filter>Resources</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="source\Icon.ico">
-      <Filter>Resources</Filter>
-    </Image>
   </ItemGroup>
 </Project>
