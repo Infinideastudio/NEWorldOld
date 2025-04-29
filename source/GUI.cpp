@@ -37,7 +37,7 @@ void drawBackground() {
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glMultMatrixf(Mat4f::perspective(90.0f, (float)WindowWidth / WindowHeight, 0.1f, 10.0f).transpose().data);
+	glMultMatrixf(Mat4f::perspective(static_cast<float>(Pi / 2.0), (float)WindowWidth / WindowHeight, 0.1f, 10.0f).transpose().data);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);
@@ -534,7 +534,7 @@ void imagebox::render() {
 	glEnd();
 }
 
-void Form::Init() {
+void Form::init() {
 	maxid = 0;
 	currentid = 0;
 	focusid = -1;
@@ -808,7 +808,7 @@ controls* Form::getControlByID(int cid) {
 	return nullptr;
 }
 
-Form::Form() { Init(); Background = &drawBackground; }
+Form::Form() { init(); Background = &drawBackground; }
 
 void Form::singleloop() {
 	glfwSwapBuffers(MainWindow);

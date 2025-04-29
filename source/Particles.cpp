@@ -19,7 +19,7 @@ namespace Particles {
 		ptc.hb.zmin = ptc.zpos - psz;
 		ptc.hb.zmax = ptc.zpos + psz;
 
-		ptc.ysp -= 0.01f;
+		ptc.ysp -= 0.03f;
 		dx = ptc.xsp;
 		dy = ptc.ysp;
 		dz = ptc.zsp;
@@ -42,8 +42,8 @@ namespace Particles {
 		ptc.xpos += dx;
 		ptc.ypos += dy;
 		ptc.zpos += dz;
-		ptc.xsp *= 0.6f;
-		ptc.zsp *= 0.6f;
+		ptc.xsp *= 0.8f;
+		ptc.zsp *= 0.8f;
 		if (dy != ptc.ysp) ptc.ysp = 0.0;
 		ptc.lasts -= 1;
 	}
@@ -167,7 +167,7 @@ namespace Particles {
 		ptc.hb.zmax = z + psz;
 		ptc.lasts = last;
 		ptc.bl = pt;
-		ptc.tex = Textures::getTextureIndex(pt, 2);
+		ptc.tex = Textures::getTextureIndex(pt, 1);
 		ptc.tcx = static_cast<float>(rnd()) * (1.0f - psz);
 		ptc.tcy = static_cast<float>(rnd()) * (1.0f - psz);
 		ptcs.emplace_back(std::move(ptc));

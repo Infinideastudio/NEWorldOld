@@ -16,7 +16,8 @@ namespace Renderer {
 	extern bool AdvancedRender;
 	extern int ShadowRes;
 	extern int MaxShadowDistance;
-	extern float sunlightPitch, sunlightHeading;
+	extern double sunlightPitch;
+	extern double sunlightHeading;
 	extern vector<Shader> shaders;
 	extern int ActiveShader;
 

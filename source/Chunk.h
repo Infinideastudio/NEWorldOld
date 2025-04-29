@@ -7,13 +7,6 @@
 
 namespace World {
 
-extern string WorldName;
-extern Brightness MinBrightness;
-extern Brightness SkyBrightness;
-
-class Chunk;
-ChunkID getChunkID(int x, int y, int z);
-
 class Chunk {
 private:
 	int cx, cy, cz;
@@ -56,6 +49,11 @@ public:
 	// Meshes are available
 	bool meshed() const { return isMeshed; }
 
+	BlockID getBlock(size_t x, size_t y, size_t z) const;
+	Brightness getBrightness(size_t x, size_t y, size_t z) const;
+	void setBlock(size_t x, size_t y, size_t z, BlockID value);
+	void setBrightness(size_t x, size_t y, size_t z, Brightness value);
+
 	bool loadFromFile();
 	bool saveToFile();
 	void buildMeshes();
@@ -71,44 +69,6 @@ public:
 	Renderer::VertexBuffer const& mesh(size_t index) const {
 		assert(index < meshes.size());
 		return meshes[index];
-	}
-
-	BlockID getBlock(size_t x, size_t y, size_t z) const {
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-		if (x > 15 || y > 15 || z > 15) { DebugWarning("Chunk.getBlock() error: out of range"); return; }
-#endif
-		if (isEmpty) return Blocks::AIR;
-		return blocks[(x << 8) ^ (y << 4) ^ z];
-	}
-
-	Brightness getBrightness(size_t x, size_t y, size_t z) const {
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-		if (x > 15 || y > 15 || z > 15) { DebugWarning("Chunk.getBrightness() error: out of range"); return; }
-#endif
-		if (isEmpty) return cy < 0 ? MinBrightness : SkyBrightness;
-		return brightness[(x << 8) ^ (y << 4) ^ z];
-	}
-
-	void setBlock(size_t x, size_t y, size_t z, BlockID value) {
-		if (isEmpty) {
-			std::fill(blocks.begin(), blocks.end(), Blocks::AIR);
-			std::fill(brightness.begin(), brightness.end(), cy < 0 ? MinBrightness : SkyBrightness);
-			isEmpty = false;
-		}
-		blocks[(x << 8) ^ (y << 4) ^ z] = value;
-		isUpdated = true;
-		isModified = true;
-	}
-
-	void setBrightness(size_t x, size_t y, size_t z, Brightness value) {
-		if (isEmpty) {
-			std::fill(blocks.begin(), blocks.end(), Blocks::AIR);
-			std::fill(brightness.begin(), brightness.end(), cy < 0 ? MinBrightness : SkyBrightness);
-			isEmpty = false;
-		}
-		brightness[(x << 8) ^ (y << 4) ^ z] = value;
-		isUpdated = true;
-		isModified = true;
 	}
 
 	Hitbox::AABB baseAABB() const;

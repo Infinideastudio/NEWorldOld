@@ -15,7 +15,7 @@ namespace World {
 			int l = MAXINT, hi = WorldGen::WaterLevel, h;
 			for (int x = 0; x < 16; ++x) {
 				for (int z = 0; z < 16; ++z) {
-					h = HMap.getHeight(cx * 16 + x, cz * 16 + z);
+					h = heightMap.getHeight(cx * 16 + x, cz * 16 + z);
 					if (h < l) l = h;
 					if (h > hi) hi = h;
 					H[x][z] = h;
@@ -38,6 +38,44 @@ namespace World {
 		loadedChunks--;
 		unloadedChunks++;
 	}
+
+	BlockID Chunk::getBlock(size_t x, size_t y, size_t z) const {
+#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
+		if (x > 15 || y > 15 || z > 15) { DebugWarning("Chunk.getBlock() error: out of range"); return; }
+#endif
+		if (isEmpty) return Blocks::AIR;
+		return blocks[(x << 8) ^ (y << 4) ^ z];
+	}
+
+	Brightness Chunk::getBrightness(size_t x, size_t y, size_t z) const {
+#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
+		if (x > 15 || y > 15 || z > 15) { DebugWarning("Chunk.getBrightness() error: out of range"); return; }
+#endif
+		if (isEmpty) return cy < 0 ? MinBrightness : SkyBrightness;
+		return brightness[(x << 8) ^ (y << 4) ^ z];
+	}
+
+	void Chunk::setBlock(size_t x, size_t y, size_t z, BlockID value) {
+		if (isEmpty) {
+			std::fill(blocks.begin(), blocks.end(), Blocks::AIR);
+			std::fill(brightness.begin(), brightness.end(), cy < 0 ? MinBrightness : SkyBrightness);
+			isEmpty = false;
+		}
+		blocks[(x << 8) ^ (y << 4) ^ z] = value;
+		isUpdated = true;
+		isModified = true;
+	}
+
+	void Chunk::setBrightness(size_t x, size_t y, size_t z, Brightness value) {
+		if (isEmpty) {
+			std::fill(blocks.begin(), blocks.end(), Blocks::AIR);
+			std::fill(brightness.begin(), brightness.end(), cy < 0 ? MinBrightness : SkyBrightness);
+			isEmpty = false;
+		}
+		brightness[(x << 8) ^ (y << 4) ^ z] = value;
+		isUpdated = true;
+		isModified = true;
+	}
 	
 	std::string Chunk::getChunkPath() const {
 		std::stringstream ss;
@@ -46,13 +84,6 @@ namespace World {
 	}
 
 	void Chunk::buildTerrain() {
-#ifdef NEWORLD_DEBUG_CONSOLE_OUTPUT
-		if (pblocks == nullptr || pbrightness == nullptr) {
-			DebugWarning("Empty pointer when chunk generating!");
-			return;
-		}
-#endif
-
 		// Fast generate parts
 		// Part1 out of the terrain bound
 		if (cy < 0 || cy >= 16) {
@@ -75,7 +106,7 @@ namespace World {
 		}
 
 		// Normal Calc
-		// Init
+		// init
 		std::fill(blocks.begin(), blocks.end(), Blocks::AIR); // Empty the chunk
 		std::fill(brightness.begin(), brightness.end(), (Brightness)0); // Set All Brightness to 0
 

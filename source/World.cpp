@@ -6,58 +6,77 @@
 
 namespace World {
 
-string WorldName;
-Brightness SkyBrightness = 15;
-Brightness MaxBrightness = 15;
-Brightness MinBrightness = 2;
-Brightness BrightnessAttenuation = 1;
+std::string WorldName;
 Chunk* EmptyChunkPtr;
 size_t MaxChunkLoads = 64;
 size_t MaxChunkUnloads = 64;
 size_t MaxChunkMeshings = 16;
+size_t MaxBlockUpdates = 4096;
+
+struct LoadedCore {
+	int cx = 0, cy = 0, cz = 0;
+	size_t radius = 0;
+};
 
 std::unordered_map<ChunkID, std::unique_ptr<Chunk>> chunks;
-Chunk* cpCachePtr = nullptr;
-ChunkID cpCacheID = 0;
-ChunkPtrArray cpArray;
-HeightMap HMap;
+ChunkID chunkPtrCacheKey = 0;
+Chunk* chunkPtrCacheValue = nullptr;
+ChunkPtrArray chunkPtrArray;
+HeightMap heightMap;
 LoadedCore loadedCore;
 
 std::vector<std::pair<double, Chunk*>> chunkMeshingList;
 std::vector<std::tuple<double, int, int, int>> chunkLoadList;
 std::vector<std::tuple<double, int, int, int>> chunkUnloadList;
+std::deque<std::tuple<int, int, int>> blockUpdateQueue;
 
 int loadedChunks;
 int unloadedChunks;
 int updatedChunks;
 int meshedChunks;
+int updatedBlocks;
 
-void Init() {
-
+void init() {
 	std::stringstream ss;
-	ss << "Worlds/" << WorldName << "/";
+	ss << "worlds/" << WorldName << "/";
 	_mkdir(ss.str().c_str());
 	ss.clear(); ss.str("");
-	ss << "Worlds/" << WorldName << "/chunks";
+	ss << "worlds/" << WorldName << "/chunks";
 	_mkdir(ss.str().c_str());
 
 	// Create pointer for indicating empty chunks
-	EmptyChunkPtr = (Chunk*)~0;
+	EmptyChunkPtr = reinterpret_cast<Chunk*>(-1);
 
 	WorldGen::perlinNoiseInit(3404);
-	cpCachePtr = nullptr;
-	cpCacheID = 0;
 
-	cpArray.setSize((RenderDistance + 2) * 2);
-	if (!cpArray.create())
-		DebugError("Chunk Pointer Array not available because it couldn't be created.");
+	chunkPtrArray.setSize((RenderDistance + 2) * 2);
+	chunkPtrArray.create();
 
-	HMap.setSize((RenderDistance + 2) * 2 * 16);
-	HMap.create();
-
+	heightMap.setSize((RenderDistance + 2) * 2 * 16);
+	heightMap.create();
 }
 
-Chunk* AddChunk(int x, int y, int z) {
+void destroy() {
+	chunks.clear();
+	chunkPtrCacheKey = 0;
+	chunkPtrCacheValue = nullptr;
+	chunkPtrArray.destroy();
+	heightMap.destroy();
+	loadedCore.radius = 0;
+
+	chunkMeshingList.clear();
+	chunkLoadList.clear();
+	chunkUnloadList.clear();
+	blockUpdateQueue.clear();
+
+	loadedChunks = 0;
+	meshedChunks = 0;
+	updatedChunks = 0;
+	unloadedChunks = 0;
+	updatedBlocks = 0;
+}
+
+Chunk* addChunk(int x, int y, int z) {
 	ChunkID cid = getChunkID(x, y, z);
 	auto it = chunks.find(cid);
 	if (it != chunks.end()) {
@@ -70,13 +89,13 @@ Chunk* AddChunk(int x, int y, int z) {
 	Chunk* res = c.get();
 	chunks.emplace(cid, std::move(c));
 
-	cpCacheID = cid;
-	cpCachePtr = res;
-	cpArray.setChunkPtr(x, y, z, res);
+	chunkPtrCacheKey = cid;
+	chunkPtrCacheValue = res;
+	chunkPtrArray.setChunkPtr(x, y, z, res);
 	return res;
 }
 
-void DeleteChunk(int x, int y, int z) {
+void removeChunk(int x, int y, int z) {
 	ChunkID cid = getChunkID(x, y, z);
 	auto node = chunks.extract(cid);
 	if (node.empty()) {
@@ -85,11 +104,11 @@ void DeleteChunk(int x, int y, int z) {
 		return;
 	}
 
-	if (cpCachePtr == node.mapped().get()) {
-		cpCacheID = 0;
-		cpCachePtr = nullptr;
+	if (chunkPtrCacheValue == node.mapped().get()) {
+		chunkPtrCacheKey = 0;
+		chunkPtrCacheValue = nullptr;
 	}
-	cpArray.setChunkPtr(x, y, z, nullptr);
+	chunkPtrArray.setChunkPtr(x, y, z, nullptr);
 
 	// Shrink loaded core
 	int xd = std::abs(x - loadedCore.cx);
@@ -101,13 +120,13 @@ void DeleteChunk(int x, int y, int z) {
 
 Chunk* getChunkPtr(int x, int y, int z) {
 	ChunkID cid = getChunkID(x, y, z);
-	if (cpCacheID == cid && cpCachePtr != nullptr) {
-		return cpCachePtr;
+	if (chunkPtrCacheKey == cid && chunkPtrCacheValue != nullptr) {
+		return chunkPtrCacheValue;
 	}
-	Chunk* ret = cpArray.getChunkPtr(x, y, z);
+	Chunk* ret = chunkPtrArray.getChunkPtr(x, y, z);
 	if (ret != nullptr) {
-		cpCacheID = cid;
-		cpCachePtr = ret;
+		chunkPtrCacheKey = cid;
+		chunkPtrCacheValue = ret;
 		return ret;
 	}
 #ifdef NEWORLD_DEBUG_PERFORMANCE_REC
@@ -116,9 +135,9 @@ Chunk* getChunkPtr(int x, int y, int z) {
 	auto it = chunks.find(cid);
 	if (it != chunks.end()) {
 		ret = it->second.get();
-		cpCacheID = cid;
-		cpCachePtr = ret;
-		cpArray.setChunkPtr(x, y, z, ret);
+		chunkPtrCacheKey = cid;
+		chunkPtrCacheValue = ret;
+		chunkPtrArray.setChunkPtr(x, y, z, ret);
 		return ret;
 	}
 	return nullptr;
@@ -166,10 +185,7 @@ bool inWater(const Hitbox::AABB& box) {
 }
 
 // Trigger block update
-void updateBlock(int x, int y, int z, bool blockChanged, int depth) {
-	if (depth > 4096) return;
-	depth++;
-
+void updateBlock(int x, int y, int z, bool initial) {
 	int cx = getchunkpos(x);
 	int cy = getchunkpos(y);
 	int cz = getchunkpos(z);
@@ -182,9 +198,9 @@ void updateBlock(int x, int y, int z, bool blockChanged, int depth) {
 
 	auto cptr = getChunkPtr(cx, cy, cz);
 	if (cptr != nullptr) {
-		if (cptr == EmptyChunkPtr) cptr = World::AddChunk(cx, cy, cz);
+		if (cptr == EmptyChunkPtr) cptr = World::addChunk(cx, cy, cz);
 
-		bool updated = blockChanged;
+		bool updated = initial;
 		BlockID oldblock = cptr->getBlock(bx, by, bz);
 		Brightness oldbrightness = cptr->getBrightness(bx, by, bz);
 
@@ -251,28 +267,40 @@ void updateBlock(int x, int y, int z, bool blockChanged, int depth) {
 		if (oldbrightness != cptr->getBrightness(bx, by, bz)) updated = true;
 
 		if (updated) {
-			updateBlock(x + 1, y, z, false, depth);
-			updateBlock(x - 1, y, z, false, depth);
-			updateBlock(x, y + 1, z, false, depth);
-			updateBlock(x, y - 1, z, false, depth);
-			updateBlock(x, y, z + 1, false, depth);
-			updateBlock(x, y, z - 1, false, depth);
+			blockUpdateQueue.emplace_back(x + 1, y, z);
+			blockUpdateQueue.emplace_back(x - 1, y, z);
+			blockUpdateQueue.emplace_back(x, y + 1, z);
+			blockUpdateQueue.emplace_back(x, y - 1, z);
+			blockUpdateQueue.emplace_back(x, y, z + 1);
+			blockUpdateQueue.emplace_back(x, y, z - 1);
 
-			if (bx == 15 && cx < worldsize - 1) markChunkNeighborUpdated(cx + 1, cy, cz);
-			if (bx == 0 && cx > -worldsize) markChunkNeighborUpdated(cx - 1, cy, cz);
-			if (by == 15 && cy < worldheight - 1) markChunkNeighborUpdated(cx, cy + 1, cz);
-			if (by == 0 && cy > -worldheight) markChunkNeighborUpdated(cx, cy - 1, cz);
-			if (bz == 15 && cz < worldsize - 1) markChunkNeighborUpdated(cx, cy, cz + 1);
-			if (bz == 0 && cz > -worldsize) markChunkNeighborUpdated(cx, cy, cz - 1);
+			if (bx == 15 && cx < WorldSize - 1) markChunkNeighborUpdated(cx + 1, cy, cz);
+			if (bx == 0 && cx > -WorldSize) markChunkNeighborUpdated(cx - 1, cy, cz);
+			if (by == 15 && cy < WorldHeight - 1) markChunkNeighborUpdated(cx, cy + 1, cz);
+			if (by == 0 && cy > -WorldHeight) markChunkNeighborUpdated(cx, cy - 1, cz);
+			if (bz == 15 && cz < WorldSize - 1) markChunkNeighborUpdated(cx, cy, cz + 1);
+			if (bz == 0 && cz > -WorldSize) markChunkNeighborUpdated(cx, cy, cz - 1);
+
+			updatedBlocks++;
 		}
+	}
+}
+
+// Process pending block updates in queue
+void updateBlocks() {
+	for (size_t i = 0; i < MaxBlockUpdates; i++) {
+		if (blockUpdateQueue.empty()) break;
+		auto [x, y, z] = blockUpdateQueue.front();
+		blockUpdateQueue.pop_front();
+		updateBlock(x, y, z, false);
 	}
 }
 
 // 获取方块
 BlockID getBlock(int x, int y, int z, BlockID mask) {
 	int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
-	if (chunkOutOfBound(cx, cy, cz)) return Blocks::AIR;
 	int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
+	if (chunkOutOfBound(cx, cy, cz)) return Blocks::AIR;
 	auto cptr = getChunkPtr(cx, cy, cz);
 	if (cptr == EmptyChunkPtr) return Blocks::AIR;
 	if (cptr != nullptr) return cptr->getBlock(bx, by, bz);
@@ -282,8 +310,8 @@ BlockID getBlock(int x, int y, int z, BlockID mask) {
 // 获取亮度
 Brightness getBrightness(int x, int y, int z) {
 	int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
-	if (chunkOutOfBound(cx, cy, cz)) return SkyBrightness;
 	int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
+	if (chunkOutOfBound(cx, cy, cz)) return SkyBrightness;
 	auto cptr = getChunkPtr(cx, cy, cz);
 	if (cptr == EmptyChunkPtr) return cy < 0 ? MinBrightness : SkyBrightness;
 	if (cptr != nullptr) return cptr->getBrightness(bx, by, bz);
@@ -291,27 +319,27 @@ Brightness getBrightness(int x, int y, int z) {
 }
 
 // 设置方块
-void setBlock(int x, int y, int z, BlockID value) {
+void setBlock(int x, int y, int z, BlockID value, bool update) {
 	int cx = getchunkpos(x), cy = getchunkpos(y), cz = getchunkpos(z);
 	int bx = getblockpos(x), by = getblockpos(y), bz = getblockpos(z);
 	if (!chunkOutOfBound(cx, cy, cz)) {
 		auto cptr = getChunkPtr(cx, cy, cz);
-		if (cptr == EmptyChunkPtr) cptr = AddChunk(cx, cy, cz);
+		if (cptr == EmptyChunkPtr) cptr = addChunk(cx, cy, cz);
 		if (cptr != nullptr) {
 			cptr->setBlock(bx, by, bz, value);
-			updateBlock(x, y, z, true);
+			if (update) updateBlock(x, y, z, true);
 		}
 	}
 }
 
 bool chunkUpdated(int x, int y, int z) {
-	Chunk* i = getChunkPtr(x, y, z);
+	auto i = getChunkPtr(x, y, z);
 	if (i == nullptr || i == EmptyChunkPtr) return false;
 	return i->updated();
 }
 
 void markChunkNeighborUpdated(int x, int y, int z) {
-	Chunk* i = getChunkPtr(x, y, z);
+	auto i = getChunkPtr(x, y, z);
 	if (i == nullptr || i == EmptyChunkPtr) return;
 	i->markNeighborUpdated();
 }
@@ -412,30 +440,8 @@ void sortChunkUpdateLists(int xpos, int ypos, int zpos) {
 	}
 }
 
-void saveAllChunks() {
-#ifndef NEWORLD_DEBUG_NO_FILEIO
-	for (auto const& [_, c] : chunks)	c->saveToFile();
-#endif
-}
-
-void destroyAllChunks() {
-	chunks.clear();
-	cpArray.destroy();
-	HMap.destroy();
-	loadedCore.radius = 0;
-
-	loadedChunks = 0;
-	meshedChunks = 0;
-	updatedChunks = 0;
-	unloadedChunks = 0;
-
-	chunkMeshingList.clear();
-	chunkLoadList.clear();
-	chunkUnloadList.clear();
-}
-
 void buildtree(int x, int y, int z) {
-	// block trblock = getblock(x, y, z), tublock = getblock(x, y - 1, z);
+	// block trblock = getBlock(x, y, z), tublock = getBlock(x, y - 1, z);
 	int th = int(rnd() * 3) + 4;
 	// if (trblock != Blocks::AIR || tublock != Blocks::GRASS) { return; }
 
@@ -464,27 +470,34 @@ void buildtree(int x, int y, int z) {
 }
 
 void explode(int x, int y, int z, int r) {
+	auto blocks = std::vector<std::pair<Vec3i, BlockID>>();
+	// Distroy blocks within a radius of r
 	double maxdistsqr = r * r;
 	for (int fx = x - r - 1; fx < x + r + 1; fx++) {
 		for (int fy = y - r - 1; fy < y + r + 1; fy++) {
 			for (int fz = z - r - 1; fz < z + r + 1; fz++) {
 				int distsqr = (fx - x) * (fx - x) + (fy - y) * (fy - y) + (fz - z) * (fz - z);
-				if (distsqr <= maxdistsqr * 0.75 ||
-				        distsqr <= maxdistsqr && rnd() > (distsqr - maxdistsqr * 0.6) / (maxdistsqr * 0.4)) {
+				if (distsqr <= maxdistsqr * 0.75 || distsqr <= maxdistsqr && rnd() > (distsqr - maxdistsqr * 0.6) / (maxdistsqr * 0.4)) {
 					BlockID e = World::getBlock(fx, fy, fz);
-					if (e == Blocks::AIR) continue;
-					/*
-					for (int j = 1; j <= 12; j++) {
-						Particles::throwParticle(e,
-						                         float(fx + rnd() - 0.5f), float(fy + rnd() - 0.2f), float(fz + rnd() - 0.5f),
-						                         float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
-						                         float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
-					}
-					*/
+					if (!BlockInfo(e).isSolid()) continue;
 					setBlock(fx, fy, fz, Blocks::AIR);
+					blocks.emplace_back(Vec3i(fx, fy, fz), e);
 				}
 			}
 		}
 	}
+	// Throw at most 1000 particles from the destroyed blocks
+	std::ranges::shuffle(blocks.begin(), blocks.end(), std::mt19937());
+	for (size_t i = 0; i < blocks.size() && i < 1000; i++) {
+		auto const& [coord, e] = blocks[i];
+		Particles::throwParticle(e,
+			float(coord.x + rnd() - 0.5f), float(coord.y + rnd() - 0.2f), float(coord.z + rnd() - 0.5f),
+			float(rnd() * 2.0f - 1.0f), float(rnd() * 2.0f - 1.0f), float(rnd() * 2.0f - 1.0f),
+			float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
+	}
+}
+
+void saveAllChunks() {
+	for (auto const& [_, c] : chunks)	c->saveToFile();
 }
 }
