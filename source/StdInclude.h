@@ -34,15 +34,10 @@ using std::thread;
 using std::mutex;
 #endif
 #define NOMINMAX
-#include <WinSock2.h>
 #include <Windows.h>
-#include <direct.h>
-#include <io.h>
 #undef near
 #undef far
 #else
-#include <thread>
-#include <mutex>
 #endif
 
 #ifdef NEWORLD_GAME
@@ -50,9 +45,6 @@ using std::mutex;
 #include <GL/glew.h>
 // GLFW
 #include <GLFW/glfw3.h>
-// FREETYPE
-#include <ft2build.h>
-#include FT_FREETYPE_H
 #endif
 
 using std::string;

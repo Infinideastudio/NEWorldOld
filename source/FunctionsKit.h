@@ -11,9 +11,7 @@ inline int fastRand() {
 	return (g_seed >> 16) & 0x7FFF;
 }
 inline void fastSrand(int seed) { g_seed = seed; }
-inline std::string boolstr(bool b) { return b ? "true" : "false"; }
 inline double rnd() { return (double)fastRand() / (RAND_MAX + 1); }
-inline int RoundInt(double d) { return int(floor(d + 0.5)); }
 
 inline void DebugInfo(std::string msg) {
 #ifdef NEWORLD_USE_WINAPI
@@ -49,13 +47,6 @@ inline void DebugError(std::string msg) {
 }
 
 #ifdef NEWORLD_USE_WINAPI
-inline Mutex_t MutexCreate() { return CreateMutex(NULL, FALSE, ""); }
-inline void MutexDestroy(Mutex_t _hMutex) { CloseHandle(_hMutex); }
-inline void MutexLock(Mutex_t _hMutex) { WaitForSingleObject(_hMutex, INFINITE); }
-inline void MutexUnlock(Mutex_t _hMutex) { ReleaseMutex(_hMutex); }
-inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return CreateThread(NULL, 0, func, param, 0, NULL); }
-inline void ThreadWait(Thread_t _hThread) { WaitForSingleObject(_hThread, INFINITE); }
-inline void ThreadDestroy(Thread_t _hThread) { CloseHandle(_hThread); }
 inline double timer() {
 	static LARGE_INTEGER counterFreq;
 	if (counterFreq.QuadPart == 0) QueryPerformanceFrequency(&counterFreq);
@@ -64,13 +55,6 @@ inline double timer() {
 	return (double)now.QuadPart / counterFreq.QuadPart;
 }
 #else
-inline Mutex_t MutexCreate() { return new std::mutex; }
-inline void MutexDestroy(Mutex_t _hMutex) { delete _hMutex; }
-inline void MutexLock(Mutex_t _hMutex) { _hMutex->lock(); }
-inline void MutexUnlock(Mutex_t _hMutex) { _hMutex->unlock(); }
-inline Thread_t ThreadCreate(ThreadFunc_t func, void* param) { return new std::thread(func, param); }
-inline void ThreadWait(Thread_t _hThread) { _hThread->join(); }
-inline void ThreadDestroy(Thread_t _hThread) { delete _hThread; }
 inline void Sleep(unsigned int ms) { unsigned int fr = clock(); while (clock() - fr <= ms); }
 inline double timer() { return (double)clock() / CLOCKS_PER_SEC; }
 #endif
