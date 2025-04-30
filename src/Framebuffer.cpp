@@ -1,6 +1,8 @@
 #include "Framebuffer.h"
 
-Framebuffer::Framebuffer(int width, int height, int cnt, bool depth, bool shadow, bool bilinear) : w(width), h(height) {
+Framebuffer::Framebuffer(int width, int height, int cnt, bool depth, bool shadow, bool bilinear):
+    w(width),
+    h(height) {
     // Create framebuffer object
     glGenFramebuffers(1, &id);
     glBindFramebuffer(GL_FRAMEBUFFER, id);
@@ -44,14 +46,15 @@ Framebuffer::Framebuffer(int width, int height, int cnt, bool depth, bool shadow
         glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorTextures[i], 0);
     }
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) DebugError("Framebuffer creation error!");
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        DebugError("Framebuffer creation error!");
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Framebuffer::bindTarget(std::vector<GLuint> indices) {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, id);
     std::vector<GLuint> arr;
-    for (GLuint i : indices) {
+    for (GLuint i: indices) {
         assert(i < colorTextures.size());
         arr.emplace_back(GL_COLOR_ATTACHMENT0 + i);
     }
@@ -63,10 +66,10 @@ void Framebuffer::bindTargets() {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, id);
     if (colorTextures.empty()) {
         glDrawBuffer(GL_NONE);
-    }
-    else {
+    } else {
         std::vector<GLuint> arr;
-        for (int i = 0; i < colorTextures.size(); i++) arr.emplace_back(GL_COLOR_ATTACHMENT0 + i);
+        for (int i = 0; i < colorTextures.size(); i++)
+            arr.emplace_back(GL_COLOR_ATTACHMENT0 + i);
         glDrawBuffers(static_cast<GLsizei>(arr.size()), arr.data());
     }
     glViewport(0, 0, w, h);
@@ -92,7 +95,7 @@ void Framebuffer::bindColorTexture(GLuint index, GLuint number) const {
     glActiveTexture(GL_TEXTURE0);
 }
 
-void Framebuffer::bindColorTextures(GLuint startNumber) const  {
+void Framebuffer::bindColorTextures(GLuint startNumber) const {
     for (size_t i = 0; i < colorTextures.size(); i++) {
         glActiveTexture(GL_TEXTURE0 + startNumber + static_cast<GLuint>(i));
         glBindTexture(GL_TEXTURE_2D, colorTextures[i]);
@@ -100,7 +103,7 @@ void Framebuffer::bindColorTextures(GLuint startNumber) const  {
     }
 }
 
-void Framebuffer::copyDepthTexture(Framebuffer& target) const  {
+void Framebuffer::copyDepthTexture(Framebuffer& target) const {
     assert(w == target.w && h == target.h && depthTexture != 0 && target.depthTexture);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, id);
     glReadBuffer(GL_DEPTH_ATTACHMENT);

@@ -1,28 +1,28 @@
 /*
-* NEWorld: A free game with similar rules to Minecraft.
-* Copyright (C) 2016 NEWorld Team
-*
-* This file is part of NEWorld.
-* NEWorld is free software: you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* NEWorld is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with NEWorld.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * NEWorld: A free game with similar rules to Minecraft.
+ * Copyright (C) 2016 NEWorld Team
+ *
+ * This file is part of NEWorld.
+ * NEWorld is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * NEWorld is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with NEWorld.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef MAT4_H_
 #define MAT4_H_
 
+#include <cassert>
 #include <cmath>
 #include <cstring>
-#include <cassert>
 #include "Vec3.h"
 
 template <typename T>
@@ -50,12 +50,18 @@ public:
         res.data[7] = data[4] * rhs.data[3] + data[5] * rhs.data[7] + data[6] * rhs.data[11] + data[7] * rhs.data[15];
         res.data[8] = data[8] * rhs.data[0] + data[9] * rhs.data[4] + data[10] * rhs.data[8] + data[11] * rhs.data[12];
         res.data[9] = data[8] * rhs.data[1] + data[9] * rhs.data[5] + data[10] * rhs.data[9] + data[11] * rhs.data[13];
-        res.data[10] = data[8] * rhs.data[2] + data[9] * rhs.data[6] + data[10] * rhs.data[10] + data[11] * rhs.data[14];
-        res.data[11] = data[8] * rhs.data[3] + data[9] * rhs.data[7] + data[10] * rhs.data[11] + data[11] * rhs.data[15];
-        res.data[12] = data[12] * rhs.data[0] + data[13] * rhs.data[4] + data[14] * rhs.data[8] + data[15] * rhs.data[12];
-        res.data[13] = data[12] * rhs.data[1] + data[13] * rhs.data[5] + data[14] * rhs.data[9] + data[15] * rhs.data[13];
-        res.data[14] = data[12] * rhs.data[2] + data[13] * rhs.data[6] + data[14] * rhs.data[10] + data[15] * rhs.data[14];
-        res.data[15] = data[12] * rhs.data[3] + data[13] * rhs.data[7] + data[14] * rhs.data[11] + data[15] * rhs.data[15];
+        res.data[10] =
+            data[8] * rhs.data[2] + data[9] * rhs.data[6] + data[10] * rhs.data[10] + data[11] * rhs.data[14];
+        res.data[11] =
+            data[8] * rhs.data[3] + data[9] * rhs.data[7] + data[10] * rhs.data[11] + data[11] * rhs.data[15];
+        res.data[12] =
+            data[12] * rhs.data[0] + data[13] * rhs.data[4] + data[14] * rhs.data[8] + data[15] * rhs.data[12];
+        res.data[13] =
+            data[12] * rhs.data[1] + data[13] * rhs.data[5] + data[14] * rhs.data[9] + data[15] * rhs.data[13];
+        res.data[14] =
+            data[12] * rhs.data[2] + data[13] * rhs.data[6] + data[14] * rhs.data[10] + data[15] * rhs.data[14];
+        res.data[15] =
+            data[12] * rhs.data[3] + data[13] * rhs.data[7] + data[14] * rhs.data[11] + data[15] * rhs.data[15];
         return res;
     }
 
@@ -104,7 +110,7 @@ public:
     // Get inverse matrix
     Mat4 inverse() const {
         Mat4 res = Mat4(T(1));
-        for (int i = 0; i<4; i++) {
+        for (int i = 0; i < 4; i++) {
             int p = i;
             for (int j = i + 1; j < 4; j++)
                 if (abs(data[j * 4 + i]) > abs(data[p * 4 + i]))
@@ -185,9 +191,11 @@ public:
 
     // Multiply with Vec3 (with homogeneous coords divided)
     Vec3<T> transform(Vec3<T> const& vec) const {
-        Vec3<T> res(data[0] * vec.x + data[1] * vec.y + data[2] * vec.z + data[3],
-                    data[4] * vec.x + data[5] * vec.y + data[6] * vec.z + data[7],
-                    data[8] * vec.x + data[9] * vec.y + data[10] * vec.z + data[11]);
+        Vec3<T> res(
+            data[0] * vec.x + data[1] * vec.y + data[2] * vec.z + data[3],
+            data[4] * vec.x + data[5] * vec.y + data[6] * vec.z + data[7],
+            data[8] * vec.x + data[9] * vec.y + data[10] * vec.z + data[11]
+        );
         T homoCoord = data[12] * vec.x + data[13] * vec.y + data[14] * vec.z + data[15];
         return res / homoCoord;
     }

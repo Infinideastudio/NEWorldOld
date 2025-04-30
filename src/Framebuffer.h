@@ -7,7 +7,8 @@ public:
     Framebuffer() {}
     Framebuffer(int width, int height, int cnt, bool depth, bool shadow = false, bool bilinear = false);
     Framebuffer(Framebuffer const&) = delete;
-    Framebuffer(Framebuffer&& from) noexcept : Framebuffer() {
+    Framebuffer(Framebuffer&& from) noexcept:
+        Framebuffer() {
         swap(*this, from);
     }
     Framebuffer& operator=(Framebuffer const&) = delete;
@@ -27,15 +28,24 @@ public:
     }
 
     ~Framebuffer() {
-        if (id != 0) glDeleteFramebuffers(1, &id);
-        if (depthTexture != 0) glDeleteTextures(1, &depthTexture);
-        if (depthRenderbuffer != 0) glDeleteRenderbuffers(1, &depthRenderbuffer);
+        if (id != 0)
+            glDeleteFramebuffers(1, &id);
+        if (depthTexture != 0)
+            glDeleteTextures(1, &depthTexture);
+        if (depthRenderbuffer != 0)
+            glDeleteRenderbuffers(1, &depthRenderbuffer);
         glDeleteTextures(static_cast<GLsizei>(colorTextures.size()), colorTextures.data());
     }
 
-    bool empty() const { return id == 0; }
-    int width() const { return w; }
-    int height() const { return h; }
+    bool empty() const {
+        return id == 0;
+    }
+    int width() const {
+        return w;
+    }
+    int height() const {
+        return h;
+    }
 
     void bindTarget(std::vector<GLuint> indices);
     void bindTargets();

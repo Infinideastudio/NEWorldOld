@@ -1,10 +1,10 @@
 #pragma once
 #ifndef NEWORLD_DEBUG
-#pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
+#    pragma comment(linker, "/SUBSYSTEM:\"WINDOWS\" /ENTRY:\"mainCRTStartup\"")
 #endif
+#include "FunctionsKit.h"
 #include "StdInclude.h"
 #include "Typedefs.h"
-#include "FunctionsKit.h"
 // #ifdef NEWORLD_DEBUG
 // #define NEWORLD_DEBUG_CONSOLE_OUTPUT
 // #define NEWORLD_DEBUG_NO_FILEIO
