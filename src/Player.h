@@ -6,7 +6,9 @@ const double EDrop = 0.1;
 const double speedCast = 1 / 20.0;
 
 struct PlayerPacket;
-namespace Hitbox { struct AABB; }
+namespace Hitbox {
+struct AABB;
+}
 class FrustumTest;
 
 class Player {
@@ -58,5 +60,4 @@ public:
     static short inventoryAmount[4][10];
 
     static double glidingEnergy, glidingSpeed;
-
 };

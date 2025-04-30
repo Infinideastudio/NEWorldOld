@@ -1,18 +1,26 @@
 #include "Setup.h"
 #include "Definitions.h"
-#include "Textures.h"
-#include "TextRenderer.h"
 #include "Renderer.h"
+#include "TextRenderer.h"
+#include "Textures.h"
 #include "World.h"
 
 // OpenGL debug callback
 void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, const GLchar* msg, const void*) {
     switch (severity) {
-    case GL_DEBUG_SEVERITY_HIGH: DebugError(std::string("[GL] ") + msg); break;
-    case GL_DEBUG_SEVERITY_MEDIUM: DebugWarning(std::string("[GL] ") + msg); break;
-    case GL_DEBUG_SEVERITY_LOW: DebugInfo(std::string("[GL] ") + msg); break;
-    case GL_DEBUG_SEVERITY_NOTIFICATION: break;
-    default: break;
+        case GL_DEBUG_SEVERITY_HIGH:
+            DebugError(std::string("[GL] ") + msg);
+            break;
+        case GL_DEBUG_SEVERITY_MEDIUM:
+            DebugWarning(std::string("[GL] ") + msg);
+            break;
+        case GL_DEBUG_SEVERITY_LOW:
+            DebugInfo(std::string("[GL] ") + msg);
+            break;
+        case GL_DEBUG_SEVERITY_NOTIFICATION:
+            break;
+        default:
+            break;
     }
 }
 
@@ -50,8 +58,7 @@ void createWindow() {
 #ifdef NEWORLD_DEBUG
     if (!glDebugMessageCallback) {
         DebugWarning("Note that you're in debug mode, but GL_KHR_debug is not supported.");
-    }
-    else {
+    } else {
         glDebugMessageCallback(glDebugCallback, nullptr);
         DebugInfo("GL_KHR_debug enabled.");
     }
@@ -72,8 +79,7 @@ void initStretch() {
         WindowWidth = static_cast<int>(WindowWidth * Stretch);
         WindowHeight = static_cast<int>(WindowHeight * Stretch);
         glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
-    }
-    else if (!UIStretch && Stretch != 1.0) {
+    } else if (!UIStretch && Stretch != 1.0) {
         WindowWidth = static_cast<int>(WindowWidth / Stretch);
         WindowHeight = static_cast<int>(WindowHeight / Stretch);
         Stretch = 1.0;
@@ -94,10 +100,17 @@ void toggleFullScreen() {
         WindowWidth = mode->width;
         WindowHeight = mode->height;
         glfwSetWindowMonitor(MainWindow, glfwGetPrimaryMonitor(), 0, 0, WindowWidth, WindowHeight, mode->refreshRate);
-    }
-    else {
+    } else {
         WindowWidth = ww, WindowHeight = wh;
-        glfwSetWindowMonitor(MainWindow, nullptr, (mode->width - ww) / 2, (mode->height - wh) / 2, WindowWidth, WindowHeight, mode->refreshRate);
+        glfwSetWindowMonitor(
+            MainWindow,
+            nullptr,
+            (mode->width - ww) / 2,
+            (mode->height - wh) / 2,
+            WindowWidth,
+            WindowHeight,
+            mode->refreshRate
+        );
     }
 
     setupScreen();
@@ -113,7 +126,8 @@ void setupScreen() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_TEXTURE_2D);
-    if (Multisample != 0) glEnable(GL_MULTISAMPLE);
+    if (Multisample != 0)
+        glEnable(GL_MULTISAMPLE);
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
@@ -132,26 +146,32 @@ void loadTextures() {
         ss << "textures/ui/background_" << i << ".bmp";
         UIBackgroundTextures[i] = Textures::LoadRGBTexture(ss.str(), true);
     }
-    BlockTextureArray = Textures::LoadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
+    BlockTextureArray =
+        Textures::LoadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
 }
 
 void WindowSizeFunc(GLFWwindow* win, int width, int height) {
-    if (width < 640) width = 640;
-    if (height < 360) height = 360;
+    if (width < 640)
+        width = 640;
+    if (height < 360)
+        height = 360;
     WindowWidth = width;
     WindowHeight = height > 0 ? height : 1;
     glfwSetWindowSize(win, width, height);
     setupScreen();
 }
 
-void MouseButtonFunc(GLFWwindow *, int button, int action, int) {
+void MouseButtonFunc(GLFWwindow*, int button, int action, int) {
     mb = 0;
     if (action == GLFW_PRESS) {
-        if (button == GLFW_MOUSE_BUTTON_LEFT) mb += 1;
-        if (button == GLFW_MOUSE_BUTTON_RIGHT) mb += 2;
-        if (button == GLFW_MOUSE_BUTTON_MIDDLE) mb += 4;
-    }
-    else mb = 0;
+        if (button == GLFW_MOUSE_BUTTON_LEFT)
+            mb += 1;
+        if (button == GLFW_MOUSE_BUTTON_RIGHT)
+            mb += 2;
+        if (button == GLFW_MOUSE_BUTTON_MIDDLE)
+            mb += 4;
+    } else
+        mb = 0;
 }
 
 void KeyFunc(GLFWwindow*, int key, int /* scancode */, int action, int /* mods */) {
@@ -160,13 +180,13 @@ void KeyFunc(GLFWwindow*, int key, int /* scancode */, int action, int /* mods *
     }
 }
 
-void CharInputFunc(GLFWwindow *, unsigned int c) {
+void CharInputFunc(GLFWwindow*, unsigned int c) {
     char32_t unicode = static_cast<char32_t>(c);
     inputstr += unicode;
 }
 
-void MouseScrollFunc(GLFWwindow *, double, double yoffset) {
-    mw += (int)yoffset;
+void MouseScrollFunc(GLFWwindow*, double, double yoffset) {
+    mw += (int) yoffset;
 }
 
 void splashScreen() {
@@ -189,10 +209,14 @@ void splashScreen() {
         glBindTexture(GL_TEXTURE_2D, SplashTexture);
         glBegin(GL_QUADS);
         glColor4f(ratio, ratio, ratio, 1.0f);
-        glTexCoord2f(0.0f, 1.0f); glVertex2i(-1, 1);
-        glTexCoord2f(0.0f, 0.0f); glVertex2i(-1, -1);
-        glTexCoord2f(1.0f, 0.0f); glVertex2i(1, -1);
-        glTexCoord2f(1.0f, 1.0f); glVertex2i(1, 1);
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex2i(-1, 1);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex2i(-1, -1);
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex2i(1, -1);
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex2i(1, 1);
         glEnd();
 
         glfwSwapBuffers(MainWindow);

@@ -9,17 +9,17 @@ DeriveLineEnding: true
 
 # Most important options
 ColumnLimit: 120
-IndentWidth: 2
-TabWidth: 2
+IndentWidth: 4
+TabWidth: 4
 UseTab: Never
 BreakBeforeBraces: Attach
 
 # Indentations
-AccessModifierOffset: -2
+AccessModifierOffset: -4
 IndentAccessModifiers: false
 ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
-PPIndentWidth: 2
+PPIndentWidth: 4
 NamespaceIndentation: Inner
 IndentCaseLabels: true
 IndentCaseBlocks: false

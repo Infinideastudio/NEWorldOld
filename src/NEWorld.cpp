@@ -1,25 +1,25 @@
-﻿//==============================   Initialize   ================================//
+//==============================   Initialize   ================================//
 //==============================初始化(包括闪屏)================================//
 
-#include "Definitions.h"
-#include "Blocks.h"
-#include "Textures.h"
-#include "Renderer.h"
-#include "TextRenderer.h"
-#include "Player.h"
-#include "World.h"
-#include "WorldRenderer.h"
-#include "Particles.h"
-#include "GUI.h"
-#include "Menus.h"
-#include "FrustumTest.h"
-#include "Globalization.h"
-#include "Command.h"
-#include "Setup.h"
+#include <filesystem>
+#include <mutex>
 #include <string>
 #include <thread>
-#include <mutex>
-#include <filesystem>
+#include "Blocks.h"
+#include "Command.h"
+#include "Definitions.h"
+#include "FrustumTest.h"
+#include "Globalization.h"
+#include "GUI.h"
+#include "Menus.h"
+#include "Particles.h"
+#include "Player.h"
+#include "Renderer.h"
+#include "Setup.h"
+#include "TextRenderer.h"
+#include "Textures.h"
+#include "World.h"
+#include "WorldRenderer.h"
 
 void registerCommands();
 bool loadGame();
@@ -39,8 +39,12 @@ void drawBag();
 void loadOptions();
 void saveOptions();
 
-int getMouseScroll() { return mw; }
-int getMouseButton() { return mb; }
+int getMouseScroll() {
+    return mw;
+}
+int getMouseButton() {
+    return mb;
+}
 
 std::mutex updateMutex;
 double updateTimer;
@@ -96,7 +100,8 @@ bool isKeyDown(int key) {
 }
 
 bool isKeyPressed(int key) {
-    if (key > GLFW_KEY_LAST || key <= 0) return false;
+    if (key > GLFW_KEY_LAST || key <= 0)
+        return false;
     bool down = glfwGetKey(MainWindow, key) == GLFW_PRESS;
     bool res = down && !keyDown[key];
     keyDown[key] = down;
@@ -104,7 +109,8 @@ bool isKeyPressed(int key) {
 }
 
 void updateKeyStates() {
-    for (int i = 0; i <= GLFW_KEY_LAST; i++) keyDown[i] = (glfwGetKey(MainWindow, i) == GLFW_PRESS);
+    for (int i = 0; i <= GLFW_KEY_LAST; i++)
+        keyDown[i] = (glfwGetKey(MainWindow, i) == GLFW_PRESS);
 }
 
 //==============================  Main Program  ================================//
@@ -138,8 +144,10 @@ int main() {
 
         // 初始化游戏状态
         DebugInfo("Init player...");
-        if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
-        else Player::spawn();
+        if (loadGame())
+            Player::init(Player::xpos, Player::ypos, Player::zpos);
+        else
+            Player::spawn();
 
         DebugInfo("Init world...");
         World::init();
@@ -230,7 +238,8 @@ void updateThreadFunc() {
     while (updateThreadRun) {
         double currTimer = Timer();
         while (currTimer - updateTimer >= 1.0 / 30.0) {
-            if (upsc >= 60) updateTimer = currTimer;
+            if (upsc >= 60)
+                updateTimer = currTimer;
             updateTimer += 1.0 / 30.0;
             upsc++;
             gameUpdate();
@@ -263,23 +272,34 @@ bool loadGame() {
 
 void registerCommands() {
     commands.push_back(Command("/help", [](const vector<string>& command) {
-        if (command.size() != 1) return false;
-        chatMessages.push_back("Controls: W/A/S/D/SPACE/SHIFT = move, R/F = fast move (creative mode), E = open inventory,");
+        if (command.size() != 1)
+            return false;
+        chatMessages.push_back(
+            "Controls: W/A/S/D/SPACE/SHIFT = move, R/F = fast move (creative mode), E = open inventory,"
+        );
         chatMessages.push_back("          left/right mouse button = break/place blocks, mouse wheel = select blocks,");
-        chatMessages.push_back("                    F1 = switch game mode, F2 = take screenshot, F3 = switch debug panel,");
+        chatMessages.push_back(
+            "                    F1 = switch game mode, F2 = take screenshot, F3 = switch debug panel,"
+        );
         chatMessages.push_back("                    F4 = switch cross wall (creative mode), F5 = switch HUD,");
         chatMessages.push_back("                    F7 = switch full screen mode, F8 = fast forward game time");
-        chatMessages.push_back("Commands: /help | /clear | /kit | /give <id> <amount> | /tp <x> <y> <z> | /clearinventory | /suicide");
-        chatMessages.push_back("        | /setblock <x> <y> <z> <id> | /tree <x> <y> <z> | /explode <x> <y> <z> <radius> | /time <time>");
+        chatMessages.push_back(
+            "Commands: /help | /clear | /kit | /give <id> <amount> | /tp <x> <y> <z> | /clearinventory | /suicide"
+        );
+        chatMessages.push_back(
+            "        | /setblock <x> <y> <z> <id> | /tree <x> <y> <z> | /explode <x> <y> <z> <radius> | /time <time>"
+        );
         return true;
     }));
     commands.push_back(Command("/clear", [](const vector<string>& command) {
-        if (command.size() != 1) return false;
+        if (command.size() != 1)
+            return false;
         chatMessages.clear();
         return true;
     }));
     commands.push_back(Command("/kit", [](const vector<string>& command) {
-        if (command.size() != 1) return false;
+        if (command.size() != 1)
+            return false;
         Player::inventory[0][0] = 1;
         Player::inventoryAmount[0][0] = 255;
         Player::inventory[0][1] = 2;
@@ -319,14 +339,16 @@ void registerCommands() {
         return true;
     }));
     commands.push_back(Command("/give", [](const vector<string>& command) {
-        if (command.size() != 3) return false;
+        if (command.size() != 3)
+            return false;
         auto itemid = static_cast<BlockID>(std::stoi(command[1]));
         auto amount = static_cast<short>(std::stoi(command[2]));
         Player::addItem(itemid, amount);
         return true;
     }));
     commands.push_back(Command("/tp", [](const vector<string>& command) {
-        if (command.size() != 4) return false;
+        if (command.size() != 4)
+            return false;
         double x = std::stod(command[1]);
         double y = std::stod(command[2]);
         double z = std::stod(command[3]);
@@ -336,7 +358,8 @@ void registerCommands() {
         return true;
     }));
     commands.push_back(Command("/clearinventory", [](const vector<string>& command) {
-        if (command.size() != 1) return false;
+        if (command.size() != 1)
+            return false;
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 10; j++) {
                 Player::inventory[i][j] = 0;
@@ -346,12 +369,14 @@ void registerCommands() {
         return true;
     }));
     commands.push_back(Command("/suicide", [](const vector<string>& command) {
-        if (command.size() != 1) return false;
+        if (command.size() != 1)
+            return false;
         Player::spawn();
         return true;
     }));
     commands.push_back(Command("/setblock", [](const vector<string>& command) {
-        if (command.size() != 5) return false;
+        if (command.size() != 5)
+            return false;
         int x = std::stoi(command[1]);
         int y = std::stoi(command[2]);
         int z = std::stoi(command[3]);
@@ -360,7 +385,8 @@ void registerCommands() {
         return true;
     }));
     commands.push_back(Command("/tree", [](const vector<string>& command) {
-        if (command.size() != 4) return false;
+        if (command.size() != 4)
+            return false;
         int x = std::stoi(command[1]);
         int y = std::stoi(command[2]);
         int z = std::stoi(command[3]);
@@ -368,7 +394,8 @@ void registerCommands() {
         return true;
     }));
     commands.push_back(Command("/explode", [](const vector<string>& command) {
-        if (command.size() != 5) return false;
+        if (command.size() != 5)
+            return false;
         int x = std::stoi(command[1]);
         int y = std::stoi(command[2]);
         int z = std::stoi(command[3]);
@@ -377,14 +404,17 @@ void registerCommands() {
         return true;
     }));
     commands.push_back(Command("/time", [](const vector<string>& command) {
-        if (command.size() != 2) return false;
+        if (command.size() != 2)
+            return false;
         int time = std::stoi(command[1]);
-        if (time < 0) return false;
+        if (time < 0)
+            return false;
         GameTime = time;
         return true;
     }));
     commands.push_back(Command("/gamemode", [](const vector<string>& command) {
-        if (command.size() != 2) return false;
+        if (command.size() != 2)
+            return false;
         int mode = std::stoi(command[1]);
         Player::changeGameMode(mode);
         return true;
@@ -413,10 +443,14 @@ void gameUpdate() {
 
     // 生命值相关
     if (Player::health > 0 || Player::gamemode == Player::Creative) {
-        if (Player::ypos < -100) Player::health -= ((-100) - Player::ypos) / 100;
-        if (Player::health < Player::healthMax) Player::health += Player::healSpeed;
-        if (Player::health > Player::healthMax) Player::health = Player::healthMax;
-    } else Player::spawn();
+        if (Player::ypos < -100)
+            Player::health -= ((-100) - Player::ypos) / 100;
+        if (Player::health < Player::healthMax)
+            Player::health += Player::healSpeed;
+        if (Player::health > Player::healthMax)
+            Player::health = Player::healthMax;
+    } else
+        Player::spawn();
 
     // 时间
     GameTime++;
@@ -425,14 +459,21 @@ void gameUpdate() {
     World::updatedChunks = 0;
 
     // Move chunk pointer array
-    if (World::chunkPtrArray.originX != Player::cxt - RenderDistance - 2 || World::chunkPtrArray.originY != Player::cyt - RenderDistance - 2 || World::chunkPtrArray.originZ != Player::czt - RenderDistance - 2)
-        World::chunkPtrArray.moveTo(Player::cxt - RenderDistance - 2, Player::cyt - RenderDistance - 2, Player::czt - RenderDistance - 2);
+    if (World::chunkPtrArray.originX != Player::cxt - RenderDistance - 2
+        || World::chunkPtrArray.originY != Player::cyt - RenderDistance - 2
+        || World::chunkPtrArray.originZ != Player::czt - RenderDistance - 2)
+        World::chunkPtrArray.moveTo(
+            Player::cxt - RenderDistance - 2,
+            Player::cyt - RenderDistance - 2,
+            Player::czt - RenderDistance - 2
+        );
 
     // Move height map
-    if (World::heightMap.originX != (Player::cxt - RenderDistance - 2) * 16 || World::heightMap.originZ != (Player::czt - RenderDistance - 2) * 16)
+    if (World::heightMap.originX != (Player::cxt - RenderDistance - 2) * 16
+        || World::heightMap.originZ != (Player::czt - RenderDistance - 2) * 16)
         World::heightMap.moveTo((Player::cxt - RenderDistance - 2) * 16, (Player::czt - RenderDistance - 2) * 16);
 
-    for (auto const& [_, c] : World::chunks) {
+    for (auto const& [_, c]: World::chunks) {
         // 加载动画
         c->updateLoadAnimOffset();
 
@@ -448,20 +489,19 @@ void gameUpdate() {
             gy = y + cy * 16;
             z = int(rnd() * 16);
             gz = z + cz * 16;
-            if (c->getBlock(x, y, z) == Blocks::DIRT &&
-                World::getBlock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR && (
-                    World::getBlock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx, gy, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx, gy, gz - 1, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx + 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx - 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx, gy + 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx, gy + 1, gz - 1, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx + 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS ||
-                    World::getBlock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)) {
+            if (c->getBlock(x, y, z) == Blocks::DIRT && World::getBlock(gx, gy + 1, gz, Blocks::NONEMPTY) == Blocks::AIR
+                && (World::getBlock(gx + 1, gy, gz, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx - 1, gy, gz, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx, gy, gz + 1, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx, gy, gz - 1, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx + 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx - 1, gy + 1, gz, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx, gy + 1, gz + 1, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx, gy + 1, gz - 1, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx + 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx - 1, gy - 1, gz, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx, gy - 1, gz + 1, Blocks::AIR) == Blocks::GRASS
+                    || World::getBlock(gx, gy - 1, gz - 1, Blocks::AIR) == Blocks::GRASS)) {
                 // 长草
                 c->setBlock(x, y, z, Blocks::GRASS);
                 World::updateBlock(x + cx * 16, y + cy * 16 + 1, z + cz * 16, true);
@@ -496,7 +536,7 @@ void gameUpdate() {
             myl = my;
             mwl = mw;
             mbl = mb;
-            if (!chatword.empty()) { // 指令的执行，或发出聊天文本
+            if (!chatword.empty()) {      // 指令的执行，或发出聊天文本
                 if (chatword[0] == '/') { // 指令
                     auto utf8 = UnicodeUTF8(chatword);
                     std::vector<string> command = split(utf8, " ");
@@ -504,25 +544,25 @@ void gameUpdate() {
                         DebugWarning("Fail to execute the command: " + utf8);
                         chatMessages.push_back("Fail to execute the command: " + utf8);
                     }
-                }
-                else
+                } else
                     chatMessages.push_back(UnicodeUTF8(chatword));
             }
             chatword.clear();
         }
 
-        if (!inputstr.empty()) chatword += inputstr;
-        if (backspace && !chatword.empty()) chatword = chatword.substr(0, chatword.length() - 1);
+        if (!inputstr.empty())
+            chatword += inputstr;
+        if (backspace && !chatword.empty())
+            chatword = chatword.substr(0, chatword.length() - 1);
 
         // 自动补全
         if (isKeyPressed(GLFW_KEY_TAB) && chatmode && !chatword.empty() && chatword[0] == '/') {
-            for (auto& command : commands) {
+            for (auto& command: commands) {
                 if (command.identifier.starts_with(UnicodeUTF8(chatword)))
                     chatword = UTF8Unicode(command.identifier);
             }
         }
-    }
-    else if (bagOpened) {
+    } else if (bagOpened) {
         shouldShowCursor = true;
 
         if (isKeyPressed(GLFW_KEY_E)) {
@@ -533,8 +573,7 @@ void gameUpdate() {
             mwl = mw;
             mbl = mb;
         }
-    }
-    else {
+    } else {
         shouldShowCursor = false;
 
         // 从玩家位置发射一条线段
@@ -544,9 +583,11 @@ void gameUpdate() {
             lzl = lz;
 
             // 线段延伸
-            lx += std::sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) / SelectPrecision;
+            lx += std::sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
+                / SelectPrecision;
             ly += std::cos(Pi / 180 * (Player::lookupdown + 90)) / SelectPrecision;
-            lz += std::cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) / SelectPrecision;
+            lz += std::cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
+                / SelectPrecision;
 
             // 碰到方块
             if (BlockInfo(World::getBlock(std::lround(lx), std::lround(ly), std::lround(lz))).isSolid()) {
@@ -573,30 +614,49 @@ void gameUpdate() {
 
                 if (World::chunkOutOfBound(selcx, selcy, selcz) == false) {
                     World::Chunk* cp = World::getChunkPtr(selcx, selcy, selcz);
-                    if (cp == nullptr || cp == World::EmptyChunkPtr) continue;
+                    if (cp == nullptr || cp == World::EmptyChunkPtr)
+                        continue;
                     selb = cp->getBlock(selbx, selby, selbz);
                 }
                 selbr = World::getBrightness(xl, yl, zl);
                 selb = World::getBlock(x, y, z);
                 if (mb == 1) { // 鼠标左键
-                    Particles::throwParticle(selb,
-                                             float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
-                                             float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
-                                             float(rnd() * 0.01f + 0.02f), int(rnd() * 30) + 30);
+                    Particles::throwParticle(
+                        selb,
+                        float(x + rnd() - 0.5f),
+                        float(y + rnd() - 0.2f),
+                        float(z + rnd() - 0.5f),
+                        float(rnd() * 0.2f - 0.1f),
+                        float(rnd() * 0.2f - 0.1f),
+                        float(rnd() * 0.2f - 0.1f),
+                        float(rnd() * 0.01f + 0.02f),
+                        int(rnd() * 30) + 30
+                    );
 
                     const float MinHardness = 0.2f;
-                    if (selx != oldselx || sely != oldsely || selz != oldselz) seldes = 0.0f;
-                    else if (Player::gamemode == Player::Creative) seldes += 1.0f / 30.0f / MinHardness;
-                    else if (BlockInfo(selb).getHardness() <= MinHardness) seldes += 1.0f / 30.0f / MinHardness;
-                    else seldes += 1.0f / 30.0f / BlockInfo(selb).getHardness();
+                    if (selx != oldselx || sely != oldsely || selz != oldselz)
+                        seldes = 0.0f;
+                    else if (Player::gamemode == Player::Creative)
+                        seldes += 1.0f / 30.0f / MinHardness;
+                    else if (BlockInfo(selb).getHardness() <= MinHardness)
+                        seldes += 1.0f / 30.0f / MinHardness;
+                    else
+                        seldes += 1.0f / 30.0f / BlockInfo(selb).getHardness();
 
                     if (seldes >= 1.0f) {
                         Player::addItem(selb);
                         for (int j = 1; j <= 25; j++) {
-                            Particles::throwParticle(selb,
-                                                     float(x + rnd() - 0.5f), float(y + rnd() - 0.2f), float(z + rnd() - 0.5f),
-                                                     float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f), float(rnd() * 0.2f - 0.1f),
-                                                     float(rnd() * 0.02 + 0.03), int(rnd() * 60) + 30);
+                            Particles::throwParticle(
+                                selb,
+                                float(x + rnd() - 0.5f),
+                                float(y + rnd() - 0.2f),
+                                float(z + rnd() - 0.5f),
+                                float(rnd() * 0.2f - 0.1f),
+                                float(rnd() * 0.2f - 0.1f),
+                                float(rnd() * 0.2f - 0.1f),
+                                float(rnd() * 0.02 + 0.03),
+                                int(rnd() * 60) + 30
+                            );
                         }
                         World::setBlock(x, y, z, Blocks::AIR);
                     }
@@ -606,18 +666,19 @@ void gameUpdate() {
                         // 放置方块
                         if (Player::putBlock(xl, yl, zl, Player::BlockInHand)) {
                             Player::inventoryAmount[3][Player::indexInHand]--;
-                            if (Player::inventoryAmount[3][Player::indexInHand] == 0) Player::inventory[3][Player::indexInHand] = Blocks::AIR;
+                            if (Player::inventoryAmount[3][Player::indexInHand] == 0)
+                                Player::inventory[3][Player::indexInHand] = Blocks::AIR;
                         }
                     } else {
                         // 使用物品
-
                     }
                 }
                 break;
             }
         }
 
-        if (selx != oldselx || sely != oldsely || selz != oldselz || mb == 0) seldes = 0.0f;
+        if (selx != oldselx || sely != oldsely || selz != oldselz || mb == 0)
+            seldes = 0.0f;
         oldselx = selx;
         oldsely = sely;
         oldselz = selz;
@@ -636,29 +697,37 @@ void gameUpdate() {
             if (!wPressedOnce) {
                 if (wPressTimer == 0.0) {
                     wPressTimer = Timer();
-                }
-                else {
-                    if (Timer() - wPressTimer <= 0.5) { Player::Running = true; wPressTimer = 0.0; }
-                    else wPressTimer = Timer();
+                } else {
+                    if (Timer() - wPressTimer <= 0.5) {
+                        Player::Running = true;
+                        wPressTimer = 0.0;
+                    } else
+                        wPressTimer = Timer();
                 }
             }
-            if (wPressTimer != 0.0 && Timer() - wPressTimer > 0.5) wPressTimer = 0.0;
+            if (wPressTimer != 0.0 && Timer() - wPressTimer > 0.5)
+                wPressTimer = 0.0;
             wPressedOnce = true;
             if (!Player::glidingNow) {
                 Player::xa += -sin(Player::heading * Pi / 180.0) * Player::speed;
                 Player::za += -cos(Player::heading * Pi / 180.0) * Player::speed;
             } else {
-                Player::xa = sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
+                Player::xa = sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
+                           * Player::glidingSpeed * speedCast;
                 Player::ya = cos(Pi / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
-                Player::za = cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * Player::glidingSpeed * speedCast;
-                if (Player::ya < 0) Player::ya *= 2;
+                Player::za = cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
+                           * Player::glidingSpeed * speedCast;
+                if (Player::ya < 0)
+                    Player::ya *= 2;
             }
         } else {
             Player::Running = false;
             wPressedOnce = false;
         }
-        if (Player::Running) Player::speed = RunSpeed;
-        else Player::speed = WalkSpeed;
+        if (Player::Running)
+            Player::speed = RunSpeed;
+        else
+            Player::speed = WalkSpeed;
 
         if (isKeyDown(GLFW_KEY_S) && !Player::glidingNow) {
             Player::xa += sin(Player::heading * Pi / 180.0) * Player::speed;
@@ -690,9 +759,11 @@ void gameUpdate() {
                     Player::xa = -sin(Player::heading * Pi / 180.0) * RunSpeed * 10;
                     Player::za = -cos(Player::heading * Pi / 180.0) * RunSpeed * 10;
                 } else {
-                    Player::xa = sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+                    Player::xa = sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
+                               * RunSpeed * 20;
                     Player::ya = cos(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
-                    Player::za = cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+                    Player::za = cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
+                               * RunSpeed * 20;
                 }
             }
 
@@ -701,19 +772,26 @@ void gameUpdate() {
                     Player::xa = sin(Player::heading * Pi / 180.0) * RunSpeed * 10;
                     Player::za = cos(Player::heading * Pi / 180.0) * RunSpeed * 10;
                 } else {
-                    Player::xa = -sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+                    Player::xa = -sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
+                               * RunSpeed * 20;
                     Player::ya = -cos(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
-                    Player::za = -cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+                    Player::za = -cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
+                               * RunSpeed * 20;
                 }
             }
         }
 
         // 切换方块
-        if (isKeyPressed(GLFW_KEY_Z) && Player::indexInHand > 0) Player::indexInHand--;
-        if (isKeyPressed(GLFW_KEY_X) && Player::indexInHand < 9) Player::indexInHand++;
-        if ((int)Player::indexInHand + (mwl - mw) < 0)Player::indexInHand = 0;
-        else if ((int)Player::indexInHand + (mwl - mw) > 9)Player::indexInHand = 9;
-        else Player::indexInHand += (char)(mwl - mw);
+        if (isKeyPressed(GLFW_KEY_Z) && Player::indexInHand > 0)
+            Player::indexInHand--;
+        if (isKeyPressed(GLFW_KEY_X) && Player::indexInHand < 9)
+            Player::indexInHand++;
+        if ((int) Player::indexInHand + (mwl - mw) < 0)
+            Player::indexInHand = 0;
+        else if ((int) Player::indexInHand + (mwl - mw) > 9)
+            Player::indexInHand = 9;
+        else
+            Player::indexInHand += (char) (mwl - mw);
         mwl = mw;
 
         // 起跳/上升
@@ -724,24 +802,22 @@ void gameUpdate() {
                         if (Player::OnGround == false) {
                             Player::jump = 0.3;
                             Player::AirJumps++;
-                        }
-                        else {
+                        } else {
                             Player::jump = 0.3;
                             Player::OnGround = false;
                         }
                     }
-                }
-                else {
+                } else {
                     Player::ya = 0.2;
                 }
-            }
-            else {
+            } else {
                 Player::ya += WalkSpeed / 2;
             }
         }
 
         if ((isKeyDown(GLFW_KEY_LEFT_SHIFT) || isKeyDown(GLFW_KEY_RIGHT_SHIFT)) && !Player::glidingNow) {
-            if (Player::CrossWall || Player::Flying) Player::ya -= WalkSpeed / 2;
+            if (Player::CrossWall || Player::Flying)
+                Player::ya -= WalkSpeed / 2;
             wPressTimer = 0.0;
         }
 
@@ -760,18 +836,19 @@ void gameUpdate() {
             Player::glidingNow = true;
         }
 
-        if (isKeyPressed(GLFW_KEY_L)) World::saveAllChunks();
+        if (isKeyPressed(GLFW_KEY_L))
+            World::saveAllChunks();
 
         // 各种设置切换
         if (isKeyPressed(GLFW_KEY_F1)) {
-            Player::changeGameMode(Player::gamemode == Player::Creative ?
-                                      Player::Survival : Player::Creative);
+            Player::changeGameMode(Player::gamemode == Player::Creative ? Player::Survival : Player::Creative);
         }
         if (isKeyPressed(GLFW_KEY_F2)) {
             shouldGetScreenshot = true;
             screenshotAnimTimer = Timer();
         }
-        if (isKeyPressed(GLFW_KEY_F3)) showDebugPanel = !showDebugPanel;
+        if (isKeyPressed(GLFW_KEY_F3))
+            showDebugPanel = !showDebugPanel;
         if (isKeyPressed(GLFW_KEY_H) && isKeyDown(GLFW_KEY_F3)) {
             showHitboxes = !showHitboxes;
             showDebugPanel = true;
@@ -781,17 +858,24 @@ void gameUpdate() {
                 showShadowMap = !showShadowMap;
                 showDebugPanel = true;
             }
-        } else showShadowMap = false;
+        } else
+            showShadowMap = false;
         if (isKeyPressed(GLFW_KEY_G) && isKeyDown(GLFW_KEY_F3)) {
             showMeshWireframe = !showMeshWireframe;
             showDebugPanel = true;
         }
-        if (isKeyPressed(GLFW_KEY_F4) && Player::gamemode == Player::GameMode::Creative) Player::CrossWall = !Player::CrossWall;
-        if (isKeyPressed(GLFW_KEY_F5)) showHUD = !showHUD;
-        if (isKeyPressed(GLFW_KEY_F6)) Player::Glide = !Player::Glide;
-        if (isKeyPressed(GLFW_KEY_F7)) shouldToggleFullscreen = true;
-        if (isKeyDown(GLFW_KEY_F8)) GameTime += 30;
-        if (isKeyPressed(GLFW_KEY_ENTER)) chatmode = true;
+        if (isKeyPressed(GLFW_KEY_F4) && Player::gamemode == Player::GameMode::Creative)
+            Player::CrossWall = !Player::CrossWall;
+        if (isKeyPressed(GLFW_KEY_F5))
+            showHUD = !showHUD;
+        if (isKeyPressed(GLFW_KEY_F6))
+            Player::Glide = !Player::Glide;
+        if (isKeyPressed(GLFW_KEY_F7))
+            shouldToggleFullscreen = true;
+        if (isKeyDown(GLFW_KEY_F8))
+            GameTime += 30;
+        if (isKeyPressed(GLFW_KEY_ENTER))
+            chatmode = true;
         if (isKeyPressed(GLFW_KEY_SLASH)) {
             chatmode = true;
             chatword = UTF8Unicode("/");
@@ -819,13 +903,14 @@ void gameUpdate() {
             Player::AirJumps = MaxAirJumps;
             if (Player::ya <= 0.001 && !Player::Flying && !Player::CrossWall) {
                 Player::ya = -0.001;
-                if (!Player::OnGround) Player::ya -= 0.1;
+                if (!Player::OnGround)
+                    Player::ya -= 0.1;
             }
         }
     }
 
     // 爬墙
-    //if (Player::NearWall && Player::Flying == false && Player::CrossWall == false) {
+    // if (Player::NearWall && Player::Flying == false && Player::CrossWall == false) {
     //  Player::ya += walkspeed
     //  Player::jump = 0.0
     //}
@@ -834,7 +919,7 @@ void gameUpdate() {
         double& E = Player::glidingEnergy;
         double oldh = Player::ypos + Player::height + Player::heightExt + Player::ya;
         double h = oldh;
-        if (E - Player::glidingMinimumSpeed < h * g)  // 小于最小速度
+        if (E - Player::glidingMinimumSpeed < h * g) // 小于最小速度
             h = (E - Player::glidingMinimumSpeed) / g;
         Player::glidingSpeed = sqrt(2 * (E - g * h));
         E -= EDrop;
@@ -865,7 +950,7 @@ void frameLinkedUpdate() {
     World::sortChunkUpdateLists(std::lround(Player::xpos), std::lround(Player::ypos), std::lround(Player::zpos));
 
     // Load chunks
-    for (auto load : World::chunkLoadList) {
+    for (auto load: World::chunkLoadList) {
         int cx = std::get<1>(load);
         int cy = std::get<2>(load);
         int cz = std::get<3>(load);
@@ -877,7 +962,7 @@ void frameLinkedUpdate() {
     }
 
     // Unload chunks
-    for (auto unload : World::chunkUnloadList) {
+    for (auto unload: World::chunkUnloadList) {
         int cx = std::get<1>(unload);
         int cy = std::get<2>(unload);
         int cz = std::get<3>(unload);
@@ -885,7 +970,7 @@ void frameLinkedUpdate() {
     }
 
     // Mesh updated chunks
-    for (auto meshing : World::chunkMeshingList) {
+    for (auto meshing: World::chunkMeshingList) {
         meshing.second->buildMeshes();
     }
 
@@ -897,15 +982,14 @@ void frameLinkedUpdate() {
         if (FOVyExt < 9.8f) {
             float timeDelta = static_cast<float>(currTimer - speedupAnimTimer);
             FOVyExt = 10.0f - (10.0f - FOVyExt) * std::pow(0.8f, timeDelta * 30.0f);
-        }
-        else FOVyExt = 10.0f;
-    }
-    else {
+        } else
+            FOVyExt = 10.0f;
+    } else {
         if (FOVyExt > 0.2f) {
             float timeDelta = static_cast<float>(currTimer - speedupAnimTimer);
             FOVyExt *= std::pow(0.8f, timeDelta * 30.0f);
-        }
-        else FOVyExt = 0.0f;
+        } else
+            FOVyExt = 0.0f;
     }
     speedupAnimTimer = currTimer;
 
@@ -916,8 +1000,7 @@ void frameLinkedUpdate() {
                 Player::heightExt = -(Player::height - 0.5f);
             else
                 Player::heightExt = static_cast<float>(Player::jump);
-        }
-        else {
+        } else {
             if (Player::heightExt <= -0.005) {
                 float timeDelta = static_cast<float>(currTimer - touchdownAnimTimer);
                 Player::heightExt *= std::pow(0.8f, timeDelta * 30.0f);
@@ -937,11 +1020,15 @@ void frameLinkedUpdate() {
 
     // 转头！你治好了我多年的颈椎病！
     if (!shouldShowCursor) {
-        if (mx != mxl) Player::xlookspeed -= (mx - mxl) * MouseSpeed;
-        if (my != myl) Player::ylookspeed += (my - myl) * MouseSpeed;
+        if (mx != mxl)
+            Player::xlookspeed -= (mx - mxl) * MouseSpeed;
+        if (my != myl)
+            Player::ylookspeed += (my - myl) * MouseSpeed;
         // 限制角度，别把头转掉下来了 ←_←
-        if (Player::lookupdown + Player::ylookspeed < -90.0) Player::ylookspeed = -90.0 - Player::lookupdown;
-        if (Player::lookupdown + Player::ylookspeed > 90.0) Player::ylookspeed = 90.0 - Player::lookupdown;
+        if (Player::lookupdown + Player::ylookspeed < -90.0)
+            Player::ylookspeed = -90.0 - Player::lookupdown;
+        if (Player::lookupdown + Player::ylookspeed > 90.0)
+            Player::ylookspeed = 90.0 - Player::lookupdown;
     }
 
     // 切换全屏
@@ -982,13 +1069,16 @@ void render() {
     viewMatrix = Mat4f::rotate(-static_cast<float>(pheading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * viewMatrix;
     viewMatrix = Mat4f::rotate(static_cast<float>(plookupdown * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * viewMatrix;
     viewMatrix = Mat4f::perspective(
-        static_cast<float>((FOVyNormal + FOVyExt) * Pi / 180.0),
-        static_cast<float>(WindowWidth) / WindowHeight,
-        0.05f,
-        RenderDistance * 16.0f) * viewMatrix;
+                     static_cast<float>((FOVyNormal + FOVyExt) * Pi / 180.0),
+                     static_cast<float>(WindowWidth) / WindowHeight,
+                     0.05f,
+                     RenderDistance * 16.0f
+                 )
+               * viewMatrix;
 
     // Clear framebuffers
-    if (Renderer::AdvancedRender) Renderer::ClearSGDBuffers();
+    if (Renderer::AdvancedRender)
+        Renderer::ClearSGDBuffers();
 
     glClearColor(SkyColorR, SkyColorG, SkyColorB, 1.0f);
     glClearDepth(1.0f);
@@ -997,13 +1087,26 @@ void render() {
     // Bind main texture array
     glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
 
-    if (showMeshWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    if (showMeshWireframe)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Build shadow map
     auto shadowMatrix = Renderer::getShadowMatrix();
     if (Renderer::AdvancedRender) {
-        auto shadowMatrixTest = Renderer::getShadowMatrixExperimental(FOVyNormal + FOVyExt, static_cast<float>(WindowWidth) / WindowHeight, pheading, plookupdown);
-        WorldRenderer::ListRenderChunks(xpos, ypos, zpos, Renderer::getShadowDistance(), interp, FrustumTest(shadowMatrixTest));
+        auto shadowMatrixTest = Renderer::getShadowMatrixExperimental(
+            FOVyNormal + FOVyExt,
+            static_cast<float>(WindowWidth) / WindowHeight,
+            pheading,
+            plookupdown
+        );
+        WorldRenderer::ListRenderChunks(
+            xpos,
+            ypos,
+            zpos,
+            Renderer::getShadowDistance(),
+            interp,
+            FrustumTest(shadowMatrixTest)
+        );
         Renderer::StartShadowPass(shadowMatrix, interpolatedTime);
         WorldRenderer::RenderChunks(xpos, ypos, zpos, 0);
         Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(0.0f));
@@ -1047,16 +1150,21 @@ void render() {
     glEnable(GL_CULL_FACE);
     Renderer::EndTranslucentPass();
 
-    if (showMeshWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    if (showMeshWireframe)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // Full screen passes
     if (Renderer::AdvancedRender) {
         Renderer::StartFinalPass(xpos, ypos, zpos, viewMatrix, shadowMatrix, interpolatedTime);
         Renderer::Begin(GL_QUADS, 2, 2, 0);
-        Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(0, 0);
-        Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, WindowHeight);
-        Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(WindowWidth, WindowHeight);
-        Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(WindowWidth, 0);
+        Renderer::TexCoord2f(0.0f, 1.0f);
+        Renderer::Vertex2i(0, 0);
+        Renderer::TexCoord2f(0.0f, 0.0f);
+        Renderer::Vertex2i(0, WindowHeight);
+        Renderer::TexCoord2f(1.0f, 0.0f);
+        Renderer::Vertex2i(WindowWidth, WindowHeight);
+        Renderer::TexCoord2f(1.0f, 1.0f);
+        Renderer::Vertex2i(WindowWidth, 0);
         Renderer::End().render();
         Renderer::EndFinalPass();
     }
@@ -1104,10 +1212,14 @@ void render() {
         Renderer::Begin(GL_QUADS, 2, 3, 4);
         Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Blocks::WATER, 0)));
-        Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(0, 0);
-        Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(0, WindowHeight);
-        Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(WindowWidth, WindowHeight);
-        Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(WindowWidth, 0);
+        Renderer::TexCoord2f(0.0f, 1.0f);
+        Renderer::Vertex2i(0, 0);
+        Renderer::TexCoord2f(0.0f, 0.0f);
+        Renderer::Vertex2i(0, WindowHeight);
+        Renderer::TexCoord2f(1.0f, 0.0f);
+        Renderer::Vertex2i(WindowWidth, WindowHeight);
+        Renderer::TexCoord2f(1.0f, 1.0f);
+        Renderer::Vertex2i(WindowWidth, 0);
         Renderer::End().render();
         shader.unbind();
     }
@@ -1134,8 +1246,10 @@ void render() {
 void saveScreenshot(int x, int y, int w, int h, string filename) {
     Textures::ImageRGB scrBuffer;
     int bufw = w, bufh = h;
-    while (bufw % 4 != 0) bufw += 1;
-    while (bufh % 4 != 0) bufh += 1;
+    while (bufw % 4 != 0)
+        bufw += 1;
+    while (bufh % 4 != 0)
+        bufh += 1;
     scrBuffer.sizeX = bufw;
     scrBuffer.sizeY = bufh;
     scrBuffer.buffer = std::make_unique<uint8_t[]>(bufw * bufh * 3);
@@ -1171,28 +1285,28 @@ void readback() {
 }
 
 const float centers[6][3] = {
-    { +0.5f, 0.0f, 0.0f },
-    { -0.5f, 0.0f, 0.0f },
-    { 0.0f, +0.5f, 0.0f },
-    { 0.0f, -0.5f, 0.0f },
-    { 0.0f, 0.0f, +0.5f },
-    { 0.0f, 0.0f, -0.5f },
+    {+0.5f,  0.0f,  0.0f},
+    {-0.5f,  0.0f,  0.0f},
+    { 0.0f, +0.5f,  0.0f},
+    { 0.0f, -0.5f,  0.0f},
+    { 0.0f,  0.0f, +0.5f},
+    { 0.0f,  0.0f, -0.5f},
 };
 
 const float cube[6][4][3] = {
-    { { +0.5f, -0.5f, +0.5f }, { +0.5f, -0.5f, -0.5f }, { +0.5f, +0.5f, -0.5f }, { +0.5f, +0.5f, +0.5f } },
-    { { -0.5f, -0.5f, -0.5f }, { -0.5f, -0.5f, +0.5f }, { -0.5f, +0.5f, +0.5f }, { -0.5f, +0.5f, -0.5f } },
-    { { -0.5f, +0.5f, +0.5f }, { +0.5f, +0.5f, +0.5f }, { +0.5f, +0.5f, -0.5f }, { -0.5f, +0.5f, -0.5f } },
-    { { -0.5f, -0.5f, -0.5f }, { +0.5f, -0.5f, -0.5f }, { +0.5f, -0.5f, +0.5f }, { -0.5f, -0.5f, +0.5f } },
-    { { -0.5f, -0.5f, +0.5f }, { +0.5f, -0.5f, +0.5f }, { +0.5f, +0.5f, +0.5f }, { -0.5f, +0.5f, +0.5f } },
-    { { +0.5f, -0.5f, -0.5f }, { -0.5f, -0.5f, -0.5f }, { -0.5f, +0.5f, -0.5f }, { +0.5f, +0.5f, -0.5f } },
+    {{+0.5f, -0.5f, +0.5f}, {+0.5f, -0.5f, -0.5f}, {+0.5f, +0.5f, -0.5f}, {+0.5f, +0.5f, +0.5f}},
+    {{-0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, +0.5f}, {-0.5f, +0.5f, +0.5f}, {-0.5f, +0.5f, -0.5f}},
+    {{-0.5f, +0.5f, +0.5f}, {+0.5f, +0.5f, +0.5f}, {+0.5f, +0.5f, -0.5f}, {-0.5f, +0.5f, -0.5f}},
+    {{-0.5f, -0.5f, -0.5f}, {+0.5f, -0.5f, -0.5f}, {+0.5f, -0.5f, +0.5f}, {-0.5f, -0.5f, +0.5f}},
+    {{-0.5f, -0.5f, +0.5f}, {+0.5f, -0.5f, +0.5f}, {+0.5f, +0.5f, +0.5f}, {-0.5f, +0.5f, +0.5f}},
+    {{+0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}, {-0.5f, +0.5f, -0.5f}, {+0.5f, +0.5f, -0.5f}},
 };
 
 const float texcoords[4][2] = {
-    { 0.0f, 0.0f },
-    { 1.0f, 0.0f },
-    { 1.0f, 1.0f },
-    { 0.0f, 1.0f },
+    {0.0f, 0.0f},
+    {1.0f, 0.0f},
+    {1.0f, 1.0f},
+    {0.0f, 1.0f},
 };
 
 // Draw the block selection border
@@ -1200,8 +1314,10 @@ void drawBorder(float x, float y, float z) {
     const float eps = 0.005f;
     const float width = 1.0f / 32.0f;
 
-    if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
-    else Renderer::Begin(GL_QUADS, 3, 3, 1);
+    if (Renderer::AdvancedRender)
+        Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
+    else
+        Renderer::Begin(GL_QUADS, 3, 3, 1);
     Renderer::Attrib1f(65535.0f); // For indicator elements
     Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::WHITE));
     Renderer::Color3f(1.0f, 1.0f, 1.0f);
@@ -1230,13 +1346,18 @@ void drawBorder(float x, float y, float z) {
 void drawBreaking(float level, float x, float y, float z) {
     const float eps = 0.005f;
 
-    if (level <= 0.0f) return;
+    if (level <= 0.0f)
+        return;
     int index = int(level * 8);
-    if (index < 0) index = 0;
-    if (index > 7) index = 7;
+    if (index < 0)
+        index = 0;
+    if (index > 7)
+        index = 7;
 
-    if (Renderer::AdvancedRender) Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
-    else Renderer::Begin(GL_QUADS, 3, 3, 1);
+    if (Renderer::AdvancedRender)
+        Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
+    else
+        Renderer::Begin(GL_QUADS, 3, 3, 1);
     Renderer::Attrib1f(65535.0f); // For indicator elements
     Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::BREAKING_0 + index));
     Renderer::Color3f(1.0f, 1.0f, 1.0f);
@@ -1260,7 +1381,7 @@ void drawBreaking(float level, float x, float y, float z) {
 void drawGUI() {
     const int linelength = 10;
     const int linedist = 30;
-    int disti = (int)(seldes * linedist);
+    int disti = (int) (seldes * linedist);
 
     glDisable(GL_TEXTURE_2D);
     glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
@@ -1316,7 +1437,7 @@ void drawGUI() {
         glVertex2d(200, 10);
         glEnd();
 
-        double healthPercent = (double)Player::health / Player::healthMax;
+        double healthPercent = (double) Player::health / Player::healthMax;
         glColor4d(1.0, 0.0, 0.0, 0.5);
         glBegin(GL_QUADS);
         glVertex2d(20, 15);
@@ -1339,17 +1460,21 @@ void drawGUI() {
         shader.bind();
         shader.setUniformI("u_shadow_texture", 0);
         Renderer::Begin(GL_QUADS, 2, 2, 0);
-        Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2f(xi, yi);
-        Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2f(xi, ya);
-        Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2f(xa, ya);
-        Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2f(xa, yi);
+        Renderer::TexCoord2f(0.0f, 1.0f);
+        Renderer::Vertex2f(xi, yi);
+        Renderer::TexCoord2f(0.0f, 0.0f);
+        Renderer::Vertex2f(xi, ya);
+        Renderer::TexCoord2f(1.0f, 0.0f);
+        Renderer::Vertex2f(xa, ya);
+        Renderer::TexCoord2f(1.0f, 1.0f);
+        Renderer::Vertex2f(xa, yi);
         Renderer::End().render();
         shader.unbind();
 
         /*
         auto const& viewFrustum = Player::ViewFrustum;
-        auto lightFrustum = Renderer::getShadowMapFrustumExperimental(Player::heading, Player::lookupdown, Player::ViewFrustum);
-        float length = Renderer::getShadowDistance() * 16.0f;
+        auto lightFrustum = Renderer::getShadowMapFrustumExperimental(Player::heading, Player::lookupdown,
+        Player::ViewFrustum); float length = Renderer::getShadowDistance() * 16.0f;
 
         auto viewRotate = Mat4f(1.0f);
         viewRotate *= Mat4f::rotation(static_cast<float>(Player::heading), Vec3f(0.0f, 1.0f, 0.0f));
@@ -1406,8 +1531,12 @@ void drawGUI() {
     TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
     if (showDebugPanel && selb != Blocks::AIR) {
         std::stringstream ss;
-        ss << BlockInfo(selb).getBlockName() << " (id: " << (int)selb << ")";
-        TextRenderer::renderString(WindowWidth / 2 + 50, WindowHeight / 2 + 50 - TextRenderer::getLineHeight(), ss.str());
+        ss << BlockInfo(selb).getBlockName() << " (id: " << (int) selb << ")";
+        TextRenderer::renderString(
+            WindowWidth / 2 + 50,
+            WindowHeight / 2 + 50 - TextRenderer::getLineHeight(),
+            ss.str()
+        );
     }
     if (chatmode) {
         glDisable(GL_TEXTURE_2D);
@@ -1440,8 +1569,10 @@ void drawGUI() {
 
     TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
     if (showDebugPanel) {
-        auto boolstr = [](bool b) { return b ? "true" : "false"; };
-        
+        auto boolstr = [](bool b) {
+            return b ? "true" : "false";
+        };
+
         std::stringstream ss;
         ss << std::fixed << std::setprecision(4);
 
@@ -1482,11 +1613,8 @@ void drawGUI() {
         int h = (GameTime / 30 / 60) % 24;
         int m = (GameTime / 30) % 60;
         int s = GameTime % 30 * 2;
-        ss << "time: "
-            << (h < 10 ? "0" : "") << h << ":"
-            << (m < 10 ? "0" : "") << m << ":"
-            << (s < 10 ? "0" : "") << s
-            << " (" << GameTime << "/" << 30 * 60 * 24 << ")";
+        ss << "time: " << (h < 10 ? "0" : "") << h << ":" << (m < 10 ? "0" : "") << m << ":" << (s < 10 ? "0" : "") << s
+           << " (" << GameTime << "/" << 30 * 60 * 24 << ")";
         debugText(ss.str());
         ss.str("");
         /*
@@ -1531,8 +1659,7 @@ void drawGUI() {
         debugText(ss.str());
         ss.str("");
 #endif
-    }
-    else {
+    } else {
         std::stringstream ss;
         ss << "v" << GameVersion;
         debugText(ss.str());
@@ -1553,10 +1680,14 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
         glBindTexture(GL_TEXTURE_2D, i == itemid ? SelectedTexture : UnselectedTexture);
         glBegin(GL_QUADS);
         glColor4f(1.0f, 1.0f, 1.0f, alpha);
-        glTexCoord2f(0.0f, 1.0f); glVertex2i(xbase + i * (32 + spac), ybase);
-        glTexCoord2f(1.0f, 1.0f); glVertex2i(xbase + i * (32 + spac), ybase + 32);
-        glTexCoord2f(1.0f, 0.0f); glVertex2i(xbase + i * (32 + spac) + 32, ybase + 32);
-        glTexCoord2f(0.0f, 0.0f); glVertex2i(xbase + i * (32 + spac) + 32, ybase);
+        glTexCoord2f(0.0f, 1.0f);
+        glVertex2i(xbase + i * (32 + spac), ybase);
+        glTexCoord2f(1.0f, 1.0f);
+        glVertex2i(xbase + i * (32 + spac), ybase + 32);
+        glTexCoord2f(1.0f, 0.0f);
+        glVertex2i(xbase + i * (32 + spac) + 32, ybase + 32);
+        glTexCoord2f(0.0f, 0.0f);
+        glVertex2i(xbase + i * (32 + spac) + 32, ybase);
         glEnd();
 
         if (Player::inventory[row][i] != Blocks::AIR) {
@@ -1564,16 +1695,24 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
             glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
             Renderer::Begin(GL_QUADS, 2, 3, 4);
             Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-            Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Player::inventory[row][i], 0)));
-            Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 2);
-            Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 30);
-            Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 30, ybase + 30);
-            Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(xbase + i * (32 + spac) + 30, ybase + 2);
+            Renderer::TexCoord3f(
+                0.0f,
+                0.0f,
+                static_cast<float>(Textures::getTextureIndex(Player::inventory[row][i], 0))
+            );
+            Renderer::TexCoord2f(0.0f, 1.0f);
+            Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 2);
+            Renderer::TexCoord2f(0.0f, 0.0f);
+            Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 30);
+            Renderer::TexCoord2f(1.0f, 0.0f);
+            Renderer::Vertex2i(xbase + i * (32 + spac) + 30, ybase + 30);
+            Renderer::TexCoord2f(1.0f, 1.0f);
+            Renderer::Vertex2i(xbase + i * (32 + spac) + 30, ybase + 2);
             Renderer::End().render();
             shader.unbind();
 
             std::stringstream ss;
-            ss << (int)Player::inventoryAmount[row][i];
+            ss << (int) Player::inventoryAmount[row][i];
             TextRenderer::renderString(xbase + i * (32 + spac), ybase, ss.str());
         }
     }
@@ -1590,7 +1729,8 @@ void drawBag() {
     static short Amountselected = 0;
     double curtime = Timer();
     double TimeDelta = curtime - bagAnimTimer;
-    float bagAnim = (float)(1.0 - pow(0.9, TimeDelta * 60.0) + pow(0.9, bagAnimDuration * 60.0) / bagAnimDuration * TimeDelta);
+    float bagAnim =
+        (float) (1.0 - pow(0.9, TimeDelta * 60.0) + pow(0.9, bagAnimDuration * 60.0) / bagAnimDuration * TimeDelta);
 
     if (bagOpened) {
         mousew = mw;
@@ -1598,8 +1738,10 @@ void drawBag() {
 
         glDisable(GL_TEXTURE_2D);
         glBegin(GL_QUADS);
-        if (curtime - bagAnimTimer > bagAnimDuration) glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
-        else glColor4f(0.2f, 0.2f, 0.2f, 0.6f * bagAnim);
+        if (curtime - bagAnimTimer > bagAnimDuration)
+            glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
+        else
+            glColor4f(0.2f, 0.2f, 0.2f, 0.6f * bagAnim);
         glVertex2i(0, 0);
         glVertex2i(0, WindowHeight);
         glVertex2i(WindowWidth, WindowHeight);
@@ -1611,8 +1753,8 @@ void drawBag() {
         if (curtime - bagAnimTimer > bagAnimDuration) {
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 10; j++) {
-                    if (mx >= j * (32 + 8) + leftp && mx <= j * (32 + 8) + 32 + leftp &&
-                            my >= i * (32 + 8) + upp && my <= i * (32 + 8) + 32 + upp) {
+                    if (mx >= j * (32 + 8) + leftp && mx <= j * (32 + 8) + 32 + leftp && my >= i * (32 + 8) + upp
+                        && my <= i * (32 + 8) + 32 + upp) {
                         csi = si = i;
                         csj = sj = j;
                         sf = 1;
@@ -1629,7 +1771,8 @@ void drawBag() {
                             std::swap(Amountselected, Player::inventoryAmount[i][j]);
                             std::swap(indexselected, Player::inventory[i][j]);
                         }
-                        if (mousebl == 0 && mouseb == 2 && indexselected == Player::inventory[i][j] && Player::inventoryAmount[i][j] < 255) {
+                        if (mousebl == 0 && mouseb == 2 && indexselected == Player::inventory[i][j]
+                            && Player::inventoryAmount[i][j] < 255) {
                             Amountselected--;
                             Player::inventoryAmount[i][j]++;
                         }
@@ -1639,13 +1782,24 @@ void drawBag() {
                             Player::inventory[i][j] = indexselected;
                         }
 
-                        if (Amountselected == 0) indexselected = Blocks::AIR;
-                        if (indexselected == Blocks::AIR) Amountselected = 0;
-                        if (Player::inventoryAmount[i][j] == 0) Player::inventory[i][j] = Blocks::AIR;
-                        if (Player::inventory[i][j] == Blocks::AIR) Player::inventoryAmount[i][j] = 0;
+                        if (Amountselected == 0)
+                            indexselected = Blocks::AIR;
+                        if (indexselected == Blocks::AIR)
+                            Amountselected = 0;
+                        if (Player::inventoryAmount[i][j] == 0)
+                            Player::inventory[i][j] = Blocks::AIR;
+                        if (Player::inventory[i][j] == Blocks::AIR)
+                            Player::inventoryAmount[i][j] = 0;
                     }
                 }
-                drawBagRow(i, (csi == i ? csj : -1), (WindowWidth - 392) / 2, WindowHeight - 152 - 16 + i * 40, 8, 1.0f);
+                drawBagRow(
+                    i,
+                    (csi == i ? csj : -1),
+                    (WindowWidth - 392) / 2,
+                    WindowHeight - 152 - 16 + i * 40,
+                    8,
+                    1.0f
+                );
             }
         }
 
@@ -1656,30 +1810,34 @@ void drawBag() {
             Renderer::Begin(GL_QUADS, 2, 3, 4);
             Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
             Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(indexselected, 0)));
-            Renderer::TexCoord2f(0.0f, 1.0f); Renderer::Vertex2i(mx - 16, my - 16);
-            Renderer::TexCoord2f(0.0f, 0.0f); Renderer::Vertex2i(mx - 16, my + 16);
-            Renderer::TexCoord2f(1.0f, 0.0f); Renderer::Vertex2i(mx + 16, my + 16);
-            Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(mx + 16, my - 16);
+            Renderer::TexCoord2f(0.0f, 1.0f);
+            Renderer::Vertex2i(mx - 16, my - 16);
+            Renderer::TexCoord2f(0.0f, 0.0f);
+            Renderer::Vertex2i(mx - 16, my + 16);
+            Renderer::TexCoord2f(1.0f, 0.0f);
+            Renderer::Vertex2i(mx + 16, my + 16);
+            Renderer::TexCoord2f(1.0f, 1.0f);
+            Renderer::Vertex2i(mx + 16, my - 16);
             Renderer::End().render();
             shader.unbind();
 
             std::stringstream ss;
             ss << Amountselected;
-            TextRenderer::renderString((int)mx - 16, (int)my - 16, ss.str());
+            TextRenderer::renderString((int) mx - 16, (int) my - 16, ss.str());
         }
         if (Player::inventory[si][sj] != 0 && sf == 1) {
-            TextRenderer::renderString((int)mx, (int)my - 16, BlockInfo(Player::inventory[si][sj]).getBlockName());
+            TextRenderer::renderString((int) mx, (int) my - 16, BlockInfo(Player::inventory[si][sj]).getBlockName());
         }
 
         int xbase = 0, ybase = 0, spac = 0;
         float alpha = 0.5f + 0.5f * bagAnim;
         if (curtime - bagAnimTimer <= bagAnimDuration) {
-            xbase = (int)round(((WindowWidth - 392) / 2) * bagAnim);
-            ybase = (int)round((WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
-            spac = (int)round(8 * bagAnim);
+            xbase = (int) round(((WindowWidth - 392) / 2) * bagAnim);
+            ybase = (int) round((WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
+            spac = (int) round(8 * bagAnim);
             drawBagRow(3, -1, xbase, ybase, spac, alpha);
-            xbase = (int)round(((WindowWidth - 392) / 2 - WindowWidth) * bagAnim + WindowWidth);
-            ybase = (int)round((WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
+            xbase = (int) round(((WindowWidth - 392) / 2 - WindowWidth) * bagAnim + WindowWidth);
+            ybase = (int) round((WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
             for (int i = 0; i < 3; i++) {
                 drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
             }
@@ -1702,22 +1860,33 @@ void drawBag() {
 
             int xbase = 0, ybase = 0, spac = 0;
             float alpha = 1.0f - 0.5f * bagAnim;
-            xbase = (int)round(((WindowWidth - 392) / 2) - ((WindowWidth - 392) / 2) * bagAnim);
-            ybase = (int)round((WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) - (WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
-            spac = (int)round(8 - 8 * bagAnim);
+            xbase = (int) round(((WindowWidth - 392) / 2) - ((WindowWidth - 392) / 2) * bagAnim);
+            ybase = (int) round(
+                (WindowHeight - 152 - 16 + 120 - (WindowHeight - 32))
+                - (WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32)
+            );
+            spac = (int) round(8 - 8 * bagAnim);
             drawBagRow(3, Player::indexInHand, xbase, ybase, spac, alpha);
-            xbase = (int)round(((WindowWidth - 392) / 2 - WindowWidth) - ((WindowWidth - 392) / 2 - WindowWidth) * bagAnim + WindowWidth);
-            ybase = (int)round((WindowHeight - 152 - 16 - (WindowHeight - 32)) - (WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
+            xbase = (int) round(
+                ((WindowWidth - 392) / 2 - WindowWidth) - ((WindowWidth - 392) / 2 - WindowWidth) * bagAnim
+                + WindowWidth
+            );
+            ybase = (int) round(
+                (WindowHeight - 152 - 16 - (WindowHeight - 32))
+                - (WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32)
+            );
             for (int i = 0; i < 3; i++) {
                 drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
             }
-        } else drawBagRow(3, Player::indexInHand, 0, WindowHeight - 32, 0, 0.5f);
+        } else
+            drawBagRow(3, Player::indexInHand, 0, WindowHeight - 32, 0, 0.5f);
     }
 }
 
-template<typename T>
-void loadoption(std::map<string, string> &m, const char* name, T &value) {
-    if (m.find(name) == m.end()) return;
+template <typename T>
+void loadoption(std::map<string, string>& m, const char* name, T& value) {
+    if (m.find(name) == m.end())
+        return;
     std::stringstream ss;
     ss << m[name];
     ss >> value;
@@ -1726,7 +1895,8 @@ void loadoption(std::map<string, string> &m, const char* name, T &value) {
 void loadOptions() {
     std::map<std::string, std::string> options;
     std::ifstream filein("configs/options.ini", std::ios::in);
-    if (!filein.is_open()) return;
+    if (!filein.is_open())
+        return;
     std::string name, value;
     while (!filein.eof()) {
         filein >> name >> value;
@@ -1753,15 +1923,16 @@ void loadOptions() {
     loadoption(options, "UIBackgroundBlur", UIBackgroundBlur);
 }
 
-template<typename T>
-void saveoption(std::ofstream &out, const char* name, T &value) {
+template <typename T>
+void saveoption(std::ofstream& out, const char* name, T& value) {
     out << std::string(name) << " " << value << std::endl;
 }
 
 void saveOptions() {
     std::map<std::string, std::string> options;
     std::ofstream fileout("configs/options.ini", std::ios::out);
-    if (!fileout.is_open()) return;
+    if (!fileout.is_open())
+        return;
     saveoption(fileout, "Language", Globalization::Cur_Lang);
     saveoption(fileout, "FOV", FOVyNormal);
     saveoption(fileout, "RenderDistance", RenderDistance);
