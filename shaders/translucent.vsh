@@ -17,11 +17,11 @@ uniform vec3 u_translation;
 uniform float u_game_time;
 
 void main() {
-	coord = a_coord;
-	tex_coord = a_tex_coord;
-	color = vec3(a_color);
-	normal = a_normal;
-	block_id = a_block_id;
+    coord = a_coord;
+    tex_coord = a_tex_coord;
+    color = vec3(a_color);
+    normal = a_normal;
+    block_id = a_block_id;
 
-	gl_Position = u_mvp * vec4(coord + u_translation, 1.0f);
+    gl_Position = u_mvp * vec4(coord + u_translation, 1.0f);
 }

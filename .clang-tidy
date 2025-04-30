@@ -1,0 +1,11 @@
+# See: https://clang.llvm.org/extra/clang-tidy/
+
+Checks: <
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -modernize-use-nodiscard
