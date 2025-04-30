@@ -28,7 +28,7 @@ namespace WorldGen {
     double InterpolatedNoise(double x, double y) {
         int int_X, int_Y;
         double fractional_X, fractional_Y, v1, v2, v3, v4, i1, i2;
-        int_X = (int)floor(x); //不要问我为毛用floor，c++默认居然TM的是向零取整的
+        int_X = (int)floor(x); //锟斤拷要锟斤拷锟斤拷为毛锟斤拷floor锟斤拷c++默锟较撅拷然TM锟斤拷锟斤拷锟斤拷锟斤拷取锟斤拷锟斤拷
         fractional_X = x - int_X;
         int_Y = (int)floor(y);
         fractional_Y = y - int_Y;

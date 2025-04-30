@@ -35,7 +35,7 @@ namespace WorldGen {
         }
         if (transition < lower) return lower + base;
         return transition + base;
-		//return int(PerlinNoise2D(x / NoiseScaleX, y / NoiseScaleZ) / 4 - 80 + WaterLevel);
+        //return int(PerlinNoise2D(x / NoiseScaleX, y / NoiseScaleZ) / 4 - 80 + WaterLevel);
     }
 
 }
