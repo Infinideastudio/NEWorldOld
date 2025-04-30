@@ -9,6 +9,6 @@ cmake -S . -B build
 cmake --build build
 ```
 
-This should automatically download and build all required dependencies, including `glfw`, `utfcpp` and `freetype`. Note that the `glad`-generated source files are included in `src/glad` in this repository.
+This should automatically download and build all external dependencies, including `glfw3`, `utfcpp` and `freetype`. Alternatively, use [vcpkg](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started?pivots=shell-powershell) to find and download packages by passing `-DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>/scripts/buildsystems/vcpkg.cmake` to the first command.
 
 The compiler is set to use C++20. By default, all dependencies are statically linked.
