@@ -113,10 +113,6 @@ void updateKeyStates() {
 int main() {
 	// 终于进入main函数了！激动人心的一刻！！！
 
-#ifndef NEWORLD_USE_WINAPI
-	setlocale(LC_ALL, "zh_CN.UTF-8");
-#endif
-
 	loadOptions();
 	Globalization::Load();
 
@@ -141,28 +137,25 @@ int main() {
 		Menus::mainmenu();
 
 		// 初始化游戏状态
-		printf("[Console][Game]");
-		printf("Init player...\n");
+		DebugInfo("Init player...");
 		if (loadGame()) Player::init(Player::xpos, Player::ypos, Player::zpos);
 		else Player::spawn();
 
-		printf("[Console][Game]");
-		printf("Init world...\n");
+		DebugInfo("Init world...");
 		World::init();
 
 		// 初始化游戏更新线程
 		updateMutex.lock();
 		updateThreadRun = true;
+		updateTimer = Timer();
 		auto updateThread = std::thread(updateThreadFunc);
-		updateTimer = timer();
 
 		// 这才是游戏开始!
-		printf("[Console][Game]");
-		printf("Main loop started\n");
+		DebugInfo("Main loop started");
 		mxl = mx;
 		myl = my;
 		shouldShowCursor = false;
-		fctime = uctime = timer();
+		fctime = uctime = Timer();
 
 		// 主循环，被简化成这样，惨不忍睹啊！
 		while (!glfwWindowShouldClose(MainWindow) && !GameExit) {
@@ -175,15 +168,15 @@ int main() {
 			fpsc++;
 
 			// 检测帧速率
-			if (timer() - fctime >= 1.0) {
+			if (Timer() - fctime >= 1.0) {
 				fps = fpsc;
 				fpsc = 0;
-				fctime = timer();
+				fctime = Timer();
 			}
 
 			// 检测更新速率
-			if (timer() - uctime >= 1.0) {
-				uctime = timer();
+			if (Timer() - uctime >= 1.0) {
+				uctime = Timer();
 				ups = upsc;
 				upsc = 0;
 			}
@@ -202,7 +195,7 @@ int main() {
 				Menus::gamemenu();
 				mxl = mx;
 				myl = my;
-				updateTimer = fctime = uctime = timer();
+				updateTimer = fctime = uctime = Timer();
 			}
 		};
 
@@ -214,8 +207,7 @@ int main() {
 		glfwSwapBuffers(MainWindow);
 
 		// 停止游戏更新线程
-		printf("[Console][Game]");
-		printf("Terminate threads\n");
+		DebugInfo("Terminating threads");
 		updateThreadRun = false;
 		updateMutex.unlock();
 		updateThread.join();
@@ -236,7 +228,7 @@ int main() {
 void updateThreadFunc() {
 	updateMutex.lock();
 	while (updateThreadRun) {
-		double currTimer = timer();
+		double currTimer = Timer();
 		while (currTimer - updateTimer >= 1.0 / 30.0) {
 			if (upsc >= 60) updateTimer = currTimer;
 			updateTimer += 1.0 / 30.0;
@@ -328,8 +320,8 @@ void registerCommands() {
 	}));
 	commands.push_back(Command("/give", [](const vector<string>& command) {
 		if (command.size() != 3) return false;
-		ItemID itemid = std::stoi(command[1]);
-		short amount = std::stoi(command[2]);
+		auto itemid = static_cast<BlockID>(std::stoi(command[1]));
+		auto amount = static_cast<short>(std::stoi(command[2]));
 		Player::addItem(itemid, amount);
 		return true;
 	}));
@@ -363,7 +355,7 @@ void registerCommands() {
 		int x = std::stoi(command[1]);
 		int y = std::stoi(command[2]);
 		int z = std::stoi(command[3]);
-		BlockID b = std::stoi(command[4]);
+		auto b = static_cast<BlockID>(std::stoi(command[4]));
 		World::setBlock(x, y, z, b);
 		return true;
 	}));
@@ -519,14 +511,8 @@ void gameUpdate() {
 			chatword.clear();
 		}
 
-		if (!inputstr.empty()) {
-			chatword += inputstr;
-			inputstr.clear();
-		}
-		if (backspace && !chatword.empty()) {
-			chatword = chatword.substr(0, chatword.length() - 1);
-			backspace = false;
-		}
+		if (!inputstr.empty()) chatword += inputstr;
+		if (backspace && !chatword.empty()) chatword = chatword.substr(0, chatword.length() - 1);
 
 		// 自动补全
 		if (isKeyPressed(GLFW_KEY_TAB) && chatmode && !chatword.empty() && chatword[0] == '/') {
@@ -541,7 +527,7 @@ void gameUpdate() {
 
 		if (isKeyPressed(GLFW_KEY_E)) {
 			bagOpened = false;
-			bagAnimTimer = timer();
+			bagAnimTimer = Timer();
 			mxl = mx;
 			myl = my;
 			mwl = mw;
@@ -550,8 +536,6 @@ void gameUpdate() {
 	}
 	else {
 		shouldShowCursor = false;
-		inputstr.clear();
-		backspace = false;
 
 		// 从玩家位置发射一条线段
 		for (int i = 0; i < SelectPrecision * SelectDistance; i++) {
@@ -651,14 +635,14 @@ void gameUpdate() {
 		if (isKeyDown(GLFW_KEY_W) || Player::glidingNow) {
 			if (!wPressedOnce) {
 				if (wPressTimer == 0.0) {
-					wPressTimer = timer();
+					wPressTimer = Timer();
 				}
 				else {
-					if (timer() - wPressTimer <= 0.5) { Player::Running = true; wPressTimer = 0.0; }
-					else wPressTimer = timer();
+					if (Timer() - wPressTimer <= 0.5) { Player::Running = true; wPressTimer = 0.0; }
+					else wPressTimer = Timer();
 				}
 			}
-			if (wPressTimer != 0.0 && timer() - wPressTimer > 0.5) wPressTimer = 0.0;
+			if (wPressTimer != 0.0 && Timer() - wPressTimer > 0.5) wPressTimer = 0.0;
 			wPressedOnce = true;
 			if (!Player::glidingNow) {
 				Player::xa += -sin(Player::heading * Pi / 180.0) * Player::speed;
@@ -764,7 +748,7 @@ void gameUpdate() {
 		// Open inventory
 		if (isKeyPressed(GLFW_KEY_E) && showHUD) {
 			bagOpened = true;
-			bagAnimTimer = timer();
+			bagAnimTimer = Timer();
 			shouldGetThumbnail = true;
 		}
 
@@ -785,7 +769,7 @@ void gameUpdate() {
 		}
 		if (isKeyPressed(GLFW_KEY_F2)) {
 			shouldGetScreenshot = true;
-			screenshotAnimTimer = timer();
+			screenshotAnimTimer = Timer();
 		}
 		if (isKeyPressed(GLFW_KEY_F3)) showDebugPanel = !showDebugPanel;
 		if (isKeyPressed(GLFW_KEY_H) && isKeyDown(GLFW_KEY_F3)) {
@@ -859,6 +843,9 @@ void gameUpdate() {
 
 	mbp = mb;
 	updateKeyStates();
+	inputstr.clear();
+	backspace = false;
+
 	Particles::updateall();
 
 	Player::intxpos = std::lround(Player::xpos);
@@ -903,7 +890,7 @@ void frameLinkedUpdate() {
 	}
 
 	// 处理计时
-	double currTimer = timer();
+	double currTimer = Timer();
 
 	// 视野特效
 	if (Player::Running) {
@@ -976,7 +963,7 @@ void render() {
 	const float SkyColorG = 0.80f;
 	const float SkyColorB = 0.86f;
 
-	double currTimer = timer();
+	double currTimer = Timer();
 	double interp = (currTimer - updateTimer) * 30.0;
 	double xpos = Player::xpos - Player::xd + interp * Player::xd;
 	double ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + interp * Player::yd;
@@ -1458,7 +1445,7 @@ void drawGUI() {
 		std::stringstream ss;
 		ss << std::fixed << std::setprecision(4);
 
-		ss << "v" << GameVersion << " [GL " << GLMajorVersion << "." << GLMinorVersion << "." << GLRevisionVersion << "]";
+		ss << "v" << GameVersion << " [GL " << GLMajorVersion << "." << GLMinorVersion << "]";
 		debugText(ss.str());
 		ss.str("");
 		ss << fps << " fps, " << ups << " ups";
@@ -1601,7 +1588,7 @@ void drawBag() {
 	static int mousew, mouseb, mousebl;
 	static BlockID indexselected = Blocks::AIR;
 	static short Amountselected = 0;
-	double curtime = timer();
+	double curtime = Timer();
 	double TimeDelta = curtime - bagAnimTimer;
 	float bagAnim = (float)(1.0 - pow(0.9, TimeDelta * 60.0) + pow(0.9, bagAnimDuration * 60.0) / bagAnimDuration * TimeDelta);
 

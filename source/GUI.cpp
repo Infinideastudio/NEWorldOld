@@ -15,8 +15,8 @@ float BgR = 0.2f;
 float BgG = 0.2f;
 float BgB = 0.2f;
 float BgA = 0.3f;
-unsigned int transitionList;
-unsigned int lastdisplaylist;
+unsigned int transitionList = 0;
+unsigned int lastdisplaylist = 0;
 double transitionTimer;
 bool transitionForward;
 
@@ -32,8 +32,8 @@ void clearTransition() {
 }
 
 void drawBackground() {
-	static double startTimer = timer();
-	double elapsed = timer() - startTimer;
+	static double startTimer = Timer();
+	double elapsed = Timer() - startTimer;
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -42,7 +42,6 @@ void drawBackground() {
 	glLoadIdentity();
 	glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);
 
-	// Begin to draw a cube
 	glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[0]);
 	glBegin(GL_QUADS);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -136,37 +135,36 @@ void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::u32string const
 	else TextRenderer::renderUnicodeString(xmin, (ymin + ymax - TextRenderer::getLineHeight()) / 2, s);
 }
 
-void controls::updatepos() {
+void Control::updatepos() {
 	xmin = (int)(WindowWidth * _xmin_b / Stretch) + _xmin_r;
 	ymin = (int)(WindowHeight * _ymin_b / Stretch) + _ymin_r;
 	xmax = (int)(WindowWidth * _xmax_b / Stretch) + _xmax_r;
 	ymax = (int)(WindowHeight * _ymax_b / Stretch) + _ymax_r;
 }
 
-void controls::resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
+void Control::resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) {
 	_xmin_r = xi_r; _xmax_r = xa_r; _ymin_r = yi_r; _ymax_r = ya_r;
 	_xmin_b = xi_b; _xmax_b = xa_b; _ymin_b = yi_b; _ymax_b = ya_b;
 }
 
-void label::update() {
-	//���±�ǩ״̬
-	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)               //�����ͣ
+void Label::update() {
+	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
 		mouseon = true;
 	else
 		mouseon = false;
 
-	if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;              //�����ڴ�
-	focused = parent->focusid == id;   //����
+	if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;
+	focused = parent->focusid == id;
 }
 
-void label::render() {
-	//��Ⱦ��ǩ
+void Label::render() {
+	
 	float fcR, fcG, fcB, fcA;
 	fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
 	if (mouseon) {
 		fcR = FgR * 1.2f; fcG = FgG * 1.2f; fcB = FgB * 1.2f; fcA = FgA * 0.8f;
 	}
-	if (focused) {                                                 //Focus
+	if (focused) {
 		glDisable(GL_TEXTURE_2D);
 		glBegin(GL_LINE_LOOP);
 		glColor4f(FgR * 0.6f, FgG * 0.6f, FgB * 0.6f, linealpha);
@@ -181,13 +179,13 @@ void label::render() {
 	UIRenderString(xmin, xmax, ymin, ymax, text, centered);
 }
 
-void button::update() {
+void Button::update() {
 	if (!enabled) {
 		mouseon = false, focused = false, pressed = false, clicked = false;
 		return;
 	}
 
-	//���°�ť״̬
+	
 	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
 		mouseon = true;
 	else
@@ -202,13 +200,13 @@ void button::update() {
 	if (parent->focusid == id) focused = true; else focused = false;
 
 	clicked = (parent->mb == 0 && parent->mbl == 1 && mouseon || parent->enterpl && parent->enterp == false) && focused;
-	//clicked = lp&&!pressed
+	
 
 }
 
-void button::render() {
+void Button::render() {
 
-	//��Ⱦ��ť
+	
 	float fcR, fcG, fcB, fcA;
 	fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
 	if (mouseon) {
@@ -221,7 +219,7 @@ void button::render() {
 		fcR = FgR * 0.5f; fcG = FgG * 0.5f; fcB = FgB * 0.5f; fcA = FgA * 0.3f;
 	}
 
-	glDisable(GL_TEXTURE_2D);    //Button
+	glDisable(GL_TEXTURE_2D);
 
 	glBegin(GL_QUADS);
 	glColor4f(fcR, fcG, fcB, fcA);
@@ -248,13 +246,13 @@ void button::render() {
 	UIRenderString(xmin, xmax, ymin, ymax, text, true);
 }
 
-void trackbar::update() {
+void Trackbar::update() {
 	if (!enabled) {
 		mouseon = false, focused = false, pressed = false;
 		return;
 	}
 
-	//����TrackBar�����׸���ô�����أ���״̬
+	
 	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax && parent->mb == 1)
 		parent->focusid = id;
 	if (parent->mx >= xmin + barpos && parent->mx <= xmin + barpos + barwidth && parent->my >= ymin && parent->my <= ymax)
@@ -276,9 +274,9 @@ void trackbar::update() {
 
 }
 
-void trackbar::render() {
+void Trackbar::render() {
 
-	//��ȾTrackBar��How can I translate it?��
+	
 	float fcR, fcG, fcB, fcA;
 	float bcR, bcG, bcB, bcA;
 	fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
@@ -328,12 +326,12 @@ void trackbar::render() {
 	UIRenderString(xmin, xmax, ymin, ymax, text, true);
 }
 
-void textbox::update() {
+void TextBox::update() {
 	if (!enabled) {
 		mouseon = false, focused = false, pressed = false;
 		return;
 	}
-	//�����ı���״̬
+	
 	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax)
 		mouseon = true, parent->MouseOnTextbox = true;
 	else mouseon = false;
@@ -341,17 +339,17 @@ void textbox::update() {
 	if ((parent->mb == 1 && mouseon || parent->enterp) && focused) pressed = true;
 	else pressed = false;
 
-	if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;       //�����ڴ�
-	if (parent->focusid == id) focused = true; else focused = false;                //����
-	if (focused && !inputstr.empty())
-		text += inputstr;
-	if (focused && backspace && !text.empty())
-		text = text.substr(0, text.length() - 1);
+	if (parent->mb == 1 && parent->mbl == 0 && mouseon) parent->focusid = id;
+	if (parent->focusid == id) focused = true; else focused = false;
+
+	if (focused) {
+		activated = true;
+		if (!inputstr.empty()) input += inputstr;
+		if (backspace && !input.empty()) input = input.substr(0, input.length() - 1);
+	}
 }
 
-void textbox::render() {
-
-	//��Ⱦ�ı���
+void TextBox::render() {
 	float bcR, bcG, bcB, bcA;
 	bcR = BgR; bcG = BgG; bcB = BgB; bcA = BgA;
 	if (!enabled) {
@@ -382,10 +380,11 @@ void textbox::render() {
 
 	UISetFontColor(1.0f, 1.0f, 1.0f, 1.0f);
 	if (!enabled) UISetFontColor(0.6f, 0.6f, 0.6f, 1.0f);
-	UIRenderString(xmin, xmax, ymin, ymax, text, false);
+	if (activated) UIRenderString(xmin, xmax, ymin, ymax, input, false);
+	else UIRenderString(xmin, xmax, ymin, ymax, text, false);
 }
 
-void vscroll::update() {
+void VScroll::update() {
 	if (!enabled) {
 		mouseon = false, focused = false, pressed = false;
 		return;
@@ -396,8 +395,6 @@ void vscroll::update() {
 	psup = false;
 	psdown = false;
 
-	//���¹�����״̬
-	//�����ͣ
 	mouseon = (parent->my >= ymin + barpos + 20 && parent->my <= ymin + barpos + barheight + 20 && parent->mx >= xmin && parent->mx <= xmax);
 	if (parent->mx >= xmin && parent->mx <= xmax && parent->my >= ymin && parent->my <= ymax) {
 		if (parent->mb == 1) parent->focusid = id;
@@ -409,21 +406,21 @@ void vscroll::update() {
 			msdown = true;
 			if (parent->mb == 1 && parent->mbl == 0)  barpos += 10;
 			if (parent->mb == 1)  psdown = true;
-		} else if (timer() - lstime > 0.1 && parent->mb == 1) {
-			lstime = timer();
+		} else if (Timer() - lstime > 0.1 && parent->mb == 1) {
+			lstime = Timer();
 			if (parent->my < ymin + barpos + 20) barpos -= 25;
 			if (parent->my > ymin + barpos + barheight + 20)  barpos += 25;
 		}
 	}
-	if (parent->mb == 1 && mouseon && focused)  //��갴ס
+	if (parent->mb == 1 && mouseon && focused)
 		pressed = true;
 	else {
 		if (parent->mbl == 0) pressed = false;
 	}
 
-	if (parent->mb == 1 && parent->mbl == 0 && mouseon)  parent->focusid = id;     //�����ڴ�
-	focused = (parent->focusid == id);   //����
-	if (pressed) barpos += parent->my - parent->myl;                               //�϶�
+	if (parent->mb == 1 && parent->mbl == 0 && mouseon)  parent->focusid = id;
+	focused = (parent->focusid == id);
+	if (pressed) barpos += parent->my - parent->myl;
 	if (focused) {
 		if (parent->upkp)  barpos -= 1;
 		if (parent->downkp)  barpos += 1;
@@ -432,13 +429,13 @@ void vscroll::update() {
 	}
 	if (defaultv)
 		barpos += (parent->mwl - parent->mw) * 15;
-	if (barpos < 0) barpos = 0;                                                    //���϶�����Խ��
+	if (barpos < 0) barpos = 0;
 	if (barpos >= ymax - ymin - barheight - 40)
 		barpos = ymax - ymin - barheight - 40;
 }
 
-void vscroll::render() {
-	//��Ⱦ������
+void VScroll::render() {
+	
 	float fcR, fcG, fcB, fcA;
 	float bcR, bcG, bcB, bcA;
 	fcR = FgR; fcG = FgG; fcB = FgB; fcA = FgA;
@@ -520,11 +517,9 @@ void vscroll::render() {
 	glEnable(GL_TEXTURE_2D);
 }
 
-void imagebox::update() {
+void ImageBox::update() {}
 
-}
-
-void imagebox::render() {
+void ImageBox::render() {
 	glBindTexture(GL_TEXTURE_2D, imageid);
 	glBegin(GL_QUADS);
 	glTexCoord2f(txmin, tymax); UIVertex(xmin, ymin);
@@ -534,20 +529,7 @@ void imagebox::render() {
 	glEnd();
 }
 
-void Form::init() {
-	maxid = 0;
-	currentid = 0;
-	focusid = -1;
-	//Transition forward
-	if (transitionList != 0) glDeleteLists(transitionList, 1);
-	transitionList = lastdisplaylist;
-	transitionForward = true;
-	transitionTimer = timer();
-	inputstr.clear();
-	backspace = false;
-}
-
-void Form::registerControl(controls* c) {
+void Form::registerControl(Control* c) {
 	c->id = currentid;
 	c->parent = this;
 	children.push_back(c);
@@ -555,15 +537,8 @@ void Form::registerControl(controls* c) {
 	maxid++;
 }
 
-void Form::registerControls(int count, controls* c, ...) {
-	va_list arg_ptr;
-	controls* cur = c;
-	va_start(arg_ptr, c);
-	for (int i = 0; i < count; i++) {
-		registerControl(cur);
-		cur = va_arg(arg_ptr, controls*);
-	}
-	va_end(arg_ptr);
+void Form::registerControls(std::initializer_list<Control*> cs) {
+	for (auto const c : cs) registerControl(c);
 }
 
 void Form::update() {
@@ -571,15 +546,15 @@ void Form::update() {
 	bool lMouseOnTextbox = MouseOnTextbox;
 	MouseOnTextbox = false;
 
-	if (glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS) {                             //TAB���л�����
-		if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {   //Shift+Tab
+	if (glfwGetKey(MainWindow, GLFW_KEY_TAB) == GLFW_PRESS) {
+		if (glfwGetKey(MainWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(MainWindow, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
 			updated = true;
 			if (!tabp) focusid--;
-			if (focusid == -2) focusid = maxid - 1;                                //������ǰһ��ID
+			if (focusid == -2) focusid = maxid - 1;
 		} else {
 			updated = true;
 			if (!tabp) focusid++;
-			if (focusid == maxid + 1) focusid = -1;                              //�������һ��ID
+			if (focusid == maxid + 1) focusid = -1;
 		}
 		tabp = true;
 	}
@@ -593,32 +568,32 @@ void Form::update() {
 	}
 	if (!(glfwGetKey(MainWindow, GLFW_KEY_ENTER) == GLFW_PRESS)) enterp = false;
 
-	upkpl = upkp;                                                              //�������
+	upkpl = upkp;
 	if (glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS) {
 		updated = true;
 		upkp = true;
 	}
 	if (!(glfwGetKey(MainWindow, GLFW_KEY_UP) == GLFW_PRESS)) upkp = false;
 
-	downkpl = downkp;                                                          //�������
+	downkpl = downkp;
 	if (glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS)
 		downkp = true;
 	if (!(glfwGetKey(MainWindow, GLFW_KEY_DOWN) == GLFW_PRESS)) downkp = false;
 
-	leftkpl = leftkp;                                                          //�������
+	leftkpl = leftkp;
 	if (glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS)
 		leftkp = true;
 	if (!(glfwGetKey(MainWindow, GLFW_KEY_LEFT) == GLFW_PRESS)) leftkp = false;
-	rightkpl = rightkp;                                                        //�������
+	rightkpl = rightkp;
 	if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) == GLFW_PRESS)
 		rightkp = true;
 	if (glfwGetKey(MainWindow, GLFW_KEY_RIGHT) != GLFW_PRESS) rightkp = false;
 
-	if (mb == 1 && mbl == 0) focusid = -1;                                   //�յ��ʱʹ�������
+	if (mb == 1 && mbl == 0) focusid = -1;
 
 	for (size_t i = 0; i != children.size(); i++) {
 		children[i]->updatepos();
-		children[i]->update();                                               //�����ӿؼ�
+		children[i]->update();
 	}
 
 	if (!lMouseOnTextbox && MouseOnTextbox) {
@@ -640,7 +615,7 @@ void Form::render() {
 		static Framebuffer fbo;
 		float step = 2.0f;
 		float upscaling = 2.0f;
-		float sigma = 16.0f / upscaling; // Standard deviation
+		float sigma = 16.0f / upscaling;
 
 		int width = int(WindowWidth / upscaling);
 		int height = int(WindowHeight / upscaling);
@@ -648,12 +623,12 @@ void Form::render() {
 			fbo = Framebuffer(width, height, 2, false, false, true);
 		}
 
-		// Background
+		
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClearDepth(1.0f);
 		fbo.bindTarget({0});
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		Background();
+		drawBackground();
 
 		auto& shader = Renderer::shaders[Renderer::FilterShader];
 		shader.bind();
@@ -664,7 +639,7 @@ void Form::render() {
 		shader.setUniform("u_gaussian_blur_step_size", step);
 		shader.setUniform("u_gaussian_blur_sigma", sigma);
 
-		// Horizontal pass
+		
 		fbo.bindColorTexture(0);
 		fbo.bindTarget({1});
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -676,7 +651,7 @@ void Form::render() {
 		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(fbo.width(), 0);
 		Renderer::End().render();
 
-		// Vertical pass
+		
 		fbo.bindColorTexture(1);
 		fbo.bindTarget({0});
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -688,7 +663,7 @@ void Form::render() {
 		Renderer::TexCoord2f(1.0f, 1.0f); Renderer::Vertex2i(fbo.width(), 0);
 		Renderer::End().render();
 
-		// Bilinear upscaling
+		
 		fbo.bindColorTexture(0);
 		fbo.unbindTarget();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -712,10 +687,10 @@ void Form::render() {
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClearDepth(1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		Background();
+		drawBackground();
 	}
 
-	double TimeDelta = timer() - transitionTimer;
+	double TimeDelta = Timer() - transitionTimer;
 	float transitionAnim = (float)(1.0 - pow(0.8, TimeDelta * 60.0) + pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);
 
 	glMatrixMode(GL_PROJECTION);
@@ -737,84 +712,41 @@ void Form::render() {
 	}
 
 	if (displaylist == 0) displaylist = glGenLists(1);
-	glNewList(displaylist, GL_COMPILE);
+	glNewList(displaylist, GL_COMPILE_AND_EXECUTE);
 	for (size_t i = 0; i != children.size(); i++)
 		children[i]->render();
 	onRender();
 	glEndList();
-	glCallList(displaylist);
 	lastdisplaylist = displaylist;
 }
 
-label::label(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-	: label() {
-	text = t;
-	resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
-}
-
-button::button(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-	: button() {
-	text = t;
-	enabled = true;
-	resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
-}
-
-trackbar::trackbar(string t, int w, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-	: trackbar() {
-	text = t;
-	enabled = true;
-	barwidth = w;
-	barpos = s;
-	resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
-}
-
-textbox::textbox(std::string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-	: textbox() {
-	text = UTF8Unicode(t);
-	enabled = true;
-	resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
-}
-
-vscroll::vscroll(int h, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-	: vscroll() {
-	enabled = true;
-	barheight = h;
-	barpos = s;
-	resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
-}
-
-imagebox::imagebox(float _txmin, float _txmax, float _tymin, float _tymax, TextureID iid, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b)
-	: imagebox() {
-	txmin = _txmin; txmax = _txmax;
-	tymin = _tymin; tymax = _tymax;
-	imageid = iid;
-	resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
-}
-
-void Form::cleanup() {
-	//Transition backward
-	if (transitionList != 0) glDeleteLists(transitionList, 1);
-	transitionList = displaylist;
-	transitionForward = false;
-	transitionTimer = timer();
-	for (size_t i = 0; i != children.size(); i++)
-		children[i]->destroy();
-}
-
-controls* Form::getControlByID(int cid) {
+Control* Form::getControlByID(int cid) {
 	for (size_t i = 0; i != children.size(); i++) {
 		if (children[i]->id == cid) return children[i];
 	}
 	return nullptr;
 }
 
-Form::Form() { init(); Background = &drawBackground; }
+Form::Form() {
+	transitionList = lastdisplaylist;
+	transitionForward = true;
+	transitionTimer = Timer();
+	inputstr.clear();
+	backspace = false;
+}
+
+Form::~Form() {
+	if (transitionList != 0) glDeleteLists(transitionList, 1);
+	transitionList = displaylist;
+	transitionForward = false;
+	transitionTimer = Timer();
+}
 
 void Form::singleloop() {
 	glfwSwapBuffers(MainWindow);
 	render();
 	glfwPollEvents();
-	// if (reentry) { ExitSignal = true; }
+	
 	mxl = mx; myl = my; mwl = mw; mbl = mb;
 	mb = getMouseButton();
 	mw = getMouseScroll();
@@ -823,10 +755,10 @@ void Form::singleloop() {
 	dmx /= Stretch;
 	dmy /= Stretch;
 	mx = (int)dmx, my = (int)dmy;
-	if (ExitSignal) onLeaving();
+	if (exit) onLeaving();
 	if (glfwWindowShouldClose(MainWindow)) {
 		onLeave();
-		exit(0);
+		std::exit(0);
 	}
 	update();
 	inputstr.clear();
@@ -834,18 +766,15 @@ void Form::singleloop() {
 }
 
 void Form::start() {
-	GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR); //Added to fix the glitch
+	GLFWcursor *Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwSetCursor(MainWindow, Cursor);
 	TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
 	onLoad();
 	do {
 		singleloop();
-	} while (!ExitSignal);
+	} while (!exit);
 	onLeave();
-	glfwDestroyCursor(Cursor); //Added to fix the glitch
+	glfwDestroyCursor(Cursor);
 }
-
-Form::~Form() { cleanup(); }
-
 }

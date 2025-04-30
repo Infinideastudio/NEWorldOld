@@ -23,7 +23,7 @@ TextureID SelectedTexture;
 TextureID UnselectedTexture;
 TextureID BlockTextureArray;
 
-int GLMajorVersion, GLMinorVersion, GLRevisionVersion;
+int GLMajorVersion, GLMinorVersion;
 GLFWwindow* MainWindow;
 GLFWcursor* MouseCursor;
 

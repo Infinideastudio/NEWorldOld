@@ -47,124 +47,168 @@ namespace GUI {
 	void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::u32string const& s, bool centered = false);
 
 	class Form;
-	class controls {
+
+	class Control {
 	public:
-		//�ؼ����ֻ࣬Ҫ�ǿؼ����ü̳����
-		virtual ~controls() {}
-		int id, xmin, ymin, xmax, ymax;
-		Form* parent;
-		virtual void update() {} //Ī��������Ǵ�˵�е��麯����
-		virtual void render() {} //ò���ǵģ�
-		virtual void destroy() {}
+		int id = -1, xmin = 0, ymin = 0, xmax = 0, ymax = 0;
+		Form* parent = nullptr;
+
+		virtual ~Control() {}
+		virtual void update() {}
+		virtual void render() {}
+
 		void updatepos();
 		void resize(int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
+
 	private:
-		int _xmin_r, _ymin_r, _xmax_r, _ymax_r;
-		double _xmin_b, _ymin_b, _xmax_b, _ymax_b;
+		int _xmin_r = 0, _ymin_r = 0, _xmax_r = 0, _ymax_r = 0;
+		double _xmin_b = 0.0, _ymin_b = 0.0, _xmax_b = 0.0, _ymax_b = 0.0;
 	};
 
-	class label :public controls {
+	class Label : public Control {
 	public:
-		//��ǩ
 		string text;
-		bool mouseon, focused, centered;
-		label() : mouseon(false), focused(false), centered(false) {};
-		label(string t,
-			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
+		bool mouseon = false;
+		bool focused = false;
+		bool centered = false;
+
+		Label() {};
+		Label(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) :
+			text(t) {
+			resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
+		}
+
 		void update();
 		void render();
 	};
 
-	class button :public controls {
+	class Button : public Control {
 	public:
-		//��ť
 		string text;
-		bool mouseon, focused, pressed, clicked, enabled;
-		button() : mouseon(false), focused(false), pressed(false), clicked(false), enabled(false) {};
-		button(string t,
-			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
+		bool mouseon = false;
+		bool focused = false;
+		bool pressed = false;
+		bool clicked = false;
+		bool enabled = false;
+
+		Button() {};
+		Button(string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) :
+			text(t), enabled(true) {
+			resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
+		}
+
 		void update();
 		void render();
 	};
 
-	class trackbar :public controls {
+	class Trackbar : public Control {
 	public:
-		//�ÿؼ����������Ҳ���
 		string text;
-		int barwidth;
-		int barpos;
-		bool mouseon, focused, pressed, enabled;
-		trackbar() : mouseon(false), focused(false), pressed(false), enabled(false) {};
-		trackbar(string t, int w, int s,
-			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
+		int barwidth = 0;
+		int barpos = 0;
+
+		bool mouseon = false;
+		bool focused = false;
+		bool pressed = false;
+		bool enabled = false;
+
+		Trackbar() {};
+		Trackbar(string t, int w, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) :
+			text(t), enabled(true), barwidth(w), barpos(s) {
+			resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
+		}
+
 		void update();
 		void render();
 	};
 
-	class textbox :public controls {
+	class TextBox : public Control {
 	public:
-		//�ı���
-		std::u32string text;
-		bool mouseon, focused, pressed, enabled;
-		textbox() : mouseon(false), focused(false), pressed(false), enabled(false) {};
-		textbox(std::string t,
-			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
+		std::string text;
+		std::u32string input;
+		bool mouseon = false;
+		bool focused = false;
+		bool pressed = false;
+		bool enabled = false;
+		bool activated = false;
+
+		TextBox() {};
+		TextBox(std::string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) :
+			text(t), enabled(true) {
+			resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
+		}
+
 		void update();
 		void render();
 	};
 
-	class vscroll :public controls {
+	class VScroll : public Control {
 	public:
-		//��ֱ������
-		int barheight, barpos;
-		bool mouseon, focused, pressed, enabled;
-		bool defaultv, msup, msdown, psup, psdown;
-		vscroll() : mouseon(false), focused(false), pressed(false), enabled(false) {};
-		vscroll(int h, int s,
-			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
+		int barheight = 0;
+		int barpos = 0;
+		bool mouseon = false;
+		bool focused = false;
+		bool pressed = false;
+		bool enabled = false;
+		bool defaultv = false, msup = false, msdown = false, psup = false, psdown = false;
+
+		VScroll() {};
+		VScroll(int h, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) :
+			barheight(h), barpos(s), enabled(true) {
+			resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
+		}
+
 		void update();
 		void render();
 	};
 
-	class imagebox :public controls {
+	class ImageBox : public Control {
 	public:
-		//ͼƬ��
-		float txmin, txmax, tymin, tymax;
-		TextureID imageid;
-		imagebox() : imageid(0) {};
-		imagebox(float _txmin, float _txmax, float _tymin, float _tymax, TextureID iid,
-			int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b);
+		TextureID imageid = 0;
+		float txmin = 0.0f;
+		float txmax = 1.0f;
+		float tymin = 0.0f;
+		float tymax = 1.0f;
+
+		ImageBox() {};
+		ImageBox(float txmin, float txmax, float tymin, float tymax, TextureID imageid, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b) :
+			txmin(txmin), txmax(txmax), tymin(tymin), tymax(tymax), imageid(imageid) {
+			resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
+		}
+
 		void update();
 		void render();
 	};
-
-	typedef void(*UIVoidF)();
-
-	// ���� / ����
+	
 	class Form {
 	public:
-		vector<controls*> children;
-		bool tabp, shiftp, enterp, enterpl;
-		bool upkp, downkp, upkpl, downkpl, leftkp, rightkp, leftkpl, rightkpl, updated;
-		int maxid, currentid, focusid, mx, my, mw, mb, mxl, myl, mwl, mbl;
-		unsigned int displaylist;
-		bool ExitSignal, MouseOnTextbox;
-		void init();
-		void registerControl(controls* c);
-		void registerControls(int count, controls* c, ...);
+		std::vector<Control*> children;
+		bool tabp = false, shiftp = false, enterp = false, enterpl = false;
+		bool upkp = false, downkp = false, upkpl = false, downkpl = false;
+		bool leftkp = false, rightkp = false, leftkpl = false, rightkpl = false;
+		bool updated = false;
+		int maxid = 0, currentid = 0, focusid = -1;
+		int mx = 0, my = 0, mw = 0, mb = 0, mxl = 0, myl = 0, mwl = 0, mbl = 0;
+		unsigned int displaylist = 0;
+		bool exit = false;
+		bool MouseOnTextbox = false;
+
+		Form();
+		~Form();
+
+		void registerControl(Control* c);
+		void registerControls(std::initializer_list<Control*> cs);
 		void update();
 		void render();
-		controls* getControlByID(int cid);
-		void cleanup();
+		Control* getControlByID(int cid);
+
 		virtual void onLoad() {}
 		virtual void onUpdate() {}
-		UIVoidF Background;
 		virtual void onRender() {}
 		virtual void onLeaving() {}
 		virtual void onLeave() {}
-		Form();
+
 		void start();
 		void singleloop();
-		~Form();
 	};
 }

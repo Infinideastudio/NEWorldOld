@@ -7,9 +7,9 @@ using Globalization::GetStrbyKey;
 namespace Menus {
 	void mainmenu();
 	void options();
-	void Renderoptions();
-	void Shaderoptions();
-	void GUIoptions();
+	void renderoptions();
+	void shaderoptions();
+	void uioptions();
 	void worldmenu();
 	void createworldmenu();
 	void gamemenu();

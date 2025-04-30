@@ -1,51 +1,47 @@
 #pragma once
+
 #include <cassert>
-#include <cmath>
-#include <cstdarg>
 #include <cstdlib>
-#include <ctime>
+#include <cmath>
+
 #include <array>
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <vector>
-#include <memory>
-#include <iomanip>
-#include <fstream>
-#include <functional>
-#include <algorithm>
-#include <utility>
+#include <tuple>
 #include <optional>
 #include <variant>
-#include <tuple>
-#include <map>
-#include <unordered_map>
-#include <set>
-#include <unordered_set>
-#include <queue>
+
+#include <algorithm>
+#include <functional>
+#include <utility>
+#include <limits>
 #include <numbers>
 #include <random>
 
-#ifdef NEWORLD_USE_WINAPI
-#ifdef NEWORLD_SERVER
+#include <chrono>
+#include <memory>
 #include <thread>
 #include <mutex>
-using std::thread;
-using std::mutex;
-#endif
-#define NOMINMAX
-#include <Windows.h>
-#undef near
-#undef far
-#else
-#endif
 
-#ifdef NEWORLD_GAME
-// GLEW
-#include <GL/glew.h>
-// GLFW
-#include <GLFW/glfw3.h>
-#endif
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <fstream>
+#include <filesystem>
+#include <format>
+
+#include <string>
+#include <string_view>
+#include <vector>
+#include <span>
+#include <deque>
+#include <stack>
+#include <queue>
+#include <map>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+
+#include <glad/gl.h> // GL
+#include <GLFW/glfw3.h> // GLFW
 
 using std::string;
 using std::vector;

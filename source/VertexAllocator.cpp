@@ -7,6 +7,6 @@ namespace Renderer {
 
     glGenBuffers(1, &array_buffer);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, array_buffer);
-    glBufferStorage(GL_SHADER_STORAGE_BUFFER, capacity * sizeof(float), nullptr, 0);
+    // glBufferStorage(GL_SHADER_STORAGE_BUFFER, capacity * sizeof(float), nullptr, 0);
   }
 }

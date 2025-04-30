@@ -7,7 +7,13 @@
 
 // OpenGL debug callback
 void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, const GLchar* msg, const void*) {
-	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) std::cerr << "[Console][OpenGL]" << msg << std::endl;
+	switch (severity) {
+	case GL_DEBUG_SEVERITY_HIGH: DebugError(std::string("[GL] ") + msg); break;
+	case GL_DEBUG_SEVERITY_MEDIUM: DebugWarning(std::string("[GL] ") + msg); break;
+	case GL_DEBUG_SEVERITY_LOW: DebugInfo(std::string("[GL] ") + msg); break;
+	case GL_DEBUG_SEVERITY_NOTIFICATION: break;
+	default: break;
+	}
 }
 
 void createWindow() {
@@ -35,12 +41,11 @@ void createWindow() {
 	glfwSetCharCallback(MainWindow, &CharInputFunc);
 	glfwSwapInterval(VerticalSync ? 1 : 0);
 
-	auto glewStatus = glewInit();
-	assert(glewStatus == GLEW_OK);
+	int gladStatus = gladLoadGL(glfwGetProcAddress);
+	assert(gladStatus != 0);
 
-	GLMajorVersion = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MAJOR);
-	GLMinorVersion = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_VERSION_MINOR);
-	GLRevisionVersion = glfwGetWindowAttrib(MainWindow, GLFW_CONTEXT_REVISION);
+	GLMajorVersion = GLAD_VERSION_MAJOR(gladStatus);
+	GLMinorVersion = GLAD_VERSION_MINOR(gladStatus);
 
 #ifdef NEWORLD_DEBUG
 	if (!glDebugMessageCallback) {
