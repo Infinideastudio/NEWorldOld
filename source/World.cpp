@@ -3,6 +3,7 @@
 #include "Renderer.h"
 #include "WorldGen.h"
 #include "Particles.h"
+#include <filesystem>
 
 namespace World {
 
@@ -39,10 +40,10 @@ int updatedBlocks;
 void init() {
 	std::stringstream ss;
 	ss << "worlds/" << WorldName << "/";
-	_mkdir(ss.str().c_str());
+	std::filesystem::create_directories(ss.str().c_str());
 	ss.clear(); ss.str("");
 	ss << "worlds/" << WorldName << "/chunks";
-	_mkdir(ss.str().c_str());
+	std::filesystem::create_directories(ss.str().c_str());
 
 	// Create pointer for indicating empty chunks
 	EmptyChunkPtr = reinterpret_cast<Chunk*>(-1);

@@ -7,11 +7,9 @@
 #include "Renderer.h"
 #include "TextRenderer.h"
 #include "Player.h"
-#include "WorldGen.h"
 #include "World.h"
 #include "WorldRenderer.h"
 #include "Particles.h"
-#include "Hitbox.h"
 #include "GUI.h"
 #include "Menus.h"
 #include "FrustumTest.h"
@@ -19,11 +17,14 @@
 #include "Command.h"
 #include "Setup.h"
 #include <string>
+#include <thread>
+#include <mutex>
+#include <filesystem>
 
 void registerCommands();
 bool loadGame();
 void saveGame();
-ThreadFunc updateThreadFunc(void*);
+void updateThreadFunc();
 void gameUpdate();
 void frameLinkedUpdate();
 
@@ -41,8 +42,7 @@ void saveOptions();
 int getMouseScroll() { return mw; }
 int getMouseButton() { return mb; }
 
-Mutex_t updateMutex;
-Thread_t updateThread;
+std::mutex updateMutex;
 double updateTimer;
 bool updateThreadRun;
 
@@ -120,10 +120,10 @@ int main() {
 	loadOptions();
 	Globalization::Load();
 
-	_mkdir("configs");
-	_mkdir("worlds");
-	_mkdir("screenshots");
-	_mkdir("mods");
+	std::filesystem::create_directories("configs");
+	std::filesystem::create_directories("worlds");
+	std::filesystem::create_directories("screenshots");
+	std::filesystem::create_directories("mods");
 
 	WindowWidth = DefaultWindowWidth;
 	WindowHeight = DefaultWindowHeight;
@@ -151,10 +151,9 @@ int main() {
 		World::init();
 
 		// 初始化游戏更新线程
-		updateMutex = MutexCreate();
-		MutexLock(updateMutex);
+		updateMutex.lock();
 		updateThreadRun = true;
-		updateThread = ThreadCreate(&updateThreadFunc, NULL);
+		auto updateThread = std::thread(updateThreadFunc);
 		updateTimer = timer();
 
 		// 这才是游戏开始!
@@ -168,9 +167,9 @@ int main() {
 		// 主循环，被简化成这样，惨不忍睹啊！
 		while (!glfwWindowShouldClose(MainWindow) && !GameExit) {
 			// 等待上一帧完成后渲染下一帧
-			MutexUnlock(updateMutex);
+			updateMutex.unlock();
 			glfwSwapBuffers(MainWindow); // 屏幕刷新，千万别删，后果自负！！！
-			MutexLock(updateMutex);
+			updateMutex.lock();
 			readback();
 			render();
 			fpsc++;
@@ -218,10 +217,8 @@ int main() {
 		printf("[Console][Game]");
 		printf("Terminate threads\n");
 		updateThreadRun = false;
-		MutexUnlock(updateMutex);
-		ThreadWait(updateThread);
-		ThreadDestroy(updateThread);
-		MutexDestroy(updateMutex);
+		updateMutex.unlock();
+		updateThread.join();
 
 		// 保存并卸载世界
 		saveGame();
@@ -236,8 +233,8 @@ int main() {
 	// This is the END of the program!
 }
 
-ThreadFunc updateThreadFunc(void*) {
-	MutexLock(updateMutex);
+void updateThreadFunc() {
+	updateMutex.lock();
 	while (updateThreadRun) {
 		double currTimer = timer();
 		while (currTimer - updateTimer >= 1.0 / 30.0) {
@@ -246,12 +243,11 @@ ThreadFunc updateThreadFunc(void*) {
 			upsc++;
 			gameUpdate();
 		}
-		MutexUnlock(updateMutex);
+		updateMutex.unlock();
 		Sleep(1);
-		MutexLock(updateMutex);
+		updateMutex.lock();
 	}
-	MutexUnlock(updateMutex);
-	return 0;
+	updateMutex.unlock();
 }
 
 void saveGame() {
@@ -569,14 +565,14 @@ void gameUpdate() {
 			lz += std::cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90)) / SelectPrecision;
 
 			// 碰到方块
-			if (BlockInfo(World::getBlock(RoundInt(lx), RoundInt(ly), RoundInt(lz))).isSolid()) {
+			if (BlockInfo(World::getBlock(std::lround(lx), std::lround(ly), std::lround(lz))).isSolid()) {
 				int x, y, z, xl, yl, zl;
-				x = RoundInt(lx);
-				y = RoundInt(ly);
-				z = RoundInt(lz);
-				xl = RoundInt(lxl);
-				yl = RoundInt(lyl);
-				zl = RoundInt(lzl);
+				x = std::lround(lx);
+				y = std::lround(ly);
+				z = std::lround(lz);
+				xl = std::lround(lxl);
+				yl = std::lround(lyl);
+				zl = std::lround(lzl);
 
 				selx = x;
 				sely = y;
@@ -642,9 +638,9 @@ void gameUpdate() {
 		oldsely = sely;
 		oldselz = selz;
 
-		Player::intxpos = RoundInt(Player::xpos);
-		Player::intypos = RoundInt(Player::ypos);
-		Player::intzpos = RoundInt(Player::zpos);
+		Player::intxpos = std::lround(Player::xpos);
+		Player::intypos = std::lround(Player::ypos);
+		Player::intzpos = std::lround(Player::zpos);
 
 		// 更新方向
 		Player::heading += Player::xlookspeed;
@@ -865,21 +861,21 @@ void gameUpdate() {
 	updateKeyStates();
 	Particles::updateall();
 
-	Player::intxpos = RoundInt(Player::xpos);
-	Player::intypos = RoundInt(Player::ypos);
-	Player::intzpos = RoundInt(Player::zpos);
+	Player::intxpos = std::lround(Player::xpos);
+	Player::intypos = std::lround(Player::ypos);
+	Player::intzpos = std::lround(Player::zpos);
 	Player::updatePosition();
 	Player::xposold = Player::xpos;
 	Player::yposold = Player::ypos;
 	Player::zposold = Player::zpos;
-	Player::intxposold = RoundInt(Player::xpos);
-	Player::intyposold = RoundInt(Player::ypos);
-	Player::intzposold = RoundInt(Player::zpos);
+	Player::intxposold = std::lround(Player::xpos);
+	Player::intyposold = std::lround(Player::ypos);
+	Player::intzposold = std::lround(Player::zpos);
 }
 
 void frameLinkedUpdate() {
 	// Find chunks for unloading & loading & meshing
-	World::sortChunkUpdateLists(RoundInt(Player::xpos), RoundInt(Player::ypos), RoundInt(Player::zpos));
+	World::sortChunkUpdateLists(std::lround(Player::xpos), std::lround(Player::ypos), std::lround(Player::zpos));
 
 	// Load chunks
 	for (auto load : World::chunkLoadList) {
@@ -1114,7 +1110,7 @@ void render() {
 	glClearDepth(1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT);
 
-	if (World::getBlock(RoundInt(xpos), RoundInt(ypos), RoundInt(zpos)) == Blocks::WATER) {
+	if (World::getBlock(std::lround(xpos), std::lround(ypos), std::lround(zpos)) == Blocks::WATER) {
 		auto& shader = Renderer::shaders[Renderer::UIShader];
 		shader.bind();
 		glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
@@ -1457,6 +1453,8 @@ void drawGUI() {
 
 	TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
 	if (showDebugPanel) {
+		auto boolstr = [](bool b) { return b ? "true" : "false"; };
+		
 		std::stringstream ss;
 		ss << std::fixed << std::setprecision(4);
 

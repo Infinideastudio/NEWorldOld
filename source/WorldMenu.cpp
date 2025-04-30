@@ -2,6 +2,7 @@
 #include "World.h"
 #include "Textures.h"
 #include "GUI.h"
+#include <filesystem>
 
 namespace Menus {
 	class WorldMenu :public GUI::Form {
@@ -75,7 +76,7 @@ namespace Menus {
 				GameBegin = true;
 			}
 			if (deletebtn.clicked) {
-				system((string("rd /s/q \"worlds\\") + chosenWorldName + "\"").c_str());
+				std::filesystem::remove_all("worlds\\" + chosenWorldName);
 				deletebtn.clicked = false;
 				World::WorldName = "";
 				enterbtn.enabled = false;
@@ -94,35 +95,34 @@ namespace Menus {
 				chosenWorldName = "";
 				Textures::ImageRGB tmb;
 				intptr_t hFile = 0;
-				_finddata_t fileinfo;
-				if ((hFile = _findfirst("worlds\\*", &fileinfo)) != -1) {
-					do {
-						if ((fileinfo.attrib &  _A_SUBDIR)) {
-							if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0) {
-								worldnames.push_back(fileinfo.name);
-								std::fstream file;
-								file.open(("worlds\\" + string(fileinfo.name) + "\\thumbnail.bmp").c_str(), std::ios::in);
-								thumbnails.push_back(0);
-								texSizeX.push_back(0);
-								texSizeY.push_back(0);
-								if (file.is_open()) {
-									Textures::LoadRGBImage(tmb, "worlds\\" + string(fileinfo.name) + "\\thumbnail.bmp");
-									glGenTextures(1, &thumbnails[thumbnails.size() - 1]);
-									glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size() - 1]);
-									glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-									glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-									glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb.sizeX, tmb.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, tmb.buffer.get());
-									texSizeX[texSizeX.size() - 1] = tmb.sizeX;
-									texSizeY[texSizeY.size() - 1] = tmb.sizeY;
-								}
-								file.close();
-							}
+
+				//查找所有世界存档
+				for (auto &&x : std::filesystem::directory_iterator("./worlds/")) {
+					if (std::filesystem::is_directory(x)) {
+						worldnames.push_back(x.path().filename().string());
+						std::fstream file;
+						file.open((x.path().string() + "\\thumbnail.bmp").c_str(), std::ios::in);
+						thumbnails.push_back(0);
+						texSizeX.push_back(0);
+						texSizeY.push_back(0);
+						if (file.is_open()) {
+							Textures::LoadRGBImage(tmb, x.path().string() + "\\thumbnail.bmp");
+							glGenTextures(1, &thumbnails[thumbnails.size() - 1]);
+							glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size() - 1]);
+							glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+							glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+							glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb.sizeX, tmb.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE,
+										 tmb.buffer.get());
+							texSizeX[texSizeX.size() - 1] = tmb.sizeX;
+							texSizeY[texSizeY.size() - 1] = tmb.sizeY;
 						}
-					} while (_findnext(hFile, &fileinfo) == 0);
-					_findclose(hFile);
+						file.close();
+					}
 				}
+
 				refresh = false;
 			}
+			
 			enterbtn.enabled = chosenWorldName != "";
 			deletebtn.enabled = chosenWorldName != "";
 			if (backbtn.clicked) ExitSignal = true;
