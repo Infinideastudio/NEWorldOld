@@ -1,6 +1,6 @@
 #pragma once
 #include "StdInclude.h"
-#include "Typedefs.h"
+#include "Types.h"
 
 namespace Blocks {
 enum Blocks : BlockID {

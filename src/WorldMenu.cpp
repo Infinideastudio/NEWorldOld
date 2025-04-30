@@ -101,14 +101,17 @@ private:
             for (auto const& entry: std::filesystem::directory_iterator("worlds")) {
                 if (entry.is_directory()) {
                     worldnames.emplace_back(entry.path().filename().string());
+                    thumbnails.push_back(0);
+                    texSizeX.push_back(0);
+                    texSizeY.push_back(0);
                     if (std::filesystem::exists(entry.path() / "thumbnail.bmp")) {
-                        GLint width, height;
-                        thumbnails.push_back(Textures::LoadRGBTexture(entry.path() / "thumbnail.bmp", true));
+                        GLint width = 0, height = 0;
+                        thumbnails.back() = Textures::LoadRGBTexture(entry.path() / "thumbnail.bmp", true);
                         glBindTexture(GL_TEXTURE_2D, thumbnails.back());
                         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
                         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
-                        texSizeX.push_back(width);
-                        texSizeY.push_back(height);
+                        texSizeX.back() = width;
+                        texSizeY.back() = height;
                     }
                 }
             }
@@ -145,7 +148,7 @@ private:
                 glEnd();
                 glEnable(GL_TEXTURE_2D);
             }
-            if (thumbnails[i] == -1) {
+            if (thumbnails[i] == 0) {
                 glDisable(GL_TEXTURE_2D);
                 glBegin(GL_QUADS);
                 if (mouseon == i)
@@ -170,7 +173,7 @@ private:
                     h = 1.0f;
                 }
                 glBindTexture(GL_TEXTURE_2D, thumbnails[i]);
-                if (mouseon == (int) i)
+                if (mouseon == i)
                     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
                 else
                     glColor4f(0.8f, 0.8f, 0.8f, 0.9f);
@@ -192,7 +195,7 @@ private:
                 true
             );
         }
-        int i = (int) thumbnails.size() + 1;
+        int i = (int) thumbnails.size();
         glDisable(GL_TEXTURE_2D);
         glBegin(GL_QUADS);
         if (mouseon == i)

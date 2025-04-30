@@ -3,6 +3,7 @@ CMakeUserPresets.json
 .vscode/
 .xmake/
 build/
+out/
 *.exe
 *.dll
 

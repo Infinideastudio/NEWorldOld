@@ -4,7 +4,7 @@
 #endif
 #include "FunctionsKit.h"
 #include "StdInclude.h"
-#include "Typedefs.h"
+#include "Types.h"
 // #ifdef NEWORLD_DEBUG
 // #define NEWORLD_DEBUG_CONSOLE_OUTPUT
 // #define NEWORLD_DEBUG_NO_FILEIO

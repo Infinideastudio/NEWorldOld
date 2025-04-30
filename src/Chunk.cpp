@@ -207,12 +207,13 @@ void Chunk::build() {
 bool Chunk::loadFromFile() {
     bool exists = false;
 #ifndef NEWORLD_DEBUG_NO_FILEIO
-    std::ifstream file(getChunkPath(), std::ios::in | std::ios::binary);
+    auto file = std::ifstream(getChunkPath(), std::ios::in | std::ios::binary);
     exists = file.is_open();
     if (exists) {
         file.read((char*) blocks.data(), 4096 * sizeof(BlockID));
         file.read((char*) brightness.data(), 4096 * sizeof(Brightness));
         file.read((char*) &isDetailGenerated, sizeof(bool));
+        isEmpty = isModified = false;
     }
 #endif
     return exists;
@@ -222,12 +223,13 @@ bool Chunk::saveToFile() {
     bool success = true;
 #ifndef NEWORLD_DEBUG_NO_FILEIO
     if (!isEmpty && isModified) {
-        std::ofstream file(getChunkPath(), std::ios::out | std::ios::binary);
+        auto file = std::ofstream(getChunkPath(), std::ios::out | std::ios::binary);
         success = file.is_open();
         if (success) {
             file.write((char*) blocks.data(), 4096 * sizeof(BlockID));
             file.write((char*) brightness.data(), 4096 * sizeof(Brightness));
             file.write((char*) &isDetailGenerated, sizeof(bool));
+            isModified = false;
         }
     }
 #endif
