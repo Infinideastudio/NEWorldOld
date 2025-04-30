@@ -128,7 +128,6 @@ int main() {
     std::filesystem::create_directories("configs");
     std::filesystem::create_directories("worlds");
     std::filesystem::create_directories("screenshots");
-    std::filesystem::create_directories("mods");
 
     WindowWidth = DefaultWindowWidth;
     WindowHeight = DefaultWindowHeight;

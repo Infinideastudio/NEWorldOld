@@ -11,7 +11,7 @@ NEWorld is an open-source game with similar game rules to Minecraft.
 * Alternatively, use [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) to find and download packages by passing `-DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>/scripts/buildsystems/vcpkg.cmake` to the first command.
 * Alternatively, use [xmake](https://xmake.io/) to build the project:
   ```sh
-  xrepo install glfw freetype utfcpp
+  xrepo install glfw utfcpp freetype
   xmake
   ```
 

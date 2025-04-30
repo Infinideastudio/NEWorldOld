@@ -26,7 +26,6 @@ FetchContent_Declare (glfw_repo
   GIT_REPOSITORY https://github.com/glfw/glfw
   GIT_TAG 3.4
   GIT_SHALLOW TRUE
-  GIT_PROGRESS TRUE
   FIND_PACKAGE_ARGS NAMES glfw3)
 
 FetchContent_MakeAvailable (glfw_repo)
@@ -35,7 +34,6 @@ FetchContent_Declare (utfcpp_repo
   GIT_REPOSITORY https://github.com/nemtrif/utfcpp
   GIT_TAG v4.0.6
   GIT_SHALLOW TRUE
-  GIT_PROGRESS TRUE
   FIND_PACKAGE_ARGS NAMES utfcpp)
 
 FetchContent_MakeAvailable (utfcpp_repo)
@@ -44,7 +42,6 @@ FetchContent_Declare (freetype_repo
   GIT_REPOSITORY https://gitlab.freedesktop.org/freetype/freetype
   GIT_TAG VER-2-13-3
   GIT_SHALLOW TRUE
-  GIT_PROGRESS TRUE
   FIND_PACKAGE_ARGS NAMES freetype)
 
 FetchContent_MakeAvailable (freetype_repo)

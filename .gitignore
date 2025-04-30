@@ -1,6 +1,7 @@
 CMakeUserPresets.json
 .cache/
 .vscode/
+.xmake/
 build/
 *.exe
 *.dll
