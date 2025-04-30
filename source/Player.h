@@ -11,52 +11,52 @@ class FrustumTest;
 
 class Player {
 public:
-	static void init(double x, double y, double z);
-	static void spawn();
+    static void init(double x, double y, double z);
+    static void spawn();
 
-	static void updatePosition();
+    static void updatePosition();
 
-	static bool save(string worldn);
-	static bool load(string worldn);
+    static bool save(string worldn);
+    static bool load(string worldn);
 
-	static bool addItem(BlockID itemname, short amount = 1);
-	static bool putBlock(int x, int y, int z, BlockID blockname);
+    static bool addItem(BlockID itemname, short amount = 1);
+    static bool putBlock(int x, int y, int z, BlockID blockname);
 
-	static void changeGameMode(int gamemode);
+    static void changeGameMode(int gamemode);
 
-	static Hitbox::AABB playerbox;
-	static vector<Hitbox::AABB> Hitboxes;
-	static double xa, ya, za, xd, yd, zd;
-	static double health, healthMax, healSpeed, dropDamage;
+    static Hitbox::AABB playerbox;
+    static vector<Hitbox::AABB> Hitboxes;
+    static double xa, ya, za, xd, yd, zd;
+    static double health, healthMax, healSpeed, dropDamage;
 
-	enum GameMode { Survival, Creative };
-	static int gamemode;
-	static bool Glide;
-	static bool Flying;
-	static bool CrossWall;
-	static double glidingMinimumSpeed;
+    enum GameMode { Survival, Creative };
+    static int gamemode;
+    static bool Glide;
+    static bool Flying;
+    static bool CrossWall;
+    static double glidingMinimumSpeed;
 
-	static bool OnGround;
-	static bool Running;
-	static bool NearWall;
-	static bool inWater;
-	static bool glidingNow;
+    static bool OnGround;
+    static bool Running;
+    static bool NearWall;
+    static bool inWater;
+    static bool glidingNow;
 
-	static double speed;
-	static int AirJumps;
-	static int cxt, cyt, czt;
-	static double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
-	static double xlookspeed, ylookspeed;
-	static int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
+    static double speed;
+    static int AirJumps;
+    static int cxt, cyt, czt;
+    static double lookupdown, heading, xpos, ypos, zpos, xposold, yposold, zposold, jump;
+    static double xlookspeed, ylookspeed;
+    static int intxpos, intypos, intzpos, intxposold, intyposold, intzposold;
 
-	static float height;
-	static float heightExt;
+    static float height;
+    static float heightExt;
 
-	static BlockID BlockInHand;
-	static uint8_t indexInHand;
-	static BlockID inventory[4][10];
-	static short inventoryAmount[4][10];
+    static BlockID BlockInHand;
+    static uint8_t indexInHand;
+    static BlockID inventory[4][10];
+    static short inventoryAmount[4][10];
 
-	static double glidingEnergy, glidingSpeed;
+    static double glidingEnergy, glidingSpeed;
 
 };

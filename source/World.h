@@ -45,21 +45,21 @@ void destroy();
 Chunk* addChunk(int x, int y, int z);
 void removeChunk(int x, int y, int z);
 inline ChunkID getChunkID(int x, int y, int z) {
-	if (y == -128) y = 0; if (y <= 0) y = abs(y) + (1LL << 7);
-	if (x == -134217728) x = 0; if (x <= 0) x = abs(x) + (1LL << 27);
-	if (z == -134217728) z = 0; if (z <= 0) z = abs(z) + (1LL << 27);
-	return (ChunkID(y) << 56) + (ChunkID(x) << 28) + z;
+    if (y == -128) y = 0; if (y <= 0) y = abs(y) + (1LL << 7);
+    if (x == -134217728) x = 0; if (x <= 0) x = abs(x) + (1LL << 27);
+    if (z == -134217728) z = 0; if (z <= 0) z = abs(z) + (1LL << 27);
+    return (ChunkID(y) << 56) + (ChunkID(x) << 28) + z;
 }
 Chunk* getChunkPtr(int x, int y, int z);
 
 inline bool chunkOutOfBound(int x, int y, int z) {
-	return y < -World::WorldHeight || y > World::WorldHeight - 1 ||
-	       x < -134217728 || x > 134217727 || z < -134217728 || z > 134217727;
+    return y < -World::WorldHeight || y > World::WorldHeight - 1 ||
+           x < -134217728 || x > 134217727 || z < -134217728 || z > 134217727;
 }
 inline bool chunkLoaded(int x, int y, int z) {
-	if (chunkOutOfBound(x, y, z))return false;
-	if (getChunkPtr(x, y, z) != nullptr)return true;
-	return false;
+    if (chunkOutOfBound(x, y, z))return false;
+    if (getChunkPtr(x, y, z) != nullptr)return true;
+    return false;
 }
 
 vector<Hitbox::AABB> getHitboxes(const Hitbox::AABB& box);
@@ -72,8 +72,8 @@ Brightness getBrightness(int x, int y, int z);
 void setBlock(int x, int y, int z, BlockID value, bool update = true);
 
 inline bool chunkInRange(int x, int y, int z, int px, int py, int pz, int dist) {
-	if (x < px - dist || x > px + dist - 1 || y < py - dist || y > py + dist - 1 || z < pz - dist || z > pz + dist - 1) return false;
-	return true;
+    if (x < px - dist || x > px + dist - 1 || y < py - dist || y > py + dist - 1 || z < pz - dist || z > pz + dist - 1) return false;
+    return true;
 }
 bool chunkUpdated(int x, int y, int z);
 void markChunkNeighborUpdated(int x, int y, int z);
