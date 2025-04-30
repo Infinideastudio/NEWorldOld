@@ -11,21 +11,9 @@ inline int fastRand() {
 	return (g_seed >> 16) & 0x7FFF;
 }
 inline void fastSrand(int seed) { g_seed = seed; }
-std::vector<std::string> split(std::string str, std::string pattern);
 inline std::string boolstr(bool b) { return b ? "true" : "false"; }
 inline double rnd() { return (double)fastRand() / (RAND_MAX + 1); }
 inline int RoundInt(double d) { return int(floor(d + 0.5)); }
-
-inline std::string itos(int i) {
-	std::stringstream ss;
-	ss << i;
-	return std::string(ss.str());
-}
-
-inline bool beginWith(std::string str, std::string begin) {
-	if (str.size() < begin.size()) return false;
-	return str.substr(0, begin.size()) == begin;
-}
 
 inline void DebugInfo(std::string msg) {
 #ifdef NEWORLD_USE_WINAPI
@@ -58,17 +46,6 @@ inline void DebugError(std::string msg) {
 #else
 	printf("[Debug][Error]%s\n", msg.c_str());
 #endif
-}
-
-template<class T> inline void conv(std::string str, T& ret) {
-	std::stringstream s(str);
-	s >> ret;
-}
-
-template<class T> inline T clamp(T x, T min, T max) {
-	if (x < min) return min;
-	if (x > max) return max;
-	return x;
 }
 
 #ifdef NEWORLD_USE_WINAPI
