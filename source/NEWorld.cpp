@@ -18,6 +18,7 @@
 #include "Globalization.h"
 #include "Command.h"
 #include "Setup.h"
+#include <string>
 
 void registerCommands();
 bool loadGame();
@@ -331,21 +332,16 @@ void registerCommands() {
 	}));
 	commands.push_back(Command("/give", [](const vector<string>& command) {
 		if (command.size() != 3) return false;
-		ItemID itemid;
-		conv(command[1], itemid);
-		short amount;
-		conv(command[2], amount);
+		ItemID itemid = std::stoi(command[1]);
+		short amount = std::stoi(command[2]);
 		Player::addItem(itemid, amount);
 		return true;
 	}));
 	commands.push_back(Command("/tp", [](const vector<string>& command) {
 		if (command.size() != 4) return false;
-		double x;
-		conv(command[1], x);
-		double y;
-		conv(command[2], y);
-		double z;
-		conv(command[3], z);
+		double x = std::stod(command[1]);
+		double y = std::stod(command[2]);
+		double z = std::stod(command[3]);
 		Player::xpos = x;
 		Player::ypos = y;
 		Player::zpos = z;
@@ -368,53 +364,40 @@ void registerCommands() {
 	}));
 	commands.push_back(Command("/setblock", [](const vector<string>& command) {
 		if (command.size() != 5) return false;
-		int x;
-		conv(command[1], x);
-		int y;
-		conv(command[2], y);
-		int z;
-		conv(command[3], z);
-		BlockID b;
-		conv(command[4], b);
+		int x = std::stoi(command[1]);
+		int y = std::stoi(command[2]);
+		int z = std::stoi(command[3]);
+		BlockID b = std::stoi(command[4]);
 		World::setBlock(x, y, z, b);
 		return true;
 	}));
 	commands.push_back(Command("/tree", [](const vector<string>& command) {
 		if (command.size() != 4) return false;
-		int x;
-		conv(command[1], x);
-		int y;
-		conv(command[2], y);
-		int z;
-		conv(command[3], z);
+		int x = std::stoi(command[1]);
+		int y = std::stoi(command[2]);
+		int z = std::stoi(command[3]);
 		World::buildtree(x, y, z);
 		return true;
 	}));
 	commands.push_back(Command("/explode", [](const vector<string>& command) {
 		if (command.size() != 5) return false;
-		int x;
-		conv(command[1], x);
-		int y;
-		conv(command[2], y);
-		int z;
-		conv(command[3], z);
-		int r;
-		conv(command[4], r);
+		int x = std::stoi(command[1]);
+		int y = std::stoi(command[2]);
+		int z = std::stoi(command[3]);
+		int r = std::stoi(command[4]);
 		World::explode(x, y, z, r);
 		return true;
 	}));
 	commands.push_back(Command("/time", [](const vector<string>& command) {
 		if (command.size() != 2) return false;
-		int time;
-		conv(command[1], time);
+		int time = std::stoi(command[1]);
 		if (time < 0) return false;
 		GameTime = time;
 		return true;
 	}));
 	commands.push_back(Command("/gamemode", [](const vector<string>& command) {
 		if (command.size() != 2) return false;
-		int mode;
-		conv(command[1], mode);
+		int mode = std::stoi(command[1]);
 		Player::changeGameMode(mode);
 		return true;
 	}));
@@ -551,9 +534,9 @@ void gameUpdate() {
 
 		// 自动补全
 		if (isKeyPressed(GLFW_KEY_TAB) && chatmode && !chatword.empty() && chatword[0] == '/') {
-			for (unsigned int i = 0; i != commands.size(); i++) {
-				if (beginWith(commands[i].identifier, UnicodeUTF8(chatword)))
-					chatword = UTF8Unicode(commands[i].identifier);
+			for (auto& command : commands) {
+				if (command.identifier.starts_with(UnicodeUTF8(chatword)))
+					chatword = UTF8Unicode(command.identifier);
 			}
 		}
 	}
