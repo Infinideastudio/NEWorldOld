@@ -165,6 +165,9 @@ int main() {
         mxl = mx;
         myl = my;
         shouldShowCursor = false;
+        shouldGetScreenshot = false;
+        shouldGetThumbnail = false;
+        shouldToggleFullscreen = false;
         fctime = uctime = Timer();
 
         // 主循环，被简化成这样，惨不忍睹啊！
@@ -200,7 +203,6 @@ int main() {
             // 暂停菜单
             if (paused) {
                 paused = false;
-                readback(); // Ensure creation of thumbnail
                 GUI::clearTransition();
                 Menus::gamemenu();
                 mxl = mx;
@@ -213,7 +215,7 @@ int main() {
         glClearDepth(1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-        TextRenderer::renderString(0, 0, "Saving world...");
+        TextRenderer::renderString(1, 1, "Saving world...");
         glfwSwapBuffers(MainWindow);
 
         // 停止游戏更新线程
@@ -1255,6 +1257,7 @@ void saveScreenshot(int x, int y, int w, int h, string filename) {
     scrBuffer.sizeX = bufw;
     scrBuffer.sizeY = bufh;
     scrBuffer.buffer = std::make_unique<uint8_t[]>(bufw * bufh * 3);
+    glReadBuffer(GL_FRONT);
     glReadPixels(x, y, bufw, bufh, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
     Textures::SaveRGBImage(filename, scrBuffer);
 }

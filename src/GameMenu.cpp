@@ -24,13 +24,6 @@ private:
         if (exitbtn.clicked)
             GameExit = exit = true;
     }
-
-    void onLeave() {
-        if (GameExit) {
-            World::saveAllChunks();
-            World::destroy();
-        }
-    }
 };
 
 void gamemenu() {
