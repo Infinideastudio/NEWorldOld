@@ -5,39 +5,44 @@
 #include <filesystem>
 
 namespace Menus {
-	class WorldMenu :public GUI::Form {
+	class WorldMenu : public GUI::Form {
 	private:
-		int leftp = static_cast<int>(WindowWidth / 2.0 / Stretch - 200);
-		int midp = static_cast<int>(WindowWidth / 2.0 / Stretch);
-		int rightp = static_cast<int>(WindowWidth / 2.0 / Stretch + 200);
-		int downp = static_cast<int>(WindowHeight / Stretch - 20);
+		int leftp = 0;
+		int midp = 0;
+		int rightp = 0;
+		int downp = 0;
 		bool refresh = true;
 		int selected = 0, mouseon;
 		int worldcount;
-		string chosenWorldName;
-		vector<string> worldnames;
-		vector<TextureID> thumbnails, texSizeX, texSizeY;
+		std::string chosenWorldName;
+		std::vector<std::string> worldnames;
+		std::vector<TextureID> thumbnails;
+		std::vector<int> texSizeX, texSizeY;
 		int trs = 0;
-		GUI::label title;
-		GUI::vscroll vscroll;
-		GUI::button enterbtn, deletebtn, backbtn;
+		GUI::Label title = GUI::Label("", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		GUI::VScroll vscroll = GUI::VScroll(100, 0, 275, 295, 36, -20, 0.5, 0.5, 0.0, 1.0);
+		GUI::Button enterbtn = GUI::Button("", -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
+		GUI::Button deletebtn = GUI::Button("", 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
+		GUI::Button backbtn = GUI::Button("", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 		const int top = 48;
 		const int itemHeight = 70;
 		const int borderWidth = 5;
+
 		void onLoad() {
-			title = GUI::label(GetStrbyKey("NEWorld.worlds.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			title.centered = true;
-			vscroll = GUI::vscroll(100, 0, 275, 295, 36, -20, 0.5, 0.5, 0.0, 1.0);
 			vscroll.defaultv = true;
-			enterbtn = GUI::button(GetStrbyKey("NEWorld.worlds.enter"), -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
 			enterbtn.enabled = false;
-			deletebtn = GUI::button(GetStrbyKey("NEWorld.worlds.delete"), 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
 			deletebtn.enabled = false;
-			backbtn = GUI::button(GetStrbyKey("NEWorld.worlds.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-			registerControls(5, &title, &vscroll, &enterbtn, &deletebtn, &backbtn);
+			registerControls({ &title, &vscroll, &enterbtn, &deletebtn, &backbtn });
 			World::WorldName = "";
 		}
+
 		void onUpdate() {
+			title.text = GetStrbyKey("NEWorld.worlds.caption");
+			enterbtn.text = GetStrbyKey("NEWorld.worlds.enter");
+			deletebtn.text = GetStrbyKey("NEWorld.worlds.delete");
+			backbtn.text = GetStrbyKey("NEWorld.worlds.back");
+
 			worldcount = (int)worldnames.size();
 			leftp = static_cast<int>(WindowWidth / 2.0 / Stretch - 250);
 			midp = static_cast<int>(WindowWidth / 2.0 / Stretch);
@@ -75,8 +80,8 @@ namespace Menus {
 				World::WorldName = chosenWorldName;
 				GameBegin = true;
 			}
-			if (deletebtn.clicked) {
-				std::filesystem::remove_all("worlds\\" + chosenWorldName);
+			if (deletebtn.clicked && !chosenWorldName.empty()) {
+				std::filesystem::remove_all(std::filesystem::path("worlds") / chosenWorldName);
 				deletebtn.clicked = false;
 				World::WorldName = "";
 				enterbtn.enabled = false;
@@ -94,29 +99,18 @@ namespace Menus {
 				vscroll.barpos = 0;
 				chosenWorldName = "";
 				Textures::ImageRGB tmb;
-				intptr_t hFile = 0;
-
-				//查找所有世界存档
-				for (auto &&x : std::filesystem::directory_iterator("./worlds/")) {
-					if (std::filesystem::is_directory(x)) {
-						worldnames.push_back(x.path().filename().string());
-						std::fstream file;
-						file.open((x.path().string() + "\\thumbnail.bmp").c_str(), std::ios::in);
-						thumbnails.push_back(0);
-						texSizeX.push_back(0);
-						texSizeY.push_back(0);
-						if (file.is_open()) {
-							Textures::LoadRGBImage(tmb, x.path().string() + "\\thumbnail.bmp");
-							glGenTextures(1, &thumbnails[thumbnails.size() - 1]);
-							glBindTexture(GL_TEXTURE_2D, thumbnails[thumbnails.size() - 1]);
-							glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-							glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-							glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tmb.sizeX, tmb.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE,
-										 tmb.buffer.get());
-							texSizeX[texSizeX.size() - 1] = tmb.sizeX;
-							texSizeY[texSizeY.size() - 1] = tmb.sizeY;
+				for (auto const& entry : std::filesystem::directory_iterator("worlds")) {
+					if (entry.is_directory()) {
+						worldnames.emplace_back(entry.path().filename().string());
+						if (std::filesystem::exists(entry.path() / "thumbnail.bmp")) {
+							GLint width, height;
+							thumbnails.push_back(Textures::LoadRGBTexture(entry.path() / "thumbnail.bmp", true));
+							glBindTexture(GL_TEXTURE_2D, thumbnails.back());
+							glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+							glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+							texSizeX.push_back(width);
+							texSizeY.push_back(height);
 						}
-						file.close();
 					}
 				}
 
@@ -125,12 +119,15 @@ namespace Menus {
 			
 			enterbtn.enabled = chosenWorldName != "";
 			deletebtn.enabled = chosenWorldName != "";
-			if (backbtn.clicked) ExitSignal = true;
-			if (GameBegin) ExitSignal = true;
+			if (backbtn.clicked) exit = true;
+			if (GameBegin) exit = true;
 		}
+
 		void onRender() {
+			int scissorTop = static_cast<int>(top * Stretch);
+			int scissorBottom = static_cast<int>((downp - 72) * Stretch);
 			glEnable(GL_SCISSOR_TEST);
-			glScissor(0, WindowHeight - static_cast<int>((downp - 72) * Stretch), WindowWidth, static_cast<int>((downp - 72 - top + 1) * Stretch));
+			glScissor(0, WindowHeight - scissorBottom, WindowWidth, std::max(0, scissorBottom - scissorTop));
 			glTranslatef(0.0f, (float)-trs, 0.0f);
 			for (int i = 0; i < worldcount; i++) {
 				int xmin, xmax, ymin, ymax;
@@ -162,7 +159,6 @@ namespace Menus {
 				else {
 					bool marginOnSides;
 					float w, h;
-					//����������꣬���ָ߿�ȣ���ť��СΪ500x60������Сѧ��ѧ����������ϸ��һ��Ӧ���ܶ�QAQ
 					if (texSizeX[i] * 60 / 500 < texSizeY[i]) {
 						marginOnSides = true;
 						w = 1.0f, h = texSizeX[i] * 60 / 500.0f / texSizeY[i];
@@ -205,5 +201,6 @@ namespace Menus {
 			glDisable(GL_SCISSOR_TEST);
 		}
 	};
+
 	void worldmenu() { WorldMenu Menu; Menu.start(); }
 }

@@ -38,12 +38,8 @@ int meshedChunks;
 int updatedBlocks;
 
 void init() {
-	std::stringstream ss;
-	ss << "worlds/" << WorldName << "/";
-	std::filesystem::create_directories(ss.str().c_str());
-	ss.clear(); ss.str("");
-	ss << "worlds/" << WorldName << "/chunks";
-	std::filesystem::create_directories(ss.str().c_str());
+	// Create world and chunk directory
+	std::filesystem::create_directories(std::filesystem::path("worlds") / WorldName / "chunks");
 
 	// Create pointer for indicating empty chunks
 	EmptyChunkPtr = reinterpret_cast<Chunk*>(-1);
@@ -81,8 +77,7 @@ Chunk* addChunk(int x, int y, int z) {
 	ChunkID cid = getChunkID(x, y, z);
 	auto it = chunks.find(cid);
 	if (it != chunks.end()) {
-		printf("[Console][Error]");
-		printf("Chunk (%d, %d, %d) has been loaded, when adding chunk.\n", x, y, z);
+		DebugWarning(std::format("Chunk ({}, {}, {}) has been loaded, when adding chunk.", x, y, z));
 		return it->second.get();
 	}
 
@@ -100,8 +95,7 @@ void removeChunk(int x, int y, int z) {
 	ChunkID cid = getChunkID(x, y, z);
 	auto node = chunks.extract(cid);
 	if (node.empty()) {
-		printf("[Console][Error]");
-		printf("Chunk (%d, %d, %d) has been unloaded, when deleting chunk.\n", x, y, z);
+		DebugWarning(std::format("Chunk ({}, {}, {}) has been unloaded, when deleting chunk.", x, y, z));
 		return;
 	}
 

@@ -3,21 +3,26 @@
 #include "World.h"
 
 namespace Menus {
-	class GameMenu :public GUI::Form {
+	class GameMenu : public GUI::Form {
 	private:
-		GUI::label title;
-		GUI::button resumebtn, exitbtn;
+		GUI::Label title = GUI::Label("", -225, 225, -76, -60, 0.5, 0.5, 0.5, 0.5);
+		GUI::Button resumebtn = GUI::Button("", -200, 200, -36, -3, 0.5, 0.5, 0.5, 0.5);
+		GUI::Button exitbtn = GUI::Button("", -200, 200, 3, 36, 0.5, 0.5, 0.5, 0.5);
+
 		void onLoad() {
-			title = GUI::label(GetStrbyKey("NEWorld.pause.caption"), -225, 225, -76, -60, 0.5, 0.5, 0.5, 0.5);
 			title.centered = true;
-			resumebtn = GUI::button(GetStrbyKey("NEWorld.pause.continue"), -200, 200, -36, -3, 0.5, 0.5, 0.5, 0.5);
-			exitbtn = GUI::button(GetStrbyKey("NEWorld.pause.back"), -200, 200, 3, 36, 0.5, 0.5, 0.5, 0.5);
-			registerControls(3, &title, &resumebtn, &exitbtn);
+			registerControls({ &title, &resumebtn, &exitbtn });
 		}
+
 		void onUpdate() {
-			if (resumebtn.clicked) ExitSignal = true;
-			if (exitbtn.clicked) GameExit = ExitSignal = true;
+			title.text = GetStrbyKey("NEWorld.pause.caption");
+			resumebtn.text = GetStrbyKey("NEWorld.pause.continue");
+			exitbtn.text = GetStrbyKey("NEWorld.pause.back");
+
+			if (resumebtn.clicked) exit = true;
+			if (exitbtn.clicked) GameExit = exit = true;
 		}
+
 		void onLeave() {
 			if (GameExit) {
 				World::saveAllChunks();
@@ -25,5 +30,6 @@ namespace Menus {
 			}
 		}
 	};
+
 	void gamemenu() { GameMenu Menu; Menu.start(); }
 }

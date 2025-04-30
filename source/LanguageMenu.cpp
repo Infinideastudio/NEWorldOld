@@ -1,64 +1,54 @@
 #include "Menus.h"
-#include <deque>
-struct Langinfo {
-	string Symbol, EngSymbol, Name;
-	GUI::button * Button;
-};
 
 namespace Menus {
-	class Language :public GUI::Form {
+	class Language : public GUI::Form {
 	private:
-		std::deque<Langinfo> Langs;
-		GUI::label title;
-		GUI::button backbtn;
+		struct LangInfo {
+			string Symbol, EngSymbol, Name;
+			std::unique_ptr<GUI::Button> Button;
+		};
+		std::vector<LangInfo> langs;
+		GUI::Label title = GUI::Label("", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
+		GUI::Button backbtn = GUI::Button("", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 
 		void onLoad() {
-			Langs.clear();
-			title = GUI::label(GetStrbyKey("NEWorld.language.caption"), -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 			title.centered = true;
-			backbtn = GUI::button(GetStrbyKey("NEWorld.language.back"), -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-			registerControls(2, &title, &backbtn); 
+			registerControls({ &title, &backbtn });
+
 			std::ifstream index("lang/langs.txt");
 			std::string line;
 			int count = 0;
 			while (std::getline(index, line)) {
 				if (line.empty()) break;
-				Langinfo info;
+				LangInfo info;
 				info.Symbol = line;
 				std::ifstream LF("lang/" + info.Symbol + ".lang");
 				std::getline(LF, info.EngSymbol);
 				std::getline(LF, info.Name);
 				LF.close();
-				info.Button = new GUI::button(info.Name, -200, 200, count * 36 + 60, count * 36 + 90, 0.5, 0.5, 0.0, 0.0);
-				registerControls(1, info.Button);
-				Langs.push_back(info);
+				info.Button = std::make_unique<GUI::Button>(info.Name, -200, 200, count * 36 + 60, count * 36 + 90, 0.5, 0.5, 0.0, 0.0);
+				registerControl(info.Button.get());
+				langs.emplace_back(std::move(info));
 				count++;
 			}
 		}
 
 		void onUpdate() {
-			if (backbtn.clicked) ExitSignal = true;
-			for (size_t i = 0; i < Langs.size(); i++) {
-				if (Langs[i].Button->clicked){
-					ExitSignal = true;
-					if (Globalization::Cur_Lang != Langs[i].Symbol) {
-						Globalization::LoadLang(Langs[i].Symbol);
+			title.text = GetStrbyKey("NEWorld.language.caption");
+			backbtn.text = GetStrbyKey("NEWorld.language.back");
+
+			if (backbtn.clicked) exit = true;
+			for (size_t i = 0; i < langs.size(); i++) {
+				if (langs[i].Button->clicked){
+					exit = true;
+					if (Globalization::Cur_Lang != langs[i].Symbol) {
+						Globalization::LoadLang(langs[i].Symbol);
 					}
 					break;
 				}
 			}
 		}
-
-		void onLeave() {
-			for (size_t i = 0; i < Langs.size(); i++) {
-				for (vector<GUI::controls*>::iterator iter = children.begin(); iter != children.end(); ) {
-					if ((*iter)->id == Langs[i].Button->id) iter = children.erase(iter);
-					else ++iter;
-				}
-				Langs[i].Button->destroy();
-				delete Langs[i].Button;
-			}
-		}
 	};
+
 	void languagemenu() { Language Menu; Menu.start(); }
 }

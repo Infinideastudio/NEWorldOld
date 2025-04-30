@@ -48,6 +48,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source\Renderer\GLAD">
+      <UniqueIdentifier>{955158e6-67b0-44f3-b24b-df0336888aa6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\Chunk.h">
@@ -248,6 +251,9 @@
     </ClCompile>
     <ClCompile Include="source\VertexAllocator.cpp">
       <Filter>Source\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="source\glad.c">
+      <Filter>Source\Renderer\GLAD</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

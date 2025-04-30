@@ -14,7 +14,7 @@ bool Player::Running = false;
 bool Player::NearWall = false;
 bool Player::inWater = false;
 bool Player::glidingNow = false;
-ItemID Player::BlockInHand = Blocks::AIR;
+BlockID Player::BlockInHand = Blocks::AIR;
 uint8_t Player::indexInHand = 0;
 
 Hitbox::AABB Player::playerbox;
@@ -32,7 +32,7 @@ double Player::xlookspeed, Player::ylookspeed;
 int Player::intxpos, Player::intypos, Player::intzpos;
 int Player::intxposold, Player::intyposold, Player::intzposold;
 
-ItemID Player::inventory[4][10];
+BlockID Player::inventory[4][10];
 short Player::inventoryAmount[4][10];
 
 double Player::glidingEnergy, Player::glidingSpeed;
@@ -119,8 +119,6 @@ void Player::updatePosition() {
 	if (ya != yal && yal > 0.0) jump = 0.0;
 	if (xa != xal || za != zal) NearWall = true; else NearWall = false;
 
-	//�������������ȴ�����Ӱ�죨���˺þõĴ�ǽbug�ŷ�����������������(�s�F����)�s��ߩ��ߣ�
-	//  --qiaozhanrong
 	xa = (double)((int)(xa * 100000)) / 100000.0;
 	ya = (double)((int)(ya * 100000)) / 100000.0;
 	za = (double)((int)(za * 100000)) / 100000.0;
@@ -208,13 +206,11 @@ bool Player::load(string worldn) {
 	return true;
 }
 
-bool Player::addItem(ItemID itemname, short amount) {
-	//�򱳰��������Ʒ
+bool Player::addItem(BlockID itemname, short amount) {
 	const int InvMaxStack = 255;
 	for (int i = 3; i >= 0; i--) {
 		for (int j = 0; j != 10; j++) {
 			if (inventory[i][j] == itemname && inventoryAmount[i][j] < InvMaxStack) {
-				//�ҵ�һ��ͬ�����
 				if (amount + inventoryAmount[i][j] <= InvMaxStack) {
 					inventoryAmount[i][j] += amount;
 					return true;
@@ -228,7 +224,6 @@ bool Player::addItem(ItemID itemname, short amount) {
 	for (int i = 3; i >= 0; i--) {
 		for (int j = 0; j != 10; j++) {
 			if (inventory[i][j] == Blocks::AIR) {
-				//�ҵ�һ���հ׸���
 				inventory[i][j] = itemname;
 				if (amount <= InvMaxStack) {
 					inventoryAmount[i][j] = amount;

@@ -19,10 +19,9 @@ public:
 	static bool save(string worldn);
 	static bool load(string worldn);
 
-	static bool addItem(ItemID itemname, short amount = 1);
+	static bool addItem(BlockID itemname, short amount = 1);
 	static bool putBlock(int x, int y, int z, BlockID blockname);
 
-	//�޸���Ϸģʽ
 	static void changeGameMode(int gamemode);
 
 	static Hitbox::AABB playerbox;
@@ -53,9 +52,9 @@ public:
 	static float height;
 	static float heightExt;
 
-	static ItemID BlockInHand;
+	static BlockID BlockInHand;
 	static uint8_t indexInHand;
-	static ItemID inventory[4][10];
+	static BlockID inventory[4][10];
 	static short inventoryAmount[4][10];
 
 	static double glidingEnergy, glidingSpeed;

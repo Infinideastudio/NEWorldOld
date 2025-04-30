@@ -32,13 +32,14 @@ namespace Textures {
         return Indexes[blockname][face];
     }
 
-    void LoadRGBImage(ImageRGB& tex, string Filename) {
+    void LoadRGBImage(ImageRGB& tex, std::filesystem::path const& path) {
         unsigned int ind = 0;
         ImageRGB& bitmap = tex; // 返回位图
         bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
-        std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in); // 位图文件（二进制）
+        std::ifstream bmpfile(path, std::ios::binary | std::ios::in); // 位图文件（二进制）
         if (!bmpfile.is_open()) {
-            printf("[console][Warning] Cannot load %s\n", Filename.c_str());
+            std::stringstream ss; ss << "Cannot load bitmap " << path;
+            DebugWarning(ss.str());
             return;
         }
         BitmapFileHeader bfh; // 各种关于文件的参数
@@ -59,20 +60,20 @@ namespace Textures {
         }
     }
 
-    void LoadRGBAImage(ImageRGBA& tex, string Filename, string MkFilename) {
+    void LoadRGBAImage(ImageRGBA& tex, std::filesystem::path const& path, std::filesystem::path const& maskPath) {
         unsigned int ind = 0;
-        bool noMaskFile = (MkFilename == "");
+        bool noMaskFile = (maskPath == "");
         ImageRGBA& bitmap = tex;
         bitmap.buffer = nullptr; bitmap.sizeX = bitmap.sizeY = 0;
-        std::ifstream bmpfile(Filename, std::ios::binary | std::ios::in);
+        std::ifstream bmpfile(path, std::ios::binary | std::ios::in);
         std::ifstream maskfile;
-        if (!noMaskFile) maskfile.open(MkFilename, std::ios::binary | std::ios::in);
+        if (!noMaskFile) maskfile.open(maskPath, std::ios::binary | std::ios::in);
         if (!bmpfile.is_open()) {
-            std::stringstream ss; ss << "Cannot load bitmap " << Filename;
+            std::stringstream ss; ss << "Cannot load bitmap " << path;
             DebugWarning(ss.str()); return;
         }
         if (!noMaskFile && !maskfile.is_open()) {
-            std::stringstream ss; ss << "Cannot load bitmap " << MkFilename;
+            std::stringstream ss; ss << "Cannot load bitmap " << maskPath;
             DebugWarning(ss.str()); return;
         }
         BitmapFileHeader bfh;
@@ -107,10 +108,10 @@ namespace Textures {
         }
     }
 
-    TextureID LoadRGBTexture(string Filename, bool bilinear) {
+    TextureID LoadRGBTexture(std::filesystem::path const& path, bool bilinear) {
         ImageRGB image;
         TextureID ret;
-        LoadRGBImage(image, Filename);
+        LoadRGBImage(image, path);
         glGenTextures(1, &ret);
         glBindTexture(GL_TEXTURE_2D, ret);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, bilinear ? GL_LINEAR : GL_NEAREST);
@@ -122,10 +123,10 @@ namespace Textures {
         return ret;
     }
 
-    TextureID LoadRGBATexture(string Filename, string MkFilename, bool bilinear) {
+    TextureID LoadRGBATexture(std::filesystem::path const& path, std::filesystem::path const& maskPath, bool bilinear) {
         TextureID ret;
         ImageRGBA image;
-        LoadRGBAImage(image, Filename, MkFilename);
+        LoadRGBAImage(image, path, maskPath);
         glGenTextures(1, &ret);
         glBindTexture(GL_TEXTURE_2D, ret);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, bilinear ? GL_LINEAR : GL_NEAREST);
@@ -137,10 +138,10 @@ namespace Textures {
         return ret;
     }
 
-    TextureID LoadBlockTextureArray(string Filename, string MkFilename) {
+    TextureID LoadBlockTextureArray(std::filesystem::path const& path, std::filesystem::path const& maskPath) {
         TextureID ret;
         ImageRGBA image;
-        LoadRGBAImage(image, Filename, MkFilename);
+        LoadRGBAImage(image, path, maskPath);
         int size = image.sizeX;
         int count = image.sizeY / size;
         glGenTextures(1, &ret);
@@ -158,8 +159,8 @@ namespace Textures {
         glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
         return ret;
     }
-    
-    void SaveRGBImage(string filename, ImageRGB const& image) {
+
+    void SaveRGBImage(std::filesystem::path const& path, ImageRGB const& image) {
         BitmapFileHeader bitmapfileheader;
         BitmapInfoHeader bitmapinfoheader;
         bitmapfileheader.bfSize = image.sizeX * image.sizeY * 3 + 54;
@@ -171,7 +172,7 @@ namespace Textures {
             image.buffer.get()[i] = image.buffer.get()[i + 2];
             image.buffer.get()[i + 2] = t;
         }
-        std::ofstream ofs(filename, std::ios::out | std::ios::binary);
+        std::ofstream ofs(path, std::ios::out | std::ios::binary);
         ofs.write((char*)&bitmapfileheader, sizeof(bitmapfileheader));
         ofs.write((char*)&bitmapinfoheader, sizeof(bitmapinfoheader));
         ofs.write((char*)image.buffer.get(), sizeof(uint8_t) * image.sizeX * image.sizeY * 3);

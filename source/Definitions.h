@@ -46,7 +46,7 @@ extern TextureID SelectedTexture;
 extern TextureID UnselectedTexture;
 extern TextureID BlockTextureArray;
 
-extern int GLMajorVersion, GLMinorVersion, GLRevisionVersion;
+extern int GLMajorVersion, GLMinorVersion;
 extern GLFWwindow* MainWindow;
 extern GLFWcursor* MouseCursor;
 extern int mx, my, mxl, myl;

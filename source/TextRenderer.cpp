@@ -1,7 +1,7 @@
 #include "TextRenderer.h"
 #include "Textures.h"
 #include "Renderer.h"
-// FREETYPE
+
 #include <ft2build.h>
 #include FT_FREETYPE_H
 

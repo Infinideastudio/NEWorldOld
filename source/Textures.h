@@ -40,11 +40,11 @@ namespace Textures {
 	};
 
 	TextureIndex getTextureIndex(BlockID blockname, size_t face);
-	void LoadRGBImage(ImageRGB& tex, string Filename);
-	void LoadRGBAImage(ImageRGBA& tex, string Filename, string MkFilename);
+	void LoadRGBImage(ImageRGB& tex, std::filesystem::path const& path);
+	void LoadRGBAImage(ImageRGBA& tex, std::filesystem::path const& path, std::filesystem::path const& maskPath);
 
-	TextureID LoadRGBTexture(string Filename, bool bilinear = false);
-	TextureID LoadRGBATexture(string Filename, string MkFilename, bool bilinear = false);
-	TextureID LoadBlockTextureArray(string Filename, string MkFilename);
-	void SaveRGBImage(string filename, ImageRGB const& image);
+	TextureID LoadRGBTexture(std::filesystem::path const& path, bool bilinear = false);
+	TextureID LoadRGBATexture(std::filesystem::path const& path, std::filesystem::path const& maskPath, bool bilinear = false);
+	TextureID LoadBlockTextureArray(std::filesystem::path const& path, std::filesystem::path const& maskPath);
+	void SaveRGBImage(std::filesystem::path const& path, ImageRGB const& image);
 }

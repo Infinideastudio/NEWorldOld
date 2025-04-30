@@ -12,7 +12,7 @@ namespace World {
 		int low, high, count;
 
 		HMapManager(int cx, int cz) {
-			int l = MAXINT, hi = WorldGen::WaterLevel, h;
+			int l = std::numeric_limits<int>::max(), hi = WorldGen::WaterLevel, h;
 			for (int x = 0; x < 16; ++x) {
 				for (int z = 0; z < 16; ++z) {
 					h = heightMap.getHeight(cx * 16 + x, cz * 16 + z);
