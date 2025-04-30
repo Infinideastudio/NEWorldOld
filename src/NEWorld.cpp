@@ -85,13 +85,16 @@ bool chatmode = false;
 vector<Command> commands;
 vector<string> chatMessages;
 
+// Error: "extended character '。' is not valid in an identifier"
+/*
 #if 0
 woca, 这样注释都行？！
 (这儿编译不过去的童鞋，你的FB编译器版本貌似和我的不一样，把这几行注释掉吧。。。)
-== == == == == == == == == == == == == == == == == == ==
+======================================
 等等不对啊！！！明明都改成c++了。。。还说是FB。。。
 正常点的C++编译器都应该不会在这儿报错吧23333333
 #endif
+*/
 
 bool keyDown[GLFW_KEY_LAST + 1];
 
