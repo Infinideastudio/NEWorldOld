@@ -1,0 +1,138 @@
+# Always prefer densely packed code...
+# Nearly every option is set (except penalty values).
+# See: https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+
+BasedOnStyle: Google
+Language: Cpp
+Standard: c++20
+DeriveLineEnding: true
+
+# Most important options
+ColumnLimit: 120
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+BreakBeforeBraces: Attach
+
+# Indentations
+AccessModifierOffset: -2
+IndentAccessModifiers: false
+ConstructorInitializerIndentWidth: 4
+ContinuationIndentWidth: 4
+PPIndentWidth: 2
+NamespaceIndentation: Inner
+IndentCaseLabels: true
+IndentCaseBlocks: false
+IndentExternBlock: Indent
+IndentGotoLabels: false
+IndentPPDirectives: AfterHash
+IndentWrappedFunctionNames: false
+IndentRequiresClause: false
+
+# Line break points
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: AfterColon
+BreakInheritanceList: AfterColon
+BreakStringLiterals: false
+
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+PackConstructorInitializers: Never
+
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: Yes
+RequiresClausePosition: WithPreceding
+
+AttributeMacros: []
+StatementMacros: []
+
+# Empty lines
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: true
+EmptyLineBeforeAccessModifier: Leave
+EmptyLineAfterAccessModifier: Leave
+SeparateDefinitionBlocks: Leave
+
+# One-liners
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Inline
+AllowShortLoopsOnASingleLine: false
+
+CompactNamespaces: false
+RemoveBracesLLVM: false
+
+# Spaces
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+SpaceAroundPointerQualifiers: Default
+
+SpaceAfterCStyleCast: true
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
+
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCaseColon: false
+Cpp11BracedListStyle: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: false
+SpaceBeforeInheritanceColon: false
+SpaceBeforeRangeBasedForLoopColon: false
+BitFieldColonSpacing: After
+
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterFunctionDeclarationName: false
+  AfterFunctionDefinitionName: false
+  AfterOverloadedOperator: false
+  AfterRequiresInClause: true
+  AfterRequiresInExpression: true
+  BeforeNonEmptyParentheses: false
+SpaceBeforeSquareBrackets: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+SpaceInEmptyBlock: false
+SpaceInEmptyParentheses: false
+SpacesInAngles: Never
+SpacesInCStyleCastParentheses: false
+SpacesInConditionalStatement: false
+
+# Auto align
+AlignAfterOpenBracket: BlockIndent
+AlignArrayOfStructures: Right
+AlignConsecutiveAssignments: None
+AlignConsecutiveBitFields: None
+AlignConsecutiveDeclarations: None
+AlignConsecutiveMacros: Consecutive
+AlignEscapedNewlines: Left
+AlignOperands: AlignAfterOperator
+AlignTrailingComments: true
+
+# Include directives
+SortUsingDeclarations: false
+SortIncludes: CaseInsensitive
+IncludeBlocks: Merge
+IncludeCategories:
+  - Regex:        '<[[:alpha:]_]+>'
+    Priority:     1
+  - Regex:        '<.*>'
+    Priority:     2
+  - Regex:        '.*'
+    Priority:     4
+IncludeIsMainRegex: '$'
+
+# Comments
+SpacesBeforeTrailingComments: 1
+CommentPragmas: '^ NOLINT'
+ReflowComments: true
+FixNamespaceComments: false

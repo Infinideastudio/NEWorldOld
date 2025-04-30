@@ -2,12 +2,13 @@
 
 NEWorld is an open-source game with similar game rules to Minecraft.  
 
---------------------------------------------------
+Build commands (requires CMake 3.28+):
 
-There is a Visual Studio 2022 solution. If you have installed VS2022 on your computer, you can use the solution.
+```sh
+cmake -S . -B build
+cmake --build build
+```
 
-You can also compile it with any C++ compiler that supports the ISO C++20 standards. But you need to set some directories.
+This should automatically download and build all required dependencies, including `glfw`, `utfcpp` and `freetype`. Note that the `glad`-generated source files are included in `src/glad` in this repository.
 
-- Library headers are in the directory 'include'.
-- Libraries should go to 'libraries' (you must download them manually for now, this includes the latest versions of GLFW3 and FreeType2).
-- Source code is in 'source'.
+The compiler is set to use C++20. By default, all dependencies are statically linked.

@@ -12,8 +12,8 @@ uniform mat4 u_mvp;
 uniform vec3 u_translation;
 
 void main() {
-	coord = a_coord;
-	tex_coord = a_tex_coord;
-	color = vec3(a_color);
-	gl_Position = u_mvp * vec4(a_coord + u_translation, 1.0);
+    coord = a_coord;
+    tex_coord = a_tex_coord;
+    color = vec3(a_color);
+    gl_Position = u_mvp * vec4(a_coord + u_translation, 1.0);
 }
