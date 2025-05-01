@@ -36,6 +36,9 @@ add_subdirectory(${kls_repo_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_kls_build)
 kls_vcpkg_package(glfw3)
 kls_vcpkg_package(freetype)
 kls_vcpkg_package(utfcpp)
+find_package(Freetype REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(utf8cpp CONFIG REQUIRED)
 
 add_subdirectory(src/glad)
 
@@ -75,7 +78,7 @@ add_executable(neworld
         "src/WorldRenderer.cpp"
 )
 target_default_compile_options(neworld)
-target_link_libraries(neworld PRIVATE glad glfw utf8cpp freetype)
+target_link_libraries(neworld PRIVATE glad glfw utf8cpp::utf8cpp Freetype::Freetype)
 target_link_libraries(neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine)
 target_include_directories(neworld PRIVATE "src")
 target_compile_definitions(neworld PRIVATE "$<$<CONFIG:Debug,RelWithDebInfo>:NEWORLD_DEBUG>")
