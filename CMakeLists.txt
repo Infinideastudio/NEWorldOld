@@ -46,6 +46,15 @@ FetchContent_Declare (freetype_repo
 
 FetchContent_MakeAvailable (freetype_repo)
 
+FetchContent_Declare (kls_repo
+        GIT_REPOSITORY https://github.com/NEWorldProject/klsxx
+        GIT_TAG main
+        GIT_SHALLOW TRUE
+        FIND_PACKAGE_ARGS NAMES kls)
+set(KLS_VCPKG_FORCE_OVERRIDE ON)
+set(KLS_DISABLE_TEST ON)
+FetchContent_MakeAvailable (kls_repo)
+
 # ===== Targets =====
 add_executable (neworld
   "src/Chunk.cpp"
@@ -83,6 +92,7 @@ add_executable (neworld
 )
 target_default_compile_options  (neworld)
 target_link_libraries           (neworld PRIVATE glad glfw utf8cpp freetype)
+target_link_libraries           (neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine)
 target_include_directories      (neworld PRIVATE "src")
 target_compile_definitions      (neworld PRIVATE "$<$<CONFIG:Debug,RelWithDebInfo>:NEWORLD_DEBUG>")
 if (BUILD_SHARED_LIBS)
