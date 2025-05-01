@@ -2,6 +2,9 @@
 
 namespace Globalization {
 
+struct Line {
+    std::string str;
+};
 int count;
 std::string Cur_Lang = "zh_CN", Cur_Symbol = "", Cur_Name = "";
 std::map<int, Line> Lines;

@@ -44,19 +44,19 @@ public:
         translucent(translucent),
         hardness(hardness) {};
 
-    inline std::string getBlockName() const {
+    std::string getBlockName() const {
         return name;
     }
-    inline bool isSolid() const {
+    bool isSolid() const {
         return solid;
     }
-    inline bool isOpaque() const {
+    bool isOpaque() const {
         return opaque;
     }
-    inline bool isTranslucent() const {
+    bool isTranslucent() const {
         return translucent;
     }
-    inline float getHardness() const {
+    float getHardness() const {
         return hardness;
     }
 };

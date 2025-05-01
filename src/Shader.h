@@ -35,10 +35,10 @@ public:
         swap(first.shaderProgram, second.shaderProgram);
     }
 
-    inline void bind() {
+    void bind() {
         glUseProgram(shaderProgram);
     }
-    static inline void unbind() {
+    static void unbind() {
         glUseProgram(0);
     }
 
