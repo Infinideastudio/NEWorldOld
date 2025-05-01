@@ -1,7 +1,0 @@
-{
-  "dependencies": [
-    "glfw3",
-    "freetype",
-    "utfcpp"
-  ]
-}
