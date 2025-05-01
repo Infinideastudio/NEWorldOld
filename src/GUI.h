@@ -11,13 +11,13 @@ inline string BoolEnabled(bool b) {
     return b ? Globalization::GetStrbyKey("NEWorld.enabled") : Globalization::GetStrbyKey("NEWorld.disabled");
 }
 template <typename T>
-inline string strWithVar(string str, T var) {
+string strWithVar(string str, T var) {
     std::stringstream ss;
     ss << str << var;
     return ss.str();
 }
 template <typename T>
-inline string Var2Str(T var) {
+string Var2Str(T var) {
     std::stringstream ss;
     ss << var;
     return ss.str();
