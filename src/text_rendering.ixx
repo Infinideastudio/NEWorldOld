@@ -63,7 +63,7 @@ export void setFontColor(float r, float g, float b, float a) {
     colr = r, colg = g, colb = b, cola = a;
 }
 
-UnicodeChar& loadChar(char32_t uc) {
+auto loadChar(char32_t uc) -> UnicodeChar& {
     auto index = FT_Get_Char_Index(face, uc);
     FT_Load_Glyph(face, index, FT_LOAD_DEFAULT);
     FT_Render_Glyph(slot, FT_RENDER_MODE_NORMAL);
@@ -99,19 +99,19 @@ UnicodeChar& loadChar(char32_t uc) {
     return res;
 }
 
-UnicodeChar& getChar(char32_t c) {
+auto getChar(char32_t c) -> UnicodeChar& {
     auto it = chars.find(c);
     if (it != chars.end())
         return it->second;
     return loadChar(c);
 }
 
-export int getFontHeight() {
+export auto getFontHeight() -> int {
     float ascender = static_cast<float>(face->size->metrics.ascender) / 64.0f;
     return static_cast<int>(std::round(ascender));
 }
 
-export int getLineHeight() {
+export auto getLineHeight() -> int {
     float ascender = static_cast<float>(face->size->metrics.ascender) / 64.0f;
     float descender = static_cast<float>(face->size->metrics.descender) / 64.0f;
     return static_cast<int>(std::round(ascender - descender));
@@ -119,11 +119,11 @@ export int getLineHeight() {
     // return static_cast<int>(std::round(height));
 }
 
-export int getStringWidth(std::string_view s) {
+export auto getStringWidth(std::string_view s) -> int {
     return getStringWidth(UTF8Unicode(s));
 }
 
-export int getStringWidth(std::u32string_view s) {
+export auto getStringWidth(std::u32string_view s) -> int {
     float res = 0.0f;
     for (size_t i = 0; i < s.size(); i++) {
         auto const& uc = getChar(s[i]);
@@ -138,10 +138,10 @@ export void renderString(int x, int y, std::string_view s) {
 
 export void renderString(int x, int y, std::u32string_view s) {
     float dx = 0.0f, dy = 0.0f;
-    for (size_t i = 0; i < s.size(); i++) {
-        auto const& uc = getChar(s[i]);
+    for (auto i: s) {
+        auto const& uc = getChar(i);
         float xpos = static_cast<float>(x) + dx + uc.xpos;
-        float ypos = static_cast<float>(y) + dy + getFontHeight() - uc.ypos;
+        float ypos = static_cast<float>(y) + dy + static_cast<float>(getFontHeight()) - uc.ypos;
         float width = uc.width;
         float height = uc.height;
 

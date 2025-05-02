@@ -5,6 +5,7 @@ module;
 #include <cmath>
 #include <deque>
 #include <filesystem>
+#include <format>
 #include <memory>
 #include <queue>
 #include <string>
@@ -39,7 +40,7 @@ public:
     std::vector<std::pair<int, Vec3i>> chunkUnloadList;
     std::deque<Vec3i> blockUpdateQueue;
 
-    World(std::string worldName):
+    explicit World(std::string worldName):
         WorldName(std::move(worldName)),
         chunkPtrArray((RenderDistance + 2) * 2),
         heightMap((RenderDistance + 2) * 2 * 1) {
@@ -48,7 +49,7 @@ public:
         std::filesystem::create_directories(std::filesystem::path("worlds") / WorldName / "chunks");
 
         // Initialize terrain generation
-        WorldGen::perlinNoiseInit(3404);
+        WorldGen::noiseInit(3404);
 
         // Temporary: reset counters
         loadedChunks = 0;
@@ -58,11 +59,9 @@ public:
         updatedBlocks = 0;
     }
 
-    void recenter(Vec3i ccenter) {
-        if (chunkPtrArray.getOrigin() != ccenter - Vec3i(RenderDistance + 2))
-            chunkPtrArray.moveTo(ccenter - Vec3i(RenderDistance + 2));
-        if (heightMap.getOrigin() != (ccenter - Vec3i(RenderDistance + 2)) * 16)
-            heightMap.moveTo((ccenter - Vec3i(RenderDistance + 2)) * 16);
+    void setCenter(Vec3i ccenter) {
+        chunkPtrArray.moveTo(ccenter - Vec3i(RenderDistance + 2));
+        heightMap.moveTo((ccenter - Vec3i(RenderDistance + 2)) * 16);
     }
 
     auto addChunk(Vec3i ccoord) -> Chunk* {
@@ -481,7 +480,7 @@ public:
             for (int zt = 0; zt != 3; zt++) {
                 for (int yt = 0; yt != 2; yt++) {
                     if (getBlock(coord + Vec3i(xt - 1, th - 1 + yt, zt - 1)) == BlockID::AIR
-                        && abs(xt - 1) != abs(zt - 1))
+                        && std::abs(xt - 1) != std::abs(zt - 1))
                         setBlock(coord + Vec3i(xt - 1, th - 1 + yt, zt - 1), BlockID::LEAF);
                 }
             }

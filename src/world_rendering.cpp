@@ -2,7 +2,6 @@ module;
 
 #include <array>
 #include <cassert>
-#include <cmath>
 #include <optional>
 #include <vector>
 
@@ -19,7 +18,7 @@ auto World::ListRenderChunks(
     double interp,
     std::optional<FrustumTest> frustum
 ) -> std::vector<RenderChunk> {
-    auto ccenter = getChunkPos(Vec3i(x, y, z));
+    auto ccenter = getChunkPos(Vec3i(static_cast<int>(x), static_cast<int>(y), static_cast<int>(z)));
     auto res = std::vector<RenderChunk>{};
     for (auto const& [_, c]: chunks) {
         if (!c->meshed())

@@ -32,8 +32,6 @@ import menus;
 //==============================初始化(包括闪屏)================================//
 
 void registerCommands();
-bool loadGame(World& world);
-void saveGame(World& world);
 void updateThreadFunc(World& world);
 void gameUpdate(World& world);
 void frameLinkedUpdate(World& world);
@@ -90,8 +88,7 @@ std::vector<std::string> chatMessages;
 woca, 这样注释都行？！
 (这儿编译不过去的童鞋，你的FB编译器版本貌似和我的不一样，把这几行注释掉吧。。。)
 ======================================
-等等不对啊！！！明明都改成c++了。。。还说是FB。。。
-正常点的C++编译器都应该不会在这儿报错吧23333333
+等等不对啊！！！明明都改成C++23了。。。还说是FB。。。
 #endif
 */
 
@@ -147,7 +144,7 @@ export int main() {
         auto world = World(Cur_WorldName);
 
         DebugInfo("Init player...");
-        if (loadGame(world))
+        if (Player::load(world.WorldName))
             Player::init(Player::xpos, Player::ypos, Player::zpos);
         else
             Player::spawn();
@@ -225,11 +222,12 @@ export int main() {
         updateThread.join();
 
         // 保存并卸载世界
-        saveGame(world);
+        world.saveAllChunks();
+        Player::save(world.WorldName);
     }
 
     // 结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
-    // 不对啊这不是FB！！！这是正宗的C++！！！！！！
+    // 不对啊这不是FB！！！这是正宗的C++23！！！！！！
     // 楼上的楼上在瞎说！！！别信他的！！！
     glfwTerminate();
     return 0;
@@ -254,43 +252,24 @@ void updateThreadFunc(World& world) {
     updateMutex.unlock();
 }
 
-void saveGame(World& world) {
-    world.saveAllChunks();
-    if (!Player::save(world.WorldName)) {
-#ifdef NEWORLD_CONSOLE_OUTPUT
-        DebugWarning("Failed saving player info!");
-#endif
-    }
-}
-
-bool loadGame(World& world) {
-    if (!Player::load(world.WorldName)) {
-#ifdef NEWORLD_CONSOLE_OUTPUT
-        DebugWarning("Failed loading player info!");
-#endif
-        return false;
-    }
-    return true;
-}
-
 void registerCommands() {
     commands.emplace_back("/help", [](std::vector<std::string> const& command, World&) {
         if (command.size() != 1)
             return false;
-        chatMessages.push_back(
+        chatMessages.emplace_back(
             "Controls: W/A/S/D/SPACE/SHIFT = move, R/F = fast move (creative mode), E = open inventory,"
         );
-        chatMessages.push_back("          left/right mouse button = break/place blocks, mouse wheel = select blocks,");
-        chatMessages.push_back(
-            "                    F1 = switch game mode, F2 = take screenshot, F3 = switch debug panel,"
+        chatMessages.emplace_back(
+            "          left/right mouse button = break/place blocks, mouse wheel = select blocks,"
         );
-        chatMessages.push_back("                    F4 = switch cross wall (creative mode), F5 = switch HUD,");
-        chatMessages.push_back("                    F7 = switch full screen mode, F8 = fast forward game time");
-        chatMessages.push_back(
-            "Commands: /help | /clear | /kit | /give <id> <amount> | /tp <x> <y> <z> | /clearinventory | /suicide"
+        chatMessages.emplace_back("          F1 = switch game mode, F2 = take screenshot, F3 = switch debug panel,");
+        chatMessages.emplace_back("          F4 = switch cross wall (creative mode), F5 = switch HUD,");
+        chatMessages.emplace_back("          F7 = switch full screen mode, F8 = fast forward game time");
+        chatMessages.emplace_back(
+            "Commands: /help | /clear | /kit | /give <id> <amount> | /tp <x> <y> <z> | /clearinventory | /suicide |"
         );
-        chatMessages.push_back(
-            "        | /setblock <x> <y> <z> <id> | /tree <x> <y> <z> | /explode <x> <y> <z> <radius> | /time <time>"
+        chatMessages.emplace_back(
+            "          /setblock <x> <y> <z> <id> | /tree <x> <y> <z> | /explode <x> <y> <z> <radius> | /time <time>"
         );
         return true;
     });
@@ -462,7 +441,7 @@ void gameUpdate(World& world) {
     updatedChunks = 0;
 
     // Move chunk pointer array and height map
-    world.recenter(Player::ccoord);
+    world.setCenter(Player::ccoord);
 
     for (auto const& [_, c]: world.chunks) {
         // 加载动画
@@ -578,10 +557,10 @@ void gameUpdate(World& world) {
             lzl = lz;
 
             // 线段延伸
-            lx += std::sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
+            lx += std::sin(Pi / 180 * (Player::heading - 180)) * std::sin(Pi / 180 * (Player::lookupdown + 90))
                 / SelectPrecision;
             ly += std::cos(Pi / 180 * (Player::lookupdown + 90)) / SelectPrecision;
-            lz += std::cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
+            lz += std::cos(Pi / 180 * (Player::heading - 180)) * std::sin(Pi / 180 * (Player::lookupdown + 90))
                 / SelectPrecision;
 
             // 碰到方块
@@ -693,8 +672,8 @@ void gameUpdate(World& world) {
             if (wPressTimer != 0.0 && Timer() - wPressTimer > 0.5)
                 wPressTimer = 0.0;
             wPressedOnce = true;
-            Player::xa += -sin(Player::heading * Pi / 180.0) * Player::speed;
-            Player::za += -cos(Player::heading * Pi / 180.0) * Player::speed;
+            Player::xa += -std::sin(Player::heading * Pi / 180.0) * Player::speed;
+            Player::za += -std::cos(Player::heading * Pi / 180.0) * Player::speed;
         } else {
             Player::Running = false;
             wPressedOnce = false;
@@ -705,25 +684,25 @@ void gameUpdate(World& world) {
             Player::speed = WalkSpeed;
 
         if (isKeyDown(GLFW_KEY_S)) {
-            Player::xa += sin(Player::heading * Pi / 180.0) * Player::speed;
-            Player::za += cos(Player::heading * Pi / 180.0) * Player::speed;
+            Player::xa += std::sin(Player::heading * Pi / 180.0) * Player::speed;
+            Player::za += std::cos(Player::heading * Pi / 180.0) * Player::speed;
             wPressTimer = 0.0;
         }
 
         if (isKeyDown(GLFW_KEY_A)) {
-            Player::xa += sin((Player::heading - 90) * Pi / 180.0) * Player::speed;
-            Player::za += cos((Player::heading - 90) * Pi / 180.0) * Player::speed;
+            Player::xa += std::sin((Player::heading - 90) * Pi / 180.0) * Player::speed;
+            Player::za += std::cos((Player::heading - 90) * Pi / 180.0) * Player::speed;
             wPressTimer = 0.0;
         }
 
         if (isKeyDown(GLFW_KEY_D)) {
-            Player::xa += -sin((Player::heading - 90) * Pi / 180.0) * Player::speed;
-            Player::za += -cos((Player::heading - 90) * Pi / 180.0) * Player::speed;
+            Player::xa += -std::sin((Player::heading - 90) * Pi / 180.0) * Player::speed;
+            Player::za += -std::cos((Player::heading - 90) * Pi / 180.0) * Player::speed;
             wPressTimer = 0.0;
         }
 
         if (!Player::Flying && !Player::CrossWall) {
-            double horizontalSpeed = sqrt(Player::xa * Player::xa + Player::za * Player::za);
+            double horizontalSpeed = std::sqrt(Player::xa * Player::xa + Player::za * Player::za);
             if (horizontalSpeed > Player::speed) {
                 Player::xa *= Player::speed / horizontalSpeed;
                 Player::za *= Player::speed / horizontalSpeed;
@@ -731,27 +710,27 @@ void gameUpdate(World& world) {
         } else {
             if (isKeyDown(GLFW_KEY_R)) {
                 if (isKeyDown(GLFW_KEY_LEFT_CONTROL)) {
-                    Player::xa = -sin(Player::heading * Pi / 180.0) * RunSpeed * 10;
-                    Player::za = -cos(Player::heading * Pi / 180.0) * RunSpeed * 10;
+                    Player::xa = -std::sin(Player::heading * Pi / 180.0) * RunSpeed * 10;
+                    Player::za = -std::cos(Player::heading * Pi / 180.0) * RunSpeed * 10;
                 } else {
-                    Player::xa = sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
-                               * RunSpeed * 20;
-                    Player::ya = cos(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
-                    Player::za = cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
-                               * RunSpeed * 20;
+                    Player::xa = std::sin(Pi / 180 * (Player::heading - 180))
+                               * std::sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+                    Player::ya = std::cos(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+                    Player::za = std::cos(Pi / 180 * (Player::heading - 180))
+                               * std::sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
                 }
             }
 
             if (isKeyDown(GLFW_KEY_F)) {
                 if (isKeyDown(GLFW_KEY_LEFT_CONTROL)) {
-                    Player::xa = sin(Player::heading * Pi / 180.0) * RunSpeed * 10;
-                    Player::za = cos(Player::heading * Pi / 180.0) * RunSpeed * 10;
+                    Player::xa = std::sin(Player::heading * Pi / 180.0) * RunSpeed * 10;
+                    Player::za = std::cos(Player::heading * Pi / 180.0) * RunSpeed * 10;
                 } else {
-                    Player::xa = -sin(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
-                               * RunSpeed * 20;
-                    Player::ya = -cos(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
-                    Player::za = -cos(Pi / 180 * (Player::heading - 180)) * sin(Pi / 180 * (Player::lookupdown + 90))
-                               * RunSpeed * 20;
+                    Player::xa = -std::sin(Pi / 180 * (Player::heading - 180))
+                               * std::sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+                    Player::ya = -std::cos(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+                    Player::za = -std::cos(Pi / 180 * (Player::heading - 180))
+                               * std::sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
                 }
             }
         }
@@ -1587,20 +1566,6 @@ void drawGUI(World& world) {
         debugText(ss.str());
         ss.str("");
 
-#ifdef NEWORLD_DEBUG_PERFORMANCE_REC
-        ss << c_getChunkPtrFromCPA << " chunk pointer array requests";
-        debugText(ss.str());
-        ss.str("");
-        ss << c_getChunkPtrFromSearch << " search requests";
-        debugText(ss.str());
-        ss.str("");
-        ss << c_getHeightFromHMap << " heightmap requests";
-        debugText(ss.str());
-        ss.str("");
-        ss << c_getHeightFromWorldGen << " worldgen requests";
-        debugText(ss.str());
-        ss.str("");
-#endif
     } else {
         std::stringstream ss;
         ss << "v" << GameVersion;

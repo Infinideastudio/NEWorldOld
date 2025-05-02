@@ -27,12 +27,12 @@ private:
     GUI::Button backbtn = GUI::Button("", -250, -10, -44, -20, 0.5, 0.5, 1.0, 1.0);
     GUI::Button savebtn = GUI::Button("", 10, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 
-    void onLoad() {
+    void onLoad() override {
         title.centered = true;
         registerControls({&title, &fovbar, &mmsbar, &viewdistbar, &rdstbtn, &uistbtn, &langbtn, &backbtn, &savebtn});
     }
 
-    void onUpdate() {
+    void onUpdate() override {
         title.text = GetStrbyKey("NEWorld.options.caption");
         fovbar.text = strWithVar(GetStrbyKey("NEWorld.options.fov"), FOVyNormal);
         mmsbar.text = strWithVar(GetStrbyKey("NEWorld.options.sensitivity"), MouseSpeed);

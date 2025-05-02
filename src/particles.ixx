@@ -18,12 +18,12 @@ export namespace Particles {
 constexpr int PARTICALE_MAX = 4096;
 
 struct Particle {
-    double xpos, ypos, zpos;
-    float xsp, ysp, zsp, psize;
-    int lasts;
-    BlockID bl;
-    TextureIndex tex;
-    float tcx, tcy;
+    double xpos = 0.0, ypos = 0.0, zpos = 0.0;
+    float xsp = 0.0f, ysp = 0.0f, zsp = 0.0f, psize = 0.0f;
+    int lasts = 0;
+    BlockID bl = BlockID::AIR;
+    TextureIndex tex = TextureIndex::NULLBLOCK;
+    float tcx = 0.0f, tcy = 0.0f;
     Hitbox::AABB hb;
 };
 

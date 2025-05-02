@@ -61,7 +61,7 @@ export bool backspace;
 
 export bool GameBegin, GameExit;
 export int GameTime = 0;
-export unsigned int gSeed;
+export uint32_t gSeed;
 
 export int loadedChunks;
 export int renderedChunks;
@@ -77,17 +77,17 @@ export auto getMouseButton() -> int {
     return mb;
 }
 
-export auto fastRand() -> int {
+export void fastSrand(uint32_t seed) {
+    gSeed = seed;
+}
+
+export auto fastRand() -> uint32_t {
     gSeed = (214013 * gSeed + 2531011);
     return (gSeed >> 16) & 0x7FFF;
 }
 
-export void fastSrand(int seed) {
-    gSeed = seed;
-}
-
 export auto rnd() -> double {
-    return static_cast<double>(fastRand()) / 32768.0;
+    return static_cast<double>(fastRand()) / 0x8000;
 }
 
 export auto split(std::string str, std::string pattern) -> std::vector<std::string> {

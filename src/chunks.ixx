@@ -30,26 +30,26 @@ export constexpr Brightness MaxBrightness = 15; // Maximum brightness
 export constexpr Brightness MinBrightness = 2;  // Minimum brightness
 
 export auto getChunkPos(Vec3i coord) -> Vec3i {
-    return Vec3i(coord.x >> 4, coord.y >> 4, coord.z >> 4);
+    return {coord.x >> 4, coord.y >> 4, coord.z >> 4};
 }
 
 export auto getBlockPos(Vec3i coord) -> Vec3i {
-    return Vec3i(coord.x & 15, coord.y & 15, coord.z & 15);
+    return {coord.x & 15, coord.y & 15, coord.z & 15};
 }
 
 export auto getChunkID(Vec3i coord) -> ChunkID {
     if (coord.y == -128)
         coord.y = 0;
     if (coord.y <= 0)
-        coord.y = std::abs(coord.y) + (1LL << 7);
+        coord.y = std::abs(coord.y) + (1 << 7);
     if (coord.x == -134217728)
         coord.x = 0;
     if (coord.x <= 0)
-        coord.x = std::abs(coord.x) + (1LL << 27);
+        coord.x = std::abs(coord.x) + (1 << 27);
     if (coord.z == -134217728)
         coord.z = 0;
     if (coord.z <= 0)
-        coord.z = std::abs(coord.z) + (1LL << 27);
+        coord.z = std::abs(coord.z) + (1 << 27);
     return (ChunkID(coord.y) << 56) + (ChunkID(coord.x) << 28) + coord.z;
 }
 
@@ -269,16 +269,10 @@ private:
     }
 
     void buildTerrain(HeightMap& heightMap) {
-        // Fast generate parts
-        // Part1 out of the terrain bound
-        if (ccoord.y < 0 || ccoord.y >= 16) {
-            isEmpty = true;
-            return;
-        }
-
-        // Part2 out of geometry area
         auto [heights, low, high] = getHeights(heightMap, ccoord.x, ccoord.z);
-        if (ccoord.y > high && ccoord.y * 16 > WaterLevel) {
+
+        // Skip generation
+        if (ccoord.y < 0 || (ccoord.y > high && ccoord.y * 16 > WaterLevel)) {
             isEmpty = true;
             return;
         }
@@ -292,10 +286,10 @@ private:
             return;
         }
 
+        // Normal generation
         std::ranges::fill(blocks, BlockID::AIR);
 
         int h = 0, sh = 0, wh = 0;
-        int minh, maxh, cur_br;
 
         isEmpty = true;
         sh = WaterLevel + 2 - (ccoord.y << 4);
@@ -312,18 +306,16 @@ private:
                     if (h >= 0 && h < 16)
                         blocks[(h << 4) + base] = BlockID::GRASS;
                     // Dirt layer
-                    maxh = std::min(std::max(0, h), 16);
-                    for (int y = std::min(std::max(0, h - 5), 16); y < maxh; ++y)
+                    for (int y = std::min(std::max(0, h - 5), 16); y < std::min(std::max(0, h), 16); ++y)
                         blocks[(y << 4) + base] = BlockID::DIRT;
                 } else {
                     // Sand layer
-                    maxh = std::min(std::max(0, h + 1), 16);
-                    for (int y = std::min(std::max(0, h - 5), 16); y < maxh; ++y)
+                    for (int y = std::min(std::max(0, h - 5), 16); y < std::min(std::max(0, h + 1), 16); ++y)
                         blocks[(y << 4) + base] = BlockID::SAND;
                     // Water layer
-                    minh = std::min(std::max(0, h + 1), 16);
-                    maxh = std::min(std::max(0, wh + 1), 16);
-                    cur_br = MaxBrightness - (WaterLevel - (maxh - 1 + (ccoord.y << 4))) * 2;
+                    int minh = std::min(std::max(0, h + 1), 16);
+                    int maxh = std::min(std::max(0, wh + 1), 16);
+                    int cur_br = MaxBrightness - (WaterLevel - (maxh - 1 + (ccoord.y << 4))) * 2;
                     if (cur_br < MinBrightness)
                         cur_br = MinBrightness;
                     for (int y = maxh - 1; y >= minh; --y) {
@@ -335,8 +327,7 @@ private:
                     }
                 }
                 // Rock layer
-                maxh = std::min(std::max(0, h - 5), 16);
-                for (int y = 0; y < maxh; ++y)
+                for (int y = 0; y < std::min(std::max(0, h - 5), 16); ++y)
                     blocks[(y << 4) + base] = BlockID::ROCK;
                 // Air layer
                 for (int y = std::min(std::max(0, std::max(h + 1, wh + 1)), 16); y < 16; ++y) {

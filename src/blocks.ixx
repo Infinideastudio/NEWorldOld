@@ -63,7 +63,7 @@ private:
     float hardness;
 };
 
-export constexpr auto blockData = std::array{
+constexpr auto blockData = std::array{
     // 方块名称 固体 不透明 半透明 硬度
     SingleBlock("air", false, false, false, 0.0f),      SingleBlock("rock", true, true, false, 2.0f),
     SingleBlock("grass", true, true, false, 0.3f),      SingleBlock("dirt", true, true, false, 0.3f),
@@ -79,5 +79,5 @@ export constexpr auto blockData = std::array{
 
 export constexpr auto BlockInfo(BlockID id) -> SingleBlock const& {
     auto i = static_cast<size_t>(id);
-    return blockData[i >= blockData.size() ? static_cast<size_t>(BlockID::NULLBLOCK) : i];
+    return i < blockData.size() ? blockData[i] : blockData.back();
 }

@@ -1,7 +1,6 @@
 module;
 
 #include <array>
-#include <cmath>
 #include <fstream>
 #include <sstream>
 #include <string>

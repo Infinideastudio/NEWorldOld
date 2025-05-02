@@ -8,4 +8,5 @@ Checks: <
   modernize-*,
   -cppcoreguidelines-macro-usage,
   -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-avoid-magic-numbers,
   -modernize-use-nodiscard

@@ -51,13 +51,13 @@ public:
         return res;
     }
 
-    Mat4& operator*=(const Mat4& rhs) {
+    auto operator*=(const Mat4& rhs) -> Mat4& {
         *this = *this * rhs;
         return *this;
     }
 
     // Get transposed matrix
-    Mat4 transpose() const {
+    auto transpose() const -> Mat4 {
         Mat4 res;
         res.data[0] = data[0], res.data[1] = data[4], res.data[2] = data[8], res.data[3] = data[12];
         res.data[4] = data[1], res.data[5] = data[5], res.data[6] = data[9], res.data[7] = data[13];
@@ -94,7 +94,7 @@ public:
     }
 
     // Get inverse matrix
-    Mat4 inverse() const {
+    auto inverse() const -> Mat4 {
         Mat4 res = Mat4(T(1));
         for (int i = 0; i < 4; i++) {
             int p = i;
@@ -120,7 +120,7 @@ public:
     }
 
     // Construct a translation matrix
-    static Mat4 translate(Vec3<T> const& delta) {
+    static auto translate(Vec3<T> const& delta) -> Mat4 {
         Mat4 res = Mat4(T(1));
         res.data[3] = delta.x;
         res.data[7] = delta.y;
@@ -129,7 +129,7 @@ public:
     }
 
     // Construct a rotation matrix
-    static Mat4 rotate(T alpha, Vec3<T> const& vec) {
+    static auto rotate(T alpha, Vec3<T> const& vec) -> Mat4 {
         Mat4 res;
         vec.normalize();
         T s = std::sin(alpha), c = std::cos(alpha), t = T(1) - c;
@@ -147,7 +147,7 @@ public:
     }
 
     // Construct a perspective projection matrix
-    static Mat4 perspective(T fov, T aspect, T near, T far) {
+    static auto perspective(T fov, T aspect, T near, T far) -> Mat4 {
         Mat4 res;
         T f = T(1) / std::tan(fov / T(2));
         T a = near - far;
@@ -160,7 +160,7 @@ public:
     }
 
     // Construct an orthogonal projection matrix
-    static Mat4 ortho(T left, T right, T bottom, T top, T near, T far) {
+    static auto ortho(T left, T right, T bottom, T top, T near, T far) -> Mat4 {
         T a = right - left;
         T b = top - bottom;
         T c = far - near;
@@ -176,7 +176,7 @@ public:
     }
 
     // Multiply with Vec3 (with homogeneous coords divided)
-    Vec3<T> transform(Vec3<T> const& vec) const {
+    auto transform(Vec3<T> const& vec) const -> Vec3<T> {
         Vec3<T> res(
             data[0] * vec.x + data[1] * vec.y + data[2] * vec.z + data[3],
             data[4] * vec.x + data[5] * vec.y + data[6] * vec.z + data[7],
