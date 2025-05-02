@@ -21,6 +21,10 @@ NEWorld is an open-source game with similar game rules to Minecraft.
 
 The compiler is currently set to use C++20. By default, all built-from-source dependencies are statically linked.
 
+## Current plans
+
+* @bridgekat: rendering optimizations (screen-space refractions, GPU buffer allocation and multi-draw), code modernization (from C-with-classes style to Rust-with-shared-mutability style).
+
 ## Adding dependencies
 
 ### CMake configuration
