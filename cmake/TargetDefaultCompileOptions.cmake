@@ -19,7 +19,7 @@ check_ipo_supported(RESULT IPO_SUPPORTED)
 # Sets default compile options for target.
 # Currently supports g++/clang/cl.
 function (target_default_compile_options TARGET)
-    target_compile_features(${TARGET} PRIVATE cxx_std_20)
+    target_compile_features(${TARGET} PRIVATE cxx_std_23)
     set_target_properties(${TARGET} PROPERTIES CXX_EXTENSIONS OFF)
 
     # Basic options.
