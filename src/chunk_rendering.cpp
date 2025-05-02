@@ -32,17 +32,11 @@ struct QuadPrimitive {
 
 class ChunkRenderData {
 public:
-    std::array<BlockID, 18 * 18 * 18> blocks;
-    std::array<Brightness, 18 * 18 * 18> brightness;
+    std::array<BlockID, 18 * 18 * 18> blocks = {};
+    std::array<Brightness, 18 * 18 * 18> brightness = {};
 
-    ChunkRenderData(std::array<Chunk const*, 27> const& neighbors) {
-        auto ccoord = neighbors[1 * 3 * 3 + 1 * 3 + 1]->coord();
-        Chunk const* cptr[3][3][3] = {};
-
-        for (int x = -1; x <= 1; x++)
-            for (int y = -1; y <= 1; y++)
-                for (int z = -1; z <= 1; z++)
-                    cptr[x + 1][y + 1][z + 1] = neighbors[((x + 1) * 3 + (y + 1)) * 3 + (z + 1)];
+    explicit ChunkRenderData(std::array<Chunk const*, 3 * 3 * 3> const& neighbors) {
+        auto ccoord = neighbors[(1 * 3 + 1) * 3 + 1]->coord();
 
         int index = 0;
         for (int x = -1; x < 17; x++) {
@@ -66,7 +60,7 @@ public:
                     else if (z >= 16)
                         rcz++, bz -= 16;
 
-                    auto p = cptr[rcx + 1][rcy + 1][rcz + 1];
+                    auto p = neighbors[((rcx + 1) * 3 + rcy + 1) * 3 + rcz + 1];
                     if (p == nullptr) {
                         blocks[index] = BlockID::ROCK;
                         brightness[index] = SkyBrightness;
@@ -83,18 +77,18 @@ public:
         }
     }
 
-    BlockID getBlock(int x, int y, int z) const {
-        return blocks[(x + 1) * 18 * 18 + (y + 1) * 18 + (z + 1)];
+    auto getBlock(int x, int y, int z) const -> BlockID {
+        return blocks[((x + 1) * 18 + y + 1) * 18 + z + 1];
     }
 
-    Brightness getBrightness(int x, int y, int z) const {
-        return brightness[(x + 1) * 18 * 18 + (y + 1) * 18 + (z + 1)];
+    auto getBrightness(int x, int y, int z) const -> Brightness {
+        return brightness[((x + 1) * 18 + y + 1) * 18 + z + 1];
     }
 };
 
 void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
-    BlockID bl = rd.getBlock(x, y, z);
-    BlockID neighbors[6] = {
+    auto bl = rd.getBlock(x, y, z);
+    auto neighbors = std::array{
         rd.getBlock(x + 1, y, z),
         rd.getBlock(x - 1, y, z),
         rd.getBlock(x, y + 1, z),
@@ -102,8 +96,8 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
         rd.getBlock(x, y, z + 1),
         rd.getBlock(x, y, z - 1),
     };
-    TextureIndex tex;
-    float col1, col2, col3, col4;
+    auto tex = TextureIndex::NULLBLOCK;
+    auto col1 = 0.0f, col2 = 0.0f, col3 = 0.0f, col4 = 0.0f;
 
     // Right face
     if (!(bl == BlockID::AIR || bl == neighbors[0] && bl != BlockID::LEAF || BlockInfo(neighbors[0]).isOpaque())) {
@@ -470,7 +464,7 @@ void RenderPrimitive(QuadPrimitive const& p) {
     }
 }
 
-std::vector<Renderer::VertexBuffer> RenderChunk(std::array<Chunk const*, 27> neighbors) {
+auto RenderChunk(std::array<Chunk const*, 3 * 3 * 3> neighbors) -> std::vector<Renderer::VertexBuffer> {
     auto res = std::vector<Renderer::VertexBuffer>();
     auto rd = ChunkRenderData(neighbors);
     for (size_t steps = 0; steps < 2; steps++) {
@@ -491,7 +485,7 @@ std::vector<Renderer::VertexBuffer> RenderChunk(std::array<Chunk const*, 27> nei
     return res;
 }
 
-std::vector<Renderer::VertexBuffer> MergeFaceRenderChunk(std::array<Chunk const*, 27> neighbors) {
+auto MergeFaceRenderChunk(std::array<Chunk const*, 3 * 3 * 3> neighbors) -> std::vector<Renderer::VertexBuffer> {
     auto res = std::vector<Renderer::VertexBuffer>();
     auto rd = ChunkRenderData(neighbors);
     for (size_t steps = 0; steps < 2; steps++) {
@@ -694,13 +688,13 @@ std::vector<Renderer::VertexBuffer> MergeFaceRenderChunk(std::array<Chunk const*
     return res;
 }
 
-void Chunk::buildMeshes(std::array<Chunk const*, 27> const& neighbors) {
+void Chunk::buildMeshes(std::array<Chunk const*, 3 * 3 * 3> const& neighbors) {
     // Build new VBOs
     meshes = MergeFace ? MergeFaceRenderChunk(neighbors) : RenderChunk(neighbors);
 
     // Update flags
     if (!isMeshed)
-        loadAnim = ccoord.y * 16.0f + 16.0f;
+        loadAnim = static_cast<float>(ccoord.y) * 16.0f + 16.0f;
     isMeshed = true;
     isUpdated = false;
 

@@ -2,8 +2,8 @@ module;
 
 #include <fstream>
 #include <memory>
-#include <string>
 #include <sstream>
+#include <string>
 
 module menus;
 import gui;
@@ -23,7 +23,7 @@ private:
     GUI::Label title = GUI::Label("", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
     GUI::Button backbtn = GUI::Button("", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 
-    void onLoad() {
+    void onLoad() override {
         title.centered = true;
         registerControls({&title, &backbtn});
 
@@ -47,7 +47,7 @@ private:
         }
     }
 
-    void onUpdate() {
+    void onUpdate() override {
         title.text = GetStrbyKey("NEWorld.language.caption");
         backbtn.text = GetStrbyKey("NEWorld.language.back");
 

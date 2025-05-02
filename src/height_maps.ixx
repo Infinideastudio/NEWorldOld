@@ -1,5 +1,6 @@
 module;
 
+#include <algorithm>
 #include <memory>
 
 export module height_maps;
@@ -38,7 +39,8 @@ public:
     }
 
     void moveTo(Vec3i coord) {
-        move(coord - origin);
+        if (coord != origin)
+            move(coord - origin);
     }
 
     auto elementExists(Vec3i v) -> bool {

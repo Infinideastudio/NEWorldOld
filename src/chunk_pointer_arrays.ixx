@@ -1,5 +1,6 @@
 module;
 
+#include <algorithm>
 #include <memory>
 
 export module chunk_pointer_arrays;
@@ -29,9 +30,9 @@ public:
                 for (int z = 0; z < size; z++) {
                     auto v = Vec3i(x, y, z) + offset;
                     if (elementExists(v))
-                        arrTemp[x * size * size + y * size + z] = array[v.x * size * size + v.y * size + v.z];
+                        arrTemp[(x * size + y) * size + z] = array[(v.x * size + v.y) * size + v.z];
                     else
-                        arrTemp[x * size * size + y * size + z] = nullptr;
+                        arrTemp[(x * size + y) * size + z] = nullptr;
                 }
             }
         }
@@ -40,7 +41,8 @@ public:
     }
 
     void moveTo(Vec3i coord) {
-        move(coord - origin);
+        if (coord != origin)
+            move(coord - origin);
     }
 
     auto elementExists(Vec3i v) -> bool {
@@ -50,14 +52,14 @@ public:
     auto getChunkPtr(Vec3i coord) -> Chunk* {
         auto v = coord - origin;
         if (elementExists(v))
-            return array[v.x * size * size + v.y * size + v.z];
+            return array[(v.x * size + v.y) * size + v.z];
         return nullptr;
     }
 
     void setChunkPtr(Vec3i coord, Chunk* c) {
         auto v = coord - origin;
         if (elementExists(v))
-            array[v.x * size * size + v.y * size + v.z] = c;
+            array[(v.x * size + v.y) * size + v.z] = c;
     }
 
 private:

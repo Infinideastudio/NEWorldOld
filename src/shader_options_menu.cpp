@@ -1,8 +1,8 @@
 module;
 
 #include <cmath>
-#include <string>
 #include <sstream>
+#include <string>
 
 module menus;
 import gui;
@@ -25,14 +25,14 @@ private:
     GUI::Button ssaobtn = GUI::Button("", 10, 250, 132, 156, 0.5, 0.5, 0.0, 0.0);
     GUI::Button backbtn = GUI::Button("", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 
-    void onLoad() {
+    void onLoad() override {
         title.centered = true;
         registerControls(
             {&title, &enablebtn, &shadowresbar, &shadowdistbar, &softshadowbtn, &cloudsbtn, &ssaobtn, &backbtn}
         );
     }
 
-    void onUpdate() {
+    void onUpdate() override {
         title.text = GetStrbyKey("NEWorld.shaders.caption");
         enablebtn.text = GetStrbyKey("NEWorld.shaders.enable") + BoolYesNo(AdvancedRender);
         shadowresbar.text = GetStrbyKey("NEWorld.shaders.shadowres") + Var2Str(ShadowRes) + "x";

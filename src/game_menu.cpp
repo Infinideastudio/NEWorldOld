@@ -14,12 +14,12 @@ private:
     GUI::Button resumebtn = GUI::Button("", -200, 200, -36, -3, 0.5, 0.5, 0.5, 0.5);
     GUI::Button exitbtn = GUI::Button("", -200, 200, 3, 36, 0.5, 0.5, 0.5, 0.5);
 
-    void onLoad() {
+    void onLoad() override {
         title.centered = true;
         registerControls({&title, &resumebtn, &exitbtn});
     }
 
-    void onUpdate() {
+    void onUpdate() override {
         title.text = GetStrbyKey("NEWorld.pause.caption");
         resumebtn.text = GetStrbyKey("NEWorld.pause.continue");
         exitbtn.text = GetStrbyKey("NEWorld.pause.back");

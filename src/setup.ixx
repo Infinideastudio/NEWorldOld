@@ -186,21 +186,21 @@ export void toggleFullScreen() {
 }
 
 export void loadTextures() {
-    SelectedTexture = Textures::LoadRGBTexture("textures/ui/select.bmp");
-    UnselectedTexture = Textures::LoadRGBTexture("textures/ui/unselect.bmp");
-    TitleTexture = Textures::LoadRGBATexture("textures/ui/title.bmp", "textures/ui/title_mask.bmp", true);
+    SelectedTexture = Textures::loadRGBTexture("textures/ui/select.bmp", false);
+    UnselectedTexture = Textures::loadRGBTexture("textures/ui/unselect.bmp", false);
+    TitleTexture = Textures::loadRGBATexture("textures/ui/title.bmp", "textures/ui/title_mask.bmp", true);
     for (int i = 0; i < 6; i++) {
         std::stringstream ss;
         ss << "textures/ui/background_" << i << ".bmp";
-        UIBackgroundTextures[i] = Textures::LoadRGBTexture(ss.str(), true);
+        UIBackgroundTextures[i] = Textures::loadRGBTexture(ss.str(), true);
     }
     BlockTextureArray =
-        Textures::LoadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
+        Textures::loadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
 }
 
 export void splashScreen() {
     if (SplashTexture == 0) {
-        SplashTexture = Textures::LoadRGBTexture("textures/ui/splash.bmp", true);
+        SplashTexture = Textures::loadRGBTexture("textures/ui/splash.bmp", true);
     }
 
     for (int i = 0; i < 256; i += 2) {

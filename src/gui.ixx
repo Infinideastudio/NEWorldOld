@@ -2,6 +2,7 @@ module;
 
 #include <cmath>
 #include <string>
+#include <utility>
 #include <vector>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -58,14 +59,14 @@ public:
     bool focused = false;
     bool centered = false;
 
-    Label() {};
+    Label() = default;
     Label(std::string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b):
-        text(t) {
+        text(std::move(t)) {
         resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
     }
 
-    void update();
-    void render();
+    void update() override;
+    void render() override;
 };
 
 class Button: public Control {
@@ -77,15 +78,15 @@ public:
     bool clicked = false;
     bool enabled = false;
 
-    Button() {};
+    Button() = default;
     Button(std::string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b):
-        text(t),
+        text(std::move(t)),
         enabled(true) {
         resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
     }
 
-    void update();
-    void render();
+    void update() override;
+    void render() override;
 };
 
 class Trackbar: public Control {
@@ -99,7 +100,7 @@ public:
     bool pressed = false;
     bool enabled = false;
 
-    Trackbar() {};
+    Trackbar() = default;
     Trackbar(
         std::string t,
         int w,
@@ -113,15 +114,15 @@ public:
         double yi_b,
         double ya_b
     ):
-        text(t),
+        text(std::move(t)),
         enabled(true),
         barwidth(w),
         barpos(s) {
         resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
     }
 
-    void update();
-    void render();
+    void update() override;
+    void render() override;
 };
 
 class TextBox: public Control {
@@ -134,15 +135,15 @@ public:
     bool enabled = false;
     bool activated = false;
 
-    TextBox() {};
+    TextBox() = default;
     TextBox(std::string t, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b):
-        text(t),
+        text(std::move(t)),
         enabled(true) {
         resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
     }
 
-    void update();
-    void render();
+    void update() override;
+    void render() override;
 };
 
 class VScroll: public Control {
@@ -155,7 +156,7 @@ public:
     bool enabled = false;
     bool defaultv = false, msup = false, msdown = false, psup = false, psdown = false;
 
-    VScroll() {};
+    VScroll() = default;
     VScroll(int h, int s, int xi_r, int xa_r, int yi_r, int ya_r, double xi_b, double xa_b, double yi_b, double ya_b):
         barheight(h),
         barpos(s),
@@ -163,8 +164,8 @@ public:
         resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
     }
 
-    void update();
-    void render();
+    void update() override;
+    void render() override;
 };
 
 class ImageBox: public Control {
@@ -175,7 +176,7 @@ public:
     float tymin = 0.0f;
     float tymax = 1.0f;
 
-    ImageBox() {};
+    ImageBox() = default;
     ImageBox(
         float txmin,
         float txmax,
@@ -199,8 +200,8 @@ public:
         resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
     }
 
-    void update();
-    void render();
+    void update() override;
+    void render() override;
 };
 
 class Form {
@@ -223,7 +224,7 @@ public:
     void registerControls(std::initializer_list<Control*> cs);
     void update();
     void render();
-    Control* getControlByID(int cid);
+    auto getControlByID(int cid) -> Control*;
 
     virtual void onLoad() {}
     virtual void onUpdate() {}
@@ -232,7 +233,7 @@ public:
     virtual void onLeave() {}
 
     void start();
-    void singleloop();
+    void singleLoop();
 };
 
 void clearTransition() {
@@ -1110,7 +1111,7 @@ void Form::render() {
     lastdisplaylist = displaylist;
 }
 
-Control* Form::getControlByID(int cid) {
+auto Form::getControlByID(int cid) -> Control* {
     for (size_t i = 0; i != children.size(); i++) {
         if (children[i]->id == cid)
             return children[i];
@@ -1134,7 +1135,7 @@ Form::~Form() {
     transitionTimer = Timer();
 }
 
-void Form::singleloop() {
+void Form::singleLoop() {
     glfwSwapBuffers(MainWindow);
     render();
     glfwPollEvents();
@@ -1167,9 +1168,8 @@ void Form::start() {
     glfwSetCursor(MainWindow, Cursor);
     TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
     onLoad();
-    do {
-        singleloop();
-    } while (!exit);
+    while (!exit)
+        singleLoop();
     onLeave();
     glfwDestroyCursor(Cursor);
 }

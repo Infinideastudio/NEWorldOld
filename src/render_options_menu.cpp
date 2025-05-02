@@ -1,8 +1,8 @@
 module;
 
 #include <cmath>
-#include <string>
 #include <sstream>
+#include <string>
 
 module menus;
 import gui;
@@ -35,14 +35,14 @@ private:
     GUI::Button shaderbtn = GUI::Button("", 10, 250, 132, 156, 0.5, 0.5, 0.0, 0.0);
     GUI::Button backbtn = GUI::Button("", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 
-    void onLoad() {
+    void onLoad() override {
         title.centered = true;
         registerControls(
             {&title, &smoothlightingbtn, &fancygrassbtn, &mergefacebtn, &msaabar, &vsyncbtn, &shaderbtn, &backbtn}
         );
     }
 
-    void onUpdate() {
+    void onUpdate() override {
         title.text = GetStrbyKey("NEWorld.render.caption");
         smoothlightingbtn.text = GetStrbyKey("NEWorld.render.smooth") + BoolEnabled(SmoothLighting);
         fancygrassbtn.text = GetStrbyKey("NEWorld.render.grasstex") + BoolYesNo(NiceGrass);

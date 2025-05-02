@@ -1,7 +1,7 @@
 module;
 
-#include <sstream>
 #include <filesystem>
+#include <sstream>
 #include <glad/gl.h>
 
 module menus;
@@ -21,7 +21,7 @@ private:
     int rightp = 0;
     int downp = 0;
     bool refresh = true;
-    int selected = 0, mouseon;
+    int selected = 0, mouseon = false;
     std::string chosenWorldName;
     std::vector<std::string> worldnames;
     std::vector<TextureID> thumbnails;
@@ -32,11 +32,11 @@ private:
     GUI::Button enterbtn = GUI::Button("", -250, -10, -80, -56, 0.5, 0.5, 1.0, 1.0);
     GUI::Button deletebtn = GUI::Button("", 10, 250, -80, -56, 0.5, 0.5, 1.0, 1.0);
     GUI::Button backbtn = GUI::Button("", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
-    const int top = 48;
-    const int itemHeight = 70;
-    const int borderWidth = 5;
+    static constexpr int top = 48;
+    static constexpr int itemHeight = 70;
+    static constexpr int borderWidth = 5;
 
-    void onLoad() {
+    void onLoad() override {
         title.centered = true;
         vscroll.defaultv = true;
         enterbtn.enabled = false;
@@ -45,7 +45,7 @@ private:
         Cur_WorldName = "";
     }
 
-    void onUpdate() {
+    void onUpdate() override {
         title.text = GetStrbyKey("NEWorld.worlds.caption");
         enterbtn.text = GetStrbyKey("NEWorld.worlds.enter");
         deletebtn.text = GetStrbyKey("NEWorld.worlds.delete");
@@ -114,7 +114,7 @@ private:
                     texSizeY.push_back(0);
                     if (std::filesystem::exists(entry.path() / "thumbnail.bmp")) {
                         GLint width = 0, height = 0;
-                        thumbnails.back() = Textures::LoadRGBTexture(entry.path() / "thumbnail.bmp", true);
+                        thumbnails.back() = Textures::loadRGBTexture(entry.path() / "thumbnail.bmp", true);
                         glBindTexture(GL_TEXTURE_2D, thumbnails.back());
                         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
                         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
@@ -135,14 +135,14 @@ private:
             exit = true;
     }
 
-    void onRender() {
+    void onRender() override {
         int scissorTop = static_cast<int>(top * Stretch);
         int scissorBottom = static_cast<int>((downp - 72) * Stretch);
         glEnable(GL_SCISSOR_TEST);
         glScissor(0, WindowHeight - scissorBottom, WindowWidth, std::max(0, scissorBottom - scissorTop));
         glTranslatef(0.0f, (float) -trs, 0.0f);
         for (int i = 0; i < (int) thumbnails.size(); i++) {
-            int xmin, xmax, ymin, ymax;
+            int xmin = 0, xmax = 0, ymin = 0, ymax = 0;
             xmin = midp - 250, xmax = midp + 250;
             ymin = top + i * itemHeight, ymax = top + (i + 1) * itemHeight;
             if (selected == (int) i) {
@@ -170,8 +170,8 @@ private:
                 glEnd();
                 glEnable(GL_TEXTURE_2D);
             } else {
-                bool marginOnSides;
-                float w, h;
+                bool marginOnSides = false;
+                float w = 0.0f, h = 0.0f;
                 if (texSizeX[i] * 60 / 500 < texSizeY[i]) {
                     marginOnSides = true;
                     w = 1.0f, h = texSizeX[i] * 60 / 500.0f / texSizeY[i];

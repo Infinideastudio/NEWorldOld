@@ -17,13 +17,13 @@ private:
     GUI::Button okbtn = GUI::Button("", -250, 250, 84, 120, 0.5, 0.5, 0.0, 0.0);
     GUI::Button backbtn = GUI::Button("", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 
-    void onLoad() {
+    void onLoad() override {
         title.centered = true;
         okbtn.enabled = false;
         registerControls({&title, &worldnametb, &okbtn, &backbtn});
     }
 
-    void onUpdate() {
+    void onUpdate() override {
         title.text = GetStrbyKey("NEWorld.create.caption");
         worldnametb.text = GetStrbyKey("NEWorld.create.inputname");
         okbtn.text = GetStrbyKey("NEWorld.create.ok");

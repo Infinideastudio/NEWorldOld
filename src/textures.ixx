@@ -1,9 +1,11 @@
 module;
 
 #include <array>
+#include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <utility>
 #include <glad/gl.h>
 
 export module textures;
@@ -15,7 +17,7 @@ export using TextureID = GLuint;
 
 export TextureID SplashTexture;
 export TextureID TitleTexture;
-export TextureID UIBackgroundTextures[6];
+export std::array<TextureID, 6> UIBackgroundTextures;
 export TextureID SelectedTexture;
 export TextureID UnselectedTexture;
 export TextureID BlockTextureArray;
@@ -81,25 +83,13 @@ struct BitmapInfoHeader {
 
 struct BitmapFileHeader {
     uint16_t bfType = BITMAP_ID;
-    uint32_t bfSize = 0;
+    uint32_t bfSize = sizeof(BitmapFileHeader) + sizeof(BitmapInfoHeader);
     uint16_t bfReserved1 = 0, bfReserved2 = 0;
     uint32_t bfOffBits = sizeof(BitmapFileHeader) + sizeof(BitmapInfoHeader);
 };
 #pragma pack(pop)
 
-export auto getTextureIndex(BlockID blockname, size_t face) -> TextureIndex;
-export void LoadRGBImage(ImageRGB& tex, std::filesystem::path const& path);
-export void LoadRGBAImage(ImageRGBA& tex, std::filesystem::path const& path, std::filesystem::path const& maskPath);
-
-export auto LoadRGBTexture(std::filesystem::path const& path, bool bilinear = false) -> TextureID;
-export auto
-LoadRGBATexture(std::filesystem::path const& path, std::filesystem::path const& maskPath, bool bilinear = false)
-    -> TextureID;
-export auto LoadBlockTextureArray(std::filesystem::path const& path, std::filesystem::path const& maskPath)
-    -> TextureID;
-export void SaveRGBImage(std::filesystem::path const& path, ImageRGB const& image);
-
-constexpr auto Indices = std::array{
+constexpr auto indices = std::array{
     std::array{    TextureIndex::WHITE,      TextureIndex::WHITE,     TextureIndex::WHITE},
     std::array{     TextureIndex::ROCK,       TextureIndex::ROCK,      TextureIndex::ROCK},
     std::array{TextureIndex::GRASS_TOP, TextureIndex::GRASS_SIDE,      TextureIndex::DIRT},
@@ -122,104 +112,82 @@ constexpr auto Indices = std::array{
     std::array{TextureIndex::NULLBLOCK,  TextureIndex::NULLBLOCK, TextureIndex::NULLBLOCK},
 };
 
-TextureIndex getTextureIndex(BlockID blockname, size_t face) {
+export auto getTextureIndex(BlockID blockname, size_t face) -> TextureIndex {
     auto i = static_cast<size_t>(blockname);
     auto j = static_cast<size_t>(face);
-    return i < Indices.size() && j < Indices[i].size() ? Indices[i][j] : TextureIndex::NULLBLOCK;
+    return i < indices.size() && j < indices[i].size() ? indices[i][j] : TextureIndex::NULLBLOCK;
 }
 
-void LoadRGBImage(ImageRGB& tex, std::filesystem::path const& path) {
-    unsigned int ind = 0;
-    ImageRGB& bitmap = tex; // 返回位图
-    bitmap.buffer = nullptr;
-    bitmap.sizeX = bitmap.sizeY = 0;
-    std::ifstream bmpfile(path, std::ios::binary | std::ios::in); // 位图文件（二进制）
-    if (!bmpfile.is_open()) {
-        std::stringstream ss;
-        ss << "Cannot load bitmap " << path;
-        DebugWarning(ss.str());
-        return;
-    }
-    BitmapFileHeader bfh; // 各种关于文件的参数
-    BitmapInfoHeader bih; // 各种关于位图的参数
+export auto loadRGBImage(std::filesystem::path const& path) -> ImageRGB {
+    auto res = ImageRGB();
+    auto bmp = std::ifstream(path, std::ios::binary | std::ios::in); // 位图文件（二进制）
+    if (!bmp.is_open())
+        assert(false);
+
     // 开始读取
-    bmpfile.read((char*) &bfh, sizeof(BitmapFileHeader));
-    bmpfile.read((char*) &bih, sizeof(BitmapInfoHeader));
-    bitmap.sizeX = bih.biWidth;
-    bitmap.sizeY = bih.biHeight;
-    bitmap.buffer = std::make_unique<uint8_t[]>(bitmap.sizeX * bitmap.sizeY * 3);
-    bmpfile.read((char*) bitmap.buffer.get(), bitmap.sizeX * bitmap.sizeY * 3);
-    bmpfile.close();
-    for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
-        unsigned char t = bitmap.buffer[ind];
-        bitmap.buffer[ind] = bitmap.buffer[ind + 2];
-        bitmap.buffer[ind + 2] = t;
-        ind += 3;
-    }
+    auto bfh = BitmapFileHeader(); // 各种关于文件的参数
+    auto bih = BitmapInfoHeader(); // 各种关于位图的参数
+    bmp.read(reinterpret_cast<char*>(&bfh), sizeof(bfh));
+    bmp.read(reinterpret_cast<char*>(&bih), sizeof(bih));
+    res.sizeX = bih.biWidth;
+    res.sizeY = bih.biHeight;
+    res.buffer = std::make_unique<uint8_t[]>(res.sizeX * res.sizeY * 3);
+    bmp.read(reinterpret_cast<char*>(res.buffer.get()), res.sizeX * res.sizeY * 3);
+
+    // 转换BGR到RGB
+    for (unsigned int i = 0; i < res.sizeX * res.sizeY; i++)
+        std::swap(res.buffer[i * 3 + 0], res.buffer[i * 3 + 2]);
+
+    return res;
 }
 
-void LoadRGBAImage(ImageRGBA& tex, std::filesystem::path const& path, std::filesystem::path const& maskPath) {
-    unsigned int ind = 0;
-    bool noMaskFile = (maskPath == "");
-    ImageRGBA& bitmap = tex;
-    bitmap.buffer = nullptr;
-    bitmap.sizeX = bitmap.sizeY = 0;
-    std::ifstream bmpfile(path, std::ios::binary | std::ios::in);
-    std::ifstream maskfile;
-    if (!noMaskFile)
-        maskfile.open(maskPath, std::ios::binary | std::ios::in);
-    if (!bmpfile.is_open()) {
-        std::stringstream ss;
-        ss << "Cannot load bitmap " << path;
-        DebugWarning(ss.str());
-        return;
-    }
-    if (!noMaskFile && !maskfile.is_open()) {
-        std::stringstream ss;
-        ss << "Cannot load bitmap " << maskPath;
-        DebugWarning(ss.str());
-        return;
-    }
-    BitmapFileHeader bfh;
-    BitmapInfoHeader bih;
-    if (!noMaskFile) {
-        maskfile.read((char*) &bfh, sizeof(BitmapFileHeader));
-        maskfile.read((char*) &bih, sizeof(BitmapInfoHeader));
-    }
-    bmpfile.read((char*) &bfh, sizeof(BitmapFileHeader));
-    bmpfile.read((char*) &bih, sizeof(BitmapInfoHeader));
+export auto loadRGBAImage(std::filesystem::path const& path, std::filesystem::path const& maskPath) -> ImageRGBA {
+    auto res = ImageRGBA();
+    auto bmp = std::ifstream(path, std::ios::binary | std::ios::in);
+    if (!bmp.is_open())
+        assert(false);
 
-    bitmap.sizeX = bih.biWidth;
-    bitmap.sizeY = bih.biHeight;
-    bitmap.buffer = std::make_unique<uint8_t[]>(bitmap.sizeX * bitmap.sizeY * 4);
+    auto bfh = BitmapFileHeader();
+    auto bih = BitmapInfoHeader();
+    bmp.read(reinterpret_cast<char*>(&bfh), sizeof(bfh));
+    bmp.read(reinterpret_cast<char*>(&bih), sizeof(bih));
+    res.sizeX = bih.biWidth;
+    res.sizeY = bih.biHeight;
+    auto rgb = std::make_unique<uint8_t[]>(res.sizeX * res.sizeY * 3);
+    bmp.read(reinterpret_cast<char*>(rgb.get()), res.sizeX * res.sizeY * 3);
 
-    auto rgb = std::make_unique<uint8_t[]>(bitmap.sizeX * bitmap.sizeY * 3);
-    auto alpha = std::make_unique<uint8_t[]>(bitmap.sizeX * bitmap.sizeY * 3);
+    res.buffer = std::make_unique<uint8_t[]>(res.sizeX * res.sizeY * 4);
+    for (unsigned int i = 0; i < res.sizeX * res.sizeY; i++) {
+        res.buffer[i * 4 + 0] = rgb[i * 3 + 2];
+        res.buffer[i * 4 + 1] = rgb[i * 3 + 1];
+        res.buffer[i * 4 + 2] = rgb[i * 3 + 0];
+        res.buffer[i * 4 + 3] = 255;
+    }
 
-    bmpfile.read((char*) rgb.get(), bitmap.sizeX * bitmap.sizeY * 3);
-    bmpfile.close();
-    if (!noMaskFile) {
-        maskfile.read((char*) alpha.get(), bitmap.sizeX * bitmap.sizeY * 3);
-        maskfile.close();
+    if (!maskPath.empty()) {
+        auto mask = std::ifstream(maskPath, std::ios::binary | std::ios::in);
+        if (!mask.is_open())
+            assert(false);
+
+        auto mbfh = BitmapFileHeader();
+        auto mbih = BitmapInfoHeader();
+        mask.read(reinterpret_cast<char*>(&mbfh), sizeof(mbfh));
+        mask.read(reinterpret_cast<char*>(&mbih), sizeof(mbih));
+        auto alpha = std::make_unique<uint8_t[]>(res.sizeX * res.sizeY * 3);
+        mask.read(reinterpret_cast<char*>(alpha.get()), res.sizeX * res.sizeY * 3);
+
+        for (unsigned int i = 0; i < res.sizeX * res.sizeY; i++)
+            res.buffer[i * 4 + 3] -= alpha[i * 3 + 0];
     }
-    for (unsigned int i = 0; i < bitmap.sizeX * bitmap.sizeY; i++) {
-        bitmap.buffer[ind] = rgb[i * 3 + 2];
-        bitmap.buffer[ind + 1] = rgb[i * 3 + 1];
-        bitmap.buffer[ind + 2] = rgb[i * 3];
-        if (noMaskFile)
-            bitmap.buffer[ind + 3] = 255;
-        else
-            bitmap.buffer[ind + 3] = 255 - alpha[i * 3];
-        ind += 4;
-    }
+
+    return res;
 }
 
-TextureID LoadRGBTexture(std::filesystem::path const& path, bool bilinear) {
-    ImageRGB image;
-    TextureID ret;
-    LoadRGBImage(image, path);
-    glGenTextures(1, &ret);
-    glBindTexture(GL_TEXTURE_2D, ret);
+export auto loadRGBTexture(std::filesystem::path const& path, bool bilinear) -> TextureID {
+    auto res = TextureID();
+    auto image = loadRGBImage(path);
+    glGenTextures(1, &res);
+    glBindTexture(GL_TEXTURE_2D, res);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, bilinear ? GL_LINEAR : GL_NEAREST);
     glTexParameteri(
         GL_TEXTURE_2D,
@@ -228,17 +196,27 @@ TextureID LoadRGBTexture(std::filesystem::path const& path, bool bilinear) {
     );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.sizeX, image.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, image.buffer.get());
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGB8,
+        static_cast<GLsizei>(image.sizeX),
+        static_cast<GLsizei>(image.sizeY),
+        0,
+        GL_RGB,
+        GL_UNSIGNED_BYTE,
+        image.buffer.get()
+    );
     glGenerateMipmap(GL_TEXTURE_2D);
-    return ret;
+    return res;
 }
 
-TextureID LoadRGBATexture(std::filesystem::path const& path, std::filesystem::path const& maskPath, bool bilinear) {
-    TextureID ret;
-    ImageRGBA image;
-    LoadRGBAImage(image, path, maskPath);
-    glGenTextures(1, &ret);
-    glBindTexture(GL_TEXTURE_2D, ret);
+export auto loadRGBATexture(std::filesystem::path const& path, std::filesystem::path const& maskPath, bool bilinear)
+    -> TextureID {
+    auto res = TextureID();
+    auto image = loadRGBAImage(path, maskPath);
+    glGenTextures(1, &res);
+    glBindTexture(GL_TEXTURE_2D, res);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, bilinear ? GL_LINEAR : GL_NEAREST);
     glTexParameteri(
         GL_TEXTURE_2D,
@@ -247,49 +225,61 @@ TextureID LoadRGBATexture(std::filesystem::path const& path, std::filesystem::pa
     );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.sizeX, image.sizeY, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.buffer.get());
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA8,
+        static_cast<GLsizei>(image.sizeX),
+        static_cast<GLsizei>(image.sizeY),
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        image.buffer.get()
+    );
     glGenerateMipmap(GL_TEXTURE_2D);
-    return ret;
+    return res;
 }
 
-TextureID LoadBlockTextureArray(std::filesystem::path const& path, std::filesystem::path const& maskPath) {
-    TextureID ret;
-    ImageRGBA image;
-    LoadRGBAImage(image, path, maskPath);
-    int size = image.sizeX;
-    int count = image.sizeY / size;
-    glGenTextures(1, &ret);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, ret);
+export auto loadBlockTextureArray(std::filesystem::path const& path, std::filesystem::path const& maskPath)
+    -> TextureID {
+    auto res = TextureID();
+    auto image = loadRGBAImage(path, maskPath);
+    auto size = image.sizeX;
+    auto count = image.sizeY / size;
+    glGenTextures(1, &res);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, res);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BASE_LEVEL, 0);
-    // glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, mipmapLevel);
-    // glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_LOD, 0);
-    // glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LOD, mipmapLevel);
-    // glTexEnvf(GL_TEXTURE_FILTER_CONTROL, GL_TEXTURE_LOD_BIAS, 0.0);
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, size, size, count, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.buffer.get());
+    glTexImage3D(
+        GL_TEXTURE_2D_ARRAY,
+        0,
+        GL_RGBA8,
+        static_cast<GLsizei>(size),
+        static_cast<GLsizei>(size),
+        static_cast<GLsizei>(count),
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        image.buffer.get()
+    );
     glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-    return ret;
+    return res;
 }
 
-void SaveRGBImage(std::filesystem::path const& path, ImageRGB const& image) {
-    BitmapFileHeader bitmapfileheader;
-    BitmapInfoHeader bitmapinfoheader;
-    bitmapfileheader.bfSize = image.sizeX * image.sizeY * 3 + 54;
-    bitmapinfoheader.biWidth = image.sizeX;
-    bitmapinfoheader.biHeight = image.sizeY;
-    bitmapinfoheader.biSizeImage = image.sizeX * image.sizeY * 3;
-    for (unsigned int i = 0; i != image.sizeX * image.sizeY * 3; i += 3) {
-        uint8_t t = image.buffer.get()[i];
-        image.buffer.get()[i] = image.buffer.get()[i + 2];
-        image.buffer.get()[i + 2] = t;
-    }
-    std::ofstream ofs(path, std::ios::out | std::ios::binary);
-    ofs.write((char*) &bitmapfileheader, sizeof(bitmapfileheader));
-    ofs.write((char*) &bitmapinfoheader, sizeof(bitmapinfoheader));
-    ofs.write((char*) image.buffer.get(), sizeof(uint8_t) * image.sizeX * image.sizeY * 3);
-    ofs.close();
+export void SaveRGBImage(std::filesystem::path const& path, ImageRGB const& image) {
+    auto bfh = BitmapFileHeader();
+    auto bih = BitmapInfoHeader();
+    bfh.bfSize += image.sizeX * image.sizeY * 3;
+    bih.biWidth = image.sizeX;
+    bih.biHeight = image.sizeY;
+    bih.biSizeImage = image.sizeX * image.sizeY * 3;
+    for (unsigned int i = 0; i != image.sizeX * image.sizeY; i++)
+        std::swap(image.buffer[i * 3 + 0], image.buffer[i * 3 + 2]);
+    auto ofs = std::ofstream(path, std::ios::out | std::ios::binary);
+    ofs.write(reinterpret_cast<char*>(&bfh), sizeof(bfh));
+    ofs.write(reinterpret_cast<char*>(&bih), sizeof(bih));
+    ofs.write(reinterpret_cast<char*>(image.buffer.get()), image.sizeX * image.sizeY * 3);
 }
 }

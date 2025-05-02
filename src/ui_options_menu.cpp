@@ -21,12 +21,12 @@ private:
     GUI::Button ppistretchbtn = GUI::Button("", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
     GUI::Button backbtn = GUI::Button("", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
 
-    void onLoad() {
+    void onLoad() override {
         title.centered = true;
         registerControls({&title, &fontbar, &blurbtn, &ppistretchbtn, &backbtn});
     }
 
-    void onUpdate() {
+    void onUpdate() override {
         title.text = GetStrbyKey("NEWorld.gui.caption");
         fontbar.text = GetStrbyKey("NEWorld.gui.fontsize") + Var2Str(FontSize);
         blurbtn.text = GetStrbyKey("NEWorld.gui.blur") + BoolEnabled(UIBackgroundBlur);
