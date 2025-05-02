@@ -18,13 +18,8 @@ NEWorld is an open-source game with similar game rules to Minecraft.
   ```
 * If you are using **Visual Studio** with vcpkg integration, aforementioned steps should be happen automatically when you open the project folder.
 * If you are using **Visual Studio Code**, it can be helpful to add a `CMakeUserPresets.json` for vcpkg integration, as described in [this article](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started-vscode). Alternatively, you may add the `-DCMAKE_TOOLCHAIN_FILE=...` to the `cmake.configureArgs` setting.
-* Alternatively, use [xmake](https://xmake.io/) to build:
-  ```sh
-  xrepo install glfw utfcpp freetype
-  xmake
-  ```
 
-The compiler is currently set to use C++20. By default, all dependencies are statically linked.
+The compiler is currently set to use C++20. By default, all built-from-source dependencies are statically linked.
 
 ## Adding dependencies
 
