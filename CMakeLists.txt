@@ -52,15 +52,15 @@ FetchContent_MakeAvailable(utfcpp)
 find_package(Freetype REQUIRED)
 
 # The C++ utilities library for this project.
-# FetchContent_Declare(
-#     klsxx
-#     GIT_REPOSITORY https://github.com/NEWorldProject/klsxx
-#     GIT_TAG main
-#     GIT_SHALLOW TRUE
-# )
-# set(KLS_VCPKG_FORCE_OVERRIDE ON)
-# set(KLS_DISABLE_TEST ON)
-# FetchContent_MakeAvailable(klsxx)
+FetchContent_Declare(
+    klsxx
+    GIT_REPOSITORY https://github.com/NEWorldProject/klsxx
+    GIT_TAG main
+    GIT_SHALLOW TRUE
+)
+set(KLS_VCPKG_FORCE_OVERRIDE ON)
+set(KLS_DISABLE_TEST ON)
+FetchContent_MakeAvailable(klsxx)
 
 # ===== Targets =====
 add_executable(
@@ -100,7 +100,7 @@ add_executable(
 )
 target_default_compile_options(neworld)
 target_link_libraries(neworld PRIVATE glad glfw utf8cpp Freetype::Freetype)
-# target_link_libraries(neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine)
+target_link_libraries(neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine)
 target_include_directories(neworld PRIVATE "src")
 target_compile_definitions(neworld PRIVATE "$<$<CONFIG:Debug,RelWithDebInfo>:NEWORLD_DEBUG>")
 if(BUILD_SHARED_LIBS)
