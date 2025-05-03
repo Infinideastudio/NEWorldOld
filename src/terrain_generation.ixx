@@ -6,12 +6,12 @@ module;
 export module terrain_generation;
 import globals;
 
-export constexpr int WaterLevel = 96; // Water level
-export constexpr double NoiseScaleX = 64;
-export constexpr double NoiseScaleZ = 64;
-
 // Fractal noise 2D
 export namespace WorldGen {
+
+constexpr int WaterLevel = 96; // Water level
+constexpr double NoiseScaleX = 64;
+constexpr double NoiseScaleZ = 64;
 
 std::array<double, 256> perm = {};
 int seed = 0;

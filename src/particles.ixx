@@ -21,7 +21,7 @@ struct Particle {
     double xpos = 0.0, ypos = 0.0, zpos = 0.0;
     float xsp = 0.0f, ysp = 0.0f, zsp = 0.0f, psize = 0.0f;
     int lasts = 0;
-    BlockID bl = BlockID::AIR;
+    BlockData::Id bl = Blocks().air;
     TextureIndex tex = TextureIndex::NULLBLOCK;
     float tcx = 0.0f, tcy = 0.0f;
     Hitbox::AABB hb;
@@ -84,7 +84,7 @@ void updateall(World& world) {
 
 void mesh(World& world, Particle const& ptc, double interp) {
     auto psize = ptc.psize;
-    auto bl = static_cast<float>(ptc.bl);
+    auto bl = static_cast<float>(ptc.bl.get());
     auto tex = static_cast<float>(ptc.tex);
     auto tcx = ptc.tcx;
     auto tcy = ptc.tcy;
@@ -93,8 +93,7 @@ void mesh(World& world, Particle const& ptc, double interp) {
     auto ypos = static_cast<float>(ptc.ypos - ptc.ysp + ptc.ysp * interp - pypos);
     auto zpos = static_cast<float>(ptc.zpos - ptc.zsp + ptc.zsp * interp - pzpos);
 
-    auto col = world.getBrightness(Vec3i(std::lround(ptc.xpos), std::lround(ptc.ypos), std::lround(ptc.zpos)))
-             / (float) MaxBrightness;
+    auto col = world.block(Vec3i(std::lround(ptc.xpos), std::lround(ptc.ypos), std::lround(ptc.zpos)))->light.mixed();
     auto col1 = col, col2 = col;
     if (!AdvancedRender) {
         col1 *= 0.5f;
@@ -204,7 +203,7 @@ void renderall(World& world, double xpos, double ypos, double zpos, double inter
     Renderer::End().render();
 }
 
-void throwParticle(BlockID pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last) {
+void throwParticle(BlockData::Id pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last) {
     Particle ptc;
     ptc.xpos = x;
     ptc.ypos = y;

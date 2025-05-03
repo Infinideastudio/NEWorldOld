@@ -12,29 +12,31 @@ module;
 export module chunks;
 import vec3;
 import types;
-import blocks;
+export import blocks;
 import globals;
 import frustum_tests;
-import terrain_generation;
 import height_maps;
 import rendering;
 import hitboxes;
 
 export using ChunkID = uint64_t;
-export using Brightness = uint8_t;
 
 export constexpr int WorldSize = 134217728;
 export constexpr int WorldHeight = 128;
-export constexpr Brightness SkyBrightness = 15; // Sky light level
-export constexpr Brightness MaxBrightness = 15; // Maximum brightness
-export constexpr Brightness MinBrightness = 2;  // Minimum brightness
+export constexpr auto SKY_LIGHT = BlockData::Light(15, 0);
+export constexpr auto NO_LIGHT = BlockData::Light(0, 0);
 
 export auto getChunkPos(Vec3i coord) -> Vec3i {
+    // C++20 guarantees arithmetic right shift on signed integers
+    // See: https://en.cppreference.com/w/cpp/language/operator_arithmetic#Built-in_bitwise_shift_operators
     return {coord.x >> 4, coord.y >> 4, coord.z >> 4};
 }
 
-export auto getBlockPos(Vec3i coord) -> Vec3i {
-    return {coord.x & 15, coord.y & 15, coord.z & 15};
+export auto getBlockPos(Vec3i coord) -> Vec3u {
+    // Signed to unsigned conversion implements modulo operation
+    // See: https://en.cppreference.com/w/c/language/conversion#Integer_conversions
+    auto ucoord = Vec3u(coord);
+    return {ucoord.x & 0xF, ucoord.y & 0xF, ucoord.z & 0xF};
 }
 
 export auto getChunkID(Vec3i coord) -> ChunkID {
@@ -60,7 +62,8 @@ export auto chunkOutOfBound(Vec3i coord) -> bool {
 
 export class Chunk {
 public:
-    // `worldName` must outlive the `Chunk` object.
+    // There are no lifetime requirements on `worldName` and `heightMap`
+    // since they are only used in the constructor.
     Chunk(Vec3i coord, std::string_view worldName, HeightMap& heightMap):
         ccoord(coord),
         cid(getChunkID(coord)) {
@@ -113,42 +116,25 @@ public:
         return isMeshed;
     }
 
-    auto getBlock(size_t x, size_t y, size_t z) const -> BlockID {
-        assert(x < 16 && y < 16 && z < 16);
-        if (isEmpty)
-            return BlockID::AIR;
-        return blocks[(x << 8) ^ (y << 4) ^ z];
-    }
-
-    auto getBrightness(size_t x, size_t y, size_t z) const -> Brightness {
-        assert(x < 16 && y < 16 && z < 16);
-        if (isEmpty)
-            return ccoord.y < 0 ? MinBrightness : SkyBrightness;
-        return brightness[(x << 8) ^ (y << 4) ^ z];
-    }
-
-    void setBlock(size_t x, size_t y, size_t z, BlockID value) {
-        assert(x < 16 && y < 16 && z < 16);
+    auto block(Vec3u bcoord) const -> BlockData {
+        assert(coord.x < 16 && coord.y < 16 && coord.z < 16);
         if (isEmpty) {
-            std::ranges::fill(blocks, BlockID::AIR);
-            std::ranges::fill(brightness, ccoord.y < 0 ? MinBrightness : SkyBrightness);
+            auto light = ccoord.y < 0 ? NO_LIGHT : SKY_LIGHT;
+            return BlockData{.id = Blocks().air, .light = light};
+        }
+        return blocks[((bcoord.x * 16) + bcoord.y) * 16 + bcoord.z];
+    }
+
+    auto block_ref(Vec3u bcoord) -> BlockData& {
+        assert(coord.x < 16 && coord.y < 16 && coord.z < 16);
+        if (isEmpty) {
+            auto light = ccoord.y < 0 ? NO_LIGHT : SKY_LIGHT;
+            std::ranges::fill(blocks, BlockData{.id = Blocks().air, .light = light});
             isEmpty = false;
         }
-        blocks[(x << 8) ^ (y << 4) ^ z] = value;
         isUpdated = true;
         isModified = true;
-    }
-
-    void setBrightness(size_t x, size_t y, size_t z, Brightness value) {
-        assert(x < 16 && y < 16 && z < 16);
-        if (isEmpty) {
-            std::ranges::fill(blocks, BlockID::AIR);
-            std::ranges::fill(brightness, ccoord.y < 0 ? MinBrightness : SkyBrightness);
-            isEmpty = false;
-        }
-        brightness[(x << 8) ^ (y << 4) ^ z] = value;
-        isUpdated = true;
-        isModified = true;
+        return blocks[((bcoord.x * 16) + bcoord.y) * 16 + bcoord.z];
     }
 
     auto loadFromFile(std::string_view worldName) -> bool {
@@ -157,8 +143,7 @@ public:
         auto file = std::ifstream(getChunkPath(worldName), std::ios::in | std::ios::binary);
         exists = file.is_open();
         if (exists) {
-            file.read(reinterpret_cast<char*>(blocks.data()), 4096 * sizeof(BlockID));
-            file.read(reinterpret_cast<char*>(brightness.data()), 4096 * sizeof(Brightness));
+            file.read(reinterpret_cast<char*>(blocks.data()), 4096 * sizeof(BlockData));
             file.read(reinterpret_cast<char*>(&isDetailGenerated), sizeof(bool));
             isEmpty = isModified = false;
         }
@@ -169,12 +154,11 @@ public:
     auto saveToFile(std::string_view worldName) -> bool {
         bool success = true;
 #ifndef NEWORLD_DEBUG_NO_FILEIO
-        if (!isEmpty && isModified) {
+        if (isModified) {
             auto file = std::ofstream(getChunkPath(worldName), std::ios::out | std::ios::binary);
             success = file.is_open();
             if (success) {
-                file.write(reinterpret_cast<char*>(blocks.data()), 4096 * sizeof(BlockID));
-                file.write(reinterpret_cast<char*>(brightness.data()), 4096 * sizeof(Brightness));
+                file.write(reinterpret_cast<char*>(blocks.data()), 4096 * sizeof(BlockData));
                 file.write(reinterpret_cast<char*>(&isDetailGenerated), sizeof(bool));
                 isModified = false;
             }
@@ -239,8 +223,7 @@ public:
 private:
     Vec3i ccoord;
     ChunkID cid;
-    std::array<BlockID, 4096> blocks = {};
-    std::array<Brightness, 4096> brightness = {};
+    std::array<BlockData, 4096> blocks = {};
 
     bool isEmpty = false;
     bool isUpdated = false;
@@ -253,7 +236,7 @@ private:
 
     auto getHeights(HeightMap& heightMap, int cx, int cz) -> std::tuple<std::array<std::array<int, 16>, 16>, int, int> {
         auto heights = std::array<std::array<int, 16>, 16>{};
-        int lo = std::numeric_limits<int>::max(), hi = WaterLevel;
+        int lo = std::numeric_limits<int>::max(), hi = heightMap.WaterLevel;
         for (int x = 0; x < 16; ++x) {
             for (int z = 0; z < 16; ++z) {
                 int h = heightMap.getHeight(Vec3i(cx * 16 + x, 0, cz * 16 + z));
@@ -272,71 +255,67 @@ private:
         auto [heights, low, high] = getHeights(heightMap, ccoord.x, ccoord.z);
 
         // Skip generation
-        if (ccoord.y < 0 || (ccoord.y > high && ccoord.y * 16 > WaterLevel)) {
+        if (ccoord.y < 0 || (ccoord.y > high && ccoord.y * 16 > heightMap.WaterLevel)) {
             isEmpty = true;
             return;
         }
         if (ccoord.y < low) {
-            std::ranges::fill(blocks, BlockID::ROCK);
+            std::ranges::fill(blocks, BlockData{.id = Blocks().rock, .light = NO_LIGHT});
             if (ccoord.y == 0)
                 for (int x = 0; x < 16; x++)
                     for (int z = 0; z < 16; z++)
-                        blocks[x * 256 + z] = BlockID::BEDROCK;
+                        blocks[x * 256 + z].id = Blocks().bedrock;
             isEmpty = false;
             return;
         }
 
         // Normal generation
-        std::ranges::fill(blocks, BlockID::AIR);
+        std::ranges::fill(blocks, BlockData{.id = Blocks().air, .light = NO_LIGHT});
 
         int h = 0, sh = 0, wh = 0;
 
         isEmpty = true;
-        sh = WaterLevel + 2 - (ccoord.y << 4);
-        wh = WaterLevel - (ccoord.y << 4);
+        sh = heightMap.WaterLevel + 2 - (ccoord.y * 16);
+        wh = heightMap.WaterLevel - (ccoord.y * 16);
 
         for (int x = 0; x < 16; ++x) {
             for (int z = 0; z < 16; ++z) {
                 int base = (x << 8) + z;
-                h = heights[x][z] - (ccoord.y << 4);
+                h = heights[x][z] - (ccoord.y * 16);
                 if (h >= 0 || wh >= 0)
                     isEmpty = false;
                 if (h > sh && h > wh + 1) {
                     // Grass layer
                     if (h >= 0 && h < 16)
-                        blocks[(h << 4) + base] = BlockID::GRASS;
+                        blocks[(h * 16) + base].id = Blocks().grass;
                     // Dirt layer
                     for (int y = std::min(std::max(0, h - 5), 16); y < std::min(std::max(0, h), 16); ++y)
-                        blocks[(y << 4) + base] = BlockID::DIRT;
+                        blocks[(y * 16) + base].id = Blocks().dirt;
                 } else {
                     // Sand layer
                     for (int y = std::min(std::max(0, h - 5), 16); y < std::min(std::max(0, h + 1), 16); ++y)
-                        blocks[(y << 4) + base] = BlockID::SAND;
+                        blocks[(y * 16) + base].id = Blocks().sand;
                     // Water layer
                     int minh = std::min(std::max(0, h + 1), 16);
                     int maxh = std::min(std::max(0, wh + 1), 16);
-                    int cur_br = MaxBrightness - (WaterLevel - (maxh - 1 + (ccoord.y << 4))) * 2;
-                    if (cur_br < MinBrightness)
-                        cur_br = MinBrightness;
+                    int sky = std::max(0, SKY_LIGHT.sky() - (heightMap.WaterLevel - (maxh - 1 + (ccoord.y * 16))) * 1);
                     for (int y = maxh - 1; y >= minh; --y) {
-                        blocks[(y << 4) + base] = BlockID::WATER;
-                        brightness[(y << 4) + base] = (Brightness) cur_br;
-                        cur_br -= 2;
-                        if (cur_br < MinBrightness)
-                            cur_br = MinBrightness;
+                        sky = std::max(0, sky - 1);
+                        blocks[(y * 16) + base].id = Blocks().water;
+                        blocks[(y * 16) + base].light = BlockData::Light(sky, SKY_LIGHT.block());
                     }
                 }
                 // Rock layer
                 for (int y = 0; y < std::min(std::max(0, h - 5), 16); ++y)
-                    blocks[(y << 4) + base] = BlockID::ROCK;
+                    blocks[(y * 16) + base].id = Blocks().rock;
                 // Air layer
                 for (int y = std::min(std::max(0, std::max(h + 1, wh + 1)), 16); y < 16; ++y) {
-                    blocks[(y << 4) + base] = BlockID::AIR;
-                    brightness[(y << 4) + base] = SkyBrightness;
+                    blocks[(y * 16) + base].id = Blocks().air;
+                    blocks[(y * 16) + base].light = SKY_LIGHT;
                 }
                 // Bedrock layer (overwrite)
                 if (ccoord.y == 0)
-                    blocks[base] = BlockID::BEDROCK;
+                    blocks[base].id = Blocks().bedrock;
             }
         }
     }
@@ -348,7 +327,7 @@ private:
             for (int y = 0; y < 16; y++) {
                 for (int z = 0; z < 16; z++) {
                     // Tree
-                    if (blocks[index] == BlockID::GRASS && rnd() < 0.005)
+                    if (blocks[index].id == Blocks().grass && rnd() < 0.005)
                         buildtree(cx * 16 + x, ccoord.y * 16 + y, cz * 16 + z);
                     index++;
                 }
@@ -370,4 +349,4 @@ private:
     }
 };
 
-export const auto EmptyChunkPtr = reinterpret_cast<Chunk*>(-1);
+export auto const EmptyChunkPtr = reinterpret_cast<Chunk*>(-1);

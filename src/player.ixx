@@ -28,7 +28,7 @@ bool OnGround = false;
 bool Running = false;
 bool NearWall = false;
 bool inWater = false;
-BlockID BlockInHand = BlockID::AIR;
+BlockData::Id BlockInHand = Blocks().air;
 uint8_t indexInHand = 0;
 
 Hitbox::AABB playerbox;
@@ -46,7 +46,7 @@ double xlookspeed, ylookspeed;
 int intxpos, intypos, intzpos;
 int intxposold, intyposold, intzposold;
 
-std::array<std::array<BlockID, 10>, 4> inventory;
+std::array<std::array<BlockData::Id, 10>, 4> inventory;
 std::array<std::array<short, 10>, 4> inventoryAmount;
 
 void InitHitbox(Hitbox::AABB& playerbox) {
@@ -93,7 +93,7 @@ void spawn() {
     health = healthMax;
     for (size_t i = 0; i < inventory.size(); i++)
         for (size_t j = 0; j < inventory[i].size(); j++) {
-            inventory[i][j] = BlockID::AIR;
+            inventory[i][j] = Blocks().air;
             inventoryAmount[i][j] = 0;
         }
 }
@@ -157,7 +157,7 @@ void updatePosition(World& world) {
     ccoord = getChunkPos(Vec3i(static_cast<int>(xpos), static_cast<int>(ypos), static_cast<int>(zpos)));
 }
 
-bool putBlock(World& world, Vec3i coord, BlockID blockname) {
+bool putBlock(World& world, Vec3i coord, BlockData::Id blockname) {
     Hitbox::AABB blockbox;
     bool success = false;
     blockbox.xmin = coord.x - 0.5;
@@ -167,8 +167,8 @@ bool putBlock(World& world, Vec3i coord, BlockID blockname) {
     blockbox.ymax = coord.y + 0.5;
     blockbox.zmax = coord.z + 0.5;
     if (!chunkOutOfBound(getChunkPos(coord))
-        && (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall || BlockInfo(blockname).isSolid() == false)
-            && BlockInfo(world.getBlock(coord)).isSolid() == false)) {
+        && (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall || BlockInfo(blockname).solid == false)
+            && BlockInfo(world.getBlock(coord).id).solid == false)) {
         world.setBlock(coord, blockname);
         success = true;
     }
@@ -235,8 +235,8 @@ bool load(std::string worldn) {
     return true;
 }
 
-bool addItem(BlockID itemname, short amount) {
-    const int InvMaxStack = 255;
+bool addItem(BlockData::Id itemname, short amount) {
+    int const InvMaxStack = 255;
     for (int i = 3; i >= 0; i--) {
         for (int j = 0; j != 10; j++) {
             if (inventory[i][j] == itemname && inventoryAmount[i][j] < InvMaxStack) {
@@ -252,7 +252,7 @@ bool addItem(BlockID itemname, short amount) {
     }
     for (int i = 3; i >= 0; i--) {
         for (int j = 0; j != 10; j++) {
-            if (inventory[i][j] == BlockID::AIR) {
+            if (inventory[i][j] == Blocks().air) {
                 inventory[i][j] = itemname;
                 if (amount <= InvMaxStack) {
                     inventoryAmount[i][j] = amount;

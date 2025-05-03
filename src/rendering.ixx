@@ -117,18 +117,18 @@ auto getShadowMatrix() -> Mat4f;
 auto getShadowMatrixExperimental(float fov, float aspect, double heading, double pitch) -> Mat4f;
 
 void ClearSGDBuffers();
-void StartShadowPass(const Mat4f& shadowMatrix, float gameTime);
+void StartShadowPass(Mat4f const& shadowMatrix, float gameTime);
 void EndShadowPass();
-void StartOpaquePass(const Mat4f& viewMatrix, float gametime);
+void StartOpaquePass(Mat4f const& viewMatrix, float gametime);
 void EndOpaquePass();
-void StartTranslucentPass(const Mat4f& viewMatrix, float gametime);
+void StartTranslucentPass(Mat4f const& viewMatrix, float gametime);
 void EndTranslucentPass();
 void StartFinalPass(
     double xpos,
     double ypos,
     double zpos,
-    const Mat4f& viewMatrix,
-    const Mat4f& shadowMatrix,
+    Mat4f const& viewMatrix,
+    Mat4f const& shadowMatrix,
     float gameTime
 );
 void EndFinalPass();
@@ -171,6 +171,10 @@ void addVertex() {
 void Vertex2i(int x, int y) {
     Vertex2f(static_cast<float>(x), static_cast<float>(y));
 }
+void Vertex1f(float x) {
+    Coords[0] = x;
+    addVertex();
+}
 void Vertex2f(float x, float y) {
     Coords[0] = x;
     Coords[1] = y;
@@ -182,14 +186,37 @@ void Vertex3f(float x, float y, float z) {
     Coords[2] = z;
     addVertex();
 }
-void TexCoord2f(float x, float y) {
-    TexCoords[0] = x;
-    TexCoords[1] = y;
+void Vertex4f(float x, float y, float z, float w) {
+    Coords[0] = x;
+    Coords[1] = y;
+    Coords[2] = z;
+    Coords[3] = w;
+    addVertex();
 }
-void TexCoord3f(float x, float y, float z) {
-    TexCoords[0] = x;
-    TexCoords[1] = y;
-    TexCoords[2] = z;
+void TexCoord1f(float s) {
+    TexCoords[0] = s;
+}
+void TexCoord2f(float s, float t) {
+    TexCoords[0] = s;
+    TexCoords[1] = t;
+}
+void TexCoord3f(float s, float t, float u) {
+    TexCoords[0] = s;
+    TexCoords[1] = t;
+    TexCoords[2] = u;
+}
+void TexCoord4f(float s, float t, float u, float v) {
+    TexCoords[0] = s;
+    TexCoords[1] = t;
+    TexCoords[2] = u;
+    TexCoords[3] = v;
+}
+void Color1f(float r) {
+    Colors[0] = r;
+}
+void Color2f(float r, float g) {
+    Colors[0] = r;
+    Colors[1] = g;
 }
 void Color3f(float r, float g, float b) {
     Colors[0] = r;
@@ -218,7 +245,7 @@ GLuint getNoiseTexture() {
         for (int i = 0; i < 256 * 256; i++)
             a[i * 4] = a[i * 4 + 1] = static_cast<uint8_t>(rnd() * 256);
 
-        const int OffsetX = 37, OffsetY = 17;
+        int const OffsetX = 37, OffsetY = 17;
         for (int x = 0; x < 256; x++)
             for (int y = 0; y < 256; y++) {
                 int x1 = (x + OffsetX) % 256, y1 = (y + OffsetY) % 256;
@@ -377,7 +404,7 @@ void ClearSGDBuffers() {
     dBuffer.unbindTarget();
 }
 
-void StartShadowPass(const Mat4f& shadowMatrix, float gameTime) {
+void StartShadowPass(Mat4f const& shadowMatrix, float gameTime) {
     assert(AdvancedRender);
 
     // Bind output target buffers
@@ -408,7 +435,7 @@ void EndShadowPass() {
     glEnable(GL_CULL_FACE);
 }
 
-void StartOpaquePass(const Mat4f& viewMatrix, float gameTime) {
+void StartOpaquePass(Mat4f const& viewMatrix, float gameTime) {
     // Bind output target buffers
     if (AdvancedRender)
         gBuffers.bindTargets();
@@ -435,7 +462,7 @@ void EndOpaquePass() {
     glEnable(GL_BLEND);
 }
 
-void StartTranslucentPass(const Mat4f& viewMatrix, float gameTime) {
+void StartTranslucentPass(Mat4f const& viewMatrix, float gameTime) {
     // Copy the depth component of the G-buffer to the D-buffer, bind output target buffers
     if (AdvancedRender) {
         // gBuffers.copyDepthTexture(dBuffer);
@@ -462,8 +489,8 @@ void StartFinalPass(
     double xpos,
     double ypos,
     double zpos,
-    const Mat4f& viewMatrix,
-    const Mat4f& shadowMatrix,
+    Mat4f const& viewMatrix,
+    Mat4f const& shadowMatrix,
     float gameTime
 ) {
     assert(AdvancedRender);

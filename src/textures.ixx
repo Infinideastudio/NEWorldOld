@@ -112,9 +112,9 @@ constexpr auto indices = std::array{
     std::array{TextureIndex::NULLBLOCK,  TextureIndex::NULLBLOCK, TextureIndex::NULLBLOCK},
 };
 
-export auto getTextureIndex(BlockID blockname, size_t face) -> TextureIndex {
-    auto i = static_cast<size_t>(blockname);
-    auto j = static_cast<size_t>(face);
+export auto getTextureIndex(BlockData::Id blockname, size_t face) -> TextureIndex {
+    auto i = blockname.get();
+    auto j = face;
     return i < indices.size() && j < indices[i].size() ? indices[i][j] : TextureIndex::NULLBLOCK;
 }
 
