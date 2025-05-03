@@ -76,7 +76,7 @@ target_link_libraries(neworld PRIVATE <package_build_target_name>)
 To instruct your package manager to automatically download dependencies, additional configuration might be necessary.
 
 * For vcpkg, the `vcpkg.json` and `vcpkg-configuration.json` manifest files serve this purpose[^5]. With them, you may directly invoke `vcpkg install` from the command line to download and install all dependencies.
-  - To add a new one, type `vcpkg add <vcpkg_package_registry_name>` to update the manifest files[^6].
+  - To add a new one, type `vcpkg add port <vcpkg_package_registry_name>` to update the manifest files[^6].
   - Here the `<vcpkg_package_registry_name>` might be different from the `<package_name>` `<package_target_name>` `<package_build_target_name>` previously mentioned. This should be the name of the package listed on the [vcpkg package registry](https://vcpkg.io/en/packages).
 
 ### A comparison of names

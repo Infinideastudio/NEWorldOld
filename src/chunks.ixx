@@ -3,11 +3,13 @@ module;
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <fstream>
+#include <cstddef>
+#include <span>
 #include <sstream>
 #include <string_view>
 #include <tuple>
 #include <vector>
+#include <leveldb/db.h>
 
 export module chunks;
 import types;
@@ -28,9 +30,9 @@ export class Chunk {
 public:
     // There are no lifetime requirements on `world_name` and `height_map`
     // since they are only used in the constructor.
-    Chunk(Vec3i coord, std::string_view world_name, HeightMap& height_map):
+    Chunk(Vec3i coord, leveldb::DB* db, HeightMap& height_map):
         _coord(coord) {
-        if (!load_from_file(world_name))
+        if (!load_from_file(db))
             _generate(height_map);
         if (!_empty)
             _updated = true;
@@ -91,29 +93,30 @@ public:
         return _data[((bcoord.x * 16) + bcoord.y) * 16 + bcoord.z];
     }
 
-    auto load_from_file(std::string_view world_name) -> bool {
+    auto load_from_file(leveldb::DB* db) -> bool {
         bool exists = false;
 #ifndef NEWORLD_DEBUG_NO_FILEIO
-        auto file = std::ifstream(_file_path(world_name), std::ios::in | std::ios::binary);
-        exists = file.is_open();
-        if (exists) {
-            file.read(reinterpret_cast<char*>(_data.data()), 4096 * sizeof(blocks::BlockData));
+        auto key_slice = leveldb::Slice(reinterpret_cast<char*>(&_coord), sizeof(_coord));
+        auto value_slice = std::string();
+        auto res = db->Get(leveldb::ReadOptions(), key_slice, &value_slice);
+        if (res.ok() && value_slice.size() == 4096 * sizeof(blocks::BlockData)) {
+            std::memcpy(reinterpret_cast<char*>(_data.data()), value_slice.data(), 4096 * sizeof(blocks::BlockData));
+            exists = true;
             _empty = _modified = false;
         }
 #endif
         return exists;
     }
 
-    auto save_to_file(std::string_view world_name) -> bool {
+    auto save_to_file(leveldb::DB* db) -> bool {
         bool success = true;
 #ifndef NEWORLD_DEBUG_NO_FILEIO
         if (_modified) {
-            auto file = std::ofstream(_file_path(world_name), std::ios::out | std::ios::binary);
-            success = file.is_open();
-            if (success) {
-                file.write(reinterpret_cast<char*>(_data.data()), 4096 * sizeof(blocks::BlockData));
-                _modified = false;
-            }
+            auto key_slice = leveldb::Slice(reinterpret_cast<char*>(&_coord), sizeof(_coord));
+            auto value_slice = leveldb::Slice(reinterpret_cast<char*>(_data.data()), 4096 * sizeof(blocks::BlockData));
+            auto res = db->Put(leveldb::WriteOptions(), key_slice, value_slice);
+            success = res.ok();
+            _modified = false;
         }
 #endif
         return success;

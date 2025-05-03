@@ -51,6 +51,9 @@ FetchContent_MakeAvailable(utfcpp)
 # The FreeType font rendering library.
 find_package(Freetype REQUIRED)
 
+# The LevelDB key-value storage library.
+find_package(leveldb CONFIG REQUIRED)
+
 # The C++ utilities library for this project.
 FetchContent_Declare(
     klsxx
@@ -106,7 +109,7 @@ target_sources(
         "src/menus/game_menu.cpp"
 )
 target_default_compile_options(neworld)
-target_link_libraries(neworld PRIVATE glad glfw utf8cpp Freetype::Freetype)
+target_link_libraries(neworld PRIVATE glad glfw utf8cpp Freetype::Freetype leveldb::leveldb)
 target_link_libraries(neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine)
 target_include_directories(neworld PRIVATE "src")
 target_compile_definitions(neworld PRIVATE "$<$<CONFIG:Debug,RelWithDebInfo>:NEWORLD_DEBUG>")
