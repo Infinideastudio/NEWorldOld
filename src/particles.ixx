@@ -13,7 +13,7 @@ import worlds;
 import globals;
 import vec3;
 
-export namespace Particles {
+export namespace particles {
 
 constexpr int PARTICALE_MAX = 4096;
 
@@ -21,7 +21,7 @@ struct Particle {
     double xpos = 0.0, ypos = 0.0, zpos = 0.0;
     float xsp = 0.0f, ysp = 0.0f, zsp = 0.0f, psize = 0.0f;
     int lasts = 0;
-    BlockData::Id bl = Blocks().air;
+    blocks::Id bl = base_blocks().air;
     TextureIndex tex = TextureIndex::NULLBLOCK;
     float tcx = 0.0f, tcy = 0.0f;
     Hitbox::AABB hb;
@@ -31,7 +31,7 @@ std::vector<Particle> ptcs;
 int ptcsrendered;
 double pxpos, pypos, pzpos;
 
-void update(World& world, Particle& ptc) {
+void update(worlds::World& world, Particle& ptc) {
     double dx, dy, dz;
     float psz = ptc.psize;
 
@@ -47,7 +47,7 @@ void update(World& world, Particle& ptc) {
     dy = ptc.ysp;
     dz = ptc.zsp;
 
-    auto boxes = world.getHitboxes(Hitbox::Expand(ptc.hb, dx, dy, dz));
+    auto boxes = world.hitboxes(Hitbox::Expand(ptc.hb, dx, dy, dz));
     auto hitnum = boxes.size();
     for (size_t i = 0; i < hitnum; i++) {
         dy = Hitbox::MaxMoveOnYclip(ptc.hb, boxes[i], dy);
@@ -72,7 +72,7 @@ void update(World& world, Particle& ptc) {
     ptc.lasts -= 1;
 }
 
-void updateall(World& world) {
+void update_all(worlds::World& world) {
     std::vector<Particle> next;
     for (auto& ptc: ptcs) {
         update(world, ptc);
@@ -82,7 +82,7 @@ void updateall(World& world) {
     ptcs = std::move(next);
 }
 
-void mesh(World& world, Particle const& ptc, double interp) {
+void mesh(worlds::World& world, Particle const& ptc, double interp) {
     auto psize = ptc.psize;
     auto bl = static_cast<float>(ptc.bl.get());
     auto tex = static_cast<float>(ptc.tex);
@@ -186,10 +186,10 @@ void mesh(World& world, Particle const& ptc, double interp) {
     Renderer::Vertex3f(xpos - psize, ypos - psize, zpos - psize);
 }
 
-void renderall(World& world, double xpos, double ypos, double zpos, double interp) {
-    pxpos = xpos;
-    pypos = ypos;
-    pzpos = zpos;
+void render_all(worlds::World& world, Vec3d center, double interp) {
+    pxpos = center.x;
+    pypos = center.y;
+    pzpos = center.z;
     ptcsrendered = 0;
 
     if (AdvancedRender)
@@ -203,7 +203,7 @@ void renderall(World& world, double xpos, double ypos, double zpos, double inter
     Renderer::End().render();
 }
 
-void throwParticle(BlockData::Id pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last) {
+void throw_particle(blocks::Id pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last) {
     Particle ptc;
     ptc.xpos = x;
     ptc.ypos = y;

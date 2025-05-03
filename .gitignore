@@ -202,9 +202,9 @@ FakesAssemblies/
 *.opt
 
 # NEWorld files
-[Ww]orlds/
-[Ss]creen[Ss]hots/
-[Cc]onfigs/
+/[Ww]orlds/
+/[Ss]creen[Ss]hots/
+/[Cc]onfigs/
 *.lib
 *.exe
 *.dll

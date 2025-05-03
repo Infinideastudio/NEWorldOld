@@ -28,7 +28,7 @@ bool OnGround = false;
 bool Running = false;
 bool NearWall = false;
 bool inWater = false;
-BlockData::Id BlockInHand = Blocks().air;
+blocks::Id BlockInHand = base_blocks().air;
 uint8_t indexInHand = 0;
 
 Hitbox::AABB playerbox;
@@ -46,7 +46,7 @@ double xlookspeed, ylookspeed;
 int intxpos, intypos, intzpos;
 int intxposold, intyposold, intzposold;
 
-std::array<std::array<BlockData::Id, 10>, 4> inventory;
+std::array<std::array<blocks::Id, 10>, 4> inventory;
 std::array<std::array<short, 10>, 4> inventoryAmount;
 
 void InitHitbox(Hitbox::AABB& playerbox) {
@@ -62,7 +62,7 @@ void InitPosition() {
     xposold = xpos;
     yposold = ypos;
     zposold = zpos;
-    ccoord = getChunkPos(Vec3i(static_cast<int>(xpos), static_cast<int>(ypos), static_cast<int>(zpos)));
+    ccoord = worlds::chunk_coord(Vec3i(static_cast<int>(xpos), static_cast<int>(ypos), static_cast<int>(zpos)));
 }
 
 void MoveHitbox(double x, double y, double z) {
@@ -93,13 +93,13 @@ void spawn() {
     health = healthMax;
     for (size_t i = 0; i < inventory.size(); i++)
         for (size_t j = 0; j < inventory[i].size(); j++) {
-            inventory[i][j] = Blocks().air;
+            inventory[i][j] = base_blocks().air;
             inventoryAmount[i][j] = 0;
         }
 }
 
-void updatePosition(World& world) {
-    inWater = world.inWater(playerbox);
+void updatePosition(worlds::World& world) {
+    inWater = world.in_water(playerbox);
     if (!Flying && !CrossWall && inWater) {
         xa *= 0.6;
         ya *= 0.6;
@@ -109,7 +109,7 @@ void updatePosition(World& world) {
 
     if (!CrossWall) {
         Hitboxes.clear();
-        Hitboxes = world.getHitboxes(Hitbox::Expand(playerbox, xa, ya, za));
+        Hitboxes = world.hitboxes(Hitbox::Expand(playerbox, xa, ya, za));
         size_t num = Hitboxes.size();
         if (num > 0) {
             for (size_t i = 0; i < num; i++)
@@ -154,10 +154,10 @@ void updatePosition(World& world) {
         xa *= 0.7, ya = 0.0, za *= 0.7;
     updateHitbox();
 
-    ccoord = getChunkPos(Vec3i(static_cast<int>(xpos), static_cast<int>(ypos), static_cast<int>(zpos)));
+    ccoord = worlds::chunk_coord(Vec3i(static_cast<int>(xpos), static_cast<int>(ypos), static_cast<int>(zpos)));
 }
 
-bool putBlock(World& world, Vec3i coord, BlockData::Id blockname) {
+bool putBlock(worlds::World& world, Vec3i coord, blocks::Id blockname) {
     Hitbox::AABB blockbox;
     bool success = false;
     blockbox.xmin = coord.x - 0.5;
@@ -166,10 +166,9 @@ bool putBlock(World& world, Vec3i coord, BlockData::Id blockname) {
     blockbox.xmax = coord.x + 0.5;
     blockbox.ymax = coord.y + 0.5;
     blockbox.zmax = coord.z + 0.5;
-    if (!chunkOutOfBound(getChunkPos(coord))
-        && (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall || BlockInfo(blockname).solid == false)
-            && BlockInfo(world.getBlock(coord).id).solid == false)) {
-        world.setBlock(coord, blockname);
+    if (((Hitbox::Hit(playerbox, blockbox) == false) || CrossWall || block_info(blockname).solid == false)
+        && block_info(world.block_or_air(coord).id).solid == false) {
+        world.put_block(coord, blockname);
         success = true;
     }
     return success;
@@ -235,7 +234,7 @@ bool load(std::string worldn) {
     return true;
 }
 
-bool addItem(BlockData::Id itemname, short amount) {
+bool addItem(blocks::Id itemname, short amount) {
     int const InvMaxStack = 255;
     for (int i = 3; i >= 0; i--) {
         for (int j = 0; j != 10; j++) {
@@ -252,7 +251,7 @@ bool addItem(BlockData::Id itemname, short amount) {
     }
     for (int i = 3; i >= 0; i--) {
         for (int j = 0; j != 10; j++) {
-            if (inventory[i][j] == Blocks().air) {
+            if (inventory[i][j] == base_blocks().air) {
                 inventory[i][j] = itemname;
                 if (amount <= InvMaxStack) {
                     inventoryAmount[i][j] = amount;

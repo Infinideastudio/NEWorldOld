@@ -4,6 +4,7 @@ module;
 #include <utility>
 
 export module vec3;
+import types;
 
 export template <typename T>
 class Vec3 {
@@ -137,7 +138,15 @@ public:
     }
 };
 
-export using Vec3i = Vec3<int>;
-export using Vec3u = Vec3<unsigned int>;
-export using Vec3f = Vec3<float>;
-export using Vec3d = Vec3<double>;
+export using Vec3i = Vec3<int32_t>;
+export using Vec3u = Vec3<uint32_t>;
+export using Vec3i8 = Vec3<int8_t>;
+export using Vec3u8 = Vec3<uint8_t>;
+export using Vec3i16 = Vec3<int16_t>;
+export using Vec3u16 = Vec3<uint16_t>;
+export using Vec3i32 = Vec3<int32_t>;
+export using Vec3u32 = Vec3<uint32_t>;
+export using Vec3i64 = Vec3<int64_t>;
+export using Vec3u64 = Vec3<uint64_t>;
+export using Vec3f = Vec3<float_t>;
+export using Vec3d = Vec3<double_t>;

@@ -1,0 +1,45 @@
+module;
+
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <optional>
+#include <vector>
+
+module worlds;
+import frustum_tests;
+import rendering;
+import chunks;
+
+namespace worlds {
+
+auto World::list_render_chunks(Vec3d const& center, int dist, double interp, std::optional<FrustumTest> frustum)
+    -> std::vector<RenderChunk> {
+    auto ccenter = chunk_coord(Vec3i(center));
+    auto res = std::vector<RenderChunk>{};
+    for (auto const& [_, c]: _chunks) {
+        if (!c->meshed())
+            continue;
+        if (!chunk_coord_out_of_range(c->coord(), ccenter, dist)) {
+            if (!frustum || c->visible(center, *frustum)) {
+                auto coord = Vec3d(c->coord()) * 16.0 - Vec3d(0.0, c->load_anim() * std::pow(0.6, interp), 0.0);
+                auto meshes = std::array{&c->mesh(0), &c->mesh(1)};
+                res.emplace_back(coord, meshes);
+            }
+        }
+    }
+    return res;
+}
+
+void World::render_chunks(Vec3d const& center, std::vector<RenderChunk> const& crs, size_t index) {
+    assert(index < 2);
+    for (auto [coord, meshes]: crs) {
+        coord -= center;
+        if (meshes[index]->empty())
+            continue;
+        Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(coord));
+        meshes[index]->render();
+    }
+}
+
+}

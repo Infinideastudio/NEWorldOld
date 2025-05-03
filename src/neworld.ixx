@@ -32,15 +32,15 @@ import menus;
 //==============================初始化(包括闪屏)================================//
 
 void registerCommands();
-void updateThreadFunc(World& world);
-void gameUpdate(World& world);
-void frameLinkedUpdate(World& world);
+void updateThreadFunc(worlds::World& world);
+void gameUpdate(worlds::World& world);
+void frameLinkedUpdate(worlds::World& world);
 
-void render(World& world);
-void readback(World& world);
+void render(worlds::World& world);
+void readback(worlds::World& world);
 void drawBorder(float x, float y, float z);
 void drawBreaking(float level, float x, float y, float z);
-void drawGUI(World& world);
+void drawGUI(worlds::World& world);
 void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha);
 void drawBag();
 
@@ -72,7 +72,7 @@ bool showMeshWireframe = false;
 int selx, sely, selz, oldselx, oldsely, oldselz, selface;
 bool sel;
 float selt, seldes;
-BlockData::Id selb;
+blocks::Id selb;
 bool selce;
 float FOVyExt;
 
@@ -130,7 +130,7 @@ export int main() {
     createWindow();
     splashScreen();
     loadTextures();
-    initBlocks();
+    register_base_blocks();
     registerCommands();
 
     // 菜单游戏循环
@@ -141,10 +141,10 @@ export int main() {
 
         // 初始化游戏状态
         DebugInfo("Init world...");
-        auto world = World(Cur_WorldName);
+        auto world = worlds::World(Cur_WorldName);
 
         DebugInfo("Init player...");
-        if (Player::load(world.WorldName))
+        if (Player::load(world.name()))
             Player::init(Player::xpos, Player::ypos, Player::zpos);
         else
             Player::spawn();
@@ -222,8 +222,8 @@ export int main() {
         updateThread.join();
 
         // 保存并卸载世界
-        world.saveAllChunks();
-        Player::save(world.WorldName);
+        world.save_to_files();
+        Player::save(world.name());
     }
 
     // 结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
@@ -234,7 +234,7 @@ export int main() {
     // This is the END of the program!
 }
 
-void updateThreadFunc(World& world) {
+void updateThreadFunc(worlds::World& world) {
     updateMutex.lock();
     while (updateThreadRun) {
         double currTimer = Timer();
@@ -253,7 +253,7 @@ void updateThreadFunc(World& world) {
 }
 
 void registerCommands() {
-    commands.emplace_back("/help", [](std::vector<std::string> const& command, World&) {
+    commands.emplace_back("/help", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 1)
             return false;
         chatMessages.emplace_back(
@@ -273,62 +273,62 @@ void registerCommands() {
         );
         return true;
     });
-    commands.emplace_back("/clear", [](std::vector<std::string> const& command, World&) {
+    commands.emplace_back("/clear", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 1)
             return false;
         chatMessages.clear();
         return true;
     });
-    commands.emplace_back("/kit", [](std::vector<std::string> const& command, World&) {
+    commands.emplace_back("/kit", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 1)
             return false;
-        Player::inventory[0][0] = BlockData::Id(1);
+        Player::inventory[0][0] = blocks::Id(1);
         Player::inventoryAmount[0][0] = 255;
-        Player::inventory[0][1] = BlockData::Id(2);
+        Player::inventory[0][1] = blocks::Id(2);
         Player::inventoryAmount[0][1] = 255;
-        Player::inventory[0][2] = BlockData::Id(3);
+        Player::inventory[0][2] = blocks::Id(3);
         Player::inventoryAmount[0][2] = 255;
-        Player::inventory[0][3] = BlockData::Id(4);
+        Player::inventory[0][3] = blocks::Id(4);
         Player::inventoryAmount[0][3] = 255;
-        Player::inventory[0][4] = BlockData::Id(5);
+        Player::inventory[0][4] = blocks::Id(5);
         Player::inventoryAmount[0][4] = 255;
-        Player::inventory[0][5] = BlockData::Id(6);
+        Player::inventory[0][5] = blocks::Id(6);
         Player::inventoryAmount[0][5] = 255;
-        Player::inventory[0][6] = BlockData::Id(7);
+        Player::inventory[0][6] = blocks::Id(7);
         Player::inventoryAmount[0][6] = 255;
-        Player::inventory[0][7] = BlockData::Id(8);
+        Player::inventory[0][7] = blocks::Id(8);
         Player::inventoryAmount[0][7] = 255;
-        Player::inventory[0][8] = BlockData::Id(9);
+        Player::inventory[0][8] = blocks::Id(9);
         Player::inventoryAmount[0][8] = 255;
-        Player::inventory[0][9] = BlockData::Id(10);
+        Player::inventory[0][9] = blocks::Id(10);
         Player::inventoryAmount[0][9] = 255;
-        Player::inventory[1][0] = BlockData::Id(11);
+        Player::inventory[1][0] = blocks::Id(11);
         Player::inventoryAmount[1][0] = 255;
-        Player::inventory[1][1] = BlockData::Id(12);
+        Player::inventory[1][1] = blocks::Id(12);
         Player::inventoryAmount[1][1] = 255;
-        Player::inventory[1][2] = BlockData::Id(13);
+        Player::inventory[1][2] = blocks::Id(13);
         Player::inventoryAmount[1][2] = 255;
-        Player::inventory[1][3] = BlockData::Id(14);
+        Player::inventory[1][3] = blocks::Id(14);
         Player::inventoryAmount[1][3] = 255;
-        Player::inventory[1][4] = BlockData::Id(15);
+        Player::inventory[1][4] = blocks::Id(15);
         Player::inventoryAmount[1][4] = 255;
-        Player::inventory[1][5] = BlockData::Id(16);
+        Player::inventory[1][5] = blocks::Id(16);
         Player::inventoryAmount[1][5] = 255;
-        Player::inventory[1][6] = BlockData::Id(17);
+        Player::inventory[1][6] = blocks::Id(17);
         Player::inventoryAmount[1][6] = 255;
-        Player::inventory[1][7] = BlockData::Id(18);
+        Player::inventory[1][7] = blocks::Id(18);
         Player::inventoryAmount[1][7] = 255;
         return true;
     });
-    commands.emplace_back("/give", [](std::vector<std::string> const& command, World&) {
+    commands.emplace_back("/give", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 3)
             return false;
-        auto itemid = BlockData::Id(std::stoi(command[1]));
+        auto itemid = blocks::Id(std::stoi(command[1]));
         auto amount = static_cast<short>(std::stoi(command[2]));
         Player::addItem(itemid, amount);
         return true;
     });
-    commands.emplace_back("/tp", [](std::vector<std::string> const& command, World&) {
+    commands.emplace_back("/tp", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 4)
             return false;
         double x = std::stod(command[1]);
@@ -339,43 +339,43 @@ void registerCommands() {
         Player::zpos = z;
         return true;
     });
-    commands.emplace_back("/clearinventory", [](std::vector<std::string> const& command, World&) {
+    commands.emplace_back("/clearinventory", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 1)
             return false;
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 10; j++) {
-                Player::inventory[i][j] = Blocks().air;
+                Player::inventory[i][j] = base_blocks().air;
                 Player::inventoryAmount[i][j] = 0;
             }
         }
         return true;
     });
-    commands.emplace_back("/suicide", [](std::vector<std::string> const& command, World&) {
+    commands.emplace_back("/suicide", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 1)
             return false;
         Player::spawn();
         return true;
     });
-    commands.emplace_back("/setblock", [](std::vector<std::string> const& command, World& world) {
+    commands.emplace_back("/setblock", [](std::vector<std::string> const& command, worlds::World& world) {
         if (command.size() != 5)
             return false;
         int x = std::stoi(command[1]);
         int y = std::stoi(command[2]);
         int z = std::stoi(command[3]);
-        auto b = BlockData::Id(std::stoi(command[4]));
-        world.setBlock(Vec3i(x, y, z), b);
+        auto b = blocks::Id(std::stoi(command[4]));
+        world.put_block(Vec3i(x, y, z), b);
         return true;
     });
-    commands.emplace_back("/tree", [](std::vector<std::string> const& command, World& world) {
+    commands.emplace_back("/tree", [](std::vector<std::string> const& command, worlds::World& world) {
         if (command.size() != 4)
             return false;
         int x = std::stoi(command[1]);
         int y = std::stoi(command[2]);
         int z = std::stoi(command[3]);
-        world.buildtree(Vec3i(x, y, z));
+        world.build_tree(Vec3i(x, y, z));
         return true;
     });
-    commands.emplace_back("/explode", [](std::vector<std::string> const& command, World& world) {
+    commands.emplace_back("/explode", [](std::vector<std::string> const& command, worlds::World& world) {
         if (command.size() != 5)
             return false;
         int x = std::stoi(command[1]);
@@ -385,7 +385,7 @@ void registerCommands() {
         world.explode(Vec3i(x, y, z), r);
         return true;
     });
-    commands.emplace_back("/time", [](std::vector<std::string> const& command, World&) {
+    commands.emplace_back("/time", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 2)
             return false;
         int time = std::stoi(command[1]);
@@ -394,7 +394,7 @@ void registerCommands() {
         GameTime = time;
         return true;
     });
-    commands.emplace_back("/gamemode", [](std::vector<std::string> const& command, World&) {
+    commands.emplace_back("/gamemode", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 2)
             return false;
         int mode = std::stoi(command[1]);
@@ -403,7 +403,7 @@ void registerCommands() {
     });
 }
 
-bool doCommand(std::vector<std::string> const& command, World& world) {
+bool doCommand(std::vector<std::string> const& command, worlds::World& world) {
     for (unsigned int i = 0; i != commands.size(); i++) {
         if (command[0] == commands[i].identifier)
             return commands[i].execute(command, world);
@@ -411,7 +411,7 @@ bool doCommand(std::vector<std::string> const& command, World& world) {
     return false;
 }
 
-void gameUpdate(World& world) {
+void gameUpdate(worlds::World& world) {
     int const SelectPrecision = 32;
     int const SelectDistance = 8;
     float const WalkSpeed = 0.15f;
@@ -437,15 +437,15 @@ void gameUpdate(World& world) {
     // 时间
     GameTime++;
 
-    meshedChunks = 0;
-    updatedChunks = 0;
+    meshed_chunks = 0;
+    updated_chunks = 0;
 
     // Move chunk pointer array and height map
-    world.setCenter(Player::ccoord);
+    world.set_center(Player::ccoord);
 
-    for (auto const& [_, c]: world.chunks) {
+    for (auto const& [_, c]: world.chunks()) {
         // 加载动画
-        c->updateLoadAnimOffset();
+        c->update_load_anim();
 
         // 随机状态更新
         if (rnd() < 1.0 / 8.0) {
@@ -459,35 +459,36 @@ void gameUpdate(World& world) {
             gy = y + cy * 16;
             z = int(rnd() * 16);
             gz = z + cz * 16;
-            if (c->block(Vec3u(x, y, z)).id == Blocks().dirt && world.getBlock(Vec3i(gx, gy + 1, gz)).id == Blocks().air
-                && (world.getBlock(Vec3i(gx + 1, gy, gz)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx - 1, gy, gz)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx, gy, gz + 1)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx, gy, gz - 1)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx + 1, gy + 1, gz)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx - 1, gy + 1, gz)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx, gy + 1, gz + 1)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx, gy + 1, gz - 1)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx + 1, gy - 1, gz)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx - 1, gy - 1, gz)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx, gy - 1, gz + 1)).id == Blocks().grass
-                    || world.getBlock(Vec3i(gx, gy - 1, gz - 1)).id == Blocks().grass)) {
+            if (c->block(Vec3u(x, y, z)).id == base_blocks().dirt
+                && world.block_or_air(Vec3i(gx, gy + 1, gz)).id == base_blocks().air
+                && (world.block_or_air(Vec3i(gx + 1, gy, gz)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx - 1, gy, gz)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx, gy, gz + 1)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx, gy, gz - 1)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx + 1, gy + 1, gz)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx - 1, gy + 1, gz)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx, gy + 1, gz + 1)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx, gy + 1, gz - 1)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx + 1, gy - 1, gz)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx - 1, gy - 1, gz)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx, gy - 1, gz + 1)).id == base_blocks().grass
+                    || world.block_or_air(Vec3i(gx, gy - 1, gz - 1)).id == base_blocks().grass)) {
                 // 长草
-                c->block_ref(Vec3u(x, y, z)).id = Blocks().grass;
-                world.updateBlock(Vec3i(x + cx * 16, y + cy * 16 + 1, z + cz * 16), true);
+                c->block_ref(Vec3u(x, y, z)).id = base_blocks().grass;
+                world.update_block(Vec3i(x + cx * 16, y + cy * 16 + 1, z + cz * 16), true);
             }
-            if (c->block(Vec3u(x, y, z)).id == Blocks().grass
-                && world.getBlock(Vec3i(gx, gy + 1, gz)).id != Blocks().air) {
+            if (c->block(Vec3u(x, y, z)).id == base_blocks().grass
+                && world.block_or_air(Vec3i(gx, gy + 1, gz)).id != base_blocks().air) {
                 // 草被覆盖
-                c->block_ref(Vec3u(x, y, z)).id = Blocks().dirt;
-                world.updateBlock(Vec3i(x + cx * 16, y + cy * 16 + 1, z + cz * 16), true);
+                c->block_ref(Vec3u(x, y, z)).id = base_blocks().dirt;
+                world.update_block(Vec3i(x + cx * 16, y + cy * 16 + 1, z + cz * 16), true);
             }
         }
     }
 
     // 更新世界方块
-    updatedBlocks = 0;
-    world.updateBlocks();
+    updated_blocks = 0;
+    world.process_block_updates();
 
     // 判断选中的方块
     double lx, ly, lz, lxl, lyl, lzl;
@@ -497,7 +498,7 @@ void gameUpdate(World& world) {
 
     sel = false;
     selx = sely = selz = 0;
-    selb = Blocks().air;
+    selb = base_blocks().air;
 
     if (chatmode) {
         shouldShowCursor = true;
@@ -564,19 +565,19 @@ void gameUpdate(World& world) {
             // 碰到方块
             auto coord = Vec3i(std::lround(lx), std::lround(ly), std::lround(lz));
             auto coordl = Vec3i(std::lround(lxl), std::lround(lyl), std::lround(lzl));
-            if (BlockInfo(world.getBlock(coord).id).solid) {
+            if (block_info(world.block_or_air(coord).id).solid) {
                 selx = coord.x;
                 sely = coord.y;
                 selz = coord.z;
                 sel = true;
 
                 // 找方块所在区块及位置
-                auto ccoord = getChunkPos(coord);
-                auto bcoord = getBlockPos(coord);
+                auto ccoord = worlds::chunk_coord(coord);
+                auto bcoord = worlds::block_coord(coord);
 
-                selb = world.getBlock(coord).id;
+                selb = world.block_or_air(coord).id;
                 if (mb == 1) { // 鼠标左键
-                    Particles::throwParticle(
+                    particles::throw_particle(
                         selb,
                         float(coord.x + rnd() - 0.5f),
                         float(coord.y + rnd() - 0.2f),
@@ -593,15 +594,15 @@ void gameUpdate(World& world) {
                         seldes = 0.0f;
                     else if (Player::gamemode == Player::Creative)
                         seldes += 1.0f / 30.0f / MinHardness;
-                    else if (BlockInfo(selb).hardness <= MinHardness)
+                    else if (block_info(selb).hardness <= MinHardness)
                         seldes += 1.0f / 30.0f / MinHardness;
                     else
-                        seldes += 1.0f / 30.0f / BlockInfo(selb).hardness;
+                        seldes += 1.0f / 30.0f / block_info(selb).hardness;
 
                     if (seldes >= 1.0f) {
                         Player::addItem(selb, 1);
                         for (int j = 1; j <= 25; j++) {
-                            Particles::throwParticle(
+                            particles::throw_particle(
                                 selb,
                                 float(coord.x + rnd() - 0.5f),
                                 float(coord.y + rnd() - 0.2f),
@@ -613,7 +614,7 @@ void gameUpdate(World& world) {
                                 int(rnd() * 60) + 30
                             );
                         }
-                        world.setBlock(coord, Blocks().air);
+                        world.put_block(coord, base_blocks().air);
                     }
                 }
                 if (mb == 2 && mbp == false) { // 鼠标右键
@@ -622,7 +623,7 @@ void gameUpdate(World& world) {
                         if (Player::putBlock(world, coordl, Player::BlockInHand)) {
                             Player::inventoryAmount[3][Player::indexInHand]--;
                             if (Player::inventoryAmount[3][Player::indexInHand] == 0)
-                                Player::inventory[3][Player::indexInHand] = Blocks().air;
+                                Player::inventory[3][Player::indexInHand] = base_blocks().air;
                         }
                     } else {
                         // 使用物品
@@ -775,7 +776,7 @@ void gameUpdate(World& world) {
 
         // Save world
         if (isKeyPressed(GLFW_KEY_L))
-            world.saveAllChunks();
+            world.save_to_files();
 
         // 各种设置切换
         if (isKeyPressed(GLFW_KEY_F1)) {
@@ -854,7 +855,7 @@ void gameUpdate(World& world) {
     inputstr.clear();
     backspace = false;
 
-    Particles::updateall(world);
+    particles::update_all(world);
 
     Player::intxpos = std::lround(Player::xpos);
     Player::intypos = std::lround(Player::ypos);
@@ -868,39 +869,19 @@ void gameUpdate(World& world) {
     Player::intzposold = std::lround(Player::zpos);
 }
 
-void frameLinkedUpdate(World& world) {
+void frameLinkedUpdate(worlds::World& world) {
     // Find chunks for unloading & loading & meshing
     auto center = Vec3i(std::lround(Player::xpos), std::lround(Player::ypos), std::lround(Player::zpos));
-    world.sortChunkUpdateLists(center);
+    world.update_chunk_lists(center);
 
     // Load chunks
-    for (auto [_, ccoord]: world.chunkLoadList) {
-        world.loadChunk(ccoord, true);
-    }
+    world.process_chunk_loads();
 
     // Unload chunks
-    for (auto [_, ccoord]: world.chunkUnloadList) {
-        world.unloadChunk(ccoord);
-    }
+    world.process_chunk_unloads();
 
     // Mesh updated chunks
-    for (auto [_, c]: world.chunkMeshingList) {
-        auto ccoord = c->coord();
-        auto neighbors = std::array<Chunk const*, 27>{};
-        auto all = true;
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -1; z <= 1; z++) {
-                    auto cptr = world.getChunkPtr(ccoord + Vec3i(x, y, z));
-                    neighbors[((x + 1) * 3 + (y + 1)) * 3 + (z + 1)] = cptr;
-                    if (!cptr)
-                        all = false;
-                }
-            }
-        }
-        if (all)
-            c->buildMeshes(neighbors);
-    }
+    world.process_chunk_meshings();
 
     // 处理计时
     double currTimer = Timer();
@@ -973,7 +954,7 @@ void frameLinkedUpdate(World& world) {
 }
 
 // Render the whole scene and HUD
-void render(World& world) {
+void render(worlds::World& world) {
     float const SkyColorR = 0.70f;
     float const SkyColorG = 0.80f;
     float const SkyColorB = 0.86f;
@@ -983,6 +964,7 @@ void render(World& world) {
     double xpos = Player::xpos - Player::xd + interp * Player::xd;
     double ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + interp * Player::yd;
     double zpos = Player::zpos - Player::zd + interp * Player::zd;
+    auto view_coord = Vec3d(xpos, ypos, zpos);
 
     // Calculate sun position (temporary: horizontal movement only)
     float interpolatedTime = GameTime - 1.0f + static_cast<float>(interp);
@@ -1028,21 +1010,21 @@ void render(World& world) {
             plookupdown
         );
         auto shadowMatrixTest = FrustumTest(shadowMatrixExp);
-        auto list = world.ListRenderChunks(xpos, ypos, zpos, Renderer::getShadowDistance(), interp, shadowMatrixTest);
+        auto list = world.list_render_chunks(view_coord, Renderer::getShadowDistance(), interp, shadowMatrixTest);
         Renderer::StartShadowPass(shadowMatrix, interpolatedTime);
-        world.RenderChunks(xpos, ypos, zpos, list, 0);
+        world.render_chunks(view_coord, list, 0);
         Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(0.0f));
-        Particles::renderall(world, xpos, ypos, zpos, interp);
+        particles::render_all(world, view_coord, interp);
         Renderer::EndShadowPass();
     }
 
     // Draw the opaque parts of the world
-    auto list = world.ListRenderChunks(xpos, ypos, zpos, RenderDistance, interp, FrustumTest(viewMatrix));
-    renderedChunks = static_cast<int>(list.size());
+    auto list = world.list_render_chunks(view_coord, RenderDistance, interp, FrustumTest(viewMatrix));
+    rendered_chunks = static_cast<int>(list.size());
     Renderer::StartOpaquePass(viewMatrix, interpolatedTime);
-    world.RenderChunks(xpos, ypos, zpos, list, 0);
+    world.render_chunks(view_coord, list, 0);
     Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(0.0f));
-    Particles::renderall(world, xpos, ypos, zpos, interp);
+    particles::render_all(world, view_coord, interp);
     Renderer::EndOpaquePass();
 
     // Draw the translucent parts of the world
@@ -1069,7 +1051,7 @@ void render(World& world) {
         }
         drawBreaking(seldes, 0, 0, 0);
     }
-    world.RenderChunks(xpos, ypos, zpos, list, 1);
+    world.render_chunks(view_coord, list, 1);
     glEnable(GL_CULL_FACE);
     Renderer::EndTranslucentPass();
 
@@ -1128,13 +1110,13 @@ void render(World& world) {
     glClearDepth(1.0f);
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    if (world.getBlock(Vec3i(std::lround(xpos), std::lround(ypos), std::lround(zpos))).id == Blocks().water) {
+    if (world.block_or_air(Vec3i(std::lround(xpos), std::lround(ypos), std::lround(zpos))).id == base_blocks().water) {
         auto& shader = Renderer::shaders[Renderer::UIShader];
         shader.bind();
         glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
         Renderer::Begin(GL_QUADS, 2, 3, 4);
         Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-        Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Blocks().water, 0)));
+        Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(base_blocks().water, 0)));
         Renderer::TexCoord2f(0.0f, 1.0f);
         Renderer::Vertex2i(0, 0);
         Renderer::TexCoord2f(0.0f, 0.0f);
@@ -1181,7 +1163,7 @@ void saveScreenshot(int x, int y, int w, int h, std::string filename) {
     Textures::SaveRGBImage(filename, scrBuffer);
 }
 
-void readback(World& world) {
+void readback(worlds::World& world) {
     if (shouldGetScreenshot) {
         shouldGetScreenshot = false;
         time_t t = time(0);
@@ -1203,7 +1185,7 @@ void readback(World& world) {
     if (shouldGetThumbnail) {
         shouldGetThumbnail = false;
         std::stringstream ss;
-        ss << "worlds/" << world.WorldName << "/thumbnail.bmp";
+        ss << "worlds/" << world.name() << "/thumbnail.bmp";
         saveScreenshot(0, 0, WindowWidth, WindowHeight, ss.str());
     }
 }
@@ -1302,7 +1284,7 @@ void drawBreaking(float level, float x, float y, float z) {
     Renderer::End().render();
 }
 
-void drawGUI(World& world) {
+void drawGUI(worlds::World& world) {
     int const linelength = 10;
     int const linedist = 30;
     int disti = (int) (seldes * linedist);
@@ -1329,7 +1311,7 @@ void drawGUI(World& world) {
         glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - linelength - disti);
         glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti);
         glVertex2i(WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 + linedist - disti);
-        if (selb != Blocks().air) {
+        if (selb != base_blocks().air) {
             glVertex2i(WindowWidth / 2, WindowHeight / 2);
             glVertex2i(WindowWidth / 2 + 50, WindowHeight / 2 + 50);
             glVertex2i(WindowWidth / 2 + 50, WindowHeight / 2 + 50);
@@ -1453,9 +1435,9 @@ void drawGUI(World& world) {
     };
 
     TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
-    if (showDebugPanel && selb != Blocks().air) {
+    if (showDebugPanel && selb != base_blocks().air) {
         std::stringstream ss;
-        ss << BlockInfo(selb).name << " (id: " << static_cast<int>(selb.get()) << ")";
+        ss << block_info(selb).name << " (id: " << static_cast<int>(selb.get()) << ")";
         TextRenderer::renderString(
             WindowWidth / 2 + 50,
             WindowHeight / 2 + 50 - TextRenderer::getLineHeight(),
@@ -1539,19 +1521,19 @@ void drawGUI(World& world) {
         debugText(ss.str());
         ss.str("");
 
-        ss << world.chunks.size() << " chunks loaded";
+        ss << world.chunks().size() << " chunks loaded";
         debugText(ss.str());
         ss.str("");
-        ss << renderedChunks << " chunks rendered";
+        ss << rendered_chunks << " chunks rendered";
         debugText(ss.str());
         ss.str("");
-        ss << unloadedChunks << " chunks unloaded";
+        ss << unloaded_chunks << " chunks unloaded";
         debugText(ss.str());
         ss.str("");
-        ss << updatedChunks << " chunks updated";
+        ss << updated_chunks << " chunks updated";
         debugText(ss.str());
         ss.str("");
-        ss << updatedBlocks << "/" << world.blockUpdateQueue.size() << " blocks updated";
+        ss << updated_blocks << "/" << world.block_update_queue().size() << " blocks updated";
         debugText(ss.str());
         ss.str("");
 
@@ -1586,7 +1568,7 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
         glVertex2i(xbase + i * (32 + spac) + 32, ybase);
         glEnd();
 
-        if (Player::inventory[row][i] != Blocks().air) {
+        if (Player::inventory[row][i] != base_blocks().air) {
             shader.bind();
             glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
             Renderer::Begin(GL_QUADS, 2, 3, 4);
@@ -1621,7 +1603,7 @@ void drawBag() {
     int leftp = (WindowWidth - 392) / 2;
     int upp = WindowHeight - 152 - 16;
     static int mousew, mouseb, mousebl;
-    static auto indexselected = Blocks().air;
+    static auto indexselected = base_blocks().air;
     static short Amountselected = 0;
     double curtime = Timer();
     double TimeDelta = curtime - bagAnimTimer;
@@ -1672,19 +1654,19 @@ void drawBag() {
                             Amountselected--;
                             Player::inventoryAmount[i][j]++;
                         }
-                        if (mousebl == 0 && mouseb == 2 && Player::inventory[i][j] == Blocks().air) {
+                        if (mousebl == 0 && mouseb == 2 && Player::inventory[i][j] == base_blocks().air) {
                             Amountselected--;
                             Player::inventoryAmount[i][j] = 1;
                             Player::inventory[i][j] = indexselected;
                         }
 
                         if (Amountselected == 0)
-                            indexselected = Blocks().air;
-                        if (indexselected == Blocks().air)
+                            indexselected = base_blocks().air;
+                        if (indexselected == base_blocks().air)
                             Amountselected = 0;
                         if (Player::inventoryAmount[i][j] == 0)
-                            Player::inventory[i][j] = Blocks().air;
-                        if (Player::inventory[i][j] == Blocks().air)
+                            Player::inventory[i][j] = base_blocks().air;
+                        if (Player::inventory[i][j] == base_blocks().air)
                             Player::inventoryAmount[i][j] = 0;
                     }
                 }
@@ -1699,7 +1681,7 @@ void drawBag() {
             }
         }
 
-        if (indexselected != Blocks().air) {
+        if (indexselected != base_blocks().air) {
             auto& shader = Renderer::shaders[Renderer::UIShader];
             shader.bind();
             glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
@@ -1721,8 +1703,8 @@ void drawBag() {
             ss << Amountselected;
             TextRenderer::renderString((int) mx - 16, (int) my - 16, ss.str());
         }
-        if (Player::inventory[si][sj] != Blocks().air && sf == 1) {
-            TextRenderer::renderString((int) mx, (int) my - 16, BlockInfo(Player::inventory[si][sj]).name);
+        if (Player::inventory[si][sj] != base_blocks().air && sf == 1) {
+            TextRenderer::renderString((int) mx, (int) my - 16, block_info(Player::inventory[si][sj]).name);
         }
 
         int xbase = 0, ybase = 0, spac = 0;
