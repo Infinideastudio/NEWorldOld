@@ -1,6 +1,8 @@
 module;
 
+#include <algorithm>
 #include <array>
+#include <cassert>
 #include <vector>
 #include <glad/gl.h>
 
@@ -25,15 +27,14 @@ struct QuadPrimitive {
     // Vertex colors
     int col0 = 0, col1 = 0, col2 = 0, col3 = 0;
     // Block ID
-    BlockID blk = BlockID::AIR;
+    BlockData::Id blk = BlockData::Id(0);
     // Texture index
     TextureIndex tex = TextureIndex::NULLBLOCK;
 };
 
 class ChunkRenderData {
 public:
-    std::array<BlockID, 18 * 18 * 18> blocks = {};
-    std::array<Brightness, 18 * 18 * 18> brightness = {};
+    std::array<BlockData, 18 * 18 * 18> blocks = {};
 
     explicit ChunkRenderData(std::array<Chunk const*, 3 * 3 * 3> const& neighbors) {
         auto ccoord = neighbors[(1 * 3 + 1) * 3 + 1]->coord();
@@ -60,70 +61,74 @@ public:
                     else if (z >= 16)
                         rcz++, bz -= 16;
 
-                    auto p = neighbors[((rcx + 1) * 3 + rcy + 1) * 3 + rcz + 1];
-                    if (p == nullptr) {
-                        blocks[index] = BlockID::ROCK;
-                        brightness[index] = SkyBrightness;
-                    } else if (p == EmptyChunkPtr) {
-                        blocks[index] = BlockID::AIR;
-                        brightness[index] = (ccoord.y + rcy < 0) ? MinBrightness : SkyBrightness;
+                    auto& blk = blocks[index];
+                    auto cptr = neighbors[((rcx + 1) * 3 + rcy + 1) * 3 + rcz + 1];
+                    assert(cptr);
+                    if (cptr == EmptyChunkPtr) {
+                        auto light = (ccoord.y + rcy < 0) ? NO_LIGHT : SKY_LIGHT;
+                        blk = BlockData{.id = Blocks().air, .light = light};
                     } else {
-                        blocks[index] = p->getBlock(bx, by, bz);
-                        brightness[index] = p->getBrightness(bx, by, bz);
+                        blk = cptr->block(Vec3u(bx, by, bz));
                     }
+                    // Temporary: clamp to minimum light level 2
+                    if (!BlockInfo(blk.id).opaque)
+                        blk.light = BlockData::Light(blk.light.sky(), std::max(blk.light.block(), uint8_t{2}));
+
                     index++;
                 }
             }
         }
     }
 
-    auto getBlock(int x, int y, int z) const -> BlockID {
+    auto block(int x, int y, int z) const -> BlockData const& {
         return blocks[((x + 1) * 18 + y + 1) * 18 + z + 1];
     }
 
-    auto getBrightness(int x, int y, int z) const -> Brightness {
-        return brightness[((x + 1) * 18 + y + 1) * 18 + z + 1];
+    // Temporary: mix two light levels.
+    auto light(int x, int y, int z) const -> int {
+        auto const& blk = block(x, y, z);
+        return std::max(blk.light.sky(), blk.light.block());
     }
 };
 
+// Temporary: maximum value obtained after mixing two light levels.
+constexpr auto MAX_LIGHT = 15.0f;
+
 void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
-    auto bl = rd.getBlock(x, y, z);
+    auto bl = rd.block(x, y, z);
     auto neighbors = std::array{
-        rd.getBlock(x + 1, y, z),
-        rd.getBlock(x - 1, y, z),
-        rd.getBlock(x, y + 1, z),
-        rd.getBlock(x, y - 1, z),
-        rd.getBlock(x, y, z + 1),
-        rd.getBlock(x, y, z - 1),
+        rd.block(x + 1, y, z),
+        rd.block(x - 1, y, z),
+        rd.block(x, y + 1, z),
+        rd.block(x, y - 1, z),
+        rd.block(x, y, z + 1),
+        rd.block(x, y, z - 1),
     };
     auto tex = TextureIndex::NULLBLOCK;
     auto col1 = 0.0f, col2 = 0.0f, col3 = 0.0f, col4 = 0.0f;
 
     // Right face
-    if (!(bl == BlockID::AIR || bl == neighbors[0] && bl != BlockID::LEAF || BlockInfo(neighbors[0]).isOpaque())) {
-        if (NiceGrass && bl == BlockID::GRASS && rd.getBlock(x + 1, y - 1, z) == BlockID::GRASS)
-            tex = Textures::getTextureIndex(bl, 0);
+    if (!(bl.id == Blocks().air || bl.id == neighbors[0].id && bl.id != Blocks().leaf
+          || BlockInfo(neighbors[0].id).opaque)) {
+        if (NiceGrass && bl.id == Blocks().grass && rd.block(x + 1, y - 1, z).id == Blocks().grass)
+            tex = Textures::getTextureIndex(bl.id, 0);
         else
-            tex = Textures::getTextureIndex(bl, 1);
-        col1 = col2 = col3 = col4 = rd.getBrightness(x + 1, y, z);
+            tex = Textures::getTextureIndex(bl.id, 1);
+        col1 = col2 = col3 = col4 = rd.light(x + 1, y, z);
         if (SmoothLighting) {
-            col1 = (col1 + rd.getBrightness(x + 1, y - 1, z) + rd.getBrightness(x + 1, y, z - 1)
-                    + rd.getBrightness(x + 1, y - 1, z - 1))
-                 / 4.0f;
-            col2 = (col2 + rd.getBrightness(x + 1, y + 1, z) + rd.getBrightness(x + 1, y, z - 1)
-                    + rd.getBrightness(x + 1, y + 1, z - 1))
-                 / 4.0f;
-            col3 = (col3 + rd.getBrightness(x + 1, y + 1, z) + rd.getBrightness(x + 1, y, z + 1)
-                    + rd.getBrightness(x + 1, y + 1, z + 1))
-                 / 4.0f;
-            col4 = (col4 + rd.getBrightness(x + 1, y - 1, z) + rd.getBrightness(x + 1, y, z + 1)
-                    + rd.getBrightness(x + 1, y - 1, z + 1))
-                 / 4.0f;
+            col1 =
+                (col1 + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y, z - 1) + rd.light(x + 1, y - 1, z - 1)) / 4.0f;
+            col2 =
+                (col2 + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y, z - 1) + rd.light(x + 1, y + 1, z - 1)) / 4.0f;
+            col3 =
+                (col3 + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y, z + 1) + rd.light(x + 1, y + 1, z + 1)) / 4.0f;
+            col4 =
+                (col4 + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y, z + 1) + rd.light(x + 1, y - 1, z + 1)) / 4.0f;
         }
-        col1 /= MaxBrightness, col2 /= MaxBrightness, col3 /= MaxBrightness, col4 /= MaxBrightness;
+        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
         if (!AdvancedRender)
             col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
-        Renderer::Attrib1f(static_cast<float>(bl));
+        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(1.0f, 0.0f, 0.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -141,30 +146,27 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 
     // Left Face
-    if (!(bl == BlockID::AIR || bl == neighbors[1] && bl != BlockID::LEAF || BlockInfo(neighbors[1]).isOpaque())) {
-        if (NiceGrass && bl == BlockID::GRASS && rd.getBlock(x - 1, y - 1, z) == BlockID::GRASS)
-            tex = Textures::getTextureIndex(bl, 0);
+    if (!(bl.id == Blocks().air || bl.id == neighbors[1].id && bl.id != Blocks().leaf
+          || BlockInfo(neighbors[1].id).opaque)) {
+        if (NiceGrass && bl.id == Blocks().grass && rd.block(x - 1, y - 1, z).id == Blocks().grass)
+            tex = Textures::getTextureIndex(bl.id, 0);
         else
-            tex = Textures::getTextureIndex(bl, 1);
-        col1 = col2 = col3 = col4 = rd.getBrightness(x - 1, y, z);
+            tex = Textures::getTextureIndex(bl.id, 1);
+        col1 = col2 = col3 = col4 = rd.light(x - 1, y, z);
         if (SmoothLighting) {
-            col1 = (col1 + rd.getBrightness(x - 1, y - 1, z) + rd.getBrightness(x - 1, y, z - 1)
-                    + rd.getBrightness(x - 1, y - 1, z - 1))
-                 / 4.0f;
-            col2 = (col2 + rd.getBrightness(x - 1, y - 1, z) + rd.getBrightness(x - 1, y, z + 1)
-                    + rd.getBrightness(x - 1, y - 1, z + 1))
-                 / 4.0f;
-            col3 = (col3 + rd.getBrightness(x - 1, y + 1, z) + rd.getBrightness(x - 1, y, z + 1)
-                    + rd.getBrightness(x - 1, y + 1, z + 1))
-                 / 4.0f;
-            col4 = (col4 + rd.getBrightness(x - 1, y + 1, z) + rd.getBrightness(x - 1, y, z - 1)
-                    + rd.getBrightness(x - 1, y + 1, z - 1))
-                 / 4.0f;
+            col1 =
+                (col1 + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y, z - 1) + rd.light(x - 1, y - 1, z - 1)) / 4.0f;
+            col2 =
+                (col2 + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y, z + 1) + rd.light(x - 1, y - 1, z + 1)) / 4.0f;
+            col3 =
+                (col3 + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y, z + 1) + rd.light(x - 1, y + 1, z + 1)) / 4.0f;
+            col4 =
+                (col4 + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y, z - 1) + rd.light(x - 1, y + 1, z - 1)) / 4.0f;
         }
-        col1 /= MaxBrightness, col2 /= MaxBrightness, col3 /= MaxBrightness, col4 /= MaxBrightness;
+        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
         if (!AdvancedRender)
             col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
-        Renderer::Attrib1f(static_cast<float>(bl));
+        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(-1.0f, 0.0f, 0.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -182,25 +184,22 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 
     // Top Face
-    if (!(bl == BlockID::AIR || bl == neighbors[2] && bl != BlockID::LEAF || BlockInfo(neighbors[2]).isOpaque())) {
-        tex = Textures::getTextureIndex(bl, 0);
-        col1 = col2 = col3 = col4 = rd.getBrightness(x, y + 1, z);
+    if (!(bl.id == Blocks().air || bl.id == neighbors[2].id && bl.id != Blocks().leaf
+          || BlockInfo(neighbors[2].id).opaque)) {
+        tex = Textures::getTextureIndex(bl.id, 0);
+        col1 = col2 = col3 = col4 = rd.light(x, y + 1, z);
         if (SmoothLighting) {
-            col1 = (col1 + rd.getBrightness(x, y + 1, z - 1) + rd.getBrightness(x - 1, y + 1, z)
-                    + rd.getBrightness(x - 1, y + 1, z - 1))
-                 / 4.0f;
-            col2 = (col2 + rd.getBrightness(x, y + 1, z + 1) + rd.getBrightness(x - 1, y + 1, z)
-                    + rd.getBrightness(x - 1, y + 1, z + 1))
-                 / 4.0f;
-            col3 = (col3 + rd.getBrightness(x, y + 1, z + 1) + rd.getBrightness(x + 1, y + 1, z)
-                    + rd.getBrightness(x + 1, y + 1, z + 1))
-                 / 4.0f;
-            col4 = (col4 + rd.getBrightness(x, y + 1, z - 1) + rd.getBrightness(x + 1, y + 1, z)
-                    + rd.getBrightness(x + 1, y + 1, z - 1))
-                 / 4.0f;
+            col1 =
+                (col1 + rd.light(x, y + 1, z - 1) + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y + 1, z - 1)) / 4.0f;
+            col2 =
+                (col2 + rd.light(x, y + 1, z + 1) + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y + 1, z + 1)) / 4.0f;
+            col3 =
+                (col3 + rd.light(x, y + 1, z + 1) + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y + 1, z + 1)) / 4.0f;
+            col4 =
+                (col4 + rd.light(x, y + 1, z - 1) + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y + 1, z - 1)) / 4.0f;
         }
-        col1 /= MaxBrightness, col2 /= MaxBrightness, col3 /= MaxBrightness, col4 /= MaxBrightness;
-        Renderer::Attrib1f(static_cast<float>(bl));
+        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
+        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(0.0f, 1.0f, 0.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -218,25 +217,22 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 
     // Bottom Face
-    if (!(bl == BlockID::AIR || bl == neighbors[3] && bl != BlockID::LEAF || BlockInfo(neighbors[3]).isOpaque())) {
-        tex = Textures::getTextureIndex(bl, 2);
-        col1 = col2 = col3 = col4 = rd.getBrightness(x, y - 1, z);
+    if (!(bl.id == Blocks().air || bl.id == neighbors[3].id && bl.id != Blocks().leaf
+          || BlockInfo(neighbors[3].id).opaque)) {
+        tex = Textures::getTextureIndex(bl.id, 2);
+        col1 = col2 = col3 = col4 = rd.light(x, y - 1, z);
         if (SmoothLighting) {
-            col1 = (col1 + rd.getBrightness(x, y - 1, z - 1) + rd.getBrightness(x - 1, y - 1, z)
-                    + rd.getBrightness(x - 1, y - 1, z - 1))
-                 / 4.0f;
-            col2 = (col2 + rd.getBrightness(x, y - 1, z - 1) + rd.getBrightness(x + 1, y - 1, z)
-                    + rd.getBrightness(x + 1, y - 1, z - 1))
-                 / 4.0f;
-            col3 = (col3 + rd.getBrightness(x, y - 1, z + 1) + rd.getBrightness(x + 1, y - 1, z)
-                    + rd.getBrightness(x + 1, y - 1, z + 1))
-                 / 4.0f;
-            col4 = (col4 + rd.getBrightness(x, y - 1, z + 1) + rd.getBrightness(x - 1, y - 1, z)
-                    + rd.getBrightness(x - 1, y - 1, z + 1))
-                 / 4.0f;
+            col1 =
+                (col1 + rd.light(x, y - 1, z - 1) + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y - 1, z - 1)) / 4.0f;
+            col2 =
+                (col2 + rd.light(x, y - 1, z - 1) + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y - 1, z - 1)) / 4.0f;
+            col3 =
+                (col3 + rd.light(x, y - 1, z + 1) + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y - 1, z + 1)) / 4.0f;
+            col4 =
+                (col4 + rd.light(x, y - 1, z + 1) + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y - 1, z + 1)) / 4.0f;
         }
-        col1 /= MaxBrightness, col2 /= MaxBrightness, col3 /= MaxBrightness, col4 /= MaxBrightness;
-        Renderer::Attrib1f(static_cast<float>(bl));
+        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
+        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(0.0f, -1.0f, 0.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -254,30 +250,27 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 
     // Front Face
-    if (!(bl == BlockID::AIR || bl == neighbors[4] && bl != BlockID::LEAF || BlockInfo(neighbors[4]).isOpaque())) {
-        if (NiceGrass && bl == BlockID::GRASS && rd.getBlock(x, y - 1, z + 1) == BlockID::GRASS)
-            tex = Textures::getTextureIndex(bl, 0);
+    if (!(bl.id == Blocks().air || bl.id == neighbors[4].id && bl.id != Blocks().leaf
+          || BlockInfo(neighbors[4].id).opaque)) {
+        if (NiceGrass && bl.id == Blocks().grass && rd.block(x, y - 1, z + 1).id == Blocks().grass)
+            tex = Textures::getTextureIndex(bl.id, 0);
         else
-            tex = Textures::getTextureIndex(bl, 1);
-        col1 = col2 = col3 = col4 = rd.getBrightness(x, y, z + 1);
+            tex = Textures::getTextureIndex(bl.id, 1);
+        col1 = col2 = col3 = col4 = rd.light(x, y, z + 1);
         if (SmoothLighting) {
-            col1 = (col1 + rd.getBrightness(x, y - 1, z + 1) + rd.getBrightness(x - 1, y, z + 1)
-                    + rd.getBrightness(x - 1, y - 1, z + 1))
-                 / 4.0f;
-            col2 = (col2 + rd.getBrightness(x, y - 1, z + 1) + rd.getBrightness(x + 1, y, z + 1)
-                    + rd.getBrightness(x + 1, y - 1, z + 1))
-                 / 4.0f;
-            col3 = (col3 + rd.getBrightness(x, y + 1, z + 1) + rd.getBrightness(x + 1, y, z + 1)
-                    + rd.getBrightness(x + 1, y + 1, z + 1))
-                 / 4.0f;
-            col4 = (col4 + rd.getBrightness(x, y + 1, z + 1) + rd.getBrightness(x - 1, y, z + 1)
-                    + rd.getBrightness(x - 1, y + 1, z + 1))
-                 / 4.0f;
+            col1 =
+                (col1 + rd.light(x, y - 1, z + 1) + rd.light(x - 1, y, z + 1) + rd.light(x - 1, y - 1, z + 1)) / 4.0f;
+            col2 =
+                (col2 + rd.light(x, y - 1, z + 1) + rd.light(x + 1, y, z + 1) + rd.light(x + 1, y - 1, z + 1)) / 4.0f;
+            col3 =
+                (col3 + rd.light(x, y + 1, z + 1) + rd.light(x + 1, y, z + 1) + rd.light(x + 1, y + 1, z + 1)) / 4.0f;
+            col4 =
+                (col4 + rd.light(x, y + 1, z + 1) + rd.light(x - 1, y, z + 1) + rd.light(x - 1, y + 1, z + 1)) / 4.0f;
         }
-        col1 /= MaxBrightness, col2 /= MaxBrightness, col3 /= MaxBrightness, col4 /= MaxBrightness;
+        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
         if (!AdvancedRender)
             col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
-        Renderer::Attrib1f(static_cast<float>(bl));
+        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(0.0f, 0.0f, 1.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -295,30 +288,27 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 
     // Back Face
-    if (!(bl == BlockID::AIR || bl == neighbors[5] && bl != BlockID::LEAF || BlockInfo(neighbors[5]).isOpaque())) {
-        if (NiceGrass && bl == BlockID::GRASS && rd.getBlock(x, y - 1, z - 1) == BlockID::GRASS)
-            tex = Textures::getTextureIndex(bl, 0);
+    if (!(bl.id == Blocks().air || bl.id == neighbors[5].id && bl.id != Blocks().leaf
+          || BlockInfo(neighbors[5].id).opaque)) {
+        if (NiceGrass && bl.id == Blocks().grass && rd.block(x, y - 1, z - 1).id == Blocks().grass)
+            tex = Textures::getTextureIndex(bl.id, 0);
         else
-            tex = Textures::getTextureIndex(bl, 1);
-        col1 = col2 = col3 = col4 = rd.getBrightness(x, y, z - 1);
+            tex = Textures::getTextureIndex(bl.id, 1);
+        col1 = col2 = col3 = col4 = rd.light(x, y, z - 1);
         if (SmoothLighting) {
-            col1 = (col1 + rd.getBrightness(x, y - 1, z - 1) + rd.getBrightness(x - 1, y, z - 1)
-                    + rd.getBrightness(x - 1, y - 1, z - 1))
-                 / 4.0f;
-            col2 = (col2 + rd.getBrightness(x, y + 1, z - 1) + rd.getBrightness(x - 1, y, z - 1)
-                    + rd.getBrightness(x - 1, y + 1, z - 1))
-                 / 4.0f;
-            col3 = (col3 + rd.getBrightness(x, y + 1, z - 1) + rd.getBrightness(x + 1, y, z - 1)
-                    + rd.getBrightness(x + 1, y + 1, z - 1))
-                 / 4.0f;
-            col4 = (col4 + rd.getBrightness(x, y - 1, z - 1) + rd.getBrightness(x + 1, y, z - 1)
-                    + rd.getBrightness(x + 1, y - 1, z - 1))
-                 / 4.0f;
+            col1 =
+                (col1 + rd.light(x, y - 1, z - 1) + rd.light(x - 1, y, z - 1) + rd.light(x - 1, y - 1, z - 1)) / 4.0f;
+            col2 =
+                (col2 + rd.light(x, y + 1, z - 1) + rd.light(x - 1, y, z - 1) + rd.light(x - 1, y + 1, z - 1)) / 4.0f;
+            col3 =
+                (col3 + rd.light(x, y + 1, z - 1) + rd.light(x + 1, y, z - 1) + rd.light(x + 1, y + 1, z - 1)) / 4.0f;
+            col4 =
+                (col4 + rd.light(x, y - 1, z - 1) + rd.light(x + 1, y, z - 1) + rd.light(x + 1, y - 1, z - 1)) / 4.0f;
         }
-        col1 /= MaxBrightness, col2 /= MaxBrightness, col3 /= MaxBrightness, col4 /= MaxBrightness;
+        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
         if (!AdvancedRender)
             col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
-        Renderer::Attrib1f(static_cast<float>(bl));
+        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(0.0f, 0.0f, -1.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -353,13 +343,13 @@ Numbered from 0 to 3:
 */
 
 void RenderPrimitive(QuadPrimitive const& p) {
-    float col0 = (float) p.col0 * 0.25f / MaxBrightness;
-    float col1 = (float) p.col1 * 0.25f / MaxBrightness;
-    float col2 = (float) p.col2 * 0.25f / MaxBrightness;
-    float col3 = (float) p.col3 * 0.25f / MaxBrightness;
+    float col0 = (float) p.col0 * 0.25f / MAX_LIGHT;
+    float col1 = (float) p.col1 * 0.25f / MAX_LIGHT;
+    float col2 = (float) p.col2 * 0.25f / MAX_LIGHT;
+    float col3 = (float) p.col3 * 0.25f / MAX_LIGHT;
     int x = p.x, y = p.y, z = p.z, length = p.length;
 
-    Renderer::Attrib1f(static_cast<float>(p.blk));
+    Renderer::Attrib1f(static_cast<float>(p.blk.get()));
     Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(p.tex));
 
     switch (p.direction) {
@@ -475,8 +465,8 @@ auto RenderChunk(std::array<Chunk const*, 3 * 3 * 3> neighbors) -> std::vector<R
         for (int x = 0; x < 16; x++)
             for (int y = 0; y < 16; y++)
                 for (int z = 0; z < 16; z++) {
-                    auto const& info = BlockInfo(rd.getBlock(x, y, z));
-                    if (steps == 0 && !info.isTranslucent() || steps == 1 && info.isTranslucent()) {
+                    auto const& info = BlockInfo(rd.block(x, y, z).id);
+                    if (steps == 0 && !info.translucent || steps == 1 && info.translucent) {
                         RenderBlock(x, y, z, rd);
                     }
                 }
@@ -525,12 +515,12 @@ auto MergeFaceRenderChunk(std::array<Chunk const*, 3 * 3 * 3> neighbors) -> std:
                                 break;
                         }
                         // Get block ID
-                        BlockID bl = rd.getBlock(x, y, z);
-                        BlockID neighbour = rd.getBlock(x + dx, y + dy, z + dz);
-                        auto const& info = BlockInfo(bl);
-                        if (bl == BlockID::AIR || bl == neighbour && bl != BlockID::LEAF
-                            || BlockInfo(neighbour).isOpaque()
-                            || !(steps == 0 && !info.isTranslucent() || steps == 1 && info.isTranslucent())) {
+                        auto bl = rd.block(x, y, z);
+                        auto neighbour = rd.block(x + dx, y + dy, z + dz);
+                        auto const& info = BlockInfo(bl.id);
+                        if (bl.id == Blocks().air || bl.id == neighbour.id && bl.id != Blocks().leaf
+                            || BlockInfo(neighbour.id).opaque
+                            || !(steps == 0 && !info.translucent || steps == 1 && info.translucent)) {
                             // Not valid block
                             if (valid) {
                                 RenderPrimitive(cur);
@@ -546,98 +536,102 @@ auto MergeFaceRenderChunk(std::array<Chunk const*, 3 * 3 * 3> neighbors) -> std:
                             face = 2;
                         else
                             face = 1;
-                        TextureIndex tex = Textures::getTextureIndex(bl, face);
+                        TextureIndex tex = Textures::getTextureIndex(bl.id, face);
                         int br = 0, col0 = 0, col1 = 0, col2 = 0, col3 = 0;
                         switch (d) {
                             case 0:
-                                if (NiceGrass && bl == BlockID::GRASS && rd.getBlock(x + 1, y - 1, z) == BlockID::GRASS)
-                                    tex = Textures::getTextureIndex(bl, 0);
-                                br = rd.getBrightness(x + 1, y, z);
+                                if (NiceGrass && bl.id == Blocks().grass
+                                    && rd.block(x + 1, y - 1, z).id == Blocks().grass)
+                                    tex = Textures::getTextureIndex(bl.id, 0);
+                                br = rd.light(x + 1, y, z);
                                 if (SmoothLighting) {
-                                    col0 = br + rd.getBrightness(x + 1, y - 1, z) + rd.getBrightness(x + 1, y, z - 1)
-                                         + rd.getBrightness(x + 1, y - 1, z - 1);
-                                    col1 = br + rd.getBrightness(x + 1, y + 1, z) + rd.getBrightness(x + 1, y, z - 1)
-                                         + rd.getBrightness(x + 1, y + 1, z - 1);
-                                    col2 = br + rd.getBrightness(x + 1, y + 1, z) + rd.getBrightness(x + 1, y, z + 1)
-                                         + rd.getBrightness(x + 1, y + 1, z + 1);
-                                    col3 = br + rd.getBrightness(x + 1, y - 1, z) + rd.getBrightness(x + 1, y, z + 1)
-                                         + rd.getBrightness(x + 1, y - 1, z + 1);
+                                    col0 = br + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y, z - 1)
+                                         + rd.light(x + 1, y - 1, z - 1);
+                                    col1 = br + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y, z - 1)
+                                         + rd.light(x + 1, y + 1, z - 1);
+                                    col2 = br + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y, z + 1)
+                                         + rd.light(x + 1, y + 1, z + 1);
+                                    col3 = br + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y, z + 1)
+                                         + rd.light(x + 1, y - 1, z + 1);
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
                             case 1:
-                                if (NiceGrass && bl == BlockID::GRASS && rd.getBlock(x - 1, y - 1, z) == BlockID::GRASS)
-                                    tex = Textures::getTextureIndex(bl, 0);
-                                br = rd.getBrightness(x - 1, y, z);
+                                if (NiceGrass && bl.id == Blocks().grass
+                                    && rd.block(x - 1, y - 1, z).id == Blocks().grass)
+                                    tex = Textures::getTextureIndex(bl.id, 0);
+                                br = rd.light(x - 1, y, z);
                                 if (SmoothLighting) {
-                                    col0 = br + rd.getBrightness(x - 1, y + 1, z) + rd.getBrightness(x - 1, y, z - 1)
-                                         + rd.getBrightness(x - 1, y + 1, z - 1);
-                                    col1 = br + rd.getBrightness(x - 1, y - 1, z) + rd.getBrightness(x - 1, y, z - 1)
-                                         + rd.getBrightness(x - 1, y - 1, z - 1);
-                                    col2 = br + rd.getBrightness(x - 1, y - 1, z) + rd.getBrightness(x - 1, y, z + 1)
-                                         + rd.getBrightness(x - 1, y - 1, z + 1);
-                                    col3 = br + rd.getBrightness(x - 1, y + 1, z) + rd.getBrightness(x - 1, y, z + 1)
-                                         + rd.getBrightness(x - 1, y + 1, z + 1);
+                                    col0 = br + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y, z - 1)
+                                         + rd.light(x - 1, y + 1, z - 1);
+                                    col1 = br + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y, z - 1)
+                                         + rd.light(x - 1, y - 1, z - 1);
+                                    col2 = br + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y, z + 1)
+                                         + rd.light(x - 1, y - 1, z + 1);
+                                    col3 = br + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y, z + 1)
+                                         + rd.light(x - 1, y + 1, z + 1);
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
                             case 2:
-                                br = rd.getBrightness(x, y + 1, z);
+                                br = rd.light(x, y + 1, z);
                                 if (SmoothLighting) {
-                                    col0 = br + rd.getBrightness(x + 1, y + 1, z) + rd.getBrightness(x, y + 1, z - 1)
-                                         + rd.getBrightness(x + 1, y + 1, z - 1);
-                                    col1 = br + rd.getBrightness(x - 1, y + 1, z) + rd.getBrightness(x, y + 1, z - 1)
-                                         + rd.getBrightness(x - 1, y + 1, z - 1);
-                                    col2 = br + rd.getBrightness(x - 1, y + 1, z) + rd.getBrightness(x, y + 1, z + 1)
-                                         + rd.getBrightness(x - 1, y + 1, z + 1);
-                                    col3 = br + rd.getBrightness(x + 1, y + 1, z) + rd.getBrightness(x, y + 1, z + 1)
-                                         + rd.getBrightness(x + 1, y + 1, z + 1);
+                                    col0 = br + rd.light(x + 1, y + 1, z) + rd.light(x, y + 1, z - 1)
+                                         + rd.light(x + 1, y + 1, z - 1);
+                                    col1 = br + rd.light(x - 1, y + 1, z) + rd.light(x, y + 1, z - 1)
+                                         + rd.light(x - 1, y + 1, z - 1);
+                                    col2 = br + rd.light(x - 1, y + 1, z) + rd.light(x, y + 1, z + 1)
+                                         + rd.light(x - 1, y + 1, z + 1);
+                                    col3 = br + rd.light(x + 1, y + 1, z) + rd.light(x, y + 1, z + 1)
+                                         + rd.light(x + 1, y + 1, z + 1);
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
                             case 3:
-                                br = rd.getBrightness(x, y - 1, z);
+                                br = rd.light(x, y - 1, z);
                                 if (SmoothLighting) {
-                                    col0 = br + rd.getBrightness(x - 1, y - 1, z) + rd.getBrightness(x, y - 1, z - 1)
-                                         + rd.getBrightness(x - 1, y - 1, z - 1);
-                                    col1 = br + rd.getBrightness(x + 1, y - 1, z) + rd.getBrightness(x, y - 1, z - 1)
-                                         + rd.getBrightness(x + 1, y - 1, z - 1);
-                                    col2 = br + rd.getBrightness(x + 1, y - 1, z) + rd.getBrightness(x, y - 1, z + 1)
-                                         + rd.getBrightness(x + 1, y - 1, z + 1);
-                                    col3 = br + rd.getBrightness(x - 1, y - 1, z) + rd.getBrightness(x, y - 1, z + 1)
-                                         + rd.getBrightness(x - 1, y - 1, z + 1);
+                                    col0 = br + rd.light(x - 1, y - 1, z) + rd.light(x, y - 1, z - 1)
+                                         + rd.light(x - 1, y - 1, z - 1);
+                                    col1 = br + rd.light(x + 1, y - 1, z) + rd.light(x, y - 1, z - 1)
+                                         + rd.light(x + 1, y - 1, z - 1);
+                                    col2 = br + rd.light(x + 1, y - 1, z) + rd.light(x, y - 1, z + 1)
+                                         + rd.light(x + 1, y - 1, z + 1);
+                                    col3 = br + rd.light(x - 1, y - 1, z) + rd.light(x, y - 1, z + 1)
+                                         + rd.light(x - 1, y - 1, z + 1);
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
                             case 4:
-                                if (NiceGrass && bl == BlockID::GRASS && rd.getBlock(x, y - 1, z + 1) == BlockID::GRASS)
-                                    tex = Textures::getTextureIndex(bl, 0);
-                                br = rd.getBrightness(x, y, z + 1);
+                                if (NiceGrass && bl.id == Blocks().grass
+                                    && rd.block(x, y - 1, z + 1).id == Blocks().grass)
+                                    tex = Textures::getTextureIndex(bl.id, 0);
+                                br = rd.light(x, y, z + 1);
                                 if (SmoothLighting) {
-                                    col0 = br + rd.getBrightness(x - 1, y, z + 1) + rd.getBrightness(x, y + 1, z + 1)
-                                         + rd.getBrightness(x - 1, y + 1, z + 1);
-                                    col1 = br + rd.getBrightness(x - 1, y, z + 1) + rd.getBrightness(x, y - 1, z + 1)
-                                         + rd.getBrightness(x - 1, y - 1, z + 1);
-                                    col2 = br + rd.getBrightness(x + 1, y, z + 1) + rd.getBrightness(x, y - 1, z + 1)
-                                         + rd.getBrightness(x + 1, y - 1, z + 1);
-                                    col3 = br + rd.getBrightness(x + 1, y, z + 1) + rd.getBrightness(x, y + 1, z + 1)
-                                         + rd.getBrightness(x + 1, y + 1, z + 1);
+                                    col0 = br + rd.light(x - 1, y, z + 1) + rd.light(x, y + 1, z + 1)
+                                         + rd.light(x - 1, y + 1, z + 1);
+                                    col1 = br + rd.light(x - 1, y, z + 1) + rd.light(x, y - 1, z + 1)
+                                         + rd.light(x - 1, y - 1, z + 1);
+                                    col2 = br + rd.light(x + 1, y, z + 1) + rd.light(x, y - 1, z + 1)
+                                         + rd.light(x + 1, y - 1, z + 1);
+                                    col3 = br + rd.light(x + 1, y, z + 1) + rd.light(x, y + 1, z + 1)
+                                         + rd.light(x + 1, y + 1, z + 1);
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
                             case 5:
-                                if (NiceGrass && bl == BlockID::GRASS && rd.getBlock(x, y - 1, z - 1) == BlockID::GRASS)
-                                    tex = Textures::getTextureIndex(bl, 0);
-                                br = rd.getBrightness(x, y, z - 1);
+                                if (NiceGrass && bl.id == Blocks().grass
+                                    && rd.block(x, y - 1, z - 1).id == Blocks().grass)
+                                    tex = Textures::getTextureIndex(bl.id, 0);
+                                br = rd.light(x, y, z - 1);
                                 if (SmoothLighting) {
-                                    col0 = br + rd.getBrightness(x - 1, y, z - 1) + rd.getBrightness(x, y - 1, z - 1)
-                                         + rd.getBrightness(x - 1, y - 1, z - 1);
-                                    col1 = br + rd.getBrightness(x - 1, y, z - 1) + rd.getBrightness(x, y + 1, z - 1)
-                                         + rd.getBrightness(x - 1, y + 1, z - 1);
-                                    col2 = br + rd.getBrightness(x + 1, y, z - 1) + rd.getBrightness(x, y + 1, z - 1)
-                                         + rd.getBrightness(x + 1, y + 1, z - 1);
-                                    col3 = br + rd.getBrightness(x + 1, y, z - 1) + rd.getBrightness(x, y - 1, z - 1)
-                                         + rd.getBrightness(x + 1, y - 1, z - 1);
+                                    col0 = br + rd.light(x - 1, y, z - 1) + rd.light(x, y - 1, z - 1)
+                                         + rd.light(x - 1, y - 1, z - 1);
+                                    col1 = br + rd.light(x - 1, y, z - 1) + rd.light(x, y + 1, z - 1)
+                                         + rd.light(x - 1, y + 1, z - 1);
+                                    col2 = br + rd.light(x + 1, y, z - 1) + rd.light(x, y + 1, z - 1)
+                                         + rd.light(x + 1, y + 1, z - 1);
+                                    col3 = br + rd.light(x + 1, y, z - 1) + rd.light(x, y - 1, z - 1)
+                                         + rd.light(x + 1, y - 1, z - 1);
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
@@ -645,7 +639,7 @@ auto MergeFaceRenderChunk(std::array<Chunk const*, 3 * 3 * 3> neighbors) -> std:
                         // Render
                         bool once = col0 != col1 || col1 != col2 || col2 != col3;
                         if (valid) {
-                            if (once || cur.once || bl != cur.blk || tex != cur.tex || col0 != cur.col0) {
+                            if (once || cur.once || bl.id != cur.blk || tex != cur.tex || col0 != cur.col0) {
                                 RenderPrimitive(cur);
                                 cur.x = x;
                                 cur.y = y;
@@ -653,7 +647,7 @@ auto MergeFaceRenderChunk(std::array<Chunk const*, 3 * 3 * 3> neighbors) -> std:
                                 cur.length = 0;
                                 cur.direction = d;
                                 cur.once = once;
-                                cur.blk = bl;
+                                cur.blk = bl.id;
                                 cur.tex = tex;
                                 cur.col0 = col0;
                                 cur.col1 = col1;
@@ -669,7 +663,7 @@ auto MergeFaceRenderChunk(std::array<Chunk const*, 3 * 3 * 3> neighbors) -> std:
                             cur.length = 0;
                             cur.direction = d;
                             cur.once = once;
-                            cur.blk = bl;
+                            cur.blk = bl.id;
                             cur.tex = tex;
                             cur.col0 = col0;
                             cur.col1 = col1;

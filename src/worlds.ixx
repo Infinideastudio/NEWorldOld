@@ -29,7 +29,7 @@ import rendering;
 constexpr size_t MaxChunkLoads = 64;
 constexpr size_t MaxChunkUnloads = 64;
 constexpr size_t MaxChunkMeshings = 16;
-constexpr size_t MaxBlockUpdates = 4096;
+constexpr size_t MaxBlockUpdates = 65536;
 
 export class World {
 public:
@@ -64,41 +64,51 @@ public:
         heightMap.moveTo((ccenter - Vec3i(RenderDistance + 2)) * 16);
     }
 
-    auto addChunk(Vec3i ccoord) -> Chunk* {
-        ChunkID cid = getChunkID(ccoord);
+    auto loadChunk(Vec3i ccoord, bool skipEmpty = false) -> Chunk* {
+        auto cid = getChunkID(ccoord);
         auto it = chunks.find(cid);
         if (it != chunks.end()) {
-            DebugWarning(
-                std::format("Chunk ({}, {}, {}) has been loaded, when adding chunk.", ccoord.x, ccoord.y, ccoord.z)
-            );
+            DebugWarning(std::format("Trying to load existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z));
             return it->second.get();
         }
 
-        auto c = std::make_unique<Chunk>(ccoord, WorldName, heightMap);
-        Chunk* res = c.get();
-        chunks.emplace(cid, std::move(c));
+        // Load chunk from file if exists
+        auto handle = std::make_unique<Chunk>(ccoord, WorldName, heightMap);
+        auto cptr = handle.get();
 
+        // Optionally skip empty chunks
+        if (skipEmpty && cptr->empty()) {
+            chunkPtrArray.setChunkPtr(ccoord, EmptyChunkPtr);
+            return EmptyChunkPtr;
+        }
+
+        // Update caches
         chunkPtrCacheKey = cid;
-        chunkPtrCacheValue = res;
-        chunkPtrArray.setChunkPtr(ccoord, res);
-        return res;
+        chunkPtrCacheValue = cptr;
+        chunkPtrArray.setChunkPtr(ccoord, cptr);
+
+        chunks.emplace(cid, std::move(handle));
+        return cptr;
     }
 
-    void removeChunk(Vec3i ccoord, bool setEmpty = false) {
-        ChunkID cid = getChunkID(ccoord);
+    void unloadChunk(Vec3i ccoord) {
+        auto cid = getChunkID(ccoord);
         auto node = chunks.extract(cid);
         if (node.empty()) {
-            DebugWarning(
-                std::format("Chunk ({}, {}, {}) has been unloaded, when deleting chunk.", ccoord.x, ccoord.y, ccoord.z)
-            );
+            DebugWarning(std::format("Trying to unload non-existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z));
             return;
         }
 
-        if (chunkPtrCacheValue == node.mapped().get()) {
+        // Save chunk to file if modified
+        auto cptr = node.mapped().get();
+        cptr->saveToFile(WorldName);
+
+        // Update caches
+        if (chunkPtrCacheValue == cptr) {
             chunkPtrCacheKey = 0;
             chunkPtrCacheValue = nullptr;
         }
-        chunkPtrArray.setChunkPtr(ccoord, setEmpty ? EmptyChunkPtr : nullptr);
+        chunkPtrArray.setChunkPtr(ccoord, nullptr);
 
         // Shrink loaded core
         auto d = (ccoord - loadedCore.ccenter).map([](int x) { return std::abs(x); });
@@ -136,13 +146,13 @@ public:
         return false;
     }
 
-    auto getHitboxes(const Hitbox::AABB& box) -> std::vector<Hitbox::AABB> {
+    auto getHitboxes(Hitbox::AABB const& box) -> std::vector<Hitbox::AABB> {
         // 返回与box相交的所有方块AABB
         auto res = std::vector<Hitbox::AABB>();
         for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++) {
             for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++) {
                 for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++) {
-                    if (BlockInfo(getBlock(Vec3i(a, b, c))).isSolid()) {
+                    if (BlockInfo(getBlock(Vec3i(a, b, c)).id).solid) {
                         auto blockbox = Hitbox::AABB();
                         blockbox.xmin = a - 0.5;
                         blockbox.xmax = a + 0.5;
@@ -159,12 +169,12 @@ public:
         return res;
     }
 
-    auto inWater(const Hitbox::AABB& box) -> bool {
+    auto inWater(Hitbox::AABB const& box) -> bool {
         for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++) {
             for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++) {
                 for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++) {
-                    auto id = getBlock(Vec3i(a, b, c));
-                    if (id == BlockID::WATER || id == BlockID::LAVA) {
+                    auto id = getBlock(Vec3i(a, b, c)).id;
+                    if (id == Blocks().water || id == Blocks().lava) {
                         auto blockbox = Hitbox::AABB();
                         blockbox.xmin = a - 0.5;
                         blockbox.xmax = a + 0.5;
@@ -192,84 +202,60 @@ public:
         auto cptr = getChunkPtr(ccoord);
         if (cptr != nullptr) {
             if (cptr == EmptyChunkPtr)
-                cptr = World::addChunk(ccoord);
+                cptr = loadChunk(ccoord);
 
             bool updated = initial;
-            BlockID oldblock = cptr->getBlock(bcoord.x, bcoord.y, bcoord.z);
-            Brightness oldbrightness = cptr->getBrightness(bcoord.x, bcoord.y, bcoord.z);
+            auto curr = cptr->block(bcoord);
 
-            bool skylit = true;
-            if (coord.y < 0) {
-                skylit = false;
-            } else {
-                auto up = coord;
-                up.y += 1;
-                while (chunkLoaded(getChunkPos(up))) {
-                    auto id = getBlock(up);
-                    if (BlockInfo(id).isOpaque() || id == BlockID::WATER) {
-                        skylit = false;
-                        break;
-                    }
-                    up.y += 1;
-                }
-            }
-
-            if (oldblock == BlockID::TNT) {
+            // Explosive blocks.
+            if (curr.id == Blocks().tnt) {
                 explode(coord, 8);
                 return;
             }
 
-            if (oldblock == BlockID::GLOWSTONE || oldblock == BlockID::LAVA) {
-                cptr->setBrightness(bcoord.x, bcoord.y, bcoord.z, MaxBrightness);
-            } else if (!BlockInfo(oldblock).isOpaque()) {
-                auto blks = std::array{
-                    getBlock(coord + Vec3i(+1, 0, 0)),
-                    getBlock(coord + Vec3i(-1, 0, 0)),
-                    getBlock(coord + Vec3i(0, +1, 0)),
-                    getBlock(coord + Vec3i(0, -1, 0)),
-                    getBlock(coord + Vec3i(0, 0, +1)),
-                    getBlock(coord + Vec3i(0, 0, -1)),
-                };
-                auto brts = std::array{
-                    getBrightness(coord + Vec3i(+1, 0, 0)),
-                    getBrightness(coord + Vec3i(-1, 0, 0)),
-                    getBrightness(coord + Vec3i(0, +1, 0)),
-                    getBrightness(coord + Vec3i(0, -1, 0)),
-                    getBrightness(coord + Vec3i(0, 0, +1)),
-                    getBrightness(coord + Vec3i(0, 0, -1)),
-                };
-                int maxbrightness = 0;
-                for (int i = 0; i < 6; i++)
-                    if (brts[maxbrightness] < brts[i])
-                        maxbrightness = i;
-                auto br = brts[maxbrightness];
+            auto neighbors = std::array{
+                block(coord + Vec3i(+1, 0, 0)),
+                block(coord + Vec3i(-1, 0, 0)),
+                block(coord + Vec3i(0, +1, 0)),
+                block(coord + Vec3i(0, -1, 0)),
+                block(coord + Vec3i(0, 0, +1)),
+                block(coord + Vec3i(0, 0, -1)),
+            };
 
-                if (blks[maxbrightness] == BlockID::WATER) {
-                    if (br < MinBrightness + 2)
-                        br = MinBrightness;
-                    else
-                        br -= 2;
-                } else {
-                    if (br < MinBrightness + 1)
-                        br = MinBrightness;
-                    else
-                        br--;
+            // Lighting computation.
+            auto sky_light = NO_LIGHT.sky();
+            auto block_light = NO_LIGHT.block();
+            for (auto const& neighbor: neighbors)
+                if (neighbor) {
+                    sky_light = std::max(sky_light, neighbor->light.sky());
+                    block_light = std::max(block_light, neighbor->light.block());
                 }
-                if (skylit) {
-                    if (br < SkyBrightness)
-                        br = SkyBrightness;
-                }
-                if (br < MinBrightness)
-                    br = MinBrightness;
 
-                cptr->setBrightness(bcoord.x, bcoord.y, bcoord.z, br);
+            // If the top neighbor has maximum sky light, it and this block are both considered skylit.
+            // This makes lighting computation much more efficient than the old implementation.
+            // Again, blocks below (y = 0) never become skylit to prevent unbounded propagation.
+            auto skylit = coord.y >= 0 && (neighbors[2] && neighbors[2]->light.sky() == SKY_LIGHT.sky());
+
+            // Integral promption avoids underflowing when subtracting from `std::uint8_t` light levels.
+            // See: https://en.cppreference.com/w/cpp/language/implicit_conversion#Integral_promotion
+            if (curr.id == Blocks().air) {
+                sky_light = skylit ? SKY_LIGHT.sky() : std::max(0, sky_light - 1);
+                block_light = std::max(0, block_light - 1);
+            } else if (!BlockInfo(curr.id).solid) {
+                sky_light = std::max(0, sky_light - 1);
+                block_light = std::max(0, block_light - 1);
             } else {
-                cptr->setBrightness(bcoord.x, bcoord.y, bcoord.z, 0);
+                sky_light = 0;
+                block_light = 0;
             }
 
-            if (oldblock != cptr->getBlock(bcoord.x, bcoord.y, bcoord.z))
-                updated = true;
-            if (oldbrightness != cptr->getBrightness(bcoord.x, bcoord.y, bcoord.z))
+            // Block light sources.
+            if (curr.id == Blocks().glowstone || curr.id == Blocks().lava)
+                block_light = BlockData::Light::BLOCK_MAX_VALUE;
+
+            cptr->block_ref(bcoord).light = BlockData::Light(sky_light, block_light);
+
+            if (curr != cptr->block(bcoord))
                 updated = true;
 
             if (updated) {
@@ -309,48 +295,41 @@ public:
         }
     }
 
-    // 获取方块
-    auto getBlock(Vec3i coord, BlockID mask = BlockID::AIR) -> BlockID {
+    // 获取方块和亮度
+    auto block(Vec3i coord) -> std::optional<BlockData> {
         auto ccoord = getChunkPos(coord);
         auto bcoord = getBlockPos(coord);
         if (chunkOutOfBound(ccoord))
-            return BlockID::AIR;
+            return {};
         auto cptr = getChunkPtr(ccoord);
-        if (cptr == EmptyChunkPtr)
-            return BlockID::AIR;
-        if (cptr != nullptr)
-            return cptr->getBlock(bcoord.x, bcoord.y, bcoord.z);
-        return mask;
+        if (!cptr)
+            return {};
+        if (cptr == EmptyChunkPtr) {
+            auto light = ccoord.y < 0 ? NO_LIGHT : SKY_LIGHT;
+            return BlockData{.id = Blocks().air, .light = light};
+        }
+        return cptr->block(bcoord);
     }
 
-    // 获取亮度
-    auto getBrightness(Vec3i coord) -> Brightness {
-        auto ccoord = getChunkPos(coord);
-        auto bcoord = getBlockPos(coord);
-        if (chunkOutOfBound(ccoord))
-            return SkyBrightness;
-        auto cptr = getChunkPtr(ccoord);
-        if (cptr == EmptyChunkPtr)
-            return ccoord.y < 0 ? MinBrightness : SkyBrightness;
-        if (cptr != nullptr)
-            return cptr->getBrightness(bcoord.x, bcoord.y, bcoord.z);
-        return SkyBrightness;
+    // 带有默认值的获取方块和亮度
+    auto getBlock(Vec3i coord) -> BlockData {
+        return block(coord).value_or(BlockData{.id = Blocks().air, .light = NO_LIGHT});
     }
 
     // 设置方块
-    void setBlock(Vec3i coord, BlockID value, bool update = true) {
+    void setBlock(Vec3i coord, BlockData::Id value, bool update = true) {
         auto ccoord = getChunkPos(coord);
         auto bcoord = getBlockPos(coord);
-        if (!chunkOutOfBound(ccoord)) {
-            auto cptr = getChunkPtr(ccoord);
-            if (cptr == EmptyChunkPtr)
-                cptr = addChunk(ccoord);
-            if (cptr != nullptr) {
-                cptr->setBlock(bcoord.x, bcoord.y, bcoord.z, value);
-                if (update)
-                    updateBlock(coord, true);
-            }
-        }
+        if (chunkOutOfBound(ccoord))
+            return;
+        auto cptr = getChunkPtr(ccoord);
+        if (!cptr)
+            return;
+        if (cptr == EmptyChunkPtr)
+            cptr = loadChunk(ccoord);
+        cptr->block_ref(bcoord).id = value;
+        if (update)
+            updateBlock(coord, true);
     }
 
     auto chunkInRange(Vec3i ccoord, Vec3i center, int dist) const -> bool {
@@ -410,7 +389,7 @@ public:
                         if (chunkOutOfBound(cc))
                             continue;
                         if (getChunkPtr(cc) == nullptr) {
-                            auto distsqr = (cc * 16 + 8 - center).lengthSqr();
+                            auto distsqr = (cc * 16 + 8 - center).length_sqr();
                             loads.emplace(distsqr, cc);
                             if (loads.size() > MaxChunkLoads)
                                 loads.pop();
@@ -430,12 +409,12 @@ public:
         for (auto const& [_, c]: chunks) {
             auto cc = c->coord();
             if (!chunkInRange(cc, ccenter, RenderDistance + 1)) {
-                auto distsqr = (cc * 16 + 8 - center).lengthSqr();
+                auto distsqr = (cc * 16 + 8 - center).length_sqr();
                 unloads.emplace(distsqr, cc);
                 if (unloads.size() > MaxChunkUnloads)
                     unloads.pop();
             } else if (chunkInRange(cc, ccenter, RenderDistance) && c->updated()) {
-                auto distsqr = (cc * 16 + 8 - center).lengthSqr();
+                auto distsqr = (cc * 16 + 8 - center).length_sqr();
                 meshings.emplace(distsqr, c.get());
                 if (meshings.size() > MaxChunkMeshings)
                     meshings.pop();
@@ -464,46 +443,44 @@ public:
     void buildtree(Vec3i coord) {
         int th = int(rnd() * 3) + 4;
         // Tree trunk
-        setBlock(coord + Vec3i(0, -1, 0), BlockID::DIRT);
+        setBlock(coord + Vec3i(0, -1, 0), Blocks().dirt);
         for (int yt = 0; yt != th; yt++)
-            setBlock(coord + Vec3i(0, yt, 0), BlockID::WOOD);
+            setBlock(coord + Vec3i(0, yt, 0), Blocks().wood);
         // Tree leaves
         for (int xt = 0; xt != 5; xt++) {
             for (int zt = 0; zt != 5; zt++) {
                 for (int yt = 0; yt != 2; yt++) {
-                    if (getBlock(coord + Vec3i(xt - 2, th - 3 + yt, zt - 2)) == BlockID::AIR)
-                        setBlock(coord + Vec3i(xt - 2, th - 3 + yt, zt - 2), BlockID::LEAF);
+                    if (getBlock(coord + Vec3i(xt - 2, th - 3 + yt, zt - 2)).id == Blocks().air)
+                        setBlock(coord + Vec3i(xt - 2, th - 3 + yt, zt - 2), Blocks().leaf);
                 }
             }
         }
         for (int xt = 0; xt != 3; xt++) {
             for (int zt = 0; zt != 3; zt++) {
                 for (int yt = 0; yt != 2; yt++) {
-                    if (getBlock(coord + Vec3i(xt - 1, th - 1 + yt, zt - 1)) == BlockID::AIR
+                    if (getBlock(coord + Vec3i(xt - 1, th - 1 + yt, zt - 1)).id == Blocks().air
                         && std::abs(xt - 1) != std::abs(zt - 1))
-                        setBlock(coord + Vec3i(xt - 1, th - 1 + yt, zt - 1), BlockID::LEAF);
+                        setBlock(coord + Vec3i(xt - 1, th - 1 + yt, zt - 1), Blocks().leaf);
                 }
             }
         }
-        setBlock(coord + Vec3i(0, th, 0), BlockID::LEAF);
+        setBlock(coord + Vec3i(0, th, 0), Blocks().leaf);
     }
 
     void explode(Vec3i center, int r) {
-        auto blocks = std::vector<std::pair<Vec3i, BlockID>>();
         // Destroy blocks within a radius of r
         double maxdistsqr = r * r;
         for (int fx = center.x - r - 1; fx < center.x + r + 1; fx++) {
             for (int fy = center.y - r - 1; fy < center.y + r + 1; fy++) {
                 for (int fz = center.z - r - 1; fz < center.z + r + 1; fz++) {
                     auto coord = Vec3i(fx, fy, fz);
-                    int distsqr = (coord - center).lengthSqr();
+                    int distsqr = (coord - center).length_sqr();
                     if (distsqr <= maxdistsqr * 0.75
                         || distsqr <= maxdistsqr && rnd() > (distsqr - maxdistsqr * 0.6) / (maxdistsqr * 0.4)) {
-                        BlockID e = World::getBlock(coord);
-                        if (!BlockInfo(e).isSolid())
+                        auto id = getBlock(coord).id;
+                        if (!BlockInfo(id).solid)
                             continue;
-                        setBlock(coord, BlockID::AIR);
-                        blocks.emplace_back(Vec3i(coord), e);
+                        setBlock(coord, Blocks().air);
                     }
                 }
             }

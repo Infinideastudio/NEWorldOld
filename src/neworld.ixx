@@ -72,8 +72,7 @@ bool showMeshWireframe = false;
 int selx, sely, selz, oldselx, oldsely, oldselz, selface;
 bool sel;
 float selt, seldes;
-BlockID selb;
-Brightness selbr;
+BlockData::Id selb;
 bool selce;
 float FOVyExt;
 
@@ -131,6 +130,7 @@ export int main() {
     createWindow();
     splashScreen();
     loadTextures();
+    initBlocks();
     registerCommands();
 
     // 菜单游戏循环
@@ -282,48 +282,48 @@ void registerCommands() {
     commands.emplace_back("/kit", [](std::vector<std::string> const& command, World&) {
         if (command.size() != 1)
             return false;
-        Player::inventory[0][0] = static_cast<BlockID>(1);
+        Player::inventory[0][0] = BlockData::Id(1);
         Player::inventoryAmount[0][0] = 255;
-        Player::inventory[0][1] = static_cast<BlockID>(2);
+        Player::inventory[0][1] = BlockData::Id(2);
         Player::inventoryAmount[0][1] = 255;
-        Player::inventory[0][2] = static_cast<BlockID>(3);
+        Player::inventory[0][2] = BlockData::Id(3);
         Player::inventoryAmount[0][2] = 255;
-        Player::inventory[0][3] = static_cast<BlockID>(4);
+        Player::inventory[0][3] = BlockData::Id(4);
         Player::inventoryAmount[0][3] = 255;
-        Player::inventory[0][4] = static_cast<BlockID>(5);
+        Player::inventory[0][4] = BlockData::Id(5);
         Player::inventoryAmount[0][4] = 255;
-        Player::inventory[0][5] = static_cast<BlockID>(6);
+        Player::inventory[0][5] = BlockData::Id(6);
         Player::inventoryAmount[0][5] = 255;
-        Player::inventory[0][6] = static_cast<BlockID>(7);
+        Player::inventory[0][6] = BlockData::Id(7);
         Player::inventoryAmount[0][6] = 255;
-        Player::inventory[0][7] = static_cast<BlockID>(8);
+        Player::inventory[0][7] = BlockData::Id(8);
         Player::inventoryAmount[0][7] = 255;
-        Player::inventory[0][8] = static_cast<BlockID>(9);
+        Player::inventory[0][8] = BlockData::Id(9);
         Player::inventoryAmount[0][8] = 255;
-        Player::inventory[0][9] = static_cast<BlockID>(10);
+        Player::inventory[0][9] = BlockData::Id(10);
         Player::inventoryAmount[0][9] = 255;
-        Player::inventory[1][0] = static_cast<BlockID>(11);
+        Player::inventory[1][0] = BlockData::Id(11);
         Player::inventoryAmount[1][0] = 255;
-        Player::inventory[1][1] = static_cast<BlockID>(12);
+        Player::inventory[1][1] = BlockData::Id(12);
         Player::inventoryAmount[1][1] = 255;
-        Player::inventory[1][2] = static_cast<BlockID>(13);
+        Player::inventory[1][2] = BlockData::Id(13);
         Player::inventoryAmount[1][2] = 255;
-        Player::inventory[1][3] = static_cast<BlockID>(14);
+        Player::inventory[1][3] = BlockData::Id(14);
         Player::inventoryAmount[1][3] = 255;
-        Player::inventory[1][4] = static_cast<BlockID>(15);
+        Player::inventory[1][4] = BlockData::Id(15);
         Player::inventoryAmount[1][4] = 255;
-        Player::inventory[1][5] = static_cast<BlockID>(16);
+        Player::inventory[1][5] = BlockData::Id(16);
         Player::inventoryAmount[1][5] = 255;
-        Player::inventory[1][6] = static_cast<BlockID>(17);
+        Player::inventory[1][6] = BlockData::Id(17);
         Player::inventoryAmount[1][6] = 255;
-        Player::inventory[1][7] = static_cast<BlockID>(18);
+        Player::inventory[1][7] = BlockData::Id(18);
         Player::inventoryAmount[1][7] = 255;
         return true;
     });
     commands.emplace_back("/give", [](std::vector<std::string> const& command, World&) {
         if (command.size() != 3)
             return false;
-        auto itemid = static_cast<BlockID>(std::stoi(command[1]));
+        auto itemid = BlockData::Id(std::stoi(command[1]));
         auto amount = static_cast<short>(std::stoi(command[2]));
         Player::addItem(itemid, amount);
         return true;
@@ -344,7 +344,7 @@ void registerCommands() {
             return false;
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 10; j++) {
-                Player::inventory[i][j] = BlockID::AIR;
+                Player::inventory[i][j] = Blocks().air;
                 Player::inventoryAmount[i][j] = 0;
             }
         }
@@ -362,7 +362,7 @@ void registerCommands() {
         int x = std::stoi(command[1]);
         int y = std::stoi(command[2]);
         int z = std::stoi(command[3]);
-        auto b = static_cast<BlockID>(std::stoi(command[4]));
+        auto b = BlockData::Id(std::stoi(command[4]));
         world.setBlock(Vec3i(x, y, z), b);
         return true;
     });
@@ -412,11 +412,11 @@ bool doCommand(std::vector<std::string> const& command, World& world) {
 }
 
 void gameUpdate(World& world) {
-    const int SelectPrecision = 32;
-    const int SelectDistance = 8;
-    const float WalkSpeed = 0.15f;
-    const float RunSpeed = 0.3f;
-    const int MaxAirJumps = 3 - 1;
+    int const SelectPrecision = 32;
+    int const SelectDistance = 8;
+    float const WalkSpeed = 0.15f;
+    float const RunSpeed = 0.3f;
+    int const MaxAirJumps = 3 - 1;
 
     static double wPressTimer;
     static bool wPressedOnce;
@@ -459,28 +459,27 @@ void gameUpdate(World& world) {
             gy = y + cy * 16;
             z = int(rnd() * 16);
             gz = z + cz * 16;
-            if (c->getBlock(x, y, z) == BlockID::DIRT
-                && world.getBlock(Vec3i(gx, gy + 1, gz), BlockID::ROCK) == BlockID::AIR
-                && (world.getBlock(Vec3i(gx + 1, gy, gz), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx - 1, gy, gz), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx, gy, gz + 1), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx, gy, gz - 1), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx + 1, gy + 1, gz), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx - 1, gy + 1, gz), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx, gy + 1, gz + 1), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx, gy + 1, gz - 1), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx + 1, gy - 1, gz), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx - 1, gy - 1, gz), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx, gy - 1, gz + 1), BlockID::AIR) == BlockID::GRASS
-                    || world.getBlock(Vec3i(gx, gy - 1, gz - 1), BlockID::AIR) == BlockID::GRASS)) {
+            if (c->block(Vec3u(x, y, z)).id == Blocks().dirt && world.getBlock(Vec3i(gx, gy + 1, gz)).id == Blocks().air
+                && (world.getBlock(Vec3i(gx + 1, gy, gz)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx - 1, gy, gz)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx, gy, gz + 1)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx, gy, gz - 1)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx + 1, gy + 1, gz)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx - 1, gy + 1, gz)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx, gy + 1, gz + 1)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx, gy + 1, gz - 1)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx + 1, gy - 1, gz)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx - 1, gy - 1, gz)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx, gy - 1, gz + 1)).id == Blocks().grass
+                    || world.getBlock(Vec3i(gx, gy - 1, gz - 1)).id == Blocks().grass)) {
                 // 长草
-                c->setBlock(x, y, z, BlockID::GRASS);
+                c->block_ref(Vec3u(x, y, z)).id = Blocks().grass;
                 world.updateBlock(Vec3i(x + cx * 16, y + cy * 16 + 1, z + cz * 16), true);
             }
-            if (c->getBlock(x, y, z) == BlockID::GRASS
-                && world.getBlock(Vec3i(gx, gy + 1, gz), BlockID::AIR) != BlockID::AIR) {
+            if (c->block(Vec3u(x, y, z)).id == Blocks().grass
+                && world.getBlock(Vec3i(gx, gy + 1, gz)).id != Blocks().air) {
                 // 草被覆盖
-                c->setBlock(x, y, z, BlockID::DIRT);
+                c->block_ref(Vec3u(x, y, z)).id = Blocks().dirt;
                 world.updateBlock(Vec3i(x + cx * 16, y + cy * 16 + 1, z + cz * 16), true);
             }
         }
@@ -498,8 +497,7 @@ void gameUpdate(World& world) {
 
     sel = false;
     selx = sely = selz = 0;
-    selb = BlockID::AIR;
-    selbr = 0;
+    selb = Blocks().air;
 
     if (chatmode) {
         shouldShowCursor = true;
@@ -566,7 +564,7 @@ void gameUpdate(World& world) {
             // 碰到方块
             auto coord = Vec3i(std::lround(lx), std::lround(ly), std::lround(lz));
             auto coordl = Vec3i(std::lround(lxl), std::lround(lyl), std::lround(lzl));
-            if (BlockInfo(world.getBlock(coord)).isSolid()) {
+            if (BlockInfo(world.getBlock(coord).id).solid) {
                 selx = coord.x;
                 sely = coord.y;
                 selz = coord.z;
@@ -576,14 +574,7 @@ void gameUpdate(World& world) {
                 auto ccoord = getChunkPos(coord);
                 auto bcoord = getBlockPos(coord);
 
-                if (!chunkOutOfBound(ccoord)) {
-                    auto cp = world.getChunkPtr(ccoord);
-                    if (cp == nullptr || cp == EmptyChunkPtr)
-                        continue;
-                    selb = cp->getBlock(bcoord.x, bcoord.y, bcoord.z);
-                }
-                selbr = world.getBrightness(coordl);
-                selb = world.getBlock(coord);
+                selb = world.getBlock(coord).id;
                 if (mb == 1) { // 鼠标左键
                     Particles::throwParticle(
                         selb,
@@ -597,15 +588,15 @@ void gameUpdate(World& world) {
                         int(rnd() * 30) + 30
                     );
 
-                    const float MinHardness = 0.2f;
+                    float const MinHardness = 0.2f;
                     if (selx != oldselx || sely != oldsely || selz != oldselz)
                         seldes = 0.0f;
                     else if (Player::gamemode == Player::Creative)
                         seldes += 1.0f / 30.0f / MinHardness;
-                    else if (BlockInfo(selb).getHardness() <= MinHardness)
+                    else if (BlockInfo(selb).hardness <= MinHardness)
                         seldes += 1.0f / 30.0f / MinHardness;
                     else
-                        seldes += 1.0f / 30.0f / BlockInfo(selb).getHardness();
+                        seldes += 1.0f / 30.0f / BlockInfo(selb).hardness;
 
                     if (seldes >= 1.0f) {
                         Player::addItem(selb, 1);
@@ -622,7 +613,7 @@ void gameUpdate(World& world) {
                                 int(rnd() * 60) + 30
                             );
                         }
-                        world.setBlock(coord, BlockID::AIR);
+                        world.setBlock(coord, Blocks().air);
                     }
                 }
                 if (mb == 2 && mbp == false) { // 鼠标右键
@@ -631,7 +622,7 @@ void gameUpdate(World& world) {
                         if (Player::putBlock(world, coordl, Player::BlockInHand)) {
                             Player::inventoryAmount[3][Player::indexInHand]--;
                             if (Player::inventoryAmount[3][Player::indexInHand] == 0)
-                                Player::inventory[3][Player::indexInHand] = BlockID::AIR;
+                                Player::inventory[3][Player::indexInHand] = Blocks().air;
                         }
                     } else {
                         // 使用物品
@@ -884,14 +875,12 @@ void frameLinkedUpdate(World& world) {
 
     // Load chunks
     for (auto [_, ccoord]: world.chunkLoadList) {
-        auto c = world.addChunk(ccoord);
-        if (c->empty())
-            world.removeChunk(ccoord, true);
+        world.loadChunk(ccoord, true);
     }
 
     // Unload chunks
     for (auto [_, ccoord]: world.chunkUnloadList) {
-        world.removeChunk(ccoord);
+        world.unloadChunk(ccoord);
     }
 
     // Mesh updated chunks
@@ -985,9 +974,9 @@ void frameLinkedUpdate(World& world) {
 
 // Render the whole scene and HUD
 void render(World& world) {
-    const float SkyColorR = 0.70f;
-    const float SkyColorG = 0.80f;
-    const float SkyColorB = 0.86f;
+    float const SkyColorR = 0.70f;
+    float const SkyColorG = 0.80f;
+    float const SkyColorB = 0.86f;
 
     double currTimer = Timer();
     double interp = (currTimer - updateTimer) * 30.0;
@@ -1139,13 +1128,13 @@ void render(World& world) {
     glClearDepth(1.0f);
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    if (world.getBlock(Vec3i(std::lround(xpos), std::lround(ypos), std::lround(zpos))) == BlockID::WATER) {
+    if (world.getBlock(Vec3i(std::lround(xpos), std::lround(ypos), std::lround(zpos))).id == Blocks().water) {
         auto& shader = Renderer::shaders[Renderer::UIShader];
         shader.bind();
         glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
         Renderer::Begin(GL_QUADS, 2, 3, 4);
         Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-        Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(BlockID::WATER, 0)));
+        Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(Blocks().water, 0)));
         Renderer::TexCoord2f(0.0f, 1.0f);
         Renderer::Vertex2i(0, 0);
         Renderer::TexCoord2f(0.0f, 0.0f);
@@ -1219,7 +1208,7 @@ void readback(World& world) {
     }
 }
 
-const float centers[6][3] = {
+float const centers[6][3] = {
     {+0.5f,  0.0f,  0.0f},
     {-0.5f,  0.0f,  0.0f},
     { 0.0f, +0.5f,  0.0f},
@@ -1228,7 +1217,7 @@ const float centers[6][3] = {
     { 0.0f,  0.0f, -0.5f},
 };
 
-const float cube[6][4][3] = {
+float const cube[6][4][3] = {
     {{+0.5f, -0.5f, +0.5f}, {+0.5f, -0.5f, -0.5f}, {+0.5f, +0.5f, -0.5f}, {+0.5f, +0.5f, +0.5f}},
     {{-0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, +0.5f}, {-0.5f, +0.5f, +0.5f}, {-0.5f, +0.5f, -0.5f}},
     {{-0.5f, +0.5f, +0.5f}, {+0.5f, +0.5f, +0.5f}, {+0.5f, +0.5f, -0.5f}, {-0.5f, +0.5f, -0.5f}},
@@ -1237,7 +1226,7 @@ const float cube[6][4][3] = {
     {{+0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}, {-0.5f, +0.5f, -0.5f}, {+0.5f, +0.5f, -0.5f}},
 };
 
-const float texcoords[4][2] = {
+float const texcoords[4][2] = {
     {0.0f, 0.0f},
     {1.0f, 0.0f},
     {1.0f, 1.0f},
@@ -1246,8 +1235,8 @@ const float texcoords[4][2] = {
 
 // Draw the block selection border
 void drawBorder(float x, float y, float z) {
-    const float eps = 0.005f;
-    const float width = 1.0f / 32.0f;
+    float const eps = 0.005f;
+    float const width = 1.0f / 32.0f;
 
     if (AdvancedRender)
         Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
@@ -1279,7 +1268,7 @@ void drawBorder(float x, float y, float z) {
 }
 
 void drawBreaking(float level, float x, float y, float z) {
-    const float eps = 0.005f;
+    float const eps = 0.005f;
 
     if (level <= 0.0f)
         return;
@@ -1314,8 +1303,8 @@ void drawBreaking(float level, float x, float y, float z) {
 }
 
 void drawGUI(World& world) {
-    const int linelength = 10;
-    const int linedist = 30;
+    int const linelength = 10;
+    int const linedist = 30;
     int disti = (int) (seldes * linedist);
 
     glDisable(GL_TEXTURE_2D);
@@ -1340,7 +1329,7 @@ void drawGUI(World& world) {
         glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - linelength - disti);
         glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti);
         glVertex2i(WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 + linedist - disti);
-        if (selb != BlockID::AIR) {
+        if (selb != Blocks().air) {
             glVertex2i(WindowWidth / 2, WindowHeight / 2);
             glVertex2i(WindowWidth / 2 + 50, WindowHeight / 2 + 50);
             glVertex2i(WindowWidth / 2 + 50, WindowHeight / 2 + 50);
@@ -1464,9 +1453,9 @@ void drawGUI(World& world) {
     };
 
     TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
-    if (showDebugPanel && selb != BlockID::AIR) {
+    if (showDebugPanel && selb != Blocks().air) {
         std::stringstream ss;
-        ss << BlockInfo(selb).getBlockName() << " (id: " << (int) selb << ")";
+        ss << BlockInfo(selb).name << " (id: " << static_cast<int>(selb.get()) << ")";
         TextRenderer::renderString(
             WindowWidth / 2 + 50,
             WindowHeight / 2 + 50 - TextRenderer::getLineHeight(),
@@ -1597,7 +1586,7 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
         glVertex2i(xbase + i * (32 + spac) + 32, ybase);
         glEnd();
 
-        if (Player::inventory[row][i] != BlockID::AIR) {
+        if (Player::inventory[row][i] != Blocks().air) {
             shader.bind();
             glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
             Renderer::Begin(GL_QUADS, 2, 3, 4);
@@ -1632,7 +1621,7 @@ void drawBag() {
     int leftp = (WindowWidth - 392) / 2;
     int upp = WindowHeight - 152 - 16;
     static int mousew, mouseb, mousebl;
-    static BlockID indexselected = BlockID::AIR;
+    static auto indexselected = Blocks().air;
     static short Amountselected = 0;
     double curtime = Timer();
     double TimeDelta = curtime - bagAnimTimer;
@@ -1683,19 +1672,19 @@ void drawBag() {
                             Amountselected--;
                             Player::inventoryAmount[i][j]++;
                         }
-                        if (mousebl == 0 && mouseb == 2 && Player::inventory[i][j] == BlockID::AIR) {
+                        if (mousebl == 0 && mouseb == 2 && Player::inventory[i][j] == Blocks().air) {
                             Amountselected--;
                             Player::inventoryAmount[i][j] = 1;
                             Player::inventory[i][j] = indexselected;
                         }
 
                         if (Amountselected == 0)
-                            indexselected = BlockID::AIR;
-                        if (indexselected == BlockID::AIR)
+                            indexselected = Blocks().air;
+                        if (indexselected == Blocks().air)
                             Amountselected = 0;
                         if (Player::inventoryAmount[i][j] == 0)
-                            Player::inventory[i][j] = BlockID::AIR;
-                        if (Player::inventory[i][j] == BlockID::AIR)
+                            Player::inventory[i][j] = Blocks().air;
+                        if (Player::inventory[i][j] == Blocks().air)
                             Player::inventoryAmount[i][j] = 0;
                     }
                 }
@@ -1710,7 +1699,7 @@ void drawBag() {
             }
         }
 
-        if (indexselected != BlockID::AIR) {
+        if (indexselected != Blocks().air) {
             auto& shader = Renderer::shaders[Renderer::UIShader];
             shader.bind();
             glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
@@ -1732,8 +1721,8 @@ void drawBag() {
             ss << Amountselected;
             TextRenderer::renderString((int) mx - 16, (int) my - 16, ss.str());
         }
-        if (Player::inventory[si][sj] != BlockID::AIR && sf == 1) {
-            TextRenderer::renderString((int) mx, (int) my - 16, BlockInfo(Player::inventory[si][sj]).getBlockName());
+        if (Player::inventory[si][sj] != Blocks().air && sf == 1) {
+            TextRenderer::renderString((int) mx, (int) my - 16, BlockInfo(Player::inventory[si][sj]).name);
         }
 
         int xbase = 0, ybase = 0, spac = 0;

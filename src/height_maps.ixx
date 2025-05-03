@@ -9,6 +9,8 @@ import terrain_generation;
 
 export class HeightMap {
 public:
+    static constexpr int WaterLevel = WorldGen::WaterLevel;
+  
     explicit HeightMap(std::size_t size):
         size(size),
         array(std::make_unique<int[]>(size * size)) {

@@ -14,77 +14,65 @@ public:
 
     // Zero vector constructor
     Vec3() = default;
+
     // Same-value constructor
     Vec3(T x):
         x(x),
         y(x),
         z(x) {}
+
     // Element-wise vector constructor
     Vec3(T x, T y, T z):
         x(x),
         y(y),
         z(z) {}
 
+    // Type conversion constructor
     template <typename U>
-    Vec3(Vec3<U> const& rhs):
-        x(static_cast<T>(rhs.x)),
-        y(static_cast<T>(rhs.y)),
-        z(static_cast<T>(rhs.z)) {}
-
-    // Returns the square of vector length
-    auto lengthSqr() const -> T {
-        return x * x + y * y + z * z;
-    }
-
-    // Returns vector length
-    auto length() const -> T {
-        return std::sqrt(lengthSqr());
-    }
-
-    // Normalize vector
-    auto normalize() const -> Vec3 {
-        return *this / length();
-    }
+    explicit Vec3(Vec3<U> const& r):
+        x(static_cast<T>(r.x)),
+        y(static_cast<T>(r.y)),
+        z(static_cast<T>(r.z)) {}
 
     // Element-wise equality
-    auto operator==(Vec3 const& rhs) const -> bool {
-        return x == rhs.x && y == rhs.y && z == rhs.z;
+    auto operator==(Vec3 const& r) const -> bool {
+        return x == r.x && y == r.y && z == r.z;
     }
 
     // Element-wise inequality
-    auto operator!=(Vec3 const& rhs) const -> bool {
-        return !(rhs == *this);
+    auto operator!=(Vec3 const& r) const -> bool {
+        return !(*this == r);
     }
 
     // Lexicographical ordering
-    auto operator<(Vec3 const& rhs) const -> bool {
-        if (x != rhs.x)
-            return x < rhs.x;
-        if (y != rhs.y)
-            return y < rhs.y;
-        if (z != rhs.z)
-            return z < rhs.z;
+    auto operator<(Vec3 const& r) const -> bool {
+        if (x != r.x)
+            return x < r.x;
+        if (y != r.y)
+            return y < r.y;
+        if (z != r.z)
+            return z < r.z;
         return false;
     }
 
-    friend auto operator-(Vec3 const& vec) -> Vec3 {
-        return Vec3(-vec.x, -vec.y, -vec.z);
+    friend auto operator-(Vec3 const& v) -> Vec3 {
+        return Vec3(-v.x, -v.y, -v.z);
     }
 
-    auto operator+(Vec3 const& rhs) const -> Vec3 {
-        return Vec3(x + rhs.x, y + rhs.y, z + rhs.z);
+    auto operator+(Vec3 const& r) const -> Vec3 {
+        return Vec3(x + r.x, y + r.y, z + r.z);
     };
 
-    auto operator-(Vec3 const& rhs) const -> Vec3 {
-        return Vec3(x - rhs.x, y - rhs.y, z - rhs.z);
+    auto operator-(Vec3 const& r) const -> Vec3 {
+        return Vec3(x - r.x, y - r.y, z - r.z);
     };
 
-    auto operator*(Vec3 const& rhs) const -> Vec3 {
-        return Vec3(x * rhs.x, y * rhs.y, z * rhs.z);
+    auto operator*(Vec3 const& r) const -> Vec3 {
+        return Vec3(x * r.x, y * r.y, z * r.z);
     };
 
-    auto operator/(Vec3 const& rhs) const -> Vec3 {
-        return Vec3(x / rhs.x, y / rhs.y, z / rhs.z);
+    auto operator/(Vec3 const& r) const -> Vec3 {
+        return Vec3(x / r.x, y / r.y, z / r.z);
     };
 
     auto operator*(T value) const -> Vec3 {
@@ -95,20 +83,20 @@ public:
         return Vec3(x / value, y / value, z / value);
     }
 
-    auto operator+=(Vec3 const& rhs) -> Vec3& {
-        return *this = *this + rhs;
+    auto operator+=(Vec3 const& r) -> Vec3& {
+        return *this = *this + r;
     }
 
-    auto operator-=(Vec3 const& rhs) -> Vec3& {
-        return *this = *this - rhs;
+    auto operator-=(Vec3 const& r) -> Vec3& {
+        return *this = *this - r;
     }
 
-    auto operator*=(Vec3 const& rhs) -> Vec3& {
-        return *this = *this * rhs;
+    auto operator*=(Vec3 const& r) -> Vec3& {
+        return *this = *this * r;
     }
 
-    auto operator/=(Vec3 const& rhs) -> Vec3& {
-        return *this = *this / rhs;
+    auto operator/=(Vec3 const& r) -> Vec3& {
+        return *this = *this / r;
     }
 
     auto operator*=(T value) -> Vec3& {
@@ -119,19 +107,37 @@ public:
         return *this = *this / value;
     }
 
-    template <typename Func>
-    auto map(Func func) const -> Vec3 {
-        return Vec3(func(x), func(y), func(z));
+    // Element-wise function application
+    template <typename F>
+    auto map(F f) const -> Vec3 {
+        return Vec3(f(x), f(y), f(z));
     }
 
-    friend void swap(Vec3& lhs, Vec3& rhs) noexcept {
+    // Swaps two vectors
+    friend void swap(Vec3& l, Vec3& r) noexcept {
         using std::swap;
-        swap(lhs.x, rhs.x);
-        swap(lhs.y, rhs.y);
-        swap(lhs.z, rhs.z);
+        swap(l.x, r.x);
+        swap(l.y, r.y);
+        swap(l.z, r.z);
+    }
+
+    // Returns the square of vector length
+    auto length_sqr() const -> T {
+        return x * x + y * y + z * z;
+    }
+
+    // Returns vector length
+    auto length() const -> T {
+        return std::sqrt(length_sqr());
+    }
+
+    // Normalize vector
+    auto normalize() const -> Vec3 {
+        return *this / length();
     }
 };
 
 export using Vec3i = Vec3<int>;
+export using Vec3u = Vec3<unsigned int>;
 export using Vec3f = Vec3<float>;
 export using Vec3d = Vec3<double>;

@@ -73,6 +73,7 @@ RemoveBracesLLVM: false
 DerivePointerAlignment: false
 PointerAlignment: Left
 ReferenceAlignment: Left
+QualifierAlignment: Right
 SpaceAroundPointerQualifiers: Default
 
 SpaceAfterCStyleCast: true
