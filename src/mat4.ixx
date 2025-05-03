@@ -6,6 +6,7 @@ module;
 #include <cstring>
 
 export module mat4;
+import types;
 import vec3;
 
 export template <typename T>
@@ -23,13 +24,13 @@ public:
 
     // Returns pointer to the i-th row
     auto operator[](std::size_t i) -> T* {
-        assert(index < 4);
+        assert(i < 4);
         return data + i * 4;
     }
 
     // Returns const pointer to the i-th row
     auto operator[](std::size_t i) const -> T const* {
-        assert(index < 4);
+        assert(i < 4);
         return data + i * 4;
     }
 
@@ -134,17 +135,17 @@ public:
     }
 
     // Swap row r1, row r2
-    void swap_rows(std::size_t i0, std::size_t i1) {
-        assert(r1 < 4 && r2 < 4);
-        std::swap(data[i0 * 4 + 0], data[i1 * 4 + 0]);
-        std::swap(data[i0 * 4 + 1], data[i1 * 4 + 1]);
-        std::swap(data[i0 * 4 + 2], data[i1 * 4 + 2]);
-        std::swap(data[i0 * 4 + 3], data[i1 * 4 + 3]);
+    void swap_rows(std::size_t i, std::size_t j) {
+        assert(i < 4 && j < 4);
+        std::swap(data[i * 4 + 0], data[j * 4 + 0]);
+        std::swap(data[i * 4 + 1], data[j * 4 + 1]);
+        std::swap(data[i * 4 + 2], data[j * 4 + 2]);
+        std::swap(data[i * 4 + 3], data[j * 4 + 3]);
     }
 
     // Row r *= k
     void mult_row(std::size_t i, T value) {
-        assert(r < 4);
+        assert(i < 4);
         data[i * 4 + 0] *= value;
         data[i * 4 + 1] *= value;
         data[i * 4 + 2] *= value;
@@ -269,5 +270,5 @@ public:
     }
 };
 
-export using Mat4f = Mat4<float>;
-export using Mat4d = Mat4<double>;
+export using Mat4f = Mat4<float_t>;
+export using Mat4d = Mat4<double_t>;

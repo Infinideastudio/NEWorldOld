@@ -63,12 +63,12 @@ export bool GameBegin, GameExit;
 export int GameTime = 0;
 export uint32_t gSeed;
 
-export int loadedChunks;
-export int renderedChunks;
-export int unloadedChunks;
-export int updatedChunks;
-export int meshedChunks;
-export int updatedBlocks;
+export int loaded_chunks;
+export int rendered_chunks;
+export int unloaded_chunks;
+export int updated_chunks;
+export int meshed_chunks;
+export int updated_blocks;
 
 export auto getMouseScroll() -> int {
     return mw;
@@ -135,7 +135,7 @@ export void DebugError(std::string_view msg) {
 }
 
 template <typename T>
-void loadoption(std::map<std::string, std::string>& m, const char* name, T& value) {
+void loadoption(std::map<std::string, std::string>& m, char const* name, T& value) {
     if (m.find(name) == m.end())
         return;
     std::stringstream ss;
@@ -175,7 +175,7 @@ export void loadOptions() {
 }
 
 template <typename T>
-void saveoption(std::ofstream& out, const char* name, T& value) {
+void saveoption(std::ofstream& out, char const* name, T& value) {
     out << std::string(name) << " " << value << std::endl;
 }
 

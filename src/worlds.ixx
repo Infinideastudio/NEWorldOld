@@ -26,133 +26,176 @@ import vec3;
 import terrain_generation;
 import rendering;
 
-constexpr size_t MaxChunkLoads = 64;
-constexpr size_t MaxChunkUnloads = 64;
-constexpr size_t MaxChunkMeshings = 16;
-constexpr size_t MaxBlockUpdates = 65536;
+// The 64-bit chunk ID is composed of 28-bit X, 8-bit Y and 28-bit Z coordinates.
+class ChunkId {
+public:
+    static constexpr auto MIN_X = -(int32_t{1} << 27);
+    static constexpr auto MAX_X = (int32_t{1} << 27) - 1;
+    static constexpr auto MIN_Y = -(int32_t{1} << 7);
+    static constexpr auto MAX_Y = (int32_t{1} << 7) - 1;
+    static constexpr auto MIN_Z = -(int32_t{1} << 27);
+    static constexpr auto MAX_Z = (int32_t{1} << 27) - 1;
+
+    constexpr ChunkId() = default;
+    constexpr ChunkId(Vec3i coord):
+        _data(pack(coord)) {}
+
+    auto get() const -> Vec3i {
+        auto x = static_cast<int32_t>(_data >> 36);
+        auto y = static_cast<int32_t>(_data & 0xFF);
+        auto z = static_cast<int32_t>((_data >> 8) & 0x0FFFFFFF);
+        return {x, y, z};
+    }
+
+    auto operator<=>(ChunkId const&) const = default;
+
+private:
+    uint64_t _data = 0;
+
+    static constexpr auto pack(Vec3i coord) -> uint64_t {
+        auto res = uint64_t{0};
+        res |= static_cast<uint64_t>(coord.x) << 36;
+        res |= static_cast<uint64_t>(coord.y) & 0xFF;
+        res |= (static_cast<uint64_t>(coord.z) & 0x0FFFFFFF) << 8;
+        return res;
+    }
+
+    friend struct std::hash<ChunkId>;
+};
+
+template <>
+struct std::hash<ChunkId> {
+    auto operator()(ChunkId x) const noexcept -> size_t {
+        return std::hash<uint64_t>()(x._data);
+    }
+};
+
+namespace worlds {
+
+constexpr size_t MAX_CHUNK_LOADS = 64;
+constexpr size_t MAX_CHUNK_UNLOADS = 64;
+constexpr size_t MAX_CHUNK_MESHINGS = 16;
+constexpr size_t MAX_BLOCK_UPDATES = 65536;
+
+export auto chunk_coord(Vec3i coord) -> Vec3i {
+    // C++20 guarantees arithmetic right shift on signed integers
+    // See: https://en.cppreference.com/w/cpp/language/operator_arithmetic#Built-in_bitwise_shift_operators
+    return {coord.x >> 4, coord.y >> 4, coord.z >> 4};
+}
+
+export auto block_coord(Vec3i coord) -> Vec3u {
+    // Signed to unsigned conversion implements modulo operation
+    // See: https://en.cppreference.com/w/c/language/conversion#Integer_conversions
+    auto ucoord = Vec3u(coord);
+    return {ucoord.x & 0xF, ucoord.y & 0xF, ucoord.z & 0xF};
+}
 
 export class World {
 public:
-    std::string WorldName;
-    std::unordered_map<ChunkID, std::unique_ptr<Chunk>> chunks;
-    std::vector<std::pair<int, Chunk*>> chunkMeshingList;
-    std::vector<std::pair<int, Vec3i>> chunkLoadList;
-    std::vector<std::pair<int, Vec3i>> chunkUnloadList;
-    std::deque<Vec3i> blockUpdateQueue;
-
-    explicit World(std::string worldName):
-        WorldName(std::move(worldName)),
-        chunkPtrArray((RenderDistance + 2) * 2),
-        heightMap((RenderDistance + 2) * 2 * 1) {
+    explicit World(std::string name):
+        _name(std::move(name)),
+        _chunk_pointer_array((RenderDistance + 2) * 2),
+        _height_map((RenderDistance + 2) * 2 * 1) {
 
         // Create world and chunk directory
-        std::filesystem::create_directories(std::filesystem::path("worlds") / WorldName / "chunks");
+        std::filesystem::create_directories(std::filesystem::path("worlds") / _name / "chunks");
 
         // Initialize terrain generation
         WorldGen::noiseInit(3404);
 
         // Temporary: reset counters
-        loadedChunks = 0;
-        meshedChunks = 0;
-        updatedChunks = 0;
-        unloadedChunks = 0;
-        updatedBlocks = 0;
+        loaded_chunks = 0;
+        meshed_chunks = 0;
+        updated_chunks = 0;
+        unloaded_chunks = 0;
+        updated_blocks = 0;
     }
 
-    void setCenter(Vec3i ccenter) {
-        chunkPtrArray.moveTo(ccenter - Vec3i(RenderDistance + 2));
-        heightMap.moveTo((ccenter - Vec3i(RenderDistance + 2)) * 16);
+    auto name() const -> std::string const& {
+        return _name;
     }
 
-    auto loadChunk(Vec3i ccoord, bool skipEmpty = false) -> Chunk* {
-        auto cid = getChunkID(ccoord);
-        auto it = chunks.find(cid);
-        if (it != chunks.end()) {
-            DebugWarning(std::format("Trying to load existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z));
-            return it->second.get();
-        }
-
-        // Load chunk from file if exists
-        auto handle = std::make_unique<Chunk>(ccoord, WorldName, heightMap);
-        auto cptr = handle.get();
-
-        // Optionally skip empty chunks
-        if (skipEmpty && cptr->empty()) {
-            chunkPtrArray.setChunkPtr(ccoord, EmptyChunkPtr);
-            return EmptyChunkPtr;
-        }
-
-        // Update caches
-        chunkPtrCacheKey = cid;
-        chunkPtrCacheValue = cptr;
-        chunkPtrArray.setChunkPtr(ccoord, cptr);
-
-        chunks.emplace(cid, std::move(handle));
-        return cptr;
+    auto chunks() const -> std::unordered_map<ChunkId, std::unique_ptr<chunks::Chunk>> const& {
+        return _chunks;
     }
 
-    void unloadChunk(Vec3i ccoord) {
-        auto cid = getChunkID(ccoord);
-        auto node = chunks.extract(cid);
-        if (node.empty()) {
-            DebugWarning(std::format("Trying to unload non-existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z));
-            return;
-        }
-
-        // Save chunk to file if modified
-        auto cptr = node.mapped().get();
-        cptr->saveToFile(WorldName);
-
-        // Update caches
-        if (chunkPtrCacheValue == cptr) {
-            chunkPtrCacheKey = 0;
-            chunkPtrCacheValue = nullptr;
-        }
-        chunkPtrArray.setChunkPtr(ccoord, nullptr);
-
-        // Shrink loaded core
-        auto d = (ccoord - loadedCore.ccenter).map([](int x) { return std::abs(x); });
-        auto dist = static_cast<size_t>(std::max({d.x, d.y, d.z}));
-        loadedCore.radius = std::min(loadedCore.radius, dist);
+    auto block_update_queue() const -> std::deque<Vec3i> const& {
+        return _block_update_queue;
     }
 
-    auto getChunkPtr(Vec3i ccoord) -> Chunk* {
-        ChunkID cid = getChunkID(ccoord);
-        if (chunkPtrCacheKey == cid && chunkPtrCacheValue != nullptr) {
-            return chunkPtrCacheValue;
+    static auto chunk_coord_out_of_world(Vec3i ccoord) -> bool {
+        return ccoord.x < ChunkId::MIN_X || ccoord.x > ChunkId::MAX_X || ccoord.y < ChunkId::MIN_Y
+            || ccoord.y > ChunkId::MAX_Y || ccoord.z < ChunkId::MIN_Z || ccoord.z > ChunkId::MAX_Z;
+    }
+
+    static auto chunk_coord_out_of_range(Vec3i ccoord, Vec3i center, int dist) -> bool {
+        return ccoord.x < center.x - dist || ccoord.x > center.x + dist - 1 || ccoord.y < center.y - dist
+            || ccoord.y > center.y + dist - 1 || ccoord.z < center.z - dist || ccoord.z > center.z + dist - 1;
+    }
+
+    // Sets the origin of the chunk pointer array and height map
+    void set_center(Vec3i ccenter) {
+        _chunk_pointer_array.set_center(ccenter - Vec3i(RenderDistance + 2));
+        _height_map.set_center((ccenter - Vec3i(RenderDistance + 2)) * 16);
+    }
+
+    // Saves all chunks to files
+    void save_to_files() {
+        for (auto const& [_, c]: _chunks)
+            c->save_to_file(_name);
+    }
+
+    // 获取区块指针
+    // 可能为 nullptr，可能为 EMPTY_CHUNK
+    auto chunk(Vec3i ccoord) -> chunks::Chunk* {
+        if (chunk_coord_out_of_world(ccoord))
+            return nullptr;
+        auto key = ChunkId(ccoord);
+        if (_chunk_pointer_cache_key == key && _chunk_pointer_cache_value) {
+            return _chunk_pointer_cache_value;
         }
-        Chunk* ret = chunkPtrArray.getChunkPtr(ccoord);
-        if (ret != nullptr) {
-            chunkPtrCacheKey = cid;
-            chunkPtrCacheValue = ret;
-            return ret;
+        if (auto res = _chunk_pointer_array.get(ccoord)) {
+            _chunk_pointer_cache_key = key;
+            _chunk_pointer_cache_value = res;
+            return res;
         }
-        auto it = chunks.find(cid);
-        if (it != chunks.end()) {
-            ret = it->second.get();
-            chunkPtrCacheKey = cid;
-            chunkPtrCacheValue = ret;
-            chunkPtrArray.setChunkPtr(ccoord, ret);
-            return ret;
+        auto it = _chunks.find(key);
+        if (it != _chunks.end()) {
+            auto res = it->second.get();
+            _chunk_pointer_cache_key = key;
+            _chunk_pointer_cache_value = res;
+            _chunk_pointer_array.set(ccoord, res);
+            return res;
         }
         return nullptr;
     }
 
-    auto chunkLoaded(Vec3i ccoord) -> bool {
-        if (chunkOutOfBound(ccoord))
-            return false;
-        if (getChunkPtr(ccoord) != nullptr)
-            return true;
-        return false;
+    // 获取方块和亮度
+    auto block(Vec3i coord) -> std::optional<blocks::BlockData> {
+        auto ccoord = chunk_coord(coord);
+        auto bcoord = block_coord(coord);
+        auto cptr = chunk(ccoord);
+        if (!cptr)
+            return {};
+        if (cptr == chunks::EMPTY_CHUNK) {
+            auto light = ccoord.y < 0 ? chunks::NO_LIGHT : chunks::SKY_LIGHT;
+            return blocks::BlockData{.id = base_blocks().air, .light = light};
+        }
+        return cptr->block(bcoord);
     }
 
-    auto getHitboxes(Hitbox::AABB const& box) -> std::vector<Hitbox::AABB> {
-        // 返回与box相交的所有方块AABB
+    // 带有默认值的获取方块和亮度
+    auto block_or_air(Vec3i coord) -> blocks::BlockData {
+        return block(coord).value_or(blocks::BlockData{.id = base_blocks().air, .light = chunks::NO_LIGHT});
+    }
+
+    // 返回与 box 相交的所有方块 AABB
+    auto hitboxes(Hitbox::AABB const& box) -> std::vector<Hitbox::AABB> {
         auto res = std::vector<Hitbox::AABB>();
         for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++) {
             for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++) {
                 for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++) {
-                    if (BlockInfo(getBlock(Vec3i(a, b, c)).id).solid) {
+                    if (block_info(block_or_air(Vec3i(a, b, c)).id).solid) {
                         auto blockbox = Hitbox::AABB();
                         blockbox.xmin = a - 0.5;
                         blockbox.xmax = a + 0.5;
@@ -169,12 +212,13 @@ public:
         return res;
     }
 
-    auto inWater(Hitbox::AABB const& box) -> bool {
+    // 返回 box 是否和水方块或岩浆方块相交
+    auto in_water(Hitbox::AABB const& box) -> bool {
         for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++) {
             for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++) {
                 for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++) {
-                    auto id = getBlock(Vec3i(a, b, c)).id;
-                    if (id == Blocks().water || id == Blocks().lava) {
+                    auto id = block_or_air(Vec3i(a, b, c)).id;
+                    if (id == base_blocks().water || id == base_blocks().lava) {
                         auto blockbox = Hitbox::AABB();
                         blockbox.xmin = a - 0.5;
                         blockbox.xmax = a + 0.5;
@@ -191,284 +235,50 @@ public:
         return false;
     }
 
-    // Trigger block update
-    void updateBlock(Vec3i coord, bool initial = true) {
-        auto ccoord = getChunkPos(coord);
-        auto bcoord = getBlockPos(coord);
-
-        if (chunkOutOfBound(ccoord))
-            return;
-
-        auto cptr = getChunkPtr(ccoord);
-        if (cptr != nullptr) {
-            if (cptr == EmptyChunkPtr)
-                cptr = loadChunk(ccoord);
-
-            bool updated = initial;
-            auto curr = cptr->block(bcoord);
-
-            // Explosive blocks.
-            if (curr.id == Blocks().tnt) {
-                explode(coord, 8);
-                return;
-            }
-
-            auto neighbors = std::array{
-                block(coord + Vec3i(+1, 0, 0)),
-                block(coord + Vec3i(-1, 0, 0)),
-                block(coord + Vec3i(0, +1, 0)),
-                block(coord + Vec3i(0, -1, 0)),
-                block(coord + Vec3i(0, 0, +1)),
-                block(coord + Vec3i(0, 0, -1)),
-            };
-
-            // Lighting computation.
-            auto sky_light = NO_LIGHT.sky();
-            auto block_light = NO_LIGHT.block();
-            for (auto const& neighbor: neighbors)
-                if (neighbor) {
-                    sky_light = std::max(sky_light, neighbor->light.sky());
-                    block_light = std::max(block_light, neighbor->light.block());
-                }
-
-            // If the top neighbor has maximum sky light, it and this block are both considered skylit.
-            // This makes lighting computation much more efficient than the old implementation.
-            // Again, blocks below (y = 0) never become skylit to prevent unbounded propagation.
-            auto skylit = coord.y >= 0 && (neighbors[2] && neighbors[2]->light.sky() == SKY_LIGHT.sky());
-
-            // Integral promption avoids underflowing when subtracting from `std::uint8_t` light levels.
-            // See: https://en.cppreference.com/w/cpp/language/implicit_conversion#Integral_promotion
-            if (curr.id == Blocks().air) {
-                sky_light = skylit ? SKY_LIGHT.sky() : std::max(0, sky_light - 1);
-                block_light = std::max(0, block_light - 1);
-            } else if (!BlockInfo(curr.id).solid) {
-                sky_light = std::max(0, sky_light - 1);
-                block_light = std::max(0, block_light - 1);
-            } else {
-                sky_light = 0;
-                block_light = 0;
-            }
-
-            // Block light sources.
-            if (curr.id == Blocks().glowstone || curr.id == Blocks().lava)
-                block_light = BlockData::Light::BLOCK_MAX_VALUE;
-
-            cptr->block_ref(bcoord).light = BlockData::Light(sky_light, block_light);
-
-            if (curr != cptr->block(bcoord))
-                updated = true;
-
-            if (updated) {
-                blockUpdateQueue.emplace_back(coord + Vec3i(+1, 0, 0));
-                blockUpdateQueue.emplace_back(coord + Vec3i(-1, 0, 0));
-                blockUpdateQueue.emplace_back(coord + Vec3i(0, +1, 0));
-                blockUpdateQueue.emplace_back(coord + Vec3i(0, -1, 0));
-                blockUpdateQueue.emplace_back(coord + Vec3i(0, 0, +1));
-                blockUpdateQueue.emplace_back(coord + Vec3i(0, 0, -1));
-
-                if (bcoord.x == 15 && ccoord.x < WorldSize - 1)
-                    markChunkNeighborUpdated(ccoord + Vec3i(+1, 0, 0));
-                if (bcoord.x == 0 && ccoord.x > -WorldSize)
-                    markChunkNeighborUpdated(ccoord + Vec3i(-1, 0, 0));
-                if (bcoord.y == 15 && ccoord.y < WorldHeight - 1)
-                    markChunkNeighborUpdated(ccoord + Vec3i(0, +1, 0));
-                if (bcoord.y == 0 && ccoord.y > -WorldHeight)
-                    markChunkNeighborUpdated(ccoord + Vec3i(0, -1, 0));
-                if (bcoord.z == 15 && ccoord.z < WorldSize - 1)
-                    markChunkNeighborUpdated(ccoord + Vec3i(0, 0, +1));
-                if (bcoord.z == 0 && ccoord.z > -WorldSize)
-                    markChunkNeighborUpdated(ccoord + Vec3i(0, 0, -1));
-
-                updatedBlocks++;
-            }
-        }
-    }
-
-    // Process pending block updates in queue
-    void updateBlocks() {
-        for (size_t i = 0; i < MaxBlockUpdates; i++) {
-            if (blockUpdateQueue.empty())
-                break;
-            auto coord = blockUpdateQueue.front();
-            blockUpdateQueue.pop_front();
-            updateBlock(coord, false);
-        }
-    }
-
-    // 获取方块和亮度
-    auto block(Vec3i coord) -> std::optional<BlockData> {
-        auto ccoord = getChunkPos(coord);
-        auto bcoord = getBlockPos(coord);
-        if (chunkOutOfBound(ccoord))
-            return {};
-        auto cptr = getChunkPtr(ccoord);
-        if (!cptr)
-            return {};
-        if (cptr == EmptyChunkPtr) {
-            auto light = ccoord.y < 0 ? NO_LIGHT : SKY_LIGHT;
-            return BlockData{.id = Blocks().air, .light = light};
-        }
-        return cptr->block(bcoord);
-    }
-
-    // 带有默认值的获取方块和亮度
-    auto getBlock(Vec3i coord) -> BlockData {
-        return block(coord).value_or(BlockData{.id = Blocks().air, .light = NO_LIGHT});
-    }
-
     // 设置方块
-    void setBlock(Vec3i coord, BlockData::Id value, bool update = true) {
-        auto ccoord = getChunkPos(coord);
-        auto bcoord = getBlockPos(coord);
-        if (chunkOutOfBound(ccoord))
-            return;
-        auto cptr = getChunkPtr(ccoord);
+    void put_block(Vec3i coord, blocks::Id value, bool update = true) {
+        auto ccoord = chunk_coord(coord);
+        auto bcoord = block_coord(coord);
+        auto cptr = chunk(ccoord);
         if (!cptr)
             return;
-        if (cptr == EmptyChunkPtr)
-            cptr = loadChunk(ccoord);
+        if (cptr == chunks::EMPTY_CHUNK)
+            cptr = _load_chunk(ccoord);
         cptr->block_ref(bcoord).id = value;
         if (update)
-            updateBlock(coord, true);
+            update_block(coord, true);
     }
 
-    auto chunkInRange(Vec3i ccoord, Vec3i center, int dist) const -> bool {
-        if (ccoord.x < center.x - dist || ccoord.x > center.x + dist - 1 || ccoord.y < center.y - dist
-            || ccoord.y > center.y + dist - 1 || ccoord.z < center.z - dist || ccoord.z > center.z + dist - 1)
-            return false;
-        return true;
-    }
-
-    auto chunkUpdated(Vec3i coord) -> bool {
-        auto i = getChunkPtr(coord);
-        if (i == nullptr || i == EmptyChunkPtr)
-            return false;
-        return i->updated();
-    }
-
-    void markChunkNeighborUpdated(Vec3i coord) {
-        auto i = getChunkPtr(coord);
-        if (i == nullptr || i == EmptyChunkPtr)
-            return;
-        i->markNeighborUpdated();
-    }
-
-    void sortChunkUpdateLists(Vec3i center) {
-        auto ccenter = getChunkPos(center);
-
-        using LoadElem = std::pair<int, Vec3i>;
-        using UnloadElem = std::pair<int, Vec3i>;
-        using MeshingElem = std::pair<int, Chunk*>;
-
-        std::priority_queue<LoadElem, std::vector<LoadElem>, std::less<>> loads;
-        std::priority_queue<UnloadElem, std::vector<UnloadElem>, std::greater<>> unloads;
-        std::priority_queue<MeshingElem, std::vector<MeshingElem>, std::less<>> meshings;
-
-        // Update loaded core center
-        if (loadedCore.radius > 0) {
-            auto d = (ccenter - loadedCore.ccenter).map([](int x) { return std::abs(x); });
-            auto dist = static_cast<size_t>(std::max({d.x, d.y, d.z}));
-            loadedCore.radius -= std::min(loadedCore.radius, dist);
-        }
-        loadedCore.ccenter = ccenter;
-
-        // Sort chunk load list by enumerating in cubical shells of increasing radii
-        for (int radius = int(loadedCore.radius) + 1; radius <= RenderDistance + 1; radius++) {
-            // Enumerate cubical shell with side length (dist * 2)
-            for (int cx = ccenter.x - radius; cx < ccenter.x + radius; cx++) {
-                for (int cy = ccenter.y - radius; cy < ccenter.y + radius; cy++) {
-                    // Skip interior of cubical shell
-                    int stride = radius * 2 - 1;
-                    if (cx == ccenter.x - radius || cx == ccenter.x + radius - 1)
-                        stride = 1;
-                    if (cy == ccenter.y - radius || cy == ccenter.y + radius - 1)
-                        stride = 1;
-                    // If both X and Y are interior, Z only checks two points
-                    for (int cz = ccenter.z - radius; cz < ccenter.z + radius; cz += stride) {
-                        auto cc = Vec3i(cx, cy, cz);
-                        if (chunkOutOfBound(cc))
-                            continue;
-                        if (getChunkPtr(cc) == nullptr) {
-                            auto distsqr = (cc * 16 + 8 - center).length_sqr();
-                            loads.emplace(distsqr, cc);
-                            if (loads.size() > MaxChunkLoads)
-                                loads.pop();
-                        }
-                    }
-                }
-            }
-            // Update loaded core radius for the known part
-            if (loads.empty())
-                loadedCore.radius = radius;
-            // Break if already complete
-            if (loads.size() == MaxChunkLoads)
-                break;
-        }
-
-        // Sort chunk unload and meshing lists simultaneously
-        for (auto const& [_, c]: chunks) {
-            auto cc = c->coord();
-            if (!chunkInRange(cc, ccenter, RenderDistance + 1)) {
-                auto distsqr = (cc * 16 + 8 - center).length_sqr();
-                unloads.emplace(distsqr, cc);
-                if (unloads.size() > MaxChunkUnloads)
-                    unloads.pop();
-            } else if (chunkInRange(cc, ccenter, RenderDistance) && c->updated()) {
-                auto distsqr = (cc * 16 + 8 - center).length_sqr();
-                meshings.emplace(distsqr, c.get());
-                if (meshings.size() > MaxChunkMeshings)
-                    meshings.pop();
-            }
-        }
-
-        // Write results back
-        chunkLoadList.clear();
-        chunkUnloadList.clear();
-        chunkMeshingList.clear();
-
-        while (!loads.empty()) {
-            chunkLoadList.emplace_back(loads.top());
-            loads.pop();
-        }
-        while (!unloads.empty()) {
-            chunkUnloadList.emplace_back(unloads.top());
-            unloads.pop();
-        }
-        while (!meshings.empty()) {
-            chunkMeshingList.emplace_back(meshings.top());
-            meshings.pop();
-        }
-    }
-
-    void buildtree(Vec3i coord) {
+    // Builds a tree structure
+    void build_tree(Vec3i coord) {
         int th = int(rnd() * 3) + 4;
         // Tree trunk
-        setBlock(coord + Vec3i(0, -1, 0), Blocks().dirt);
+        put_block(coord + Vec3i(0, -1, 0), base_blocks().dirt);
         for (int yt = 0; yt != th; yt++)
-            setBlock(coord + Vec3i(0, yt, 0), Blocks().wood);
+            put_block(coord + Vec3i(0, yt, 0), base_blocks().wood);
         // Tree leaves
         for (int xt = 0; xt != 5; xt++) {
             for (int zt = 0; zt != 5; zt++) {
                 for (int yt = 0; yt != 2; yt++) {
-                    if (getBlock(coord + Vec3i(xt - 2, th - 3 + yt, zt - 2)).id == Blocks().air)
-                        setBlock(coord + Vec3i(xt - 2, th - 3 + yt, zt - 2), Blocks().leaf);
+                    if (block_or_air(coord + Vec3i(xt - 2, th - 3 + yt, zt - 2)).id == base_blocks().air)
+                        put_block(coord + Vec3i(xt - 2, th - 3 + yt, zt - 2), base_blocks().leaf);
                 }
             }
         }
         for (int xt = 0; xt != 3; xt++) {
             for (int zt = 0; zt != 3; zt++) {
                 for (int yt = 0; yt != 2; yt++) {
-                    if (getBlock(coord + Vec3i(xt - 1, th - 1 + yt, zt - 1)).id == Blocks().air
+                    if (block_or_air(coord + Vec3i(xt - 1, th - 1 + yt, zt - 1)).id == base_blocks().air
                         && std::abs(xt - 1) != std::abs(zt - 1))
-                        setBlock(coord + Vec3i(xt - 1, th - 1 + yt, zt - 1), Blocks().leaf);
+                        put_block(coord + Vec3i(xt - 1, th - 1 + yt, zt - 1), base_blocks().leaf);
                 }
             }
         }
-        setBlock(coord + Vec3i(0, th, 0), Blocks().leaf);
+        put_block(coord + Vec3i(0, th, 0), base_blocks().leaf);
     }
 
+    // Destroy blocks within a radius of r
     void explode(Vec3i center, int r) {
-        // Destroy blocks within a radius of r
         double maxdistsqr = r * r;
         for (int fx = center.x - r - 1; fx < center.x + r + 1; fx++) {
             for (int fy = center.y - r - 1; fy < center.y + r + 1; fy++) {
@@ -477,10 +287,10 @@ public:
                     int distsqr = (coord - center).length_sqr();
                     if (distsqr <= maxdistsqr * 0.75
                         || distsqr <= maxdistsqr && rnd() > (distsqr - maxdistsqr * 0.6) / (maxdistsqr * 0.4)) {
-                        auto id = getBlock(coord).id;
-                        if (!BlockInfo(id).solid)
+                        auto id = block_or_air(coord).id;
+                        if (!block_info(id).solid)
                             continue;
-                        setBlock(coord, Blocks().air);
+                        put_block(coord, base_blocks().air);
                     }
                 }
             }
@@ -505,28 +315,230 @@ public:
         */
     }
 
-    void saveAllChunks() {
-        for (auto const& [_, c]: chunks)
-            c->saveToFile(WorldName);
+    // Triggers block update
+    void update_block(Vec3i coord, bool initial = true) {
+        auto ccoord = chunk_coord(coord);
+        auto bcoord = block_coord(coord);
+
+        auto cptr = chunk(ccoord);
+        if (!cptr)
+            return;
+        if (cptr == chunks::EMPTY_CHUNK)
+            cptr = _load_chunk(ccoord);
+
+        bool updated = initial;
+        auto curr = cptr->block(bcoord);
+
+        // Explosive blocks.
+        if (curr.id == base_blocks().tnt) {
+            explode(coord, 8);
+            return;
+        }
+
+        auto neighbors = std::array{
+            block(coord + Vec3i(+1, 0, 0)),
+            block(coord + Vec3i(-1, 0, 0)),
+            block(coord + Vec3i(0, +1, 0)),
+            block(coord + Vec3i(0, -1, 0)),
+            block(coord + Vec3i(0, 0, +1)),
+            block(coord + Vec3i(0, 0, -1)),
+        };
+
+        // Lighting computation.
+        auto sky_light = chunks::NO_LIGHT.sky();
+        auto block_light = chunks::NO_LIGHT.block();
+        for (auto const& neighbor: neighbors)
+            if (neighbor) {
+                sky_light = std::max(sky_light, neighbor->light.sky());
+                block_light = std::max(block_light, neighbor->light.block());
+            }
+
+        // If the top neighbor has maximum sky light, it and this block are both considered skylit.
+        // This makes lighting computation much more efficient than the old implementation.
+        // Again, blocks below (y = 0) never become skylit to prevent unbounded propagation.
+        auto skylit = coord.y >= 0 && (neighbors[2] && neighbors[2]->light.sky() == chunks::SKY_LIGHT.sky());
+
+        // Integral promption avoids underflowing when subtracting from `std::uint8_t` light levels.
+        // See: https://en.cppreference.com/w/cpp/language/implicit_conversion#Integral_promotion
+        if (curr.id == base_blocks().air) {
+            sky_light = skylit ? chunks::SKY_LIGHT.sky() : std::max(0, sky_light - 1);
+            block_light = std::max(0, block_light - 1);
+        } else if (!block_info(curr.id).solid) {
+            sky_light = std::max(0, sky_light - 1);
+            block_light = std::max(0, block_light - 1);
+        } else {
+            sky_light = 0;
+            block_light = 0;
+        }
+
+        // Block light sources.
+        if (curr.id == base_blocks().glowstone || curr.id == base_blocks().lava)
+            block_light = blocks::Light::BLOCK_MAX_VALUE;
+
+        cptr->block_ref(bcoord).light = blocks::Light(sky_light, block_light);
+
+        if (curr != cptr->block(bcoord))
+            updated = true;
+
+        if (updated) {
+            _block_update_queue.emplace_back(coord + Vec3i(+1, 0, 0));
+            _block_update_queue.emplace_back(coord + Vec3i(-1, 0, 0));
+            _block_update_queue.emplace_back(coord + Vec3i(0, +1, 0));
+            _block_update_queue.emplace_back(coord + Vec3i(0, -1, 0));
+            _block_update_queue.emplace_back(coord + Vec3i(0, 0, +1));
+            _block_update_queue.emplace_back(coord + Vec3i(0, 0, -1));
+
+            if (bcoord.x == 15)
+                _mark_chunk_neighbor_updated(ccoord + Vec3i(+1, 0, 0));
+            if (bcoord.x == 0)
+                _mark_chunk_neighbor_updated(ccoord + Vec3i(-1, 0, 0));
+            if (bcoord.y == 15)
+                _mark_chunk_neighbor_updated(ccoord + Vec3i(0, +1, 0));
+            if (bcoord.y == 0)
+                _mark_chunk_neighbor_updated(ccoord + Vec3i(0, -1, 0));
+            if (bcoord.z == 15)
+                _mark_chunk_neighbor_updated(ccoord + Vec3i(0, 0, +1));
+            if (bcoord.z == 0)
+                _mark_chunk_neighbor_updated(ccoord + Vec3i(0, 0, -1));
+
+            updated_blocks++;
+        }
     }
 
-    struct RenderChunk {
-        Vec3i ccoord = {};
-        float loadAnim = 0.0f;
-        std::array<Renderer::VertexBuffer const*, 2> meshes = {};
-
-        RenderChunk(Chunk const& c, float TimeDelta):
-            ccoord(c.coord()),
-            loadAnim(c.loadAnimOffset() * std::pow(0.6f, TimeDelta)) {
-            meshes[0] = &c.mesh(0);
-            meshes[1] = &c.mesh(1);
+    // Process pending block updates in queue
+    void process_block_updates() {
+        for (size_t i = 0; i < MAX_BLOCK_UPDATES; i++) {
+            if (_block_update_queue.empty())
+                break;
+            auto coord = _block_update_queue.front();
+            _block_update_queue.pop_front();
+            update_block(coord, false);
         }
-    };
+    }
 
-    auto ListRenderChunks(double x, double y, double z, int distance, double interp, std::optional<FrustumTest> frustum)
+    void update_chunk_lists(Vec3i center) {
+        auto ccenter = chunk_coord(center);
+
+        using LoadElem = std::pair<int, Vec3i>;
+        using UnloadElem = std::pair<int, Vec3i>;
+        using MeshingElem = std::pair<int, chunks::Chunk*>;
+
+        std::priority_queue<LoadElem, std::vector<LoadElem>, std::less<>> loads;
+        std::priority_queue<UnloadElem, std::vector<UnloadElem>, std::greater<>> unloads;
+        std::priority_queue<MeshingElem, std::vector<MeshingElem>, std::less<>> meshings;
+
+        // Update loaded core center
+        if (_loaded_core.radius > 0) {
+            auto d = (ccenter - _loaded_core.ccenter).map([](int x) { return std::abs(x); });
+            auto dist = static_cast<size_t>(std::max({d.x, d.y, d.z}));
+            _loaded_core.radius -= std::min(_loaded_core.radius, dist);
+        }
+        _loaded_core.ccenter = ccenter;
+
+        // Sort chunk load list by enumerating in cubical shells of increasing radii
+        for (int radius = int(_loaded_core.radius) + 1; radius <= RenderDistance + 1; radius++) {
+            // Enumerate cubical shell with side length (dist * 2)
+            for (int cx = ccenter.x - radius; cx < ccenter.x + radius; cx++) {
+                for (int cy = ccenter.y - radius; cy < ccenter.y + radius; cy++) {
+                    // Skip interior of cubical shell
+                    int stride = radius * 2 - 1;
+                    if (cx == ccenter.x - radius || cx == ccenter.x + radius - 1)
+                        stride = 1;
+                    if (cy == ccenter.y - radius || cy == ccenter.y + radius - 1)
+                        stride = 1;
+                    // If both X and Y are interior, Z only checks two points
+                    for (int cz = ccenter.z - radius; cz < ccenter.z + radius; cz += stride) {
+                        auto cc = Vec3i(cx, cy, cz);
+                        if (!chunk_coord_out_of_world(cc) && !chunk(cc)) {
+                            auto distsqr = (cc * 16 + 8 - center).length_sqr();
+                            loads.emplace(distsqr, cc);
+                            if (loads.size() > MAX_CHUNK_LOADS)
+                                loads.pop();
+                        }
+                    }
+                }
+            }
+            // Update loaded core radius for the known part
+            if (loads.empty())
+                _loaded_core.radius = radius;
+            // Break if already complete
+            if (loads.size() == MAX_CHUNK_LOADS)
+                break;
+        }
+
+        // Sort chunk unload and meshing lists simultaneously
+        for (auto const& [_, c]: _chunks) {
+            auto cc = c->coord();
+            if (chunk_coord_out_of_range(cc, ccenter, RenderDistance + 1)) {
+                auto distsqr = (cc * 16 + 8 - center).length_sqr();
+                unloads.emplace(distsqr, cc);
+                if (unloads.size() > MAX_CHUNK_UNLOADS)
+                    unloads.pop();
+            } else if (!chunk_coord_out_of_range(cc, ccenter, RenderDistance) && c->updated()) {
+                auto distsqr = (cc * 16 + 8 - center).length_sqr();
+                meshings.emplace(distsqr, c.get());
+                if (meshings.size() > MAX_CHUNK_MESHINGS)
+                    meshings.pop();
+            }
+        }
+
+        // Write results back
+        _chunk_load_list.clear();
+        _chunk_unload_list.clear();
+        _chunk_meshing_list.clear();
+
+        while (!loads.empty()) {
+            _chunk_load_list.emplace_back(loads.top());
+            loads.pop();
+        }
+        while (!unloads.empty()) {
+            _chunk_unload_list.emplace_back(unloads.top());
+            unloads.pop();
+        }
+        while (!meshings.empty()) {
+            _chunk_meshing_list.emplace_back(meshings.top());
+            meshings.pop();
+        }
+    }
+
+    void process_chunk_loads() {
+        for (auto [_, ccoord]: _chunk_load_list) {
+            _load_chunk(ccoord, true);
+        }
+    }
+
+    void process_chunk_unloads() {
+        for (auto [_, ccoord]: _chunk_unload_list) {
+            _unload_chunk(ccoord);
+        }
+    }
+
+    void process_chunk_meshings() {
+        for (auto [_, c]: _chunk_meshing_list) {
+            auto ccoord = c->coord();
+            auto neighbors = std::array<chunks::Chunk const*, 27>{};
+            auto all = true;
+            for (int x = -1; x <= 1; x++) {
+                for (int y = -1; y <= 1; y++) {
+                    for (int z = -1; z <= 1; z++) {
+                        auto cptr = chunk(ccoord + Vec3i(x, y, z));
+                        if (!cptr)
+                            all = false;
+                        neighbors[((x + 1) * 3 + (y + 1)) * 3 + (z + 1)] = cptr;
+                    }
+                }
+            }
+            if (all)
+                c->build_meshes(neighbors);
+        }
+    }
+
+    using RenderChunk = std::pair<Vec3d, std::array<Renderer::VertexBuffer const*, 2>>;
+
+    auto list_render_chunks(Vec3d const& center, int dist, double interp, std::optional<FrustumTest> frustum)
         -> std::vector<RenderChunk>;
 
-    void RenderChunks(double x, double y, double z, std::vector<RenderChunk> const& crs, size_t index);
+    void render_chunks(Vec3d const& center, std::vector<RenderChunk> const& crs, size_t index);
 
 private:
     struct LoadedCore {
@@ -534,9 +546,76 @@ private:
         size_t radius = 0;
     };
 
-    ChunkID chunkPtrCacheKey = 0;
-    Chunk* chunkPtrCacheValue = nullptr;
-    ChunkPtrArray chunkPtrArray;
-    HeightMap heightMap;
-    LoadedCore loadedCore;
+    std::string _name;
+    std::unordered_map<ChunkId, std::unique_ptr<chunks::Chunk>> _chunks;
+    std::vector<std::pair<int, chunks::Chunk*>> _chunk_meshing_list;
+    std::vector<std::pair<int, Vec3i>> _chunk_load_list;
+    std::vector<std::pair<int, Vec3i>> _chunk_unload_list;
+    std::deque<Vec3i> _block_update_queue;
+
+    ChunkId _chunk_pointer_cache_key = ChunkId(Vec3i(0, 0, 0));
+    chunks::Chunk* _chunk_pointer_cache_value = nullptr;
+    ChunkPointerArray _chunk_pointer_array;
+    HeightMap _height_map;
+    LoadedCore _loaded_core;
+
+    auto _load_chunk(Vec3i ccoord, bool skip_empty = false) -> chunks::Chunk* {
+        auto cid = ChunkId(ccoord);
+        auto it = _chunks.find(cid);
+        if (it != _chunks.end()) {
+            DebugWarning(std::format("Trying to load existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z));
+            return it->second.get();
+        }
+
+        // Load chunk from file if exists
+        auto handle = std::make_unique<chunks::Chunk>(ccoord, _name, _height_map);
+        auto cptr = handle.get();
+
+        // Optionally skip empty chunks
+        if (skip_empty && cptr->empty()) {
+            _chunk_pointer_array.set(ccoord, chunks::EMPTY_CHUNK);
+            return chunks::EMPTY_CHUNK;
+        }
+
+        // Update caches
+        _chunk_pointer_cache_key = cid;
+        _chunk_pointer_cache_value = cptr;
+        _chunk_pointer_array.set(ccoord, cptr);
+
+        _chunks.emplace(cid, std::move(handle));
+        return cptr;
+    }
+
+    void _unload_chunk(Vec3i ccoord) {
+        auto cid = ChunkId(ccoord);
+        auto node = _chunks.extract(cid);
+        if (node.empty()) {
+            DebugWarning(std::format("Trying to unload non-existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z));
+            return;
+        }
+
+        // Save chunk to file if modified
+        auto cptr = node.mapped().get();
+        cptr->save_to_file(_name);
+
+        // Update caches
+        if (_chunk_pointer_cache_value == cptr) {
+            _chunk_pointer_cache_key = ChunkId(Vec3i(0, 0, 0));
+            _chunk_pointer_cache_value = nullptr;
+        }
+        _chunk_pointer_array.set(ccoord, nullptr);
+
+        // Shrink loaded core
+        auto d = (ccoord - _loaded_core.ccenter).map([](int x) { return std::abs(x); });
+        auto dist = static_cast<size_t>(std::max({d.x, d.y, d.z}));
+        _loaded_core.radius = std::min(_loaded_core.radius, dist);
+    }
+
+    void _mark_chunk_neighbor_updated(Vec3i ccoord) {
+        auto cptr = chunk(ccoord);
+        if (!cptr || cptr == chunks::EMPTY_CHUNK)
+            return;
+        cptr->mark_neighbor_updated();
+    }
 };
+}

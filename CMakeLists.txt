@@ -93,17 +93,17 @@ target_sources(
         "src/mat4.ixx"
         "src/vec3.ixx"
     PRIVATE
-        "src/chunk_rendering.cpp"
-        "src/world_rendering.cpp"
-        "src/main_menu.cpp"
-        "src/options_menu.cpp"
-        "src/render_options_menu.cpp"
-        "src/shader_options_menu.cpp"
-        "src/ui_options_menu.cpp"
-        "src/language_menu.cpp"
-        "src/world_menu.cpp"
-        "src/create_world_menu.cpp"
-        "src/game_menu.cpp"
+        "src/chunks/chunk_rendering.cpp"
+        "src/worlds/world_rendering.cpp"
+        "src/menus/main_menu.cpp"
+        "src/menus/options_menu.cpp"
+        "src/menus/render_options_menu.cpp"
+        "src/menus/shader_options_menu.cpp"
+        "src/menus/ui_options_menu.cpp"
+        "src/menus/language_menu.cpp"
+        "src/menus/world_menu.cpp"
+        "src/menus/create_world_menu.cpp"
+        "src/menus/game_menu.cpp"
 )
 target_default_compile_options(neworld)
 target_link_libraries(neworld PRIVATE glad glfw utf8cpp Freetype::Freetype)
