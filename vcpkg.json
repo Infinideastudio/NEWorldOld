@@ -1,6 +1,10 @@
 {
   "dependencies": [
+    {
+      "name": "freetype",
+      "default-features": false
+    },
     "glfw3",
-    "freetype"
+    "leveldb"
   ]
 }

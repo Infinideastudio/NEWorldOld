@@ -12,6 +12,7 @@ module;
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <leveldb/db.h>
 
 export module worlds;
 export import blocks;
@@ -95,10 +96,19 @@ public:
     explicit World(std::string name):
         _name(std::move(name)),
         _chunk_pointer_array((RenderDistance + 2) * 2),
-        _height_map((RenderDistance + 2) * 2 * 1) {
+        _height_map((RenderDistance + 2) * 2 * 16) {
 
-        // Create world and chunk directory
-        std::filesystem::create_directories(std::filesystem::path("worlds") / _name / "chunks");
+        // Create world directory
+        std::filesystem::create_directories(std::filesystem::path("worlds") / _name);
+
+        // Open LevelDB database
+        auto db_path = (std::filesystem::path("worlds") / _name / "chunks.db").string();
+        leveldb::DB* db = nullptr;
+        auto opts = leveldb::Options();
+        opts.create_if_missing = true;
+        auto res = leveldb::DB::Open(opts, db_path, &db);
+        assert(res.ok());
+        _db.reset(db);
 
         // Initialize terrain generation
         WorldGen::noiseInit(3404);
@@ -141,8 +151,8 @@ public:
 
     // Saves all chunks to files
     void save_to_files() {
-        for (auto const& [_, c]: _chunks)
-            c->save_to_file(_name);
+        for (auto const& [id, c]: _chunks)
+            c->save_to_file(_db.get());
     }
 
     // 获取区块指针
@@ -547,6 +557,7 @@ private:
     };
 
     std::string _name;
+    std::unique_ptr<leveldb::DB> _db;
     std::unordered_map<ChunkId, std::unique_ptr<chunks::Chunk>> _chunks;
     std::vector<std::pair<int, chunks::Chunk*>> _chunk_meshing_list;
     std::vector<std::pair<int, Vec3i>> _chunk_load_list;
@@ -568,7 +579,7 @@ private:
         }
 
         // Load chunk from file if exists
-        auto handle = std::make_unique<chunks::Chunk>(ccoord, _name, _height_map);
+        auto handle = std::make_unique<chunks::Chunk>(ccoord, _db.get(), _height_map);
         auto cptr = handle.get();
 
         // Optionally skip empty chunks
@@ -596,7 +607,7 @@ private:
 
         // Save chunk to file if modified
         auto cptr = node.mapped().get();
-        cptr->save_to_file(_name);
+        cptr->save_to_file(_db.get());
 
         // Update caches
         if (_chunk_pointer_cache_value == cptr) {
