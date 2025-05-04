@@ -3,7 +3,6 @@ module;
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <vector>
 #include <glad/gl.h>
 
 module chunks;
@@ -19,65 +18,126 @@ namespace chunks {
 // One face in merge face
 struct QuadPrimitive {
     int x = 0, y = 0, z = 0, length = 0, direction = 0;
-    /*
-     * If the vertexes have different colors (smoothed lighting), the primitive cannot connect with others.
-     * This variable also means whether the vertexes have different colors.
-     */
+    // If the vertexes have different colors (smoothed lighting), the primitive cannot connect with others.
+    // This variable indicates whether the vertexes have different colors.
     bool once = false;
-    // Vertex colors
+    // Vertex colors.
     int col0 = 0, col1 = 0, col2 = 0, col3 = 0;
-    // Block ID
+    // Block ID.
     blocks::Id blk = blocks::Id(0);
-    // Texture index
+    // Texture index.
     TextureIndex tex = TextureIndex::NULLBLOCK;
 };
 
-class ChunkRenderData {
+// Before rendering, the whole chunk and neighboring blocks are converted into this structure.
+//
+// * Since merge face rendering goes through the whole chunk 12 times, it is beneficial to
+//   avoid repeatedly looking up block properties in the block info registry.
+// * All block properties relevant to rendering should be stored in this structure.
+class BlockRenderData {
 public:
-    ChunkRenderData(Vec3i const& ccoord, std::array<Chunk const*, 3 * 3 * 3> const& neighbors) {
-        auto index = 0uz;
-        for (int x = -1; x < 17; x++) {
-            auto rcx = x >> 4, bx = x & 0xF;
-            for (int y = -1; y < 17; y++) {
-                auto rcy = y >> 4, by = y & 0xF;
-                for (int z = -1; z < 17; z++) {
-                    auto rcz = z >> 4, bz = z & 0xF;
-                    auto& block = _data[index++];
-                    auto cptr = neighbors[((rcx + 1) * 3 + rcy + 1) * 3 + rcz + 1];
-                    assert(cptr);
-                    if (cptr == chunks::EMPTY_CHUNK) {
-                        auto light = (ccoord.y + rcy < 0) ? NO_LIGHT : SKY_LIGHT;
-                        block = blocks::BlockData{.id = base_blocks().air, .light = light};
-                    } else {
-                        block = cptr->block(Vec3u(bx, by, bz));
-                    }
-                    // Temporary: clamp to minimum light level 2
-                    if (!block_info(block.id).opaque)
-                        block.light = blocks::Light(block.light.sky(), std::max(block.light.block(), uint8_t{2}));
-                }
-            }
-        }
+    BlockRenderData() = default;
+    BlockRenderData(blocks::BlockData block):
+        _id(block.id) {
+        auto const& info = block_info(_id);
+
+        // Temporary: mix two light levels.
+        _light = std::max(block.light.sky(), block.light.block());
+
+        // Temporary: clamp to minimum light level 2.
+        if (!info.opaque)
+            _light = std::max(_light, uint8_t{2});
+
+        if (_id == base_blocks().air)
+            _flags |= 0x1;
+        if (info.opaque)
+            _flags |= 0x2;
+        if (info.translucent)
+            _flags |= 0x4;
     }
 
-    auto block(int x, int y, int z) const -> blocks::BlockData const& {
-        return _data[((x + 1) * 18 + y + 1) * 18 + z + 1];
+    auto id() const -> blocks::Id {
+        return _id;
+    }
+    auto light() const -> std::uint8_t {
+        return _light;
+    }
+    auto skipped() const -> bool {
+        return _flags & 0x1;
+    }
+    auto opaque() const -> bool {
+        return _flags & 0x2;
+    }
+    auto translucent() const -> bool {
+        return _flags & 0x4;
     }
 
-    // Temporary: mix two light levels.
-    auto light(int x, int y, int z) const -> int {
-        auto const& blk = block(x, y, z);
-        return std::max(blk.light.sky(), blk.light.block());
+    auto should_render(size_t steps) -> bool {
+        if (skipped())
+            return false;
+        if (steps == 0 && translucent())
+            return false;
+        if (steps == 1 && !translucent())
+            return false;
+        return true;
+    }
+
+    auto should_render_face(BlockRenderData neighbor, size_t steps) -> bool {
+        if (neighbor.opaque())
+            return false;
+        if (_id == neighbor._id && _id != base_blocks().leaf)
+            return false;
+        return true;
     }
 
 private:
-    std::array<blocks::BlockData, 18 * 18 * 18> _data = {};
+    blocks::Id _id = {};
+    std::uint8_t _light = 0;
+    std::uint8_t _flags = 0;
 };
 
 // Temporary: maximum value obtained after mixing two light levels.
 constexpr auto MAX_LIGHT = 15.0f;
 
-void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
+// All data needed to render a chunk.
+class ChunkRenderData {
+public:
+    ChunkRenderData(Vec3i ccoord, std::array<Chunk const*, 3 * 3 * 3> neighbors) {
+        auto index = 0uz;
+        for (int x = -1; x < Chunk::SIZE + 1; x++) {
+            auto rcx = x >> Chunk::SIZE_LOG, bx = x & (Chunk::SIZE - 1);
+            for (int y = -1; y < Chunk::SIZE + 1; y++) {
+                auto rcy = y >> Chunk::SIZE_LOG, by = y & (Chunk::SIZE - 1);
+                for (int z = -1; z < Chunk::SIZE + 1; z++) {
+                    auto rcz = z >> Chunk::SIZE_LOG, bz = z & (Chunk::SIZE - 1);
+                    auto& block = _data[index++];
+                    auto cptr = neighbors[((rcx + 1) * 3 + rcy + 1) * 3 + rcz + 1];
+                    assert(cptr);
+                    if (cptr == chunks::EMPTY_CHUNK) {
+                        auto light = (ccoord.y + rcy < 0) ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
+                        block = blocks::BlockData{.id = base_blocks().air, .light = light};
+                    } else {
+                        block = cptr->block(Vec3u(bx, by, bz));
+                    }
+                }
+            }
+        }
+    }
+
+    auto block(int x, int y, int z) const -> BlockRenderData {
+        return _data[((x + 1) * (Chunk::SIZE + 2) + y + 1) * (Chunk::SIZE + 2) + z + 1];
+    }
+
+private:
+    std::array<BlockRenderData, (Chunk::SIZE + 2) * (Chunk::SIZE + 2) * (Chunk::SIZE + 2)> _data = {};
+};
+
+// The default method for rendering a block.
+void _render_block(int x, int y, int z, size_t steps, ChunkRenderData const& rd) {
     auto bl = rd.block(x, y, z);
+    if (!bl.should_render(steps))
+        return;
+
     auto neighbors = std::array{
         rd.block(x + 1, y, z),
         rd.block(x - 1, y, z),
@@ -90,27 +150,30 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     auto col1 = 0.0f, col2 = 0.0f, col3 = 0.0f, col4 = 0.0f;
 
     // Right face
-    if (!(bl.id == base_blocks().air || bl.id == neighbors[0].id && bl.id != base_blocks().leaf
-          || block_info(neighbors[0].id).opaque)) {
-        if (NiceGrass && bl.id == base_blocks().grass && rd.block(x + 1, y - 1, z).id == base_blocks().grass)
-            tex = Textures::getTextureIndex(bl.id, 0);
+    if (bl.should_render_face(neighbors[0], steps)) {
+        if (NiceGrass && bl.id() == base_blocks().grass && rd.block(x + 1, y - 1, z).id() == base_blocks().grass)
+            tex = Textures::getTextureIndex(bl.id(), 0);
         else
-            tex = Textures::getTextureIndex(bl.id, 1);
-        col1 = col2 = col3 = col4 = rd.light(x + 1, y, z);
+            tex = Textures::getTextureIndex(bl.id(), 1);
+        col1 = col2 = col3 = col4 = rd.block(x + 1, y, z).light();
         if (SmoothLighting) {
-            col1 =
-                (col1 + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y, z - 1) + rd.light(x + 1, y - 1, z - 1)) / 4.0f;
-            col2 =
-                (col2 + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y, z - 1) + rd.light(x + 1, y + 1, z - 1)) / 4.0f;
-            col3 =
-                (col3 + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y, z + 1) + rd.light(x + 1, y + 1, z + 1)) / 4.0f;
-            col4 =
-                (col4 + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y, z + 1) + rd.light(x + 1, y - 1, z + 1)) / 4.0f;
+            col1 = (col1 + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z - 1).light()
+                    + rd.block(x + 1, y - 1, z - 1).light())
+                 / 4.0f;
+            col2 = (col2 + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z - 1).light()
+                    + rd.block(x + 1, y + 1, z - 1).light())
+                 / 4.0f;
+            col3 = (col3 + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z + 1).light()
+                    + rd.block(x + 1, y + 1, z + 1).light())
+                 / 4.0f;
+            col4 = (col4 + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z + 1).light()
+                    + rd.block(x + 1, y - 1, z + 1).light())
+                 / 4.0f;
         }
         col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
         if (!AdvancedRender)
             col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
-        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
+        Renderer::Attrib1f(static_cast<float>(bl.id().get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(1.0f, 0.0f, 0.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -128,27 +191,30 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 
     // Left Face
-    if (!(bl.id == base_blocks().air || bl.id == neighbors[1].id && bl.id != base_blocks().leaf
-          || block_info(neighbors[1].id).opaque)) {
-        if (NiceGrass && bl.id == base_blocks().grass && rd.block(x - 1, y - 1, z).id == base_blocks().grass)
-            tex = Textures::getTextureIndex(bl.id, 0);
+    if (bl.should_render_face(neighbors[1], steps)) {
+        if (NiceGrass && bl.id() == base_blocks().grass && rd.block(x - 1, y - 1, z).id() == base_blocks().grass)
+            tex = Textures::getTextureIndex(bl.id(), 0);
         else
-            tex = Textures::getTextureIndex(bl.id, 1);
-        col1 = col2 = col3 = col4 = rd.light(x - 1, y, z);
+            tex = Textures::getTextureIndex(bl.id(), 1);
+        col1 = col2 = col3 = col4 = rd.block(x - 1, y, z).light();
         if (SmoothLighting) {
-            col1 =
-                (col1 + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y, z - 1) + rd.light(x - 1, y - 1, z - 1)) / 4.0f;
-            col2 =
-                (col2 + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y, z + 1) + rd.light(x - 1, y - 1, z + 1)) / 4.0f;
-            col3 =
-                (col3 + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y, z + 1) + rd.light(x - 1, y + 1, z + 1)) / 4.0f;
-            col4 =
-                (col4 + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y, z - 1) + rd.light(x - 1, y + 1, z - 1)) / 4.0f;
+            col1 = (col1 + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z - 1).light()
+                    + rd.block(x - 1, y - 1, z - 1).light())
+                 / 4.0f;
+            col2 = (col2 + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z + 1).light()
+                    + rd.block(x - 1, y - 1, z + 1).light())
+                 / 4.0f;
+            col3 = (col3 + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z + 1).light()
+                    + rd.block(x - 1, y + 1, z + 1).light())
+                 / 4.0f;
+            col4 = (col4 + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z - 1).light()
+                    + rd.block(x - 1, y + 1, z - 1).light())
+                 / 4.0f;
         }
         col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
         if (!AdvancedRender)
             col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
-        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
+        Renderer::Attrib1f(static_cast<float>(bl.id().get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(-1.0f, 0.0f, 0.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -166,22 +232,25 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 
     // Top Face
-    if (!(bl.id == base_blocks().air || bl.id == neighbors[2].id && bl.id != base_blocks().leaf
-          || block_info(neighbors[2].id).opaque)) {
-        tex = Textures::getTextureIndex(bl.id, 0);
-        col1 = col2 = col3 = col4 = rd.light(x, y + 1, z);
+    if (bl.should_render_face(neighbors[2], steps)) {
+        tex = Textures::getTextureIndex(bl.id(), 0);
+        col1 = col2 = col3 = col4 = rd.block(x, y + 1, z).light();
         if (SmoothLighting) {
-            col1 =
-                (col1 + rd.light(x, y + 1, z - 1) + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y + 1, z - 1)) / 4.0f;
-            col2 =
-                (col2 + rd.light(x, y + 1, z + 1) + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y + 1, z + 1)) / 4.0f;
-            col3 =
-                (col3 + rd.light(x, y + 1, z + 1) + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y + 1, z + 1)) / 4.0f;
-            col4 =
-                (col4 + rd.light(x, y + 1, z - 1) + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y + 1, z - 1)) / 4.0f;
+            col1 = (col1 + rd.block(x, y + 1, z - 1).light() + rd.block(x - 1, y + 1, z).light()
+                    + rd.block(x - 1, y + 1, z - 1).light())
+                 / 4.0f;
+            col2 = (col2 + rd.block(x, y + 1, z + 1).light() + rd.block(x - 1, y + 1, z).light()
+                    + rd.block(x - 1, y + 1, z + 1).light())
+                 / 4.0f;
+            col3 = (col3 + rd.block(x, y + 1, z + 1).light() + rd.block(x + 1, y + 1, z).light()
+                    + rd.block(x + 1, y + 1, z + 1).light())
+                 / 4.0f;
+            col4 = (col4 + rd.block(x, y + 1, z - 1).light() + rd.block(x + 1, y + 1, z).light()
+                    + rd.block(x + 1, y + 1, z - 1).light())
+                 / 4.0f;
         }
         col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
-        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
+        Renderer::Attrib1f(static_cast<float>(bl.id().get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(0.0f, 1.0f, 0.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -199,22 +268,25 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 
     // Bottom Face
-    if (!(bl.id == base_blocks().air || bl.id == neighbors[3].id && bl.id != base_blocks().leaf
-          || block_info(neighbors[3].id).opaque)) {
-        tex = Textures::getTextureIndex(bl.id, 2);
-        col1 = col2 = col3 = col4 = rd.light(x, y - 1, z);
+    if (bl.should_render_face(neighbors[3], steps)) {
+        tex = Textures::getTextureIndex(bl.id(), 2);
+        col1 = col2 = col3 = col4 = rd.block(x, y - 1, z).light();
         if (SmoothLighting) {
-            col1 =
-                (col1 + rd.light(x, y - 1, z - 1) + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y - 1, z - 1)) / 4.0f;
-            col2 =
-                (col2 + rd.light(x, y - 1, z - 1) + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y - 1, z - 1)) / 4.0f;
-            col3 =
-                (col3 + rd.light(x, y - 1, z + 1) + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y - 1, z + 1)) / 4.0f;
-            col4 =
-                (col4 + rd.light(x, y - 1, z + 1) + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y - 1, z + 1)) / 4.0f;
+            col1 = (col1 + rd.block(x, y - 1, z - 1).light() + rd.block(x - 1, y - 1, z).light()
+                    + rd.block(x - 1, y - 1, z - 1).light())
+                 / 4.0f;
+            col2 = (col2 + rd.block(x, y - 1, z - 1).light() + rd.block(x + 1, y - 1, z).light()
+                    + rd.block(x + 1, y - 1, z - 1).light())
+                 / 4.0f;
+            col3 = (col3 + rd.block(x, y - 1, z + 1).light() + rd.block(x + 1, y - 1, z).light()
+                    + rd.block(x + 1, y - 1, z + 1).light())
+                 / 4.0f;
+            col4 = (col4 + rd.block(x, y - 1, z + 1).light() + rd.block(x - 1, y - 1, z).light()
+                    + rd.block(x - 1, y - 1, z + 1).light())
+                 / 4.0f;
         }
         col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
-        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
+        Renderer::Attrib1f(static_cast<float>(bl.id().get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(0.0f, -1.0f, 0.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -232,27 +304,30 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 
     // Front Face
-    if (!(bl.id == base_blocks().air || bl.id == neighbors[4].id && bl.id != base_blocks().leaf
-          || block_info(neighbors[4].id).opaque)) {
-        if (NiceGrass && bl.id == base_blocks().grass && rd.block(x, y - 1, z + 1).id == base_blocks().grass)
-            tex = Textures::getTextureIndex(bl.id, 0);
+    if (bl.should_render_face(neighbors[4], steps)) {
+        if (NiceGrass && bl.id() == base_blocks().grass && rd.block(x, y - 1, z + 1).id() == base_blocks().grass)
+            tex = Textures::getTextureIndex(bl.id(), 0);
         else
-            tex = Textures::getTextureIndex(bl.id, 1);
-        col1 = col2 = col3 = col4 = rd.light(x, y, z + 1);
+            tex = Textures::getTextureIndex(bl.id(), 1);
+        col1 = col2 = col3 = col4 = rd.block(x, y, z + 1).light();
         if (SmoothLighting) {
-            col1 =
-                (col1 + rd.light(x, y - 1, z + 1) + rd.light(x - 1, y, z + 1) + rd.light(x - 1, y - 1, z + 1)) / 4.0f;
-            col2 =
-                (col2 + rd.light(x, y - 1, z + 1) + rd.light(x + 1, y, z + 1) + rd.light(x + 1, y - 1, z + 1)) / 4.0f;
-            col3 =
-                (col3 + rd.light(x, y + 1, z + 1) + rd.light(x + 1, y, z + 1) + rd.light(x + 1, y + 1, z + 1)) / 4.0f;
-            col4 =
-                (col4 + rd.light(x, y + 1, z + 1) + rd.light(x - 1, y, z + 1) + rd.light(x - 1, y + 1, z + 1)) / 4.0f;
+            col1 = (col1 + rd.block(x, y - 1, z + 1).light() + rd.block(x - 1, y, z + 1).light()
+                    + rd.block(x - 1, y - 1, z + 1).light())
+                 / 4.0f;
+            col2 = (col2 + rd.block(x, y - 1, z + 1).light() + rd.block(x + 1, y, z + 1).light()
+                    + rd.block(x + 1, y - 1, z + 1).light())
+                 / 4.0f;
+            col3 = (col3 + rd.block(x, y + 1, z + 1).light() + rd.block(x + 1, y, z + 1).light()
+                    + rd.block(x + 1, y + 1, z + 1).light())
+                 / 4.0f;
+            col4 = (col4 + rd.block(x, y + 1, z + 1).light() + rd.block(x - 1, y, z + 1).light()
+                    + rd.block(x - 1, y + 1, z + 1).light())
+                 / 4.0f;
         }
         col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
         if (!AdvancedRender)
             col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
-        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
+        Renderer::Attrib1f(static_cast<float>(bl.id().get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(0.0f, 0.0f, 1.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -270,27 +345,30 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 
     // Back Face
-    if (!(bl.id == base_blocks().air || bl.id == neighbors[5].id && bl.id != base_blocks().leaf
-          || block_info(neighbors[5].id).opaque)) {
-        if (NiceGrass && bl.id == base_blocks().grass && rd.block(x, y - 1, z - 1).id == base_blocks().grass)
-            tex = Textures::getTextureIndex(bl.id, 0);
+    if (bl.should_render_face(neighbors[5], steps)) {
+        if (NiceGrass && bl.id() == base_blocks().grass && rd.block(x, y - 1, z - 1).id() == base_blocks().grass)
+            tex = Textures::getTextureIndex(bl.id(), 0);
         else
-            tex = Textures::getTextureIndex(bl.id, 1);
-        col1 = col2 = col3 = col4 = rd.light(x, y, z - 1);
+            tex = Textures::getTextureIndex(bl.id(), 1);
+        col1 = col2 = col3 = col4 = rd.block(x, y, z - 1).light();
         if (SmoothLighting) {
-            col1 =
-                (col1 + rd.light(x, y - 1, z - 1) + rd.light(x - 1, y, z - 1) + rd.light(x - 1, y - 1, z - 1)) / 4.0f;
-            col2 =
-                (col2 + rd.light(x, y + 1, z - 1) + rd.light(x - 1, y, z - 1) + rd.light(x - 1, y + 1, z - 1)) / 4.0f;
-            col3 =
-                (col3 + rd.light(x, y + 1, z - 1) + rd.light(x + 1, y, z - 1) + rd.light(x + 1, y + 1, z - 1)) / 4.0f;
-            col4 =
-                (col4 + rd.light(x, y - 1, z - 1) + rd.light(x + 1, y, z - 1) + rd.light(x + 1, y - 1, z - 1)) / 4.0f;
+            col1 = (col1 + rd.block(x, y - 1, z - 1).light() + rd.block(x - 1, y, z - 1).light()
+                    + rd.block(x - 1, y - 1, z - 1).light())
+                 / 4.0f;
+            col2 = (col2 + rd.block(x, y + 1, z - 1).light() + rd.block(x - 1, y, z - 1).light()
+                    + rd.block(x - 1, y + 1, z - 1).light())
+                 / 4.0f;
+            col3 = (col3 + rd.block(x, y + 1, z - 1).light() + rd.block(x + 1, y, z - 1).light()
+                    + rd.block(x + 1, y + 1, z - 1).light())
+                 / 4.0f;
+            col4 = (col4 + rd.block(x, y - 1, z - 1).light() + rd.block(x + 1, y, z - 1).light()
+                    + rd.block(x + 1, y - 1, z - 1).light())
+                 / 4.0f;
         }
         col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
         if (!AdvancedRender)
             col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
-        Renderer::Attrib1f(static_cast<float>(bl.id.get()));
+        Renderer::Attrib1f(static_cast<float>(bl.id().get()));
         Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(tex));
         Renderer::Normal3f(0.0f, 0.0f, -1.0f);
         Renderer::Color3f(col1, col1, col1);
@@ -308,23 +386,8 @@ void RenderBlock(int x, int y, int z, ChunkRenderData const& rd) {
     }
 }
 
-/*
-The vertex order of merge face render
-Numbered from 0 to 3:
-
-(k++)
-...
-|    |
-+----+--
-|    |
-|    |    |
-3----2----+-
-|curr|    |   ...
-|face|    |   (j++)
-0----1----+--
-*/
-
-void RenderPrimitive(QuadPrimitive const& p) {
+// The merge face rendering method for a primitive (adjacent block faces).
+void _render_primitive(QuadPrimitive const& p) {
     float col0 = (float) p.col0 * 0.25f / MAX_LIGHT;
     float col1 = (float) p.col1 * 0.25f / MAX_LIGHT;
     float col2 = (float) p.col2 * 0.25f / MAX_LIGHT;
@@ -404,17 +467,17 @@ void RenderPrimitive(QuadPrimitive const& p) {
                 col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
             Renderer::Normal3f(0.0f, 0.0f, 1.0f);
             Renderer::Color3f(col0, col0, col0);
-            Renderer::TexCoord2f(0.0f, 1.0f);
-            Renderer::Vertex3f(x - 0.5f, y + 0.5f, z + 0.5f);
+            Renderer::TexCoord2f(0.0f, length + 1.0f);
+            Renderer::Vertex3f(x - 0.5f, y + length + 0.5f, z + 0.5f);
             Renderer::Color3f(col1, col1, col1);
             Renderer::TexCoord2f(0.0f, 0.0f);
             Renderer::Vertex3f(x - 0.5f, y - 0.5f, z + 0.5f);
             Renderer::Color3f(col2, col2, col2);
-            Renderer::TexCoord2f(length + 1.0f, 0.0f);
-            Renderer::Vertex3f(x + length + 0.5f, y - 0.5f, z + 0.5f);
+            Renderer::TexCoord2f(1.0f, 0.0f);
+            Renderer::Vertex3f(x + 0.5f, y - 0.5f, z + 0.5f);
             Renderer::Color3f(col3, col3, col3);
-            Renderer::TexCoord2f(length + 1.0f, 1.0f);
-            Renderer::Vertex3f(x + length + 0.5f, y + 0.5f, z + 0.5f);
+            Renderer::TexCoord2f(1.0f, length + 1.0f);
+            Renderer::Vertex3f(x + 0.5f, y + length + 0.5f, z + 0.5f);
             break;
         case 5:
             if (!AdvancedRender)
@@ -424,58 +487,63 @@ void RenderPrimitive(QuadPrimitive const& p) {
             Renderer::TexCoord2f(0.0f, 0.0f);
             Renderer::Vertex3f(x - 0.5f, y - 0.5f, z - 0.5f);
             Renderer::Color3f(col1, col1, col1);
-            Renderer::TexCoord2f(0.0f, 1.0f);
-            Renderer::Vertex3f(x - 0.5f, y + 0.5f, z - 0.5f);
+            Renderer::TexCoord2f(0.0f, length + 1.0f);
+            Renderer::Vertex3f(x - 0.5f, y + length + 0.5f, z - 0.5f);
             Renderer::Color3f(col2, col2, col2);
-            Renderer::TexCoord2f(length + 1.0f, 1.0f);
-            Renderer::Vertex3f(x + length + 0.5f, y + 0.5f, z - 0.5f);
+            Renderer::TexCoord2f(1.0f, length + 1.0f);
+            Renderer::Vertex3f(x + 0.5f, y + length + 0.5f, z - 0.5f);
             Renderer::Color3f(col3, col3, col3);
-            Renderer::TexCoord2f(length + 1.0f, 0.0f);
-            Renderer::Vertex3f(x + length + 0.5f, y - 0.5f, z - 0.5f);
+            Renderer::TexCoord2f(1.0f, 0.0f);
+            Renderer::Vertex3f(x + 0.5f, y - 0.5f, z - 0.5f);
             break;
     }
 }
 
-auto _render_chunk(Vec3i const& ccoord, std::array<Chunk const*, 3 * 3 * 3> neighbors)
-    -> std::vector<Renderer::VertexBuffer> {
-    auto res = std::vector<Renderer::VertexBuffer>();
+// The default method for rendering a chunk.
+auto _render_chunk(Vec3i ccoord, std::array<Chunk const*, 3 * 3 * 3> neighbors) {
+    auto res = std::array<Renderer::VertexBuffer, 2>{};
     auto rd = ChunkRenderData(ccoord, neighbors);
-    for (size_t steps = 0; steps < 2; steps++) {
+    for (auto steps = 0uz; steps < res.size(); steps++) {
         if (AdvancedRender)
             Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
         else
             Renderer::Begin(GL_QUADS, 3, 3, 1);
-        for (int x = 0; x < 16; x++)
-            for (int y = 0; y < 16; y++)
-                for (int z = 0; z < 16; z++) {
-                    auto const& info = block_info(rd.block(x, y, z).id);
-                    if (steps == 0 && !info.translucent || steps == 1 && info.translucent) {
-                        RenderBlock(x, y, z, rd);
-                    }
+        for (int x = 0; x < Chunk::SIZE; x++)
+            for (int y = 0; y < Chunk::SIZE; y++)
+                for (int z = 0; z < Chunk::SIZE; z++) {
+                    _render_block(x, y, z, steps, rd);
                 }
-        res.emplace_back(Renderer::End(true));
+        res[steps] = Renderer::End(true);
     }
     return res;
 }
 
-auto _merge_face_render_chunk(Vec3i const& ccoord, std::array<Chunk const*, 3 * 3 * 3> neighbors)
-    -> std::vector<Renderer::VertexBuffer> {
-    auto res = std::vector<Renderer::VertexBuffer>();
+// The merge face rendering method for a chunk.
+//
+// * For faces orienting X+ (d = 0) or X- (d = 1), the merge direction is Z+;
+// * For faces orienting Y+ (d = 2) or Y- (d = 3), the merge direction is Z+;
+// * For faces orienting Z+ (d = 4) or Z- (d = 5), the merge direction is Y+.
+//
+// The merge directions are determined by the fact that block render data are stored in a
+// X-Y-Z-major order, which means blocks adjacent in the Z direction are stored consecutively.
+// This probably allows for better cache hit rates.
+auto _merge_face_render_chunk(Vec3i ccoord, std::array<Chunk const*, 3 * 3 * 3> neighbors) {
+    auto res = std::array<Renderer::VertexBuffer, 2>{};
     auto rd = ChunkRenderData(ccoord, neighbors);
-    for (size_t steps = 0; steps < 2; steps++) {
+    for (auto steps = 0uz; steps < res.size(); steps++) {
         if (AdvancedRender)
             Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
         else
             Renderer::Begin(GL_QUADS, 3, 3, 1);
         for (int d = 0; d < 6; d++) {
             // Render current face
-            for (int i = 0; i < 16; i++)
-                for (int j = 0; j < 16; j++) {
+            for (int i = 0; i < Chunk::SIZE; i++)
+                for (int j = 0; j < Chunk::SIZE; j++) {
                     QuadPrimitive cur;
                     bool valid = false;
                     // Linear merge
-                    for (int k = 0; k < 16; k++) {
-                        // Get position
+                    for (int k = 0; k < Chunk::SIZE; k++) {
+                        // Get position (the coordinate assigned to `k` is the merge direction)
                         int x = 0, y = 0, z = 0;
                         int dx = 0, dy = 0, dz = 0;
                         switch (d) {
@@ -492,22 +560,20 @@ auto _merge_face_render_chunk(Vec3i const& ccoord, std::array<Chunk const*, 3 * 
                                 x = j, y = i, z = k, dy = -1;
                                 break;
                             case 4:
-                                x = k, y = j, z = i, dz = 1;
+                                x = j, y = k, z = i, dz = 1;
                                 break;
                             case 5:
-                                x = k, y = j, z = i, dz = -1;
+                                x = j, y = k, z = i, dz = -1;
                                 break;
                         }
-                        // Get block ID
+                        // Get block render data
                         auto bl = rd.block(x, y, z);
-                        auto neighbour = rd.block(x + dx, y + dy, z + dz);
-                        auto const& info = block_info(bl.id);
-                        if (bl.id == base_blocks().air || bl.id == neighbour.id && bl.id != base_blocks().leaf
-                            || block_info(neighbour.id).opaque
-                            || !(steps == 0 && !info.translucent || steps == 1 && info.translucent)) {
-                            // Not valid block
+                        // Check if block face should render. This appears to be bottlenecking
+                        // since there are usually a lot of blocks that are not rendered.
+                        if (!bl.should_render(steps)
+                            || !bl.should_render_face(rd.block(x + dx, y + dy, z + dz), steps)) {
                             if (valid) {
-                                RenderPrimitive(cur);
+                                _render_primitive(cur);
                                 valid = false;
                             }
                             continue;
@@ -520,102 +586,102 @@ auto _merge_face_render_chunk(Vec3i const& ccoord, std::array<Chunk const*, 3 * 
                             face = 2;
                         else
                             face = 1;
-                        TextureIndex tex = Textures::getTextureIndex(bl.id, face);
+                        TextureIndex tex = Textures::getTextureIndex(bl.id(), face);
                         int br = 0, col0 = 0, col1 = 0, col2 = 0, col3 = 0;
                         switch (d) {
                             case 0:
-                                if (NiceGrass && bl.id == base_blocks().grass
-                                    && rd.block(x + 1, y - 1, z).id == base_blocks().grass)
-                                    tex = Textures::getTextureIndex(bl.id, 0);
-                                br = rd.light(x + 1, y, z);
+                                if (NiceGrass && bl.id() == base_blocks().grass
+                                    && rd.block(x + 1, y - 1, z).id() == base_blocks().grass)
+                                    tex = Textures::getTextureIndex(bl.id(), 0);
+                                br = rd.block(x + 1, y, z).light();
                                 if (SmoothLighting) {
-                                    col0 = br + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y, z - 1)
-                                         + rd.light(x + 1, y - 1, z - 1);
-                                    col1 = br + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y, z - 1)
-                                         + rd.light(x + 1, y + 1, z - 1);
-                                    col2 = br + rd.light(x + 1, y + 1, z) + rd.light(x + 1, y, z + 1)
-                                         + rd.light(x + 1, y + 1, z + 1);
-                                    col3 = br + rd.light(x + 1, y - 1, z) + rd.light(x + 1, y, z + 1)
-                                         + rd.light(x + 1, y - 1, z + 1);
+                                    col0 = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z - 1).light()
+                                         + rd.block(x + 1, y - 1, z - 1).light();
+                                    col1 = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z - 1).light()
+                                         + rd.block(x + 1, y + 1, z - 1).light();
+                                    col2 = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z + 1).light()
+                                         + rd.block(x + 1, y + 1, z + 1).light();
+                                    col3 = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z + 1).light()
+                                         + rd.block(x + 1, y - 1, z + 1).light();
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
                             case 1:
-                                if (NiceGrass && bl.id == base_blocks().grass
-                                    && rd.block(x - 1, y - 1, z).id == base_blocks().grass)
-                                    tex = Textures::getTextureIndex(bl.id, 0);
-                                br = rd.light(x - 1, y, z);
+                                if (NiceGrass && bl.id() == base_blocks().grass
+                                    && rd.block(x - 1, y - 1, z).id() == base_blocks().grass)
+                                    tex = Textures::getTextureIndex(bl.id(), 0);
+                                br = rd.block(x - 1, y, z).light();
                                 if (SmoothLighting) {
-                                    col0 = br + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y, z - 1)
-                                         + rd.light(x - 1, y + 1, z - 1);
-                                    col1 = br + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y, z - 1)
-                                         + rd.light(x - 1, y - 1, z - 1);
-                                    col2 = br + rd.light(x - 1, y - 1, z) + rd.light(x - 1, y, z + 1)
-                                         + rd.light(x - 1, y - 1, z + 1);
-                                    col3 = br + rd.light(x - 1, y + 1, z) + rd.light(x - 1, y, z + 1)
-                                         + rd.light(x - 1, y + 1, z + 1);
+                                    col0 = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z - 1).light()
+                                         + rd.block(x - 1, y + 1, z - 1).light();
+                                    col1 = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z - 1).light()
+                                         + rd.block(x - 1, y - 1, z - 1).light();
+                                    col2 = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z + 1).light()
+                                         + rd.block(x - 1, y - 1, z + 1).light();
+                                    col3 = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z + 1).light()
+                                         + rd.block(x - 1, y + 1, z + 1).light();
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
                             case 2:
-                                br = rd.light(x, y + 1, z);
+                                br = rd.block(x, y + 1, z).light();
                                 if (SmoothLighting) {
-                                    col0 = br + rd.light(x + 1, y + 1, z) + rd.light(x, y + 1, z - 1)
-                                         + rd.light(x + 1, y + 1, z - 1);
-                                    col1 = br + rd.light(x - 1, y + 1, z) + rd.light(x, y + 1, z - 1)
-                                         + rd.light(x - 1, y + 1, z - 1);
-                                    col2 = br + rd.light(x - 1, y + 1, z) + rd.light(x, y + 1, z + 1)
-                                         + rd.light(x - 1, y + 1, z + 1);
-                                    col3 = br + rd.light(x + 1, y + 1, z) + rd.light(x, y + 1, z + 1)
-                                         + rd.light(x + 1, y + 1, z + 1);
+                                    col0 = br + rd.block(x + 1, y + 1, z).light() + rd.block(x, y + 1, z - 1).light()
+                                         + rd.block(x + 1, y + 1, z - 1).light();
+                                    col1 = br + rd.block(x - 1, y + 1, z).light() + rd.block(x, y + 1, z - 1).light()
+                                         + rd.block(x - 1, y + 1, z - 1).light();
+                                    col2 = br + rd.block(x - 1, y + 1, z).light() + rd.block(x, y + 1, z + 1).light()
+                                         + rd.block(x - 1, y + 1, z + 1).light();
+                                    col3 = br + rd.block(x + 1, y + 1, z).light() + rd.block(x, y + 1, z + 1).light()
+                                         + rd.block(x + 1, y + 1, z + 1).light();
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
                             case 3:
-                                br = rd.light(x, y - 1, z);
+                                br = rd.block(x, y - 1, z).light();
                                 if (SmoothLighting) {
-                                    col0 = br + rd.light(x - 1, y - 1, z) + rd.light(x, y - 1, z - 1)
-                                         + rd.light(x - 1, y - 1, z - 1);
-                                    col1 = br + rd.light(x + 1, y - 1, z) + rd.light(x, y - 1, z - 1)
-                                         + rd.light(x + 1, y - 1, z - 1);
-                                    col2 = br + rd.light(x + 1, y - 1, z) + rd.light(x, y - 1, z + 1)
-                                         + rd.light(x + 1, y - 1, z + 1);
-                                    col3 = br + rd.light(x - 1, y - 1, z) + rd.light(x, y - 1, z + 1)
-                                         + rd.light(x - 1, y - 1, z + 1);
+                                    col0 = br + rd.block(x - 1, y - 1, z).light() + rd.block(x, y - 1, z - 1).light()
+                                         + rd.block(x - 1, y - 1, z - 1).light();
+                                    col1 = br + rd.block(x + 1, y - 1, z).light() + rd.block(x, y - 1, z - 1).light()
+                                         + rd.block(x + 1, y - 1, z - 1).light();
+                                    col2 = br + rd.block(x + 1, y - 1, z).light() + rd.block(x, y - 1, z + 1).light()
+                                         + rd.block(x + 1, y - 1, z + 1).light();
+                                    col3 = br + rd.block(x - 1, y - 1, z).light() + rd.block(x, y - 1, z + 1).light()
+                                         + rd.block(x - 1, y - 1, z + 1).light();
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
                             case 4:
-                                if (NiceGrass && bl.id == base_blocks().grass
-                                    && rd.block(x, y - 1, z + 1).id == base_blocks().grass)
-                                    tex = Textures::getTextureIndex(bl.id, 0);
-                                br = rd.light(x, y, z + 1);
+                                if (NiceGrass && bl.id() == base_blocks().grass
+                                    && rd.block(x, y - 1, z + 1).id() == base_blocks().grass)
+                                    tex = Textures::getTextureIndex(bl.id(), 0);
+                                br = rd.block(x, y, z + 1).light();
                                 if (SmoothLighting) {
-                                    col0 = br + rd.light(x - 1, y, z + 1) + rd.light(x, y + 1, z + 1)
-                                         + rd.light(x - 1, y + 1, z + 1);
-                                    col1 = br + rd.light(x - 1, y, z + 1) + rd.light(x, y - 1, z + 1)
-                                         + rd.light(x - 1, y - 1, z + 1);
-                                    col2 = br + rd.light(x + 1, y, z + 1) + rd.light(x, y - 1, z + 1)
-                                         + rd.light(x + 1, y - 1, z + 1);
-                                    col3 = br + rd.light(x + 1, y, z + 1) + rd.light(x, y + 1, z + 1)
-                                         + rd.light(x + 1, y + 1, z + 1);
+                                    col0 = br + rd.block(x - 1, y, z + 1).light() + rd.block(x, y + 1, z + 1).light()
+                                         + rd.block(x - 1, y + 1, z + 1).light();
+                                    col1 = br + rd.block(x - 1, y, z + 1).light() + rd.block(x, y - 1, z + 1).light()
+                                         + rd.block(x - 1, y - 1, z + 1).light();
+                                    col2 = br + rd.block(x + 1, y, z + 1).light() + rd.block(x, y - 1, z + 1).light()
+                                         + rd.block(x + 1, y - 1, z + 1).light();
+                                    col3 = br + rd.block(x + 1, y, z + 1).light() + rd.block(x, y + 1, z + 1).light()
+                                         + rd.block(x + 1, y + 1, z + 1).light();
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
                             case 5:
-                                if (NiceGrass && bl.id == base_blocks().grass
-                                    && rd.block(x, y - 1, z - 1).id == base_blocks().grass)
-                                    tex = Textures::getTextureIndex(bl.id, 0);
-                                br = rd.light(x, y, z - 1);
+                                if (NiceGrass && bl.id() == base_blocks().grass
+                                    && rd.block(x, y - 1, z - 1).id() == base_blocks().grass)
+                                    tex = Textures::getTextureIndex(bl.id(), 0);
+                                br = rd.block(x, y, z - 1).light();
                                 if (SmoothLighting) {
-                                    col0 = br + rd.light(x - 1, y, z - 1) + rd.light(x, y - 1, z - 1)
-                                         + rd.light(x - 1, y - 1, z - 1);
-                                    col1 = br + rd.light(x - 1, y, z - 1) + rd.light(x, y + 1, z - 1)
-                                         + rd.light(x - 1, y + 1, z - 1);
-                                    col2 = br + rd.light(x + 1, y, z - 1) + rd.light(x, y + 1, z - 1)
-                                         + rd.light(x + 1, y + 1, z - 1);
-                                    col3 = br + rd.light(x + 1, y, z - 1) + rd.light(x, y - 1, z - 1)
-                                         + rd.light(x + 1, y - 1, z - 1);
+                                    col0 = br + rd.block(x - 1, y, z - 1).light() + rd.block(x, y - 1, z - 1).light()
+                                         + rd.block(x - 1, y - 1, z - 1).light();
+                                    col1 = br + rd.block(x - 1, y, z - 1).light() + rd.block(x, y + 1, z - 1).light()
+                                         + rd.block(x - 1, y + 1, z - 1).light();
+                                    col2 = br + rd.block(x + 1, y, z - 1).light() + rd.block(x, y + 1, z - 1).light()
+                                         + rd.block(x + 1, y + 1, z - 1).light();
+                                    col3 = br + rd.block(x + 1, y, z - 1).light() + rd.block(x, y - 1, z - 1).light()
+                                         + rd.block(x + 1, y - 1, z - 1).light();
                                 } else
                                     col0 = col1 = col2 = col3 = br * 4;
                                 break;
@@ -623,15 +689,15 @@ auto _merge_face_render_chunk(Vec3i const& ccoord, std::array<Chunk const*, 3 * 
                         // Render
                         bool once = col0 != col1 || col1 != col2 || col2 != col3;
                         if (valid) {
-                            if (once || cur.once || bl.id != cur.blk || tex != cur.tex || col0 != cur.col0) {
-                                RenderPrimitive(cur);
+                            if (once || cur.once || bl.id() != cur.blk || tex != cur.tex || col0 != cur.col0) {
+                                _render_primitive(cur);
                                 cur.x = x;
                                 cur.y = y;
                                 cur.z = z;
                                 cur.length = 0;
                                 cur.direction = d;
                                 cur.once = once;
-                                cur.blk = bl.id;
+                                cur.blk = bl.id();
                                 cur.tex = tex;
                                 cur.col0 = col0;
                                 cur.col1 = col1;
@@ -647,7 +713,7 @@ auto _merge_face_render_chunk(Vec3i const& ccoord, std::array<Chunk const*, 3 * 
                             cur.length = 0;
                             cur.direction = d;
                             cur.once = once;
-                            cur.blk = bl.id;
+                            cur.blk = bl.id();
                             cur.tex = tex;
                             cur.col0 = col0;
                             cur.col1 = col1;
@@ -656,28 +722,25 @@ auto _merge_face_render_chunk(Vec3i const& ccoord, std::array<Chunk const*, 3 * 
                         }
                     }
                     if (valid) {
-                        RenderPrimitive(cur);
+                        _render_primitive(cur);
                         valid = false;
                     }
                 }
         }
-        res.emplace_back(Renderer::End(true));
+        res[steps] = Renderer::End(true);
     }
     return res;
 }
 
-void Chunk::build_meshes(std::array<Chunk const*, 3 * 3 * 3> const& neighbors) {
+void Chunk::build_meshes(std::array<Chunk const*, 3 * 3 * 3> neighbors) {
     // Build new VBOs
     _meshes = MergeFace ? _merge_face_render_chunk(_coord, neighbors) : _render_chunk(_coord, neighbors);
 
     // Update flags
     if (!_meshed)
-        _load_anim = static_cast<float>(_coord.y) * 16.0f + 16.0f;
+        _load_anim = static_cast<float>(_coord.y * Chunk::SIZE + Chunk::SIZE);
     _meshed = true;
     _updated = false;
-
-    meshed_chunks++;
-    updated_chunks++;
 }
 
 }

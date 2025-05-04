@@ -87,6 +87,11 @@ private:
     uint8_t _data = 0;
 };
 
+// Sky-only light level.
+export constexpr auto SKY_LIGHT = Light(15, 0);
+// Zero light level.
+export constexpr auto NO_LIGHT = Light(0, 0);
+
 // Block data that are actually stored in chunks.
 export class BlockData {
 public:
