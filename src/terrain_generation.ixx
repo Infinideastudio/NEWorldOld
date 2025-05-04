@@ -1,9 +1,6 @@
-module;
-
-#include <array>
-#include <cmath>
-
 export module terrain_generation;
+import std;
+import types;
 import globals;
 
 // Fractal noise 2D

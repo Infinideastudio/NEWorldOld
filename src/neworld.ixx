@@ -1,15 +1,10 @@
 module;
 
-#include <cmath>
-#include <filesystem>
-#include <mutex>
-#include <string>
-#include <thread>
-#include <vector>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
 export module neworld;
+import std;
 import types;
 import commands;
 import globals;
@@ -1163,19 +1158,10 @@ void saveScreenshot(int x, int y, int w, int h, std::string filename) {
 void readback(worlds::World& world) {
     if (shouldGetScreenshot) {
         shouldGetScreenshot = false;
-        time_t t = time(0);
-        char tmp[64];
-        tm* timeinfo;
-#ifdef NEWORLD_COMPILE_DISABLE_SECURE
-        timeinfo = localtime(&t);
-#else
-        timeinfo = new tm;
-        localtime_s(timeinfo, &t);
-#endif
-        strftime(tmp, sizeof(tmp), "%Y-%m-%d %H-%M-%S", timeinfo);
-        delete timeinfo;
+        auto now = std::chrono::system_clock::now();
+        auto nowTime = std::chrono::system_clock::to_time_t(now);
         std::stringstream ss;
-        ss << "screenshots/" << tmp << ".bmp";
+        ss << "screenshots/" << std::put_time(std::localtime(&nowTime), "%Y-%m-%d %H:%M:%S") << ".bmp";
         saveScreenshot(0, 0, WindowWidth, WindowHeight, ss.str());
     }
 
@@ -1604,8 +1590,8 @@ void drawBag() {
     static short Amountselected = 0;
     double curtime = Timer();
     double TimeDelta = curtime - bagAnimTimer;
-    float bagAnim =
-        (float) (1.0 - pow(0.9, TimeDelta * 60.0) + pow(0.9, bagAnimDuration * 60.0) / bagAnimDuration * TimeDelta);
+    float bagAnim = (float) (1.0 - std::pow(0.9, TimeDelta * 60.0)
+                             + std::pow(0.9, bagAnimDuration * 60.0) / bagAnimDuration * TimeDelta);
 
     if (bagOpened) {
         mousew = mw;
@@ -1707,12 +1693,12 @@ void drawBag() {
         int xbase = 0, ybase = 0, spac = 0;
         float alpha = 0.5f + 0.5f * bagAnim;
         if (curtime - bagAnimTimer <= bagAnimDuration) {
-            xbase = (int) round(((WindowWidth - 392) / 2) * bagAnim);
-            ybase = (int) round((WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
-            spac = (int) round(8 * bagAnim);
+            xbase = std::lround(((WindowWidth - 392) / 2) * bagAnim);
+            ybase = std::lround((WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
+            spac = std::lround(8 * bagAnim);
             drawBagRow(3, -1, xbase, ybase, spac, alpha);
-            xbase = (int) round(((WindowWidth - 392) / 2 - WindowWidth) * bagAnim + WindowWidth);
-            ybase = (int) round((WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
+            xbase = std::lround(((WindowWidth - 392) / 2 - WindowWidth) * bagAnim + WindowWidth);
+            ybase = std::lround((WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
             for (int i = 0; i < 3; i++) {
                 drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
             }
@@ -1735,18 +1721,18 @@ void drawBag() {
 
             int xbase = 0, ybase = 0, spac = 0;
             float alpha = 1.0f - 0.5f * bagAnim;
-            xbase = (int) round(((WindowWidth - 392) / 2) - ((WindowWidth - 392) / 2) * bagAnim);
-            ybase = (int) round(
+            xbase = std::lround(((WindowWidth - 392) / 2) - ((WindowWidth - 392) / 2) * bagAnim);
+            ybase = std::lround(
                 (WindowHeight - 152 - 16 + 120 - (WindowHeight - 32))
                 - (WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32)
             );
-            spac = (int) round(8 - 8 * bagAnim);
+            spac = std::lround(8 - 8 * bagAnim);
             drawBagRow(3, Player::indexInHand, xbase, ybase, spac, alpha);
-            xbase = (int) round(
+            xbase = std::lround(
                 ((WindowWidth - 392) / 2 - WindowWidth) - ((WindowWidth - 392) / 2 - WindowWidth) * bagAnim
                 + WindowWidth
             );
-            ybase = (int) round(
+            ybase = std::lround(
                 (WindowHeight - 152 - 16 - (WindowHeight - 32))
                 - (WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32)
             );

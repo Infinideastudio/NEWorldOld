@@ -1,11 +1,6 @@
-module;
-
-#include <fstream>
-#include <map>
-#include <sstream>
-#include <string>
-
 export module globalization;
+import std;
+import types;
 import globals;
 
 namespace Globalization {

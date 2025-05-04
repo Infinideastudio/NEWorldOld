@@ -1,9 +1,6 @@
-module;
-
-#include <algorithm>
-#include <memory>
-
 export module chunk_pointer_arrays;
+import std;
+import types;
 import vec3;
 import chunks;
 
