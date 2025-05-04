@@ -1,10 +1,7 @@
-module;
-
-#include <cassert>
-
 export module blocks;
 import std;
 import types;
+import debug;
 
 namespace blocks {
 
@@ -122,7 +119,7 @@ public:
     auto add(BlockInfo info) -> Id {
         auto id = _entries.size();
         if (id > Id::MAX_VALUE)
-            assert(false);
+            unimplemented();
         _entries.emplace_back(std::move(info));
         return Id(id);
     }

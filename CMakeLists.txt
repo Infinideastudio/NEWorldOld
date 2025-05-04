@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.30)
 cmake_policy(SET CMP0135 NEW)
 
 # ===== Enable experimental standard library modules support (CMake 3.30 and 4.0.1 only) =====
+# See: https://github.com/Kitware/CMake/commits/master/Help/dev/experimental.rst
 if (CMAKE_VERSION VERSION_LESS "4.0.1")
     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "0e5b6991-d74f-4b3d-a41c-cf096e0b2508")
 else ()
@@ -91,6 +92,7 @@ target_sources(
         "src/chunks.ixx"
         "src/chunk_pointer_arrays.ixx"
         "src/commands.ixx"
+        "src/debug.ixx"
         "src/framebuffers.ixx"
         "src/frustum_tests.ixx"
         "src/globalization.ixx"

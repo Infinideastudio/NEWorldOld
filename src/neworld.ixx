@@ -3,6 +3,7 @@ module;
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
+#undef assert
 
 export module neworld;
 import std;

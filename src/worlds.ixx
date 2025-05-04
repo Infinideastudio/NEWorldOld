@@ -2,10 +2,12 @@ module;
 
 #include <leveldb/db.h>
 #include <spdlog/spdlog.h>
+#undef assert
 
 export module worlds;
 import std;
 import types;
+import debug;
 export import blocks;
 export import chunks;
 import chunk_pointer_arrays;
@@ -105,7 +107,7 @@ public:
         auto opts = leveldb::Options();
         opts.create_if_missing = true;
         auto res = leveldb::DB::Open(opts, db_path, &db);
-        assert(res.ok());
+        assert(res.ok(), "failed to open LevelDB database: " + res.ToString());
         _db.reset(db);
 
         // Initialize terrain generation

@@ -1,12 +1,7 @@
-module;
-
-#include <array>
-#include <cassert>
-#include <cmath>
-#include <optional>
-#include <vector>
-
 module worlds;
+import std;
+import types;
+import debug;
 import frustum_tests;
 import rendering;
 import chunks;
@@ -33,7 +28,6 @@ auto World::list_render_chunks(Vec3d center, int dist, double interp, std::optio
 }
 
 void World::render_chunks(Vec3d center, std::vector<RenderChunk> const& crs, size_t index) {
-    assert(index < 2);
     for (auto [coord, meshes]: crs) {
         coord -= center;
         if (meshes[index]->empty())

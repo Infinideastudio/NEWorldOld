@@ -1,11 +1,12 @@
 module;
 
-#include <cassert>
 #include <glad/gl.h>
+#undef assert
 
 export module framebuffers;
 import std;
 import types;
+import debug;
 import globals;
 
 export class Framebuffer {
@@ -116,15 +117,15 @@ Framebuffer::Framebuffer(int width, int height, int cnt, bool depth, bool shadow
         glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorTextures[i], 0);
     }
 
-    assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+    assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "failed to create framebuffer");
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Framebuffer::bindTarget(std::vector<GLuint> indices) {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, id);
     std::vector<GLuint> arr;
-    for (GLuint i: indices) {
-        assert(i < colorTextures.size());
+    for (auto i: indices) {
+        assert(i < colorTextures.size(), "framebuffer color texture index out of bounds");
         arr.emplace_back(GL_COLOR_ATTACHMENT0 + i);
     }
     glDrawBuffers(static_cast<GLsizei>(arr.size()), arr.data());
@@ -151,14 +152,14 @@ void Framebuffer::unbindTarget() const {
 }
 
 void Framebuffer::bindDepthTexture(GLuint number) const {
-    assert(depthTexture != 0);
+    assert(depthTexture != 0, "framebuffer depth texture not present");
     glActiveTexture(GL_TEXTURE0 + number);
     glBindTexture(GL_TEXTURE_2D, depthTexture);
     glActiveTexture(GL_TEXTURE0);
 }
 
 void Framebuffer::bindColorTexture(GLuint index, GLuint number) const {
-    assert(index < colorTextures.size());
+    assert(index < colorTextures.size(), "framebuffer color texture index out of bounds");
     glActiveTexture(GL_TEXTURE0 + number);
     glBindTexture(GL_TEXTURE_2D, colorTextures[index]);
     glActiveTexture(GL_TEXTURE0);

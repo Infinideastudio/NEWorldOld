@@ -1,11 +1,12 @@
 module;
 
-#include <cassert>
 #include <glad/gl.h>
+#undef assert
 
 export module rendering;
 import std;
 import types;
+import debug;
 import shaders;
 import framebuffers;
 import mat4;
