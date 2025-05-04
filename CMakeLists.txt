@@ -18,6 +18,7 @@ project(
 )
 
 # ===== Scripts =====
+set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
 # CMake built-in script for downloading dependencies.
 include(FetchContent)
@@ -54,6 +55,15 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(utfcpp)
+
+# The `spdlog` logging library
+FetchContent_Declare(
+        spdlog
+        GIT_REPOSITORY https://github.com/gabime/spdlog
+        GIT_TAG v1.15.2
+        GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(spdlog)
 
 # The FreeType font rendering library.
 find_package(Freetype REQUIRED)
@@ -117,7 +127,7 @@ target_sources(
 )
 target_default_compile_options(neworld)
 set_target_properties(neworld PROPERTIES CXX_MODULE_STD 1)
-target_link_libraries(neworld PRIVATE glad glfw utf8cpp Freetype::Freetype leveldb::leveldb)
+target_link_libraries(neworld PRIVATE glad glfw utf8cpp Freetype::Freetype leveldb::leveldb spdlog::spdlog)
 target_link_libraries(neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine)
 target_include_directories(neworld PRIVATE "src")
 target_compile_definitions(neworld PRIVATE "$<$<CONFIG:Debug,RelWithDebInfo>:NEWORLD_DEBUG>")

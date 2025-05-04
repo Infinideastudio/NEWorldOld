@@ -2,6 +2,7 @@ module;
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
+#include <spdlog/spdlog.h>
 
 export module neworld;
 import std;
@@ -111,7 +112,6 @@ void updateKeyStates() {
 
 export int main() {
     // 终于进入main函数了！激动人心的一刻！！！
-
     loadOptions();
     Globalization::Load();
 
@@ -135,10 +135,10 @@ export int main() {
         Menus::mainmenu();
 
         // 初始化游戏状态
-        DebugInfo("Init world...");
+        spdlog::debug("Init world...");
         auto world = worlds::World(Cur_WorldName);
 
-        DebugInfo("Init player...");
+        spdlog::debug("Init player...");
         if (Player::load(world.name()))
             Player::init(Player::xpos, Player::ypos, Player::zpos);
         else
@@ -151,7 +151,7 @@ export int main() {
         auto updateThread = std::thread(updateThreadFunc, std::ref(world));
 
         // 这才是游戏开始!
-        DebugInfo("Main loop started");
+        spdlog::info("Main loop started");
         mxl = mx;
         myl = my;
         shouldShowCursor = false;
@@ -211,7 +211,7 @@ export int main() {
         glfwSwapBuffers(MainWindow);
 
         // 停止游戏更新线程
-        DebugInfo("Terminating threads");
+        spdlog::info("Terminating threads");
         updateThreadRun = false;
         updateMutex.unlock();
         updateThread.join();
@@ -506,7 +506,7 @@ void gameUpdate(worlds::World& world) {
                     auto utf8 = UnicodeUTF8(chatword);
                     auto command = split(utf8, " ");
                     if (!doCommand(command, world)) { // 执行失败
-                        DebugWarning("Fail to execute the command: " + utf8);
+                        spdlog::warn("Fail to execute the command: {}", utf8);
                         chatMessages.push_back("Fail to execute the command: " + utf8);
                     }
                 } else

@@ -112,18 +112,6 @@ export auto UnicodeUTF8(std::u32string_view s) -> std::string {
     return utf8::utf32to8(s);
 }
 
-export void DebugInfo(std::string_view msg) {
-    std::cerr << "[INFO] " << msg << std::endl;
-}
-
-export void DebugWarning(std::string_view msg) {
-    std::cerr << "[WARN] " << msg << std::endl;
-}
-
-export void DebugError(std::string_view msg) {
-    std::cerr << "[ERROR] " << msg << std::endl;
-}
-
 template <typename T>
 void loadoption(std::map<std::string, std::string>& m, char const* name, T& value) {
     if (m.find(name) == m.end())

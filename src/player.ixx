@@ -1,3 +1,7 @@
+module;
+
+#include <spdlog/spdlog.h>
+
 export module player;
 import std;
 import types;
@@ -198,6 +202,7 @@ bool save(std::string worldn) {
 }
 
 bool load(std::string worldn) {
+    spdlog::debug("Loading player data");
     uint32_t targetVersion;
     std::stringstream ss;
     ss << "worlds/" << worldn << "/player.neworldplayer";
