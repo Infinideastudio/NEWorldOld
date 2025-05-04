@@ -1,15 +1,13 @@
 module;
 
 #include <cassert>
-#include <cmath>
-#include <memory>
-#include <string_view>
-#include <unordered_map>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <glad/gl.h>
 
 export module text_rendering;
+import std;
+import types;
 import globals;
 import rendering;
 import textures;

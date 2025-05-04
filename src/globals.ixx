@@ -1,18 +1,10 @@
 module;
 
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <numbers>
-#include <sstream>
-#include <string>
-#include <string_view>
-#include <thread>
-#include <vector>
 #include <GLFW/glfw3.h>
 #include <utf8/cpp20.h>
 
 export module globals;
+import std;
 import types;
 
 // Global constants

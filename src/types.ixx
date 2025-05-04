@@ -1,11 +1,5 @@
-module;
-
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <glad/gl.h>
-
 export module types;
+import std;
 
 export using std::int8_t;
 export using std::int16_t;

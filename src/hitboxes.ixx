@@ -1,9 +1,10 @@
 module;
 
-#include <algorithm>
 #include <glad/gl.h>
 
 export module hitboxes;
+import std;
+import types;
 
 export namespace Hitbox {
 

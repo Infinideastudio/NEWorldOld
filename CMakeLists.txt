@@ -1,5 +1,12 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.30)
 cmake_policy(SET CMP0135 NEW)
+
+# ===== Enable experimental standard library modules support (CMake 3.30 and 4.0.1 only) =====
+if (CMAKE_VERSION VERSION_LESS "4.0.1")
+    set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "0e5b6991-d74f-4b3d-a41c-cf096e0b2508")
+else ()
+    set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "a9e1cf81-9932-4810-974b-6eccaf14e457")
+endif ()
 
 # ===== Project info =====
 project(
@@ -109,6 +116,7 @@ target_sources(
         "src/menus/game_menu.cpp"
 )
 target_default_compile_options(neworld)
+set_target_properties(neworld PROPERTIES CXX_MODULE_STD 1)
 target_link_libraries(neworld PRIVATE glad glfw utf8cpp Freetype::Freetype leveldb::leveldb)
 target_link_libraries(neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine)
 target_include_directories(neworld PRIVATE "src")
