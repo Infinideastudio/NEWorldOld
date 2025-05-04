@@ -1,13 +1,14 @@
 module;
 
-#include <cassert>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
+#undef assert
 
 export module setup;
 import std;
 import types;
+import debug;
 import globals;
 import rendering;
 import text_rendering;
@@ -115,7 +116,7 @@ export void createWindow() {
     title << "NEWorld " << MajorVersion << MinorVersion << VersionSuffix;
 
     auto glfwStatus = glfwInit();
-    assert(glfwStatus == GLFW_TRUE);
+    assert(glfwStatus == GLFW_TRUE, "failed to initialize GLFW");
 
     glfwWindowHint(GLFW_SAMPLES, Multisample);
 #ifdef NEWORLD_DEBUG
@@ -136,7 +137,7 @@ export void createWindow() {
     glfwSwapInterval(VerticalSync ? 1 : 0);
 
     int gladStatus = gladLoadGL(glfwGetProcAddress);
-    assert(gladStatus != 0);
+    assert(gladStatus != 0, "failed to initialize GL entry points");
 
     GLMajorVersion = GLAD_VERSION_MAJOR(gladStatus);
     GLMinorVersion = GLAD_VERSION_MINOR(gladStatus);

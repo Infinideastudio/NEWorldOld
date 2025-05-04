@@ -26,7 +26,7 @@ bool OnGround = false;
 bool Running = false;
 bool NearWall = false;
 bool inWater = false;
-blocks::Id BlockInHand = base_blocks().air;
+blocks::Id BlockInHand;
 uint8_t indexInHand = 0;
 
 Hitbox::AABB playerbox;

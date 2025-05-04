@@ -2,6 +2,7 @@ module;
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
+#undef assert
 
 export module gui;
 import std;

@@ -1,11 +1,12 @@
 module;
 
-#include <cassert>
 #include <glad/gl.h>
+#undef assert
 
 export module textures;
 import std;
 import types;
+import debug;
 import blocks;
 import globals;
 
@@ -118,7 +119,7 @@ export auto loadRGBImage(std::filesystem::path const& path) -> ImageRGB {
     auto res = ImageRGB();
     auto bmp = std::ifstream(path, std::ios::binary | std::ios::in); // 位图文件（二进制）
     if (!bmp.is_open())
-        assert(false);
+        assert(false, "failed to open bitmap file: " + path.string());
 
     // 开始读取
     auto bfh = BitmapFileHeader(); // 各种关于文件的参数
@@ -141,7 +142,7 @@ export auto loadRGBAImage(std::filesystem::path const& path, std::filesystem::pa
     auto res = ImageRGBA();
     auto bmp = std::ifstream(path, std::ios::binary | std::ios::in);
     if (!bmp.is_open())
-        assert(false);
+        assert(false, "failed to open bitmap file: " + path.string());
 
     auto bfh = BitmapFileHeader();
     auto bih = BitmapInfoHeader();
@@ -163,7 +164,7 @@ export auto loadRGBAImage(std::filesystem::path const& path, std::filesystem::pa
     if (!maskPath.empty()) {
         auto mask = std::ifstream(maskPath, std::ios::binary | std::ios::in);
         if (!mask.is_open())
-            assert(false);
+            assert(false, "failed to open bitmap file: " + maskPath.string());
 
         auto mbfh = BitmapFileHeader();
         auto mbih = BitmapInfoHeader();

@@ -2,6 +2,7 @@ module;
 
 #include <glad/gl.h>
 #include <spdlog/spdlog.h>
+#undef assert
 
 export module shaders;
 import std;

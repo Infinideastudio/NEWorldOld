@@ -1,6 +1,7 @@
 module;
 
 #include <glad/gl.h>
+#undef assert
 
 export module hitboxes;
 import std;

@@ -2,6 +2,7 @@ module;
 
 #include <GLFW/glfw3.h>
 #include <utf8/cpp20.h>
+#undef assert
 
 export module globals;
 import std;

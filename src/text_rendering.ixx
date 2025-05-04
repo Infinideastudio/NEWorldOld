@@ -1,13 +1,14 @@
 module;
 
-#include <cassert>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <glad/gl.h>
+#undef assert
 
 export module text_rendering;
 import std;
 import types;
+import debug;
 import globals;
 import rendering;
 import textures;
@@ -41,11 +42,11 @@ export void renderString(int x, int y, std::u32string_view s);
 export void initFont(bool reload) {
     if (!slot || reload) {
         if (FT_Init_FreeType(&library))
-            assert(false);
+            assert(false, "failed to initialize FreeType");
         if (FT_New_Face(library, "fonts/unicode.ttf", 0, &face))
-            assert(false);
+            assert(false, "failed to load font");
         if (FT_Set_Pixel_Sizes(face, FontSize, FontSize))
-            assert(false);
+            assert(false, "failed to set font size");
         slot = face->glyph;
         faceSize = FontSize;
         chars.clear();
@@ -67,9 +68,10 @@ auto loadChar(char32_t uc) -> UnicodeChar& {
     FT_Render_Glyph(slot, FT_RENDER_MODE_NORMAL);
 
     auto const& bitmap = slot->bitmap;
-    assert(bitmap.pixel_mode == FT_PIXEL_MODE_GRAY);
-    assert(bitmap.num_grays == 256);
-    assert(bitmap.pitch >= 0);
+    assert(
+        bitmap.pixel_mode == FT_PIXEL_MODE_GRAY && bitmap.num_grays == 256 && bitmap.pitch >= 0,
+        "unexpected bitmap format from font rendering"
+    );
 
     auto image = std::make_unique<uint8_t[]>(bitmap.rows * bitmap.width * 4); // Already aligned to 4 bytes
     for (unsigned int i = 0; i < bitmap.rows; i++) {

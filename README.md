@@ -4,7 +4,7 @@ NEWorld is an open-source game with similar game rules to Minecraft.
 
 ## Compiling
 
-* Build commands (requires CMake 3.28+):
+* Build commands (requires CMake 3.30+, compiler and standard library support for `import std`):
   ```sh
   cmake -S . -B build
   cmake --build build

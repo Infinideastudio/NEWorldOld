@@ -1,7 +1,3 @@
-module;
-
-#include <cassert>
-
 export module mat4;
 import std;
 import types;
@@ -22,13 +18,11 @@ public:
 
     // Returns pointer to the i-th row
     auto operator[](std::size_t i) -> T* {
-        assert(i < 4);
         return data + i * 4;
     }
 
     // Returns const pointer to the i-th row
     auto operator[](std::size_t i) const -> T const* {
-        assert(i < 4);
         return data + i * 4;
     }
 
@@ -134,7 +128,6 @@ public:
 
     // Swap row r1, row r2
     void swap_rows(std::size_t i, std::size_t j) {
-        assert(i < 4 && j < 4);
         std::swap(data[i * 4 + 0], data[j * 4 + 0]);
         std::swap(data[i * 4 + 1], data[j * 4 + 1]);
         std::swap(data[i * 4 + 2], data[j * 4 + 2]);
@@ -143,7 +136,6 @@ public:
 
     // Row r *= k
     void mult_row(std::size_t i, T value) {
-        assert(i < 4);
         data[i * 4 + 0] *= value;
         data[i * 4 + 1] *= value;
         data[i * 4 + 2] *= value;
@@ -152,7 +144,6 @@ public:
 
     // Row dst += row src * k
     void mult_and_add(std::size_t j, std::size_t i, T value) {
-        assert(i < 4 && j < 4);
         data[i * 4 + 0] += data[j * 4 + 0] * value;
         data[i * 4 + 1] += data[j * 4 + 1] * value;
         data[i * 4 + 2] += data[j * 4 + 2] * value;

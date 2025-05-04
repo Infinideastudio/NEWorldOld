@@ -1,12 +1,12 @@
 module;
 
-#include <algorithm>
-#include <array>
-#include <cassert>
 #include <glad/gl.h>
+#undef assert
 
 module chunks;
+import std;
 import types;
+import debug;
 import vec3;
 import blocks;
 import rendering;
@@ -112,7 +112,7 @@ public:
                     auto rcz = z >> Chunk::SIZE_LOG, bz = z & (Chunk::SIZE - 1);
                     auto& block = _data[index++];
                     auto cptr = neighbors[((rcx + 1) * 3 + rcy + 1) * 3 + rcz + 1];
-                    assert(cptr);
+                    assert(cptr, "neighbors array should not contain null pointer");
                     if (cptr == chunks::EMPTY_CHUNK) {
                         auto light = (ccoord.y + rcy < 0) ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
                         block = blocks::BlockData{.id = base_blocks().air, .light = light};

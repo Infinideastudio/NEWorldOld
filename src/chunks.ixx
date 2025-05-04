@@ -1,9 +1,11 @@
 module;
 
 #include <leveldb/db.h>
+#undef assert
 
 export module chunks;
 import std;
+import debug;
 import types;
 import vec3;
 export import blocks;
@@ -54,7 +56,7 @@ public:
     }
 
     auto block(Vec3u bcoord) const -> blocks::BlockData {
-        assert(bcoord.x < SIZE && bcoord.y < SIZE && bcoord.z < SIZE);
+        assert(bcoord.x < SIZE && bcoord.y < SIZE && bcoord.z < SIZE, "block coordinates out of bounds");
         if (_empty) {
             auto light = _coord.y < 0 ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
             return blocks::BlockData{.id = base_blocks().air, .light = light};
@@ -63,7 +65,7 @@ public:
     }
 
     auto block_ref(Vec3u bcoord) -> blocks::BlockData& {
-        assert(bcoord.x < SIZE && bcoord.y < SIZE && bcoord.z < SIZE);
+        assert(bcoord.x < SIZE && bcoord.y < SIZE && bcoord.z < SIZE, "block coordinates out of bounds");
         if (_empty) {
             auto light = _coord.y < 0 ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
             std::ranges::fill(_data, blocks::BlockData{.id = base_blocks().air, .light = light});
@@ -121,7 +123,7 @@ public:
     }
 
     auto mesh(size_t index) const -> Renderer::VertexBuffer const& {
-        assert(index < _meshes.size());
+        assert(index < _meshes.size(), "mesh index out of bounds");
         return _meshes[index];
     }
 

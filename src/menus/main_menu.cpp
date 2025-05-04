@@ -1,9 +1,6 @@
-module;
-
-#include <cstdlib>
-#include <sstream>
-
 module menus;
+import std;
+import types;
 import gui;
 import globals;
 import globalization;
