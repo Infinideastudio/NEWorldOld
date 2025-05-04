@@ -1,13 +1,10 @@
 module;
 
-#include <fstream>
-#include <memory>
-#include <sstream>
-#include <string>
-#include <vector>
 #include <glad/gl.h>
 
 export module shaders;
+import std;
+import types;
 import vec3;
 import mat4;
 import globals;
@@ -51,23 +48,23 @@ public:
         glUseProgram(0);
     }
 
-    auto setUniform(const char* uniform, float value) -> bool;
-    auto setUniformI(const char* uniform, int value) -> bool;
-    auto setUniform(const char* uniform, float v0, float v1) -> bool;
-    auto setUniformI(const char* uniform, int v0, int v1) -> bool;
-    auto setUniform(const char* uniform, float v0, float v1, float v2) -> bool;
-    auto setUniformI(const char* uniform, int v0, int v1, int v2) -> bool;
-    auto setUniform(const char* uniform, float v0, float v1, float v2, float v3) -> bool;
-    auto setUniformI(const char* uniform, int v0, int v1, int v2, int v3) -> bool;
-    auto setUniform(const char* uniform, const float* value) -> bool;
+    auto setUniform(char const* uniform, float value) -> bool;
+    auto setUniformI(char const* uniform, int value) -> bool;
+    auto setUniform(char const* uniform, float v0, float v1) -> bool;
+    auto setUniformI(char const* uniform, int v0, int v1) -> bool;
+    auto setUniform(char const* uniform, float v0, float v1, float v2) -> bool;
+    auto setUniformI(char const* uniform, int v0, int v1, int v2) -> bool;
+    auto setUniform(char const* uniform, float v0, float v1, float v2, float v3) -> bool;
+    auto setUniformI(char const* uniform, int v0, int v1, int v2, int v3) -> bool;
+    auto setUniform(char const* uniform, float const* value) -> bool;
 
-    auto setUniform(const char* uniform, Vec3f const& value) -> bool {
+    auto setUniform(char const* uniform, Vec3f const& value) -> bool {
         return setUniform(uniform, value.x, value.y, value.z);
     }
-    auto setUniformI(const char* uniform, Vec3i const& value) -> bool {
+    auto setUniformI(char const* uniform, Vec3i const& value) -> bool {
         return setUniformI(uniform, value.x, value.y, value.z);
     }
-    auto setUniform(const char* uniform, Mat4f const& value) -> bool {
+    auto setUniform(char const* uniform, Mat4f const& value) -> bool {
         return setUniform(uniform, value.data.data());
     }
 
@@ -91,7 +88,7 @@ Shader::Shader(std::string vshPath, std::string fshPath, std::vector<std::string
     checkLinkingErrors(shaderProgram, "Shader linking error!");
 }
 
-auto Shader::setUniform(const char* uniform, float value) -> bool {
+auto Shader::setUniform(char const* uniform, float value) -> bool {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1)
         return false;
@@ -99,7 +96,7 @@ auto Shader::setUniform(const char* uniform, float value) -> bool {
     return true;
 }
 
-auto Shader::setUniformI(const char* uniform, int value) -> bool {
+auto Shader::setUniformI(char const* uniform, int value) -> bool {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1)
         return false;
@@ -107,7 +104,7 @@ auto Shader::setUniformI(const char* uniform, int value) -> bool {
     return true;
 }
 
-auto Shader::setUniform(const char* uniform, float v0, float v1) -> bool {
+auto Shader::setUniform(char const* uniform, float v0, float v1) -> bool {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1)
         return false;
@@ -115,7 +112,7 @@ auto Shader::setUniform(const char* uniform, float v0, float v1) -> bool {
     return true;
 }
 
-auto Shader::setUniformI(const char* uniform, int v0, int v1) -> bool {
+auto Shader::setUniformI(char const* uniform, int v0, int v1) -> bool {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1)
         return false;
@@ -123,7 +120,7 @@ auto Shader::setUniformI(const char* uniform, int v0, int v1) -> bool {
     return true;
 }
 
-auto Shader::setUniform(const char* uniform, float v0, float v1, float v2) -> bool {
+auto Shader::setUniform(char const* uniform, float v0, float v1, float v2) -> bool {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1)
         return false;
@@ -131,7 +128,7 @@ auto Shader::setUniform(const char* uniform, float v0, float v1, float v2) -> bo
     return true;
 }
 
-auto Shader::setUniformI(const char* uniform, int v0, int v1, int v2) -> bool {
+auto Shader::setUniformI(char const* uniform, int v0, int v1, int v2) -> bool {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1)
         return false;
@@ -139,7 +136,7 @@ auto Shader::setUniformI(const char* uniform, int v0, int v1, int v2) -> bool {
     return true;
 }
 
-auto Shader::setUniform(const char* uniform, float v0, float v1, float v2, float v3) -> bool {
+auto Shader::setUniform(char const* uniform, float v0, float v1, float v2, float v3) -> bool {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1)
         return false;
@@ -147,7 +144,7 @@ auto Shader::setUniform(const char* uniform, float v0, float v1, float v2, float
     return true;
 }
 
-auto Shader::setUniformI(const char* uniform, int v0, int v1, int v2, int v3) -> bool {
+auto Shader::setUniformI(char const* uniform, int v0, int v1, int v2, int v3) -> bool {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1)
         return false;
@@ -155,7 +152,7 @@ auto Shader::setUniformI(const char* uniform, int v0, int v1, int v2, int v3) ->
     return true;
 }
 
-auto Shader::setUniform(const char* uniform, const float* value) -> bool {
+auto Shader::setUniform(char const* uniform, float const* value) -> bool {
     int loc = glGetUniformLocation(shaderProgram, uniform);
     if (loc == -1)
         return false;

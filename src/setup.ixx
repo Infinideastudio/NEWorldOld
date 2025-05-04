@@ -1,11 +1,12 @@
 module;
 
 #include <cassert>
-#include <sstream>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
 export module setup;
+import std;
+import types;
 import globals;
 import rendering;
 import text_rendering;
@@ -68,7 +69,7 @@ void MouseScrollFunc(GLFWwindow*, double, double yoffset) {
 }
 
 // OpenGL debug callback
-void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, const GLchar* msg, const void*) {
+void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, GLchar const* msg, void const*) {
     switch (severity) {
         case GL_DEBUG_SEVERITY_HIGH:
             DebugError(std::string("[GL] ") + msg);
@@ -87,13 +88,13 @@ void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, 
 }
 
 export void initStretch() {
-    const double stdppi = 96.0;
+    double const stdppi = 96.0;
     if (UIStretch && Stretch == 1.0) {
         // Get the screen physical size and set stretch
         int nScreenWidth, nScreenHeight;
         glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth, &nScreenHeight);
         int vmc;
-        const GLFWvidmode* mode = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
+        GLFWvidmode const* mode = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
         double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth) / 25.4f);
         Stretch = ppi / stdppi;
         // Compute the stretch and reset the window size
@@ -159,7 +160,7 @@ export void toggleFullScreen() {
     static bool fullscreen = false;
     static int ww = 0, wh = 0;
 
-    const GLFWvidmode* mode;
+    GLFWvidmode const* mode;
     mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 
     fullscreen = !fullscreen;

@@ -1,13 +1,11 @@
 module;
 
-#include <cmath>
-#include <string>
-#include <utility>
-#include <vector>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
 export module gui;
+import std;
+import types;
 import framebuffers;
 import frustum_tests;
 import rendering;
@@ -1077,7 +1075,8 @@ void Form::render() {
     }
 
     double TimeDelta = Timer() - transitionTimer;
-    float transitionAnim = (float) (1.0 - std::pow(0.8, TimeDelta * 60.0) + pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);
+    float transitionAnim =
+        (float) (1.0 - std::pow(0.8, TimeDelta * 60.0) + std::pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();

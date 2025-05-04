@@ -1,9 +1,6 @@
-module;
-
-#include <algorithm>
-#include <memory>
-
 export module height_maps;
+import std;
+import types;
 import vec3;
 import terrain_generation;
 

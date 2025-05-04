@@ -1,14 +1,10 @@
 module;
 
-#include <array>
 #include <cassert>
-#include <filesystem>
-#include <fstream>
-#include <memory>
-#include <utility>
 #include <glad/gl.h>
 
 export module textures;
+import std;
 import types;
 import blocks;
 import globals;

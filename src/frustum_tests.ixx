@@ -1,9 +1,6 @@
-module;
-
-#include <array>
-#include <cmath>
-
 export module frustum_tests;
+import std;
+import types;
 import mat4;
 
 export class FrustumTest {
@@ -65,7 +62,7 @@ public:
         normalize(20);
     }
 
-    auto test(const AABBf& aabb) const -> bool {
+    auto test(AABBf const& aabb) const -> bool {
         for (int i = 0; i < 24; i += 4) {
             if (frus[i] * aabb.xmin + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f
                 && frus[i] * aabb.xmax + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f
