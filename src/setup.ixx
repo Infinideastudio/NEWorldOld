@@ -3,6 +3,7 @@ module;
 #include <cassert>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
+#include <spdlog/spdlog.h>
 
 export module setup;
 import std;
@@ -72,13 +73,13 @@ void MouseScrollFunc(GLFWwindow*, double, double yoffset) {
 void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, GLchar const* msg, void const*) {
     switch (severity) {
         case GL_DEBUG_SEVERITY_HIGH:
-            DebugError(std::string("[GL] ") + msg);
+            spdlog::error("[GL] {}", msg);
             break;
         case GL_DEBUG_SEVERITY_MEDIUM:
-            DebugWarning(std::string("[GL] ") + msg);
+            spdlog::warn("[GL] {}", msg);
             break;
         case GL_DEBUG_SEVERITY_LOW:
-            DebugInfo(std::string("[GL] ") + msg);
+            spdlog::debug("[GL] {}", msg);
             break;
         case GL_DEBUG_SEVERITY_NOTIFICATION:
             break;
@@ -142,10 +143,10 @@ export void createWindow() {
 
 #ifdef NEWORLD_DEBUG
     if (!glDebugMessageCallback) {
-        DebugWarning("Note that you're in debug mode, but GL_KHR_debug is not supported.");
+        spdlog::warn("Note that you're in debug mode, but GL_KHR_debug is not supported.", title.str());
     } else {
         glDebugMessageCallback(glDebugCallback, nullptr);
-        DebugInfo("GL_KHR_debug enabled.");
+        spdlog::info("GL_KHR_debug enabled.");
     }
 #endif
 

@@ -1,6 +1,7 @@
 module;
 
 #include <leveldb/db.h>
+#include <spdlog/spdlog.h>
 
 export module worlds;
 import std;
@@ -577,7 +578,7 @@ private:
         auto cid = ChunkId(ccoord);
         auto it = _chunks.find(cid);
         if (it != _chunks.end()) {
-            DebugWarning(std::format("Trying to load existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z));
+            spdlog::debug("Trying to load existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z);
             return it->second.get();
         }
 
@@ -604,7 +605,7 @@ private:
         auto cid = ChunkId(ccoord);
         auto node = _chunks.extract(cid);
         if (node.empty()) {
-            DebugWarning(std::format("Trying to unload non-existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z));
+            spdlog::debug("Trying to unload non-existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z);
             return;
         }
 

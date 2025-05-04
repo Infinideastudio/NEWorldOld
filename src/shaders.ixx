@@ -1,6 +1,7 @@
 module;
 
 #include <glad/gl.h>
+#include <spdlog/spdlog.h>
 
 export module shaders;
 import std;
@@ -167,9 +168,7 @@ auto Shader::loadShader(std::string filename, unsigned int mode, std::vector<std
     std::vector<GLint> length;
     auto filein = std::ifstream(filename);
     if (!filein.is_open()) {
-        std::stringstream ss;
-        ss << "Could not load shader " << filename;
-        DebugWarning(ss.str());
+        spdlog::warn("Could not load shader {}", filename);
         return 0;
     }
     bool defs = false;
@@ -201,13 +200,13 @@ void Shader::checkCompileErrors(GLuint res, std::string errorMessage) {
     int st = GL_TRUE;
     glGetShaderiv(res, GL_COMPILE_STATUS, &st);
     if (st == GL_FALSE) {
-        DebugWarning(errorMessage);
+        spdlog::warn("Error while loading shader {}", errorMessage);
         int infologLength = 0, charsWritten = 0;
         glGetShaderiv(res, GL_INFO_LOG_LENGTH, &infologLength);
         if (infologLength > 1) {
             auto infoLog = std::make_unique<char[]>(infologLength + 1);
             glGetShaderInfoLog(res, infologLength + 1, &charsWritten, infoLog.get());
-            DebugWarning(infoLog.get());
+            spdlog::warn("{}", infoLog.get());
         }
     }
 }
@@ -216,13 +215,13 @@ void Shader::checkLinkingErrors(GLuint res, std::string errorMessage) {
     int st = GL_TRUE;
     glGetProgramiv(res, GL_LINK_STATUS, &st);
     if (st == GL_FALSE) {
-        DebugWarning(errorMessage);
+        spdlog::warn("error while linking shaders: {}", errorMessage);
         int infologLength = 0, charsWritten = 0;
         glGetProgramiv(res, GL_INFO_LOG_LENGTH, &infologLength);
         if (infologLength > 1) {
             auto infoLog = std::make_unique<char[]>(infologLength + 1);
             glGetProgramInfoLog(res, infologLength + 1, &charsWritten, infoLog.get());
-            DebugWarning(infoLog.get());
+            spdlog::warn("{}", infoLog.get());
         }
     }
 }
