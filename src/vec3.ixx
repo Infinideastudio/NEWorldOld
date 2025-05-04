@@ -30,23 +30,23 @@ public:
 
     // Type conversion constructor
     template <typename U>
-    explicit Vec3(Vec3<U> const& r):
+    explicit Vec3(Vec3<U> r):
         x(static_cast<T>(r.x)),
         y(static_cast<T>(r.y)),
         z(static_cast<T>(r.z)) {}
 
     // Element-wise equality
-    auto operator==(Vec3 const& r) const -> bool {
+    auto operator==(Vec3 r) const -> bool {
         return x == r.x && y == r.y && z == r.z;
     }
 
     // Element-wise inequality
-    auto operator!=(Vec3 const& r) const -> bool {
+    auto operator!=(Vec3 r) const -> bool {
         return !(*this == r);
     }
 
     // Lexicographical ordering
-    auto operator<(Vec3 const& r) const -> bool {
+    auto operator<(Vec3 r) const -> bool {
         if (x != r.x)
             return x < r.x;
         if (y != r.y)
@@ -56,23 +56,23 @@ public:
         return false;
     }
 
-    friend auto operator-(Vec3 const& v) -> Vec3 {
+    friend auto operator-(Vec3 v) -> Vec3 {
         return Vec3(-v.x, -v.y, -v.z);
     }
 
-    auto operator+(Vec3 const& r) const -> Vec3 {
+    auto operator+(Vec3 r) const -> Vec3 {
         return Vec3(x + r.x, y + r.y, z + r.z);
     };
 
-    auto operator-(Vec3 const& r) const -> Vec3 {
+    auto operator-(Vec3 r) const -> Vec3 {
         return Vec3(x - r.x, y - r.y, z - r.z);
     };
 
-    auto operator*(Vec3 const& r) const -> Vec3 {
+    auto operator*(Vec3 r) const -> Vec3 {
         return Vec3(x * r.x, y * r.y, z * r.z);
     };
 
-    auto operator/(Vec3 const& r) const -> Vec3 {
+    auto operator/(Vec3 r) const -> Vec3 {
         return Vec3(x / r.x, y / r.y, z / r.z);
     };
 
@@ -84,19 +84,19 @@ public:
         return Vec3(x / value, y / value, z / value);
     }
 
-    auto operator+=(Vec3 const& r) -> Vec3& {
+    auto operator+=(Vec3 r) -> Vec3& {
         return *this = *this + r;
     }
 
-    auto operator-=(Vec3 const& r) -> Vec3& {
+    auto operator-=(Vec3 r) -> Vec3& {
         return *this = *this - r;
     }
 
-    auto operator*=(Vec3 const& r) -> Vec3& {
+    auto operator*=(Vec3 r) -> Vec3& {
         return *this = *this * r;
     }
 
-    auto operator/=(Vec3 const& r) -> Vec3& {
+    auto operator/=(Vec3 r) -> Vec3& {
         return *this = *this / r;
     }
 

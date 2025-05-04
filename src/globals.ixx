@@ -63,10 +63,8 @@ export bool GameBegin, GameExit;
 export int GameTime = 0;
 export uint32_t gSeed;
 
-export int loaded_chunks;
 export int rendered_chunks;
 export int unloaded_chunks;
-export int updated_chunks;
 export int meshed_chunks;
 export int updated_blocks;
 

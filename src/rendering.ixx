@@ -316,12 +316,12 @@ void initShaders(bool reload) {
     shaders[FinalShader].setUniformI("u_depth_buffer", gBufferCount + 0);
     shaders[FinalShader].setUniformI("u_shadow_texture", gBufferCount + 1);
     shaders[FinalShader].setUniformI("u_noise_texture", gBufferCount + 2);
-    shaders[FinalShader].setUniform("u_buffer_width", float(gWidth));
-    shaders[FinalShader].setUniform("u_buffer_height", float(gHeight));
-    shaders[FinalShader].setUniform("u_shadow_texture_resolution", float(ShadowRes));
+    shaders[FinalShader].setUniform("u_buffer_width", static_cast<float>(gWidth));
+    shaders[FinalShader].setUniform("u_buffer_height", static_cast<float>(gHeight));
+    shaders[FinalShader].setUniform("u_shadow_texture_resolution", static_cast<float>(ShadowRes));
     shaders[FinalShader].setUniform("u_shadow_fisheye_factor", fisheyeFactor);
-    shaders[FinalShader].setUniform("u_shadow_distance", getShadowDistance() * 16.0f);
-    shaders[FinalShader].setUniform("u_render_distance", RenderDistance * 16.0f);
+    shaders[FinalShader].setUniform("u_shadow_distance", static_cast<float>(getShadowDistance() * 16));
+    shaders[FinalShader].setUniform("u_render_distance", static_cast<float>(RenderDistance * 16));
 
     shaders[ShadowShader].bind();
     shaders[ShadowShader].setUniformI("u_diffuse", 0);
@@ -331,7 +331,7 @@ void initShaders(bool reload) {
 }
 
 Mat4f getShadowMatrix() {
-    float length = getShadowDistance() * 16.0f;
+    auto length = static_cast<float>(getShadowDistance() * 16);
     auto res = Mat4f(1.0f);
     res = Mat4f::rotate(-static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * res;
     res = Mat4f::rotate(static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * res;
@@ -340,7 +340,7 @@ Mat4f getShadowMatrix() {
 }
 
 Mat4f getShadowMatrixExperimental(float fov, float aspect, double heading, double pitch) {
-    float length = getShadowDistance() * 16.0f;
+    auto length = static_cast<float>(getShadowDistance() * 16);
     auto res = Mat4f(1.0f);
     res = Mat4f::rotate(-static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * res;
     res = Mat4f::rotate(static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * res;

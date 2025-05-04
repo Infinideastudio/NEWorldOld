@@ -437,9 +437,6 @@ void gameUpdate(worlds::World& world) {
     // 时间
     GameTime++;
 
-    meshed_chunks = 0;
-    updated_chunks = 0;
-
     // Move chunk pointer array and height map
     world.set_center(Player::ccoord);
 
@@ -453,12 +450,12 @@ void gameUpdate(worlds::World& world) {
             int cx = c->coord().x;
             int cy = c->coord().y;
             int cz = c->coord().z;
-            x = int(rnd() * 16);
-            gx = x + cx * 16;
-            y = int(rnd() * 16);
-            gy = y + cy * 16;
-            z = int(rnd() * 16);
-            gz = z + cz * 16;
+            x = int(rnd() * chunks::Chunk::SIZE);
+            gx = x + cx * chunks::Chunk::SIZE;
+            y = int(rnd() * chunks::Chunk::SIZE);
+            gy = y + cy * chunks::Chunk::SIZE;
+            z = int(rnd() * chunks::Chunk::SIZE);
+            gz = z + cz * chunks::Chunk::SIZE;
             if (c->block(Vec3u(x, y, z)).id == base_blocks().dirt
                 && world.block_or_air(Vec3i(gx, gy + 1, gz)).id == base_blocks().air
                 && (world.block_or_air(Vec3i(gx + 1, gy, gz)).id == base_blocks().grass
@@ -475,13 +472,13 @@ void gameUpdate(worlds::World& world) {
                     || world.block_or_air(Vec3i(gx, gy - 1, gz - 1)).id == base_blocks().grass)) {
                 // 长草
                 c->block_ref(Vec3u(x, y, z)).id = base_blocks().grass;
-                world.update_block(Vec3i(x + cx * 16, y + cy * 16 + 1, z + cz * 16), true);
+                world.update_block(Vec3i(gx, gy, gz), true);
             }
             if (c->block(Vec3u(x, y, z)).id == base_blocks().grass
                 && world.block_or_air(Vec3i(gx, gy + 1, gz)).id != base_blocks().air) {
                 // 草被覆盖
                 c->block_ref(Vec3u(x, y, z)).id = base_blocks().dirt;
-                world.update_block(Vec3i(x + cx * 16, y + cy * 16 + 1, z + cz * 16), true);
+                world.update_block(Vec3i(gx, gy, gz), true);
             }
         }
     }
@@ -982,7 +979,7 @@ void render(worlds::World& world) {
                      static_cast<float>((FOVyNormal + FOVyExt) * Pi / 180.0),
                      static_cast<float>(WindowWidth) / WindowHeight,
                      0.05f,
-                     RenderDistance * 16.0f
+                     static_cast<float>(RenderDistance * chunks::Chunk::SIZE)
                  )
                * viewMatrix;
 
@@ -1530,7 +1527,7 @@ void drawGUI(worlds::World& world) {
         ss << unloaded_chunks << " chunks unloaded";
         debugText(ss.str());
         ss.str("");
-        ss << updated_chunks << " chunks updated";
+        ss << meshed_chunks << " chunks meshed";
         debugText(ss.str());
         ss.str("");
         ss << updated_blocks << "/" << world.block_update_queue().size() << " blocks updated";

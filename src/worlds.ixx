@@ -81,14 +81,22 @@ constexpr size_t MAX_BLOCK_UPDATES = 65536;
 export auto chunk_coord(Vec3i coord) -> Vec3i {
     // C++20 guarantees arithmetic right shift on signed integers
     // See: https://en.cppreference.com/w/cpp/language/operator_arithmetic#Built-in_bitwise_shift_operators
-    return {coord.x >> 4, coord.y >> 4, coord.z >> 4};
+    return {
+        coord.x >> chunks::Chunk::SIZE_LOG,
+        coord.y >> chunks::Chunk::SIZE_LOG,
+        coord.z >> chunks::Chunk::SIZE_LOG,
+    };
 }
 
 export auto block_coord(Vec3i coord) -> Vec3u {
     // Signed to unsigned conversion implements modulo operation
     // See: https://en.cppreference.com/w/c/language/conversion#Integer_conversions
     auto ucoord = Vec3u(coord);
-    return {ucoord.x & 0xF, ucoord.y & 0xF, ucoord.z & 0xF};
+    return {
+        ucoord.x & (chunks::Chunk::SIZE - 1),
+        ucoord.y & (chunks::Chunk::SIZE - 1),
+        ucoord.z & (chunks::Chunk::SIZE - 1),
+    };
 }
 
 export class World {
@@ -96,7 +104,7 @@ public:
     explicit World(std::string name):
         _name(std::move(name)),
         _chunk_pointer_array((RenderDistance + 2) * 2),
-        _height_map((RenderDistance + 2) * 2 * 16) {
+        _height_map((RenderDistance + 2) * 2 * chunks::Chunk::SIZE) {
 
         // Create world directory
         std::filesystem::create_directories(std::filesystem::path("worlds") / _name);
@@ -114,9 +122,7 @@ public:
         WorldGen::noiseInit(3404);
 
         // Temporary: reset counters
-        loaded_chunks = 0;
         meshed_chunks = 0;
-        updated_chunks = 0;
         unloaded_chunks = 0;
         updated_blocks = 0;
     }
@@ -146,13 +152,13 @@ public:
     // Sets the origin of the chunk pointer array and height map
     void set_center(Vec3i ccenter) {
         _chunk_pointer_array.set_center(ccenter - Vec3i(RenderDistance + 2));
-        _height_map.set_center((ccenter - Vec3i(RenderDistance + 2)) * 16);
+        _height_map.set_center((ccenter - Vec3i(RenderDistance + 2)) * chunks::Chunk::SIZE);
     }
 
     // Saves all chunks to files
     void save_to_files() {
         for (auto const& [id, c]: _chunks)
-            c->save_to_file(_db.get());
+            c->save_to_file(*_db.get());
     }
 
     // 获取区块指针
@@ -188,7 +194,7 @@ public:
         if (!cptr)
             return {};
         if (cptr == chunks::EMPTY_CHUNK) {
-            auto light = ccoord.y < 0 ? chunks::NO_LIGHT : chunks::SKY_LIGHT;
+            auto light = ccoord.y < 0 ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
             return blocks::BlockData{.id = base_blocks().air, .light = light};
         }
         return cptr->block(bcoord);
@@ -196,7 +202,7 @@ public:
 
     // 带有默认值的获取方块和亮度
     auto block_or_air(Vec3i coord) -> blocks::BlockData {
-        return block(coord).value_or(blocks::BlockData{.id = base_blocks().air, .light = chunks::NO_LIGHT});
+        return block(coord).value_or(blocks::BlockData{.id = base_blocks().air, .light = blocks::NO_LIGHT});
     }
 
     // 返回与 box 相交的所有方块 AABB
@@ -325,14 +331,15 @@ public:
         */
     }
 
-    // Triggers block update
-    void update_block(Vec3i coord, bool initial = true) {
+    // Triggers block update. Returns true if neighborhood is loaded, in which case the possible
+    // redices centered around the block have been reduced.
+    auto update_block(Vec3i coord, bool initial = true) -> bool {
         auto ccoord = chunk_coord(coord);
         auto bcoord = block_coord(coord);
 
         auto cptr = chunk(ccoord);
         if (!cptr)
-            return;
+            return false;
         if (cptr == chunks::EMPTY_CHUNK)
             cptr = _load_chunk(ccoord);
 
@@ -342,7 +349,7 @@ public:
         // Explosive blocks.
         if (curr.id == base_blocks().tnt) {
             explode(coord, 8);
-            return;
+            return true;
         }
 
         auto neighbors = std::array{
@@ -354,24 +361,28 @@ public:
             block(coord + Vec3i(0, 0, -1)),
         };
 
-        // Lighting computation.
-        auto sky_light = chunks::NO_LIGHT.sky();
-        auto block_light = chunks::NO_LIGHT.block();
+        // If one of the neighbors is not loaded, skip block update.
         for (auto const& neighbor: neighbors)
-            if (neighbor) {
-                sky_light = std::max(sky_light, neighbor->light.sky());
-                block_light = std::max(block_light, neighbor->light.block());
-            }
+            if (!neighbor)
+                return false;
+
+        // Lighting computation.
+        auto sky_light = blocks::NO_LIGHT.sky();
+        auto block_light = blocks::NO_LIGHT.block();
+        for (auto const& neighbor: neighbors) {
+            sky_light = std::max(sky_light, neighbor->light.sky());
+            block_light = std::max(block_light, neighbor->light.block());
+        }
 
         // If the top neighbor has maximum sky light, it and this block are both considered skylit.
         // This makes lighting computation much more efficient than the old implementation.
         // Again, blocks below (y = 0) never become skylit to prevent unbounded propagation.
-        auto skylit = coord.y >= 0 && (neighbors[2] && neighbors[2]->light.sky() == chunks::SKY_LIGHT.sky());
+        auto skylit = coord.y >= 0 && (neighbors[2] && neighbors[2]->light.sky() == blocks::SKY_LIGHT.sky());
 
         // Integral promption avoids underflowing when subtracting from `std::uint8_t` light levels.
         // See: https://en.cppreference.com/w/cpp/language/implicit_conversion#Integral_promotion
         if (curr.id == base_blocks().air) {
-            sky_light = skylit ? chunks::SKY_LIGHT.sky() : std::max(0, sky_light - 1);
+            sky_light = skylit ? blocks::SKY_LIGHT.sky() : std::max(0, sky_light - 1);
             block_light = std::max(0, block_light - 1);
         } else if (!block_info(curr.id).solid) {
             sky_light = std::max(0, sky_light - 1);
@@ -398,21 +409,20 @@ public:
             _block_update_queue.emplace_back(coord + Vec3i(0, 0, +1));
             _block_update_queue.emplace_back(coord + Vec3i(0, 0, -1));
 
-            if (bcoord.x == 15)
+            if (bcoord.x == chunks::Chunk::SIZE - 1)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(+1, 0, 0));
             if (bcoord.x == 0)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(-1, 0, 0));
-            if (bcoord.y == 15)
+            if (bcoord.y == chunks::Chunk::SIZE - 1)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(0, +1, 0));
             if (bcoord.y == 0)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(0, -1, 0));
-            if (bcoord.z == 15)
+            if (bcoord.z == chunks::Chunk::SIZE - 1)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(0, 0, +1));
             if (bcoord.z == 0)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(0, 0, -1));
-
-            updated_blocks++;
         }
+        return true;
     }
 
     // Process pending block updates in queue
@@ -423,6 +433,7 @@ public:
             auto coord = _block_update_queue.front();
             _block_update_queue.pop_front();
             update_block(coord, false);
+            updated_blocks++;
         }
     }
 
@@ -460,7 +471,7 @@ public:
                     for (int cz = ccenter.z - radius; cz < ccenter.z + radius; cz += stride) {
                         auto cc = Vec3i(cx, cy, cz);
                         if (!chunk_coord_out_of_world(cc) && !chunk(cc)) {
-                            auto distsqr = (cc * 16 + 8 - center).length_sqr();
+                            auto distsqr = (cc * chunks::Chunk::SIZE + chunks::Chunk::SIZE / 2 - center).length_sqr();
                             loads.emplace(distsqr, cc);
                             if (loads.size() > MAX_CHUNK_LOADS)
                                 loads.pop();
@@ -480,12 +491,12 @@ public:
         for (auto const& [_, c]: _chunks) {
             auto cc = c->coord();
             if (chunk_coord_out_of_range(cc, ccenter, RenderDistance + 1)) {
-                auto distsqr = (cc * 16 + 8 - center).length_sqr();
+                auto distsqr = (cc * chunks::Chunk::SIZE + chunks::Chunk::SIZE / 2 - center).length_sqr();
                 unloads.emplace(distsqr, cc);
                 if (unloads.size() > MAX_CHUNK_UNLOADS)
                     unloads.pop();
             } else if (!chunk_coord_out_of_range(cc, ccenter, RenderDistance) && c->updated()) {
-                auto distsqr = (cc * 16 + 8 - center).length_sqr();
+                auto distsqr = (cc * chunks::Chunk::SIZE + chunks::Chunk::SIZE / 2 - center).length_sqr();
                 meshings.emplace(distsqr, c.get());
                 if (meshings.size() > MAX_CHUNK_MESHINGS)
                     meshings.pop();
@@ -520,13 +531,14 @@ public:
     void process_chunk_unloads() {
         for (auto [_, ccoord]: _chunk_unload_list) {
             _unload_chunk(ccoord);
+            unloaded_chunks++;
         }
     }
 
     void process_chunk_meshings() {
         for (auto [_, c]: _chunk_meshing_list) {
             auto ccoord = c->coord();
-            auto neighbors = std::array<chunks::Chunk const*, 27>{};
+            auto neighbors = std::array<chunks::Chunk const*, 3 * 3 * 3>{};
             auto all = true;
             for (int x = -1; x <= 1; x++) {
                 for (int y = -1; y <= 1; y++) {
@@ -538,17 +550,19 @@ public:
                     }
                 }
             }
-            if (all)
+            if (all) {
                 c->build_meshes(neighbors);
+                meshed_chunks++;
+            }
         }
     }
 
     using RenderChunk = std::pair<Vec3d, std::array<Renderer::VertexBuffer const*, 2>>;
 
-    auto list_render_chunks(Vec3d const& center, int dist, double interp, std::optional<FrustumTest> frustum)
+    auto list_render_chunks(Vec3d center, int dist, double interp, std::optional<FrustumTest> frustum)
         -> std::vector<RenderChunk>;
 
-    void render_chunks(Vec3d const& center, std::vector<RenderChunk> const& crs, size_t index);
+    void render_chunks(Vec3d center, std::vector<RenderChunk> const& crs, size_t index);
 
 private:
     struct LoadedCore {
@@ -579,7 +593,7 @@ private:
         }
 
         // Load chunk from file if exists
-        auto handle = std::make_unique<chunks::Chunk>(ccoord, _db.get(), _height_map);
+        auto handle = std::make_unique<chunks::Chunk>(ccoord, *_db.get(), _height_map);
         auto cptr = handle.get();
 
         // Optionally skip empty chunks
@@ -607,7 +621,7 @@ private:
 
         // Save chunk to file if modified
         auto cptr = node.mapped().get();
-        cptr->save_to_file(_db.get());
+        cptr->save_to_file(*_db.get());
 
         // Update caches
         if (_chunk_pointer_cache_value == cptr) {

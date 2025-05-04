@@ -203,7 +203,7 @@ public:
     }
 
     // Multiplies with Vec3 (divided by the last coordinate)
-    auto transform(Vec3<T> const& v) const -> Vec3<T> {
+    auto transform(Vec3<T> v) const -> Vec3<T> {
         auto xyz = Vec3<T>(
             data[0] * v.x + data[1] * v.y + data[2] * v.z + data[3],
             data[4] * v.x + data[5] * v.y + data[6] * v.z + data[7],
@@ -214,7 +214,7 @@ public:
     }
 
     // Constructs a translation matrix
-    static auto translate(Vec3<T> const& v) -> Mat4 {
+    static auto translate(Vec3<T> v) -> Mat4 {
         auto res = Mat4(T(1));
         res.data[3] = v.x;
         res.data[7] = v.y;
@@ -223,7 +223,7 @@ public:
     }
 
     // Constructs a rotation matrix
-    static auto rotate(T radians, Vec3<T> const& v) -> Mat4 {
+    static auto rotate(T radians, Vec3<T> v) -> Mat4 {
         v.normalize();
         auto s = std::sin(radians), c = std::cos(radians), t = T(1) - c;
         auto res = Mat4();
