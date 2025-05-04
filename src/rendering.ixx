@@ -1,13 +1,11 @@
 module;
 
 #include <cassert>
-#include <cmath>
-#include <memory>
-#include <string>
-#include <vector>
 #include <glad/gl.h>
 
 export module rendering;
+import std;
+import types;
 import shaders;
 import framebuffers;
 import mat4;
@@ -152,19 +150,19 @@ void addVertex() {
         return;
     Vertexes++;
     if (Coordc != 0)
-        memcpy(VertexArray + index, Coords, Coordc * sizeof(float));
+        std::memcpy(VertexArray + index, Coords, Coordc * sizeof(float));
     index += Coordc;
     if (Texcoordc != 0)
-        memcpy(VertexArray + index, TexCoords, Texcoordc * sizeof(float));
+        std::memcpy(VertexArray + index, TexCoords, Texcoordc * sizeof(float));
     index += Texcoordc;
     if (Colorc != 0)
-        memcpy(VertexArray + index, Colors, Colorc * sizeof(float));
+        std::memcpy(VertexArray + index, Colors, Colorc * sizeof(float));
     index += Colorc;
     if (Normalc != 0)
-        memcpy(VertexArray + index, Normals, Normalc * sizeof(float));
+        std::memcpy(VertexArray + index, Normals, Normalc * sizeof(float));
     index += Normalc;
     if (Attribc != 0)
-        memcpy(VertexArray + index, Attribs, Attribc * sizeof(float));
+        std::memcpy(VertexArray + index, Attribs, Attribc * sizeof(float));
     index += Attribc;
 }
 
@@ -505,7 +503,7 @@ void StartFinalPass(
 
     // Set dynamic uniforms
     int repeat = 25600;
-    int ixpos = int(floor(xpos)), iypos = int(floor(ypos)), izpos = int(floor(zpos));
+    int ixpos = int(std::floor(xpos)), iypos = int(std::floor(ypos)), izpos = int(std::floor(zpos));
     auto sunlightDir = (Mat4f::rotate(static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f))
                         * Mat4f::rotate(-static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)))
                            .transform(Vec3f(0.0f, 0.0f, -1.0f));

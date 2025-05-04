@@ -1,9 +1,5 @@
-module;
-
-#include <cmath>
-#include <utility>
-
 export module vec3;
+import std;
 import types;
 
 export template <typename T>

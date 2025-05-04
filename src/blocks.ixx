@@ -1,11 +1,9 @@
 module;
 
 #include <cassert>
-#include <optional>
-#include <string>
-#include <vector>
 
 export module blocks;
+import std;
 import types;
 
 namespace blocks {

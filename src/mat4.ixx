@@ -1,11 +1,9 @@
 module;
 
-#include <array>
 #include <cassert>
-#include <cmath>
-#include <cstring>
 
 export module mat4;
+import std;
 import types;
 import vec3;
 

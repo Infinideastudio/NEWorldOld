@@ -1,10 +1,10 @@
 module;
 
-#include <cmath>
-#include <vector>
 #include <glad/gl.h>
 
 export module particles;
+import std;
+import types;
 import blocks;
 import rendering;
 import textures;

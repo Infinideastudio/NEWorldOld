@@ -1,11 +1,11 @@
 module;
 
-#include <algorithm>
 #include <cassert>
-#include <vector>
 #include <glad/gl.h>
 
 export module framebuffers;
+import std;
+import types;
 import globals;
 
 export class Framebuffer {
