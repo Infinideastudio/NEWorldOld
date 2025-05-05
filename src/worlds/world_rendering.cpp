@@ -1,4 +1,5 @@
-module worlds;
+module worlds:worlds_rendering;
+import :worlds;
 import std;
 import types;
 import debug;

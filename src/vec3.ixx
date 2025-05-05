@@ -105,9 +105,9 @@ public:
     }
 
     // Element-wise function application
-    template <typename F>
-    auto map(F f) const -> Vec3 {
-        return Vec3(f(x), f(y), f(z));
+    template <typename U = T, typename F>
+    auto map(F f) const -> Vec3<U> {
+        return Vec3<U>(f(x), f(y), f(z));
     }
 
     // Swaps two vectors
