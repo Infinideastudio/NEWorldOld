@@ -50,11 +50,11 @@ private:
         if (uistbtn.clicked)
             uioptions();
         if (backbtn.clicked) {
-            Renderer::initShaders(true);
+            Renderer::init_shaders(true);
             exit = true;
         }
         if (savebtn.clicked)
-            saveOptions();
+            save_options();
         if (langbtn.clicked)
             languagemenu();
     }

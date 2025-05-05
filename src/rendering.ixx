@@ -102,7 +102,6 @@ inline auto End(bool staticDraw = false) -> VertexBuffer {
     return VertexBuffer::upload(staticDraw);
 }
 
-void initShaders(bool reload = false);
 inline void bindShader(int shaderID) {
     shaders[shaderID].bind();
     ActiveShader = shaderID;
@@ -262,7 +261,7 @@ GLuint getNoiseTexture() {
     return noiseTex;
 }
 
-void initShaders(bool reload) {
+void init_shaders(bool reload = false) {
     if (shaders.empty() || reload) {
         std::vector<std::string> defines;
         if (MergeFace)

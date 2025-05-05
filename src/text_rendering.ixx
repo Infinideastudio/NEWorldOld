@@ -15,8 +15,9 @@ import textures;
 
 namespace TextRenderer {
 
+constexpr auto BASE_FONT_SIZE = 16.0;
+
 struct UnicodeChar {
-    bool aval = false;
     TextureID tex = 0;
     float xpos = 0.0f, ypos = 0.0f;
     float width = 0.0f, height = 0.0f;
@@ -30,25 +31,25 @@ FT_GlyphSlot slot;
 int faceSize;
 float colr, colg, colb, cola;
 
-export void initFont(bool reload = false);
-export void setFontColor(float r, float g, float b, float a);
-export auto getFontHeight() -> int;
-export auto getLineHeight() -> int;
-export auto getStringWidth(std::string_view s) -> int;
-export auto getStringWidth(std::u32string_view s) -> int;
-export void renderString(int x, int y, std::string_view s);
-export void renderString(int x, int y, std::u32string_view s);
+export void init_font(bool reload = false);
+export void set_font_color(float r, float g, float b, float a);
+export auto font_height() -> int;
+export auto line_height() -> int;
+export auto rendered_width(std::string_view s) -> int;
+export auto rendered_width(std::u32string_view s) -> int;
+export void render_string(int x, int y, std::string_view s);
+export void render_string(int x, int y, std::u32string_view s);
 
-export void initFont(bool reload) {
+export void init_font(bool reload) {
     if (!slot || reload) {
+        faceSize = std::lround(BASE_FONT_SIZE * Stretch * FontScale);
         if (FT_Init_FreeType(&library))
             assert(false, "failed to initialize FreeType");
         if (FT_New_Face(library, "fonts/unicode.ttf", 0, &face))
             assert(false, "failed to load font");
-        if (FT_Set_Pixel_Sizes(face, FontSize, FontSize))
+        if (FT_Set_Pixel_Sizes(face, faceSize, faceSize))
             assert(false, "failed to set font size");
         slot = face->glyph;
-        faceSize = FontSize;
         chars.clear();
         /*
         unsigned int maxWidth = (face->bbox.xMax - face->bbox.xMin + 63) / 64;
@@ -58,7 +59,7 @@ export void initFont(bool reload) {
     }
 }
 
-export void setFontColor(float r, float g, float b, float a) {
+export void set_font_color(float r, float g, float b, float a) {
     colr = r, colg = g, colb = b, cola = a;
 }
 
@@ -90,7 +91,6 @@ auto loadChar(char32_t uc) -> UnicodeChar& {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.width, bitmap.rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.get());
 
     auto const& metrics = slot->metrics;
-    res.aval = true;
     res.width = static_cast<float>(metrics.width) / 64.0f;
     res.height = static_cast<float>(metrics.height) / 64.0f;
     res.advance = static_cast<float>(metrics.horiAdvance) / 64.0f;
@@ -106,12 +106,12 @@ auto getChar(char32_t c) -> UnicodeChar& {
     return loadChar(c);
 }
 
-export auto getFontHeight() -> int {
+export auto font_height() -> int {
     float ascender = static_cast<float>(face->size->metrics.ascender) / 64.0f;
     return static_cast<int>(std::round(ascender));
 }
 
-export auto getLineHeight() -> int {
+export auto line_height() -> int {
     float ascender = static_cast<float>(face->size->metrics.ascender) / 64.0f;
     float descender = static_cast<float>(face->size->metrics.descender) / 64.0f;
     return static_cast<int>(std::round(ascender - descender));
@@ -119,11 +119,11 @@ export auto getLineHeight() -> int {
     // return static_cast<int>(std::round(height));
 }
 
-export auto getStringWidth(std::string_view s) -> int {
-    return getStringWidth(UTF8Unicode(s));
+export auto rendered_width(std::string_view s) -> int {
+    return rendered_width(utf8_unicode(s));
 }
 
-export auto getStringWidth(std::u32string_view s) -> int {
+export auto rendered_width(std::u32string_view s) -> int {
     float res = 0.0f;
     for (size_t i = 0; i < s.size(); i++) {
         auto const& uc = getChar(s[i]);
@@ -132,16 +132,16 @@ export auto getStringWidth(std::u32string_view s) -> int {
     return static_cast<int>(std::round(res));
 }
 
-export void renderString(int x, int y, std::string_view s) {
-    renderString(x, y, UTF8Unicode(s));
+export void render_string(int x, int y, std::string_view s) {
+    render_string(x, y, utf8_unicode(s));
 }
 
-export void renderString(int x, int y, std::u32string_view s) {
+export void render_string(int x, int y, std::u32string_view s) {
     float dx = 0.0f, dy = 0.0f;
     for (auto i: s) {
         auto const& uc = getChar(i);
         float xpos = static_cast<float>(x) + dx + uc.xpos;
-        float ypos = static_cast<float>(y) + dy + static_cast<float>(getFontHeight()) - uc.ypos;
+        float ypos = static_cast<float>(y) + dy + static_cast<float>(font_height()) - uc.ypos;
         float width = uc.width;
         float height = uc.height;
 

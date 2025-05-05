@@ -8,10 +8,13 @@ import :matrix;
 export template <typename T>
 class Euler {
 public:
-    std::array<T, 3> angles;
+    std::array<T, 3> angles = {};
+
+    // Identity rotation constructor.
+    constexpr Euler() = default;
 
     // Element-wise constructor.
-    constexpr Euler(T heading = T(0), T pitch = T(0), T roll = T(0)):
+    constexpr Euler(T heading, T pitch, T roll):
         angles{heading, pitch, roll} {}
 
     // Type conversion constructor.

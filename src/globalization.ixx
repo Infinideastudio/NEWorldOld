@@ -73,6 +73,6 @@ std::string strWithVar(std::string const& str, T var) {
 export template <typename T>
 std::string Var2Str(T var) {
     std::stringstream ss;
-    ss << var;
+    ss << std::setprecision(2) << var;
     return ss.str();
 }
