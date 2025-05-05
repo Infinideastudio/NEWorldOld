@@ -7,12 +7,10 @@ export module chunks;
 import std;
 import debug;
 import types;
-import vec;
+import math;
 export import blocks;
-import frustum_tests;
 import height_maps;
 import rendering;
-import hitboxes;
 
 namespace chunks {
 
@@ -127,30 +125,12 @@ public:
         return _meshes[index];
     }
 
-    auto base_aabb() const -> Hitbox::AABB {
-        auto ret = Hitbox::AABB();
-        ret.xmin = _coord.x() * SIZE - 0.5;
-        ret.xmax = _coord.x() * SIZE + SIZE - 0.5;
-        ret.ymin = _coord.y() * SIZE - 0.5;
-        ret.ymax = _coord.y() * SIZE + SIZE - 0.5;
-        ret.zmin = _coord.z() * SIZE - 0.5;
-        ret.zmax = _coord.z() * SIZE + SIZE - 0.5;
-        return ret;
-    }
-
-    auto relative_aabb(Vec3d orig) const -> FrustumTest::AABBf {
-        auto ret = FrustumTest::AABBf();
-        ret.xmin = static_cast<float>(_coord.x() * SIZE - 0.5 - orig.x());
-        ret.xmax = static_cast<float>(_coord.x() * SIZE + SIZE - 0.5 - orig.x());
-        ret.ymin = static_cast<float>(_coord.y() * SIZE - 0.5 - _load_anim - orig.y());
-        ret.ymax = static_cast<float>(_coord.y() * SIZE + SIZE - 0.5 - _load_anim - orig.y());
-        ret.zmin = static_cast<float>(_coord.z() * SIZE - 0.5 - orig.z());
-        ret.zmax = static_cast<float>(_coord.z() * SIZE + SIZE - 0.5 - orig.z());
-        return ret;
+    auto aabb() const -> AABB3d {
+        return {Vec3d(_coord * SIZE) - 0.5, Vec3d(_coord * SIZE) + SIZE - 0.5};
     }
 
     auto visible(Vec3d orig, FrustumTest const& frus) const -> bool {
-        return frus.test(relative_aabb(orig));
+        return frus.test(static_cast<AABB3f>(aabb() - orig) - Vec3f(0.0f, _load_anim, 0.0f));
     }
 
 private:

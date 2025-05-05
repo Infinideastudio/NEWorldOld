@@ -1,21 +1,16 @@
-export module frustum_tests;
+export module math:frustum;
 import std;
 import types;
-import mat;
+import :matrix;
+import :aabb;
 
 export class FrustumTest {
 public:
-    // AABB with 32-bit float coords
-    struct AABBf {
-        float xmin, ymin, zmin;
-        float xmax, ymax, zmax;
-    };
-
     explicit FrustumTest(Mat4f const& mvp) {
         // The following code assumes column-major matrices
         auto m = mvp.transpose();
 
-        auto normalize = [&](int side) {
+        auto normalize = [&](size_t side) {
             float magnitude = std::sqrt(
                 frus[side + 0] * frus[side + 0] + frus[side + 1] * frus[side + 1] + frus[side + 2] * frus[side + 2]
             );
@@ -62,16 +57,16 @@ public:
         normalize(20);
     }
 
-    auto test(AABBf const& aabb) const -> bool {
-        for (int i = 0; i < 24; i += 4) {
-            if (frus[i] * aabb.xmin + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f
-                && frus[i] * aabb.xmax + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f
-                && frus[i] * aabb.xmin + frus[i + 1] * aabb.ymax + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f
-                && frus[i] * aabb.xmax + frus[i + 1] * aabb.ymax + frus[i + 2] * aabb.zmin + frus[i + 3] <= 0.0f
-                && frus[i] * aabb.xmin + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmax + frus[i + 3] <= 0.0f
-                && frus[i] * aabb.xmax + frus[i + 1] * aabb.ymin + frus[i + 2] * aabb.zmax + frus[i + 3] <= 0.0f
-                && frus[i] * aabb.xmin + frus[i + 1] * aabb.ymax + frus[i + 2] * aabb.zmax + frus[i + 3] <= 0.0f
-                && frus[i] * aabb.xmax + frus[i + 1] * aabb.ymax + frus[i + 2] * aabb.zmax + frus[i + 3] <= 0.0f)
+    auto test(AABB3f const& box) const -> bool {
+        for (auto i = 0uz; i < 24; i += 4) {
+            if (frus[i] * box.min.x() + frus[i + 1] * box.min.y() + frus[i + 2] * box.min.z() + frus[i + 3] <= 0.0f
+                && frus[i] * box.max.x() + frus[i + 1] * box.min.y() + frus[i + 2] * box.min.z() + frus[i + 3] <= 0.0f
+                && frus[i] * box.min.x() + frus[i + 1] * box.max.y() + frus[i + 2] * box.min.z() + frus[i + 3] <= 0.0f
+                && frus[i] * box.max.x() + frus[i + 1] * box.max.y() + frus[i + 2] * box.min.z() + frus[i + 3] <= 0.0f
+                && frus[i] * box.min.x() + frus[i + 1] * box.min.y() + frus[i + 2] * box.max.z() + frus[i + 3] <= 0.0f
+                && frus[i] * box.max.x() + frus[i + 1] * box.min.y() + frus[i + 2] * box.max.z() + frus[i + 3] <= 0.0f
+                && frus[i] * box.min.x() + frus[i + 1] * box.max.y() + frus[i + 2] * box.max.z() + frus[i + 3] <= 0.0f
+                && frus[i] * box.max.x() + frus[i + 1] * box.max.y() + frus[i + 2] * box.max.z() + frus[i + 3] <= 0.0f)
                 return false;
         }
         return true;

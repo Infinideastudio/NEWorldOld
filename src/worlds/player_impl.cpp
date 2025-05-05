@@ -42,22 +42,12 @@ void Player::updatePosition(worlds::World& world, double timeDelta) {
         velocity *= 0.6;
     }
 
-    Vec3 velocityOriginal = velocity;
-    if (!crossWall) {
-        auto hitboxes = world.hitboxes(Hitbox::Expand(playerbox, velocity.x(), velocity.y(), velocity.z()));
-        for (auto const& box: hitboxes) {
-            velocity.x() = Hitbox::MaxMoveOnXclip(playerbox, box, velocity.x());
-        }
-        Hitbox::Move(playerbox, velocity.x(), 0.0, 0.0);
-        for (auto const& box: hitboxes) {
-            velocity.y() = Hitbox::MaxMoveOnYclip(playerbox, box, velocity.y());
-        }
-        Hitbox::Move(playerbox, 0.0, velocity.y(), 0.0);
-        for (auto const& box: hitboxes) {
-            velocity.z() = Hitbox::MaxMoveOnZclip(playerbox, box, velocity.z());
-        }
-        Hitbox::Move(playerbox, 0.0, 0.0, velocity.z());
-    }
+    auto velocityOriginal = velocity;
+    if (!crossWall)
+        velocity = playerbox.clip_displacement(world.hitboxes(playerbox.extend(velocity)), velocity);
+
+    positionOld = position;
+    position += velocity;
 
     // If player was falling
     if (velocity.y() != velocityOriginal.y() && velocityOriginal.y() < 0.0) {
@@ -93,9 +83,6 @@ void Player::updatePosition(worlds::World& world, double timeDelta) {
 
     nearWall = (velocityOriginal.x() != velocity.x() || velocityOriginal.z() != velocity.z());
 
-    positionOld = position;
-    position += velocity;
-
     velocity.x() *= 0.8;
     velocity.z() *= 0.8;
     if (flying || crossWall) {
@@ -110,21 +97,12 @@ void Player::updatePosition(worlds::World& world, double timeDelta) {
 
 bool Player::putBlock(worlds::World& world, Vec3i coord, blocks::Id blockname) {
     auto playerbox = getHitbox();
-    auto blockbox = Hitbox::AABB{
-        .xmin = coord.x() - 0.5,
-        .ymin = coord.y() - 0.5,
-        .zmin = coord.z() - 0.5,
-        .xmax = coord.x() + 0.5,
-        .ymax = coord.y() + 0.5,
-        .zmax = coord.z() + 0.5,
-    };
-
-    if ((!Hitbox::Hit(playerbox, blockbox) || crossWall || !block_info(blockname).solid)
+    auto blockbox = AABB3d(Vec3d(coord) - 0.5, Vec3d(coord) + 0.5);
+    if ((!playerbox.intersects(blockbox) || crossWall || !block_info(blockname).solid)
         && !block_info(world.block_or_air(coord).id).solid) {
         world.put_block(coord, blockname);
         return true;
     }
-
     return false;
 }
 

@@ -1,8 +1,9 @@
-export module mat;
+export module math:matrix;
 import std;
 import types;
-import vec;
+import :vector;
 
+// Small matrix template.
 export template <typename T, size_t M, size_t N>
 class Matrix {
 public:
@@ -22,10 +23,10 @@ public:
         })) {}
 
     // Returns reference to the i-th row.
-    auto operator[](std::size_t i) const -> std::array<T, N> const& {
+    auto operator[](size_t i) const -> std::array<T, N> const& {
         return elem[i];
     }
-    auto operator[](std::size_t i) -> std::array<T, N>& {
+    auto operator[](size_t i) -> std::array<T, N>& {
         return elem[i];
     }
 
@@ -35,6 +36,22 @@ public:
     }
     auto data() -> T* {
         return elem.data()->data();
+    }
+
+    // Returns the i-th row as a vector.
+    auto row(size_t i) const -> Vector<T, N> {
+        auto _vec_ctor = [](auto... xs) {
+            return Vector<T, N>{xs...};
+        };
+        return _map_reduce(std::make_index_sequence<N>{}, _vec_ctor, [&](auto j) { return elem[i][j]; });
+    }
+
+    // Returns the j-th column as a vector.
+    auto column(size_t j) const -> Vector<T, M> {
+        auto _vec_ctor = [](auto... xs) {
+            return Vector<T, M>{xs...};
+        };
+        return _map_reduce(std::make_index_sequence<M>{}, _vec_ctor, [&](auto i) { return elem[i][j]; });
     }
 
     // Lexicographical ordering.
@@ -67,7 +84,7 @@ public:
 
     // Matrix multiplication.
     template <size_t O>
-    auto operator*(Matrix<T, N, O> const& r) const -> Matrix {
+    auto operator*(Matrix<T, N, O> const& r) const -> Matrix<T, M, O> {
         return _map_reduce(std::make_index_sequence<M>{}, _mat_ctor, [&](auto i) {
             return _map_reduce(std::make_index_sequence<O>{}, _row_ctor, [&](auto j) {
                 return _map_reduce(std::make_index_sequence<N>{}, _sum, [&](auto k) {
@@ -79,8 +96,8 @@ public:
 
     // Vector multiplication.
     auto operator*(Vector<T, N> const& v) const -> Vector<T, M> {
-        auto _vec_ctor = [](auto... rows) {
-            return Vector<T, M>{rows...};
+        auto _vec_ctor = [](auto... xs) {
+            return Vector<T, M>{xs...};
         };
         return _map_reduce(std::make_index_sequence<M>{}, _vec_ctor, [&](auto i) {
             return _map_reduce(std::make_index_sequence<N>{}, _sum, [&](auto j) { return elem[i][j] * v[j]; });
@@ -257,16 +274,16 @@ private:
         return g(f(I)...);
     }
 
-    void _swap_rows(std::size_t i, std::size_t j) {
+    void _swap_rows(size_t i, size_t j) {
         using std::swap;
         swap(elem[i], elem[j]);
     }
 
-    void _mult_row(std::size_t i, T value) {
+    void _mult_row(size_t i, T value) {
         _map_reduce(std::make_index_sequence<N>{}, _sum, [&](auto j) { return elem[i][j] *= value; });
     }
 
-    void _mult_and_add(std::size_t j, std::size_t i, T value) {
+    void _mult_and_add(size_t j, size_t i, T value) {
         _map_reduce(std::make_index_sequence<N>{}, _sum, [&](auto k) { return elem[i][k] += elem[j][k] * value; });
     }
 };
@@ -274,17 +291,53 @@ private:
 export template <typename T>
 using Mat2 = Matrix<T, 2, 2>;
 
-export using Mat2f = Mat2<float_t>;
-export using Mat2d = Mat2<double_t>;
+export using Mat2f = Mat2<float>;
+export using Mat2d = Mat2<double>;
+
+export template <typename T>
+using Mat2x3 = Matrix<T, 2, 3>;
+
+export using Mat2x3f = Mat2x3<float>;
+export using Mat2x3d = Mat2x3<double>;
+
+export template <typename T>
+using Mat2x4 = Matrix<T, 2, 4>;
+
+export using Mat2x4f = Mat2x4<float>;
+export using Mat2x4d = Mat2x4<double>;
+
+export template <typename T>
+using Mat3x2 = Matrix<T, 3, 2>;
+
+export using Mat3x2f = Mat3x2<float>;
+export using Mat3x2d = Mat3x2<double>;
 
 export template <typename T>
 using Mat3 = Matrix<T, 3, 3>;
 
-export using Mat3f = Mat3<float_t>;
-export using Mat3d = Mat3<double_t>;
+export using Mat3f = Mat3<float>;
+export using Mat3d = Mat3<double>;
+
+export template <typename T>
+using Mat3x4 = Matrix<T, 3, 4>;
+
+export using Mat3x4f = Mat3x4<float>;
+export using Mat3x4d = Mat3x4<double>;
+
+export template <typename T>
+using Mat4x2 = Matrix<T, 4, 2>;
+
+export using Mat4x2f = Mat4x2<float>;
+export using Mat4x2d = Mat4x2<double>;
+
+export template <typename T>
+using Mat4x3 = Matrix<T, 4, 3>;
+
+export using Mat4x3f = Mat4x3<float>;
+export using Mat4x3d = Mat4x3<double>;
 
 export template <typename T>
 using Mat4 = Matrix<T, 4, 4>;
 
-export using Mat4f = Mat4<float_t>;
-export using Mat4d = Mat4<double_t>;
+export using Mat4f = Mat4<float>;
+export using Mat4d = Mat4<double>;
