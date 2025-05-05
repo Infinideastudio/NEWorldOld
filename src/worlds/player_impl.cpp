@@ -9,63 +9,49 @@ import :player;
 
 using namespace player;
 
-void Player::updatePosition(worlds::World& world, double timeDelta) {
-    auto playerbox = getHitbox();
+void Player::update(worlds::World& world) {
+    auto player_aabb = aabb();
 
-    inWater = world.in_water(playerbox);
+    // Velocity
+    if (_flying || _cross_wall) {
+        _velocity *= 0.8;
+    } else if (_in_water) {
+        _velocity *= 0.6;
+        _velocity.y() -= 0.03;
+    } else {
+        _velocity.x() *= 0.6;
+        _velocity.z() *= 0.6;
+        _velocity.y() -= 0.03;
+    }
+    auto velocity_original = _velocity;
+    if (!_cross_wall) {
+        auto boxes = world.hitboxes(player_aabb.extend(_velocity));
+        _velocity = player_aabb.clip_displacement(boxes, _velocity, 1e-8);
+    }
 
-    if (!inWater) {
-        if (!flying && !crossWall) {
-            if (onGround) {
-                jump = 0.0;
-                airJumps = 0;
-                velocity.y() = -0.001;
-            } else {
-                jump -= 0.03;
-                velocity.y() = jump + 0.03 / 2.0;
-            }
-        } else {
-            jump = 0.0;
-            airJumps = 0;
+    // Position
+    _coord += _velocity;
+
+    // State flags
+    auto vertical_hit = _velocity.y() != velocity_original.y();
+    _near_wall = (velocity_original.x() != _velocity.x() || velocity_original.z() != _velocity.z());
+
+    if (vertical_hit && velocity_original.y() < 0.0) {
+        _grounded = true;
+        if (velocity_original.y() < -0.4 && _game_mode == GameMode::SURVIVAL) {
+            _health += velocity_original.y() * _fall_damage;
         }
     } else {
-        jump = 0.0;
-        airJumps = MaxAirJumps;
-        if (velocity.y() <= 0.001 && !flying && !crossWall) {
-            velocity.y() = -0.001;
-            if (!onGround)
-                velocity.y() -= 0.1;
-        }
+        _grounded = false;
     }
 
-    if (!flying && !crossWall && inWater) {
-        velocity *= 0.6;
-    }
+    _in_water = world.in_water(player_aabb);
 
-    auto velocityOriginal = velocity;
-    if (!crossWall)
-        velocity = playerbox.clip_displacement(world.hitboxes(playerbox.extend(velocity)), velocity, 1e-8);
-
-    position += velocity;
-
-    // If player was falling
-    if (velocity.y() != velocityOriginal.y() && velocityOriginal.y() < 0.0) {
-        onGround = true;
-        if (velocityOriginal.y() < -0.4 && gamemode == GameMode::Survival) {
-            // fall damage
-            health += velocityOriginal.y() * dropDamage;
-        }
-    } else {
-        onGround = false;
-    }
-
-    // Hit roof
-    if (velocity.y() != velocityOriginal.y() && velocityOriginal.y() > 0.0) {
-        jump = 0.0;
+    if (_flying || _cross_wall || _grounded) {
+        _jumps = 0;
     }
 
     /*
-    // crouch
     if (onGround) {
         if (jump < -0.005) {
             if (jump <= -(jump - 0.5f))
@@ -80,31 +66,28 @@ void Player::updatePosition(worlds::World& world, double timeDelta) {
     }
     */
 
-    nearWall = (velocityOriginal.x() != velocity.x() || velocityOriginal.z() != velocity.z());
-
-    velocity.x() *= 0.8;
-    velocity.z() *= 0.8;
-    if (flying || crossWall) {
-        velocity.y() *= 0.8;
-    }
-    if (onGround) {
-        velocity.x() *= 0.7;
-        velocity.y() = 0.0;
-        velocity.z() *= 0.7;
+    // Health
+    if (_game_mode == GameMode::SURVIVAL) {
+        if (_health > 0) {
+            if (_coord.y() < -100)
+                _health -= (-100 - _coord.y()) / 100;
+            if (_health < _max_health)
+                _health += _heal_speed;
+            if (_health > _max_health)
+                _health = _max_health;
+        } else {
+            spawn();
+        }
     }
 }
 
-bool Player::putBlock(worlds::World& world, Vec3i coord, blocks::Id blockname) {
-    auto playerbox = getHitbox();
-    auto blockbox = AABB3d(Vec3d(coord) - 0.5, Vec3d(coord) + 0.5);
-    if ((!playerbox.intersects(blockbox) || crossWall || !block_info(blockname).solid)
+auto Player::put_block(worlds::World& world, Vec3i coord, blocks::Id id) -> bool {
+    auto player_aabb = aabb();
+    auto block_aabb = AABB3d(Vec3d(coord) - 0.5, Vec3d(coord) + 0.5);
+    if ((!player_aabb.intersects(block_aabb) || !block_info(id).solid || _cross_wall)
         && !block_info(world.block_or_air(coord).id).solid) {
-        world.put_block(coord, blockname);
+        world.put_block(coord, id);
         return true;
     }
     return false;
-}
-
-Vec3i Player::chunkCoord() const {
-    return worlds::chunk_coord(Vec3i(position));
 }

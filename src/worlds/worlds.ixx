@@ -149,7 +149,8 @@ public:
     }
 
     // Sets the origin of the chunk pointer array and height map
-    void set_center(Vec3i ccenter) {
+    void set_center(Vec3i center) {
+        auto ccenter = chunk_coord(center);
         _chunk_pointer_array.set_center(ccenter - Vec3i(RenderDistance + 2));
         _height_map.set_center((ccenter - Vec3i(RenderDistance + 2)) * chunks::Chunk::SIZE);
     }

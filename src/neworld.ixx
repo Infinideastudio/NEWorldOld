@@ -306,33 +306,33 @@ void registerCommands() {
         // player::inventoryAmount[1][7] = 255;
         return true;
     });
-    commands.emplace_back("/give", [](std::vector<std::string> const& command, worlds::World& w) {
+    commands.emplace_back("/give", [](std::vector<std::string> const& command, worlds::World& world) {
         if (command.size() != 3)
             return false;
         auto itemid = blocks::Id(std::stoi(command[1]));
         auto amount = static_cast<size_t>(std::stoi(command[2]));
-        w.player().addItem({itemid, amount});
+        world.player().add_item({itemid, amount});
         return true;
     });
-    commands.emplace_back("/tp", [](std::vector<std::string> const& command, worlds::World& w) {
+    commands.emplace_back("/tp", [](std::vector<std::string> const& command, worlds::World& world) {
         if (command.size() != 4)
             return false;
         double x = std::stod(command[1]);
         double y = std::stod(command[2]);
         double z = std::stod(command[3]);
-        w.player().setPosition({x, y, z});
+        world.player().set_coord({x, y, z});
         return true;
     });
-    commands.emplace_back("/clearinventory", [](std::vector<std::string> const& command, worlds::World& w) {
+    commands.emplace_back("/clearinventory", [](std::vector<std::string> const& command, worlds::World& world) {
         if (command.size() != 1)
             return false;
-        w.player().clearInventory();
+        world.player().clear_inventory();
         return true;
     });
-    commands.emplace_back("/suicide", [](std::vector<std::string> const& command, worlds::World& w) {
+    commands.emplace_back("/suicide", [](std::vector<std::string> const& command, worlds::World& world) {
         if (command.size() != 1)
             return false;
-        w.player().spawn();
+        world.player().spawn();
         return true;
     });
     commands.emplace_back("/setblock", [](std::vector<std::string> const& command, worlds::World& world) {
@@ -373,11 +373,11 @@ void registerCommands() {
         GameTime = time;
         return true;
     });
-    commands.emplace_back("/gamemode", [](std::vector<std::string> const& command, worlds::World& w) {
+    commands.emplace_back("/gamemode", [](std::vector<std::string> const& command, worlds::World& world) {
         if (command.size() != 2)
             return false;
         auto mode = static_cast<player::Player::GameMode>(std::stoi(command[1]));
-        w.player().changeGameMode(mode);
+        world.player().set_game_mode(mode);
         return true;
     });
 }
@@ -398,13 +398,13 @@ void gameUpdate(worlds::World& world) {
     static bool wPressedOnce;
 
     auto& player = world.player();
-    player.update();
 
     // 时间
     GameTime++;
 
     // Move chunk pointer array and height map
-    world.set_center(player.chunkCoord());
+    auto center = Vec3i(player.coord());
+    world.set_center(center);
 
     for (auto const& [_, c]: world.chunks()) {
         // 加载动画
@@ -507,31 +507,28 @@ void gameUpdate(worlds::World& world) {
         shouldShowCursor = false;
 
         // 从玩家位置发射一条线段
-        Vec3d lPos = player.lookCoord();
-        Vec3d lDir = player.getOrientation().direction();
-        Vec3d lookPosOld = lPos;
-        for (int i = 0; i < SelectPrecision * SelectDistance; i++) {
-            lookPosOld = lPos;
-
+        auto coord = player.look_coord();
+        auto coord_last = coord;
+        auto direction = player.orientation().direction();
+        for (auto i = 0; i < SelectPrecision * SelectDistance; i++) {
             // 线段延伸
-            lPos += lDir / SelectPrecision;
-
+            coord_last = coord;
+            coord += direction / SelectPrecision;
+            auto int_coord_last = Vec3i(coord_last.map<int>([](double x) { return std::lround(x); }));
+            auto int_coord = Vec3i(coord.map<int>([](double x) { return std::lround(x); }));
             // 碰到方块
-            auto coord = Vec3i(lPos.map<int>([](double x) { return std::lround(x); }));
-            auto coordl = Vec3i(lookPosOld.map<int>([](double x) { return std::lround(x); }));
-            if (block_info(world.block_or_air(coord).id).solid) {
-                selx = coord.x();
-                sely = coord.y();
-                selz = coord.z();
+            if (block_info(world.block_or_air(int_coord).id).solid) {
+                selx = int_coord.x();
+                sely = int_coord.y();
+                selz = int_coord.z();
                 sel = true;
-
-                selb = world.block_or_air(coord).id;
+                selb = world.block_or_air(int_coord).id;
                 if (mb == 1) { // 鼠标左键
                     particles::throw_particle(
                         selb,
-                        float(coord.x() + rnd() - 0.5f),
-                        float(coord.y() + rnd() - 0.2f),
-                        float(coord.z() + rnd() - 0.5f),
+                        float(int_coord.x() + rnd() - 0.5f),
+                        float(int_coord.y() + rnd() - 0.2f),
+                        float(int_coord.z() + rnd() - 0.5f),
                         float(rnd() * 0.2f - 0.1f),
                         float(rnd() * 0.2f - 0.1f),
                         float(rnd() * 0.2f - 0.1f),
@@ -539,24 +536,24 @@ void gameUpdate(worlds::World& world) {
                         int(rnd() * 30) + 30
                     );
 
-                    float const MinHardness = 0.2f;
+                    constexpr auto MIN_HARDNESS = 0.2f;
                     if (selx != oldselx || sely != oldsely || selz != oldselz)
                         seldes = 0.0f;
-                    else if (player.getGameMode() == player::Player::GameMode::Creative)
-                        seldes += 1.0f / 30.0f / MinHardness;
-                    else if (block_info(selb).hardness <= MinHardness)
-                        seldes += 1.0f / 30.0f / MinHardness;
+                    else if (player.game_mode() == player::Player::GameMode::CREATIVE)
+                        seldes += 1.0f / 30.0f / MIN_HARDNESS;
+                    else if (block_info(selb).hardness <= MIN_HARDNESS)
+                        seldes += 1.0f / 30.0f / MIN_HARDNESS;
                     else
                         seldes += 1.0f / 30.0f / block_info(selb).hardness;
 
                     if (seldes >= 1.0f) {
-                        player.addItem({selb, 1});
+                        player.add_item({selb, 1});
                         for (int j = 1; j <= 25; j++) {
                             particles::throw_particle(
                                 selb,
-                                float(coord.x() + rnd() - 0.5f),
-                                float(coord.y() + rnd() - 0.2f),
-                                float(coord.z() + rnd() - 0.5f),
+                                float(int_coord.x() + rnd() - 0.5f),
+                                float(int_coord.y() + rnd() - 0.2f),
+                                float(int_coord.z() + rnd() - 0.5f),
                                 float(rnd() * 0.2f - 0.1f),
                                 float(rnd() * 0.2f - 0.1f),
                                 float(rnd() * 0.2f - 0.1f),
@@ -564,19 +561,16 @@ void gameUpdate(worlds::World& world) {
                                 int(rnd() * 60) + 30
                             );
                         }
-                        world.put_block(coord, base_blocks().air);
+                        world.put_block(int_coord, base_blocks().air);
                     }
                 }
                 if (mb == 2 && mbp == false) { // 鼠标右键
-                    auto& holdingItem = player.holdingItemStack();
+                    auto& holdingItem = player.held_item_stack();
                     if (!holdingItem.empty()) {
-                        // 放置方块
-                        if (player.putBlock(world, coordl, holdingItem.id)) {
+                        if (player.put_block(world, int_coord_last, holdingItem.id)) {
                             if (--holdingItem.count == 0)
                                 holdingItem = {};
                         }
-                    } else {
-                        // 使用物品
                     }
                 }
                 break;
@@ -590,7 +584,7 @@ void gameUpdate(worlds::World& world) {
         oldselz = selz;
 
         // 更新方向
-        auto angles = player.getOrientation();
+        auto angles = player.orientation();
         auto angles_front = Eulerd(angles.heading(), 0.0, 0.0);
         auto angles_back = Eulerd(angles.heading() - Pi, 0.0, 0.0);
         auto angles_left = Eulerd(angles.heading() + Pi / 2, 0.0, 0.0);
@@ -603,7 +597,7 @@ void gameUpdate(worlds::World& world) {
                     wPressTimer = Timer();
                 } else {
                     if (Timer() - wPressTimer <= 0.5) {
-                        player.setRunning(true);
+                        player.set_running(true);
                         wPressTimer = 0.0;
                     } else
                         wPressTimer = Timer();
@@ -612,71 +606,73 @@ void gameUpdate(worlds::World& world) {
             if (wPressTimer != 0.0 && Timer() - wPressTimer > 0.5)
                 wPressTimer = 0.0;
             wPressedOnce = true;
-            auto velocity = player.getVelocity();
-            player.setVelocity(velocity + angles_front.direction() * player.getSpeed());
+            auto velocity = player.velocity();
+            player.set_velocity(velocity + angles_front.direction() * player.speed());
         } else {
-            player.setRunning(false);
+            player.set_running(false);
             wPressedOnce = false;
         }
 
         if (isKeyDown(GLFW_KEY_S)) {
-            auto velocity = player.getVelocity();
-            player.setVelocity(velocity + angles_back.direction() * player.getSpeed());
+            auto velocity = player.velocity();
+            player.set_velocity(velocity + angles_back.direction() * player.speed());
             wPressTimer = 0.0;
         }
 
         if (isKeyDown(GLFW_KEY_A)) {
-            auto velocity = player.getVelocity();
-            player.setVelocity(velocity + angles_left.direction() * player.getSpeed());
+            auto velocity = player.velocity();
+            player.set_velocity(velocity + angles_left.direction() * player.speed());
             wPressTimer = 0.0;
         }
 
         if (isKeyDown(GLFW_KEY_D)) {
-            auto velocity = player.getVelocity();
-            player.setVelocity(velocity + angles_right.direction() * player.getSpeed());
+            auto velocity = player.velocity();
+            player.set_velocity(velocity + angles_right.direction() * player.speed());
             wPressTimer = 0.0;
         }
 
-        if (!player.isFlying() && !player.canCrossWall()) {
-            if (player.getVelocity().length() > player.getSpeed()) {
-                player.setVelocity(player.getVelocity().normalize() * player.getSpeed());
+        if (!player.flying() && !player.cross_wall()) {
+            auto velocity = player.velocity();
+            auto xz = Vec3d(velocity.x(), 0.0, velocity.z());
+            if (xz.length() > player.speed()) {
+                xz = xz.normalize() * player.speed();
+                player.set_velocity(Vec3d(xz.x(), velocity.y(), xz.z()));
             }
         } else {
             if (isKeyDown(GLFW_KEY_R)) {
-                auto velocity = player.getVelocity();
-                player.setVelocity(
+                auto velocity = player.velocity();
+                player.set_velocity(
                     velocity
-                    + (isKeyDown(GLFW_KEY_LEFT_CONTROL) ? angles_front : angles).direction() * player.getSpeed() * 5.0
+                    + (isKeyDown(GLFW_KEY_LEFT_CONTROL) ? angles_front : angles).direction() * player.speed() * 10.0
                 );
             }
             if (isKeyDown(GLFW_KEY_F)) {
-                auto velocity = player.getVelocity();
-                player.setVelocity(
+                auto velocity = player.velocity();
+                player.set_velocity(
                     velocity
-                    - (isKeyDown(GLFW_KEY_LEFT_CONTROL) ? angles_front : angles).direction() * player.getSpeed() * 5.0
+                    - (isKeyDown(GLFW_KEY_LEFT_CONTROL) ? angles_front : angles).direction() * player.speed() * 10.0
                 );
             }
         }
 
         // 切换方块
-        if (isKeyPressed(GLFW_KEY_Z))
-            player.setIndexInHand(player.getIndexInHand() - 1);
-        if (isKeyPressed(GLFW_KEY_X))
-            player.setIndexInHand(player.getIndexInHand() + 1);
-        player.setIndexInHand(player.getIndexInHand() + (mwl - mw));
+        if (isKeyPressed(GLFW_KEY_Z)) {
+            player.set_held_item_stack_index((player.held_item_stack_index() + 10 - 1) % 10);
+        }
+        if (isKeyPressed(GLFW_KEY_X)) {
+            player.set_held_item_stack_index((player.held_item_stack_index() + 1) % 10);
+        }
+        player.set_held_item_stack_index((player.held_item_stack_index() + 10 + (mw - mwl) % 10) % 10);
         mwl = mw;
 
         // 起跳/上升
         if (isKeyDown(GLFW_KEY_SPACE)) {
-            player.processJump(isKeyPressed(GLFW_KEY_SPACE));
+            player.on_jump(isKeyPressed(GLFW_KEY_SPACE));
         }
 
-        if ((isKeyDown(GLFW_KEY_LEFT_SHIFT) || isKeyDown(GLFW_KEY_RIGHT_SHIFT))) {
-            if (player.canCrossWall() || player.isFlying()) {
-                auto velocity = player.getVelocity();
-                player.setVelocity(velocity + Vec3d{0.0, -player.getSpeed() / 2.0, 0.0});
-            }
-            wPressTimer = 0.0;
+        // 下蹲/下降
+        if (isKeyDown(GLFW_KEY_LEFT_SHIFT) || isKeyDown(GLFW_KEY_RIGHT_SHIFT)) {
+            player.on_crouch();
         }
 
         // Open inventory
@@ -692,9 +688,9 @@ void gameUpdate(worlds::World& world) {
 
         // 各种设置切换
         if (isKeyPressed(GLFW_KEY_F1)) {
-            player.changeGameMode(
-                player.getGameMode() == player::Player::GameMode::Creative ? player::Player::GameMode::Survival
-                                                                           : player::Player::GameMode::Creative
+            player.set_game_mode(
+                player.game_mode() == player::Player::GameMode::CREATIVE ? player::Player::GameMode::SURVIVAL
+                                                                         : player::Player::GameMode::CREATIVE
             );
         }
         if (isKeyPressed(GLFW_KEY_F2)) {
@@ -718,8 +714,8 @@ void gameUpdate(worlds::World& world) {
             showMeshWireframe = !showMeshWireframe;
             showDebugPanel = true;
         }
-        if (isKeyPressed(GLFW_KEY_F4) && player.getGameMode() == player::Player::GameMode::Creative)
-            player.setCanCrossWall(!player.canCrossWall());
+        if (isKeyPressed(GLFW_KEY_F4))
+            player.set_cross_wall(!player.cross_wall());
         if (isKeyPressed(GLFW_KEY_F5))
             showHUD = !showHUD;
         if (isKeyPressed(GLFW_KEY_F7))
@@ -746,17 +742,13 @@ void gameUpdate(worlds::World& world) {
     backspace = false;
 
     particles::update_all(world);
-
-    static double timer = Timer();
-    double const currentTime = Timer();
-    player.updatePosition(world, currentTime - timer);
-    timer = currentTime;
+    player.update(world);
 }
 
 void frameLinkedUpdate(worlds::World& world) {
     // Find chunks for unloading & loading & meshing
     auto& player = world.player();
-    auto center = Vec3i(player.getPosition());
+    auto center = Vec3i(player.coord());
     world.update_chunk_lists(center);
 
     // Load chunks
@@ -772,7 +764,7 @@ void frameLinkedUpdate(worlds::World& world) {
     double currTimer = Timer();
 
     // 视野特效
-    if (player.isRunning()) {
+    if (player.running()) {
         if (FOVyExt < 9.8f) {
             float timeDelta = static_cast<float>(currTimer - speedupAnimTimer);
             FOVyExt = 10.0f - (10.0f - FOVyExt) * std::pow(0.8f, timeDelta * 30.0f);
@@ -798,10 +790,10 @@ void frameLinkedUpdate(worlds::World& world) {
 
     // 转头！你治好了我多年的颈椎病！
     if (!shouldShowCursor) {
-        auto angles = player.getOrientation();
+        auto angles = player.orientation();
         angles.heading() -= (mx - mxl) * MouseSpeed * Pi / 180.0;
         angles.pitch() -= (my - myl) * MouseSpeed * Pi / 180.0;
-        player.setOrientation(angles);
+        player.set_orientation(angles);
     }
 
     // 切换全屏
@@ -826,14 +818,14 @@ void render(worlds::World& world) {
     auto& player = world.player();
     double currTimer = Timer();
     double interp = (currTimer - updateTimer) * 30.0;
-    Vec3d view_coord = player.lookCoord() - player.getVelocity() * (1 - interp);
+    Vec3d view_coord = player.look_coord() - player.velocity() * (1.0 - interp);
 
     // Calculate sun position (temporary: horizontal movement only)
     float interpolatedTime = GameTime - 1.0f + static_cast<float>(interp);
     Renderer::sunlightHeading = interpolatedTime / 43200.0f * 360.0f;
 
     // Calculate matrices
-    auto view_angles = static_cast<Eulerf>(player.getOrientation());
+    auto view_angles = static_cast<Eulerf>(player.orientation());
     auto view_matrix = view_angles.view_matrix();
     view_matrix = Mat4f::perspective(
                       static_cast<float>((FOVyNormal + FOVyExt) * Pi / 180.0),
@@ -973,7 +965,8 @@ void render(worlds::World& world) {
     glClearDepth(1.0f);
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    if (world.block_or_air(Vec3i(view_coord)).id == base_blocks().water) {
+    auto int_view_coord = view_coord.map<int>([](auto x) { return std::lround(x); });
+    if (world.block_or_air(int_view_coord).id == base_blocks().water) {
         auto& shader = Renderer::shaders[Renderer::UIShader];
         shader.bind();
         glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
@@ -1189,7 +1182,7 @@ void drawGUI(worlds::World& world) {
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    if (player.getGameMode() == player::Player::GameMode::Survival) {
+    if (player.game_mode() == player::Player::GameMode::SURVIVAL) {
         glColor4d(0.8, 0.0, 0.0, 0.3);
         glBegin(GL_QUADS);
         glVertex2d(10, 10);
@@ -1198,7 +1191,7 @@ void drawGUI(worlds::World& world) {
         glVertex2d(200, 10);
         glEnd();
 
-        double healthPercent = (double) player.getHealth() / player.getMaxHealth();
+        double healthPercent = (double) player.health() / player.max_health();
         glColor4d(1.0, 0.0, 0.0, 0.5);
         glBegin(GL_QUADS);
         glVertex2d(20, 15);
@@ -1344,7 +1337,7 @@ void drawGUI(worlds::World& world) {
         debugText(ss.str());
         ss.str("");
 
-        ss << "game mode: " << (player.getGameMode() == player::Player::GameMode::Creative ? "creative" : "survival")
+        ss << "game mode: " << (player.game_mode() == player::Player::GameMode::CREATIVE ? "creative" : "survival")
            << " mode";
         debugText(ss.str());
         ss.str("");
@@ -1353,22 +1346,21 @@ void drawGUI(worlds::World& world) {
             debugText(ss.str());
             ss.str("");
         }
-        ss << "cross wall: " << boolstr(player.canCrossWall());
+        ss << "cross wall: " << boolstr(player.cross_wall());
         debugText(ss.str());
         ss.str("");
 
-        ss << "x: " << player.getPosition().x() << ", y: " << player.getPosition().y()
-           << ", z: " << player.getPosition().z();
+        ss << "x: " << player.coord().x() << ", y: " << player.coord().y() << ", z: " << player.coord().z();
         debugText(ss.str());
         ss.str("");
-        ss << "heading: " << player.getOrientation().heading() / Pi * 180.0
-           << ", pitch: " << player.getOrientation().pitch() / Pi * 180.0;
+        ss << "heading: " << player.orientation().heading() / Pi * 180.0
+           << ", pitch: " << player.orientation().pitch() / Pi * 180.0;
         debugText(ss.str());
         ss.str("");
-        ss << "grounded: " << boolstr(player.isOnGround());
+        ss << "grounded: " << boolstr(player.grounded());
         debugText(ss.str());
         ss.str("");
-        ss << "near wall: " << boolstr(player.isNearWall()) << ", in water: " << boolstr(player.isInWater());
+        ss << "near wall: " << boolstr(player.near_wall()) << ", in water: " << boolstr(player.in_water());
         debugText(ss.str());
         ss.str("");
         int h = (GameTime / 30 / 60) % 24;
@@ -1403,7 +1395,7 @@ void drawGUI(worlds::World& world) {
         ss << fps << " fps";
         debugText(ss.str());
         ss.str("");
-        ss << (player.getGameMode() == player::Player::GameMode::Creative ? "creative" : "survival") << " mode";
+        ss << (player.game_mode() == player::Player::GameMode::CREATIVE ? "creative" : "survival") << " mode";
         debugText(ss.str());
         ss.str("");
     }
@@ -1426,7 +1418,7 @@ void drawBagRow(player::Player& player, int row, int itemid, int xbase, int ybas
         glVertex2i(xbase + i * (32 + spac) + 32, ybase);
         glEnd();
 
-        auto& item = player.getInventory(row, i);
+        auto& item = player.inventory_item_stack(row, i);
         if (!item.empty()) {
             shader.bind();
             glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
@@ -1483,7 +1475,7 @@ void drawBag(player::Player& player) {
         if (curtime - bagAnimTimer > bagAnimDuration) {
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 10; j++) {
-                    auto& item = player.getInventory(i, j);
+                    auto& item = player.inventory_item_stack(i, j);
                     if (mx >= j * (32 + 8) + leftp && mx <= j * (32 + 8) + 32 + leftp && my >= i * (32 + 8) + upp
                         && my <= i * (32 + 8) + 32 + upp) {
                         csi = si = i;
@@ -1549,7 +1541,7 @@ void drawBag(player::Player& player) {
 
             TextRenderer::renderString((int) mx - 16, (int) my - 16, std::to_string(itemSelected.count));
         }
-        auto item = player.getInventory(si, sj);
+        auto item = player.inventory_item_stack(si, sj);
         if (!item.empty() && sf == 1) {
             TextRenderer::renderString((int) mx, (int) my - 16, block_info(item.id).name);
         }
@@ -1591,7 +1583,7 @@ void drawBag(player::Player& player) {
                 - (WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32)
             );
             spac = std::lround(8 - 8 * bagAnim);
-            drawBagRow(player, 3, player.getIndexInHand(), xbase, ybase, spac, alpha);
+            drawBagRow(player, 3, player.held_item_stack_index(), xbase, ybase, spac, alpha);
             xbase = std::lround(
                 ((WindowWidth - 392) / 2 - WindowWidth) - ((WindowWidth - 392) / 2 - WindowWidth) * bagAnim
                 + WindowWidth
@@ -1604,6 +1596,6 @@ void drawBag(player::Player& player) {
                 drawBagRow(player, i, -1, xbase, ybase + i * 40, spac, alpha);
             }
         } else
-            drawBagRow(player, 3, player.getIndexInHand(), 0, WindowHeight - 32, 0, 0.5f);
+            drawBagRow(player, 3, player.held_item_stack_index(), 0, WindowHeight - 32, 0, 0.5f);
     }
 }

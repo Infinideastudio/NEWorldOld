@@ -14,7 +14,8 @@ private:
     GUI::Label title = GUI::Label("", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
 
     GUI::Trackbar fovbar = GUI::Trackbar("", 120, (int) (FOVyNormal - 1), -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-    GUI::Trackbar mmsbar = GUI::Trackbar("", 120, (int) (MouseSpeed * 40 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
+    GUI::Trackbar mmsbar =
+        GUI::Trackbar("", 120, (int) (MouseSpeed * 160 * 2 - 1), 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
     GUI::Trackbar viewdistbar =
         GUI::Trackbar("", 120, (RenderDistance - 4) * 2 - 1, -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
 
@@ -42,7 +43,7 @@ private:
         savebtn.text = GetStrbyKey("NEWorld.options.save");
 
         FOVyNormal = (float) (fovbar.barpos + 1);
-        MouseSpeed = (mmsbar.barpos / 2 + 1) / 40.0f;
+        MouseSpeed = (mmsbar.barpos / 2 + 1) / 160.0f;
         RenderDistance = (viewdistbar.barpos + 1) / 2 + 4;
         if (rdstbtn.clicked)
             renderoptions();

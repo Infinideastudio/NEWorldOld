@@ -7,7 +7,10 @@ import :vector;
 export template <typename T, size_t M, size_t N>
 class Matrix {
 public:
-    std::array<std::array<T, N>, M> elem;
+    std::array<std::array<T, N>, M> elem = {};
+
+    // Zero matrix constructor.
+    constexpr Matrix() = default;
 
     // Row-by-row constructor.
     template <typename... Ts>
@@ -201,10 +204,11 @@ public:
 
     // Constructs a translation matrix.
     static auto translate(Vec3<T> const& v) -> Matrix<T, 4, 4> {
-        auto res = Matrix<T, 4, 4>(T(1));
+        auto res = Matrix<T, 4, 4>();
         res.elem[0][3] = v.x();
         res.elem[1][3] = v.y();
         res.elem[2][3] = v.z();
+        res.elem[3][3] = T(1);
         return res;
     }
 
@@ -212,7 +216,7 @@ public:
     static auto rotate(T radians, Vec3<T> const& v) -> Matrix<T, 4, 4> {
         v.normalize();
         auto s = std::sin(radians), c = std::cos(radians), t = T(1) - c;
-        auto res = Matrix<T, 4, 4>(T(1));
+        auto res = Matrix<T, 4, 4>();
         res.elem[0][0] = t * v.x() * v.x() + c;
         res.elem[0][1] = t * v.x() * v.y() - s * v.z();
         res.elem[0][2] = t * v.x() * v.z() + s * v.y();
@@ -222,6 +226,7 @@ public:
         res.elem[2][0] = t * v.x() * v.z() - s * v.y();
         res.elem[2][1] = t * v.y() * v.z() + s * v.x();
         res.elem[2][2] = t * v.z() * v.z() + c;
+        res.elem[3][3] = T(1);
         return res;
     }
 
@@ -229,7 +234,7 @@ public:
     static auto perspective(T fov, T aspect, T near, T far) -> Matrix<T, 4, 4> {
         auto f = T(1) / std::tan(fov / T(2));
         auto a = near - far;
-        auto res = Matrix<T, 4, 4>(T(0));
+        auto res = Matrix<T, 4, 4>();
         res.elem[0][0] = f / aspect;
         res.elem[1][1] = f;
         res.elem[2][2] = (far + near) / a;
@@ -243,7 +248,7 @@ public:
         auto a = right - left;
         auto b = top - bottom;
         auto c = far - near;
-        auto res = Matrix<T, 4, 4>(T(0));
+        auto res = Matrix<T, 4, 4>();
         res.elem[0][0] = T(2) / a;
         res.elem[0][3] = -(right + left) / a;
         res.elem[1][1] = T(2) / b;
@@ -255,9 +260,6 @@ public:
     }
 
 private:
-    // Uninitialized matrix constructor.
-    // constexpr Matrix() = default;
-
     static constexpr auto _mat_ctor = [](auto... rows) {
         return Matrix{rows...};
     };

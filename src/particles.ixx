@@ -34,17 +34,14 @@ void update(worlds::World& world, Particle& ptc) {
     auto position = Vec3d(ptc.xpos, ptc.ypos, ptc.zpos);
     auto velocity = Vec3d(ptc.xsp, ptc.ysp, ptc.zsp);
 
-    velocity.y() -= 0.03f;
+    velocity.x() *= 0.6;
+    velocity.z() *= 0.6;
+    velocity.y() -= 0.03;
     auto velocity_original = velocity;
 
     auto particle_box = AABB3d(position - ptc.psize, position + ptc.psize);
     velocity = particle_box.clip_displacement(world.hitboxes(particle_box.extend(velocity)), velocity);
     position += velocity;
-
-    velocity.x() *= 0.8;
-    velocity.z() *= 0.8;
-    if (velocity.y() != velocity_original.y() && velocity_original.y() < 0.0)
-        velocity.y() = 0.0;
 
     ptc.xpos = position.x();
     ptc.ypos = position.y();
