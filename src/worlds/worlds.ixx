@@ -4,7 +4,7 @@ module;
 #include <spdlog/spdlog.h>
 #undef assert
 
-export module worlds;
+export module worlds:worlds;
 import std;
 import types;
 import debug;
@@ -18,6 +18,7 @@ import hitboxes;
 import vec3;
 import terrain_generation;
 import rendering;
+import :player;
 
 // The 64-bit chunk ID is composed of 28-bit X, 8-bit Y and 28-bit Z coordinates.
 class ChunkId {
@@ -117,6 +118,13 @@ public:
         meshed_chunks = 0;
         unloaded_chunks = 0;
         updated_blocks = 0;
+
+        // Load player
+        try {
+            _player = player::Player(_name);
+        } catch (std::exception const& e) {
+            _player = player::Player();
+        }
     }
 
     auto name() const -> std::string const& {
@@ -151,6 +159,9 @@ public:
     void save_to_files() {
         for (auto const& [id, c]: _chunks)
             c->save_to_file(*_db.get());
+        if (!_player.save(_name)) {
+            spdlog::warn("Failed to save player data");
+        }
     }
 
     // 获取区块指针
@@ -200,9 +211,9 @@ public:
     // 返回与 box 相交的所有方块 AABB
     auto hitboxes(Hitbox::AABB const& box) -> std::vector<Hitbox::AABB> {
         auto res = std::vector<Hitbox::AABB>();
-        for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++) {
-            for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++) {
-                for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++) {
+        for (int a = std::lround(box.xmin) - 1; a <= std::lround(box.xmax) + 1; a++) {
+            for (int b = std::lround(box.ymin) - 1; b <= std::lround(box.ymax) + 1; b++) {
+                for (int c = std::lround(box.zmin) - 1; c <= std::lround(box.zmax) + 1; c++) {
                     if (block_info(block_or_air(Vec3i(a, b, c)).id).solid) {
                         auto blockbox = Hitbox::AABB();
                         blockbox.xmin = a - 0.5;
@@ -222,9 +233,9 @@ public:
 
     // 返回 box 是否和水方块或岩浆方块相交
     auto in_water(Hitbox::AABB const& box) -> bool {
-        for (int a = int(box.xmin + 0.5) - 1; a <= int(box.xmax + 0.5) + 1; a++) {
-            for (int b = int(box.ymin + 0.5) - 1; b <= int(box.ymax + 0.5) + 1; b++) {
-                for (int c = int(box.zmin + 0.5) - 1; c <= int(box.zmax + 0.5) + 1; c++) {
+        for (int a = std::lround(box.xmin) - 1; a <= std::lround(box.xmax) + 1; a++) {
+            for (int b = std::lround(box.ymin) - 1; b <= std::lround(box.ymax) + 1; b++) {
+                for (int c = std::lround(box.zmin) - 1; c <= std::lround(box.zmax) + 1; c++) {
                     auto id = block_or_air(Vec3i(a, b, c)).id;
                     if (id == base_blocks().water || id == base_blocks().lava) {
                         auto blockbox = Hitbox::AABB();
@@ -556,6 +567,12 @@ public:
 
     void render_chunks(Vec3d center, std::vector<RenderChunk> const& crs, size_t index);
 
+    player::Player& player() {
+        return _player;
+    }
+    player::Player const& player() const {
+        return _player;
+    }
 private:
     struct LoadedCore {
         Vec3i ccenter = Vec3i(0, 0, 0);
@@ -575,6 +592,7 @@ private:
     ChunkPointerArray _chunk_pointer_array;
     HeightMap _height_map;
     LoadedCore _loaded_core;
+    player::Player _player;
 
     auto _load_chunk(Vec3i ccoord, bool skip_empty = false) -> chunks::Chunk* {
         auto cid = ChunkId(ccoord);
