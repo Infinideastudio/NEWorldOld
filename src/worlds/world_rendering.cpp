@@ -9,7 +9,7 @@ import chunks;
 
 namespace worlds {
 
-auto World::list_render_chunks(Vec3d center, int dist, double interp, std::optional<FrustumTest> frustum)
+auto World::list_render_chunks(Vec3d center, int dist, double interp, std::optional<Frustumf> frustum)
     -> std::vector<RenderChunk> {
     auto ccenter = chunk_coord(Vec3i(center));
     auto res = std::vector<RenderChunk>{};

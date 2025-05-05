@@ -92,6 +92,7 @@ target_sources(
         "src/math/mod.ixx"
         "src/math/vector.ixx"
         "src/math/matrix.ixx"
+        "src/math/euler.ixx"
         "src/math/aabb.ixx"
         "src/math/frustum.ixx"
         "src/blocks.ixx"

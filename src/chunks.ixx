@@ -129,7 +129,7 @@ public:
         return {Vec3d(_coord * SIZE) - 0.5, Vec3d(_coord * SIZE) + SIZE - 0.5};
     }
 
-    auto visible(Vec3d orig, FrustumTest const& frus) const -> bool {
+    auto visible(Vec3d orig, Frustumf const& frus) const -> bool {
         return frus.test(static_cast<AABB3f>(aabb() - orig) - Vec3f(0.0f, _load_anim, 0.0f));
     }
 

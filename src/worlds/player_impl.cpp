@@ -44,9 +44,8 @@ void Player::updatePosition(worlds::World& world, double timeDelta) {
 
     auto velocityOriginal = velocity;
     if (!crossWall)
-        velocity = playerbox.clip_displacement(world.hitboxes(playerbox.extend(velocity)), velocity);
+        velocity = playerbox.clip_displacement(world.hitboxes(playerbox.extend(velocity)), velocity, 1e-8);
 
-    positionOld = position;
     position += velocity;
 
     // If player was falling

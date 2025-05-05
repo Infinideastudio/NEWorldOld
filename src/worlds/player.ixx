@@ -13,9 +13,11 @@ import globals;
 import items;
 import :forward;
 
-export namespace player {
+namespace player {
 
-class Player {
+constexpr auto PI = std::numbers::pi_v<double>;
+
+export class Player {
 public:
     enum class GameMode { Survival, Creative };
 
@@ -53,15 +55,12 @@ public:
         changeGameMode(mode);
     }
 
-    void setPosition(Vec3d const position) {
+    void setPosition(Vec3d const& position) {
         this->position = position;
-        this->positionOld = position;
+        this->velocity = 0.0;
     }
     Vec3d getPosition() const {
         return position;
-    }
-    Vec3d getPositionOld() const {
-        return positionOld;
     }
     AABB3d getHitbox() const {
         return {
@@ -92,25 +91,11 @@ public:
         return inventory[3][indexInHand];
     }
 
-    double getHeading() const {
-        return heading;
+    Eulerd getOrientation() const {
+        return orientation;
     }
-    double getLookUpDown() const {
-        return lookUpDown;
-    }
-    void setLookUpDown(double value) {
-        lookUpDown = std::clamp(value, -90.0, 90.0);
-    }
-    void setHeading(double value) {
-        heading = std::fmod(value, 360.0);
-        if (heading < 0)
-            heading += 360.0;
-    }
-    void updateHeadingAndLookUpDown() {
-        heading += xlookSpeed;
-        lookUpDown += ylookSpeed;
-        lookUpDown = std::clamp(lookUpDown, -90.0, 90.0);
-        xlookSpeed = ylookSpeed = 0.0;
+    void setOrientation(Eulerd orientation) {
+        this->orientation = orientation.normalize();
     }
     void setRunning(bool v) {
         running = v;
@@ -151,18 +136,6 @@ public:
     }
     void setIndexInHand(size_t index) {
         indexInHand = std::clamp(index, static_cast<size_t>(0), static_cast<size_t>(9));
-    }
-    void setXLookSpeed(double value) {
-        xlookSpeed = value;
-    }
-    void setYLookSpeed(double value) {
-        ylookSpeed = value;
-    }
-    double getXLookSpeed() const {
-        return xlookSpeed;
-    }
-    double getYLookSpeed() const {
-        return ylookSpeed;
     }
     items::ItemStack& getInventory(size_t row, size_t col) {
         return inventory[row][col];
@@ -211,11 +184,12 @@ private:
 
     double speed = 0;
     int airJumps = 0;
-    double lookUpDown = 0, heading = 0, jump = 0;
-    Vec3d position = {0.0, 128.0, 0.0}, positionOld = position, velocity = 0.0;
-    double xlookSpeed = 0, ylookSpeed = 0;
+    double jump = 0;
+    Vec3d position = 0.0;
+    Vec3d velocity = 0.0;
+    Eulerd orientation = {0.0, 0.0, 0.0};
 
-    std::array<std::array<items::ItemStack, 10>, 4> inventory{};
+    std::array<std::array<items::ItemStack, 10>, 4> inventory = {};
 };
 
 bool Player::save(std::string const& worldName) const {
@@ -229,8 +203,7 @@ bool Player::save(std::string const& worldName) const {
 
     saveFile.write(reinterpret_cast<char const*>(&curVersion), sizeof(curVersion));
     saveFile.write(reinterpret_cast<char const*>(&position), sizeof(position));
-    saveFile.write(reinterpret_cast<char const*>(&lookUpDown), sizeof(lookUpDown));
-    saveFile.write(reinterpret_cast<char const*>(&heading), sizeof(heading));
+    saveFile.write(reinterpret_cast<char const*>(&orientation), sizeof(orientation));
     saveFile.write(reinterpret_cast<char const*>(&jump), sizeof(jump));
     saveFile.write(reinterpret_cast<char const*>(&onGround), sizeof(onGround));
     saveFile.write(reinterpret_cast<char const*>(&running), sizeof(running));
@@ -242,7 +215,6 @@ bool Player::save(std::string const& worldName) const {
     saveFile.write(reinterpret_cast<char const*>(&gamemode), sizeof(gamemode));
     saveFile.write(reinterpret_cast<char const*>(&GameTime), sizeof(GameTime));
     saveFile.write(reinterpret_cast<char const*>(inventory.data()), sizeof(inventory));
-    saveFile.close();
     return true;
 }
 
@@ -264,8 +236,7 @@ Player::Player(std::string const& worldName) {
     }
 
     loadFile.read(reinterpret_cast<char*>(&position), sizeof(position));
-    loadFile.read(reinterpret_cast<char*>(&lookUpDown), sizeof(lookUpDown));
-    loadFile.read(reinterpret_cast<char*>(&heading), sizeof(heading));
+    loadFile.read(reinterpret_cast<char*>(&orientation), sizeof(orientation));
     loadFile.read(reinterpret_cast<char*>(&jump), sizeof(jump));
     loadFile.read(reinterpret_cast<char*>(&onGround), sizeof(onGround));
     loadFile.read(reinterpret_cast<char*>(&running), sizeof(running));
@@ -277,9 +248,6 @@ Player::Player(std::string const& worldName) {
     loadFile.read(reinterpret_cast<char*>(&gamemode), sizeof(gamemode));
     loadFile.read(reinterpret_cast<char*>(&GameTime), sizeof(GameTime));
     loadFile.read(reinterpret_cast<char*>(inventory.data()), sizeof(inventory));
-    loadFile.close();
-
-    positionOld = position;
 }
 
 bool Player::addItem(items::ItemStack stack) {

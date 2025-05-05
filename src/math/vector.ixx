@@ -132,6 +132,11 @@ public:
         return *this = *this / value;
     }
 
+    // Dot product.
+    auto dot(Vector r) const -> T {
+        return _map_reduce(std::make_index_sequence<N>{}, _sum, [&](auto i) { return elem[i] * r.elem[i]; });
+    }
+
     // Element-wise function application.
     template <typename U = T, typename F>
     auto map(F f) const -> Vector<U, N> {

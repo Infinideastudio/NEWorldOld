@@ -508,16 +508,13 @@ void gameUpdate(worlds::World& world) {
 
         // 从玩家位置发射一条线段
         Vec3d lPos = player.lookCoord();
+        Vec3d lDir = player.getOrientation().direction();
         Vec3d lookPosOld = lPos;
         for (int i = 0; i < SelectPrecision * SelectDistance; i++) {
             lookPosOld = lPos;
 
             // 线段延伸
-            lPos.x() += std::sin(Pi / 180 * (player.getHeading() - 180))
-                      * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
-            lPos.y() += std::cos(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
-            lPos.z() += std::cos(Pi / 180 * (player.getHeading() - 180))
-                      * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
+            lPos += lDir / SelectPrecision;
 
             // 碰到方块
             auto coord = Vec3i(lPos.map<int>([](double x) { return std::lround(x); }));
@@ -593,7 +590,11 @@ void gameUpdate(worlds::World& world) {
         oldselz = selz;
 
         // 更新方向
-        player.updateHeadingAndLookUpDown();
+        auto angles = player.getOrientation();
+        auto angles_front = Eulerd(angles.heading(), 0.0, 0.0);
+        auto angles_back = Eulerd(angles.heading() - Pi, 0.0, 0.0);
+        auto angles_left = Eulerd(angles.heading() + Pi / 2, 0.0, 0.0);
+        auto angles_right = Eulerd(angles.heading() - Pi / 2, 0.0, 0.0);
 
         // 移动！(生命在于运动)
         if (isKeyDown(GLFW_KEY_W)) {
@@ -612,11 +613,7 @@ void gameUpdate(worlds::World& world) {
                 wPressTimer = 0.0;
             wPressedOnce = true;
             auto velocity = player.getVelocity();
-            player.setVelocity({
-                velocity.x() - std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed(),
-                velocity.y(),
-                velocity.z() - std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed(),
-            });
+            player.setVelocity(angles_front.direction() * player.getSpeed());
         } else {
             player.setRunning(false);
             wPressedOnce = false;
@@ -624,62 +621,34 @@ void gameUpdate(worlds::World& world) {
 
         if (isKeyDown(GLFW_KEY_S)) {
             auto velocity = player.getVelocity();
-            player.setVelocity({
-                velocity.x() + std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed(),
-                velocity.y(),
-                velocity.z() + std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed(),
-            });
+            player.setVelocity(angles_back.direction() * player.getSpeed());
             wPressTimer = 0.0;
         }
 
         if (isKeyDown(GLFW_KEY_A)) {
             auto velocity = player.getVelocity();
-            player.setVelocity({
-                velocity.x() + std::sin((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
-                velocity.y(),
-                velocity.z() + std::cos((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
-            });
+            player.setVelocity(angles_left.direction() * player.getSpeed());
             wPressTimer = 0.0;
         }
 
         if (isKeyDown(GLFW_KEY_D)) {
             auto velocity = player.getVelocity();
-            player.setVelocity({
-                velocity.x() - std::sin((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
-                velocity.y(),
-                velocity.z() - std::cos((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
-            });
+            player.setVelocity(angles_right.direction() * player.getSpeed());
             wPressTimer = 0.0;
         }
 
         if (!player.isFlying() && !player.canCrossWall()) {
-            Vec3d velocity = player.getVelocity();
-            double horizontalSpeed = std::sqrt(velocity.x() * velocity.x() + velocity.z() * velocity.z());
-            if (horizontalSpeed > player.getSpeed()) {
-                player.setVelocity({
-                    velocity.x() * player.getSpeed() / horizontalSpeed,
-                    velocity.y(),
-                    velocity.z() * player.getSpeed() / horizontalSpeed,
-                });
-            }
+            player.setVelocity(player.getVelocity().normalize() * player.getSpeed());
         } else {
             if (isKeyDown(GLFW_KEY_R)) {
-                Vec3d velocity = player.getVelocity();
-                if (isKeyDown(GLFW_KEY_LEFT_CONTROL)) {
-                    player.setVelocity({
-                        velocity.x() - std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed() * 10,
-                        velocity.y(),
-                        velocity.z() - std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed() * 10,
-                    });
-                } else {
-                    player.setVelocity(
-                        {std::sin(Pi / 180 * (player.getHeading() - 180))
-                             * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) * player.getSpeed() * 20,
-                         std::cos(Pi / 180 * (player.getLookUpDown() + 90)) * player.getSpeed() * 20,
-                         std::cos(Pi / 180 * (player.getHeading() - 180))
-                             * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) * player.getSpeed() * 20}
-                    );
-                }
+                player.setVelocity(
+                    (isKeyDown(GLFW_KEY_LEFT_CONTROL) ? angles_front : angles).direction() * player.getSpeed() * 20.0
+                );
+            }
+            if (isKeyDown(GLFW_KEY_F)) {
+                player.setVelocity(
+                    -(isKeyDown(GLFW_KEY_LEFT_CONTROL) ? angles_front : angles).direction() * player.getSpeed() * 20.0
+                );
             }
         }
 
@@ -821,10 +790,10 @@ void frameLinkedUpdate(worlds::World& world) {
 
     // 转头！你治好了我多年的颈椎病！
     if (!shouldShowCursor) {
-        if (mx != mxl)
-            player.setXLookSpeed(player.getXLookSpeed() - (mx - mxl) * MouseSpeed);
-        if (my != myl)
-            player.setYLookSpeed(player.getYLookSpeed() + (my - myl) * MouseSpeed);
+        auto angles = player.getOrientation();
+        angles.heading() -= (mx - mxl) * MouseSpeed * Pi / 180.0;
+        angles.pitch() -= (my - myl) * MouseSpeed * Pi / 180.0;
+        player.setOrientation(angles);
     }
 
     // 切换全屏
@@ -849,27 +818,22 @@ void render(worlds::World& world) {
     auto& player = world.player();
     double currTimer = Timer();
     double interp = (currTimer - updateTimer) * 30.0;
-    Vec3d view_coord = player.lookCoord() - (player.getPosition() - player.getPositionOld()) * (1 - interp);
+    Vec3d view_coord = player.lookCoord() - player.getVelocity() * (1 - interp);
 
     // Calculate sun position (temporary: horizontal movement only)
     float interpolatedTime = GameTime - 1.0f + static_cast<float>(interp);
     Renderer::sunlightHeading = interpolatedTime / 43200.0f * 360.0f;
 
-    // World rendering starts here
-    double plookupdown = player.getLookUpDown() + player.getYLookSpeed();
-    double pheading = player.getHeading() + player.getXLookSpeed();
-
     // Calculate matrices
-    auto viewMatrix = Mat4f(1.0f);
-    viewMatrix = Mat4f::rotate(-static_cast<float>(pheading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * viewMatrix;
-    viewMatrix = Mat4f::rotate(static_cast<float>(plookupdown * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * viewMatrix;
-    viewMatrix = Mat4f::perspective(
-                     static_cast<float>((FOVyNormal + FOVyExt) * Pi / 180.0),
-                     static_cast<float>(WindowWidth) / WindowHeight,
-                     0.05f,
-                     static_cast<float>(RenderDistance * chunks::Chunk::SIZE)
-                 )
-               * viewMatrix;
+    auto view_angles = static_cast<Eulerf>(player.getOrientation());
+    auto view_matrix = view_angles.view_matrix();
+    view_matrix = Mat4f::perspective(
+                      static_cast<float>((FOVyNormal + FOVyExt) * Pi / 180.0),
+                      static_cast<float>(WindowWidth) / WindowHeight,
+                      0.05f,
+                      static_cast<float>(RenderDistance * chunks::Chunk::SIZE)
+                  )
+                * view_matrix;
 
     // Clear framebuffers
     if (AdvancedRender)
@@ -891,11 +855,10 @@ void render(worlds::World& world) {
         auto shadowMatrixExp = Renderer::getShadowMatrixExperimental(
             FOVyNormal + FOVyExt,
             static_cast<float>(WindowWidth) / WindowHeight,
-            pheading,
-            plookupdown
+            static_cast<Eulerf>(view_angles)
         );
-        auto shadowMatrixTest = FrustumTest(shadowMatrixExp);
-        auto list = world.list_render_chunks(view_coord, Renderer::getShadowDistance(), interp, shadowMatrixTest);
+        auto shadowFrustum = Frustum(shadowMatrixExp);
+        auto list = world.list_render_chunks(view_coord, Renderer::getShadowDistance(), interp, shadowFrustum);
         Renderer::StartShadowPass(shadowMatrix, interpolatedTime);
         world.render_chunks(view_coord, list, 0);
         Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(0.0f));
@@ -904,16 +867,16 @@ void render(worlds::World& world) {
     }
 
     // Draw the opaque parts of the world
-    auto list = world.list_render_chunks(view_coord, RenderDistance, interp, FrustumTest(viewMatrix));
+    auto list = world.list_render_chunks(view_coord, RenderDistance, interp, Frustum(view_matrix));
     rendered_chunks = static_cast<int>(list.size());
-    Renderer::StartOpaquePass(viewMatrix, interpolatedTime);
+    Renderer::StartOpaquePass(view_matrix, interpolatedTime);
     world.render_chunks(view_coord, list, 0);
     Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(0.0f));
     particles::render_all(world, view_coord, interp);
     Renderer::EndOpaquePass();
 
     // Draw the translucent parts of the world
-    Renderer::StartTranslucentPass(viewMatrix, interpolatedTime);
+    Renderer::StartTranslucentPass(view_matrix, interpolatedTime);
     glDisable(GL_CULL_FACE);
     if (sel) {
         float x = static_cast<float>(selx - view_coord.x());
@@ -949,7 +912,7 @@ void render(worlds::World& world) {
             view_coord.x(),
             view_coord.y(),
             view_coord.z(),
-            viewMatrix,
+            view_matrix,
             shadowMatrix,
             interpolatedTime
         );
@@ -1390,7 +1353,8 @@ void drawGUI(worlds::World& world) {
            << ", z: " << player.getPosition().z();
         debugText(ss.str());
         ss.str("");
-        ss << "heading: " << player.getHeading() << ", pitch: " << player.getLookUpDown();
+        ss << "heading: " << player.getOrientation().heading() / Pi * 180.0
+           << ", pitch: " << player.getOrientation().pitch() / Pi * 180.0;
         debugText(ss.str());
         ss.str("");
         ss << "grounded: " << boolstr(player.isOnGround());
