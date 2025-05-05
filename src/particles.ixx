@@ -12,7 +12,7 @@ import textures;
 import hitboxes;
 import worlds;
 import globals;
-import vec3;
+import vec;
 
 export namespace particles {
 
@@ -188,9 +188,9 @@ void mesh(worlds::World& world, Particle const& ptc, double interp) {
 }
 
 void render_all(worlds::World& world, Vec3d center, double interp) {
-    pxpos = center.x;
-    pypos = center.y;
-    pzpos = center.z;
+    pxpos = center.x();
+    pypos = center.y();
+    pzpos = center.z();
     ptcsrendered = 0;
 
     if (AdvancedRender)

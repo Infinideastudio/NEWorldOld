@@ -1,7 +1,7 @@
 export module height_maps;
 import std;
 import types;
-import vec3;
+import vec;
 import terrain_generation;
 
 export class HeightMap {
@@ -28,7 +28,7 @@ public:
             for (int z = 0; z < _size; z++) {
                 auto v = Vec3i(x, 0, z) + offset;
                 if (contains(v))
-                    next[x * _size + z] = _array[v.x * _size + v.z];
+                    next[x * _size + z] = _array[v.x() * _size + v.z()];
                 else
                     next[x * _size + z] = -1;
             }
@@ -43,17 +43,17 @@ public:
     }
 
     auto contains(Vec3i v) -> bool {
-        return v.x >= 0 && v.x < _size && v.z >= 0 && v.z < _size;
+        return v.x() >= 0 && v.x() < _size && v.z() >= 0 && v.z() < _size;
     }
 
     auto get(Vec3i coord) -> int {
         auto v = coord - _origin;
         if (contains(v)) {
-            if (_array[v.x * _size + v.z] == -1)
-                _array[v.x * _size + v.z] = WorldGen::getHeight(coord.x, coord.z);
-            return _array[v.x * _size + v.z];
+            if (_array[v.x() * _size + v.z()] == -1)
+                _array[v.x() * _size + v.z()] = WorldGen::getHeight(coord.x(), coord.z());
+            return _array[v.x() * _size + v.z()];
         }
-        return WorldGen::getHeight(coord.x, coord.z);
+        return WorldGen::getHeight(coord.x(), coord.z());
     }
 
 private:

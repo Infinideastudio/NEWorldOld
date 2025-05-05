@@ -20,8 +20,8 @@ import setup;
 import text_rendering;
 import textures;
 import worlds;
-import vec3;
-import mat4;
+import vec;
+import mat;
 import menus;
 import items;
 
@@ -414,16 +414,15 @@ void gameUpdate(worlds::World& world) {
 
         // 随机状态更新
         if (rnd() < 1.0 / 8.0) {
-            int x, y, z, gx, gy, gz;
-            int cx = c->coord().x;
-            int cy = c->coord().y;
-            int cz = c->coord().z;
-            x = int(rnd() * chunks::Chunk::SIZE);
-            gx = x + cx * chunks::Chunk::SIZE;
-            y = int(rnd() * chunks::Chunk::SIZE);
-            gy = y + cy * chunks::Chunk::SIZE;
-            z = int(rnd() * chunks::Chunk::SIZE);
-            gz = z + cz * chunks::Chunk::SIZE;
+            int cx = c->coord().x();
+            int cy = c->coord().y();
+            int cz = c->coord().z();
+            auto x = static_cast<uint32_t>(rnd() * chunks::Chunk::SIZE);
+            auto gx = static_cast<int32_t>(x) + cx * chunks::Chunk::SIZE;
+            auto y = static_cast<uint32_t>(rnd() * chunks::Chunk::SIZE);
+            auto gy = static_cast<int32_t>(y) + cy * chunks::Chunk::SIZE;
+            auto z = static_cast<uint32_t>(rnd() * chunks::Chunk::SIZE);
+            auto gz = static_cast<int32_t>(z) + cz * chunks::Chunk::SIZE;
             if (c->block(Vec3u(x, y, z)).id == base_blocks().dirt
                 && world.block_or_air(Vec3i(gx, gy + 1, gz)).id == base_blocks().air
                 && (world.block_or_air(Vec3i(gx + 1, gy, gz)).id == base_blocks().grass
@@ -516,28 +515,28 @@ void gameUpdate(worlds::World& world) {
             lookPosOld = lPos;
 
             // 线段延伸
-            lPos.x += std::sin(Pi / 180 * (player.getHeading() - 180))
-                    * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
-            lPos.y += std::cos(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
-            lPos.z += std::cos(Pi / 180 * (player.getHeading() - 180))
-                    * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
+            lPos.x() += std::sin(Pi / 180 * (player.getHeading() - 180))
+                      * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
+            lPos.y() += std::cos(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
+            lPos.z() += std::cos(Pi / 180 * (player.getHeading() - 180))
+                      * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
 
             // 碰到方块
             auto coord = Vec3i(lPos.map<int>([](double x) { return std::lround(x); }));
             auto coordl = Vec3i(lookPosOld.map<int>([](double x) { return std::lround(x); }));
             if (block_info(world.block_or_air(coord).id).solid) {
-                selx = coord.x;
-                sely = coord.y;
-                selz = coord.z;
+                selx = coord.x();
+                sely = coord.y();
+                selz = coord.z();
                 sel = true;
 
                 selb = world.block_or_air(coord).id;
                 if (mb == 1) { // 鼠标左键
                     particles::throw_particle(
                         selb,
-                        float(coord.x + rnd() - 0.5f),
-                        float(coord.y + rnd() - 0.2f),
-                        float(coord.z + rnd() - 0.5f),
+                        float(coord.x() + rnd() - 0.5f),
+                        float(coord.y() + rnd() - 0.2f),
+                        float(coord.z() + rnd() - 0.5f),
                         float(rnd() * 0.2f - 0.1f),
                         float(rnd() * 0.2f - 0.1f),
                         float(rnd() * 0.2f - 0.1f),
@@ -560,9 +559,9 @@ void gameUpdate(worlds::World& world) {
                         for (int j = 1; j <= 25; j++) {
                             particles::throw_particle(
                                 selb,
-                                float(coord.x + rnd() - 0.5f),
-                                float(coord.y + rnd() - 0.2f),
-                                float(coord.z + rnd() - 0.5f),
+                                float(coord.x() + rnd() - 0.5f),
+                                float(coord.y() + rnd() - 0.2f),
+                                float(coord.z() + rnd() - 0.5f),
                                 float(rnd() * 0.2f - 0.1f),
                                 float(rnd() * 0.2f - 0.1f),
                                 float(rnd() * 0.2f - 0.1f),
@@ -616,9 +615,9 @@ void gameUpdate(worlds::World& world) {
             wPressedOnce = true;
             auto velocity = player.getVelocity();
             player.setVelocity({
-                velocity.x - std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed(),
-                velocity.y,
-                velocity.z - std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed(),
+                velocity.x() - std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed(),
+                velocity.y(),
+                velocity.z() - std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed(),
             });
         } else {
             player.setRunning(false);
@@ -628,9 +627,9 @@ void gameUpdate(worlds::World& world) {
         if (isKeyDown(GLFW_KEY_S)) {
             auto velocity = player.getVelocity();
             player.setVelocity({
-                velocity.x + std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed(),
-                velocity.y,
-                velocity.z + std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed(),
+                velocity.x() + std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed(),
+                velocity.y(),
+                velocity.z() + std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed(),
             });
             wPressTimer = 0.0;
         }
@@ -638,9 +637,9 @@ void gameUpdate(worlds::World& world) {
         if (isKeyDown(GLFW_KEY_A)) {
             auto velocity = player.getVelocity();
             player.setVelocity({
-                velocity.x + std::sin((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
-                velocity.y,
-                velocity.z + std::cos((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
+                velocity.x() + std::sin((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
+                velocity.y(),
+                velocity.z() + std::cos((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
             });
             wPressTimer = 0.0;
         }
@@ -648,32 +647,32 @@ void gameUpdate(worlds::World& world) {
         if (isKeyDown(GLFW_KEY_D)) {
             auto velocity = player.getVelocity();
             player.setVelocity({
-                velocity.x - std::sin((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
-                velocity.y,
-                velocity.z - std::cos((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
+                velocity.x() - std::sin((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
+                velocity.y(),
+                velocity.z() - std::cos((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
             });
             wPressTimer = 0.0;
         }
 
         if (!player.isFlying() && !player.canCrossWall()) {
             Vec3d velocity = player.getVelocity();
-            double horizontalSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+            double horizontalSpeed = std::sqrt(velocity.x() * velocity.x() + velocity.z() * velocity.z());
             if (horizontalSpeed > player.getSpeed()) {
-                player.setVelocity(
-                    {velocity.x * player.getSpeed() / horizontalSpeed,
-                     velocity.y,
-                     velocity.z * player.getSpeed() / horizontalSpeed}
-                );
+                player.setVelocity({
+                    velocity.x() * player.getSpeed() / horizontalSpeed,
+                    velocity.y(),
+                    velocity.z() * player.getSpeed() / horizontalSpeed,
+                });
             }
         } else {
             if (isKeyDown(GLFW_KEY_R)) {
                 Vec3d velocity = player.getVelocity();
                 if (isKeyDown(GLFW_KEY_LEFT_CONTROL)) {
-                    player.setVelocity(
-                        {velocity.x - std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed() * 10,
-                         velocity.y,
-                         velocity.z - std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed() * 10}
-                    );
+                    player.setVelocity({
+                        velocity.x() - std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed() * 10,
+                        velocity.y(),
+                        velocity.z() - std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed() * 10,
+                    });
                 } else {
                     player.setVelocity(
                         {std::sin(Pi / 180 * (player.getHeading() - 180))
@@ -701,7 +700,7 @@ void gameUpdate(worlds::World& world) {
 
         if ((isKeyDown(GLFW_KEY_LEFT_SHIFT) || isKeyDown(GLFW_KEY_RIGHT_SHIFT))) {
             if (player.canCrossWall() || player.isFlying())
-                player.setVelocity(player.getVelocity() + Vec3d{0, -player.getSpeed() / 2, 0});
+                player.setVelocity(player.getVelocity() + Vec3d{0.0, -player.getSpeed() / 2.0, 0.0});
             wPressTimer = 0.0;
         }
 
@@ -919,9 +918,9 @@ void render(worlds::World& world) {
     Renderer::StartTranslucentPass(viewMatrix, interpolatedTime);
     glDisable(GL_CULL_FACE);
     if (sel) {
-        float x = static_cast<float>(selx - view_coord.x);
-        float y = static_cast<float>(sely - view_coord.y);
-        float z = static_cast<float>(selz - view_coord.z);
+        float x = static_cast<float>(selx - view_coord.x());
+        float y = static_cast<float>(sely - view_coord.y());
+        float z = static_cast<float>(selz - view_coord.z());
         Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(x, y, z));
         if (showHUD) {
             // Temporary solution pre GL 4.0 (glBlendFuncSeparatei)
@@ -948,7 +947,14 @@ void render(worlds::World& world) {
 
     // Full screen passes
     if (AdvancedRender) {
-        Renderer::StartFinalPass(view_coord.x, view_coord.y, view_coord.z, viewMatrix, shadowMatrix, interpolatedTime);
+        Renderer::StartFinalPass(
+            view_coord.x(),
+            view_coord.y(),
+            view_coord.z(),
+            viewMatrix,
+            shadowMatrix,
+            interpolatedTime
+        );
         Renderer::Begin(GL_QUADS, 2, 2, 0);
         Renderer::TexCoord2f(0.0f, 1.0f);
         Renderer::Vertex2i(0, 0);
@@ -1382,7 +1388,8 @@ void drawGUI(worlds::World& world) {
         debugText(ss.str());
         ss.str("");
 
-        ss << "x: " << player.getPosition().x << ", y: " << player.getPosition().y << ", z: " << player.getPosition().z;
+        ss << "x: " << player.getPosition().x() << ", y: " << player.getPosition().y()
+           << ", z: " << player.getPosition().z();
         debugText(ss.str());
         ss.str("");
         ss << "heading: " << player.getHeading() << ", pitch: " << player.getLookUpDown();

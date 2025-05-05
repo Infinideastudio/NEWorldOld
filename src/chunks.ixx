@@ -7,7 +7,7 @@ export module chunks;
 import std;
 import debug;
 import types;
-import vec3;
+import vec;
 export import blocks;
 import frustum_tests;
 import height_maps;
@@ -56,24 +56,24 @@ public:
     }
 
     auto block(Vec3u bcoord) const -> blocks::BlockData {
-        assert(bcoord.x < SIZE && bcoord.y < SIZE && bcoord.z < SIZE, "block coordinates out of bounds");
+        assert(bcoord.x() < SIZE && bcoord.y() < SIZE && bcoord.z() < SIZE, "block coordinates out of bounds");
         if (_empty) {
-            auto light = _coord.y < 0 ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
+            auto light = _coord.y() < 0 ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
             return blocks::BlockData{.id = base_blocks().air, .light = light};
         }
-        return _data[((bcoord.x * SIZE) + bcoord.y) * SIZE + bcoord.z];
+        return _data[((bcoord.x() * SIZE) + bcoord.y()) * SIZE + bcoord.z()];
     }
 
     auto block_ref(Vec3u bcoord) -> blocks::BlockData& {
-        assert(bcoord.x < SIZE && bcoord.y < SIZE && bcoord.z < SIZE, "block coordinates out of bounds");
+        assert(bcoord.x() < SIZE && bcoord.y() < SIZE && bcoord.z() < SIZE, "block coordinates out of bounds");
         if (_empty) {
-            auto light = _coord.y < 0 ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
+            auto light = _coord.y() < 0 ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
             std::ranges::fill(_data, blocks::BlockData{.id = base_blocks().air, .light = light});
             _empty = false;
         }
         _updated = true;
         _modified = true;
-        return _data[((bcoord.x * SIZE) + bcoord.y) * SIZE + bcoord.z];
+        return _data[((bcoord.x() * SIZE) + bcoord.y()) * SIZE + bcoord.z()];
     }
 
     auto load_from_file(leveldb::DB& db) -> bool {
@@ -129,23 +129,23 @@ public:
 
     auto base_aabb() const -> Hitbox::AABB {
         auto ret = Hitbox::AABB();
-        ret.xmin = _coord.x * SIZE - 0.5;
-        ret.xmax = _coord.x * SIZE + SIZE - 0.5;
-        ret.ymin = _coord.y * SIZE - 0.5;
-        ret.ymax = _coord.y * SIZE + SIZE - 0.5;
-        ret.zmin = _coord.z * SIZE - 0.5;
-        ret.zmax = _coord.z * SIZE + SIZE - 0.5;
+        ret.xmin = _coord.x() * SIZE - 0.5;
+        ret.xmax = _coord.x() * SIZE + SIZE - 0.5;
+        ret.ymin = _coord.y() * SIZE - 0.5;
+        ret.ymax = _coord.y() * SIZE + SIZE - 0.5;
+        ret.zmin = _coord.z() * SIZE - 0.5;
+        ret.zmax = _coord.z() * SIZE + SIZE - 0.5;
         return ret;
     }
 
     auto relative_aabb(Vec3d orig) const -> FrustumTest::AABBf {
         auto ret = FrustumTest::AABBf();
-        ret.xmin = static_cast<float>(_coord.x * SIZE - 0.5 - orig.x);
-        ret.xmax = static_cast<float>(_coord.x * SIZE + SIZE - 0.5 - orig.x);
-        ret.ymin = static_cast<float>(_coord.y * SIZE - 0.5 - _load_anim - orig.y);
-        ret.ymax = static_cast<float>(_coord.y * SIZE + SIZE - 0.5 - _load_anim - orig.y);
-        ret.zmin = static_cast<float>(_coord.z * SIZE - 0.5 - orig.z);
-        ret.zmax = static_cast<float>(_coord.z * SIZE + SIZE - 0.5 - orig.z);
+        ret.xmin = static_cast<float>(_coord.x() * SIZE - 0.5 - orig.x());
+        ret.xmax = static_cast<float>(_coord.x() * SIZE + SIZE - 0.5 - orig.x());
+        ret.ymin = static_cast<float>(_coord.y() * SIZE - 0.5 - _load_anim - orig.y());
+        ret.ymax = static_cast<float>(_coord.y() * SIZE + SIZE - 0.5 - _load_anim - orig.y());
+        ret.zmin = static_cast<float>(_coord.z() * SIZE - 0.5 - orig.z());
+        ret.zmax = static_cast<float>(_coord.z() * SIZE + SIZE - 0.5 - orig.z());
         return ret;
     }
 
@@ -169,7 +169,7 @@ private:
         auto lo = std::numeric_limits<int>::max(), hi = height_map.WATER_LEVEL;
         for (int x = 0; x < SIZE; x++) {
             for (int z = 0; z < SIZE; z++) {
-                auto h = height_map.get(Vec3i(_coord.x * SIZE + x, 0, _coord.z * SIZE + z));
+                auto h = height_map.get(Vec3i(_coord.x() * SIZE + x, 0, _coord.z() * SIZE + z));
                 lo = std::min(lo, h);
                 hi = std::max(hi, h);
                 heights[x][z] = h;
@@ -183,12 +183,12 @@ private:
         auto [heights, low, high] = _heights(height_map);
 
         // Skip generation
-        if (_coord.y < 0 || (_coord.y > high && _coord.y * SIZE > height_map.WATER_LEVEL)) {
+        if (_coord.y() < 0 || (_coord.y() > high && _coord.y() * SIZE > height_map.WATER_LEVEL)) {
             return;
         }
-        if (_coord.y < low) {
+        if (_coord.y() < low) {
             std::ranges::fill(_data, blocks::BlockData{.id = base_blocks().rock, .light = blocks::NO_LIGHT});
-            if (_coord.y == 0)
+            if (_coord.y() == 0)
                 for (int x = 0; x < SIZE; x++)
                     for (int z = 0; z < SIZE; z++)
                         _data[x * SIZE * SIZE + z].id = base_blocks().bedrock;
@@ -198,12 +198,12 @@ private:
 
         // Normal generation
         std::ranges::fill(_data, blocks::BlockData{.id = base_blocks().air, .light = blocks::NO_LIGHT});
-        int sh = height_map.WATER_LEVEL + 2 - (_coord.y * SIZE);
-        int wh = height_map.WATER_LEVEL - (_coord.y * SIZE);
+        int sh = height_map.WATER_LEVEL + 2 - (_coord.y() * SIZE);
+        int wh = height_map.WATER_LEVEL - (_coord.y() * SIZE);
         for (int x = 0; x < SIZE; x++) {
             for (int z = 0; z < SIZE; z++) {
                 int base = x * SIZE * SIZE + z;
-                int h = heights[x][z] - (_coord.y * SIZE);
+                int h = heights[x][z] - (_coord.y() * SIZE);
                 if (h >= 0 || wh >= 0)
                     _empty = false;
                 if (h > sh && h > wh + 1) {
@@ -222,7 +222,7 @@ private:
                     int maxh = std::min(std::max(0, wh + 1), SIZE);
                     int sky = std::max(
                         0,
-                        blocks::SKY_LIGHT.sky() - (height_map.WATER_LEVEL - (maxh - 1 + (_coord.y * SIZE))) * 1
+                        blocks::SKY_LIGHT.sky() - (height_map.WATER_LEVEL - (maxh - 1 + (_coord.y() * SIZE))) * 1
                     );
                     for (int y = maxh - 1; y >= minh; --y) {
                         sky = std::max(0, sky - 1);
@@ -239,7 +239,7 @@ private:
                     _data[(y * SIZE) + base].light = blocks::SKY_LIGHT;
                 }
                 // Bedrock layer (overwrite)
-                if (_coord.y == 0)
+                if (_coord.y() == 0)
                     _data[base].id = base_blocks().bedrock;
             }
         }
@@ -247,13 +247,6 @@ private:
 
     void _generate(HeightMap& height_map) {
         _generate_terrain(height_map);
-    }
-
-    auto _file_path(std::string_view world_name) const -> std::string {
-        std::stringstream ss;
-        ss << "worlds/" << world_name << "/chunks/chunk_" << _coord.x << "_" << _coord.y << "_" << _coord.z
-           << ".neworldchunk";
-        return ss.str();
     }
 };
 

@@ -14,7 +14,7 @@ import text_rendering;
 import globals;
 import globalization;
 import textures;
-import mat4;
+import mat;
 
 export namespace GUI {
 
@@ -255,7 +255,7 @@ void drawBackground() {
     glMultMatrixf(
         Mat4f::perspective(static_cast<float>(Pi / 2.0), (float) WindowWidth / WindowHeight, 0.1f, 10.0f)
             .transpose()
-            .data.data()
+            .data()
     );
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();

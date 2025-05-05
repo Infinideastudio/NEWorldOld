@@ -7,7 +7,7 @@ module chunks;
 import std;
 import types;
 import debug;
-import vec3;
+import vec;
 import blocks;
 import rendering;
 import textures;
@@ -105,16 +105,19 @@ public:
     ChunkRenderData(Vec3i ccoord, std::array<Chunk const*, 3 * 3 * 3> neighbors) {
         auto index = 0uz;
         for (int x = -1; x < Chunk::SIZE + 1; x++) {
-            auto rcx = x >> Chunk::SIZE_LOG, bx = x & (Chunk::SIZE - 1);
+            auto rcx = x >> Chunk::SIZE_LOG;
+            auto bx = static_cast<uint32_t>(x) & (Chunk::SIZE - 1);
             for (int y = -1; y < Chunk::SIZE + 1; y++) {
-                auto rcy = y >> Chunk::SIZE_LOG, by = y & (Chunk::SIZE - 1);
+                auto rcy = y >> Chunk::SIZE_LOG;
+                auto by = static_cast<uint32_t>(y) & (Chunk::SIZE - 1);
                 for (int z = -1; z < Chunk::SIZE + 1; z++) {
-                    auto rcz = z >> Chunk::SIZE_LOG, bz = z & (Chunk::SIZE - 1);
+                    auto rcz = z >> Chunk::SIZE_LOG;
+                    auto bz = static_cast<uint32_t>(z) & (Chunk::SIZE - 1);
                     auto& block = _data[index++];
                     auto cptr = neighbors[((rcx + 1) * 3 + rcy + 1) * 3 + rcz + 1];
                     assert(cptr, "neighbors array should not contain null pointer");
                     if (cptr == chunks::EMPTY_CHUNK) {
-                        auto light = (ccoord.y + rcy < 0) ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
+                        auto light = (ccoord.y() + rcy < 0) ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
                         block = blocks::BlockData{.id = base_blocks().air, .light = light};
                     } else {
                         block = cptr->block(Vec3u(bx, by, bz));
@@ -738,7 +741,7 @@ void Chunk::build_meshes(std::array<Chunk const*, 3 * 3 * 3> neighbors) {
 
     // Update flags
     if (!_meshed)
-        _load_anim = static_cast<float>(_coord.y * Chunk::SIZE + Chunk::SIZE);
+        _load_anim = static_cast<float>(_coord.y() * Chunk::SIZE + Chunk::SIZE);
     _meshed = true;
     _updated = false;
 }

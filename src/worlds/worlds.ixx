@@ -15,7 +15,7 @@ import frustum_tests;
 import globals;
 import height_maps;
 import hitboxes;
-import vec3;
+import vec;
 import terrain_generation;
 import rendering;
 import :player;
@@ -48,9 +48,9 @@ private:
 
     static constexpr auto pack(Vec3i coord) -> uint64_t {
         auto res = uint64_t{0};
-        res |= static_cast<uint64_t>(coord.x) << 36;
-        res |= static_cast<uint64_t>(coord.y) & 0xFF;
-        res |= (static_cast<uint64_t>(coord.z) & 0x0FFFFFFF) << 8;
+        res |= static_cast<uint64_t>(coord.x()) << 36;
+        res |= static_cast<uint64_t>(coord.y()) & 0xFF;
+        res |= (static_cast<uint64_t>(coord.z()) & 0x0FFFFFFF) << 8;
         return res;
     }
 
@@ -75,9 +75,9 @@ export auto chunk_coord(Vec3i coord) -> Vec3i {
     // C++20 guarantees arithmetic right shift on signed integers
     // See: https://en.cppreference.com/w/cpp/language/operator_arithmetic#Built-in_bitwise_shift_operators
     return {
-        coord.x >> chunks::Chunk::SIZE_LOG,
-        coord.y >> chunks::Chunk::SIZE_LOG,
-        coord.z >> chunks::Chunk::SIZE_LOG,
+        coord.x() >> chunks::Chunk::SIZE_LOG,
+        coord.y() >> chunks::Chunk::SIZE_LOG,
+        coord.z() >> chunks::Chunk::SIZE_LOG,
     };
 }
 
@@ -86,9 +86,9 @@ export auto block_coord(Vec3i coord) -> Vec3u {
     // See: https://en.cppreference.com/w/c/language/conversion#Integer_conversions
     auto ucoord = Vec3u(coord);
     return {
-        ucoord.x & (chunks::Chunk::SIZE - 1),
-        ucoord.y & (chunks::Chunk::SIZE - 1),
-        ucoord.z & (chunks::Chunk::SIZE - 1),
+        ucoord.x() & (chunks::Chunk::SIZE - 1),
+        ucoord.y() & (chunks::Chunk::SIZE - 1),
+        ucoord.z() & (chunks::Chunk::SIZE - 1),
     };
 }
 
@@ -140,13 +140,14 @@ public:
     }
 
     static auto chunk_coord_out_of_world(Vec3i ccoord) -> bool {
-        return ccoord.x < ChunkId::MIN_X || ccoord.x > ChunkId::MAX_X || ccoord.y < ChunkId::MIN_Y
-            || ccoord.y > ChunkId::MAX_Y || ccoord.z < ChunkId::MIN_Z || ccoord.z > ChunkId::MAX_Z;
+        return ccoord.x() < ChunkId::MIN_X || ccoord.x() > ChunkId::MAX_X || ccoord.y() < ChunkId::MIN_Y
+            || ccoord.y() > ChunkId::MAX_Y || ccoord.z() < ChunkId::MIN_Z || ccoord.z() > ChunkId::MAX_Z;
     }
 
     static auto chunk_coord_out_of_range(Vec3i ccoord, Vec3i center, int dist) -> bool {
-        return ccoord.x < center.x - dist || ccoord.x > center.x + dist - 1 || ccoord.y < center.y - dist
-            || ccoord.y > center.y + dist - 1 || ccoord.z < center.z - dist || ccoord.z > center.z + dist - 1;
+        return ccoord.x() < center.x() - dist || ccoord.x() > center.x() + dist - 1 || ccoord.y() < center.y() - dist
+            || ccoord.y() > center.y() + dist - 1 || ccoord.z() < center.z() - dist
+            || ccoord.z() > center.z() + dist - 1;
     }
 
     // Sets the origin of the chunk pointer array and height map
@@ -197,7 +198,7 @@ public:
         if (!cptr)
             return {};
         if (cptr == chunks::EMPTY_CHUNK) {
-            auto light = ccoord.y < 0 ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
+            auto light = ccoord.y() < 0 ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
             return blocks::BlockData{.id = base_blocks().air, .light = light};
         }
         return cptr->block(bcoord);
@@ -299,9 +300,9 @@ public:
     // Destroy blocks within a radius of r
     void explode(Vec3i center, int r) {
         double maxdistsqr = r * r;
-        for (int fx = center.x - r - 1; fx < center.x + r + 1; fx++) {
-            for (int fy = center.y - r - 1; fy < center.y + r + 1; fy++) {
-                for (int fz = center.z - r - 1; fz < center.z + r + 1; fz++) {
+        for (int fx = center.x() - r - 1; fx < center.x() + r + 1; fx++) {
+            for (int fy = center.y() - r - 1; fy < center.y() + r + 1; fy++) {
+                for (int fz = center.z() - r - 1; fz < center.z() + r + 1; fz++) {
                     auto coord = Vec3i(fx, fy, fz);
                     int distsqr = (coord - center).length_sqr();
                     if (distsqr <= maxdistsqr * 0.75
@@ -380,7 +381,7 @@ public:
         // If the top neighbor has maximum sky light, it and this block are both considered skylit.
         // This makes lighting computation much more efficient than the old implementation.
         // Again, blocks below (y = 0) never become skylit to prevent unbounded propagation.
-        auto skylit = coord.y >= 0 && (neighbors[2] && neighbors[2]->light.sky() == blocks::SKY_LIGHT.sky());
+        auto skylit = coord.y() >= 0 && (neighbors[2] && neighbors[2]->light.sky() == blocks::SKY_LIGHT.sky());
 
         // Integral promption avoids underflowing when subtracting from `std::uint8_t` light levels.
         // See: https://en.cppreference.com/w/cpp/language/implicit_conversion#Integral_promotion
@@ -412,17 +413,17 @@ public:
             _block_update_queue.emplace_back(coord + Vec3i(0, 0, +1));
             _block_update_queue.emplace_back(coord + Vec3i(0, 0, -1));
 
-            if (bcoord.x == chunks::Chunk::SIZE - 1)
+            if (bcoord.x() == chunks::Chunk::SIZE - 1)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(+1, 0, 0));
-            if (bcoord.x == 0)
+            if (bcoord.x() == 0)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(-1, 0, 0));
-            if (bcoord.y == chunks::Chunk::SIZE - 1)
+            if (bcoord.y() == chunks::Chunk::SIZE - 1)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(0, +1, 0));
-            if (bcoord.y == 0)
+            if (bcoord.y() == 0)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(0, -1, 0));
-            if (bcoord.z == chunks::Chunk::SIZE - 1)
+            if (bcoord.z() == chunks::Chunk::SIZE - 1)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(0, 0, +1));
-            if (bcoord.z == 0)
+            if (bcoord.z() == 0)
                 _mark_chunk_neighbor_updated(ccoord + Vec3i(0, 0, -1));
         }
         return true;
@@ -454,7 +455,7 @@ public:
         // Update loaded core center
         if (_loaded_core.radius > 0) {
             auto d = (ccenter - _loaded_core.ccenter).map([](int x) { return std::abs(x); });
-            auto dist = static_cast<size_t>(std::max({d.x, d.y, d.z}));
+            auto dist = static_cast<size_t>(std::max({d.x(), d.y(), d.z()}));
             _loaded_core.radius -= std::min(_loaded_core.radius, dist);
         }
         _loaded_core.ccenter = ccenter;
@@ -462,16 +463,16 @@ public:
         // Sort chunk load list by enumerating in cubical shells of increasing radii
         for (int radius = int(_loaded_core.radius) + 1; radius <= RenderDistance + 1; radius++) {
             // Enumerate cubical shell with side length (dist * 2)
-            for (int cx = ccenter.x - radius; cx < ccenter.x + radius; cx++) {
-                for (int cy = ccenter.y - radius; cy < ccenter.y + radius; cy++) {
+            for (int cx = ccenter.x() - radius; cx < ccenter.x() + radius; cx++) {
+                for (int cy = ccenter.y() - radius; cy < ccenter.y() + radius; cy++) {
                     // Skip interior of cubical shell
                     int stride = radius * 2 - 1;
-                    if (cx == ccenter.x - radius || cx == ccenter.x + radius - 1)
+                    if (cx == ccenter.x() - radius || cx == ccenter.x() + radius - 1)
                         stride = 1;
-                    if (cy == ccenter.y - radius || cy == ccenter.y + radius - 1)
+                    if (cy == ccenter.y() - radius || cy == ccenter.y() + radius - 1)
                         stride = 1;
                     // If both X and Y are interior, Z only checks two points
-                    for (int cz = ccenter.z - radius; cz < ccenter.z + radius; cz += stride) {
+                    for (int cz = ccenter.z() - radius; cz < ccenter.z() + radius; cz += stride) {
                         auto cc = Vec3i(cx, cy, cz);
                         if (!chunk_coord_out_of_world(cc) && !chunk(cc)) {
                             auto distsqr = (cc * chunks::Chunk::SIZE + chunks::Chunk::SIZE / 2 - center).length_sqr();
@@ -598,7 +599,7 @@ private:
         auto cid = ChunkId(ccoord);
         auto it = _chunks.find(cid);
         if (it != _chunks.end()) {
-            spdlog::debug("Trying to load existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z);
+            spdlog::debug("Trying to load existing chunk ({}, {}, {})", ccoord.x(), ccoord.y(), ccoord.z());
             return it->second.get();
         }
 
@@ -625,7 +626,7 @@ private:
         auto cid = ChunkId(ccoord);
         auto node = _chunks.extract(cid);
         if (node.empty()) {
-            spdlog::debug("Trying to unload non-existing chunk ({}, {}, {})", ccoord.x, ccoord.y, ccoord.z);
+            spdlog::debug("Trying to unload non-existing chunk ({}, {}, {})", ccoord.x(), ccoord.y(), ccoord.z());
             return;
         }
 
@@ -642,7 +643,7 @@ private:
 
         // Shrink loaded core
         auto d = (ccoord - _loaded_core.ccenter).map([](int x) { return std::abs(x); });
-        auto dist = static_cast<size_t>(std::max({d.x, d.y, d.z}));
+        auto dist = static_cast<size_t>(std::max({d.x(), d.y(), d.z()}));
         _loaded_core.radius = std::min(_loaded_core.radius, dist);
     }
 
