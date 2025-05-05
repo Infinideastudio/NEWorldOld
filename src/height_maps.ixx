@@ -6,7 +6,7 @@ import terrain_generation;
 
 export class HeightMap {
 public:
-    static constexpr int WATER_LEVEL = WorldGen::WaterLevel;
+    static constexpr auto WATER_LEVEL = terrain_generation::WATER_LEVEL;
 
     explicit HeightMap(std::size_t size):
         _size(size),
@@ -14,7 +14,7 @@ public:
         std::fill(_array.get(), _array.get() + size * size, -1);
     }
 
-    auto sSize() -> std::size_t {
+    auto size() -> std::size_t {
         return _size;
     }
 
@@ -50,10 +50,10 @@ public:
         auto v = coord - _origin;
         if (contains(v)) {
             if (_array[v.x() * _size + v.z()] == -1)
-                _array[v.x() * _size + v.z()] = WorldGen::getHeight(coord.x(), coord.z());
+                _array[v.x() * _size + v.z()] = terrain_generation::get_height(coord.x(), coord.z());
             return _array[v.x() * _size + v.z()];
         }
-        return WorldGen::getHeight(coord.x(), coord.z());
+        return terrain_generation::get_height(coord.x(), coord.z());
     }
 
 private:

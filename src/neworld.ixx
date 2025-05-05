@@ -613,7 +613,7 @@ void gameUpdate(worlds::World& world) {
                 wPressTimer = 0.0;
             wPressedOnce = true;
             auto velocity = player.getVelocity();
-            player.setVelocity(angles_front.direction() * player.getSpeed());
+            player.setVelocity(velocity + angles_front.direction() * player.getSpeed());
         } else {
             player.setRunning(false);
             wPressedOnce = false;
@@ -621,33 +621,39 @@ void gameUpdate(worlds::World& world) {
 
         if (isKeyDown(GLFW_KEY_S)) {
             auto velocity = player.getVelocity();
-            player.setVelocity(angles_back.direction() * player.getSpeed());
+            player.setVelocity(velocity + angles_back.direction() * player.getSpeed());
             wPressTimer = 0.0;
         }
 
         if (isKeyDown(GLFW_KEY_A)) {
             auto velocity = player.getVelocity();
-            player.setVelocity(angles_left.direction() * player.getSpeed());
+            player.setVelocity(velocity + angles_left.direction() * player.getSpeed());
             wPressTimer = 0.0;
         }
 
         if (isKeyDown(GLFW_KEY_D)) {
             auto velocity = player.getVelocity();
-            player.setVelocity(angles_right.direction() * player.getSpeed());
+            player.setVelocity(velocity + angles_right.direction() * player.getSpeed());
             wPressTimer = 0.0;
         }
 
         if (!player.isFlying() && !player.canCrossWall()) {
-            player.setVelocity(player.getVelocity().normalize() * player.getSpeed());
+            if (player.getVelocity().length() > player.getSpeed()) {
+                player.setVelocity(player.getVelocity().normalize() * player.getSpeed());
+            }
         } else {
             if (isKeyDown(GLFW_KEY_R)) {
+                auto velocity = player.getVelocity();
                 player.setVelocity(
-                    (isKeyDown(GLFW_KEY_LEFT_CONTROL) ? angles_front : angles).direction() * player.getSpeed() * 20.0
+                    velocity
+                    + (isKeyDown(GLFW_KEY_LEFT_CONTROL) ? angles_front : angles).direction() * player.getSpeed() * 5.0
                 );
             }
             if (isKeyDown(GLFW_KEY_F)) {
+                auto velocity = player.getVelocity();
                 player.setVelocity(
-                    -(isKeyDown(GLFW_KEY_LEFT_CONTROL) ? angles_front : angles).direction() * player.getSpeed() * 20.0
+                    velocity
+                    - (isKeyDown(GLFW_KEY_LEFT_CONTROL) ? angles_front : angles).direction() * player.getSpeed() * 5.0
                 );
             }
         }
@@ -666,8 +672,10 @@ void gameUpdate(worlds::World& world) {
         }
 
         if ((isKeyDown(GLFW_KEY_LEFT_SHIFT) || isKeyDown(GLFW_KEY_RIGHT_SHIFT))) {
-            if (player.canCrossWall() || player.isFlying())
-                player.setVelocity(player.getVelocity() + Vec3d{0.0, -player.getSpeed() / 2.0, 0.0});
+            if (player.canCrossWall() || player.isFlying()) {
+                auto velocity = player.getVelocity();
+                player.setVelocity(velocity + Vec3d{0.0, -player.getSpeed() / 2.0, 0.0});
+            }
             wPressTimer = 0.0;
         }
 
