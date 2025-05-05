@@ -10,7 +10,7 @@ import chunks;
 import blocks;
 import hitboxes;
 import globals;
-import vec3;
+import vec;
 import items;
 import :forward;
 
@@ -32,7 +32,7 @@ public:
     }
     void changeGameMode(GameMode mode);
     void spawn() {
-        setPosition({0, 128, 0});
+        setPosition({0.0, 128.0, 0.0});
         health = healthMax;
     }
 
@@ -66,20 +66,20 @@ public:
     }
     Hitbox::AABB getHitbox() const {
         return {
-            .xmin = position.x - 0.3,
-            .ymin = position.y - 0.0,
-            .zmin = position.z - 0.3,
-            .xmax = position.x + 0.3,
-            .ymax = position.y + 1.7,
-            .zmax = position.z + 0.3,
+            .xmin = position.x() - 0.3,
+            .ymin = position.y() - 0.0,
+            .zmin = position.z() - 0.3,
+            .xmax = position.x() + 0.3,
+            .ymax = position.y() + 1.7,
+            .zmax = position.z() + 0.3,
         };
     }
 
     void update() {
         // health
         if (health > 0 || gamemode == GameMode::Creative) {
-            if (position.y < -100)
-                health -= (-100 - position.y) / 100;
+            if (position.y() < -100)
+                health -= (-100 - position.y()) / 100;
             if (health < healthMax)
                 health += healSpeed;
             if (health > healthMax)
@@ -91,7 +91,7 @@ public:
 
     Vec3i chunkCoord() const;
     Vec3d lookCoord() const {
-        return {position.x, position.y + height, position.z};
+        return {position.x(), position.y() + height, position.z()};
     }
     items::ItemStack& holdingItemStack() {
         return inventory[3][indexInHand];
@@ -186,10 +186,10 @@ public:
                     }
                 }
             } else {
-                velocity.y = 0.2;
+                velocity.y() = 0.2;
             }
         } else {
-            velocity.y += WalkSpeed / 2;
+            velocity.y() += WalkSpeed / 2;
         }
     }
 
@@ -217,7 +217,7 @@ private:
     double speed = 0;
     int airJumps = 0;
     double lookUpDown = 0, heading = 0, jump = 0;
-    Vec3d position = {0, 128, 0}, positionOld = position, velocity = {0, 0, 0};
+    Vec3d position = {0.0, 128.0, 0.0}, positionOld = position, velocity = 0.0;
     double xlookSpeed = 0, ylookSpeed = 0;
 
     std::array<std::array<items::ItemStack, 10>, 4> inventory{};
@@ -233,9 +233,7 @@ bool Player::save(std::string const& worldName) const {
     }
 
     saveFile.write(reinterpret_cast<char const*>(&curVersion), sizeof(curVersion));
-    saveFile.write(reinterpret_cast<char const*>(&position.x), sizeof(position.x));
-    saveFile.write(reinterpret_cast<char const*>(&position.y), sizeof(position.y));
-    saveFile.write(reinterpret_cast<char const*>(&position.z), sizeof(position.z));
+    saveFile.write(reinterpret_cast<char const*>(&position), sizeof(position));
     saveFile.write(reinterpret_cast<char const*>(&lookUpDown), sizeof(lookUpDown));
     saveFile.write(reinterpret_cast<char const*>(&heading), sizeof(heading));
     saveFile.write(reinterpret_cast<char const*>(&jump), sizeof(jump));
@@ -270,9 +268,7 @@ Player::Player(std::string const& worldName) {
         throw std::runtime_error("Player data version mismatch");
     }
 
-    loadFile.read(reinterpret_cast<char*>(&position.x), sizeof(position.x));
-    loadFile.read(reinterpret_cast<char*>(&position.y), sizeof(position.y));
-    loadFile.read(reinterpret_cast<char*>(&position.z), sizeof(position.z));
+    loadFile.read(reinterpret_cast<char*>(&position), sizeof(position));
     loadFile.read(reinterpret_cast<char*>(&lookUpDown), sizeof(lookUpDown));
     loadFile.read(reinterpret_cast<char*>(&heading), sizeof(heading));
     loadFile.read(reinterpret_cast<char*>(&jump), sizeof(jump));

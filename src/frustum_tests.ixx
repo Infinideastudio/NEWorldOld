@@ -1,7 +1,7 @@
 export module frustum_tests;
 import std;
 import types;
-import mat4;
+import mat;
 
 export class FrustumTest {
 public:
@@ -25,40 +25,40 @@ public:
             frus[side + 3] /= magnitude;
         };
 
-        frus[0] = m.data[3] - m.data[0];
-        frus[1] = m.data[7] - m.data[4];
-        frus[2] = m.data[11] - m.data[8];
-        frus[3] = m.data[15] - m.data[12];
+        frus[0] = m[0][3] - m[0][0];
+        frus[1] = m[1][3] - m[1][0];
+        frus[2] = m[2][3] - m[2][0];
+        frus[3] = m[3][3] - m[3][0];
         normalize(0);
 
-        frus[4] = m.data[3] + m.data[0];
-        frus[5] = m.data[7] + m.data[4];
-        frus[6] = m.data[11] + m.data[8];
-        frus[7] = m.data[15] + m.data[12];
+        frus[4] = m[0][3] + m[0][0];
+        frus[5] = m[1][3] + m[1][0];
+        frus[6] = m[2][3] + m[2][0];
+        frus[7] = m[3][3] + m[3][0];
         normalize(4);
 
-        frus[8] = m.data[3] + m.data[1];
-        frus[9] = m.data[7] + m.data[5];
-        frus[10] = m.data[11] + m.data[9];
-        frus[11] = m.data[15] + m.data[13];
+        frus[8] = m[0][3] + m[0][1];
+        frus[9] = m[1][3] + m[1][1];
+        frus[10] = m[2][3] + m[2][1];
+        frus[11] = m[3][3] + m[3][1];
         normalize(8);
 
-        frus[12] = m.data[3] - m.data[1];
-        frus[13] = m.data[7] - m.data[5];
-        frus[14] = m.data[11] - m.data[9];
-        frus[15] = m.data[15] - m.data[13];
+        frus[12] = m[0][3] - m[0][1];
+        frus[13] = m[1][3] - m[1][1];
+        frus[14] = m[2][3] - m[2][1];
+        frus[15] = m[3][3] - m[3][1];
         normalize(12);
 
-        frus[16] = m.data[3] - m.data[2];
-        frus[17] = m.data[7] - m.data[6];
-        frus[18] = m.data[11] - m.data[10];
-        frus[19] = m.data[15] - m.data[14];
+        frus[16] = m[0][3] - m[0][2];
+        frus[17] = m[1][3] - m[1][2];
+        frus[18] = m[2][3] - m[2][2];
+        frus[19] = m[3][3] - m[3][2];
         normalize(16);
 
-        frus[20] = m.data[3] + m.data[2];
-        frus[21] = m.data[7] + m.data[6];
-        frus[22] = m.data[11] + m.data[10];
-        frus[23] = m.data[15] + m.data[14];
+        frus[20] = m[0][3] + m[0][2];
+        frus[21] = m[1][3] + m[1][2];
+        frus[22] = m[2][3] + m[2][2];
+        frus[23] = m[3][3] + m[3][2];
         normalize(20);
     }
 

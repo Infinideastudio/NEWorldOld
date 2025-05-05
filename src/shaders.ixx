@@ -7,8 +7,8 @@ module;
 export module shaders;
 import std;
 import types;
-import vec3;
-import mat4;
+import vec;
+import mat;
 import globals;
 
 export class Shader {
@@ -61,13 +61,13 @@ public:
     auto setUniform(char const* uniform, float const* value) -> bool;
 
     auto setUniform(char const* uniform, Vec3f const& value) -> bool {
-        return setUniform(uniform, value.x, value.y, value.z);
+        return setUniform(uniform, value.x(), value.y(), value.z());
     }
     auto setUniformI(char const* uniform, Vec3i const& value) -> bool {
-        return setUniformI(uniform, value.x, value.y, value.z);
+        return setUniformI(uniform, value.x(), value.y(), value.z());
     }
     auto setUniform(char const* uniform, Mat4f const& value) -> bool {
-        return setUniform(uniform, value.data.data());
+        return setUniform(uniform, value.data());
     }
 
 private:

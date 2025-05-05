@@ -1,7 +1,7 @@
 export module chunk_pointer_arrays;
 import std;
 import types;
-import vec3;
+import vec;
 import chunks;
 
 export class ChunkPointerArray {
@@ -27,7 +27,7 @@ public:
                 for (int z = 0; z < _size; z++) {
                     auto v = Vec3i(x, y, z) + offset;
                     if (contains(v))
-                        next[(x * _size + y) * _size + z] = _array[(v.x * _size + v.y) * _size + v.z];
+                        next[(x * _size + y) * _size + z] = _array[(v.x() * _size + v.y()) * _size + v.z()];
                     else
                         next[(x * _size + y) * _size + z] = nullptr;
                 }
@@ -43,20 +43,20 @@ public:
     }
 
     auto contains(Vec3i v) const -> bool {
-        return v.x >= 0 && v.x < _size && v.y >= 0 && v.y < _size && v.z >= 0 && v.z < _size;
+        return v.x() >= 0 && v.x() < _size && v.y() >= 0 && v.y() < _size && v.z() >= 0 && v.z() < _size;
     }
 
     auto get(Vec3i coord) const -> chunks::Chunk* {
         auto v = coord - _origin;
         if (contains(v))
-            return _array[(v.x * _size + v.y) * _size + v.z];
+            return _array[(v.x() * _size + v.y()) * _size + v.z()];
         return nullptr;
     }
 
     void set(Vec3i coord, chunks::Chunk* c) {
         auto v = coord - _origin;
         if (contains(v))
-            _array[(v.x * _size + v.y) * _size + v.z] = c;
+            _array[(v.x() * _size + v.y()) * _size + v.z()] = c;
     }
 
 private:

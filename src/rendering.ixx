@@ -9,8 +9,8 @@ import types;
 import debug;
 import shaders;
 import framebuffers;
-import mat4;
-import vec3;
+import mat;
+import vec;
 import globals;
 
 export namespace Renderer {
@@ -349,9 +349,9 @@ Mat4f getShadowMatrixExperimental(float fov, float aspect, double heading, doubl
     viewRotate *= Mat4f::rotate(static_cast<float>(heading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f));
     viewRotate *= Mat4f::rotate(-static_cast<float>(pitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f));
     auto viewDir = (res * viewRotate).transform(Vec3f(0.0f, 0.0f, -1.0f));
-    auto viewDirXY = Vec3f(viewDir.x, viewDir.y, 0.0f);
+    auto viewDirXY = Vec3f(viewDir.x(), viewDir.y(), 0.0f);
     if (viewDirXY.length() > 0.01f) {
-        float radians = std::atan2(viewDir.y, viewDir.x);
+        float radians = std::atan2(viewDir.y(), viewDir.x());
         res = Mat4f::rotate(-radians, Vec3f(0.0f, 0.0f, 1.0f)) * res;
     }
 
@@ -372,10 +372,10 @@ Mat4f getShadowMatrixExperimental(float fov, float aspect, double heading, doubl
         vertices[i].normalize();
         vertices[i] *= length;
         vertices[i] = toLightSpace.transform(vertices[i]);
-        xmin = std::min(xmin, vertices[i].x);
-        xmax = std::max(xmax, vertices[i].x);
-        ymin = std::min(ymin, vertices[i].y);
-        ymax = std::max(ymax, vertices[i].y);
+        xmin = std::min(xmin, vertices[i].x());
+        xmax = std::max(xmax, vertices[i].x());
+        ymin = std::min(ymin, vertices[i].y());
+        ymax = std::max(ymax, vertices[i].y());
     }
     xmin = std::max(xmin, -length);
     xmax = std::min(xmax, length);
