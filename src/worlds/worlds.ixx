@@ -110,7 +110,7 @@ public:
         _db.reset(db);
 
         // Initialize terrain generation
-        WorldGen::noiseInit(3404);
+        terrain_generation::noise_init(3404);
 
         // Temporary: reset counters
         meshed_chunks = 0;
