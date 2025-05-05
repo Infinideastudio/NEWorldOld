@@ -14,7 +14,7 @@ import rendering;
 import text_rendering;
 import textures;
 
-void glDefaults() {
+void init_gl_defaults() {
     // Set up default GL context states
     glViewport(0, 0, WindowWidth, WindowHeight);
     glEnable(GL_BLEND);
@@ -30,7 +30,7 @@ void glDefaults() {
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 }
 
-void WindowSizeFunc(GLFWwindow* win, int width, int height) {
+void on_window_size_event(GLFWwindow* win, int width, int height) {
     if (width < 640)
         width = 640;
     if (height < 360)
@@ -38,11 +38,11 @@ void WindowSizeFunc(GLFWwindow* win, int width, int height) {
     WindowWidth = width;
     WindowHeight = height > 0 ? height : 1;
     glfwSetWindowSize(win, width, height);
-    glDefaults();
-    Renderer::initShaders();
+    init_gl_defaults();
+    Renderer::init_shaders();
 }
 
-void MouseButtonFunc(GLFWwindow*, int button, int action, int) {
+void on_mouse_button_event(GLFWwindow*, int button, int action, int) {
     mb = 0;
     if (action == GLFW_PRESS) {
         if (button == GLFW_MOUSE_BUTTON_LEFT)
@@ -55,23 +55,23 @@ void MouseButtonFunc(GLFWwindow*, int button, int action, int) {
         mb = 0;
 }
 
-void KeyFunc(GLFWwindow*, int key, int /* scancode */, int action, int /* mods */) {
+void on_mouse_scroll_event(GLFWwindow*, double, double yoffset) {
+    mw += (int) yoffset;
+}
+
+void on_key_event(GLFWwindow*, int key, int /* scancode */, int action, int /* mods */) {
     if (key == GLFW_KEY_BACKSPACE && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         backspace = true;
     }
 }
 
-void CharInputFunc(GLFWwindow*, unsigned int c) {
-    char32_t unicode = static_cast<char32_t>(c);
+void on_char_inpput_event(GLFWwindow*, unsigned int c) {
+    auto unicode = static_cast<char32_t>(c);
     inputstr += unicode;
 }
 
-void MouseScrollFunc(GLFWwindow*, double, double yoffset) {
-    mw += (int) yoffset;
-}
-
 // OpenGL debug callback
-void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, GLchar const* msg, void const*) {
+void APIENTRY gl_debug_callback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, GLchar const* msg, void const*) {
     switch (severity) {
         case GL_DEBUG_SEVERITY_HIGH:
             spdlog::error("[GL] {}", msg);
@@ -89,29 +89,17 @@ void APIENTRY glDebugCallback(GLenum, GLenum, GLuint, GLenum severity, GLsizei, 
     }
 }
 
-export void initStretch() {
-    double const stdppi = 96.0;
-    if (UIStretch && Stretch == 1.0) {
-        // Get the screen physical size and set stretch
-        int nScreenWidth, nScreenHeight;
-        glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &nScreenWidth, &nScreenHeight);
-        int vmc;
-        GLFWvidmode const* mode = glfwGetVideoModes(glfwGetPrimaryMonitor(), &vmc);
-        double ppi = static_cast<double>(mode[vmc - 1].width) / (static_cast<double>(nScreenWidth) / 25.4f);
-        Stretch = ppi / stdppi;
-        // Compute the stretch and reset the window size
-        WindowWidth = static_cast<int>(WindowWidth * Stretch);
-        WindowHeight = static_cast<int>(WindowHeight * Stretch);
-        glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
-    } else if (!UIStretch && Stretch != 1.0) {
-        WindowWidth = static_cast<int>(WindowWidth / Stretch);
-        WindowHeight = static_cast<int>(WindowHeight / Stretch);
-        Stretch = 1.0;
-        glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
-    }
+// Calculates a recommended stretch factor for the current display.
+auto calculate_stretch(double target_ppi = 96.0) -> double {
+    auto monitor_width_mm = int32_t{0}, monitor_height_mm = int32_t{0};
+    glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &monitor_width_mm, &monitor_height_mm);
+    auto count = int32_t{0};
+    auto mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    auto curr_ppi = static_cast<double>(mode->width) / (static_cast<double>(monitor_width_mm) / 25.4);
+    return curr_ppi / target_ppi;
 }
 
-export void createWindow() {
+export void create_window() {
     std::stringstream title;
     title << "NEWorld " << MajorVersion << MinorVersion << VersionSuffix;
 
@@ -123,20 +111,24 @@ export void createWindow() {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 #endif
 
-    MainWindow = glfwCreateWindow(WindowWidth, WindowHeight, title.str().c_str(), NULL, NULL);
+    if (UIAutoStretch)
+        Stretch = calculate_stretch();
+    WindowWidth = static_cast<int>(DefaultWindowWidth * Stretch);
+    WindowHeight = static_cast<int>(DefaultWindowHeight * Stretch);
+    MainWindow = glfwCreateWindow(WindowWidth, WindowHeight, title.str().c_str(), nullptr, nullptr);
     MouseCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 
     glfwMakeContextCurrent(MainWindow);
     glfwSetCursor(MainWindow, MouseCursor);
     glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    glfwSetWindowSizeCallback(MainWindow, &WindowSizeFunc);
-    glfwSetMouseButtonCallback(MainWindow, &MouseButtonFunc);
-    glfwSetScrollCallback(MainWindow, &MouseScrollFunc);
-    glfwSetKeyCallback(MainWindow, &KeyFunc);
-    glfwSetCharCallback(MainWindow, &CharInputFunc);
+    glfwSetWindowSizeCallback(MainWindow, &on_window_size_event);
+    glfwSetMouseButtonCallback(MainWindow, &on_mouse_button_event);
+    glfwSetScrollCallback(MainWindow, &on_mouse_scroll_event);
+    glfwSetKeyCallback(MainWindow, &on_key_event);
+    glfwSetCharCallback(MainWindow, &on_char_inpput_event);
     glfwSwapInterval(VerticalSync ? 1 : 0);
 
-    int gladStatus = gladLoadGL(glfwGetProcAddress);
+    auto gladStatus = gladLoadGL(glfwGetProcAddress);
     assert(gladStatus != 0, "failed to initialize GL entry points");
 
     GLMajorVersion = GLAD_VERSION_MAJOR(gladStatus);
@@ -146,24 +138,38 @@ export void createWindow() {
     if (!glDebugMessageCallback) {
         spdlog::warn("Note that you're in debug mode, but GL_KHR_debug is not supported.", title.str());
     } else {
-        glDebugMessageCallback(glDebugCallback, nullptr);
+        glDebugMessageCallback(gl_debug_callback, nullptr);
         spdlog::info("GL_KHR_debug enabled.");
     }
 #endif
 
     // Make sure everything is initialised
-    TextRenderer::initFont();
-    initStretch();
-    glDefaults();
-    Renderer::initShaders();
+    TextRenderer::init_font();
+    init_gl_defaults();
+    Renderer::init_shaders();
 }
 
-export void toggleFullScreen() {
+export void toggle_stretch() {
+    UIAutoStretch = !UIAutoStretch;
+    if (UIAutoStretch) {
+        Stretch = calculate_stretch();
+        WindowWidth = static_cast<int>(WindowWidth * Stretch);
+        WindowHeight = static_cast<int>(WindowHeight * Stretch);
+    } else {
+        WindowWidth = static_cast<int>(WindowWidth / Stretch);
+        WindowHeight = static_cast<int>(WindowHeight / Stretch);
+        Stretch = 1.0;
+    }
+    glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
+    TextRenderer::init_font(true);
+    init_gl_defaults();
+    Renderer::init_shaders();
+}
+
+export void toggle_full_screen() {
     static bool fullscreen = false;
     static int ww = 0, wh = 0;
-
-    GLFWvidmode const* mode;
-    mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    auto mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 
     fullscreen = !fullscreen;
     if (fullscreen) {
@@ -183,12 +189,11 @@ export void toggleFullScreen() {
             mode->refreshRate
         );
     }
-
-    glDefaults();
-    Renderer::initShaders();
+    init_gl_defaults();
+    Renderer::init_shaders();
 }
 
-export void loadTextures() {
+export void load_textures() {
     SelectedTexture = Textures::loadRGBTexture("textures/ui/select.bmp", false);
     UnselectedTexture = Textures::loadRGBTexture("textures/ui/unselect.bmp", false);
     TitleTexture = Textures::loadRGBATexture("textures/ui/title.bmp", "textures/ui/title_mask.bmp", true);
@@ -201,7 +206,7 @@ export void loadTextures() {
         Textures::loadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
 }
 
-export void splashScreen() {
+export void splash_screen() {
     if (SplashTexture == 0) {
         SplashTexture = Textures::loadRGBTexture("textures/ui/splash.bmp", true);
     }
@@ -234,6 +239,6 @@ export void splashScreen() {
         glfwSwapBuffers(MainWindow);
         glfwPollEvents();
 
-        Sleep(10);
+        sleep(10);
     }
 }

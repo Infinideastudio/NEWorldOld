@@ -31,14 +31,14 @@ export int MaxShadowDistance = 16;
 export bool SoftShadow = false;
 export bool VolumetricClouds = false;
 export bool AmbientOcclusion = false;
-export bool UIStretch = false;
-export int Multisample = 0;
+export bool UIAutoStretch = true;
+export int Multisample = 4;
 export bool VerticalSync = false;
 export bool UIBackgroundBlur = true;
-export int FontSize = 16;
-export double Stretch = 1.0f;
-export int WindowWidth = DefaultWindowWidth;
-export int WindowHeight = DefaultWindowHeight;
+export double FontScale = 1.0;
+export double Stretch = 1.0;
+export int WindowWidth = 0;
+export int WindowHeight = 0;
 export std::string Cur_Lang = "zh_CN";
 export std::string Cur_WorldName = "";
 
@@ -97,24 +97,24 @@ export auto split(std::string str, std::string pattern) -> std::vector<std::stri
     return ret;
 }
 
-export auto Timer() -> double {
+export auto timer() -> double {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-export void Sleep(unsigned int ms) {
+export void sleep(unsigned int ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
-export auto UTF8Unicode(std::string_view s) -> std::u32string {
+export auto utf8_unicode(std::string_view s) -> std::u32string {
     return utf8::utf8to32(s);
 }
 
-export auto UnicodeUTF8(std::u32string_view s) -> std::string {
+export auto unicode_utf8(std::u32string_view s) -> std::string {
     return utf8::utf32to8(s);
 }
 
 template <typename T>
-void loadoption(std::map<std::string, std::string>& m, char const* name, T& value) {
+void load_option(std::map<std::string, std::string>& m, char const* name, T& value) {
     if (m.find(name) == m.end())
         return;
     std::stringstream ss;
@@ -122,64 +122,67 @@ void loadoption(std::map<std::string, std::string>& m, char const* name, T& valu
     ss >> value;
 }
 
-export void loadOptions() {
-    std::map<std::string, std::string> options;
-    std::ifstream filein("configs/options.ini", std::ios::in);
-    if (!filein.is_open())
-        return;
-    std::string name, value;
-    while (!filein.eof()) {
-        filein >> name >> value;
+export auto load_options() -> bool {
+    auto file = std::ifstream("configs/options.ini", std::ios::in);
+    if (!file.is_open()) {
+        return false;
+    }
+    auto options = std::map<std::string, std::string>();
+    while (!file.eof()) {
+        auto name = std::string();
+        auto value = std::string();
+        file >> name >> value;
         options[name] = value;
     }
-    filein.close();
-    loadoption(options, "Language", Cur_Lang);
-    loadoption(options, "FOV", FOVyNormal);
-    loadoption(options, "RenderDistance", RenderDistance);
-    loadoption(options, "Sensitivity", MouseSpeed);
-    loadoption(options, "SmoothLighting", SmoothLighting);
-    loadoption(options, "FancyGrass", NiceGrass);
-    loadoption(options, "MergeFaceRendering", MergeFace);
-    loadoption(options, "MultiSample", Multisample);
-    loadoption(options, "AdvancedRender", AdvancedRender);
-    loadoption(options, "ShadowMapRes", ShadowRes);
-    loadoption(options, "ShadowDistance", MaxShadowDistance);
-    loadoption(options, "SoftShadow", SoftShadow);
-    loadoption(options, "VolumetricClouds", VolumetricClouds);
-    loadoption(options, "AmbientOcclusion", AmbientOcclusion);
-    loadoption(options, "VerticalSync", VerticalSync);
-    loadoption(options, "UIFontSize", FontSize);
-    loadoption(options, "UIStretch", UIStretch);
-    loadoption(options, "UIBackgroundBlur", UIBackgroundBlur);
+    file.close();
+    load_option(options, "Language", Cur_Lang);
+    load_option(options, "FOV", FOVyNormal);
+    load_option(options, "RenderDistance", RenderDistance);
+    load_option(options, "Sensitivity", MouseSpeed);
+    load_option(options, "SmoothLighting", SmoothLighting);
+    load_option(options, "FancyGrass", NiceGrass);
+    load_option(options, "MergeFaceRendering", MergeFace);
+    load_option(options, "MultiSample", Multisample);
+    load_option(options, "AdvancedRender", AdvancedRender);
+    load_option(options, "ShadowMapRes", ShadowRes);
+    load_option(options, "ShadowDistance", MaxShadowDistance);
+    load_option(options, "SoftShadow", SoftShadow);
+    load_option(options, "VolumetricClouds", VolumetricClouds);
+    load_option(options, "AmbientOcclusion", AmbientOcclusion);
+    load_option(options, "VerticalSync", VerticalSync);
+    load_option(options, "UIFontScale", FontScale);
+    load_option(options, "UIAutoStretch", UIAutoStretch);
+    load_option(options, "UIBackgroundBlur", UIBackgroundBlur);
+    return true;
 }
 
 template <typename T>
-void saveoption(std::ofstream& out, char const* name, T& value) {
+void save_option(std::ofstream& out, char const* name, T& value) {
     out << std::string(name) << " " << value << std::endl;
 }
 
-export void saveOptions() {
-    std::map<std::string, std::string> options;
-    std::ofstream fileout("configs/options.ini", std::ios::out);
-    if (!fileout.is_open())
-        return;
-    saveoption(fileout, "Language", Cur_Lang);
-    saveoption(fileout, "FOV", FOVyNormal);
-    saveoption(fileout, "RenderDistance", RenderDistance);
-    saveoption(fileout, "Sensitivity", MouseSpeed);
-    saveoption(fileout, "SmoothLighting", SmoothLighting);
-    saveoption(fileout, "FancyGrass", NiceGrass);
-    saveoption(fileout, "MergeFaceRendering", MergeFace);
-    saveoption(fileout, "MultiSample", Multisample);
-    saveoption(fileout, "AdvancedRender", AdvancedRender);
-    saveoption(fileout, "ShadowMapRes", ShadowRes);
-    saveoption(fileout, "ShadowDistance", MaxShadowDistance);
-    saveoption(fileout, "SoftShadow", SoftShadow);
-    saveoption(fileout, "VolumetricClouds", VolumetricClouds);
-    saveoption(fileout, "AmbientOcclusion", AmbientOcclusion);
-    saveoption(fileout, "VerticalSync", VerticalSync);
-    saveoption(fileout, "UIFontSize", FontSize);
-    saveoption(fileout, "UIStretch", UIStretch);
-    saveoption(fileout, "UIBackgroundBlur", UIBackgroundBlur);
-    fileout.close();
+export auto save_options() -> bool {
+    auto file = std::ofstream("configs/options.ini", std::ios::out);
+    if (!file.is_open()) {
+        return false;
+    }
+    save_option(file, "Language", Cur_Lang);
+    save_option(file, "FOV", FOVyNormal);
+    save_option(file, "RenderDistance", RenderDistance);
+    save_option(file, "Sensitivity", MouseSpeed);
+    save_option(file, "SmoothLighting", SmoothLighting);
+    save_option(file, "FancyGrass", NiceGrass);
+    save_option(file, "MergeFaceRendering", MergeFace);
+    save_option(file, "MultiSample", Multisample);
+    save_option(file, "AdvancedRender", AdvancedRender);
+    save_option(file, "ShadowMapRes", ShadowRes);
+    save_option(file, "ShadowDistance", MaxShadowDistance);
+    save_option(file, "SoftShadow", SoftShadow);
+    save_option(file, "VolumetricClouds", VolumetricClouds);
+    save_option(file, "AmbientOcclusion", AmbientOcclusion);
+    save_option(file, "VerticalSync", VerticalSync);
+    save_option(file, "UIFontScale", FontScale);
+    save_option(file, "UIAutoStretch", UIAutoStretch);
+    save_option(file, "UIBackgroundBlur", UIBackgroundBlur);
+    return true;
 }

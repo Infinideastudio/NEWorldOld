@@ -129,8 +129,13 @@ public:
     }
 
 private:
-    static constexpr auto _DEFAULT_INFO =
-        BlockInfo{.name = "null", .solid = true, .opaque = true, .translucent = false, .hardness = 0.0f};
+    static constexpr auto _DEFAULT_INFO = BlockInfo{
+        .name = "null",
+        .solid = true,
+        .opaque = true,
+        .translucent = false,
+        .hardness = 0.0f,
+    };
 
     std::vector<BlockInfo> _entries;
 };

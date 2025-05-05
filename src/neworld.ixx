@@ -26,18 +26,18 @@ import items;
 //==============================   Initialize   ================================//
 //==============================初始化(包括闪屏)================================//
 
-void registerCommands();
-void updateThreadFunc(worlds::World& world);
-void gameUpdate(worlds::World& world);
-void frameLinkedUpdate(worlds::World& world);
+void register_commands();
+void update_thread_func(worlds::World& world);
+void game_update(worlds::World& world);
+void frame_linked_update(worlds::World& world);
 
 void render(worlds::World& world);
 void readback(worlds::World& world);
-void drawBorder(float x, float y, float z);
-void drawBreaking(float level, float x, float y, float z);
-void drawGUI(worlds::World& world);
-void drawBagRow(player::Player& world, int row, int itemid, int xbase, int ybase, int spac, float alpha);
-void drawBag(player::Player& world);
+void draw_block_selection_border(float x, float y, float z);
+void draw_block_breaking_texture(float level, float x, float y, float z);
+void draw_hud(worlds::World& world);
+void draw_inventory_row(player::Player& world, int row, int itemid, int xbase, int ybase, int spac, float alpha);
+void draw_inventory(player::Player& world);
 
 std::mutex updateMutex;
 double updateTimer;
@@ -110,7 +110,7 @@ void updateKeyStates() {
 
 export int main() {
     // 终于进入main函数了！激动人心的一刻！！！
-    loadOptions();
+    load_options();
     Globalization::Load();
 
     std::filesystem::create_directories("configs");
@@ -120,11 +120,11 @@ export int main() {
     WindowWidth = DefaultWindowWidth;
     WindowHeight = DefaultWindowHeight;
 
-    createWindow();
-    splashScreen();
-    loadTextures();
+    create_window();
+    splash_screen();
+    load_textures();
     register_base_blocks();
-    registerCommands();
+    register_commands();
 
     // 菜单游戏循环
     while (!glfwWindowShouldClose(MainWindow)) {
@@ -139,8 +139,8 @@ export int main() {
         // 初始化游戏更新线程
         updateMutex.lock();
         updateThreadRun = true;
-        updateTimer = Timer();
-        auto updateThread = std::thread(updateThreadFunc, std::ref(world));
+        updateTimer = timer();
+        auto updateThread = std::thread(update_thread_func, std::ref(world));
 
         // 这才是游戏开始!
         spdlog::info("Main loop started");
@@ -150,7 +150,7 @@ export int main() {
         shouldGetScreenshot = false;
         shouldGetThumbnail = false;
         shouldToggleFullscreen = false;
-        fctime = uctime = Timer();
+        fctime = uctime = timer();
 
         // 主循环，被简化成这样，惨不忍睹啊！
         while (!glfwWindowShouldClose(MainWindow) && !GameExit) {
@@ -163,15 +163,15 @@ export int main() {
             fpsc++;
 
             // 检测帧速率
-            if (Timer() - fctime >= 1.0) {
+            if (timer() - fctime >= 1.0) {
                 fps = fpsc;
                 fpsc = 0;
-                fctime = Timer();
+                fctime = timer();
             }
 
             // 检测更新速率
-            if (Timer() - uctime >= 1.0) {
-                uctime = Timer();
+            if (timer() - uctime >= 1.0) {
+                uctime = timer();
                 ups = upsc;
                 upsc = 0;
             }
@@ -180,7 +180,7 @@ export int main() {
             glfwPollEvents();
 
             // 须每帧处理的输入和游戏更新
-            frameLinkedUpdate(world);
+            frame_linked_update(world);
 
             // 暂停菜单
             if (paused) {
@@ -191,15 +191,15 @@ export int main() {
                 paused = false;
                 mxl = mx;
                 myl = my;
-                updateTimer = fctime = uctime = Timer();
+                updateTimer = fctime = uctime = timer();
             }
         };
 
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClearDepth(1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
-        TextRenderer::renderString(1, 1, "Saving world...");
+        TextRenderer::set_font_color(1.0, 1.0, 1.0, 1.0);
+        TextRenderer::render_string(1, 1, "Saving world...");
         glfwSwapBuffers(MainWindow);
 
         // 停止游戏更新线程
@@ -220,25 +220,25 @@ export int main() {
     // This is the END of the program!
 }
 
-void updateThreadFunc(worlds::World& world) {
+void update_thread_func(worlds::World& world) {
     updateMutex.lock();
     while (updateThreadRun) {
-        double currTimer = Timer();
+        double currTimer = timer();
         while (currTimer - updateTimer >= 1.0 / 30.0) {
             if (upsc >= 60)
                 updateTimer = currTimer;
             updateTimer += 1.0 / 30.0;
             upsc++;
-            gameUpdate(world);
+            game_update(world);
         }
         updateMutex.unlock();
-        Sleep(1);
+        sleep(1);
         updateMutex.lock();
     }
     updateMutex.unlock();
 }
 
-void registerCommands() {
+void register_commands() {
     commands.emplace_back("/help", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 1)
             return false;
@@ -390,7 +390,7 @@ bool doCommand(std::vector<std::string> const& command, worlds::World& world) {
     return false;
 }
 
-void gameUpdate(worlds::World& world) {
+void game_update(worlds::World& world) {
     int const SelectPrecision = 32;
     int const SelectDistance = 8;
 
@@ -468,14 +468,14 @@ void gameUpdate(worlds::World& world) {
             mbl = mb;
             if (!chatword.empty()) {      // 指令的执行，或发出聊天文本
                 if (chatword[0] == '/') { // 指令
-                    auto utf8 = UnicodeUTF8(chatword);
+                    auto utf8 = unicode_utf8(chatword);
                     auto command = split(utf8, " ");
                     if (!doCommand(command, world)) { // 执行失败
                         spdlog::warn("Fail to execute the command: {}", utf8);
                         chatMessages.push_back("Fail to execute the command: " + utf8);
                     }
                 } else
-                    chatMessages.push_back(UnicodeUTF8(chatword));
+                    chatMessages.push_back(unicode_utf8(chatword));
             }
             chatword.clear();
         }
@@ -488,8 +488,8 @@ void gameUpdate(worlds::World& world) {
         // 自动补全
         if (isKeyPressed(GLFW_KEY_TAB) && chatmode && !chatword.empty() && chatword[0] == '/') {
             for (auto& command: commands) {
-                if (command.identifier.starts_with(UnicodeUTF8(chatword)))
-                    chatword = UTF8Unicode(command.identifier);
+                if (command.identifier.starts_with(unicode_utf8(chatword)))
+                    chatword = utf8_unicode(command.identifier);
             }
         }
     } else if (bagOpened) {
@@ -497,7 +497,7 @@ void gameUpdate(worlds::World& world) {
 
         if (isKeyPressed(GLFW_KEY_E)) {
             bagOpened = false;
-            bagAnimTimer = Timer();
+            bagAnimTimer = timer();
             mxl = mx;
             myl = my;
             mwl = mw;
@@ -594,16 +594,16 @@ void gameUpdate(worlds::World& world) {
         if (isKeyDown(GLFW_KEY_W)) {
             if (!wPressedOnce) {
                 if (wPressTimer == 0.0) {
-                    wPressTimer = Timer();
+                    wPressTimer = timer();
                 } else {
-                    if (Timer() - wPressTimer <= 0.5) {
+                    if (timer() - wPressTimer <= 0.5) {
                         player.set_running(true);
                         wPressTimer = 0.0;
                     } else
-                        wPressTimer = Timer();
+                        wPressTimer = timer();
                 }
             }
-            if (wPressTimer != 0.0 && Timer() - wPressTimer > 0.5)
+            if (wPressTimer != 0.0 && timer() - wPressTimer > 0.5)
                 wPressTimer = 0.0;
             wPressedOnce = true;
             auto velocity = player.velocity();
@@ -678,7 +678,7 @@ void gameUpdate(worlds::World& world) {
         // Open inventory
         if (isKeyPressed(GLFW_KEY_E) && showHUD) {
             bagOpened = true;
-            bagAnimTimer = Timer();
+            bagAnimTimer = timer();
             shouldGetThumbnail = true;
         }
 
@@ -695,7 +695,7 @@ void gameUpdate(worlds::World& world) {
         }
         if (isKeyPressed(GLFW_KEY_F2)) {
             shouldGetScreenshot = true;
-            screenshotAnimTimer = Timer();
+            screenshotAnimTimer = timer();
         }
         if (isKeyPressed(GLFW_KEY_F3))
             showDebugPanel = !showDebugPanel;
@@ -726,7 +726,7 @@ void gameUpdate(worlds::World& world) {
             chatmode = true;
         if (isKeyPressed(GLFW_KEY_SLASH)) {
             chatmode = true;
-            chatword = UTF8Unicode("/");
+            chatword = utf8_unicode("/");
         }
     }
 
@@ -745,7 +745,7 @@ void gameUpdate(worlds::World& world) {
     player.update(world);
 }
 
-void frameLinkedUpdate(worlds::World& world) {
+void frame_linked_update(worlds::World& world) {
     // Find chunks for unloading & loading & meshing
     auto& player = world.player();
     auto center = Vec3i(player.coord());
@@ -761,7 +761,7 @@ void frameLinkedUpdate(worlds::World& world) {
     world.process_chunk_meshings();
 
     // 处理计时
-    double currTimer = Timer();
+    double currTimer = timer();
 
     // 视野特效
     if (player.running()) {
@@ -799,7 +799,7 @@ void frameLinkedUpdate(worlds::World& world) {
     // 切换全屏
     if (shouldToggleFullscreen) {
         shouldToggleFullscreen = false;
-        toggleFullScreen();
+        toggle_full_screen();
     }
 
     // 暂停按键
@@ -816,7 +816,7 @@ void render(worlds::World& world) {
     float const SkyColorB = 0.86f;
 
     auto& player = world.player();
-    double currTimer = Timer();
+    double currTimer = timer();
     double interp = (currTimer - updateTimer) * 30.0;
     Vec3d view_coord = player.look_coord() - player.velocity() * (1.0 - interp);
 
@@ -886,18 +886,18 @@ void render(worlds::World& world) {
         if (showHUD) {
             // Temporary solution pre GL 4.0 (glBlendFuncSeparatei)
             glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-            drawBorder(0, 0, 0);
+            draw_block_selection_border(0, 0, 0);
             glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
             glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
             glColorMaski(2, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
             glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
-            drawBorder(0, 0, 0);
+            draw_block_selection_border(0, 0, 0);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
             glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
             glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         }
-        drawBreaking(seldes, 0, 0, 0);
+        draw_block_breaking_texture(seldes, 0, 0, 0);
     }
     world.render_chunks(view_coord, list, 1);
     glEnable(GL_CULL_FACE);
@@ -986,8 +986,8 @@ void render(worlds::World& world) {
     }
 
     if (showHUD) {
-        drawGUI(world);
-        drawBag(world.player());
+        draw_hud(world);
+        draw_inventory(world.player());
     }
 
     if (currTimer - screenshotAnimTimer <= 1.0 && !shouldGetScreenshot) {
@@ -1063,7 +1063,7 @@ float const texcoords[4][2] = {
 };
 
 // Draw the block selection border
-void drawBorder(float x, float y, float z) {
+void draw_block_selection_border(float x, float y, float z) {
     float const eps = 0.005f;
     float const width = 1.0f / 32.0f;
 
@@ -1096,7 +1096,7 @@ void drawBorder(float x, float y, float z) {
     Renderer::End().render();
 }
 
-void drawBreaking(float level, float x, float y, float z) {
+void draw_block_breaking_texture(float level, float x, float y, float z) {
     float const eps = 0.005f;
 
     if (level <= 0.0f)
@@ -1131,7 +1131,7 @@ void drawBreaking(float level, float x, float y, float z) {
     Renderer::End().render();
 }
 
-void drawGUI(worlds::World& world) {
+void draw_hud(worlds::World& world) {
     int const linelength = 10;
     int const linedist = 30;
     int disti = (int) (seldes * linedist);
@@ -1275,20 +1275,20 @@ void drawGUI(worlds::World& world) {
         */
     }
 
-    int lineHeight = TextRenderer::getLineHeight();
+    int lineHeight = TextRenderer::line_height();
     int textPos = 0;
     auto debugText = [=](std::string const& s) mutable {
-        TextRenderer::renderString(0, lineHeight * textPos, s);
+        TextRenderer::render_string(0, lineHeight * textPos, s);
         textPos++;
     };
 
-    TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.8f);
+    TextRenderer::set_font_color(1.0f, 1.0f, 1.0f, 0.8f);
     if (showDebugPanel && selb != base_blocks().air) {
         std::stringstream ss;
         ss << block_info(selb).name << " (id: " << static_cast<int>(selb.get()) << ")";
-        TextRenderer::renderString(
+        TextRenderer::render_string(
             WindowWidth / 2 + 50,
-            WindowHeight / 2 + 50 - TextRenderer::getLineHeight(),
+            WindowHeight / 2 + 50 - TextRenderer::line_height(),
             ss.str()
         );
     }
@@ -1302,7 +1302,7 @@ void drawGUI(worlds::World& world) {
         glVertex2i(WindowWidth - 1, WindowHeight - 33 - lineHeight);
         glEnd();
         glEnable(GL_TEXTURE_2D);
-        TextRenderer::renderString(0, WindowHeight - 33 - lineHeight, chatword);
+        TextRenderer::render_string(0, WindowHeight - 33 - lineHeight, chatword);
     }
     int count = 0;
     for (size_t i = chatMessages.size(); i-- > 0 && count < 10; count++) {
@@ -1318,10 +1318,10 @@ void drawGUI(worlds::World& world) {
         glVertex2i(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 2));
         glEnd();
         glEnable(GL_TEXTURE_2D);
-        TextRenderer::renderString(0, WindowHeight - 34 - lineHeight * (count + 2), chatMessages[i]);
+        TextRenderer::render_string(0, WindowHeight - 34 - lineHeight * (count + 2), chatMessages[i]);
     }
 
-    TextRenderer::setFontColor(1.0f, 1.0f, 1.0f, 0.9f);
+    TextRenderer::set_font_color(1.0f, 1.0f, 1.0f, 0.9f);
     if (showDebugPanel) {
         auto boolstr = [](bool b) {
             return b ? "true" : "false";
@@ -1401,7 +1401,7 @@ void drawGUI(worlds::World& world) {
     }
 }
 
-void drawBagRow(player::Player& player, int row, int itemid, int xbase, int ybase, int spac, float alpha) {
+void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, int ybase, int spac, float alpha) {
     // 画出背包的一行
     auto& shader = Renderer::shaders[Renderer::UIShader];
     for (int i = 0; i < 10; i++) {
@@ -1436,12 +1436,12 @@ void drawBagRow(player::Player& player, int row, int itemid, int xbase, int ybas
             Renderer::End().render();
             shader.unbind();
 
-            TextRenderer::renderString(xbase + i * (32 + spac), ybase, std::to_string(item.count));
+            TextRenderer::render_string(xbase + i * (32 + spac), ybase, std::to_string(item.count));
         }
     }
 }
 
-void drawBag(player::Player& player) {
+void draw_inventory(player::Player& player) {
     // 背包界面与更新
     static int si, sj, sf;
     int csi = -1, csj = -1;
@@ -1449,7 +1449,7 @@ void drawBag(player::Player& player) {
     int upp = WindowHeight - 152 - 16;
     static int mousew, mouseb, mousebl;
     static items::ItemStack itemSelected;
-    double curtime = Timer();
+    double curtime = timer();
     double TimeDelta = curtime - bagAnimTimer;
     float bagAnim = (float) (1.0 - std::pow(0.9, TimeDelta * 60.0)
                              + std::pow(0.9, bagAnimDuration * 60.0) / bagAnimDuration * TimeDelta);
@@ -1509,7 +1509,7 @@ void drawBag(player::Player& player) {
                             item = {};
                     }
                 }
-                drawBagRow(
+                draw_inventory_row(
                     player,
                     i,
                     (csi == i ? csj : -1),
@@ -1539,11 +1539,11 @@ void drawBag(player::Player& player) {
             Renderer::End().render();
             shader.unbind();
 
-            TextRenderer::renderString((int) mx - 16, (int) my - 16, std::to_string(itemSelected.count));
+            TextRenderer::render_string((int) mx - 16, (int) my - 16, std::to_string(itemSelected.count));
         }
         auto item = player.inventory_item_stack(si, sj);
         if (!item.empty() && sf == 1) {
-            TextRenderer::renderString((int) mx, (int) my - 16, block_info(item.id).name);
+            TextRenderer::render_string((int) mx, (int) my - 16, block_info(item.id).name);
         }
 
         int xbase = 0, ybase = 0, spac = 0;
@@ -1552,11 +1552,11 @@ void drawBag(player::Player& player) {
             xbase = std::lround(((WindowWidth - 392) / 2) * bagAnim);
             ybase = std::lround((WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
             spac = std::lround(8 * bagAnim);
-            drawBagRow(player, 3, -1, xbase, ybase, spac, alpha);
+            draw_inventory_row(player, 3, -1, xbase, ybase, spac, alpha);
             xbase = std::lround(((WindowWidth - 392) / 2 - WindowWidth) * bagAnim + WindowWidth);
             ybase = std::lround((WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
             for (int i = 0; i < 3; i++) {
-                drawBagRow(player, i, -1, xbase, ybase + i * 40, spac, alpha);
+                draw_inventory_row(player, i, -1, xbase, ybase + i * 40, spac, alpha);
             }
         }
 
@@ -1583,7 +1583,7 @@ void drawBag(player::Player& player) {
                 - (WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32)
             );
             spac = std::lround(8 - 8 * bagAnim);
-            drawBagRow(player, 3, player.held_item_stack_index(), xbase, ybase, spac, alpha);
+            draw_inventory_row(player, 3, player.held_item_stack_index(), xbase, ybase, spac, alpha);
             xbase = std::lround(
                 ((WindowWidth - 392) / 2 - WindowWidth) - ((WindowWidth - 392) / 2 - WindowWidth) * bagAnim
                 + WindowWidth
@@ -1593,9 +1593,9 @@ void drawBag(player::Player& player) {
                 - (WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32)
             );
             for (int i = 0; i < 3; i++) {
-                drawBagRow(player, i, -1, xbase, ybase + i * 40, spac, alpha);
+                draw_inventory_row(player, i, -1, xbase, ybase + i * 40, spac, alpha);
             }
         } else
-            drawBagRow(player, 3, player.held_item_stack_index(), 0, WindowHeight - 32, 0, 0.5f);
+            draw_inventory_row(player, 3, player.held_item_stack_index(), 0, WindowHeight - 32, 0, 0.5f);
     }
 }

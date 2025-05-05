@@ -246,8 +246,8 @@ void clearTransition() {
 }
 
 void drawBackground() {
-    static double startTimer = Timer();
-    double elapsed = Timer() - startTimer;
+    static double startTimer = timer();
+    double elapsed = timer() - startTimer;
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -348,7 +348,7 @@ void UIVertex(int x, int y) {
 }
 
 void UISetFontColor(float r, float g, float b, float a) {
-    TextRenderer::setFontColor(r, g, b, a);
+    TextRenderer::set_font_color(r, g, b, a);
 }
 
 void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::string const& s, bool centered) {
@@ -357,13 +357,13 @@ void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::string const& s
     ymin = static_cast<int>(ymin * Stretch);
     ymax = static_cast<int>(ymax * Stretch);
     if (centered)
-        TextRenderer::renderString(
-            (xmin + xmax - TextRenderer::getStringWidth(s)) / 2,
-            (ymin + ymax - TextRenderer::getLineHeight()) / 2,
+        TextRenderer::render_string(
+            (xmin + xmax - TextRenderer::rendered_width(s)) / 2,
+            (ymin + ymax - TextRenderer::line_height()) / 2,
             s
         );
     else
-        TextRenderer::renderString(xmin, (ymin + ymax - TextRenderer::getLineHeight()) / 2, s);
+        TextRenderer::render_string(xmin, (ymin + ymax - TextRenderer::line_height()) / 2, s);
 }
 
 void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::u32string const& s, bool centered) {
@@ -372,13 +372,13 @@ void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::u32string const
     ymin = static_cast<int>(ymin * Stretch);
     ymax = static_cast<int>(ymax * Stretch);
     if (centered)
-        TextRenderer::renderString(
-            (xmin + xmax - TextRenderer::getStringWidth(s)) / 2,
-            (ymin + ymax - TextRenderer::getLineHeight()) / 2,
+        TextRenderer::render_string(
+            (xmin + xmax - TextRenderer::rendered_width(s)) / 2,
+            (ymin + ymax - TextRenderer::line_height()) / 2,
             s
         );
     else
-        TextRenderer::renderString(xmin, (ymin + ymax - TextRenderer::getLineHeight()) / 2, s);
+        TextRenderer::render_string(xmin, (ymin + ymax - TextRenderer::line_height()) / 2, s);
 }
 
 void Control::updatepos() {
@@ -734,8 +734,8 @@ void VScroll::update() {
                 barpos += 10;
             if (parent->mb == 1)
                 psdown = true;
-        } else if (Timer() - lstime > 0.1 && parent->mb == 1) {
-            lstime = Timer();
+        } else if (timer() - lstime > 0.1 && parent->mb == 1) {
+            lstime = timer();
             if (parent->my < ymin + barpos + 20)
                 barpos -= 25;
             if (parent->my > ymin + barpos + barheight + 20)
@@ -1074,7 +1074,7 @@ void Form::render() {
         drawBackground();
     }
 
-    double TimeDelta = Timer() - transitionTimer;
+    double TimeDelta = timer() - transitionTimer;
     float transitionAnim =
         (float) (1.0 - std::pow(0.8, TimeDelta * 60.0) + std::pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);
 
@@ -1121,7 +1121,7 @@ auto Form::getControlByID(int cid) -> Control* {
 Form::Form() {
     transitionList = lastdisplaylist;
     transitionForward = true;
-    transitionTimer = Timer();
+    transitionTimer = timer();
     inputstr.clear();
     backspace = false;
 }
@@ -1131,7 +1131,7 @@ Form::~Form() {
         glDeleteLists(transitionList, 1);
     transitionList = displaylist;
     transitionForward = false;
-    transitionTimer = Timer();
+    transitionTimer = timer();
 }
 
 void Form::singleLoop() {
@@ -1165,7 +1165,6 @@ void Form::start() {
     GLFWcursor* Cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
     glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     glfwSetCursor(MainWindow, Cursor);
-    TextRenderer::setFontColor(1.0, 1.0, 1.0, 1.0);
     onLoad();
     while (!exit)
         singleLoop();

@@ -32,7 +32,7 @@ private:
         okbtn.enabled = !worldnametb.input.empty();
         if (okbtn.clicked) {
             if (!worldnametb.input.empty()) {
-                Cur_WorldName = UnicodeUTF8(worldnametb.input);
+                Cur_WorldName = unicode_utf8(worldnametb.input);
                 GameBegin = true;
             }
             exit = true;
