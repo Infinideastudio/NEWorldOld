@@ -3,8 +3,8 @@ import std;
 import types;
 import :vector;
 
-// Axis-aligned bounding box.
-export template <typename T, size_t N, T EPS>
+// Axis-aligned bounding boxes.
+export template <typename T, size_t N>
 class AABB {
 public:
     Vector<T, N> min;
@@ -16,8 +16,8 @@ public:
         max(max) {}
 
     // Type conversion constructor.
-    template <typename U, U EPS_>
-    constexpr explicit AABB(AABB<U, N, EPS_> r):
+    template <typename U>
+    constexpr explicit AABB(AABB<U, N> r):
         min(static_cast<Vector<T, N>>(r.min)),
         max(static_cast<Vector<T, N>>(r.max)) {}
 
@@ -41,7 +41,7 @@ public:
     }
 
     // Returns the clipped displacement on the i-th axis, by testing against `other`.
-    auto clip_displacement_on_axis(size_t i, AABB const& other, T disp, T eps = EPS) const -> T {
+    auto clip_displacement_on_axis(size_t i, AABB const& other, T disp, T eps = T(0)) const -> T {
         for (auto j = 0uz; j < N; j++) {
             if (j != i && !intersects_on_axis(j, other, eps)) {
                 return disp;
@@ -57,7 +57,7 @@ public:
     }
 
     // Returns the clipped displacement on the i-th axis, by testing against `others`.
-    auto clip_displacement_on_axis(size_t i, std::vector<AABB> const& others, T disp, T eps = EPS) const -> T {
+    auto clip_displacement_on_axis(size_t i, std::vector<AABB> const& others, T disp, T eps = T(0)) const -> T {
         for (auto const& other: others) {
             disp = clip_displacement_on_axis(i, other, disp, eps);
         }
@@ -65,7 +65,7 @@ public:
     }
 
     // Returns the clipped displacement, by testing against `others`.
-    auto clip_displacement(std::vector<AABB> const& others, Vector<T, N> disp, T eps = EPS) const -> Vector<T, N> {
+    auto clip_displacement(std::vector<AABB> const& others, Vector<T, N> disp, T eps = T(0)) const -> Vector<T, N> {
         auto t = *this;
         for (auto i = 0uz; i < N; i++) {
             disp[i] = t.clip_displacement_on_axis(i, others, disp[i], eps);
@@ -101,8 +101,8 @@ public:
     }
 };
 
-export template <typename T, T EPS>
-using AABB3 = AABB<T, 3, EPS>;
+export template <typename T>
+using AABB3 = AABB<T, 3>;
 
-export using AABB3f = AABB3<float, 1e-4f>;
-export using AABB3d = AABB3<double, 1e-8>;
+export using AABB3f = AABB3<float>;
+export using AABB3d = AABB3<double>;

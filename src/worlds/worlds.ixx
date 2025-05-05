@@ -28,8 +28,8 @@ public:
     static constexpr auto MIN_Z = -(int32_t{1} << 27);
     static constexpr auto MAX_Z = (int32_t{1} << 27) - 1;
 
-    constexpr ChunkId() = default;
-    constexpr ChunkId(Vec3i coord):
+    ChunkId() = default;
+    ChunkId(Vec3i coord):
         _data(pack(coord)) {}
 
     auto get() const -> Vec3i {
@@ -44,7 +44,7 @@ public:
 private:
     uint64_t _data = 0;
 
-    static constexpr auto pack(Vec3i coord) -> uint64_t {
+    static auto pack(Vec3i coord) -> uint64_t {
         auto res = uint64_t{0};
         res |= static_cast<uint64_t>(coord.x()) << 36;
         res |= static_cast<uint64_t>(coord.y()) & 0xFF;
@@ -552,7 +552,7 @@ public:
 
     using RenderChunk = std::pair<Vec3d, std::array<Renderer::VertexBuffer const*, 2>>;
 
-    auto list_render_chunks(Vec3d center, int dist, double interp, std::optional<FrustumTest> frustum)
+    auto list_render_chunks(Vec3d center, int dist, double interp, std::optional<Frustumf> frustum)
         -> std::vector<RenderChunk>;
 
     void render_chunks(Vec3d center, std::vector<RenderChunk> const& crs, size_t index);

@@ -337,40 +337,38 @@ Mat4f getShadowMatrix() {
     return res;
 }
 
-Mat4f getShadowMatrixExperimental(float fov, float aspect, double heading, double pitch) {
+Mat4f getShadowMatrixExperimental(float fov, float aspect, Eulerf orientation) {
     auto length = static_cast<float>(getShadowDistance() * 16);
     auto res = Mat4f(1.0f);
     res = Mat4f::rotate(-static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * res;
     res = Mat4f::rotate(static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * res;
 
     // Calculate view direction in light space, then rotate it to right (+1, 0)
-    auto viewRotate = Mat4f(1.0f);
-    viewRotate *= Mat4f::rotate(static_cast<float>(heading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f));
-    viewRotate *= Mat4f::rotate(-static_cast<float>(pitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f));
-    auto viewDir = (res * viewRotate).transform(Vec3f(0.0f, 0.0f, -1.0f));
-    auto viewDirXY = Vec3f(viewDir.x(), viewDir.y(), 0.0f);
-    if (viewDirXY.length() > 0.01f) {
-        float radians = std::atan2(viewDir.y(), viewDir.x());
+    auto view_rotate = orientation.matrix();
+    auto view_dir = (res * view_rotate).transform(Vec3f(0.0f, 0.0f, -1.0f));
+    auto view_dir_xy = Vec3f(view_dir.x(), view_dir.y(), 0.0f);
+    if (view_dir_xy.length() > 0.01f) {
+        float radians = std::atan2(view_dir.y(), view_dir.x());
         res = Mat4f::rotate(-radians, Vec3f(0.0f, 0.0f, 1.0f)) * res;
     }
 
     // Minimal bounding box containing a diamond-shaped convex hull
     // (should approximate the visible parts better than the whole view frustum)
-    float halfHeight = std::tan(static_cast<float>(fov * Pi / 180.0) / 2.0f);
-    float halfWidth = halfHeight * static_cast<float>(aspect);
+    float half_height = std::tan(static_cast<float>(fov * Pi / 180.0) / 2.0f);
+    float half_width = half_height * static_cast<float>(aspect);
     auto vertices = std::array{
         Vec3f(0.0f, 0.0f, -1.0f),
-        Vec3f(-halfWidth, -halfHeight, -1.0f),
-        Vec3f(halfWidth, -halfHeight, -1.0f),
-        Vec3f(halfWidth, halfHeight, -1.0f),
-        Vec3f(-halfWidth, halfHeight, -1.0f),
+        Vec3f(-half_width, -half_height, -1.0f),
+        Vec3f(half_width, -half_height, -1.0f),
+        Vec3f(half_width, half_height, -1.0f),
+        Vec3f(-half_width, half_height, -1.0f),
     };
-    auto toLightSpace = res * viewRotate;
+    auto to_light_space = res * view_rotate;
     float xmin = 0.0f, xmax = 0.0f, ymin = 0.0f, ymax = 0.0f;
     for (size_t i = 0; i < vertices.size(); i++) {
         vertices[i].normalize();
         vertices[i] *= length;
-        vertices[i] = toLightSpace.transform(vertices[i]);
+        vertices[i] = to_light_space.transform(vertices[i]);
         xmin = std::min(xmin, vertices[i].x());
         xmax = std::max(xmax, vertices[i].x());
         ymin = std::min(ymin, vertices[i].y());
