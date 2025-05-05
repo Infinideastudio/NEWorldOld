@@ -6,7 +6,10 @@ import types;
 export template <typename T, size_t N>
 class Vector {
 public:
-    std::array<T, N> elem;
+    std::array<T, N> elem = {};
+
+    // Zero vector constructor.
+    constexpr Vector() = default;
 
     // Element-wise constructor.
     template <typename... Ts>
@@ -170,9 +173,6 @@ public:
     }
 
 private:
-    // Uninitialized vector constructor.
-    // constexpr Vector() = default;
-
     static constexpr auto _ctor = [](auto... xs) {
         return Vector{xs...};
     };
