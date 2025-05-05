@@ -14,7 +14,6 @@ import globalization;
 import gui;
 import menus;
 import particles;
-import player;
 import rendering;
 import setup;
 import text_rendering;
@@ -23,6 +22,7 @@ import worlds;
 import vec3;
 import mat4;
 import menus;
+import items;
 
 //==============================   Initialize   ================================//
 //==============================初始化(包括闪屏)================================//
@@ -37,15 +37,14 @@ void readback(worlds::World& world);
 void drawBorder(float x, float y, float z);
 void drawBreaking(float level, float x, float y, float z);
 void drawGUI(worlds::World& world);
-void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha);
-void drawBag();
+void drawBagRow(player::Player& world, int row, int itemid, int xbase, int ybase, int spac, float alpha);
+void drawBag(player::Player& world);
 
 std::mutex updateMutex;
 double updateTimer;
 bool updateThreadRun;
 
 double speedupAnimTimer;
-double touchdownAnimTimer;
 double screenshotAnimTimer;
 double bagAnimTimer;
 double bagAnimDuration = 0.5;
@@ -138,12 +137,6 @@ export int main() {
         spdlog::debug("Init world...");
         auto world = worlds::World(Cur_WorldName);
 
-        spdlog::debug("Init player...");
-        if (Player::load(world.name()))
-            Player::init(Player::xpos, Player::ypos, Player::zpos);
-        else
-            Player::spawn();
-
         // 初始化游戏更新线程
         updateMutex.lock();
         updateThreadRun = true;
@@ -218,7 +211,6 @@ export int main() {
 
         // 保存并卸载世界
         world.save_to_files();
-        Player::save(world.name());
     }
 
     // 结束程序，删了也没关系 ←_←（吐槽FB和glfw中）
@@ -277,78 +269,71 @@ void registerCommands() {
     commands.emplace_back("/kit", [](std::vector<std::string> const& command, worlds::World&) {
         if (command.size() != 1)
             return false;
-        Player::inventory[0][0] = blocks::Id(1);
-        Player::inventoryAmount[0][0] = 255;
-        Player::inventory[0][1] = blocks::Id(2);
-        Player::inventoryAmount[0][1] = 255;
-        Player::inventory[0][2] = blocks::Id(3);
-        Player::inventoryAmount[0][2] = 255;
-        Player::inventory[0][3] = blocks::Id(4);
-        Player::inventoryAmount[0][3] = 255;
-        Player::inventory[0][4] = blocks::Id(5);
-        Player::inventoryAmount[0][4] = 255;
-        Player::inventory[0][5] = blocks::Id(6);
-        Player::inventoryAmount[0][5] = 255;
-        Player::inventory[0][6] = blocks::Id(7);
-        Player::inventoryAmount[0][6] = 255;
-        Player::inventory[0][7] = blocks::Id(8);
-        Player::inventoryAmount[0][7] = 255;
-        Player::inventory[0][8] = blocks::Id(9);
-        Player::inventoryAmount[0][8] = 255;
-        Player::inventory[0][9] = blocks::Id(10);
-        Player::inventoryAmount[0][9] = 255;
-        Player::inventory[1][0] = blocks::Id(11);
-        Player::inventoryAmount[1][0] = 255;
-        Player::inventory[1][1] = blocks::Id(12);
-        Player::inventoryAmount[1][1] = 255;
-        Player::inventory[1][2] = blocks::Id(13);
-        Player::inventoryAmount[1][2] = 255;
-        Player::inventory[1][3] = blocks::Id(14);
-        Player::inventoryAmount[1][3] = 255;
-        Player::inventory[1][4] = blocks::Id(15);
-        Player::inventoryAmount[1][4] = 255;
-        Player::inventory[1][5] = blocks::Id(16);
-        Player::inventoryAmount[1][5] = 255;
-        Player::inventory[1][6] = blocks::Id(17);
-        Player::inventoryAmount[1][6] = 255;
-        Player::inventory[1][7] = blocks::Id(18);
-        Player::inventoryAmount[1][7] = 255;
+        // player::inventory[0][0] = blocks::Id(1);
+        // player::inventoryAmount[0][0] = 255;
+        // player::inventory[0][1] = blocks::Id(2);
+        // player::inventoryAmount[0][1] = 255;
+        // player::inventory[0][2] = blocks::Id(3);
+        // player::inventoryAmount[0][2] = 255;
+        // player::inventory[0][3] = blocks::Id(4);
+        // player::inventoryAmount[0][3] = 255;
+        // player::inventory[0][4] = blocks::Id(5);
+        // player::inventoryAmount[0][4] = 255;
+        // player::inventory[0][5] = blocks::Id(6);
+        // player::inventoryAmount[0][5] = 255;
+        // player::inventory[0][6] = blocks::Id(7);
+        // player::inventoryAmount[0][6] = 255;
+        // player::inventory[0][7] = blocks::Id(8);
+        // player::inventoryAmount[0][7] = 255;
+        // player::inventory[0][8] = blocks::Id(9);
+        // player::inventoryAmount[0][8] = 255;
+        // player::inventory[0][9] = blocks::Id(10);
+        // player::inventoryAmount[0][9] = 255;
+        // player::inventory[1][0] = blocks::Id(11);
+        // player::inventoryAmount[1][0] = 255;
+        // player::inventory[1][1] = blocks::Id(12);
+        // player::inventoryAmount[1][1] = 255;
+        // player::inventory[1][2] = blocks::Id(13);
+        // player::inventoryAmount[1][2] = 255;
+        // player::inventory[1][3] = blocks::Id(14);
+        // player::inventoryAmount[1][3] = 255;
+        // player::inventory[1][4] = blocks::Id(15);
+        // player::inventoryAmount[1][4] = 255;
+        // player::inventory[1][5] = blocks::Id(16);
+        // player::inventoryAmount[1][5] = 255;
+        // player::inventory[1][6] = blocks::Id(17);
+        // player::inventoryAmount[1][6] = 255;
+        // player::inventory[1][7] = blocks::Id(18);
+        // player::inventoryAmount[1][7] = 255;
         return true;
     });
-    commands.emplace_back("/give", [](std::vector<std::string> const& command, worlds::World&) {
+    commands.emplace_back("/give", [](std::vector<std::string> const& command, worlds::World& w) {
         if (command.size() != 3)
             return false;
         auto itemid = blocks::Id(std::stoi(command[1]));
-        auto amount = static_cast<short>(std::stoi(command[2]));
-        Player::addItem(itemid, amount);
+        auto amount = static_cast<size_t>(std::stoi(command[2]));
+        w.player().addItem({itemid, amount});
         return true;
     });
-    commands.emplace_back("/tp", [](std::vector<std::string> const& command, worlds::World&) {
+    commands.emplace_back("/tp", [](std::vector<std::string> const& command, worlds::World& w) {
         if (command.size() != 4)
             return false;
         double x = std::stod(command[1]);
         double y = std::stod(command[2]);
         double z = std::stod(command[3]);
-        Player::xpos = x;
-        Player::ypos = y;
-        Player::zpos = z;
+        w.player().setPosition({x, y, z});
         return true;
     });
-    commands.emplace_back("/clearinventory", [](std::vector<std::string> const& command, worlds::World&) {
+    commands.emplace_back("/clearinventory", [](std::vector<std::string> const& command, worlds::World& w) {
         if (command.size() != 1)
             return false;
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 10; j++) {
-                Player::inventory[i][j] = base_blocks().air;
-                Player::inventoryAmount[i][j] = 0;
-            }
-        }
+        w.player().clearInventory();
         return true;
     });
-    commands.emplace_back("/suicide", [](std::vector<std::string> const& command, worlds::World&) {
+    commands.emplace_back("/suicide", [](std::vector<std::string> const& command, worlds::World& w) {
         if (command.size() != 1)
             return false;
-        Player::spawn();
+        w.player().spawn();
         return true;
     });
     commands.emplace_back("/setblock", [](std::vector<std::string> const& command, worlds::World& world) {
@@ -389,11 +374,11 @@ void registerCommands() {
         GameTime = time;
         return true;
     });
-    commands.emplace_back("/gamemode", [](std::vector<std::string> const& command, worlds::World&) {
+    commands.emplace_back("/gamemode", [](std::vector<std::string> const& command, worlds::World& w) {
         if (command.size() != 2)
             return false;
-        int mode = std::stoi(command[1]);
-        Player::changeGameMode(mode);
+        auto mode = static_cast<player::Player::GameMode>(std::stoi(command[1]));
+        w.player().changeGameMode(mode);
         return true;
     });
 }
@@ -409,31 +394,18 @@ bool doCommand(std::vector<std::string> const& command, worlds::World& world) {
 void gameUpdate(worlds::World& world) {
     int const SelectPrecision = 32;
     int const SelectDistance = 8;
-    float const WalkSpeed = 0.15f;
-    float const RunSpeed = 0.3f;
-    int const MaxAirJumps = 3 - 1;
 
     static double wPressTimer;
     static bool wPressedOnce;
 
-    Player::BlockInHand = Player::inventory[3][Player::indexInHand];
-
-    // 生命值相关
-    if (Player::health > 0 || Player::gamemode == Player::Creative) {
-        if (Player::ypos < -100)
-            Player::health -= ((-100) - Player::ypos) / 100;
-        if (Player::health < Player::healthMax)
-            Player::health += Player::healSpeed;
-        if (Player::health > Player::healthMax)
-            Player::health = Player::healthMax;
-    } else
-        Player::spawn();
+    auto& player = world.player();
+    player.update();
 
     // 时间
     GameTime++;
 
     // Move chunk pointer array and height map
-    world.set_center(Player::ccoord);
+    world.set_center(player.chunkCoord());
 
     for (auto const& [_, c]: world.chunks()) {
         // 加载动画
@@ -483,11 +455,6 @@ void gameUpdate(worlds::World& world) {
     world.process_block_updates();
 
     // 判断选中的方块
-    double lx, ly, lz, lxl, lyl, lzl;
-    lx = Player::xpos;
-    ly = Player::ypos + Player::height + Player::heightExt;
-    lz = Player::zpos;
-
     sel = false;
     selx = sely = selz = 0;
     selb = base_blocks().air;
@@ -542,30 +509,26 @@ void gameUpdate(worlds::World& world) {
         shouldShowCursor = false;
 
         // 从玩家位置发射一条线段
+        Vec3d lPos = player.lookCoord();
+        Vec3d lookPosOld = lPos;
         for (int i = 0; i < SelectPrecision * SelectDistance; i++) {
-            lxl = lx;
-            lyl = ly;
-            lzl = lz;
+            lookPosOld = lPos;
 
             // 线段延伸
-            lx += std::sin(Pi / 180 * (Player::heading - 180)) * std::sin(Pi / 180 * (Player::lookupdown + 90))
-                / SelectPrecision;
-            ly += std::cos(Pi / 180 * (Player::lookupdown + 90)) / SelectPrecision;
-            lz += std::cos(Pi / 180 * (Player::heading - 180)) * std::sin(Pi / 180 * (Player::lookupdown + 90))
-                / SelectPrecision;
+            lPos.x += std::sin(Pi / 180 * (player.getHeading() - 180))
+                    * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
+            lPos.y += std::cos(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
+            lPos.z += std::cos(Pi / 180 * (player.getHeading() - 180))
+                    * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) / SelectPrecision;
 
             // 碰到方块
-            auto coord = Vec3i(std::lround(lx), std::lround(ly), std::lround(lz));
-            auto coordl = Vec3i(std::lround(lxl), std::lround(lyl), std::lround(lzl));
+            auto coord = Vec3i(lPos);
+            auto coordl = Vec3i(lookPosOld);
             if (block_info(world.block_or_air(coord).id).solid) {
                 selx = coord.x;
                 sely = coord.y;
                 selz = coord.z;
                 sel = true;
-
-                // 找方块所在区块及位置
-                auto ccoord = worlds::chunk_coord(coord);
-                auto bcoord = worlds::block_coord(coord);
 
                 selb = world.block_or_air(coord).id;
                 if (mb == 1) { // 鼠标左键
@@ -584,7 +547,7 @@ void gameUpdate(worlds::World& world) {
                     float const MinHardness = 0.2f;
                     if (selx != oldselx || sely != oldsely || selz != oldselz)
                         seldes = 0.0f;
-                    else if (Player::gamemode == Player::Creative)
+                    else if (player.getGameMode() == player::Player::GameMode::Creative)
                         seldes += 1.0f / 30.0f / MinHardness;
                     else if (block_info(selb).hardness <= MinHardness)
                         seldes += 1.0f / 30.0f / MinHardness;
@@ -592,7 +555,7 @@ void gameUpdate(worlds::World& world) {
                         seldes += 1.0f / 30.0f / block_info(selb).hardness;
 
                     if (seldes >= 1.0f) {
-                        Player::addItem(selb, 1);
+                        player.addItem({selb, 1});
                         for (int j = 1; j <= 25; j++) {
                             particles::throw_particle(
                                 selb,
@@ -610,12 +573,12 @@ void gameUpdate(worlds::World& world) {
                     }
                 }
                 if (mb == 2 && mbp == false) { // 鼠标右键
-                    if (Player::inventoryAmount[3][Player::indexInHand] > 0) {
+                    auto& holdingItem = player.holdingItemStack();
+                    if (!holdingItem.empty()) {
                         // 放置方块
-                        if (Player::putBlock(world, coordl, Player::BlockInHand)) {
-                            Player::inventoryAmount[3][Player::indexInHand]--;
-                            if (Player::inventoryAmount[3][Player::indexInHand] == 0)
-                                Player::inventory[3][Player::indexInHand] = base_blocks().air;
+                        if (player.putBlock(world, coordl, holdingItem.id)) {
+                            if (--holdingItem.count == 0)
+                                holdingItem = {};
                         }
                     } else {
                         // 使用物品
@@ -631,14 +594,8 @@ void gameUpdate(worlds::World& world) {
         oldsely = sely;
         oldselz = selz;
 
-        Player::intxpos = std::lround(Player::xpos);
-        Player::intypos = std::lround(Player::ypos);
-        Player::intzpos = std::lround(Player::zpos);
-
         // 更新方向
-        Player::heading += Player::xlookspeed;
-        Player::lookupdown += Player::ylookspeed;
-        Player::xlookspeed = Player::ylookspeed = 0.0;
+        player.updateHeadingAndLookUpDown();
 
         // 移动！(生命在于运动)
         if (isKeyDown(GLFW_KEY_W)) {
@@ -647,7 +604,7 @@ void gameUpdate(worlds::World& world) {
                     wPressTimer = Timer();
                 } else {
                     if (Timer() - wPressTimer <= 0.5) {
-                        Player::Running = true;
+                        player.setRunning(true);
                         wPressTimer = 0.0;
                     } else
                         wPressTimer = Timer();
@@ -656,106 +613,94 @@ void gameUpdate(worlds::World& world) {
             if (wPressTimer != 0.0 && Timer() - wPressTimer > 0.5)
                 wPressTimer = 0.0;
             wPressedOnce = true;
-            Player::xa += -std::sin(Player::heading * Pi / 180.0) * Player::speed;
-            Player::za += -std::cos(Player::heading * Pi / 180.0) * Player::speed;
+            auto velocity = player.getVelocity();
+            player.setVelocity(
+                {velocity.x - std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed(),
+                 velocity.y,
+                 velocity.z - std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed()}
+            );
         } else {
-            Player::Running = false;
+            player.setRunning(false);
             wPressedOnce = false;
         }
-        if (Player::Running)
-            Player::speed = RunSpeed;
-        else
-            Player::speed = WalkSpeed;
 
         if (isKeyDown(GLFW_KEY_S)) {
-            Player::xa += std::sin(Player::heading * Pi / 180.0) * Player::speed;
-            Player::za += std::cos(Player::heading * Pi / 180.0) * Player::speed;
+            auto velocity = player.getVelocity();
+            player.setVelocity(
+                {velocity.x + -std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed(),
+                 velocity.y,
+                 velocity.z + std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed()}
+            );
             wPressTimer = 0.0;
         }
 
         if (isKeyDown(GLFW_KEY_A)) {
-            Player::xa += std::sin((Player::heading - 90) * Pi / 180.0) * Player::speed;
-            Player::za += std::cos((Player::heading - 90) * Pi / 180.0) * Player::speed;
+            auto velocity = player.getVelocity();
+            player.setVelocity(
+                {velocity.x + std::sin((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
+                 velocity.y,
+                 velocity.z + std::cos((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed()}
+            );
             wPressTimer = 0.0;
         }
 
         if (isKeyDown(GLFW_KEY_D)) {
-            Player::xa += -std::sin((Player::heading - 90) * Pi / 180.0) * Player::speed;
-            Player::za += -std::cos((Player::heading - 90) * Pi / 180.0) * Player::speed;
+            auto velocity = player.getVelocity();
+            player.setVelocity(
+                {velocity.x - std::sin((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed(),
+                 velocity.y,
+                 velocity.z - std::cos((player.getHeading() - 90) * Pi / 180.0) * player.getSpeed()}
+            );
             wPressTimer = 0.0;
         }
 
-        if (!Player::Flying && !Player::CrossWall) {
-            double horizontalSpeed = std::sqrt(Player::xa * Player::xa + Player::za * Player::za);
-            if (horizontalSpeed > Player::speed) {
-                Player::xa *= Player::speed / horizontalSpeed;
-                Player::za *= Player::speed / horizontalSpeed;
+        if (!player.isFlying() && !player.canCrossWall()) {
+            Vec3d velocity = player.getVelocity();
+            double horizontalSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+            if (horizontalSpeed > player.getSpeed()) {
+                player.setVelocity(
+                    {velocity.x * player.getSpeed() / horizontalSpeed,
+                     velocity.y,
+                     velocity.z * player.getSpeed() / horizontalSpeed}
+                );
             }
         } else {
             if (isKeyDown(GLFW_KEY_R)) {
+                Vec3d velocity = player.getVelocity();
                 if (isKeyDown(GLFW_KEY_LEFT_CONTROL)) {
-                    Player::xa = -std::sin(Player::heading * Pi / 180.0) * RunSpeed * 10;
-                    Player::za = -std::cos(Player::heading * Pi / 180.0) * RunSpeed * 10;
+                    player.setVelocity(
+                        {velocity.x - std::sin(player.getHeading() * Pi / 180.0) * player.getSpeed() * 10,
+                         velocity.y,
+                         velocity.z - std::cos(player.getHeading() * Pi / 180.0) * player.getSpeed() * 10}
+                    );
                 } else {
-                    Player::xa = std::sin(Pi / 180 * (Player::heading - 180))
-                               * std::sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
-                    Player::ya = std::cos(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
-                    Player::za = std::cos(Pi / 180 * (Player::heading - 180))
-                               * std::sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
-                }
-            }
-
-            if (isKeyDown(GLFW_KEY_F)) {
-                if (isKeyDown(GLFW_KEY_LEFT_CONTROL)) {
-                    Player::xa = std::sin(Player::heading * Pi / 180.0) * RunSpeed * 10;
-                    Player::za = std::cos(Player::heading * Pi / 180.0) * RunSpeed * 10;
-                } else {
-                    Player::xa = -std::sin(Pi / 180 * (Player::heading - 180))
-                               * std::sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
-                    Player::ya = -std::cos(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
-                    Player::za = -std::cos(Pi / 180 * (Player::heading - 180))
-                               * std::sin(Pi / 180 * (Player::lookupdown + 90)) * RunSpeed * 20;
+                    player.setVelocity(
+                        {std::sin(Pi / 180 * (player.getHeading() - 180))
+                             * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) * player.getSpeed() * 20,
+                         std::cos(Pi / 180 * (player.getLookUpDown() + 90)) * player.getSpeed() * 20,
+                         std::cos(Pi / 180 * (player.getHeading() - 180))
+                             * std::sin(Pi / 180 * (player.getLookUpDown() + 90)) * player.getSpeed() * 20}
+                    );
                 }
             }
         }
 
         // 切换方块
-        if (isKeyPressed(GLFW_KEY_Z) && Player::indexInHand > 0)
-            Player::indexInHand--;
-        if (isKeyPressed(GLFW_KEY_X) && Player::indexInHand < 9)
-            Player::indexInHand++;
-        if ((int) Player::indexInHand + (mwl - mw) < 0)
-            Player::indexInHand = 0;
-        else if ((int) Player::indexInHand + (mwl - mw) > 9)
-            Player::indexInHand = 9;
-        else
-            Player::indexInHand += (char) (mwl - mw);
+        if (isKeyPressed(GLFW_KEY_Z))
+            player.setIndexInHand(player.getIndexInHand() - 1);
+        if (isKeyPressed(GLFW_KEY_X))
+            player.setIndexInHand(player.getIndexInHand() + 1);
+        player.setIndexInHand(player.getIndexInHand() + (mwl - mw));
         mwl = mw;
 
         // 起跳/上升
         if (isKeyDown(GLFW_KEY_SPACE)) {
-            if (!Player::Flying && !Player::CrossWall) {
-                if (!Player::inWater) {
-                    if (isKeyPressed(GLFW_KEY_SPACE) && Player::AirJumps < MaxAirJumps || Player::OnGround) {
-                        if (Player::OnGround == false) {
-                            Player::jump = 0.3;
-                            Player::AirJumps++;
-                        } else {
-                            Player::jump = 0.3;
-                            Player::OnGround = false;
-                        }
-                    }
-                } else {
-                    Player::ya = 0.2;
-                }
-            } else {
-                Player::ya += WalkSpeed / 2;
-            }
+            player.processJump(isKeyPressed(GLFW_KEY_SPACE));
         }
 
         if ((isKeyDown(GLFW_KEY_LEFT_SHIFT) || isKeyDown(GLFW_KEY_RIGHT_SHIFT))) {
-            if (Player::CrossWall || Player::Flying)
-                Player::ya -= WalkSpeed / 2;
+            if (player.canCrossWall() || player.isFlying())
+                player.setVelocity(player.getVelocity() + Vec3d{0, -player.getSpeed() / 2, 0});
             wPressTimer = 0.0;
         }
 
@@ -772,7 +717,10 @@ void gameUpdate(worlds::World& world) {
 
         // 各种设置切换
         if (isKeyPressed(GLFW_KEY_F1)) {
-            Player::changeGameMode(Player::gamemode == Player::Creative ? Player::Survival : Player::Creative);
+            player.changeGameMode(
+                player.getGameMode() == player::Player::GameMode::Creative ? player::Player::GameMode::Survival
+                                                                           : player::Player::GameMode::Creative
+            );
         }
         if (isKeyPressed(GLFW_KEY_F2)) {
             shouldGetScreenshot = true;
@@ -795,8 +743,8 @@ void gameUpdate(worlds::World& world) {
             showMeshWireframe = !showMeshWireframe;
             showDebugPanel = true;
         }
-        if (isKeyPressed(GLFW_KEY_F4) && Player::gamemode == Player::GameMode::Creative)
-            Player::CrossWall = !Player::CrossWall;
+        if (isKeyPressed(GLFW_KEY_F4) && player.getGameMode() == player::Player::GameMode::Creative)
+            player.setCanCrossWall(!player.canCrossWall());
         if (isKeyPressed(GLFW_KEY_F5))
             showHUD = !showHUD;
         if (isKeyPressed(GLFW_KEY_F7))
@@ -808,31 +756,6 @@ void gameUpdate(worlds::World& world) {
         if (isKeyPressed(GLFW_KEY_SLASH)) {
             chatmode = true;
             chatword = UTF8Unicode("/");
-        }
-    }
-
-    // 跳跃
-    if (!Player::inWater) {
-        if (!Player::Flying && !Player::CrossWall) {
-            Player::ya = -0.001;
-            if (Player::OnGround) {
-                Player::jump = 0.0;
-                Player::AirJumps = 0;
-            } else {
-                Player::jump -= 0.03;
-                Player::ya = Player::jump + 0.03 / 2.0;
-            }
-        } else {
-            Player::jump = 0.0;
-            Player::AirJumps = 0;
-        }
-    } else {
-        Player::jump = 0.0;
-        Player::AirJumps = MaxAirJumps;
-        if (Player::ya <= 0.001 && !Player::Flying && !Player::CrossWall) {
-            Player::ya = -0.001;
-            if (!Player::OnGround)
-                Player::ya -= 0.1;
         }
     }
 
@@ -849,21 +772,16 @@ void gameUpdate(worlds::World& world) {
 
     particles::update_all(world);
 
-    Player::intxpos = std::lround(Player::xpos);
-    Player::intypos = std::lround(Player::ypos);
-    Player::intzpos = std::lround(Player::zpos);
-    Player::updatePosition(world);
-    Player::xposold = Player::xpos;
-    Player::yposold = Player::ypos;
-    Player::zposold = Player::zpos;
-    Player::intxposold = std::lround(Player::xpos);
-    Player::intyposold = std::lround(Player::ypos);
-    Player::intzposold = std::lround(Player::zpos);
+    static double timer = Timer();
+    double const currentTime = Timer();
+    player.updatePosition(world, currentTime - timer);
+    timer = currentTime;
 }
 
 void frameLinkedUpdate(worlds::World& world) {
     // Find chunks for unloading & loading & meshing
-    auto center = Vec3i(std::lround(Player::xpos), std::lround(Player::ypos), std::lround(Player::zpos));
+    auto& player = world.player();
+    auto center = Vec3i(player.getPosition());
     world.update_chunk_lists(center);
 
     // Load chunks
@@ -879,7 +797,7 @@ void frameLinkedUpdate(worlds::World& world) {
     double currTimer = Timer();
 
     // 视野特效
-    if (Player::Running) {
+    if (player.isRunning()) {
         if (FOVyExt < 9.8f) {
             float timeDelta = static_cast<float>(currTimer - speedupAnimTimer);
             FOVyExt = 10.0f - (10.0f - FOVyExt) * std::pow(0.8f, timeDelta * 30.0f);
@@ -894,22 +812,6 @@ void frameLinkedUpdate(worlds::World& world) {
     }
     speedupAnimTimer = currTimer;
 
-    // 半蹲特效
-    if (Player::OnGround) {
-        if (Player::jump < -0.005) {
-            if (Player::jump <= -(Player::height - 0.5f))
-                Player::heightExt = -(Player::height - 0.5f);
-            else
-                Player::heightExt = static_cast<float>(Player::jump);
-        } else {
-            if (Player::heightExt <= -0.005) {
-                float timeDelta = static_cast<float>(currTimer - touchdownAnimTimer);
-                Player::heightExt *= std::pow(0.8f, timeDelta * 30.0f);
-            }
-        }
-    }
-    touchdownAnimTimer = currTimer;
-
     // 鼠标状态和位置
     double mxd, myd;
     glfwSetInputMode(MainWindow, GLFW_CURSOR, shouldShowCursor ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
@@ -922,14 +824,9 @@ void frameLinkedUpdate(worlds::World& world) {
     // 转头！你治好了我多年的颈椎病！
     if (!shouldShowCursor) {
         if (mx != mxl)
-            Player::xlookspeed -= (mx - mxl) * MouseSpeed;
+            player.setXLookSpeed(player.getXLookSpeed() - (mx - mxl) * MouseSpeed);
         if (my != myl)
-            Player::ylookspeed += (my - myl) * MouseSpeed;
-        // 限制角度，别把头转掉下来了 ←_←
-        if (Player::lookupdown + Player::ylookspeed < -90.0)
-            Player::ylookspeed = -90.0 - Player::lookupdown;
-        if (Player::lookupdown + Player::ylookspeed > 90.0)
-            Player::ylookspeed = 90.0 - Player::lookupdown;
+            player.setYLookSpeed(player.getYLookSpeed() + (my - myl) * MouseSpeed);
     }
 
     // 切换全屏
@@ -951,20 +848,18 @@ void render(worlds::World& world) {
     float const SkyColorG = 0.80f;
     float const SkyColorB = 0.86f;
 
+    auto& player = world.player();
     double currTimer = Timer();
     double interp = (currTimer - updateTimer) * 30.0;
-    double xpos = Player::xpos - Player::xd + interp * Player::xd;
-    double ypos = Player::ypos + Player::height + Player::heightExt - Player::yd + interp * Player::yd;
-    double zpos = Player::zpos - Player::zd + interp * Player::zd;
-    auto view_coord = Vec3d(xpos, ypos, zpos);
+    Vec3d view_coord = player.lookCoord() - (player.getPosition() - player.getPositionOld()) * (1 - interp);
 
     // Calculate sun position (temporary: horizontal movement only)
     float interpolatedTime = GameTime - 1.0f + static_cast<float>(interp);
     Renderer::sunlightHeading = interpolatedTime / 43200.0f * 360.0f;
 
     // World rendering starts here
-    double plookupdown = Player::lookupdown + Player::ylookspeed;
-    double pheading = Player::heading + Player::xlookspeed;
+    double plookupdown = player.getLookUpDown() + player.getYLookSpeed();
+    double pheading = player.getHeading() + player.getXLookSpeed();
 
     // Calculate matrices
     auto viewMatrix = Mat4f(1.0f);
@@ -1023,9 +918,9 @@ void render(worlds::World& world) {
     Renderer::StartTranslucentPass(viewMatrix, interpolatedTime);
     glDisable(GL_CULL_FACE);
     if (sel) {
-        float x = static_cast<float>(selx - xpos);
-        float y = static_cast<float>(sely - ypos);
-        float z = static_cast<float>(selz - zpos);
+        float x = static_cast<float>(selx - view_coord.x);
+        float y = static_cast<float>(sely - view_coord.y);
+        float z = static_cast<float>(selz - view_coord.z);
         Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(x, y, z));
         if (showHUD) {
             // Temporary solution pre GL 4.0 (glBlendFuncSeparatei)
@@ -1052,7 +947,7 @@ void render(worlds::World& world) {
 
     // Full screen passes
     if (AdvancedRender) {
-        Renderer::StartFinalPass(xpos, ypos, zpos, viewMatrix, shadowMatrix, interpolatedTime);
+        Renderer::StartFinalPass(view_coord.x, view_coord.y, view_coord.z, viewMatrix, shadowMatrix, interpolatedTime);
         Renderer::Begin(GL_QUADS, 2, 2, 0);
         Renderer::TexCoord2f(0.0f, 1.0f);
         Renderer::Vertex2i(0, 0);
@@ -1102,7 +997,7 @@ void render(worlds::World& world) {
     glClearDepth(1.0f);
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    if (world.block_or_air(Vec3i(std::lround(xpos), std::lround(ypos), std::lround(zpos))).id == base_blocks().water) {
+    if (world.block_or_air(Vec3i(view_coord)).id == base_blocks().water) {
         auto& shader = Renderer::shaders[Renderer::UIShader];
         shader.bind();
         glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
@@ -1123,7 +1018,7 @@ void render(worlds::World& world) {
 
     if (showHUD) {
         drawGUI(world);
-        drawBag();
+        drawBag(world.player());
     }
 
     if (currTimer - screenshotAnimTimer <= 1.0 && !shouldGetScreenshot) {
@@ -1271,6 +1166,7 @@ void drawGUI(worlds::World& world) {
     int const linelength = 10;
     int const linedist = 30;
     int disti = (int) (seldes * linedist);
+    auto& player = world.player();
 
     glDisable(GL_TEXTURE_2D);
     glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
@@ -1317,7 +1213,7 @@ void drawGUI(worlds::World& world) {
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    if (Player::gamemode == Player::Survival) {
+    if (player.getGameMode() == player::Player::GameMode::Survival) {
         glColor4d(0.8, 0.0, 0.0, 0.3);
         glBegin(GL_QUADS);
         glVertex2d(10, 10);
@@ -1326,7 +1222,7 @@ void drawGUI(worlds::World& world) {
         glVertex2d(200, 10);
         glEnd();
 
-        double healthPercent = (double) Player::health / Player::healthMax;
+        double healthPercent = (double) player.getHealth() / player.getMaxHealth();
         glColor4d(1.0, 0.0, 0.0, 0.5);
         glBegin(GL_QUADS);
         glVertex2d(20, 15);
@@ -1472,7 +1368,8 @@ void drawGUI(worlds::World& world) {
         debugText(ss.str());
         ss.str("");
 
-        ss << "game mode: " << (Player::gamemode == Player::GameMode::Creative ? "creative" : "survival") << " mode";
+        ss << "game mode: " << (player.getGameMode() == player::Player::GameMode::Creative ? "creative" : "survival")
+           << " mode";
         debugText(ss.str());
         ss.str("");
         if (AdvancedRender) {
@@ -1480,20 +1377,20 @@ void drawGUI(worlds::World& world) {
             debugText(ss.str());
             ss.str("");
         }
-        ss << "cross wall: " << boolstr(Player::CrossWall);
+        ss << "cross wall: " << boolstr(player.canCrossWall());
         debugText(ss.str());
         ss.str("");
 
-        ss << "x: " << Player::xpos << ", y: " << Player::ypos << ", z: " << Player::zpos;
+        ss << "x: " << player.getPosition().x << ", y: " << player.getPosition().y << ", z: " << player.getPosition().z;
         debugText(ss.str());
         ss.str("");
-        ss << "heading: " << Player::heading << ", pitch: " << Player::lookupdown;
+        ss << "heading: " << player.getHeading() << ", pitch: " << player.getLookUpDown();
         debugText(ss.str());
         ss.str("");
-        ss << "grounded: " << boolstr(Player::OnGround) << ", jump: " << Player::jump;
+        ss << "grounded: " << boolstr(player.isOnGround());
         debugText(ss.str());
         ss.str("");
-        ss << "near wall: " << boolstr(Player::NearWall) << ", in water: " << boolstr(Player::inWater);
+        ss << "near wall: " << boolstr(player.isNearWall()) << ", in water: " << boolstr(player.isInWater());
         debugText(ss.str());
         ss.str("");
         int h = (GameTime / 30 / 60) % 24;
@@ -1528,13 +1425,13 @@ void drawGUI(worlds::World& world) {
         ss << fps << " fps";
         debugText(ss.str());
         ss.str("");
-        ss << (Player::gamemode == Player::GameMode::Creative ? "creative" : "survival") << " mode";
+        ss << (player.getGameMode() == player::Player::GameMode::Creative ? "creative" : "survival") << " mode";
         debugText(ss.str());
         ss.str("");
     }
 }
 
-void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha) {
+void drawBagRow(player::Player& player, int row, int itemid, int xbase, int ybase, int spac, float alpha) {
     // 画出背包的一行
     auto& shader = Renderer::shaders[Renderer::UIShader];
     for (int i = 0; i < 10; i++) {
@@ -1551,16 +1448,13 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
         glVertex2i(xbase + i * (32 + spac) + 32, ybase);
         glEnd();
 
-        if (Player::inventory[row][i] != base_blocks().air) {
+        auto& item = player.getInventory(row, i);
+        if (!item.empty()) {
             shader.bind();
             glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
             Renderer::Begin(GL_QUADS, 2, 3, 4);
             Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-            Renderer::TexCoord3f(
-                0.0f,
-                0.0f,
-                static_cast<float>(Textures::getTextureIndex(Player::inventory[row][i], 0))
-            );
+            Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(item.id, 0)));
             Renderer::TexCoord2f(0.0f, 1.0f);
             Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 2);
             Renderer::TexCoord2f(0.0f, 0.0f);
@@ -1572,22 +1466,19 @@ void drawBagRow(int row, int itemid, int xbase, int ybase, int spac, float alpha
             Renderer::End().render();
             shader.unbind();
 
-            std::stringstream ss;
-            ss << (int) Player::inventoryAmount[row][i];
-            TextRenderer::renderString(xbase + i * (32 + spac), ybase, ss.str());
+            TextRenderer::renderString(xbase + i * (32 + spac), ybase, std::to_string(item.count));
         }
     }
 }
 
-void drawBag() {
+void drawBag(player::Player& player) {
     // 背包界面与更新
     static int si, sj, sf;
     int csi = -1, csj = -1;
     int leftp = (WindowWidth - 392) / 2;
     int upp = WindowHeight - 152 - 16;
     static int mousew, mouseb, mousebl;
-    static auto indexselected = base_blocks().air;
-    static short Amountselected = 0;
+    static items::ItemStack itemSelected;
     double curtime = Timer();
     double TimeDelta = curtime - bagAnimTimer;
     float bagAnim = (float) (1.0 - std::pow(0.9, TimeDelta * 60.0)
@@ -1614,46 +1505,42 @@ void drawBag() {
         if (curtime - bagAnimTimer > bagAnimDuration) {
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 10; j++) {
+                    auto& item = player.getInventory(i, j);
                     if (mx >= j * (32 + 8) + leftp && mx <= j * (32 + 8) + 32 + leftp && my >= i * (32 + 8) + upp
                         && my <= i * (32 + 8) + 32 + upp) {
                         csi = si = i;
                         csj = sj = j;
                         sf = 1;
-                        if (mousebl == 0 && mouseb == 1 && indexselected == Player::inventory[i][j]) {
-                            if (Player::inventoryAmount[i][j] + Amountselected <= 255) {
-                                Player::inventoryAmount[i][j] += Amountselected;
-                                Amountselected = 0;
+                        if (mousebl == 0 && mouseb == 1 && itemSelected.id == item.id) {
+                            if (item.count + itemSelected.count <= 255) {
+                                item.count += itemSelected.count;
+                                itemSelected.count = 0;
                             } else {
-                                Amountselected = Player::inventoryAmount[i][j] + Amountselected - 255;
-                                Player::inventoryAmount[i][j] = 255;
+                                itemSelected.count = item.count + itemSelected.count - 255;
+                                item.count = 255;
                             }
                         }
-                        if (mousebl == 0 && mouseb == 1 && indexselected != Player::inventory[i][j]) {
-                            std::swap(Amountselected, Player::inventoryAmount[i][j]);
-                            std::swap(indexselected, Player::inventory[i][j]);
+                        if (mousebl == 0 && mouseb == 1 && itemSelected.id != item.id) {
+                            std::swap(itemSelected, item);
                         }
-                        if (mousebl == 0 && mouseb == 2 && indexselected == Player::inventory[i][j]
-                            && Player::inventoryAmount[i][j] < 255) {
-                            Amountselected--;
-                            Player::inventoryAmount[i][j]++;
+                        if (mousebl == 0 && mouseb == 2 && itemSelected.id == item.id && item.count < 255) {
+                            item.count++;
+                            itemSelected.count--;
                         }
-                        if (mousebl == 0 && mouseb == 2 && Player::inventory[i][j] == base_blocks().air) {
-                            Amountselected--;
-                            Player::inventoryAmount[i][j] = 1;
-                            Player::inventory[i][j] = indexselected;
+                        if (mousebl == 0 && mouseb == 2 && item.empty()) {
+                            itemSelected.count--;
+                            item.id = itemSelected.id;
+                            item.count = 1;
                         }
 
-                        if (Amountselected == 0)
-                            indexselected = base_blocks().air;
-                        if (indexselected == base_blocks().air)
-                            Amountselected = 0;
-                        if (Player::inventoryAmount[i][j] == 0)
-                            Player::inventory[i][j] = base_blocks().air;
-                        if (Player::inventory[i][j] == base_blocks().air)
-                            Player::inventoryAmount[i][j] = 0;
+                        if (itemSelected.count == 0)
+                            itemSelected = {};
+                        if (item.count == 0)
+                            item = {};
                     }
                 }
                 drawBagRow(
+                    player,
                     i,
                     (csi == i ? csj : -1),
                     (WindowWidth - 392) / 2,
@@ -1664,13 +1551,13 @@ void drawBag() {
             }
         }
 
-        if (indexselected != base_blocks().air) {
+        if (itemSelected.id != base_blocks().air) {
             auto& shader = Renderer::shaders[Renderer::UIShader];
             shader.bind();
             glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
             Renderer::Begin(GL_QUADS, 2, 3, 4);
             Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-            Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(indexselected, 0)));
+            Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(itemSelected.id, 0)));
             Renderer::TexCoord2f(0.0f, 1.0f);
             Renderer::Vertex2i(mx - 16, my - 16);
             Renderer::TexCoord2f(0.0f, 0.0f);
@@ -1682,12 +1569,11 @@ void drawBag() {
             Renderer::End().render();
             shader.unbind();
 
-            std::stringstream ss;
-            ss << Amountselected;
-            TextRenderer::renderString((int) mx - 16, (int) my - 16, ss.str());
+            TextRenderer::renderString((int) mx - 16, (int) my - 16, std::to_string(itemSelected.count));
         }
-        if (Player::inventory[si][sj] != base_blocks().air && sf == 1) {
-            TextRenderer::renderString((int) mx, (int) my - 16, block_info(Player::inventory[si][sj]).name);
+        auto item = player.getInventory(si, sj);
+        if (!item.empty() && sf == 1) {
+            TextRenderer::renderString((int) mx, (int) my - 16, block_info(item.id).name);
         }
 
         int xbase = 0, ybase = 0, spac = 0;
@@ -1696,11 +1582,11 @@ void drawBag() {
             xbase = std::lround(((WindowWidth - 392) / 2) * bagAnim);
             ybase = std::lround((WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
             spac = std::lround(8 * bagAnim);
-            drawBagRow(3, -1, xbase, ybase, spac, alpha);
+            drawBagRow(player, 3, -1, xbase, ybase, spac, alpha);
             xbase = std::lround(((WindowWidth - 392) / 2 - WindowWidth) * bagAnim + WindowWidth);
             ybase = std::lround((WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32));
             for (int i = 0; i < 3; i++) {
-                drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
+                drawBagRow(player, i, -1, xbase, ybase + i * 40, spac, alpha);
             }
         }
 
@@ -1727,7 +1613,7 @@ void drawBag() {
                 - (WindowHeight - 152 - 16 + 120 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32)
             );
             spac = std::lround(8 - 8 * bagAnim);
-            drawBagRow(3, Player::indexInHand, xbase, ybase, spac, alpha);
+            drawBagRow(player, 3, player.getIndexInHand(), xbase, ybase, spac, alpha);
             xbase = std::lround(
                 ((WindowWidth - 392) / 2 - WindowWidth) - ((WindowWidth - 392) / 2 - WindowWidth) * bagAnim
                 + WindowWidth
@@ -1737,9 +1623,9 @@ void drawBag() {
                 - (WindowHeight - 152 - 16 - (WindowHeight - 32)) * bagAnim + (WindowHeight - 32)
             );
             for (int i = 0; i < 3; i++) {
-                drawBagRow(i, -1, xbase, ybase + i * 40, spac, alpha);
+                drawBagRow(player, i, -1, xbase, ybase + i * 40, spac, alpha);
             }
         } else
-            drawBagRow(3, Player::indexInHand, 0, WindowHeight - 32, 0, 0.5f);
+            drawBagRow(player, 3, player.getIndexInHand(), 0, WindowHeight - 32, 0, 0.5f);
     }
 }

@@ -132,6 +132,11 @@ public:
     auto normalize() const -> Vec3 {
         return *this / length();
     }
+
+    // Rounding
+    auto round() const -> Vec3 {
+        return Vec3(std::round(x), std::round(y), std::round(z));
+    }
 };
 
 export using Vec3i = Vec3<int32_t>;

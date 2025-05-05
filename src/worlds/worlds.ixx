@@ -3,7 +3,7 @@ module;
 #include <leveldb/db.h>
 #include <spdlog/spdlog.h>
 
-export module worlds;
+export module worlds:worlds;
 import std;
 import types;
 export import blocks;
@@ -16,6 +16,7 @@ import hitboxes;
 import vec3;
 import terrain_generation;
 import rendering;
+import :player;
 
 // The 64-bit chunk ID is composed of 28-bit X, 8-bit Y and 28-bit Z coordinates.
 class ChunkId {
@@ -115,6 +116,13 @@ public:
         meshed_chunks = 0;
         unloaded_chunks = 0;
         updated_blocks = 0;
+
+        // Load player
+        try {
+            _player = player::Player(_name);
+        } catch (std::exception const& e) {
+            _player = player::Player();
+        }
     }
 
     auto name() const -> std::string const& {
@@ -149,6 +157,9 @@ public:
     void save_to_files() {
         for (auto const& [id, c]: _chunks)
             c->save_to_file(*_db.get());
+        if (!_player.save(_name)) {
+            spdlog::warn("Failed to save player data");
+        }
     }
 
     // 获取区块指针
@@ -554,6 +565,12 @@ public:
 
     void render_chunks(Vec3d center, std::vector<RenderChunk> const& crs, size_t index);
 
+    player::Player& player() {
+        return _player;
+    }
+    player::Player const& player() const {
+        return _player;
+    }
 private:
     struct LoadedCore {
         Vec3i ccenter = Vec3i(0, 0, 0);
@@ -573,6 +590,7 @@ private:
     ChunkPointerArray _chunk_pointer_array;
     HeightMap _height_map;
     LoadedCore _loaded_core;
+    player::Player _player;
 
     auto _load_chunk(Vec3i ccoord, bool skip_empty = false) -> chunks::Chunk* {
         auto cid = ChunkId(ccoord);

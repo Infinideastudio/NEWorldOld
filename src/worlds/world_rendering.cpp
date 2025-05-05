@@ -6,10 +6,11 @@ module;
 #include <optional>
 #include <vector>
 
-module worlds;
+module worlds:worlds_rendering;
 import frustum_tests;
 import rendering;
 import chunks;
+import :worlds;
 
 namespace worlds {
 

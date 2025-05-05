@@ -10,11 +10,11 @@ endif ()
 
 # ===== Project info =====
 project(
-    neworld
-    VERSION "0.5.0"
-    DESCRIPTION "NEWorld is an open-source voxel game with similar gameplay as Minecraft."
-    HOMEPAGE_URL "https://github.com/Infinideastudio/NEWorldOld/qzr-scratch"
-    LANGUAGES CXX
+        neworld
+        VERSION "0.5.0"
+        DESCRIPTION "NEWorld is an open-source voxel game with similar gameplay as Minecraft."
+        HOMEPAGE_URL "https://github.com/Infinideastudio/NEWorldOld/qzr-scratch"
+        LANGUAGES CXX
 )
 
 # ===== Scripts =====
@@ -49,10 +49,10 @@ find_package(glfw3 CONFIG REQUIRED)
 # The `utfcpp` Unicode library. A simple replacement for the deprecated `std::codecvt` facets.
 # This is somewhat niche and lightweight, so we use `FetchContent()` to build from source.
 FetchContent_Declare(
-    utfcpp
-    GIT_REPOSITORY https://github.com/nemtrif/utfcpp
-    GIT_TAG v4.0.6
-    GIT_SHALLOW TRUE
+        utfcpp
+        GIT_REPOSITORY https://github.com/nemtrif/utfcpp
+        GIT_TAG v4.0.6
+        GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(utfcpp)
 
@@ -73,10 +73,10 @@ find_package(leveldb CONFIG REQUIRED)
 
 # The C++ utilities library for this project.
 FetchContent_Declare(
-    klsxx
-    GIT_REPOSITORY https://github.com/NEWorldProject/klsxx
-    GIT_TAG main
-    GIT_SHALLOW TRUE
+        klsxx
+        GIT_REPOSITORY https://github.com/NEWorldProject/klsxx
+        GIT_TAG main
+        GIT_SHALLOW TRUE
 )
 set(KLS_VCPKG_FORCE_OVERRIDE ON)
 set(KLS_DISABLE_TEST ON)
@@ -85,8 +85,8 @@ FetchContent_MakeAvailable(klsxx)
 # ===== Targets =====
 add_executable(neworld)
 target_sources(
-    neworld
-    PRIVATE FILE_SET module_interfaces TYPE CXX_MODULES FILES
+        neworld
+        PRIVATE FILE_SET module_interfaces TYPE CXX_MODULES FILES
         "src/blocks.ixx"
         "src/chunks.ixx"
         "src/chunk_pointer_arrays.ixx"
@@ -102,19 +102,23 @@ target_sources(
         "src/globals.ixx"
         "src/types.ixx"
         "src/particles.ixx"
-        "src/player.ixx"
+        "src/worlds/player.ixx"
         "src/shaders.ixx"
         "src/rendering.ixx"
         "src/setup.ixx"
         "src/text_rendering.ixx"
         "src/textures.ixx"
         "src/terrain_generation.ixx"
-        "src/worlds.ixx"
+        "src/worlds/worlds.ixx"
+        "src/worlds/forward.ixx"
+        "src/worlds/mod.ixx"
         "src/mat4.ixx"
         "src/vec3.ixx"
-    PRIVATE
-        "src/chunks/chunk_rendering.cpp"
         "src/worlds/world_rendering.cpp"
+        "src/worlds/player_impl.cpp"
+        "src/items.ixx"
+        PRIVATE
+        "src/chunks/chunk_rendering.cpp"
         "src/menus/main_menu.cpp"
         "src/menus/options_menu.cpp"
         "src/menus/render_options_menu.cpp"
