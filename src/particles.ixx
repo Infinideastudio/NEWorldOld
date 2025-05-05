@@ -6,13 +6,12 @@ module;
 export module particles;
 import std;
 import types;
+import math;
 import blocks;
 import rendering;
 import textures;
-import hitboxes;
 import worlds;
 import globals;
-import vec;
 
 export namespace particles {
 
@@ -20,12 +19,11 @@ constexpr int PARTICALE_MAX = 4096;
 
 struct Particle {
     double xpos = 0.0, ypos = 0.0, zpos = 0.0;
-    float xsp = 0.0f, ysp = 0.0f, zsp = 0.0f, psize = 0.0f;
+    double xsp = 0.0, ysp = 0.0, zsp = 0.0, psize = 0.0;
     int lasts = 0;
     blocks::Id bl = base_blocks().air;
     TextureIndex tex = TextureIndex::NULLBLOCK;
     float tcx = 0.0f, tcy = 0.0f;
-    Hitbox::AABB hb;
 };
 
 std::vector<Particle> ptcs;
@@ -33,43 +31,27 @@ int ptcsrendered;
 double pxpos, pypos, pzpos;
 
 void update(worlds::World& world, Particle& ptc) {
-    double dx, dy, dz;
-    float psz = ptc.psize;
+    auto position = Vec3d(ptc.xpos, ptc.ypos, ptc.zpos);
+    auto velocity = Vec3d(ptc.xsp, ptc.ysp, ptc.zsp);
 
-    ptc.hb.xmin = ptc.xpos - psz;
-    ptc.hb.xmax = ptc.xpos + psz;
-    ptc.hb.ymin = ptc.ypos - psz;
-    ptc.hb.ymax = ptc.ypos + psz;
-    ptc.hb.zmin = ptc.zpos - psz;
-    ptc.hb.zmax = ptc.zpos + psz;
+    velocity.y() -= 0.03f;
+    auto velocity_original = velocity;
 
-    ptc.ysp -= 0.03f;
-    dx = ptc.xsp;
-    dy = ptc.ysp;
-    dz = ptc.zsp;
+    auto particle_box = AABB3d(position - ptc.psize, position + ptc.psize);
+    velocity = particle_box.clip_displacement(world.hitboxes(particle_box.extend(velocity)), velocity);
+    position += velocity;
 
-    auto boxes = world.hitboxes(Hitbox::Expand(ptc.hb, dx, dy, dz));
-    auto hitnum = boxes.size();
-    for (size_t i = 0; i < hitnum; i++) {
-        dy = Hitbox::MaxMoveOnYclip(ptc.hb, boxes[i], dy);
-    }
-    Hitbox::Move(ptc.hb, 0.0, dy, 0.0);
-    for (size_t i = 0; i < hitnum; i++) {
-        dx = Hitbox::MaxMoveOnXclip(ptc.hb, boxes[i], dx);
-    }
-    Hitbox::Move(ptc.hb, dx, 0.0, 0.0);
-    for (size_t i = 0; i < hitnum; i++) {
-        dz = Hitbox::MaxMoveOnZclip(ptc.hb, boxes[i], dz);
-    }
-    Hitbox::Move(ptc.hb, 0.0, 0.0, dz);
+    velocity.x() *= 0.8;
+    velocity.z() *= 0.8;
+    if (velocity.y() != velocity_original.y() && velocity_original.y() < 0.0)
+        velocity.y() = 0.0;
 
-    ptc.xpos += dx;
-    ptc.ypos += dy;
-    ptc.zpos += dz;
-    ptc.xsp *= 0.8f;
-    ptc.zsp *= 0.8f;
-    if (dy != ptc.ysp)
-        ptc.ysp = 0.0;
+    ptc.xpos = position.x();
+    ptc.ypos = position.y();
+    ptc.zpos = position.z();
+    ptc.xsp = velocity.x();
+    ptc.ysp = velocity.y();
+    ptc.zsp = velocity.z();
     ptc.lasts -= 1;
 }
 
@@ -213,12 +195,6 @@ void throw_particle(blocks::Id pt, float x, float y, float z, float xs, float ys
     ptc.ysp = ys;
     ptc.zsp = zs;
     ptc.psize = psz;
-    ptc.hb.xmin = x - psz;
-    ptc.hb.xmax = x + psz;
-    ptc.hb.ymin = y - psz;
-    ptc.hb.ymax = y + psz;
-    ptc.hb.zmin = z - psz;
-    ptc.hb.zmax = z + psz;
     ptc.lasts = last;
     ptc.bl = pt;
     ptc.tex = Textures::getTextureIndex(pt, 1);

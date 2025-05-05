@@ -7,15 +7,13 @@ module;
 export module worlds:worlds;
 import std;
 import types;
+import math;
 import debug;
 export import blocks;
 export import chunks;
 import chunk_pointer_arrays;
-import frustum_tests;
 import globals;
 import height_maps;
-import hitboxes;
-import vec;
 import terrain_generation;
 import rendering;
 import :player;
@@ -210,20 +208,16 @@ public:
     }
 
     // 返回与 box 相交的所有方块 AABB
-    auto hitboxes(Hitbox::AABB const& box) -> std::vector<Hitbox::AABB> {
-        auto res = std::vector<Hitbox::AABB>();
-        for (int a = std::lround(box.xmin) - 1; a <= std::lround(box.xmax) + 1; a++) {
-            for (int b = std::lround(box.ymin) - 1; b <= std::lround(box.ymax) + 1; b++) {
-                for (int c = std::lround(box.zmin) - 1; c <= std::lround(box.zmax) + 1; c++) {
-                    if (block_info(block_or_air(Vec3i(a, b, c)).id).solid) {
-                        auto blockbox = Hitbox::AABB();
-                        blockbox.xmin = a - 0.5;
-                        blockbox.xmax = a + 0.5;
-                        blockbox.ymin = b - 0.5;
-                        blockbox.ymax = b + 0.5;
-                        blockbox.zmin = c - 0.5;
-                        blockbox.zmax = c + 0.5;
-                        if (Hitbox::Hit(box, blockbox))
+    auto hitboxes(AABB3d const& box) -> std::vector<AABB3d> {
+        auto res = std::vector<AABB3d>();
+        for (int a = std::lround(box.min.x()) - 1; a <= std::lround(box.max.x()) + 1; a++) {
+            for (int b = std::lround(box.min.y()) - 1; b <= std::lround(box.max.y()) + 1; b++) {
+                for (int c = std::lround(box.min.z()) - 1; c <= std::lround(box.max.z()) + 1; c++) {
+                    auto coord = Vec3i(a, b, c);
+                    auto id = block_or_air(coord).id;
+                    if (block_info(id).solid) {
+                        auto blockbox = AABB3d(Vec3d(coord) - 0.5, Vec3d(coord) + 0.5);
+                        if (box.intersects(blockbox))
                             res.push_back(blockbox);
                     }
                 }
@@ -233,20 +227,15 @@ public:
     }
 
     // 返回 box 是否和水方块或岩浆方块相交
-    auto in_water(Hitbox::AABB const& box) -> bool {
-        for (int a = std::lround(box.xmin) - 1; a <= std::lround(box.xmax) + 1; a++) {
-            for (int b = std::lround(box.ymin) - 1; b <= std::lround(box.ymax) + 1; b++) {
-                for (int c = std::lround(box.zmin) - 1; c <= std::lround(box.zmax) + 1; c++) {
-                    auto id = block_or_air(Vec3i(a, b, c)).id;
+    auto in_water(AABB3d const& box) -> bool {
+        for (int a = std::lround(box.min.x()) - 1; a <= std::lround(box.max.x()) + 1; a++) {
+            for (int b = std::lround(box.min.y()) - 1; b <= std::lround(box.max.y()) + 1; b++) {
+                for (int c = std::lround(box.min.z()) - 1; c <= std::lround(box.max.z()) + 1; c++) {
+                    auto coord = Vec3i(a, b, c);
+                    auto id = block_or_air(coord).id;
                     if (id == base_blocks().water || id == base_blocks().lava) {
-                        auto blockbox = Hitbox::AABB();
-                        blockbox.xmin = a - 0.5;
-                        blockbox.xmax = a + 0.5;
-                        blockbox.ymin = b - 0.5;
-                        blockbox.ymax = b + 0.5;
-                        blockbox.zmin = c - 0.5;
-                        blockbox.zmax = c + 0.5;
-                        if (Hitbox::Hit(box, blockbox))
+                        auto blockbox = AABB3d(Vec3d(coord) - 0.5, Vec3d(coord) + 0.5);
+                        if (box.intersects(blockbox))
                             return true;
                     }
                 }

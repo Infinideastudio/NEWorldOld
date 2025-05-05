@@ -1,7 +1,7 @@
 export module chunk_pointer_arrays;
 import std;
 import types;
-import vec;
+import math;
 import chunks;
 
 export class ChunkPointerArray {

@@ -1,9 +1,9 @@
-export module vec;
+export module math:vector;
 import std;
 import types;
 
-// 终于，@bridgekat 变成了当年讨厌的样子
-export template <typename T, std::size_t N>
+// Small vector template.
+export template <typename T, size_t N>
 class Vector {
 public:
     std::array<T, N> elem;
@@ -15,12 +15,11 @@ public:
         elem{xs...} {}
 
     // Same-value constructor.
-    template <size_t... I>
     constexpr Vector(T x):
         Vector(_map_reduce(std::make_index_sequence<N>{}, _ctor, [&](auto) { return x; })) {}
 
     // Type conversion constructor.
-    template <typename U, size_t... I>
+    template <typename U>
     constexpr explicit Vector(Vector<U, N> r):
         Vector(_map_reduce(std::make_index_sequence<N>{}, _ctor, [&](auto i) { return static_cast<T>(r.elem[i]); })) {}
 
@@ -178,7 +177,7 @@ private:
 
     // Given an index sequence, maps each value using `f` and then applies `g` to all results.
     template <typename G, typename F, size_t... I>
-    static constexpr auto _map_reduce(std::index_sequence<I...>, G g, F f) {
+    static constexpr auto _map_reduce(std::index_sequence<I...> is, G g, F f) {
         return g(f(I)...);
     }
 };
@@ -196,8 +195,8 @@ export using Vec2i32 = Vec2<int32_t>;
 export using Vec2u32 = Vec2<uint32_t>;
 export using Vec2i64 = Vec2<int64_t>;
 export using Vec2u64 = Vec2<uint64_t>;
-export using Vec2f = Vec2<float_t>;
-export using Vec2d = Vec2<double_t>;
+export using Vec2f = Vec2<float>;
+export using Vec2d = Vec2<double>;
 
 export template <typename T>
 using Vec3 = Vector<T, 3>;
@@ -212,8 +211,8 @@ export using Vec3i32 = Vec3<int32_t>;
 export using Vec3u32 = Vec3<uint32_t>;
 export using Vec3i64 = Vec3<int64_t>;
 export using Vec3u64 = Vec3<uint64_t>;
-export using Vec3f = Vec3<float_t>;
-export using Vec3d = Vec3<double_t>;
+export using Vec3f = Vec3<float>;
+export using Vec3d = Vec3<double>;
 
 export template <typename T>
 using Vec4 = Vector<T, 4>;
@@ -228,5 +227,5 @@ export using Vec4i32 = Vec4<int32_t>;
 export using Vec4u32 = Vec4<uint32_t>;
 export using Vec4i64 = Vec4<int64_t>;
 export using Vec4u64 = Vec4<uint64_t>;
-export using Vec4f = Vec4<float_t>;
-export using Vec4d = Vec4<double_t>;
+export using Vec4f = Vec4<float>;
+export using Vec4d = Vec4<double>;

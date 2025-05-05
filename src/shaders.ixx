@@ -7,8 +7,7 @@ module;
 export module shaders;
 import std;
 import types;
-import vec;
-import mat;
+import math;
 import globals;
 
 export class Shader {

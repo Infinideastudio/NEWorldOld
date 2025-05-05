@@ -9,8 +9,7 @@ import types;
 import debug;
 import shaders;
 import framebuffers;
-import mat;
-import vec;
+import math;
 import globals;
 
 export namespace Renderer {

@@ -7,14 +7,13 @@ module;
 export module gui;
 import std;
 import types;
+import math;
 import framebuffers;
-import frustum_tests;
 import rendering;
 import text_rendering;
 import globals;
 import globalization;
 import textures;
-import mat;
 
 export namespace GUI {
 

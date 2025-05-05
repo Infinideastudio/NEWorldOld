@@ -6,11 +6,10 @@ export module worlds:player;
 
 import std;
 import types;
+import math;
 import chunks;
 import blocks;
-import hitboxes;
 import globals;
-import vec;
 import items;
 import :forward;
 
@@ -64,14 +63,10 @@ public:
     Vec3d getPositionOld() const {
         return positionOld;
     }
-    Hitbox::AABB getHitbox() const {
+    AABB3d getHitbox() const {
         return {
-            .xmin = position.x() - 0.3,
-            .ymin = position.y() - 0.0,
-            .zmin = position.z() - 0.3,
-            .xmax = position.x() + 0.3,
-            .ymax = position.y() + 1.7,
-            .zmax = position.z() + 0.3,
+            position - Vec3d(0.3, 0.0, 0.3),
+            position + Vec3d(0.3, 1.7, 0.3),
         };
     }
 
@@ -204,7 +199,7 @@ private:
     bool flying = false;
     bool crossWall = false;
 
-    double height = 1.35;
+    double height = 1.6;
     bool onGround = false;
     bool running = false;
     bool nearWall = false;

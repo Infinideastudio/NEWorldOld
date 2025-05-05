@@ -1,7 +1,7 @@
 export module height_maps;
 import std;
 import types;
-import vec;
+import math;
 import terrain_generation;
 
 export class HeightMap {
