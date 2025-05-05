@@ -1023,17 +1023,12 @@ void readback(worlds::World& world) {
     if (shouldGetScreenshot) {
         shouldGetScreenshot = false;
         auto now = std::chrono::system_clock::now();
-        auto nowTime = std::chrono::system_clock::to_time_t(now);
-        std::stringstream ss;
-        ss << "screenshots/" << std::put_time(std::localtime(&nowTime), "%Y-%m-%d %H:%M:%S") << ".bmp";
-        saveScreenshot(0, 0, WindowWidth, WindowHeight, ss.str());
+        saveScreenshot(0, 0, WindowWidth, WindowHeight, std::format("screenshots/{}.bmp", now));
     }
 
     if (shouldGetThumbnail) {
         shouldGetThumbnail = false;
-        std::stringstream ss;
-        ss << "worlds/" << world.name() << "/thumbnail.bmp";
-        saveScreenshot(0, 0, WindowWidth, WindowHeight, ss.str());
+        saveScreenshot(0, 0, WindowWidth, WindowHeight, std::format("worlds/{}/thumbnail.bmp", world.name()));
     }
 }
 
@@ -1277,19 +1272,18 @@ void draw_hud(worlds::World& world) {
 
     int lineHeight = TextRenderer::line_height();
     int textPos = 0;
-    auto debugText = [=](std::string const& s) mutable {
+    auto debugText = [=]<typename... Args>(std::format_string<Args...> fmt, Args&&... args) mutable {
+        auto s = std::format(fmt, std::forward<Args>(args)...);
         TextRenderer::render_string(0, lineHeight * textPos, s);
         textPos++;
     };
 
     TextRenderer::set_font_color(1.0f, 1.0f, 1.0f, 0.8f);
     if (showDebugPanel && selb != base_blocks().air) {
-        std::stringstream ss;
-        ss << block_info(selb).name << " (id: " << static_cast<int>(selb.get()) << ")";
         TextRenderer::render_string(
             WindowWidth / 2 + 50,
             WindowHeight / 2 + 50 - TextRenderer::line_height(),
-            ss.str()
+            std::format("{} (id: {})", block_info(selb).name, static_cast<int>(selb.get()))
         );
     }
     if (chatmode) {
@@ -1327,77 +1321,44 @@ void draw_hud(worlds::World& world) {
             return b ? "true" : "false";
         };
 
-        std::stringstream ss;
-        ss << std::fixed << std::setprecision(4);
-
-        ss << "v" << GameVersion << " [GL " << GLMajorVersion << "." << GLMinorVersion << "]";
-        debugText(ss.str());
-        ss.str("");
-        ss << fps << " fps, " << ups << " ups";
-        debugText(ss.str());
-        ss.str("");
-
-        ss << "game mode: " << (player.game_mode() == player::Player::GameMode::CREATIVE ? "creative" : "survival")
-           << " mode";
-        debugText(ss.str());
-        ss.str("");
+        debugText("v{} [GL {}.{}]", GameVersion, GLMajorVersion, GLMinorVersion);
+        debugText("{} fps, {} ups", fps, ups);
+        debugText(
+            "Game mode: {} mode",
+            player.game_mode() == player::Player::GameMode::CREATIVE ? "creative" : "survival"
+        );
         if (AdvancedRender) {
-            ss << "shadow view: " << boolstr(showShadowMap);
-            debugText(ss.str());
-            ss.str("");
+            debugText("shadow view: {}", boolstr(showShadowMap));
         }
-        ss << "cross wall: " << boolstr(player.cross_wall());
-        debugText(ss.str());
-        ss.str("");
-
-        ss << "x: " << player.coord().x() << ", y: " << player.coord().y() << ", z: " << player.coord().z();
-        debugText(ss.str());
-        ss.str("");
-        ss << "heading: " << player.orientation().heading() / Pi * 180.0
-           << ", pitch: " << player.orientation().pitch() / Pi * 180.0;
-        debugText(ss.str());
-        ss.str("");
-        ss << "grounded: " << boolstr(player.grounded());
-        debugText(ss.str());
-        ss.str("");
-        ss << "near wall: " << boolstr(player.near_wall()) << ", in water: " << boolstr(player.in_water());
-        debugText(ss.str());
-        ss.str("");
+        debugText("cross wall: {}", boolstr(player.cross_wall()));
+        debugText("x: {:3} y: {:3} z: {:3}", player.coord().x(), player.coord().y(), player.coord().z());
+        debugText(
+            "heading: {:3}, pitch: {:3}",
+            player.orientation().heading() / Pi * 180.0,
+            player.orientation().pitch() / Pi * 180.0
+        );
+        debugText(
+            "grounded: {}, near wall: {}, in water: {}",
+            boolstr(player.grounded()),
+            boolstr(player.near_wall()),
+            boolstr(player.in_water())
+        );
         int h = (GameTime / 30 / 60) % 24;
         int m = (GameTime / 30) % 60;
         int s = GameTime % 30 * 2;
-        ss << "time: " << (h < 10 ? "0" : "") << h << ":" << (m < 10 ? "0" : "") << m << ":" << (s < 10 ? "0" : "") << s
-           << " (" << GameTime << "/" << 30 * 60 * 24 << ")";
-        debugText(ss.str());
-        ss.str("");
-
-        ss << world.chunks().size() << " chunks loaded";
-        debugText(ss.str());
-        ss.str("");
-        ss << rendered_chunks << " chunks rendered";
-        debugText(ss.str());
-        ss.str("");
-        ss << unloaded_chunks << " chunks unloaded";
-        debugText(ss.str());
-        ss.str("");
-        ss << meshed_chunks << " chunks meshed";
-        debugText(ss.str());
-        ss.str("");
-        ss << updated_blocks << "/" << world.block_update_queue().size() << " blocks updated";
-        debugText(ss.str());
-        ss.str("");
-
+        debugText("time: {:02}:{:02}:{:02} ({})", h, m, s, GameTime);
+        debugText(
+            "chunks {} loaded, {} rendered, {} unloaded, {} meshed",
+            world.chunks().size(),
+            rendered_chunks,
+            unloaded_chunks,
+            meshed_chunks
+        );
+        debugText("{}/{} blocks updated", updated_blocks, world.block_update_queue().size());
     } else {
-        std::stringstream ss;
-        ss << "v" << GameVersion;
-        debugText(ss.str());
-        ss.str("");
-        ss << fps << " fps";
-        debugText(ss.str());
-        ss.str("");
-        ss << (player.game_mode() == player::Player::GameMode::CREATIVE ? "creative" : "survival") << " mode";
-        debugText(ss.str());
-        ss.str("");
+        debugText("v{}", GameVersion);
+        debugText("{} fps", fps);
+        debugText("{} mode", player.game_mode() == player::Player::GameMode::CREATIVE ? "creative" : "survival");
     }
 }
 
