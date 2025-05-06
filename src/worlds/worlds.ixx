@@ -2,6 +2,10 @@ module;
 
 #include <leveldb/db.h>
 #include <spdlog/spdlog.h>
+#include "kls/coroutine/Async.h"
+#include "kls/coroutine/Blocking.h"
+#include "kls/coroutine/Operation.h"
+#include "kls/temp/STL.h"
 #undef assert
 
 export module worlds:worlds;
@@ -90,25 +94,64 @@ export auto block_coord(Vec3i coord) -> Vec3u {
     };
 }
 
+class TilesStore {
+public:
+    explicit TilesStore(std::string_view name) {
+        // Create world directory
+        std::filesystem::create_directories(std::filesystem::path("worlds") / name);
+
+        // Open LevelDB database
+        auto db_path = (std::filesystem::path("worlds") / name / "chunks.db").string();
+        leveldb::DB* db = nullptr;
+        auto opts = leveldb::Options();
+        opts.create_if_missing = true;
+        auto res = leveldb::DB::Open(opts, db_path, &db);
+        // TODO: cascade open failure as world load failure
+        assert(res.ok(), "failed to open LevelDB database: " + res.ToString());
+        _db.reset(db);
+    }
+
+    kls::coroutine::ValueAsync<bool> load(chunks::Chunk* chunk) {
+        auto cpos = chunk->coord();
+#ifndef NEWORLD_DEBUG_NO_FILEIO
+        auto key_slice = leveldb::Slice(reinterpret_cast<char*>(&cpos), sizeof(cpos));
+        auto value_slice = std::string();
+        auto res = _db->Get(leveldb::ReadOptions(), key_slice, &value_slice);
+        if (res.ok()) {
+            auto buffer = kls::temp::vector<char>(value_slice.begin(), value_slice.end());
+            co_return chunk->unpackage_from(std::move(buffer));
+        }
+#endif
+        co_return false;
+    }
+
+    kls::coroutine::ValueAsync<bool> save(chunks::Chunk* chunk) {
+#ifndef NEWORLD_DEBUG_NO_FILEIO
+        if (chunk->modified()) {
+            auto cpos = chunk->coord();
+            auto key_slice = leveldb::Slice(reinterpret_cast<char*>(&cpos), sizeof(cpos));
+            auto data = chunk->package_to();
+            auto value_slice = leveldb::Slice(data.data(), data.size());
+            auto res = _db->Put(leveldb::WriteOptions(), key_slice, value_slice);
+            auto success = res.ok();
+            if (success)
+                chunk->clear_modified();
+            co_return success;
+        }
+#endif
+        co_return true;
+    }
+private:
+    std::unique_ptr<leveldb::DB> _db;
+};
+
 export class World {
 public:
     explicit World(std::string name):
         _name(std::move(name)),
         _chunk_pointer_array((RenderDistance + 2) * 2),
-        _height_map((RenderDistance + 2) * 2 * chunks::Chunk::SIZE) {
-
-        // Create world directory
-        std::filesystem::create_directories(std::filesystem::path("worlds") / _name);
-
-        // Open LevelDB database
-        auto db_path = (std::filesystem::path("worlds") / _name / "chunks.db").string();
-        leveldb::DB* db = nullptr;
-        auto opts = leveldb::Options();
-        opts.create_if_missing = true;
-        auto res = leveldb::DB::Open(opts, db_path, &db);
-        assert(res.ok(), "failed to open LevelDB database: " + res.ToString());
-        _db.reset(db);
-
+        _height_map((RenderDistance + 2) * 2 * chunks::Chunk::SIZE),
+        _tiles_store(_name) {
         // Initialize terrain generation
         terrain_generation::noise_init(3404);
 
@@ -157,8 +200,13 @@ public:
 
     // Saves all chunks to files
     void save_to_files() {
-        for (auto const& [id, c]: _chunks)
-            c->save_to_file(*_db.get());
+        // TODO: extract this, this is temporary
+        kls::coroutine::run_blocking([this]() -> kls::coroutine::ValueAsync<> {
+            kls::temp::vector<kls::coroutine::ValueAsync<bool>> collect{};
+            for (auto const& [id, c]: _chunks)
+                collect.emplace_back(_tiles_store.save(c.get()));
+            co_await kls::coroutine::await_all(std::move(collect));
+        });
         if (!_player.save(_name)) {
             spdlog::warn("Failed to save player data");
         }
@@ -571,7 +619,7 @@ private:
     };
 
     std::string _name;
-    std::unique_ptr<leveldb::DB> _db;
+    TilesStore _tiles_store;
     std::unordered_map<ChunkId, std::unique_ptr<chunks::Chunk>> _chunks;
     std::vector<std::pair<int, chunks::Chunk*>> _chunk_meshing_list;
     std::vector<std::pair<int, Vec3i>> _chunk_load_list;
@@ -594,7 +642,14 @@ private:
         }
 
         // Load chunk from file if exists
-        auto handle = std::make_unique<chunks::Chunk>(ccoord, *_db.get(), _height_map);
+        // TODO: this is temporary, extract to tracker
+        auto handle = std::make_unique<chunks::Chunk>(ccoord);
+        kls::coroutine::run_blocking([this, cptr = handle.get()]() -> kls::coroutine::ValueAsync<> {
+            if (!co_await _tiles_store.load(cptr)) {
+                cptr->init_generate(_height_map);
+            }
+            cptr->post_init();
+        });
         auto cptr = handle.get();
 
         // Optionally skip empty chunks
@@ -622,7 +677,10 @@ private:
 
         // Save chunk to file if modified
         auto cptr = node.mapped().get();
-        cptr->save_to_file(*_db.get());
+        // TODO: this is temporary, extract to tracker
+        kls::coroutine::run_blocking([this, cptr]() -> kls::coroutine::ValueAsync<> {
+            co_await _tiles_store.save(cptr);
+        });
 
         // Update caches
         if (_chunk_pointer_cache_value == cptr) {

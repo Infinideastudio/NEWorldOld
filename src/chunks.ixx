@@ -1,6 +1,6 @@
 module;
 
-#include <leveldb/db.h>
+#include "kls/temp/STL.h"
 #undef assert
 
 export module chunks;
@@ -19,12 +19,15 @@ public:
     static constexpr auto SIZE_LOG = int32_t{4};
     static constexpr auto SIZE = int32_t{1} << SIZE_LOG;
 
-    // There are no lifetime requirements on `world_name` and `height_map`
-    // since they are only used in the constructor.
-    Chunk(Vec3i coord, leveldb::DB& db, HeightMap& height_map):
-        _coord(coord) {
-        if (!load_from_file(db))
-            _generate(height_map);
+    Chunk(Vec3i coord):
+        _coord(coord) {}
+
+    // There are no lifetime requirements on `height_map`
+    auto init_generate(HeightMap& height_map) {
+        _generate(height_map);
+    }
+
+    auto post_init() {
         if (!_empty)
             _updated = true;
     }
@@ -74,33 +77,26 @@ public:
         return _data[((bcoord.x() * SIZE) + bcoord.y()) * SIZE + bcoord.z()];
     }
 
-    auto load_from_file(leveldb::DB& db) -> bool {
-        bool exists = false;
-#ifndef NEWORLD_DEBUG_NO_FILEIO
-        auto key_slice = leveldb::Slice(reinterpret_cast<char*>(&_coord), sizeof(_coord));
-        auto value_slice = std::string();
-        auto res = db.Get(leveldb::ReadOptions(), key_slice, &value_slice);
-        if (res.ok() && value_slice.size() == sizeof(_data)) {
-            std::memcpy(reinterpret_cast<char*>(_data.data()), value_slice.data(), sizeof(_data));
-            exists = true;
-            _empty = _modified = false;
-        }
-#endif
-        return exists;
+    auto package_to() -> kls::temp::vector<char> {
+        // TODO: compression, data versioning
+        auto result = kls::temp::vector<char>{};
+        result.resize(sizeof(_data));
+        std::memcpy(result.data(), _data.data(), sizeof(_data));
+        return result;
     }
 
-    auto save_to_file(leveldb::DB& db) -> bool {
-        bool success = true;
-#ifndef NEWORLD_DEBUG_NO_FILEIO
-        if (_modified) {
-            auto key_slice = leveldb::Slice(reinterpret_cast<char*>(&_coord), sizeof(_coord));
-            auto value_slice = leveldb::Slice(reinterpret_cast<char*>(_data.data()), sizeof(_data));
-            auto res = db.Put(leveldb::WriteOptions(), key_slice, value_slice);
-            success = res.ok();
-            _modified = false;
-        }
-#endif
-        return success;
+    auto clear_modified() {
+        // TODO: maybe track this externally
+        _modified = false;
+    }
+
+    auto unpackage_from(kls::temp::vector<char> data) -> bool {
+        // TODO: compression, data versioning
+        if (data.size() != sizeof(_data))
+            return false;
+        std::memcpy(_data.data(), data.data(), sizeof(_data));
+        _empty = _modified = false;
+        return true;
     }
 
     void build_meshes(std::array<Chunk const*, 3 * 3 * 3> neighbors);
