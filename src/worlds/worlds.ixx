@@ -19,7 +19,7 @@ import chunk_pointer_arrays;
 import globals;
 import height_maps;
 import terrain_generation;
-import rendering;
+import render;
 import :player;
 
 // The 64-bit chunk ID is composed of 28-bit X, 8-bit Y and 28-bit Z coordinates.
@@ -259,15 +259,14 @@ public:
     // 返回与 box 相交的所有方块 AABB
     auto hitboxes(AABB3d const& box) -> std::vector<AABB3d> {
         auto res = std::vector<AABB3d>();
-        for (int a = std::lround(box.min.x()) - 1; a <= std::lround(box.max.x()) + 1; a++) {
-            for (int b = std::lround(box.min.y()) - 1; b <= std::lround(box.max.y()) + 1; b++) {
-                for (int c = std::lround(box.min.z()) - 1; c <= std::lround(box.max.z()) + 1; c++) {
+        for (int a = std::lround(box.min.x()) - 2; a <= std::lround(box.max.x()) + 2; a++) {
+            for (int b = std::lround(box.min.y()) - 2; b <= std::lround(box.max.y()) + 2; b++) {
+                for (int c = std::lround(box.min.z()) - 2; c <= std::lround(box.max.z()) + 2; c++) {
                     auto coord = Vec3i(a, b, c);
                     auto id = block_or_air(coord).id;
                     if (block_info(id).solid) {
                         auto blockbox = AABB3d(Vec3d(coord) - 0.5, Vec3d(coord) + 0.5);
-                        if (box.intersects(blockbox))
-                            res.push_back(blockbox);
+                        res.push_back(blockbox);
                     }
                 }
             }
@@ -599,7 +598,7 @@ public:
         }
     }
 
-    using RenderChunk = std::pair<Vec3d, std::array<Renderer::VertexBuffer const*, 2>>;
+    using RenderChunk = std::pair<Vec3d, std::array<std::pair<render::VertexArray, render::Buffer> const*, 2>>;
 
     auto list_render_chunks(Vec3d center, int dist, double interp, std::optional<Frustumf> frustum)
         -> std::vector<RenderChunk>;

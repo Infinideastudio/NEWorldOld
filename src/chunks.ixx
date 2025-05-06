@@ -10,7 +10,7 @@ import types;
 import math;
 export import blocks;
 import height_maps;
-import rendering;
+import render;
 
 namespace chunks {
 
@@ -116,7 +116,7 @@ public:
             _load_anim *= 0.6f;
     }
 
-    auto mesh(size_t index) const -> Renderer::VertexBuffer const& {
+    auto mesh(size_t index) const -> std::pair<render::VertexArray, render::Buffer> const& {
         assert(index < _meshes.size(), "mesh index out of bounds");
         return _meshes[index];
     }
@@ -132,7 +132,7 @@ public:
 private:
     Vec3i _coord;
     std::array<blocks::BlockData, SIZE * SIZE * SIZE> _data = {};
-    std::array<Renderer::VertexBuffer, 2> _meshes = {};
+    std::array<std::pair<render::VertexArray, render::Buffer>, 2> _meshes = {};
 
     bool _empty = true;
     bool _meshed = false;

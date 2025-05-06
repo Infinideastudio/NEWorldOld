@@ -4,8 +4,9 @@ import std;
 import types;
 import math;
 import debug;
-import rendering;
 import chunks;
+import rendering;
+import render;
 
 namespace worlds {
 
@@ -31,10 +32,9 @@ auto World::list_render_chunks(Vec3d center, int dist, double interp, std::optio
 void World::render_chunks(Vec3d center, std::vector<RenderChunk> const& crs, size_t index) {
     for (auto [coord, meshes]: crs) {
         coord -= center;
-        if (meshes[index]->empty())
-            continue;
+        auto const& [va, buffer] = *meshes[index];
         Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(coord));
-        meshes[index]->render();
+        va.render();
     }
 }
 
