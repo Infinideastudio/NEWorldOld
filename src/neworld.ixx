@@ -22,12 +22,12 @@ import textures;
 import worlds;
 import menus;
 import items;
+using namespace std::literals::chrono_literals;
 
 //==============================   Initialize   ================================//
 //==============================初始化(包括闪屏)================================//
 
-void register_commands();
-void update_thread_func(worlds::World& world);
+void update_thread_func(std::stop_token stop_token, worlds::World& world);
 void game_update(worlds::World& world);
 void frame_linked_update(worlds::World& world);
 
@@ -39,9 +39,8 @@ void draw_hud(worlds::World& world);
 void draw_inventory_row(player::Player& world, int row, int itemid, int xbase, int ybase, int spac, float alpha);
 void draw_inventory(player::Player& world);
 
-std::mutex updateMutex;
-double updateTimer;
-bool updateThreadRun;
+std::mutex update_mutex;
+double update_timer;
 
 double speedupAnimTimer;
 double screenshotAnimTimer;
@@ -72,8 +71,8 @@ float FOVyExt;
 
 std::u32string chatword;
 bool chatmode = false;
-std::vector<Command> commands;
-std::vector<std::string> chatMessages;
+CommandRegistry command_registry;
+std::vector<std::string> chat_messages;
 
 // Error: "extended character '。' is not valid in an identifier"
 /*
@@ -124,7 +123,7 @@ export int main() {
     splash_screen();
     load_textures();
     register_base_blocks();
-    register_commands();
+    register_base_commands(command_registry);
 
     // 菜单游戏循环
     while (!glfwWindowShouldClose(MainWindow)) {
@@ -137,10 +136,9 @@ export int main() {
         auto world = worlds::World(Cur_WorldName);
 
         // 初始化游戏更新线程
-        updateMutex.lock();
-        updateThreadRun = true;
-        updateTimer = timer();
-        auto updateThread = std::thread(update_thread_func, std::ref(world));
+        update_mutex.lock();
+        update_timer = timer();
+        auto update_thread = std::jthread(update_thread_func, std::ref(world));
 
         // 这才是游戏开始!
         spdlog::info("Main loop started");
@@ -155,9 +153,9 @@ export int main() {
         // 主循环，被简化成这样，惨不忍睹啊！
         while (!glfwWindowShouldClose(MainWindow) && !GameExit) {
             // 等待上一帧完成后渲染下一帧
-            updateMutex.unlock();
+            update_mutex.unlock();
             glfwSwapBuffers(MainWindow); // 屏幕刷新，千万别删，后果自负！！！
-            updateMutex.lock();
+            update_mutex.lock();
             readback(world);
             render(world);
             fpsc++;
@@ -191,7 +189,7 @@ export int main() {
                 paused = false;
                 mxl = mx;
                 myl = my;
-                updateTimer = fctime = uctime = timer();
+                update_timer = fctime = uctime = timer();
             }
         };
 
@@ -204,9 +202,9 @@ export int main() {
 
         // 停止游戏更新线程
         spdlog::info("Terminating threads");
-        updateThreadRun = false;
-        updateMutex.unlock();
-        updateThread.join();
+        update_mutex.unlock();
+        update_thread.request_stop();
+        update_thread.join();
 
         // 保存并卸载世界
         world.save_to_files();
@@ -220,174 +218,21 @@ export int main() {
     // This is the END of the program!
 }
 
-void update_thread_func(worlds::World& world) {
-    updateMutex.lock();
-    while (updateThreadRun) {
-        double currTimer = timer();
-        while (currTimer - updateTimer >= 1.0 / 30.0) {
-            if (upsc >= 60)
-                updateTimer = currTimer;
-            updateTimer += 1.0 / 30.0;
+void update_thread_func(std::stop_token stop_token, worlds::World& world) {
+    while (!stop_token.stop_requested()) {
+        update_mutex.lock();
+        auto curr_timer = timer();
+        while (curr_timer - update_timer >= 1.0 / 30.0) {
+            if (upsc >= 60) {
+                update_timer = curr_timer;
+            }
+            update_timer += 1.0 / 30.0;
             upsc++;
             game_update(world);
         }
-        updateMutex.unlock();
-        sleep(1);
-        updateMutex.lock();
+        update_mutex.unlock();
+        std::this_thread::sleep_for(1ms);
     }
-    updateMutex.unlock();
-}
-
-void register_commands() {
-    commands.emplace_back("/help", [](std::vector<std::string> const& command, worlds::World&) {
-        if (command.size() != 1)
-            return false;
-        chatMessages.emplace_back(
-            "Controls: W/A/S/D/SPACE/SHIFT = move, R/F = fast move (creative mode), E = open inventory,"
-        );
-        chatMessages.emplace_back(
-            "          left/right mouse button = break/place blocks, mouse wheel = select blocks,"
-        );
-        chatMessages.emplace_back("          F1 = switch game mode, F2 = take screenshot, F3 = switch debug panel,");
-        chatMessages.emplace_back("          F4 = switch cross wall (creative mode), F5 = switch HUD,");
-        chatMessages.emplace_back("          F7 = switch full screen mode, F8 = fast forward game time");
-        chatMessages.emplace_back(
-            "Commands: /help | /clear | /kit | /give <id> <amount> | /tp <x> <y> <z> | /clearinventory | /suicide |"
-        );
-        chatMessages.emplace_back(
-            "          /setblock <x> <y> <z> <id> | /tree <x> <y> <z> | /explode <x> <y> <z> <radius> | /time <time>"
-        );
-        return true;
-    });
-    commands.emplace_back("/clear", [](std::vector<std::string> const& command, worlds::World&) {
-        if (command.size() != 1)
-            return false;
-        chatMessages.clear();
-        return true;
-    });
-    commands.emplace_back("/kit", [](std::vector<std::string> const& command, worlds::World&) {
-        if (command.size() != 1)
-            return false;
-        // player::inventory[0][0] = blocks::Id(1);
-        // player::inventoryAmount[0][0] = 255;
-        // player::inventory[0][1] = blocks::Id(2);
-        // player::inventoryAmount[0][1] = 255;
-        // player::inventory[0][2] = blocks::Id(3);
-        // player::inventoryAmount[0][2] = 255;
-        // player::inventory[0][3] = blocks::Id(4);
-        // player::inventoryAmount[0][3] = 255;
-        // player::inventory[0][4] = blocks::Id(5);
-        // player::inventoryAmount[0][4] = 255;
-        // player::inventory[0][5] = blocks::Id(6);
-        // player::inventoryAmount[0][5] = 255;
-        // player::inventory[0][6] = blocks::Id(7);
-        // player::inventoryAmount[0][6] = 255;
-        // player::inventory[0][7] = blocks::Id(8);
-        // player::inventoryAmount[0][7] = 255;
-        // player::inventory[0][8] = blocks::Id(9);
-        // player::inventoryAmount[0][8] = 255;
-        // player::inventory[0][9] = blocks::Id(10);
-        // player::inventoryAmount[0][9] = 255;
-        // player::inventory[1][0] = blocks::Id(11);
-        // player::inventoryAmount[1][0] = 255;
-        // player::inventory[1][1] = blocks::Id(12);
-        // player::inventoryAmount[1][1] = 255;
-        // player::inventory[1][2] = blocks::Id(13);
-        // player::inventoryAmount[1][2] = 255;
-        // player::inventory[1][3] = blocks::Id(14);
-        // player::inventoryAmount[1][3] = 255;
-        // player::inventory[1][4] = blocks::Id(15);
-        // player::inventoryAmount[1][4] = 255;
-        // player::inventory[1][5] = blocks::Id(16);
-        // player::inventoryAmount[1][5] = 255;
-        // player::inventory[1][6] = blocks::Id(17);
-        // player::inventoryAmount[1][6] = 255;
-        // player::inventory[1][7] = blocks::Id(18);
-        // player::inventoryAmount[1][7] = 255;
-        return true;
-    });
-    commands.emplace_back("/give", [](std::vector<std::string> const& command, worlds::World& world) {
-        if (command.size() != 3)
-            return false;
-        auto itemid = blocks::Id(std::stoi(command[1]));
-        auto amount = static_cast<size_t>(std::stoi(command[2]));
-        world.player().add_item({itemid, amount});
-        return true;
-    });
-    commands.emplace_back("/tp", [](std::vector<std::string> const& command, worlds::World& world) {
-        if (command.size() != 4)
-            return false;
-        double x = std::stod(command[1]);
-        double y = std::stod(command[2]);
-        double z = std::stod(command[3]);
-        world.player().set_coord({x, y, z});
-        return true;
-    });
-    commands.emplace_back("/clearinventory", [](std::vector<std::string> const& command, worlds::World& world) {
-        if (command.size() != 1)
-            return false;
-        world.player().clear_inventory();
-        return true;
-    });
-    commands.emplace_back("/suicide", [](std::vector<std::string> const& command, worlds::World& world) {
-        if (command.size() != 1)
-            return false;
-        world.player().spawn();
-        return true;
-    });
-    commands.emplace_back("/setblock", [](std::vector<std::string> const& command, worlds::World& world) {
-        if (command.size() != 5)
-            return false;
-        int x = std::stoi(command[1]);
-        int y = std::stoi(command[2]);
-        int z = std::stoi(command[3]);
-        auto b = blocks::Id(std::stoi(command[4]));
-        world.put_block(Vec3i(x, y, z), b);
-        return true;
-    });
-    commands.emplace_back("/tree", [](std::vector<std::string> const& command, worlds::World& world) {
-        if (command.size() != 4)
-            return false;
-        int x = std::stoi(command[1]);
-        int y = std::stoi(command[2]);
-        int z = std::stoi(command[3]);
-        world.build_tree(Vec3i(x, y, z));
-        return true;
-    });
-    commands.emplace_back("/explode", [](std::vector<std::string> const& command, worlds::World& world) {
-        if (command.size() != 5)
-            return false;
-        int x = std::stoi(command[1]);
-        int y = std::stoi(command[2]);
-        int z = std::stoi(command[3]);
-        int r = std::stoi(command[4]);
-        world.explode(Vec3i(x, y, z), r);
-        return true;
-    });
-    commands.emplace_back("/time", [](std::vector<std::string> const& command, worlds::World&) {
-        if (command.size() != 2)
-            return false;
-        int time = std::stoi(command[1]);
-        if (time < 0)
-            return false;
-        GameTime = time;
-        return true;
-    });
-    commands.emplace_back("/gamemode", [](std::vector<std::string> const& command, worlds::World& world) {
-        if (command.size() != 2)
-            return false;
-        auto mode = static_cast<player::Player::GameMode>(std::stoi(command[1]));
-        world.player().set_game_mode(mode);
-        return true;
-    });
-}
-
-bool doCommand(std::vector<std::string> const& command, worlds::World& world) {
-    for (unsigned int i = 0; i != commands.size(); i++) {
-        if (command[0] == commands[i].identifier)
-            return commands[i].execute(command, world);
-    }
-    return false;
 }
 
 void game_update(worlds::World& world) {
@@ -466,16 +311,13 @@ void game_update(worlds::World& world) {
             myl = my;
             mwl = mw;
             mbl = mb;
-            if (!chatword.empty()) {      // 指令的执行，或发出聊天文本
+            if (!chatword.empty()) { // 指令的执行，或发出聊天文本
+                auto utf8 = unicode_utf8(chatword);
                 if (chatword[0] == '/') { // 指令
-                    auto utf8 = unicode_utf8(chatword);
-                    auto command = split(utf8, " ");
-                    if (!doCommand(command, world)) { // 执行失败
-                        spdlog::warn("Fail to execute the command: {}", utf8);
-                        chatMessages.push_back("Fail to execute the command: " + utf8);
-                    }
-                } else
-                    chatMessages.push_back(unicode_utf8(chatword));
+                    command_registry.execute_on(utf8, world, chat_messages);
+                } else {
+                    chat_messages.push_back(utf8);
+                }
             }
             chatword.clear();
         }
@@ -487,9 +329,8 @@ void game_update(worlds::World& world) {
 
         // 自动补全
         if (isKeyPressed(GLFW_KEY_TAB) && chatmode && !chatword.empty() && chatword[0] == '/') {
-            for (auto& command: commands) {
-                if (command.identifier.starts_with(unicode_utf8(chatword)))
-                    chatword = utf8_unicode(command.identifier);
+            if (auto res = command_registry.try_auto_complete(unicode_utf8(chatword))) {
+                chatword = utf8_unicode(*res);
             }
         }
     } else if (bagOpened) {
@@ -514,8 +355,8 @@ void game_update(worlds::World& world) {
             // 线段延伸
             coord_last = coord;
             coord += direction / SelectPrecision;
-            auto int_coord_last = Vec3i(coord_last.map<int>([](double x) { return std::lround(x); }));
-            auto int_coord = Vec3i(coord.map<int>([](double x) { return std::lround(x); }));
+            auto int_coord_last = coord_last.round<int32_t>();
+            auto int_coord = coord.round<int32_t>();
             // 碰到方块
             if (block_info(world.block_or_air(int_coord).id).solid) {
                 selx = int_coord.x();
@@ -817,7 +658,7 @@ void render(worlds::World& world) {
 
     auto& player = world.player();
     double currTimer = timer();
-    double interp = (currTimer - updateTimer) * 30.0;
+    double interp = (currTimer - update_timer) * 30.0;
     Vec3d view_coord = player.look_coord() - player.velocity() * (1.0 - interp);
 
     // Calculate sun position (temporary: horizontal movement only)
@@ -929,32 +770,6 @@ void render(worlds::World& world) {
         Renderer::EndFinalPass();
     }
 
-    /*
-    if (DebugHitbox) {
-        glLoadIdentity();
-        glRotated(plookupdown, 1, 0, 0);
-        glRotated(360.0 - pheading, 0, 1, 0);
-        glTranslated(-xpos, -ypos, -zpos);
-
-        glDisable(GL_CULL_FACE);
-        glDisable(GL_TEXTURE_2D);
-
-        for (unsigned int i = 0; i < Player::Hitboxes.size(); i++)
-            Hitbox::renderAABB(Player::Hitboxes[i], GUI::FgR, GUI::FgG, GUI::FgB, 3, 0.002);
-
-        glLoadIdentity();
-        glRotated(plookupdown, 1, 0, 0);
-        glRotated(360.0 - pheading, 0, 1, 0);
-        glTranslated(-Player::xpos, -Player::ypos - Player::height - Player::heightExt, -Player::zpos);
-
-        Hitbox::renderAABB(Player::playerbox, 1.0f, 1.0f, 1.0f, 1);
-        Hitbox::renderAABB(Hitbox::Expand(Player::playerbox, Player::xd, Player::yd, Player::zd), 1.0f, 1.0f, 1.0f, 1);
-
-        glEnable(GL_CULL_FACE);
-        glEnable(GL_TEXTURE_2D);
-    }
-    */
-
     // HUD rendering starts here
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -965,7 +780,7 @@ void render(worlds::World& world) {
     glClearDepth(1.0f);
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    auto int_view_coord = view_coord.map<int>([](auto x) { return std::lround(x); });
+    auto int_view_coord = view_coord.round<int32_t>();
     if (world.block_or_air(int_view_coord).id == base_blocks().water) {
         auto& shader = Renderer::shaders[Renderer::UIShader];
         shader.bind();
@@ -1219,55 +1034,6 @@ void draw_hud(worlds::World& world) {
         Renderer::Vertex2f(xa, yi);
         Renderer::End().render();
         shader.unbind();
-
-        /*
-        auto const& viewFrustum = Player::ViewFrustum;
-        auto lightFrustum = Renderer::getShadowMapFrustumExperimental(Player::heading, Player::lookupdown,
-        Player::ViewFrustum); float length = Renderer::getShadowDistance() * 16.0f;
-
-        auto viewRotate = Mat4f(1.0f);
-        viewRotate *= Mat4f::rotation(static_cast<float>(Player::heading), Vec3f(0.0f, 1.0f, 0.0f));
-        viewRotate *= Mat4f::rotation(-static_cast<float>(Player::lookupdown), Vec3f(1.0f, 0.0f, 0.0f));
-
-        float halfHeight = std::tan(viewFrustum.getFov() * (std::numbers::pi_v<float> / 180.0f) / 2.0f);
-        float halfWidth = halfHeight * viewFrustum.getAspect();
-        float zNear = 10.0f, zFar = length;
-        float xNear = halfWidth * zNear, yNear = halfHeight * zNear;
-        float xFar = halfWidth * zFar, yFar = halfHeight * zFar;
-        auto vertices = std::array<Vec3f, 8>{
-            Vec3f(-xNear, -yNear, -zNear),
-            Vec3f(xNear, -yNear, -zNear),
-            Vec3f(xNear, yNear, -zNear),
-            Vec3f(-xNear, yNear, -zNear),
-            Vec3f(-xFar, -yFar, -zFar),
-            Vec3f(xFar, -yFar, -zFar),
-            Vec3f(xFar, yFar, -zFar),
-            Vec3f(-xFar, yFar, -zFar),
-        };
-        auto indices = std::array<std::pair<int, int>, 12>{
-            std::pair{ 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 },
-            std::pair{ 4, 5 }, { 5, 6 }, { 6, 7 }, { 7, 4 },
-            std::pair{ 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 },
-        };
-        auto toLightSpace = Mat4f(lightFrustum.getModlMatrix()) * viewRotate;
-        for (size_t i = 0; i < vertices.size(); i++) vertices[i] = toLightSpace.transformVec3(vertices[i]);
-        float x0 = static_cast<float>(WindowWidth - WindowHeight / 4);
-        float y0 = static_cast<float>(WindowHeight / 4);
-        float xd = static_cast<float>(WindowHeight / 4);
-        float yd = static_cast<float>(-WindowHeight / 4);
-
-        glDisable(GL_TEXTURE_2D);
-        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        glBegin(GL_LINES);
-        for (auto [i, j] : indices) {
-            auto first = vertices[i];
-            auto second = vertices[j];
-            glVertex2f(x0 + first.x * xd, y0 + first.y * yd);
-            glVertex2f(x0 + second.x * xd, y0 + second.y * yd);
-        }
-        glEnd();
-        glEnable(GL_TEXTURE_2D);
-        */
     }
 
     int lineHeight = TextRenderer::line_height();
@@ -1299,7 +1065,7 @@ void draw_hud(worlds::World& world) {
         TextRenderer::render_string(0, WindowHeight - 33 - lineHeight, chatword);
     }
     int count = 0;
-    for (size_t i = chatMessages.size(); i-- > 0 && count < 10; count++) {
+    for (size_t i = chat_messages.size(); i-- > 0 && count < 10; count++) {
         glDisable(GL_TEXTURE_2D);
         glBegin(GL_QUADS);
         glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA);
@@ -1312,7 +1078,7 @@ void draw_hud(worlds::World& world) {
         glVertex2i(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 2));
         glEnd();
         glEnable(GL_TEXTURE_2D);
-        TextRenderer::render_string(0, WindowHeight - 34 - lineHeight * (count + 2), chatMessages[i]);
+        TextRenderer::render_string(0, WindowHeight - 34 - lineHeight * (count + 2), chat_messages[i]);
     }
 
     TextRenderer::set_font_color(1.0f, 1.0f, 1.0f, 0.9f);
@@ -1331,9 +1097,9 @@ void draw_hud(worlds::World& world) {
             debugText("shadow view: {}", boolstr(showShadowMap));
         }
         debugText("cross wall: {}", boolstr(player.cross_wall()));
-        debugText("x: {:3} y: {:3} z: {:3}", player.coord().x(), player.coord().y(), player.coord().z());
+        debugText("x: {:.3f} y: {:.3f} z: {:.3f}", player.coord().x(), player.coord().y(), player.coord().z());
         debugText(
-            "heading: {:3}, pitch: {:3}",
+            "heading: {:.3f}, pitch: {:.3f}",
             player.orientation().heading() / Pi * 180.0,
             player.orientation().pitch() / Pi * 180.0
         );

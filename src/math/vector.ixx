@@ -172,6 +172,24 @@ public:
         return *this / length();
     }
 
+    // Returns floored vector.
+    template <typename U = T>
+    auto floor() const -> Vector<U, N> {
+        return map<U>([](auto x) { return static_cast<U>(std::floor(x)); });
+    }
+
+    // Returns ceiled vector.
+    template <typename U = T>
+    auto ceil() const -> Vector<U, N> {
+        return map<U>([](auto x) { return static_cast<U>(std::ceil(x)); });
+    }
+
+    // Returns rounded vector.
+    template <typename U = T>
+    auto round() const -> Vector<U, N> {
+        return map<U>([](auto x) { return static_cast<U>(std::round(x)); });
+    }
+
 private:
     static constexpr auto _ctor = [](auto... xs) {
         return Vector{xs...};

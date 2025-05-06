@@ -54,7 +54,6 @@ export bool backspace;
 
 export bool GameBegin, GameExit;
 export int GameTime = 0;
-export uint32_t g_seed;
 
 export int rendered_chunks;
 export int unloaded_chunks;
@@ -67,6 +66,8 @@ export auto getMouseScroll() -> int {
 export auto getMouseButton() -> int {
     return mb;
 }
+
+uint32_t g_seed;
 
 export void fast_srand(uint32_t seed) {
     g_seed = seed;
@@ -81,28 +82,8 @@ export auto rnd() -> double {
     return static_cast<double>(fast_rand()) / 0x8000;
 }
 
-export auto split(std::string str, std::string pattern) -> std::vector<std::string> {
-    std::vector<std::string> ret;
-    if (pattern.empty())
-        return ret;
-    size_t start = 0, index = str.find_first_of(pattern, 0);
-    while (index != str.npos) {
-        if (start != index)
-            ret.push_back(str.substr(start, index - start));
-        start = index + 1;
-        index = str.find_first_of(pattern, start);
-    }
-    if (!str.substr(start).empty())
-        ret.push_back(str.substr(start));
-    return ret;
-}
-
 export auto timer() -> double {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
-}
-
-export void sleep(unsigned int ms) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
 export auto utf8_unicode(std::string_view s) -> std::u32string {
