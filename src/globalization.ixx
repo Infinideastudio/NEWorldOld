@@ -32,7 +32,7 @@ export auto LoadLang(std::string const& lang) -> bool {
 }
 
 export auto Load() -> bool {
-    auto f = std::ifstream("lang/Keys.lk");
+    auto f = std::ifstream("lang/keys.lk");
     if (!f.is_open())
         return false;
     std::string line;
