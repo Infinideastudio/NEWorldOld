@@ -118,14 +118,19 @@ export class BlockInfoRegistry {
 public:
     auto add(BlockInfo info) -> Id {
         auto id = _entries.size();
-        if (id > Id::MAX_VALUE)
+        if (id > Id::MAX_VALUE) {
             unimplemented();
+        }
         _entries.emplace_back(std::move(info));
         return Id(id);
     }
 
     auto get(Id id) const -> BlockInfo const& {
         return id.get() < _entries.size() ? _entries[id.get()] : _DEFAULT_INFO;
+    }
+
+    auto entries() const -> std::vector<BlockInfo> const& {
+        return {_entries};
     }
 
 private:
@@ -191,8 +196,8 @@ export auto register_base_blocks(BlockInfoRegistry& r) -> BaseBlocks {
 }
 
 // ===== Temporary: compatibility interface with the old code. =====
-blocks::BlockInfoRegistry block_info_registry;
-blocks::BaseBlocks base_blocks;
+export blocks::BlockInfoRegistry block_info_registry;
+export blocks::BaseBlocks base_blocks;
 }
 
 export auto register_base_blocks() -> void {

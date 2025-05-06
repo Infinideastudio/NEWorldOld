@@ -13,6 +13,7 @@ import globals;
 import rendering;
 import text_rendering;
 import textures;
+using namespace std::literals::chrono_literals;
 
 void init_gl_defaults() {
     // Set up default GL context states
@@ -239,6 +240,6 @@ export void splash_screen() {
         glfwSwapBuffers(MainWindow);
         glfwPollEvents();
 
-        sleep(10);
+        std::this_thread::sleep_for(10ms);
     }
 }
