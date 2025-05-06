@@ -136,7 +136,7 @@ target_sources(
 target_default_compile_options(neworld)
 set_target_properties(neworld PROPERTIES CXX_MODULE_STD 1)
 target_link_libraries(neworld PRIVATE glad glfw utf8cpp Freetype::Freetype leveldb::leveldb spdlog::spdlog)
-target_link_libraries(neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine)
+target_link_libraries(neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine klsxx::io)
 target_include_directories(neworld PRIVATE "src")
 target_compile_definitions(neworld PRIVATE "$<$<CONFIG:Debug,RelWithDebInfo>:NEWORLD_DEBUG>")
 if (BUILD_SHARED_LIBS)
