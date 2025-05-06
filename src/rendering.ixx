@@ -96,6 +96,11 @@ public:
         VertexArray.reserve(1024);
     }
 
+    VertexBuilder(VertexBuffer const&) = delete;
+    auto operator=(VertexBuilder const&) -> VertexBuilder& = delete;
+    VertexBuilder(VertexBuilder&& from) noexcept = delete;
+    auto operator=(VertexBuilder&& from) noexcept -> VertexBuilder& = delete;
+
     void Vertex2i(int x, int y) {
         Vertex2f(static_cast<float>(x), static_cast<float>(y));
     }
@@ -317,7 +322,7 @@ void StartFinalPass(
 void EndFinalPass();
 
 void Begin(GLenum primitive, int coords, int texCoords, int colors, int normals, int attributes) {
-    GlobalBuilder = VertexBuilder(primitive, coords, texCoords, colors, normals, attributes);
+    GlobalBuilder.emplace(primitive, coords, texCoords, colors, normals, attributes);
 }
 
 void Vertex2i(int x, int y) {
