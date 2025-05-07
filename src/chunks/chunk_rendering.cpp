@@ -8,13 +8,13 @@ import render;
 import textures;
 import globals;
 
-using render::Coord;
-using render::TexCoord;
-using render::Color;
-using render::Normal;
-using render::Material;
-using VertexArrayBuilder =
-    render::VertexArrayBuilder<Coord<Vec3f>, TexCoord<Vec3f>, Color<float>, Normal<Vec3f>, Material<float>>;
+using render::VertexArray;
+using VertexArrayBuilder = render::VertexArrayBuilder<
+    render::Coord<Vec3f>,
+    render::TexCoord<Vec3f>,
+    render::Color<float>,
+    render::Normal<Vec3f>,
+    render::Material<float>>;
 
 namespace chunks {
 
@@ -510,7 +510,7 @@ auto _render_chunk(Vec3i ccoord, std::array<Chunk const*, 3 * 3 * 3> neighbors) 
                 for (int z = 0; z < Chunk::SIZE; z++) {
                     _render_block(x, y, z, steps, rd, v);
                 }
-        res[steps] = v.vertex_array();
+        res[steps] = VertexArray::create(v, VertexArray::Primitive::QUADS);
     }
     return res;
 }
@@ -721,7 +721,7 @@ auto _merge_face_render_chunk(Vec3i ccoord, std::array<Chunk const*, 3 * 3 * 3> 
                     }
                 }
         }
-        res[steps] = v.vertex_array();
+        res[steps] = VertexArray::create(v, VertexArray::Primitive::QUADS);
     }
     return res;
 }

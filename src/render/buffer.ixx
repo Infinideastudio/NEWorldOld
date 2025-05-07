@@ -4,6 +4,7 @@ module;
 
 export module render:buffer;
 import std;
+import types;
 import debug;
 
 namespace render {
@@ -13,7 +14,7 @@ export class Buffer {
 public:
     // Possible buffer binding points per GL 4.3.
     enum class Target : GLenum {
-        VERTEX = GL_ARRAY_BUFFER,
+        VERTEX_ATTRIB = GL_ARRAY_BUFFER,
         ATOMIC_COUNTER = GL_ATOMIC_COUNTER_BUFFER,
         COPY_SRC = GL_COPY_READ_BUFFER,
         COPY_DST = GL_COPY_WRITE_BUFFER,
@@ -72,12 +73,6 @@ public:
     // Returns whether it owns a managed object.
     explicit operator bool() const noexcept {
         return _handle != 0;
-    }
-
-    // Swaps the managed objects of two `Buffer`s.
-    friend void swap(Buffer& first, Buffer& second) noexcept {
-        using std::swap;
-        swap(first._handle, second._handle);
     }
 
     // Binds the owned buffer to the given GL target.
@@ -139,6 +134,12 @@ public:
         );
     }
 
+    // Swaps the managed objects of two `Buffer`s.
+    friend void swap(Buffer& first, Buffer& second) noexcept {
+        using std::swap;
+        swap(first._handle, second._handle);
+    }
+
 private:
     GLuint _handle = 0;
 
@@ -160,6 +161,8 @@ private:
                 return freq == Update::INFREQUENT    ? GL_STATIC_COPY
                      : freq == Update::SEMI_FREQUENT ? GL_DYNAMIC_COPY
                                                      : GL_STREAM_COPY;
+            default:
+                unreachable();
         }
     }
 };
