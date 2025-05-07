@@ -73,6 +73,10 @@ public:
         return _handle != 0;
     }
 
+    auto count() const noexcept -> size_t {
+        return _count;
+    }
+
     void bind() const {
         assert(_handle != 0, "binding an uninitialised vertex array");
         glBindVertexArray(_handle);
