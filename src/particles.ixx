@@ -10,8 +10,6 @@ import globals;
 
 export namespace particles {
 
-constexpr int PARTICALE_MAX = 4096;
-
 struct Particle {
     double xpos = 0.0, ypos = 0.0, zpos = 0.0;
     double xsp = 0.0, ysp = 0.0, zsp = 0.0, psize = 0.0;
