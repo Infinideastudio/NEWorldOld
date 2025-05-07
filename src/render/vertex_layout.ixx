@@ -10,154 +10,162 @@ import math;
 
 namespace render {
 
+// Possible type conversion modes for vertex attributes.
+export enum class VertexAttribMode { INTEGER, FLOAT, FLOAT_NORMALIZE, DOUBLE };
+
 // Provides information about using `T` as a vertex attribute.
-// Specializations should guarantee that the defined GL type layout matches the actual C++ memory layout of T.
 // This gets a snake-case name since it is more like a *type-level function* than an actual class.
 export template <typename T>
 requires std::is_standard_layout_v<T> && std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T>
-struct vertex_attrib_type {};
+struct vertex_attrib_type_info {};
 
-template <>
-struct vertex_attrib_type<int8_t> {
-    static constexpr auto base_type = GL_BYTE;
-    static constexpr auto elem_count = size_t{1};
-};
-
-template <>
-struct vertex_attrib_type<uint8_t> {
-    static constexpr auto base_type = GL_UNSIGNED_BYTE;
-    static constexpr auto elem_count = size_t{1};
-};
-
-template <>
-struct vertex_attrib_type<int16_t> {
-    static constexpr auto base_type = GL_SHORT;
-    static constexpr auto elem_count = size_t{1};
-};
-
-template <>
-struct vertex_attrib_type<uint16_t> {
-    static constexpr auto base_type = GL_UNSIGNED_SHORT;
-    static constexpr auto elem_count = size_t{1};
-};
-
-template <>
-struct vertex_attrib_type<int32_t> {
-    static constexpr auto base_type = GL_INT;
-    static constexpr auto elem_count = size_t{1};
-};
-
-template <>
-struct vertex_attrib_type<uint32_t> {
-    static constexpr auto base_type = GL_UNSIGNED_INT;
-    static constexpr auto elem_count = size_t{1};
-};
-
-template <>
-struct vertex_attrib_type<float> {
-    static constexpr auto base_type = GL_FLOAT;
-    static constexpr auto elem_count = size_t{1};
-};
-
-template <>
-struct vertex_attrib_type<double> {
-    static constexpr auto base_type = GL_DOUBLE;
-    static constexpr auto elem_count = size_t{1};
-};
-
-// Interop with math types.
-template <size_t N>
-requires (1 <= N && N <= 4)
-struct vertex_attrib_type<Vector<int8_t, N>> {
-    static constexpr auto base_type = GL_BYTE;
-    static constexpr auto elem_count = N;
-};
-
-template <size_t N>
-requires (1 <= N && N <= 4)
-struct vertex_attrib_type<Vector<uint8_t, N>> {
-    static constexpr auto base_type = GL_UNSIGNED_BYTE;
-    static constexpr auto elem_count = N;
-};
-
-template <size_t N>
-requires (1 <= N && N <= 4)
-struct vertex_attrib_type<Vector<int16_t, N>> {
-    static constexpr auto base_type = GL_SHORT;
-    static constexpr auto elem_count = N;
-};
-
-template <size_t N>
-requires (1 <= N && N <= 4)
-struct vertex_attrib_type<Vector<uint16_t, N>> {
-    static constexpr auto base_type = GL_UNSIGNED_SHORT;
-    static constexpr auto elem_count = N;
-};
-
-template <size_t N>
-requires (1 <= N && N <= 4)
-struct vertex_attrib_type<Vector<int32_t, N>> {
-    static constexpr auto base_type = GL_INT;
-    static constexpr auto elem_count = N;
-};
-
-template <size_t N>
-requires (1 <= N && N <= 4)
-struct vertex_attrib_type<Vector<uint32_t, N>> {
-    static constexpr auto base_type = GL_UNSIGNED_INT;
-    static constexpr auto elem_count = N;
-};
-
-template <size_t N>
-requires (1 <= N && N <= 4)
-struct vertex_attrib_type<Vector<float, N>> {
-    static constexpr auto base_type = GL_FLOAT;
-    static constexpr auto elem_count = N;
-};
-
-template <size_t N>
-requires (1 <= N && N <= 4)
-struct vertex_attrib_type<Vector<double, N>> {
-    static constexpr auto base_type = GL_DOUBLE;
-    static constexpr auto elem_count = N;
-};
-
-// Tests if `vertex_attrib_type` has the necessary specialization for `T`.
+// Tests if `vertex_attrib_type_info` has the necessary specialization for `T`.
+// Specializations should guarantee that the defined GL type layout matches the actual C++ memory layout of T.
 export template <typename T>
-concept is_vertex_attrib_type = requires (T t) {
+concept vertex_attrib_type = requires (T t) {
     // The base GL type name.
     // Must be one of:
     //     GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT, GL_INT, GL_UNSIGNED_INT,
     //     GL_HALF_FLOAT, GL_FLOAT, GL_DOUBLE, GL_FIXED, GL_INT_2_10_10_10_REV,
     //     GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_10F_11F_11F_REV.
-    { vertex_attrib_type<T>::base_type } -> std::convertible_to<GLenum>;
+    { vertex_attrib_type_info<T>::base_type } -> std::convertible_to<GLenum>;
 
     // Number of base components.
     // Must be 1, 2, 3 or 4.
-    { vertex_attrib_type<T>::elem_count } -> std::convertible_to<GLint>;
+    { vertex_attrib_type_info<T>::elem_count } -> std::convertible_to<GLint>;
+
+    // Type conversion mode.
+    // Must be compatible with the base type.
+    // See: https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribPointer.xhtml
+    { vertex_attrib_type_info<T>::mode } -> std::convertible_to<VertexAttribMode>;
 };
 
-// Returns if the GL type name should be passed as integers to shaders.
-constexpr auto use_vertex_attrib_i_pointer(GLenum type) -> bool {
-    return type == GL_BYTE || type == GL_UNSIGNED_BYTE || type == GL_SHORT || type == GL_UNSIGNED_SHORT
-        || type == GL_INT || type == GL_UNSIGNED_INT;
-}
+// Fundamental types that can be passed directly to shaders.
+template <>
+struct vertex_attrib_type_info<int8_t> {
+    static constexpr auto base_type = GL_BYTE;
+    static constexpr auto elem_count = size_t{1};
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
 
-// Returns if the GL type name should be passed as floats to shaders.
-constexpr auto use_vertex_attrib_pointer(GLenum type) -> bool {
-    return type == GL_HALF_FLOAT || type == GL_FLOAT || type == GL_FIXED || type == GL_INT_2_10_10_10_REV
-        || type == GL_UNSIGNED_INT_2_10_10_10_REV || type == GL_UNSIGNED_INT_10F_11F_11F_REV;
-}
+template <>
+struct vertex_attrib_type_info<uint8_t> {
+    static constexpr auto base_type = GL_UNSIGNED_BYTE;
+    static constexpr auto elem_count = size_t{1};
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
 
-// Returns if the GL type name should be passed as doubles to shaders.
-constexpr auto use_vertex_attrib_l_pointer(GLenum type) -> bool {
-    return type == GL_DOUBLE;
-}
+template <>
+struct vertex_attrib_type_info<int16_t> {
+    static constexpr auto base_type = GL_SHORT;
+    static constexpr auto elem_count = size_t{1};
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
+
+template <>
+struct vertex_attrib_type_info<uint16_t> {
+    static constexpr auto base_type = GL_UNSIGNED_SHORT;
+    static constexpr auto elem_count = size_t{1};
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
+
+template <>
+struct vertex_attrib_type_info<int32_t> {
+    static constexpr auto base_type = GL_INT;
+    static constexpr auto elem_count = size_t{1};
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
+
+template <>
+struct vertex_attrib_type_info<uint32_t> {
+    static constexpr auto base_type = GL_UNSIGNED_INT;
+    static constexpr auto elem_count = size_t{1};
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
+
+template <>
+struct vertex_attrib_type_info<float> {
+    static constexpr auto base_type = GL_FLOAT;
+    static constexpr auto elem_count = size_t{1};
+    static constexpr auto mode = VertexAttribMode::FLOAT;
+};
+
+template <>
+struct vertex_attrib_type_info<double> {
+    static constexpr auto base_type = GL_DOUBLE;
+    static constexpr auto elem_count = size_t{1};
+    static constexpr auto mode = VertexAttribMode::DOUBLE;
+};
+
+// Interop with math types.
+template <size_t N>
+requires (1 <= N && N <= 4)
+struct vertex_attrib_type_info<Vector<int8_t, N>> {
+    static constexpr auto base_type = GL_BYTE;
+    static constexpr auto elem_count = N;
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
+
+template <size_t N>
+requires (1 <= N && N <= 4)
+struct vertex_attrib_type_info<Vector<uint8_t, N>> {
+    static constexpr auto base_type = GL_UNSIGNED_BYTE;
+    static constexpr auto elem_count = N;
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
+
+template <size_t N>
+requires (1 <= N && N <= 4)
+struct vertex_attrib_type_info<Vector<int16_t, N>> {
+    static constexpr auto base_type = GL_SHORT;
+    static constexpr auto elem_count = N;
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
+
+template <size_t N>
+requires (1 <= N && N <= 4)
+struct vertex_attrib_type_info<Vector<uint16_t, N>> {
+    static constexpr auto base_type = GL_UNSIGNED_SHORT;
+    static constexpr auto elem_count = N;
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
+
+template <size_t N>
+requires (1 <= N && N <= 4)
+struct vertex_attrib_type_info<Vector<int32_t, N>> {
+    static constexpr auto base_type = GL_INT;
+    static constexpr auto elem_count = N;
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
+
+template <size_t N>
+requires (1 <= N && N <= 4)
+struct vertex_attrib_type_info<Vector<uint32_t, N>> {
+    static constexpr auto base_type = GL_UNSIGNED_INT;
+    static constexpr auto elem_count = N;
+    static constexpr auto mode = VertexAttribMode::INTEGER;
+};
+
+template <size_t N>
+requires (1 <= N && N <= 4)
+struct vertex_attrib_type_info<Vector<float, N>> {
+    static constexpr auto base_type = GL_FLOAT;
+    static constexpr auto elem_count = N;
+    static constexpr auto mode = VertexAttribMode::FLOAT;
+};
+
+template <size_t N>
+requires (1 <= N && N <= 4)
+struct vertex_attrib_type_info<Vector<double, N>> {
+    static constexpr auto base_type = GL_DOUBLE;
+    static constexpr auto elem_count = N;
+    static constexpr auto mode = VertexAttribMode::DOUBLE;
+};
 
 // Transparently wraps a vertex attribute type with a semantic name.
 // These names are merely used to provide convenience in the API.
 export template <typename T>
-requires is_vertex_attrib_type<T>
+requires vertex_attrib_type<T>
 struct Coord {
     T value;
 
@@ -167,11 +175,10 @@ struct Coord {
 };
 
 template <typename T>
-requires is_vertex_attrib_type<T>
-struct vertex_attrib_type<Coord<T>>: vertex_attrib_type<T> {};
+struct vertex_attrib_type_info<Coord<T>>: vertex_attrib_type_info<T> {};
 
 export template <typename T>
-requires is_vertex_attrib_type<T>
+requires vertex_attrib_type<T>
 struct TexCoord {
     T value;
 
@@ -181,11 +188,10 @@ struct TexCoord {
 };
 
 template <typename T>
-requires is_vertex_attrib_type<T>
-struct vertex_attrib_type<TexCoord<T>>: vertex_attrib_type<T> {};
+struct vertex_attrib_type_info<TexCoord<T>>: vertex_attrib_type_info<T> {};
 
 export template <typename T>
-requires is_vertex_attrib_type<T>
+requires vertex_attrib_type<T>
 struct Color {
     T value;
 
@@ -195,11 +201,10 @@ struct Color {
 };
 
 template <typename T>
-requires is_vertex_attrib_type<T>
-struct vertex_attrib_type<Color<T>>: vertex_attrib_type<T> {};
+struct vertex_attrib_type_info<Color<T>>: vertex_attrib_type_info<T> {};
 
 export template <typename T>
-requires is_vertex_attrib_type<T>
+requires vertex_attrib_type<T>
 struct Normal {
     T value;
 
@@ -209,11 +214,10 @@ struct Normal {
 };
 
 template <typename T>
-requires is_vertex_attrib_type<T>
-struct vertex_attrib_type<Normal<T>>: vertex_attrib_type<T> {};
+struct vertex_attrib_type_info<Normal<T>>: vertex_attrib_type_info<T> {};
 
 export template <typename T>
-requires is_vertex_attrib_type<T>
+requires vertex_attrib_type<T>
 struct Material {
     T value;
 
@@ -223,8 +227,7 @@ struct Material {
 };
 
 template <typename T>
-requires is_vertex_attrib_type<T>
-struct vertex_attrib_type<Material<T>>: vertex_attrib_type<T> {};
+struct vertex_attrib_type_info<Material<T>>: vertex_attrib_type_info<T> {};
 
 // Returns the sum of all elements in the array.
 template <size_t N>
@@ -259,48 +262,49 @@ struct _choose<0, T, U...> {
 // A vertex in interleaved vertex layouts, with type-erased content.
 // The attributes are stored in the order they appear in the template parameter list.
 export template <typename... T>
-requires (is_vertex_attrib_type<T> && ...)
+requires (vertex_attrib_type<T> && ...)
 class Vertex {
 public:
-    static constexpr auto ATTRIB_BASE_TYPES = std::array{static_cast<GLenum>(vertex_attrib_type<T>::base_type)...};
-    static constexpr auto ATTRIB_ELEM_COUNTS = std::array{static_cast<GLint>(vertex_attrib_type<T>::elem_count)...};
+    static constexpr auto ATTRIB_BASE_TYPES = std::array{static_cast<GLenum>(vertex_attrib_type_info<T>::base_type)...};
+    static constexpr auto ATTRIB_ELEM_COUNTS =
+        std::array{static_cast<GLint>(vertex_attrib_type_info<T>::elem_count)...};
+    static constexpr auto ATTRIB_MODES = std::array{static_cast<VertexAttribMode>(vertex_attrib_type_info<T>::mode)...};
     static constexpr auto ATTRIB_SIZES = std::array{sizeof(T)...};
     static constexpr auto ATTRIB_OFFSETS = _prefix_sum(ATTRIB_SIZES);
     static constexpr auto VERTEX_SIZE = _sum(ATTRIB_SIZES);
 
+    // `Attrib[i]::type` gives the type of the i-th attribute.
     template <size_t I>
-    using Attrib = typename _choose<I, T...>::type;
+    using Attrib = _choose<I, T...>;
 
     Vertex() = default;
 
-    auto data() const -> std::span<std::byte const> {
-        return std::span(_data);
+    auto bytes() const -> std::array<std::byte, VERTEX_SIZE> const& {
+        return _bytes;
     }
 
     auto size() const -> size_t {
-        return _data.size();
+        return _bytes.size();
     }
 
     template <size_t I>
-    auto attrib() const -> Attrib<I> {
-        auto attr = Attrib<I>();
-        static_assert(sizeof(attr) == ATTRIB_SIZES[I]);
-        auto bytes = std::as_writable_bytes(std::span(&attr, 1));
-        auto offset = ATTRIB_OFFSETS[I];
-        std::copy(_data.begin() + offset, _data.begin() + offset + ATTRIB_SIZES[I], bytes.begin());
+    auto attrib() const -> Attrib<I>::type {
+        auto attr = Attrib<I>::type();
+        auto span = std::as_writable_bytes(std::span(&attr, 1));
+        auto src = _bytes.begin() + ATTRIB_OFFSETS[I];
+        std::copy(src, src + span.size(), span.begin());
         return attr;
     }
 
     template <size_t I>
-    void set_attrib(Attrib<I> attr) {
-        static_assert(sizeof(attr) == ATTRIB_SIZES[I]);
-        auto bytes = std::as_bytes(std::span(&attr, 1));
-        auto offset = ATTRIB_OFFSETS[I];
-        std::copy(bytes.begin(), bytes.end(), _data.begin() + offset);
+    void set_attrib(Attrib<I>::type attr) {
+        auto span = std::as_bytes(std::span(&attr, 1));
+        auto dst = _bytes.begin() + ATTRIB_OFFSETS[I];
+        std::copy(span.begin(), span.end(), dst);
     }
 
 private:
-    std::array<std::byte, VERTEX_SIZE> _data = {};
+    std::array<std::byte, VERTEX_SIZE> _bytes = {};
 };
 
 // Note that `Vertex` has the alignment of 1 byte, and the size of all its attribute sizes summed.
@@ -344,12 +348,14 @@ struct _find<I, W, W<T>, U...> {
 // builder.coord({1.0f, 1.0f, 0.0f});
 // ```
 export template <typename... T>
-requires (is_vertex_attrib_type<T> && ...)
+requires (vertex_attrib_type<T> && ...)
 class VertexArrayBuilder {
 public:
+    // `Attrib[i]::type` gives the type of the i-th attribute.
     template <size_t I>
-    using Attrib = _choose<I, T...>::type;
+    using Attrib = _choose<I, T...>;
 
+    // These are only enabled if the corresponding semantic wrapper is found in `T`.
     using CoordAttrib = _find<0, Coord, T...>;
     using TexCoordAttrib = _find<0, TexCoord, T...>;
     using ColorAttrib = _find<0, Color, T...>;
@@ -362,12 +368,16 @@ public:
         return _vertices;
     }
 
+    auto size() const -> size_t {
+        return _vertices.size();
+    }
+
     void make_vertex() {
         _vertices.emplace_back(_vertex);
     }
 
     template <size_t I>
-    void set_attrib(Attrib<I> attr, bool make_vertex = false) {
+    void set_attrib(Attrib<I>::type attr, bool make_vertex = false) {
         _vertex.template set_attrib<I>(attr);
         if (make_vertex) {
             _vertices.emplace_back(_vertex);
@@ -375,6 +385,7 @@ public:
     }
 
     // Some convenience functions wrapping `set_attrib()`.
+    // These are only enabled if the corresponding semantic wrapper is found in `T`.
     void coord(CoordAttrib::type attr, bool make_vertex = true) {
         set_attrib<CoordAttrib::index>(attr, make_vertex);
     }

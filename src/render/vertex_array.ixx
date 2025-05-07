@@ -91,8 +91,6 @@ public:
     // in the template arguments. The first attribute is bound to location 0, the second to location 1, etc.
     template <typename... T>
     static auto create(VertexArrayBuilder<T...> const& builder, Primitive primitive) -> std::pair<VertexArray, Buffer> {
-        using V = Vertex<T...>;
-
         auto handle = GLuint{0};
         glGenVertexArrays(1, &handle);
         glBindVertexArray(handle);
@@ -105,20 +103,28 @@ public:
 
         for (auto i = 0; i < sizeof...(T); i++) {
             auto index = static_cast<GLuint>(i);
-            auto elem_count = V::ATTRIB_ELEM_COUNTS[i];
-            auto base_type = V::ATTRIB_BASE_TYPES[i];
-            auto stride = static_cast<GLsizei>(V::VERTEX_SIZE);
-            auto offset = reinterpret_cast<void const*>(V::ATTRIB_OFFSETS[i]);
+            auto elem_count = Vertex<T...>::ATTRIB_ELEM_COUNTS[i];
+            auto base_type = Vertex<T...>::ATTRIB_BASE_TYPES[i];
+            auto mode = Vertex<T...>::ATTRIB_MODES[i];
+            auto stride = static_cast<GLsizei>(Vertex<T...>::VERTEX_SIZE);
+            auto offset = reinterpret_cast<void const*>(Vertex<T...>::ATTRIB_OFFSETS[i]);
 
             glEnableVertexAttribArray(index);
-            if (use_vertex_attrib_i_pointer(base_type)) {
-                glVertexAttribIPointer(index, elem_count, base_type, stride, offset);
-            } else if (use_vertex_attrib_pointer(base_type)) {
-                glVertexAttribPointer(index, elem_count, base_type, GL_FALSE, stride, offset);
-            } else if (use_vertex_attrib_l_pointer(base_type)) {
-                glVertexAttribLPointer(index, elem_count, base_type, stride, offset);
-            } else {
-                unreachable();
+            switch (mode) {
+                case VertexAttribMode::INTEGER:
+                    glVertexAttribIPointer(index, elem_count, base_type, stride, offset);
+                    break;
+                case VertexAttribMode::FLOAT:
+                    glVertexAttribPointer(index, elem_count, base_type, GL_FALSE, stride, offset);
+                    break;
+                case VertexAttribMode::FLOAT_NORMALIZE:
+                    glVertexAttribPointer(index, elem_count, base_type, GL_TRUE, stride, offset);
+                    break;
+                case VertexAttribMode::DOUBLE:
+                    glVertexAttribLPointer(index, elem_count, base_type, stride, offset);
+                    break;
+                default:
+                    unreachable();
             }
         }
         return {VertexArray(handle, primitive, vertices.size()), std::move(buffer)};

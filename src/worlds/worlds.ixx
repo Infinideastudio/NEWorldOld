@@ -265,8 +265,8 @@ public:
                     auto coord = Vec3i(a, b, c);
                     auto id = block_or_air(coord).id;
                     if (block_info(id).solid) {
-                        auto blockbox = AABB3d(Vec3d(coord) - 0.5, Vec3d(coord) + 0.5);
-                        res.push_back(blockbox);
+                        auto block_aabb = AABB3d(Vec3d(coord), Vec3d(coord + 1));
+                        res.push_back(block_aabb);
                     }
                 }
             }
@@ -282,8 +282,8 @@ public:
                     auto coord = Vec3i(a, b, c);
                     auto id = block_or_air(coord).id;
                     if (id == base_blocks().water || id == base_blocks().lava) {
-                        auto blockbox = AABB3d(Vec3d(coord) - 0.5, Vec3d(coord) + 0.5);
-                        if (box.intersects(blockbox))
+                        auto block_aabb = AABB3d(Vec3d(coord), Vec3d(coord + 1));
+                        if (box.intersects(block_aabb))
                             return true;
                     }
                 }
@@ -359,9 +359,9 @@ public:
             auto const& [coord, e] = blocks[i];
             Particles::throwParticle(
                 e,
-                float(coord.x + rnd() - 0.5f),
-                float(coord.y + rnd() - 0.2f),
-                float(coord.z + rnd() - 0.5f),
+                float(coord.x + rnd()),
+                float(coord.y + rnd()),
+                float(coord.z + rnd()),
                 float(rnd() * 2.0f - 1.0f),
                 float(rnd() * 2.0f - 1.0f),
                 float(rnd() * 2.0f - 1.0f),

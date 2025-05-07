@@ -71,13 +71,6 @@ public:
     auto operator==(Light const& r) const -> bool = default;
     auto operator!=(Light const& r) const -> bool = default;
 
-    // Temporary: mix two light levels.
-    auto mixed() const -> float {
-        auto skyf = static_cast<float>(sky()) / static_cast<float>(SKY_MAX_VALUE);
-        auto blockf = static_cast<float>(block()) / static_cast<float>(BLOCK_MAX_VALUE);
-        return std::max(skyf, blockf);
-    }
-
 private:
     uint8_t _data = 0;
 };

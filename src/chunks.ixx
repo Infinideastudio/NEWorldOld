@@ -122,7 +122,7 @@ public:
     }
 
     auto aabb() const -> AABB3d {
-        return {Vec3d(_coord * SIZE) - 0.5, Vec3d(_coord * SIZE) + SIZE - 0.5};
+        return {Vec3d(_coord * SIZE), Vec3d(_coord * SIZE + SIZE)};
     }
 
     auto visible(Vec3d orig, Frustumf const& frus) const -> bool {

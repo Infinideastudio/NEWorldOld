@@ -1,14 +1,9 @@
-module;
-
-#include <glad/gl.h>
-#undef assert
-
 export module particles;
 import std;
 import types;
 import math;
 import blocks;
-import rendering;
+import render;
 import textures;
 import worlds;
 import globals;
@@ -62,9 +57,17 @@ void update_all(worlds::World& world) {
     ptcs = std::move(next);
 }
 
-void mesh(worlds::World& world, Particle const& ptc, double interp) {
+using render::VertexArray;
+using VertexArrayBuilder = render::VertexArrayBuilder<
+    render::Coord<Vec3f>,
+    render::TexCoord<Vec3f>,
+    render::Color<Vec3u8>,
+    render::Normal<Vec3i8>,
+    render::Material<uint16_t>>;
+
+void mesh(worlds::World& world, Particle const& ptc, double interp, VertexArrayBuilder& v) {
     auto psize = ptc.psize;
-    auto bl = static_cast<float>(ptc.bl.get());
+    auto bl = ptc.bl.get();
     auto tex = static_cast<float>(ptc.tex);
     auto tcx = ptc.tcx;
     auto tcy = ptc.tcy;
@@ -73,97 +76,86 @@ void mesh(worlds::World& world, Particle const& ptc, double interp) {
     auto ypos = static_cast<float>(ptc.ypos - ptc.ysp + ptc.ysp * interp - pypos);
     auto zpos = static_cast<float>(ptc.zpos - ptc.zsp + ptc.zsp * interp - pzpos);
 
-    auto col = world.block(Vec3i(std::lround(ptc.xpos), std::lround(ptc.ypos), std::lround(ptc.zpos)))->light.mixed();
-    auto col1 = col, col2 = col;
+    auto light = world.block(Vec3f(ptc.xpos, ptc.ypos, ptc.zpos).floor<int32_t>())->light;
+    auto br = std::max({light.sky(), light.block(), uint8_t{2}});
+
+    auto col0 = br * 255 / 15, col1 = br * 255 / 15, col2 = br * 255 / 15;
     if (!AdvancedRender) {
-        col1 *= 0.5f;
-        col2 *= 0.7f;
+        col1 = col1 * 5 / 10;
+        col2 = col2 * 7 / 10;
     }
-    Renderer::TexCoord3f(0.0f, 0.0f, tex);
 
-    if (AdvancedRender) {
-        Renderer::Normal3f(1.0f, 0.0f, 0.0f);
-        Renderer::Attrib1f(bl);
-    }
-    Renderer::Color3f(col2, col2, col2);
-    Renderer::TexCoord2f(tcx, tcy);
-    Renderer::Vertex3f(xpos + psize, ypos + psize, zpos - psize);
-    Renderer::TexCoord2f(tcx + psize, tcy);
-    Renderer::Vertex3f(xpos + psize, ypos + psize, zpos + psize);
-    Renderer::TexCoord2f(tcx + psize, tcy + psize);
-    Renderer::Vertex3f(xpos + psize, ypos - psize, zpos + psize);
-    Renderer::TexCoord2f(tcx, tcy + psize);
-    Renderer::Vertex3f(xpos + psize, ypos - psize, zpos - psize);
+    v.normal({1.0f, 0.0f, 0.0f});
+    v.material(bl);
+    v.color({col2, col2, col2});
+    v.tex_coord({tcx, tcy, tex});
+    v.coord({xpos + psize, ypos + psize, zpos - psize});
+    v.tex_coord({tcx + psize, tcy, tex});
+    v.coord({xpos + psize, ypos + psize, zpos + psize});
+    v.tex_coord({tcx + psize, tcy + psize, tex});
+    v.coord({xpos + psize, ypos - psize, zpos + psize});
+    v.tex_coord({tcx, tcy + psize, tex});
+    v.coord({xpos + psize, ypos - psize, zpos - psize});
 
-    if (AdvancedRender) {
-        Renderer::Normal3f(-1.0f, 0.0f, 0.0f);
-        Renderer::Attrib1f(bl);
-    }
-    Renderer::Color3f(col2, col2, col2);
-    Renderer::TexCoord2f(tcx, tcy);
-    Renderer::Vertex3f(xpos - psize, ypos - psize, zpos - psize);
-    Renderer::TexCoord2f(tcx + psize, tcy);
-    Renderer::Vertex3f(xpos - psize, ypos - psize, zpos + psize);
-    Renderer::TexCoord2f(tcx + psize, tcy + psize);
-    Renderer::Vertex3f(xpos - psize, ypos + psize, zpos + psize);
-    Renderer::TexCoord2f(tcx, tcy + psize);
-    Renderer::Vertex3f(xpos - psize, ypos + psize, zpos - psize);
+    v.normal({-1.0f, 0.0f, 0.0f});
+    v.material(bl);
+    v.color({col2, col2, col2});
+    v.tex_coord({tcx, tcy, tex});
+    v.coord({xpos - psize, ypos - psize, zpos - psize});
+    v.tex_coord({tcx + psize, tcy, tex});
+    v.coord({xpos - psize, ypos - psize, zpos + psize});
+    v.tex_coord({tcx + psize, tcy + psize, tex});
+    v.coord({xpos - psize, ypos + psize, zpos + psize});
+    v.tex_coord({tcx, tcy + psize, tex});
+    v.coord({xpos - psize, ypos + psize, zpos - psize});
 
-    if (AdvancedRender) {
-        Renderer::Normal3f(0.0f, 1.0f, 0.0f);
-        Renderer::Attrib1f(bl);
-    }
-    Renderer::Color3f(col, col, col);
-    Renderer::TexCoord2f(tcx, tcy);
-    Renderer::Vertex3f(xpos + psize, ypos + psize, zpos - psize);
-    Renderer::TexCoord2f(tcx + psize, tcy);
-    Renderer::Vertex3f(xpos - psize, ypos + psize, zpos - psize);
-    Renderer::TexCoord2f(tcx + psize, tcy + psize);
-    Renderer::Vertex3f(xpos - psize, ypos + psize, zpos + psize);
-    Renderer::TexCoord2f(tcx, tcy + psize);
-    Renderer::Vertex3f(xpos + psize, ypos + psize, zpos + psize);
+    v.normal({0.0f, 1.0f, 0.0f});
+    v.material(bl);
+    v.color({col0, col0, col0});
+    v.tex_coord({tcx, tcy, tex});
+    v.coord({xpos + psize, ypos + psize, zpos - psize});
+    v.tex_coord({tcx + psize, tcy, tex});
+    v.coord({xpos - psize, ypos + psize, zpos - psize});
+    v.tex_coord({tcx + psize, tcy + psize, tex});
+    v.coord({xpos - psize, ypos + psize, zpos + psize});
+    v.tex_coord({tcx, tcy + psize, tex});
+    v.coord({xpos + psize, ypos + psize, zpos + psize});
 
-    if (AdvancedRender) {
-        Renderer::Normal3f(0.0f, -1.0f, 0.0f);
-        Renderer::Attrib1f(bl);
-    }
-    Renderer::Color3f(col, col, col);
-    Renderer::TexCoord2f(tcx, tcy);
-    Renderer::Vertex3f(xpos - psize, ypos - psize, zpos - psize);
-    Renderer::TexCoord2f(tcx + psize, tcy);
-    Renderer::Vertex3f(xpos + psize, ypos - psize, zpos - psize);
-    Renderer::TexCoord2f(tcx + psize, tcy + psize);
-    Renderer::Vertex3f(xpos + psize, ypos - psize, zpos + psize);
-    Renderer::TexCoord2f(tcx, tcy + psize);
-    Renderer::Vertex3f(xpos - psize, ypos - psize, zpos + psize);
+    v.normal({0.0f, -1.0f, 0.0f});
+    v.material(bl);
+    v.color({col0, col0, col0});
+    v.tex_coord({tcx, tcy, tex});
+    v.coord({xpos - psize, ypos - psize, zpos - psize});
+    v.tex_coord({tcx + psize, tcy, tex});
+    v.coord({xpos + psize, ypos - psize, zpos - psize});
+    v.tex_coord({tcx + psize, tcy + psize, tex});
+    v.coord({xpos + psize, ypos - psize, zpos + psize});
+    v.tex_coord({tcx, tcy + psize, tex});
+    v.coord({xpos - psize, ypos - psize, zpos + psize});
 
-    if (AdvancedRender) {
-        Renderer::Normal3f(0.0f, 0.0f, 1.0f);
-        Renderer::Attrib1f(bl);
-    }
-    Renderer::Color3f(col1, col1, col1);
-    Renderer::TexCoord2f(tcx, tcy);
-    Renderer::Vertex3f(xpos - psize, ypos - psize, zpos + psize);
-    Renderer::TexCoord2f(tcx + psize, tcy);
-    Renderer::Vertex3f(xpos + psize, ypos - psize, zpos + psize);
-    Renderer::TexCoord2f(tcx + psize, tcy + psize);
-    Renderer::Vertex3f(xpos + psize, ypos + psize, zpos + psize);
-    Renderer::TexCoord2f(tcx, tcy + psize);
-    Renderer::Vertex3f(xpos - psize, ypos + psize, zpos + psize);
+    v.normal({0.0f, 0.0f, 1.0f});
+    v.material(bl);
+    v.color({col1, col1, col1});
+    v.tex_coord({tcx, tcy, tex});
+    v.coord({xpos - psize, ypos - psize, zpos + psize});
+    v.tex_coord({tcx + psize, tcy, tex});
+    v.coord({xpos + psize, ypos - psize, zpos + psize});
+    v.tex_coord({tcx + psize, tcy + psize, tex});
+    v.coord({xpos + psize, ypos + psize, zpos + psize});
+    v.tex_coord({tcx, tcy + psize, tex});
+    v.coord({xpos - psize, ypos + psize, zpos + psize});
 
-    if (AdvancedRender) {
-        Renderer::Normal3f(0.0f, 0.0f, -1.0f);
-        Renderer::Attrib1f(bl);
-    }
-    Renderer::Color3f(col1, col1, col1);
-    Renderer::TexCoord2f(tcx, tcy);
-    Renderer::Vertex3f(xpos - psize, ypos + psize, zpos - psize);
-    Renderer::TexCoord2f(tcx + psize, tcy);
-    Renderer::Vertex3f(xpos + psize, ypos + psize, zpos - psize);
-    Renderer::TexCoord2f(tcx + psize, tcy + psize);
-    Renderer::Vertex3f(xpos + psize, ypos - psize, zpos - psize);
-    Renderer::TexCoord2f(tcx, tcy + psize);
-    Renderer::Vertex3f(xpos - psize, ypos - psize, zpos - psize);
+    v.normal({0.0f, 0.0f, -1.0f});
+    v.material(bl);
+    v.color({col1, col1, col1});
+    v.tex_coord({tcx, tcy, tex});
+    v.coord({xpos - psize, ypos + psize, zpos - psize});
+    v.tex_coord({tcx + psize, tcy, tex});
+    v.coord({xpos + psize, ypos + psize, zpos - psize});
+    v.tex_coord({tcx + psize, tcy + psize, tex});
+    v.coord({xpos + psize, ypos - psize, zpos - psize});
+    v.tex_coord({tcx, tcy + psize, tex});
+    v.coord({xpos - psize, ypos - psize, zpos - psize});
 }
 
 void render_all(worlds::World& world, Vec3d center, double interp) {
@@ -172,15 +164,12 @@ void render_all(worlds::World& world, Vec3d center, double interp) {
     pzpos = center.z();
     ptcsrendered = 0;
 
-    if (AdvancedRender)
-        Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
-    else
-        Renderer::Begin(GL_QUADS, 3, 3, 1);
+    auto v = VertexArrayBuilder();
     for (auto const& ptc: ptcs) {
-        mesh(world, ptc, interp);
+        mesh(world, ptc, interp, v);
         ptcsrendered++;
     }
-    Renderer::End().render();
+    VertexArray::create(v, VertexArray::Primitive::QUADS).first.render();
 }
 
 void throw_particle(blocks::Id pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last) {
