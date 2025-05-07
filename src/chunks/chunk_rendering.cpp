@@ -119,12 +119,7 @@ public:
                     auto& block = _data[index++];
                     auto cptr = neighbors[((rcx + 1) * 3 + rcy + 1) * 3 + rcz + 1];
                     assert(cptr, "neighbors array should not contain null pointer");
-                    if (cptr == chunks::EMPTY_CHUNK) {
-                        auto light = (ccoord.y() + rcy < 0) ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
-                        block = blocks::BlockData{.id = base_blocks().air, .light = light};
-                    } else {
-                        block = cptr->block(Vec3u(bx, by, bz));
-                    }
+                    block = cptr->block(Vec3u(bx, by, bz));
                 }
             }
         }
