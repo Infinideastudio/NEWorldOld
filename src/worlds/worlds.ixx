@@ -149,7 +149,6 @@ export class World {
 public:
     explicit World(std::string name):
         _name(std::move(name)),
-        _chunk_pointer_array((RenderDistance + 2) * 2),
         _height_map((RenderDistance + 2) * 2 * chunks::Chunk::SIZE),
         _tiles_store(_name) {
         // Initialize terrain generation
@@ -194,7 +193,6 @@ public:
     // Sets the origin of the chunk pointer array and height map
     void set_center(Vec3i center) {
         auto ccenter = chunk_coord(center);
-        _chunk_pointer_array.set_center(ccenter - Vec3i(RenderDistance + 2));
         _height_map.set_center((ccenter - Vec3i(RenderDistance + 2)) * chunks::Chunk::SIZE);
     }
 
@@ -221,17 +219,11 @@ public:
         if (_chunk_pointer_cache_key == key && _chunk_pointer_cache_value) {
             return _chunk_pointer_cache_value;
         }
-        if (auto res = _chunk_pointer_array.get(ccoord)) {
-            _chunk_pointer_cache_key = key;
-            _chunk_pointer_cache_value = res;
-            return res;
-        }
         auto it = _chunks.find(key);
         if (it != _chunks.end()) {
             auto res = it->second.get();
             _chunk_pointer_cache_key = key;
             _chunk_pointer_cache_value = res;
-            _chunk_pointer_array.set(ccoord, res);
             return res;
         }
         return nullptr;
@@ -244,10 +236,6 @@ public:
         auto cptr = chunk(ccoord);
         if (!cptr)
             return {};
-        if (cptr == chunks::EMPTY_CHUNK) {
-            auto light = ccoord.y() < 0 ? blocks::NO_LIGHT : blocks::SKY_LIGHT;
-            return blocks::BlockData{.id = base_blocks().air, .light = light};
-        }
         return cptr->block(bcoord);
     }
 
@@ -299,8 +287,6 @@ public:
         auto cptr = chunk(ccoord);
         if (!cptr)
             return;
-        if (cptr == chunks::EMPTY_CHUNK)
-            cptr = _load_chunk(ccoord);
         cptr->block_ref(bcoord).id = value;
         if (update)
             update_block(coord, true);
@@ -381,8 +367,6 @@ public:
         auto cptr = chunk(ccoord);
         if (!cptr)
             return false;
-        if (cptr == chunks::EMPTY_CHUNK)
-            cptr = _load_chunk(ccoord);
 
         bool updated = initial;
         auto curr = cptr->block(bcoord);
@@ -627,7 +611,6 @@ private:
 
     ChunkId _chunk_pointer_cache_key = ChunkId(Vec3i(0, 0, 0));
     chunks::Chunk* _chunk_pointer_cache_value = nullptr;
-    ChunkPointerArray _chunk_pointer_array;
     HeightMap _height_map;
     LoadedCore _loaded_core;
     player::Player _player;
@@ -651,16 +634,9 @@ private:
         });
         auto cptr = handle.get();
 
-        // Optionally skip empty chunks
-        if (skip_empty && cptr->empty()) {
-            _chunk_pointer_array.set(ccoord, chunks::EMPTY_CHUNK);
-            return chunks::EMPTY_CHUNK;
-        }
-
         // Update caches
         _chunk_pointer_cache_key = cid;
         _chunk_pointer_cache_value = cptr;
-        _chunk_pointer_array.set(ccoord, cptr);
 
         _chunks.emplace(cid, std::move(handle));
         return cptr;
@@ -686,7 +662,6 @@ private:
             _chunk_pointer_cache_key = ChunkId(Vec3i(0, 0, 0));
             _chunk_pointer_cache_value = nullptr;
         }
-        _chunk_pointer_array.set(ccoord, nullptr);
 
         // Shrink loaded core
         auto d = (ccoord - _loaded_core.ccenter).map([](int x) { return std::abs(x); });
@@ -696,7 +671,7 @@ private:
 
     void _mark_chunk_neighbor_updated(Vec3i ccoord) {
         auto cptr = chunk(ccoord);
-        if (!cptr || cptr == chunks::EMPTY_CHUNK)
+        if (!cptr || cptr->empty())
             return;
         cptr->mark_neighbor_updated();
     }
