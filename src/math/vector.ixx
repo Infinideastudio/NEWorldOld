@@ -15,7 +15,7 @@ public:
     template <typename... Ts>
     constexpr Vector(Ts... xs) requires (sizeof...(Ts) == N)
         :
-        elem{xs...} {}
+        elem{static_cast<T>(xs)...} {}
 
     // Same-value constructor.
     constexpr Vector(T x):

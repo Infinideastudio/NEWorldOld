@@ -12,9 +12,9 @@ using render::VertexArray;
 using VertexArrayBuilder = render::VertexArrayBuilder<
     render::Coord<Vec3f>,
     render::TexCoord<Vec3f>,
-    render::Color<float>,
-    render::Normal<Vec3f>,
-    render::Material<float>>;
+    render::Color<Vec3u8>,
+    render::Normal<Vec3i8>,
+    render::Material<uint16_t>>;
 
 namespace chunks {
 
@@ -25,9 +25,9 @@ struct QuadPrimitive {
     // This variable indicates whether the vertexes have different colors.
     bool once = false;
     // Vertex colors.
-    int col0 = 0, col1 = 0, col2 = 0, col3 = 0;
+    Vec4i col = {};
     // Block ID.
-    blocks::Id blk = blocks::Id(0);
+    blocks::Id blk = {};
     // Texture index.
     TextureIndex tex = TextureIndex::NULLBLOCK;
 };
@@ -100,7 +100,7 @@ private:
 };
 
 // Temporary: maximum value obtained after mixing two light levels.
-constexpr auto MAX_LIGHT = 15.0f;
+constexpr auto MAX_LIGHT = 15;
 
 // All data needed to render a chunk.
 class ChunkRenderData {
@@ -153,7 +153,7 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
         rd.block(x, y, z - 1),
     };
     auto tex = TextureIndex::NULLBLOCK;
-    auto col1 = 0.0f, col2 = 0.0f, col3 = 0.0f, col4 = 0.0f;
+    auto col = Vec4i(0, 0, 0, 0);
 
     // Right face
     if (bl.should_render_face(neighbors[0], layer)) {
@@ -161,38 +161,37 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
             tex = Textures::getTextureIndex(bl.id(), 0);
         else
             tex = Textures::getTextureIndex(bl.id(), 1);
-        col1 = col2 = col3 = col4 = rd.block(x + 1, y, z).light();
+        int br = rd.block(x + 1, y, z).light();
         if (SmoothLighting) {
-            col1 = (col1 + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z - 1).light()
-                    + rd.block(x + 1, y - 1, z - 1).light())
-                 / 4.0f;
-            col2 = (col2 + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z - 1).light()
-                    + rd.block(x + 1, y + 1, z - 1).light())
-                 / 4.0f;
-            col3 = (col3 + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z + 1).light()
-                    + rd.block(x + 1, y + 1, z + 1).light())
-                 / 4.0f;
-            col4 = (col4 + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z + 1).light()
-                    + rd.block(x + 1, y - 1, z + 1).light())
-                 / 4.0f;
+            col[0] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z - 1).light()
+                   + rd.block(x + 1, y - 1, z - 1).light();
+            col[1] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z - 1).light()
+                   + rd.block(x + 1, y + 1, z - 1).light();
+            col[2] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z + 1).light()
+                   + rd.block(x + 1, y + 1, z + 1).light();
+            col[3] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z + 1).light()
+                   + rd.block(x + 1, y - 1, z + 1).light();
+        } else {
+            col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
-        if (!AdvancedRender)
-            col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
-        v.material(static_cast<float>(bl.id().get()));
-        v.normal({1.0f, 0.0f, 0.0f});
-        v.color(col1);
-        v.tex_coord({1.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, -0.5f + y, -0.5f + z});
-        v.color(col2);
-        v.tex_coord({1.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, 0.5f + y, -0.5f + z});
-        v.color(col3);
-        v.tex_coord({0.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, 0.5f + y, 0.5f + z});
-        v.color(col4);
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, -0.5f + y, 0.5f + z});
+        col = col * 255 / (MAX_LIGHT * 4);
+        if (!AdvancedRender) {
+            col = col * 7 / 10;
+        }
+        v.material(bl.id().get());
+        v.normal({1, 0, 0});
+        v.color(col[0]);
+        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y, z});
+        v.color(col[1]);
+        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y + 1, z});
+        v.color(col[2]);
+        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y + 1, z + 1});
+        v.color(col[3]);
+        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y, z + 1});
     }
 
     // Left Face
@@ -201,108 +200,103 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
             tex = Textures::getTextureIndex(bl.id(), 0);
         else
             tex = Textures::getTextureIndex(bl.id(), 1);
-        col1 = col2 = col3 = col4 = rd.block(x - 1, y, z).light();
+        int br = rd.block(x - 1, y, z).light();
         if (SmoothLighting) {
-            col1 = (col1 + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z - 1).light()
-                    + rd.block(x - 1, y - 1, z - 1).light())
-                 / 4.0f;
-            col2 = (col2 + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z + 1).light()
-                    + rd.block(x - 1, y - 1, z + 1).light())
-                 / 4.0f;
-            col3 = (col3 + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z + 1).light()
-                    + rd.block(x - 1, y + 1, z + 1).light())
-                 / 4.0f;
-            col4 = (col4 + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z - 1).light()
-                    + rd.block(x - 1, y + 1, z - 1).light())
-                 / 4.0f;
+            col[0] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z - 1).light()
+                   + rd.block(x - 1, y - 1, z - 1).light();
+            col[1] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z + 1).light()
+                   + rd.block(x - 1, y - 1, z + 1).light();
+            col[2] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z + 1).light()
+                   + rd.block(x - 1, y + 1, z + 1).light();
+            col[3] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z - 1).light()
+                   + rd.block(x - 1, y + 1, z - 1).light();
+        } else {
+            col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
-        if (!AdvancedRender)
-            col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f, col4 *= 0.7f;
-        v.material(static_cast<float>(bl.id().get()));
-        v.normal({-1.0f, 0.0f, 0.0f});
-        v.color(col1);
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, -0.5f + y, -0.5f + z});
-        v.color(col2);
-        v.tex_coord({1.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, -0.5f + y, 0.5f + z});
-        v.color(col3);
-        v.tex_coord({1.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, 0.5f + y, 0.5f + z});
-        v.color(col4);
-        v.tex_coord({0.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, 0.5f + y, -0.5f + z});
+        col = col * 255 / (MAX_LIGHT * 4);
+        if (!AdvancedRender) {
+            col = col * 7 / 10;
+        }
+        v.material(bl.id().get());
+        v.normal({-1, 0, 0});
+        v.color(col[0]);
+        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
+        v.coord({x, y, z});
+        v.color(col[1]);
+        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
+        v.coord({x, y, z + 1});
+        v.color(col[2]);
+        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
+        v.coord({x, y + 1, z + 1});
+        v.color(col[3]);
+        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
+        v.coord({x, y + 1, z});
     }
 
     // Top Face
     if (bl.should_render_face(neighbors[2], layer)) {
         tex = Textures::getTextureIndex(bl.id(), 0);
-        col1 = col2 = col3 = col4 = rd.block(x, y + 1, z).light();
+        int br = rd.block(x, y + 1, z).light();
         if (SmoothLighting) {
-            col1 = (col1 + rd.block(x, y + 1, z - 1).light() + rd.block(x - 1, y + 1, z).light()
-                    + rd.block(x - 1, y + 1, z - 1).light())
-                 / 4.0f;
-            col2 = (col2 + rd.block(x, y + 1, z + 1).light() + rd.block(x - 1, y + 1, z).light()
-                    + rd.block(x - 1, y + 1, z + 1).light())
-                 / 4.0f;
-            col3 = (col3 + rd.block(x, y + 1, z + 1).light() + rd.block(x + 1, y + 1, z).light()
-                    + rd.block(x + 1, y + 1, z + 1).light())
-                 / 4.0f;
-            col4 = (col4 + rd.block(x, y + 1, z - 1).light() + rd.block(x + 1, y + 1, z).light()
-                    + rd.block(x + 1, y + 1, z - 1).light())
-                 / 4.0f;
+            col[0] = br + rd.block(x, y + 1, z - 1).light() + rd.block(x - 1, y + 1, z).light()
+                   + rd.block(x - 1, y + 1, z - 1).light();
+            col[1] = br + rd.block(x, y + 1, z + 1).light() + rd.block(x - 1, y + 1, z).light()
+                   + rd.block(x - 1, y + 1, z + 1).light();
+            col[2] = br + rd.block(x, y + 1, z + 1).light() + rd.block(x + 1, y + 1, z).light()
+                   + rd.block(x + 1, y + 1, z + 1).light();
+            col[3] = br + rd.block(x, y + 1, z - 1).light() + rd.block(x + 1, y + 1, z).light()
+                   + rd.block(x + 1, y + 1, z - 1).light();
+        } else {
+            col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
-        v.material(static_cast<float>(bl.id().get()));
-        v.normal({0.0f, 1.0f, 0.0f});
-        v.color(col1);
-        v.tex_coord({0.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, 0.5f + y, -0.5f + z});
-        v.color(col2);
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, 0.5f + y, 0.5f + z});
-        v.color(col3);
-        v.tex_coord({1.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, 0.5f + y, 0.5f + z});
-        v.color(col4);
-        v.tex_coord({1.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, 0.5f + y, -0.5f + z});
+        col = col * 255 / (MAX_LIGHT * 4);
+        v.material(bl.id().get());
+        v.normal({0, 1, 0});
+        v.color(col[0]);
+        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
+        v.coord({x, y + 1, z});
+        v.color(col[1]);
+        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
+        v.coord({x, y + 1, z + 1});
+        v.color(col[2]);
+        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y + 1, z + 1});
+        v.color(col[3]);
+        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y + 1, z});
     }
 
     // Bottom Face
     if (bl.should_render_face(neighbors[3], layer)) {
         tex = Textures::getTextureIndex(bl.id(), 2);
-        col1 = col2 = col3 = col4 = rd.block(x, y - 1, z).light();
+        int br = rd.block(x, y - 1, z).light();
         if (SmoothLighting) {
-            col1 = (col1 + rd.block(x, y - 1, z - 1).light() + rd.block(x - 1, y - 1, z).light()
-                    + rd.block(x - 1, y - 1, z - 1).light())
-                 / 4.0f;
-            col2 = (col2 + rd.block(x, y - 1, z - 1).light() + rd.block(x + 1, y - 1, z).light()
-                    + rd.block(x + 1, y - 1, z - 1).light())
-                 / 4.0f;
-            col3 = (col3 + rd.block(x, y - 1, z + 1).light() + rd.block(x + 1, y - 1, z).light()
-                    + rd.block(x + 1, y - 1, z + 1).light())
-                 / 4.0f;
-            col4 = (col4 + rd.block(x, y - 1, z + 1).light() + rd.block(x - 1, y - 1, z).light()
-                    + rd.block(x - 1, y - 1, z + 1).light())
-                 / 4.0f;
+            col[0] = br + rd.block(x, y - 1, z - 1).light() + rd.block(x - 1, y - 1, z).light()
+                   + rd.block(x - 1, y - 1, z - 1).light();
+            col[1] = br + rd.block(x, y - 1, z - 1).light() + rd.block(x + 1, y - 1, z).light()
+                   + rd.block(x + 1, y - 1, z - 1).light();
+            col[2] = br + rd.block(x, y - 1, z + 1).light() + rd.block(x + 1, y - 1, z).light()
+                   + rd.block(x + 1, y - 1, z + 1).light();
+            col[3] = br + rd.block(x, y - 1, z + 1).light() + rd.block(x - 1, y - 1, z).light()
+                   + rd.block(x - 1, y - 1, z + 1).light();
+        } else {
+            col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
-        v.material(static_cast<float>(bl.id().get()));
-        v.normal({0.0f, -1.0f, 0.0f});
-        v.color(col1);
-        v.tex_coord({1.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, -0.5f + y, -0.5f + z});
-        v.color(col2);
-        v.tex_coord({0.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, -0.5f + y, -0.5f + z});
-        v.color(col3);
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, -0.5f + y, 0.5f + z});
-        v.color(col4);
-        v.tex_coord({1.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, -0.5f + y, 0.5f + z});
+        col = col * 255 / (MAX_LIGHT * 4);
+        v.material(bl.id().get());
+        v.normal({0, -1, 0});
+        v.color(col[0]);
+        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
+        v.coord({x, y, z});
+        v.color(col[1]);
+        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y, z});
+        v.color(col[2]);
+        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y, z + 1});
+        v.color(col[3]);
+        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
+        v.coord({x, y, z + 1});
     }
 
     // Front Face
@@ -311,38 +305,37 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
             tex = Textures::getTextureIndex(bl.id(), 0);
         else
             tex = Textures::getTextureIndex(bl.id(), 1);
-        col1 = col2 = col3 = col4 = rd.block(x, y, z + 1).light();
+        int br = rd.block(x, y, z + 1).light();
         if (SmoothLighting) {
-            col1 = (col1 + rd.block(x, y - 1, z + 1).light() + rd.block(x - 1, y, z + 1).light()
-                    + rd.block(x - 1, y - 1, z + 1).light())
-                 / 4.0f;
-            col2 = (col2 + rd.block(x, y - 1, z + 1).light() + rd.block(x + 1, y, z + 1).light()
-                    + rd.block(x + 1, y - 1, z + 1).light())
-                 / 4.0f;
-            col3 = (col3 + rd.block(x, y + 1, z + 1).light() + rd.block(x + 1, y, z + 1).light()
-                    + rd.block(x + 1, y + 1, z + 1).light())
-                 / 4.0f;
-            col4 = (col4 + rd.block(x, y + 1, z + 1).light() + rd.block(x - 1, y, z + 1).light()
-                    + rd.block(x - 1, y + 1, z + 1).light())
-                 / 4.0f;
+            col[0] = br + rd.block(x, y - 1, z + 1).light() + rd.block(x - 1, y, z + 1).light()
+                   + rd.block(x - 1, y - 1, z + 1).light();
+            col[1] = br + rd.block(x, y - 1, z + 1).light() + rd.block(x + 1, y, z + 1).light()
+                   + rd.block(x + 1, y - 1, z + 1).light();
+            col[2] = br + rd.block(x, y + 1, z + 1).light() + rd.block(x + 1, y, z + 1).light()
+                   + rd.block(x + 1, y + 1, z + 1).light();
+            col[3] = br + rd.block(x, y + 1, z + 1).light() + rd.block(x - 1, y, z + 1).light()
+                   + rd.block(x - 1, y + 1, z + 1).light();
+        } else {
+            col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
-        if (!AdvancedRender)
-            col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
-        v.material(static_cast<float>(bl.id().get()));
-        v.normal({0.0f, 0.0f, 1.0f});
-        v.color(col1);
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, -0.5f + y, 0.5f + z});
-        v.color(col2);
-        v.tex_coord({1.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, -0.5f + y, 0.5f + z});
-        v.color(col3);
-        v.tex_coord({1.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, 0.5f + y, 0.5f + z});
-        v.color(col4);
-        v.tex_coord({0.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, 0.5f + y, 0.5f + z});
+        col = col * 255 / (MAX_LIGHT * 4);
+        if (!AdvancedRender) {
+            col = col * 5 / 10;
+        }
+        v.material(bl.id().get());
+        v.normal({0, 0, 1});
+        v.color(col[0]);
+        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
+        v.coord({x, y, z + 1});
+        v.color(col[1]);
+        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y, z + 1});
+        v.color(col[2]);
+        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y + 1, z + 1});
+        v.color(col[3]);
+        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
+        v.coord({x, y + 1, z + 1});
     }
 
     // Back Face
@@ -351,150 +344,150 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
             tex = Textures::getTextureIndex(bl.id(), 0);
         else
             tex = Textures::getTextureIndex(bl.id(), 1);
-        col1 = col2 = col3 = col4 = rd.block(x, y, z - 1).light();
+        int br = rd.block(x, y, z - 1).light();
         if (SmoothLighting) {
-            col1 = (col1 + rd.block(x, y - 1, z - 1).light() + rd.block(x - 1, y, z - 1).light()
-                    + rd.block(x - 1, y - 1, z - 1).light())
-                 / 4.0f;
-            col2 = (col2 + rd.block(x, y + 1, z - 1).light() + rd.block(x - 1, y, z - 1).light()
-                    + rd.block(x - 1, y + 1, z - 1).light())
-                 / 4.0f;
-            col3 = (col3 + rd.block(x, y + 1, z - 1).light() + rd.block(x + 1, y, z - 1).light()
-                    + rd.block(x + 1, y + 1, z - 1).light())
-                 / 4.0f;
-            col4 = (col4 + rd.block(x, y - 1, z - 1).light() + rd.block(x + 1, y, z - 1).light()
-                    + rd.block(x + 1, y - 1, z - 1).light())
-                 / 4.0f;
+            col[0] = br + rd.block(x, y - 1, z - 1).light() + rd.block(x - 1, y, z - 1).light()
+                   + rd.block(x - 1, y - 1, z - 1).light();
+            col[1] = br + rd.block(x, y + 1, z - 1).light() + rd.block(x - 1, y, z - 1).light()
+                   + rd.block(x - 1, y + 1, z - 1).light();
+            col[2] = br + rd.block(x, y + 1, z - 1).light() + rd.block(x + 1, y, z - 1).light()
+                   + rd.block(x + 1, y + 1, z - 1).light();
+            col[3] = br + rd.block(x, y - 1, z - 1).light() + rd.block(x + 1, y, z - 1).light()
+                   + rd.block(x + 1, y - 1, z - 1).light();
+        } else {
+            col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col1 /= MAX_LIGHT, col2 /= MAX_LIGHT, col3 /= MAX_LIGHT, col4 /= MAX_LIGHT;
-        if (!AdvancedRender)
-            col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f, col4 *= 0.5f;
-        v.material(static_cast<float>(bl.id().get()));
-        v.normal({0.0f, 0.0f, -1.0f});
-        v.color(col1);
-        v.tex_coord({1.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, -0.5f + y, -0.5f + z});
-        v.color(col2);
-        v.tex_coord({1.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({-0.5f + x, 0.5f + y, -0.5f + z});
-        v.color(col3);
-        v.tex_coord({0.0f, 1.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, 0.5f + y, -0.5f + z});
-        v.color(col4);
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(tex)});
-        v.coord({0.5f + x, -0.5f + y, -0.5f + z});
+        col = col * 255 / (MAX_LIGHT * 4);
+        if (!AdvancedRender) {
+            col = col * 5 / 10;
+        }
+        v.material(bl.id().get());
+        v.normal({0, 0, -1});
+        v.color(col[0]);
+        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
+        v.coord({x, y, z});
+        v.color(col[1]);
+        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
+        v.coord({x, y + 1, z});
+        v.color(col[2]);
+        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y + 1, z});
+        v.color(col[3]);
+        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
+        v.coord({x + 1, y, z});
     }
 }
 
 // The merge face rendering method for a primitive (adjacent block faces).
 void _render_primitive(QuadPrimitive const& p, VertexArrayBuilder& v) {
-    float col0 = (float) p.col0 * 0.25f / MAX_LIGHT;
-    float col1 = (float) p.col1 * 0.25f / MAX_LIGHT;
-    float col2 = (float) p.col2 * 0.25f / MAX_LIGHT;
-    float col3 = (float) p.col3 * 0.25f / MAX_LIGHT;
-    int x = p.x, y = p.y, z = p.z, length = p.length;
+    auto col = p.col * 255 / (MAX_LIGHT * 4);
+    auto x = p.x, y = p.y, z = p.z, length = p.length;
 
-    v.material(static_cast<float>(p.blk.get()));
-    v.tex_coord({0.0f, 0.0f, static_cast<float>(p.tex)});
+    v.material(p.blk.get());
+    v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
 
     switch (p.direction) {
         case 0:
-            if (!AdvancedRender)
-                col0 *= 0.7f, col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f;
-            v.normal({1.0f, 0.0f, 0.0f});
-            v.color(col0);
-            v.tex_coord({0.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y - 0.5f, z - 0.5f});
-            v.color(col1);
-            v.tex_coord({0.0f, 1.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y + 0.5f, z - 0.5f});
-            v.color(col2);
-            v.tex_coord({length + 1.0f, 1.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y + 0.5f, z + length + 0.5f});
-            v.color(col3);
-            v.tex_coord({length + 1.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y - 0.5f, z + length + 0.5f});
+            if (!AdvancedRender) {
+                col = col * 7 / 10;
+            }
+            v.normal({1, 0, 0});
+            v.color(col[0]);
+            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y, z});
+            v.color(col[1]);
+            v.tex_coord({0, 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y + 1, z});
+            v.color(col[2]);
+            v.tex_coord({length + 1, 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y + 1, z + length + 1});
+            v.color(col[3]);
+            v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y, z + length + 1});
             break;
         case 1:
-            if (!AdvancedRender)
-                col0 *= 0.7f, col1 *= 0.7f, col2 *= 0.7f, col3 *= 0.7f;
-            v.normal({-1.0f, 0.0f, 0.0f});
-            v.color(col0);
-            v.tex_coord({0.0f, 1.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y + 0.5f, z - 0.5f});
-            v.color(col1);
-            v.tex_coord({0.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y - 0.5f, z - 0.5f});
-            v.color(col2);
-            v.tex_coord({length + 1.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y - 0.5f, z + length + 0.5f});
-            v.color(col3);
-            v.tex_coord({length + 1.0f, 1.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y + 0.5f, z + length + 0.5f});
+            if (!AdvancedRender) {
+                col = col * 7 / 10;
+            }
+            v.normal({-1, 0, 0});
+            v.color(col[0]);
+            v.tex_coord({0, 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y + 1, z});
+            v.color(col[1]);
+            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y, z});
+            v.color(col[2]);
+            v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y, z + length + 1});
+            v.color(col[3]);
+            v.tex_coord({length + 1, 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y + 1, z + length + 1});
             break;
         case 2:
-            v.normal({0.0f, 1.0f, 0.0f});
-            v.color(col0);
-            v.tex_coord({0.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y + 0.5f, z - 0.5f});
-            v.color(col1);
-            v.tex_coord({0.0f, 1.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y + 0.5f, z - 0.5f});
-            v.color(col2);
-            v.tex_coord({length + 1.0f, 1.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y + 0.5f, z + length + 0.5f});
-            v.color(col3);
-            v.tex_coord({length + 1.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y + 0.5f, z + length + 0.5f});
+            v.normal({0, 1, 0});
+            v.color(col[0]);
+            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y + 1, z});
+            v.color(col[1]);
+            v.tex_coord({0, 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y + 1, z});
+            v.color(col[2]);
+            v.tex_coord({length + 1, 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y + 1, z + length + 1});
+            v.color(col[3]);
+            v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y + 1, z + length + 1});
             break;
         case 3:
-            v.normal({0.0f, -1.0f, 0.0f});
-            v.color(col0);
-            v.tex_coord({0.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y - 0.5f, z - 0.5f});
-            v.color(col1);
-            v.tex_coord({0.0f, 1.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y - 0.5f, z - 0.5f});
-            v.color(col2);
-            v.tex_coord({length + 1.0f, 1.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y - 0.5f, z + length + 0.5f});
-            v.color(col3);
-            v.tex_coord({length + 1.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y - 0.5f, z + length + 0.5f});
+            v.normal({0, -1, 0});
+            v.color(col[0]);
+            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y, z});
+            v.color(col[1]);
+            v.tex_coord({0, 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y, z});
+            v.color(col[2]);
+            v.tex_coord({length + 1, 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y, z + length + 1});
+            v.color(col[3]);
+            v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y, z + length + 1});
             break;
         case 4:
-            if (!AdvancedRender)
-                col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
-            v.normal({0.0f, 0.0f, 1.0f});
-            v.color(col0);
-            v.tex_coord({0.0f, length + 1.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y + length + 0.5f, z + 0.5f});
-            v.color(col1);
-            v.tex_coord({0.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y - 0.5f, z + 0.5f});
-            v.color(col2);
-            v.tex_coord({1.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y - 0.5f, z + 0.5f});
-            v.color(col3);
-            v.tex_coord({1.0f, length + 1.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y + length + 0.5f, z + 0.5f});
+            if (!AdvancedRender) {
+                col = col * 5 / 10;
+            }
+            v.normal({0, 0, 1});
+            v.color(col[0]);
+            v.tex_coord({0, length + 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y + length + 1, z + 1});
+            v.color(col[1]);
+            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y, z + 1});
+            v.color(col[2]);
+            v.tex_coord({1, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y, z + 1});
+            v.color(col[3]);
+            v.tex_coord({1, length + 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y + length + 1, z + 1});
             break;
         case 5:
-            if (!AdvancedRender)
-                col0 *= 0.5f, col1 *= 0.5f, col2 *= 0.5f, col3 *= 0.5f;
-            v.normal({0.0f, 0.0f, -1.0f});
-            v.color(col0);
-            v.tex_coord({0.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y - 0.5f, z - 0.5f});
-            v.color(col1);
-            v.tex_coord({0.0f, length + 1.0f, static_cast<float>(p.tex)});
-            v.coord({x - 0.5f, y + length + 0.5f, z - 0.5f});
-            v.color(col2);
-            v.tex_coord({1.0f, length + 1.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y + length + 0.5f, z - 0.5f});
-            v.color(col3);
-            v.tex_coord({1.0f, 0.0f, static_cast<float>(p.tex)});
-            v.coord({x + 0.5f, y - 0.5f, z - 0.5f});
+            if (!AdvancedRender) {
+                col = col * 5 / 10;
+            }
+            v.normal({0, 0, -1});
+            v.color(col[0]);
+            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y, z});
+            v.color(col[1]);
+            v.tex_coord({0, length + 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x, y + length + 1, z});
+            v.color(col[2]);
+            v.tex_coord({1, length + 1, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y + length + 1, z});
+            v.color(col[3]);
+            v.tex_coord({1, 0, static_cast<uint16_t>(p.tex)});
+            v.coord({x + 1, y, z});
             break;
     }
 }
@@ -570,7 +563,8 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayBuilder& v, 
                     else
                         face = 1;
                     TextureIndex tex = Textures::getTextureIndex(bl.id(), face);
-                    int br = 0, col0 = 0, col1 = 0, col2 = 0, col3 = 0;
+                    auto br = 0;
+                    auto col = Vec4i(0, 0, 0, 0);
                     switch (d) {
                         case 0:
                             if (NiceGrass && bl.id() == base_blocks().grass
@@ -578,16 +572,17 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayBuilder& v, 
                                 tex = Textures::getTextureIndex(bl.id(), 0);
                             br = rd.block(x + 1, y, z).light();
                             if (SmoothLighting) {
-                                col0 = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z - 1).light()
-                                     + rd.block(x + 1, y - 1, z - 1).light();
-                                col1 = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z - 1).light()
-                                     + rd.block(x + 1, y + 1, z - 1).light();
-                                col2 = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z + 1).light()
-                                     + rd.block(x + 1, y + 1, z + 1).light();
-                                col3 = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z + 1).light()
-                                     + rd.block(x + 1, y - 1, z + 1).light();
-                            } else
-                                col0 = col1 = col2 = col3 = br * 4;
+                                col[0] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z - 1).light()
+                                       + rd.block(x + 1, y - 1, z - 1).light();
+                                col[1] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z - 1).light()
+                                       + rd.block(x + 1, y + 1, z - 1).light();
+                                col[2] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z + 1).light()
+                                       + rd.block(x + 1, y + 1, z + 1).light();
+                                col[3] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z + 1).light()
+                                       + rd.block(x + 1, y - 1, z + 1).light();
+                            } else {
+                                col[0] = col[1] = col[2] = col[3] = br * 4;
+                            }
                             break;
                         case 1:
                             if (NiceGrass && bl.id() == base_blocks().grass
@@ -595,44 +590,47 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayBuilder& v, 
                                 tex = Textures::getTextureIndex(bl.id(), 0);
                             br = rd.block(x - 1, y, z).light();
                             if (SmoothLighting) {
-                                col0 = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z - 1).light()
-                                     + rd.block(x - 1, y + 1, z - 1).light();
-                                col1 = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z - 1).light()
-                                     + rd.block(x - 1, y - 1, z - 1).light();
-                                col2 = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z + 1).light()
-                                     + rd.block(x - 1, y - 1, z + 1).light();
-                                col3 = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z + 1).light()
-                                     + rd.block(x - 1, y + 1, z + 1).light();
-                            } else
-                                col0 = col1 = col2 = col3 = br * 4;
+                                col[0] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z - 1).light()
+                                       + rd.block(x - 1, y + 1, z - 1).light();
+                                col[1] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z - 1).light()
+                                       + rd.block(x - 1, y - 1, z - 1).light();
+                                col[2] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z + 1).light()
+                                       + rd.block(x - 1, y - 1, z + 1).light();
+                                col[3] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z + 1).light()
+                                       + rd.block(x - 1, y + 1, z + 1).light();
+                            } else {
+                                col[0] = col[1] = col[2] = col[3] = br * 4;
+                            }
                             break;
                         case 2:
                             br = rd.block(x, y + 1, z).light();
                             if (SmoothLighting) {
-                                col0 = br + rd.block(x + 1, y + 1, z).light() + rd.block(x, y + 1, z - 1).light()
-                                     + rd.block(x + 1, y + 1, z - 1).light();
-                                col1 = br + rd.block(x - 1, y + 1, z).light() + rd.block(x, y + 1, z - 1).light()
-                                     + rd.block(x - 1, y + 1, z - 1).light();
-                                col2 = br + rd.block(x - 1, y + 1, z).light() + rd.block(x, y + 1, z + 1).light()
-                                     + rd.block(x - 1, y + 1, z + 1).light();
-                                col3 = br + rd.block(x + 1, y + 1, z).light() + rd.block(x, y + 1, z + 1).light()
-                                     + rd.block(x + 1, y + 1, z + 1).light();
-                            } else
-                                col0 = col1 = col2 = col3 = br * 4;
+                                col[0] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x, y + 1, z - 1).light()
+                                       + rd.block(x + 1, y + 1, z - 1).light();
+                                col[1] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x, y + 1, z - 1).light()
+                                       + rd.block(x - 1, y + 1, z - 1).light();
+                                col[2] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x, y + 1, z + 1).light()
+                                       + rd.block(x - 1, y + 1, z + 1).light();
+                                col[3] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x, y + 1, z + 1).light()
+                                       + rd.block(x + 1, y + 1, z + 1).light();
+                            } else {
+                                col[0] = col[1] = col[2] = col[3] = br * 4;
+                            }
                             break;
                         case 3:
                             br = rd.block(x, y - 1, z).light();
                             if (SmoothLighting) {
-                                col0 = br + rd.block(x - 1, y - 1, z).light() + rd.block(x, y - 1, z - 1).light()
-                                     + rd.block(x - 1, y - 1, z - 1).light();
-                                col1 = br + rd.block(x + 1, y - 1, z).light() + rd.block(x, y - 1, z - 1).light()
-                                     + rd.block(x + 1, y - 1, z - 1).light();
-                                col2 = br + rd.block(x + 1, y - 1, z).light() + rd.block(x, y - 1, z + 1).light()
-                                     + rd.block(x + 1, y - 1, z + 1).light();
-                                col3 = br + rd.block(x - 1, y - 1, z).light() + rd.block(x, y - 1, z + 1).light()
-                                     + rd.block(x - 1, y - 1, z + 1).light();
-                            } else
-                                col0 = col1 = col2 = col3 = br * 4;
+                                col[0] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x, y - 1, z - 1).light()
+                                       + rd.block(x - 1, y - 1, z - 1).light();
+                                col[1] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x, y - 1, z - 1).light()
+                                       + rd.block(x + 1, y - 1, z - 1).light();
+                                col[2] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x, y - 1, z + 1).light()
+                                       + rd.block(x + 1, y - 1, z + 1).light();
+                                col[3] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x, y - 1, z + 1).light()
+                                       + rd.block(x - 1, y - 1, z + 1).light();
+                            } else {
+                                col[0] = col[1] = col[2] = col[3] = br * 4;
+                            }
                             break;
                         case 4:
                             if (NiceGrass && bl.id() == base_blocks().grass
@@ -640,16 +638,17 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayBuilder& v, 
                                 tex = Textures::getTextureIndex(bl.id(), 0);
                             br = rd.block(x, y, z + 1).light();
                             if (SmoothLighting) {
-                                col0 = br + rd.block(x - 1, y, z + 1).light() + rd.block(x, y + 1, z + 1).light()
-                                     + rd.block(x - 1, y + 1, z + 1).light();
-                                col1 = br + rd.block(x - 1, y, z + 1).light() + rd.block(x, y - 1, z + 1).light()
-                                     + rd.block(x - 1, y - 1, z + 1).light();
-                                col2 = br + rd.block(x + 1, y, z + 1).light() + rd.block(x, y - 1, z + 1).light()
-                                     + rd.block(x + 1, y - 1, z + 1).light();
-                                col3 = br + rd.block(x + 1, y, z + 1).light() + rd.block(x, y + 1, z + 1).light()
-                                     + rd.block(x + 1, y + 1, z + 1).light();
-                            } else
-                                col0 = col1 = col2 = col3 = br * 4;
+                                col[0] = br + rd.block(x - 1, y, z + 1).light() + rd.block(x, y + 1, z + 1).light()
+                                       + rd.block(x - 1, y + 1, z + 1).light();
+                                col[1] = br + rd.block(x - 1, y, z + 1).light() + rd.block(x, y - 1, z + 1).light()
+                                       + rd.block(x - 1, y - 1, z + 1).light();
+                                col[2] = br + rd.block(x + 1, y, z + 1).light() + rd.block(x, y - 1, z + 1).light()
+                                       + rd.block(x + 1, y - 1, z + 1).light();
+                                col[3] = br + rd.block(x + 1, y, z + 1).light() + rd.block(x, y + 1, z + 1).light()
+                                       + rd.block(x + 1, y + 1, z + 1).light();
+                            } else {
+                                col[0] = col[1] = col[2] = col[3] = br * 4;
+                            }
                             break;
                         case 5:
                             if (NiceGrass && bl.id() == base_blocks().grass
@@ -657,22 +656,23 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayBuilder& v, 
                                 tex = Textures::getTextureIndex(bl.id(), 0);
                             br = rd.block(x, y, z - 1).light();
                             if (SmoothLighting) {
-                                col0 = br + rd.block(x - 1, y, z - 1).light() + rd.block(x, y - 1, z - 1).light()
-                                     + rd.block(x - 1, y - 1, z - 1).light();
-                                col1 = br + rd.block(x - 1, y, z - 1).light() + rd.block(x, y + 1, z - 1).light()
-                                     + rd.block(x - 1, y + 1, z - 1).light();
-                                col2 = br + rd.block(x + 1, y, z - 1).light() + rd.block(x, y + 1, z - 1).light()
-                                     + rd.block(x + 1, y + 1, z - 1).light();
-                                col3 = br + rd.block(x + 1, y, z - 1).light() + rd.block(x, y - 1, z - 1).light()
-                                     + rd.block(x + 1, y - 1, z - 1).light();
-                            } else
-                                col0 = col1 = col2 = col3 = br * 4;
+                                col[0] = br + rd.block(x - 1, y, z - 1).light() + rd.block(x, y - 1, z - 1).light()
+                                       + rd.block(x - 1, y - 1, z - 1).light();
+                                col[1] = br + rd.block(x - 1, y, z - 1).light() + rd.block(x, y + 1, z - 1).light()
+                                       + rd.block(x - 1, y + 1, z - 1).light();
+                                col[2] = br + rd.block(x + 1, y, z - 1).light() + rd.block(x, y + 1, z - 1).light()
+                                       + rd.block(x + 1, y + 1, z - 1).light();
+                                col[3] = br + rd.block(x + 1, y, z - 1).light() + rd.block(x, y - 1, z - 1).light()
+                                       + rd.block(x + 1, y - 1, z - 1).light();
+                            } else {
+                                col[0] = col[1] = col[2] = col[3] = br * 4;
+                            }
                             break;
                     }
                     // Render
-                    bool once = col0 != col1 || col1 != col2 || col2 != col3;
+                    bool once = col[0] != col[1] || col[1] != col[2] || col[2] != col[3];
                     if (valid) {
-                        if (once || cur.once || bl.id() != cur.blk || tex != cur.tex || col0 != cur.col0) {
+                        if (once || cur.once || bl.id() != cur.blk || tex != cur.tex || col[0] != cur.col[0]) {
                             _render_primitive(cur, v);
                             cur.x = x;
                             cur.y = y;
@@ -682,10 +682,10 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayBuilder& v, 
                             cur.once = once;
                             cur.blk = bl.id();
                             cur.tex = tex;
-                            cur.col0 = col0;
-                            cur.col1 = col1;
-                            cur.col2 = col2;
-                            cur.col3 = col3;
+                            cur.col[0] = col[0];
+                            cur.col[1] = col[1];
+                            cur.col[2] = col[2];
+                            cur.col[3] = col[3];
                         } else
                             cur.length++;
                     } else {
@@ -698,10 +698,10 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayBuilder& v, 
                         cur.once = once;
                         cur.blk = bl.id();
                         cur.tex = tex;
-                        cur.col0 = col0;
-                        cur.col1 = col1;
-                        cur.col2 = col2;
-                        cur.col3 = col3;
+                        cur.col[0] = col[0];
+                        cur.col[1] = col[1];
+                        cur.col[2] = col[2];
+                        cur.col[3] = col[3];
                     }
                 }
                 if (valid) {

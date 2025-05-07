@@ -16,6 +16,7 @@ import gui;
 import menus;
 import particles;
 import rendering;
+import render;
 import setup;
 import text_rendering;
 import textures;
@@ -355,8 +356,8 @@ void game_update(worlds::World& world) {
             // 线段延伸
             coord_last = coord;
             coord += direction / SelectPrecision;
-            auto int_coord_last = coord_last.round<int32_t>();
-            auto int_coord = coord.round<int32_t>();
+            auto int_coord_last = coord_last.floor<int32_t>();
+            auto int_coord = coord.floor<int32_t>();
             // 碰到方块
             if (block_info(world.block_or_air(int_coord).id).solid) {
                 selx = int_coord.x();
@@ -367,9 +368,9 @@ void game_update(worlds::World& world) {
                 if (mb == 1) { // 鼠标左键
                     particles::throw_particle(
                         selb,
-                        float(int_coord.x() + rnd() - 0.5f),
-                        float(int_coord.y() + rnd() - 0.2f),
-                        float(int_coord.z() + rnd() - 0.5f),
+                        float(int_coord.x() + rnd()),
+                        float(int_coord.y() + rnd() + 0.3),
+                        float(int_coord.z() + rnd()),
                         float(rnd() * 0.2f - 0.1f),
                         float(rnd() * 0.2f - 0.1f),
                         float(rnd() * 0.2f - 0.1f),
@@ -392,9 +393,9 @@ void game_update(worlds::World& world) {
                         for (int j = 1; j <= 25; j++) {
                             particles::throw_particle(
                                 selb,
-                                float(int_coord.x() + rnd() - 0.5f),
-                                float(int_coord.y() + rnd() - 0.2f),
-                                float(int_coord.z() + rnd() - 0.5f),
+                                float(int_coord.x() + rnd()),
+                                float(int_coord.y() + rnd() + 0.3),
+                                float(int_coord.z() + rnd()),
                                 float(rnd() * 0.2f - 0.1f),
                                 float(rnd() * 0.2f - 0.1f),
                                 float(rnd() * 0.2f - 0.1f),
@@ -780,7 +781,7 @@ void render_scene(worlds::World& world) {
     glClearDepth(1.0f);
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    auto int_view_coord = view_coord.round<int32_t>();
+    auto int_view_coord = view_coord.floor<int32_t>();
     if (world.block_or_air(int_view_coord).id == base_blocks().water) {
         auto& shader = Renderer::shaders[Renderer::UIShader];
         shader.bind();
@@ -847,98 +848,98 @@ void readback(worlds::World& world) {
     }
 }
 
-float const centers[6][3] = {
-    {+0.5f,  0.0f,  0.0f},
-    {-0.5f,  0.0f,  0.0f},
-    { 0.0f, +0.5f,  0.0f},
-    { 0.0f, -0.5f,  0.0f},
-    { 0.0f,  0.0f, +0.5f},
-    { 0.0f,  0.0f, -0.5f},
-};
+using render::VertexArray;
+using VertexArrayBuilder = render::VertexArrayBuilder<
+    render::Coord<Vec3f>,
+    render::TexCoord<Vec3f>,
+    render::Color<Vec3u8>,
+    render::Normal<Vec3i8>,
+    render::Material<uint16_t>>;
 
-float const cube[6][4][3] = {
-    {{+0.5f, -0.5f, +0.5f}, {+0.5f, -0.5f, -0.5f}, {+0.5f, +0.5f, -0.5f}, {+0.5f, +0.5f, +0.5f}},
-    {{-0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, +0.5f}, {-0.5f, +0.5f, +0.5f}, {-0.5f, +0.5f, -0.5f}},
-    {{-0.5f, +0.5f, +0.5f}, {+0.5f, +0.5f, +0.5f}, {+0.5f, +0.5f, -0.5f}, {-0.5f, +0.5f, -0.5f}},
-    {{-0.5f, -0.5f, -0.5f}, {+0.5f, -0.5f, -0.5f}, {+0.5f, -0.5f, +0.5f}, {-0.5f, -0.5f, +0.5f}},
-    {{-0.5f, -0.5f, +0.5f}, {+0.5f, -0.5f, +0.5f}, {+0.5f, +0.5f, +0.5f}, {-0.5f, +0.5f, +0.5f}},
-    {{+0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}, {-0.5f, +0.5f, -0.5f}, {+0.5f, +0.5f, -0.5f}},
-};
+constexpr auto centers = std::array<Vec3f, 6>({
+    {1.0f, 0.5f, 0.5f},
+    {0.0f, 0.5f, 0.5f},
+    {0.5f, 1.0f, 0.5f},
+    {0.5f, 0.0f, 0.5f},
+    {0.5f, 0.5f, 1.0f},
+    {0.5f, 0.5f, 0.0f},
+});
 
-float const texcoords[4][2] = {
+constexpr auto cube = std::array<std::array<Vec3f, 4>, 6>({
+    {{{1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}},
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}},
+    {{{0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}},
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}}},
+    {{{0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}}},
+    {{{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}}},
+});
+
+constexpr auto tex_coords = std::array<Vec2f, 4>({
     {0.0f, 0.0f},
     {1.0f, 0.0f},
     {1.0f, 1.0f},
     {0.0f, 1.0f},
-};
+});
 
 // Draw the block selection border
 void draw_block_selection_border(float x, float y, float z) {
-    float const eps = 0.005f;
-    float const width = 1.0f / 32.0f;
+    constexpr auto EPS = 0.005f;
+    constexpr auto WIDTH = 1.0f / 32.0f;
 
-    if (AdvancedRender)
-        Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
-    else
-        Renderer::Begin(GL_QUADS, 3, 3, 1);
-    Renderer::Attrib1f(65535.0f); // For indicator elements
-    Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
-    Renderer::Color3f(1.0f, 1.0f, 1.0f);
-    for (int i = 0; i < 6; i++) {
-        float const* center = centers[i];
-        float xc = center[0], yc = center[1], zc = center[2];
-        Renderer::Normal3f(xc * 2.0f, yc * 2.0f, zc * 2.0f);
-        for (int j = 0; j < 4; j++) {
-            float const* first = cube[i][j];
-            float const* second = cube[i][(j + 1) % 4];
-            float x0 = first[0], y0 = first[1], z0 = first[2];
-            float x1 = second[0], y1 = second[1], z1 = second[2];
-            float xd0 = (x0 - xc) * 2.0f, yd0 = (y0 - yc) * 2.0f, zd0 = (z0 - zc) * 2.0f;
-            float xd1 = (x1 - xc) * 2.0f, yd1 = (y1 - yc) * 2.0f, zd1 = (z1 - zc) * 2.0f;
-            x0 += (x0 > 0.0f ? eps : -eps), y0 += (y0 > 0.0f ? eps : -eps), z0 += (z0 > 0.0f ? eps : -eps);
-            x1 += (x1 > 0.0f ? eps : -eps), y1 += (y1 > 0.0f ? eps : -eps), z1 += (z1 > 0.0f ? eps : -eps);
-            Renderer::Vertex3f(x + x0, y + y0, z + z0);
-            Renderer::Vertex3f(x + x1, y + y1, z + z1);
-            Renderer::Vertex3f(x + x1 - xd1 * width, y + y1 - yd1 * width, z + z1 - zd1 * width);
-            Renderer::Vertex3f(x + x0 - xd0 * width, y + y0 - yd0 * width, z + z0 - zd0 * width);
+    auto v = VertexArrayBuilder();
+    v.material(65535); // For indicator elements
+    v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
+    v.color({255, 255, 255});
+
+    for (auto i = 0uz; i < cube.size(); i++) {
+        auto const& center = centers[i];
+        auto xc = center[0], yc = center[1], zc = center[2];
+        v.normal({xc * 2.0f, yc * 2.0f, zc * 2.0f});
+        for (auto j = 0uz; j < cube[i].size(); j++) {
+            auto const& first = cube[i][j];
+            auto const& second = cube[i][(j + 1) % 4];
+            auto x0 = first[0], y0 = first[1], z0 = first[2];
+            auto x1 = second[0], y1 = second[1], z1 = second[2];
+            auto xd0 = (x0 - xc) * 2.0f, yd0 = (y0 - yc) * 2.0f, zd0 = (z0 - zc) * 2.0f;
+            auto xd1 = (x1 - xc) * 2.0f, yd1 = (y1 - yc) * 2.0f, zd1 = (z1 - zc) * 2.0f;
+            x0 += (x0 > 0.0f ? EPS : -EPS), y0 += (y0 > 0.0f ? EPS : -EPS), z0 += (z0 > 0.0f ? EPS : -EPS);
+            x1 += (x1 > 0.0f ? EPS : -EPS), y1 += (y1 > 0.0f ? EPS : -EPS), z1 += (z1 > 0.0f ? EPS : -EPS);
+            v.coord({x + x0, y + y0, z + z0});
+            v.coord({x + x1, y + y1, z + z1});
+            v.coord({x + x1 - xd1 * WIDTH, y + y1 - yd1 * WIDTH, z + z1 - zd1 * WIDTH});
+            v.coord({x + x0 - xd0 * WIDTH, y + y0 - yd0 * WIDTH, z + z0 - zd0 * WIDTH});
         }
     }
-    Renderer::End().render();
+    VertexArray::create(v, VertexArray::Primitive::QUADS).first.render();
 }
 
 void draw_block_breaking_texture(float level, float x, float y, float z) {
-    float const eps = 0.005f;
-
-    if (level <= 0.0f)
+    constexpr auto EPS = 0.005f;
+    if (level <= 0.0f) {
         return;
-    int index = int(level * 8);
-    if (index < 0)
-        index = 0;
-    if (index > 7)
-        index = 7;
+    }
+    auto index = std::clamp(int(level * 8), 0, 7);
+    auto tex = static_cast<float>(TextureIndex::BREAKING_0) + static_cast<float>(index);
 
-    if (AdvancedRender)
-        Renderer::Begin(GL_QUADS, 3, 3, 1, 3, 1);
-    else
-        Renderer::Begin(GL_QUADS, 3, 3, 1);
-    Renderer::Attrib1f(65535.0f); // For indicator elements
-    Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(TextureIndex::BREAKING_0) + static_cast<float>(index));
-    Renderer::Color3f(1.0f, 1.0f, 1.0f);
-    for (int i = 0; i < 6; i++) {
-        float const* center = centers[i];
-        float xc = center[0], yc = center[1], zc = center[2];
-        Renderer::Normal3f(xc * 2.0f, yc * 2.0f, zc * 2.0f);
-        for (int j = 0; j < 4; j++) {
-            float const* texcoord = texcoords[j];
-            float const* point = cube[i][j];
-            float u0 = texcoord[0], v0 = texcoord[1];
-            float x0 = point[0], y0 = point[1], z0 = point[2];
-            x0 += (x0 > 0.0f ? eps : -eps), y0 += (y0 > 0.0f ? eps : -eps), z0 += (z0 > 0.0f ? eps : -eps);
-            Renderer::TexCoord2f(u0, v0);
-            Renderer::Vertex3f(x + x0, y + y0, z + z0);
+    auto v = VertexArrayBuilder();
+    v.material(65535); // For indicator elements
+    v.color({255, 255, 255});
+
+    for (auto i = 0uz; i < cube.size(); i++) {
+        auto const& center = centers[i];
+        auto xc = center[0], yc = center[1], zc = center[2];
+        v.normal({xc * 2.0f, yc * 2.0f, zc * 2.0f});
+        for (auto j = 0uz; j < cube[i].size(); j++) {
+            auto const& tex_coord = tex_coords[j];
+            auto const& point = cube[i][j];
+            auto u0 = tex_coord[0], v0 = tex_coord[1];
+            auto x0 = point[0], y0 = point[1], z0 = point[2];
+            x0 += (x0 > 0.0f ? EPS : -EPS), y0 += (y0 > 0.0f ? EPS : -EPS), z0 += (z0 > 0.0f ? EPS : -EPS);
+            v.tex_coord({u0, v0, tex});
+            v.coord({x + x0, y + y0, z + z0});
         }
     }
-    Renderer::End().render();
+    VertexArray::create(v, VertexArray::Primitive::QUADS).first.render();
 }
 
 void draw_hud(worlds::World& world) {

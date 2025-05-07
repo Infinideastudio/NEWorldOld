@@ -28,8 +28,8 @@ uniform vec3 u_player_coord_frac;
 
 const float PI = 3.141593;
 const float GAMMA = 2.2;
-const int LEAF_ID = 8, GLASS_ID = 9, WATER_ID = 10, LAVA_ID = 11, GLOWSTONE_ID = 12, ICE_ID = 15, IRON_ID = 17;
-const int INDICATOR_ID = 65535;
+const uint LEAF_ID = 8u, GLASS_ID = 9u, WATER_ID = 10u, LAVA_ID = 11u, GLOWSTONE_ID = 12u, ICE_ID = 15u, IRON_ID = 17u;
+const uint INDICATOR_ID = 65535u;
 const float NOISE_TEXTURE_SIZE = 256.0;
 const vec2 NOISE_TEXTURE_OFFSET = vec2(37.0, 17.0);
 
@@ -65,10 +65,10 @@ float rand(vec2 v) {
     return fract(sin(dot(v, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-int decode_u16(vec2 v) {
-    int high = int(v.x * 255.0 + 0.5);
-    int low = int(v.y * 255.0 + 0.5);
-    return high * 256 + low;
+uint decode_u16(vec2 v) {
+    uint high = uint(v.x * 255.0 + 0.5);
+    uint low = uint(v.y * 255.0 + 0.5);
+    return high * 256u + low;
 }
 
 vec3 divide(vec4 v) {
@@ -93,7 +93,7 @@ vec3 get_scene_normal(vec2 tex_coord) {
     return normalize(texture(u_normal_buffer, tex_coord).rgb * 2.0 - vec3(1.0));
 }
 
-int get_scene_material(vec2 tex_coord) {
+uint get_scene_material(vec2 tex_coord) {
     return decode_u16(texture(u_material_buffer, tex_coord).rg);
 }
 
@@ -272,10 +272,10 @@ vec3 get_sky_color(vec3 dir) {
 }
 
 vec4 diffuse(vec2 tex_coord) {
-    int block_id_i = get_scene_material(tex_coord);
-    if (block_id_i == 0) return vec4(0.0);
+    uint block_id = get_scene_material(tex_coord);
+    if (block_id == 0u) return vec4(0.0);
     vec4 color = get_scene_diffuse(tex_coord);
-    if (block_id_i == INDICATOR_ID) return vec4(color.rgb, 1.0);
+    if (block_id == INDICATOR_ID) return vec4(color.rgb, 1.0);
     vec3 normal = get_scene_normal(tex_coord);
     vec3 translation = vec3(u_player_coord_mod) + u_player_coord_frac;
 
@@ -289,19 +289,19 @@ vec4 diffuse(vec2 tex_coord) {
     float ambient = 1.0;
     float glow = 0.0;
 
-    if (block_id_i != WATER_ID) {
+    if (block_id != WATER_ID) {
         sunlight = calc_sunlight(shadow_coord, normal);
         ambient = calc_ambient(shadow_coord, normal);
     }
 
-    if (block_id_i == GLOWSTONE_ID) glow = 5.0;
+    if (block_id == GLOWSTONE_ID) glow = 5.0;
 
     return vec4(max(vec3(3.5, 3.0, 2.9) * sunlight + vec3(0.4, 0.5, 0.8) * ambient, glow) * color.rgb, color.a);
 }
 
 vec4 diffuse_with_fade(vec2 tex_coord) {
     vec4 color = diffuse(tex_coord);
-    if (get_scene_material(tex_coord) != 0) {
+    if (get_scene_material(tex_coord) != 0u) {
         vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
         vec4 relative_coord = mvp_inverse * screen_space_coord;
         float dist = length(divide(relative_coord));
@@ -382,7 +382,7 @@ vec4 ssr(vec4 org, vec4 dir, bool inside) {
         // Check for possible intersection with scene
         float z = get_scene_depth(tex_coord);
         if (z <= next3.z) {
-            if (get_scene_material(tex_coord) != 0) {
+            if (get_scene_material(tex_coord) != 0u) {
                 // Filter out some false positives
                 vec4 relative_coord = mvp_inverse * vec4(next3.xy, z, 1.0);
                 vec4 relative_curr = mvp_inverse * vec4(curr3, 1.0);
@@ -492,13 +492,13 @@ void main() {
     vec3 color = get_sky_color(view_dir);
     color = blend(diffuse_with_fade(tex_coord), color);
 
-    int block_id_i = get_scene_material(tex_coord);
-    if (block_id_i == WATER_ID || block_id_i == ICE_ID || block_id_i == IRON_ID) {
+    uint block_id = get_scene_material(tex_coord);
+    if (block_id == WATER_ID || block_id == ICE_ID || block_id == IRON_ID) {
         vec3 reflect_origin = view_origin + divide(relative_coord);
         bool inside = dot(view_origin - reflect_origin, normal) < 0.0;
         
         // Water wave effect
-        if (block_id_i == WATER_ID && normal.y > 0.9) {
+        if (block_id == WATER_ID && normal.y > 0.9) {
             vec3 wave_normal = calc_wave_normal(reflect_origin);
 
             // Only admit wave if it does not change the relative orientation
@@ -509,7 +509,7 @@ void main() {
 
         /*
         // Glossy metal effect
-        if (block_id_i == IRON_ID) {
+        if (block_id == IRON_ID) {
             vec3 perturb = vec3(
                 rand(gl_FragCoord.xy),
                 rand(gl_FragCoord.xy + vec2(0.1, 0.0)),
@@ -537,9 +537,9 @@ void main() {
         // Fresnel-Schlick blending
         float albedo = 1.0;
         if (!inside) {
-            if (block_id_i == WATER_ID) albedo *= schlick(1.0, 1.33, cos_theta);
-            else if (block_id_i == ICE_ID) albedo *= schlick(1.0, 2.42, cos_theta);
-            else if (block_id_i == IRON_ID) reflection *= get_scene_diffuse(tex_coord).rgb * vec3(0.5);
+            if (block_id == WATER_ID) albedo *= schlick(1.0, 1.33, cos_theta);
+            else if (block_id == ICE_ID) albedo *= schlick(1.0, 2.42, cos_theta);
+            else if (block_id == IRON_ID) reflection *= get_scene_diffuse(tex_coord).rgb * vec3(0.5);
         } else {
             // TODO: make this more realistic
             albedo *= smoothstep(0.0, 1.0, 1.0 - cos_theta * cos_theta);
@@ -550,7 +550,7 @@ void main() {
     
     // Fog
     float dist = 65536.0;
-    if (block_id_i != 0) dist = length(divide(relative_coord));
+    if (block_id != 0u) dist = length(divide(relative_coord));
 #ifdef VOLUMETRIC_CLOUDS
     color = blend(cloud(view_origin, view_dir, dist, view_origin, 1.0), color);
 #endif

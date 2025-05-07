@@ -83,7 +83,7 @@ void Player::update(worlds::World& world) {
 
 auto Player::put_block(worlds::World& world, Vec3i coord, blocks::Id id) -> bool {
     auto player_aabb = aabb();
-    auto block_aabb = AABB3d(Vec3d(coord) - 0.5, Vec3d(coord) + 0.5);
+    auto block_aabb = AABB3d(Vec3d(coord), Vec3d(coord + 1));
     if ((!player_aabb.intersects(block_aabb) || !block_info(id).solid || _cross_wall)
         && !block_info(world.block_or_air(coord).id).solid) {
         world.put_block(coord, id);
