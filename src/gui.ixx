@@ -9,6 +9,7 @@ import std;
 import types;
 import math;
 import framebuffers;
+import render;
 import rendering;
 import text_rendering;
 import globals;
@@ -990,6 +991,7 @@ void Form::update() {
 void Form::render() {
     if (UIBackgroundBlur) {
         static Framebuffer fbo;
+
         float step = 2.0f;
         float upscaling = 2.0f;
         float sigma = 16.0f / upscaling;
@@ -999,6 +1001,17 @@ void Form::render() {
         if (fbo.width() != width || fbo.height() != height) {
             fbo = Framebuffer(width, height, 2, false, false, true);
         }
+
+        auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec2f>>();
+        v.tex_coord({0.0f, 1.0f});
+        v.coord({0, 0});
+        v.tex_coord({0.0f, 0.0f});
+        v.coord({0, fbo.height()});
+        v.tex_coord({1.0f, 0.0f});
+        v.coord({fbo.width(), fbo.height()});
+        v.tex_coord({1.0f, 1.0f});
+        v.coord({fbo.width(), 0});
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
 
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClearDepth(1.0f);
@@ -1019,31 +1032,13 @@ void Form::render() {
         fbo.bindTarget({1});
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         shader.setUniformI("u_filter_id", 1);
-        Renderer::Begin(GL_QUADS, 2, 2, 0);
-        Renderer::TexCoord2f(0.0f, 1.0f);
-        Renderer::Vertex2i(0, 0);
-        Renderer::TexCoord2f(0.0f, 0.0f);
-        Renderer::Vertex2i(0, fbo.height());
-        Renderer::TexCoord2f(1.0f, 0.0f);
-        Renderer::Vertex2i(fbo.width(), fbo.height());
-        Renderer::TexCoord2f(1.0f, 1.0f);
-        Renderer::Vertex2i(fbo.width(), 0);
-        Renderer::End().render();
+        va.first.render();
 
         fbo.bindColorTexture(1);
         fbo.bindTarget({0});
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         shader.setUniformI("u_filter_id", 2);
-        Renderer::Begin(GL_QUADS, 2, 2, 0);
-        Renderer::TexCoord2f(0.0f, 1.0f);
-        Renderer::Vertex2i(0, 0);
-        Renderer::TexCoord2f(0.0f, 0.0f);
-        Renderer::Vertex2i(0, fbo.height());
-        Renderer::TexCoord2f(1.0f, 0.0f);
-        Renderer::Vertex2i(fbo.width(), fbo.height());
-        Renderer::TexCoord2f(1.0f, 1.0f);
-        Renderer::Vertex2i(fbo.width(), 0);
-        Renderer::End().render();
+        va.first.render();
 
         fbo.bindColorTexture(0);
         fbo.unbindTarget();

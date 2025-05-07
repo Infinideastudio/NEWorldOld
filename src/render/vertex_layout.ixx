@@ -273,7 +273,7 @@ public:
     static constexpr auto ATTRIB_OFFSETS = _prefix_sum(ATTRIB_SIZES);
     static constexpr auto VERTEX_SIZE = _sum(ATTRIB_SIZES);
 
-    // `Attrib[i]::type` gives the type of the i-th attribute.
+    // `Attrib<i>::type` gives the type of the i-th attribute.
     template <size_t I>
     using Attrib = _choose<I, T...>;
 
@@ -325,6 +325,9 @@ struct _find<I, W, W<T>, U...> {
     static constexpr auto index = I;
 };
 
+template <typename... T>
+concept has_coord_attrib = requires { typename _find<0, Coord, T...>::type; };
+
 // A vertex array on the CPU side.
 //
 // Example usage:
@@ -351,16 +354,22 @@ export template <typename... T>
 requires (vertex_attrib_type<T> && ...)
 class VertexArrayBuilder {
 public:
-    // `Attrib[i]::type` gives the type of the i-th attribute.
+    // `Attrib<i>::type` gives the type of the i-th attribute.
     template <size_t I>
     using Attrib = _choose<I, T...>;
 
     // These are only enabled if the corresponding semantic wrapper is found in `T`.
-    using CoordAttrib = _find<0, Coord, T...>;
-    using TexCoordAttrib = _find<0, TexCoord, T...>;
-    using ColorAttrib = _find<0, Color, T...>;
-    using NormalAttrib = _find<0, Normal, T...>;
-    using MaterialAttrib = _find<0, Material, T...>;
+    // The additional template parameter `I = 0` delays instantiation to make SFINAE work.
+    template <size_t I>
+    using CoordAttrib = _find<I, Coord, T...>;
+    template <size_t I>
+    using TexCoordAttrib = _find<I, TexCoord, T...>;
+    template <size_t I>
+    using ColorAttrib = _find<I, Color, T...>;
+    template <size_t I>
+    using NormalAttrib = _find<I, Normal, T...>;
+    template <size_t I>
+    using MaterialAttrib = _find<I, Material, T...>;
 
     VertexArrayBuilder() = default;
 
@@ -386,24 +395,25 @@ public:
 
     // Some convenience functions wrapping `set_attrib()`.
     // These are only enabled if the corresponding semantic wrapper is found in `T`.
-    void coord(CoordAttrib::type attr, bool make_vertex = true) {
-        set_attrib<CoordAttrib::index>(attr, make_vertex);
+    template <size_t I = 0, typename = CoordAttrib<I>::type>
+    void coord(CoordAttrib<I>::type attr, bool make_vertex = true) {
+        set_attrib<CoordAttrib<I>::index>(attr, make_vertex);
     }
-
-    void tex_coord(TexCoordAttrib::type attr, bool make_vertex = false) {
-        set_attrib<TexCoordAttrib::index>(attr, make_vertex);
+    template <size_t I = 0, typename = TexCoordAttrib<I>::type>
+    void tex_coord(TexCoordAttrib<I>::type attr, bool make_vertex = false) {
+        set_attrib<TexCoordAttrib<I>::index>(attr, make_vertex);
     }
-
-    void color(ColorAttrib::type attr, bool make_vertex = false) {
-        set_attrib<ColorAttrib::index>(attr, make_vertex);
+    template <size_t I = 0, typename = ColorAttrib<I>::type>
+    void color(ColorAttrib<I>::type attr, bool make_vertex = false) {
+        set_attrib<ColorAttrib<I>::index>(attr, make_vertex);
     }
-
-    void normal(NormalAttrib::type attr, bool make_vertex = false) {
-        set_attrib<NormalAttrib::index>(attr, make_vertex);
+    template <size_t I = 0, typename = NormalAttrib<I>::type>
+    void normal(NormalAttrib<I>::type attr, bool make_vertex = false) {
+        set_attrib<NormalAttrib<I>::index>(attr, make_vertex);
     }
-
-    void material(MaterialAttrib::type attr, bool make_vertex = false) {
-        set_attrib<MaterialAttrib::index>(attr, make_vertex);
+    template <size_t I = 0, typename = MaterialAttrib<I>::type>
+    void material(MaterialAttrib<I>::type attr, bool make_vertex = false) {
+        set_attrib<MaterialAttrib<I>::index>(attr, make_vertex);
     }
 
 private:

@@ -750,6 +750,17 @@ void render_scene(worlds::World& world) {
 
     // Full screen passes
     if (AdvancedRender) {
+        auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec2f>>();
+        v.tex_coord({0.0f, 1.0f});
+        v.coord({0, 0});
+        v.tex_coord({0.0f, 0.0f});
+        v.coord({0, WindowHeight});
+        v.tex_coord({1.0f, 0.0f});
+        v.coord({WindowWidth, WindowHeight});
+        v.tex_coord({1.0f, 1.0f});
+        v.coord({WindowWidth, 0});
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+
         Renderer::StartFinalPass(
             view_coord.x(),
             view_coord.y(),
@@ -758,16 +769,7 @@ void render_scene(worlds::World& world) {
             shadowMatrix,
             interpolatedTime
         );
-        Renderer::Begin(GL_QUADS, 2, 2, 0);
-        Renderer::TexCoord2f(0.0f, 1.0f);
-        Renderer::Vertex2i(0, 0);
-        Renderer::TexCoord2f(0.0f, 0.0f);
-        Renderer::Vertex2i(0, WindowHeight);
-        Renderer::TexCoord2f(1.0f, 0.0f);
-        Renderer::Vertex2i(WindowWidth, WindowHeight);
-        Renderer::TexCoord2f(1.0f, 1.0f);
-        Renderer::Vertex2i(WindowWidth, 0);
-        Renderer::End().render();
+        va.first.render();
         Renderer::EndFinalPass();
     }
 
@@ -783,21 +785,23 @@ void render_scene(worlds::World& world) {
 
     auto int_view_coord = view_coord.floor<int32_t>();
     if (world.block_or_air(int_view_coord).id == base_blocks().water) {
+        auto tex = static_cast<float>(Textures::getTextureIndex(base_blocks().water, 0));
+        auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>();
+        v.color({255, 255, 255, 255});
+        v.tex_coord({0.0f, 1.0f, tex});
+        v.coord({0, 0});
+        v.tex_coord({0.0f, 0.0f, tex});
+        v.coord({0, WindowHeight});
+        v.tex_coord({1.0f, 0.0f, tex});
+        v.coord({WindowWidth, WindowHeight});
+        v.tex_coord({1.0f, 1.0f, tex});
+        v.coord({WindowWidth, 0});
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+
         auto& shader = Renderer::shaders[Renderer::UIShader];
         shader.bind();
         glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
-        Renderer::Begin(GL_QUADS, 2, 3, 4);
-        Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-        Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(base_blocks().water, 0)));
-        Renderer::TexCoord2f(0.0f, 1.0f);
-        Renderer::Vertex2i(0, 0);
-        Renderer::TexCoord2f(0.0f, 0.0f);
-        Renderer::Vertex2i(0, WindowHeight);
-        Renderer::TexCoord2f(1.0f, 0.0f);
-        Renderer::Vertex2i(WindowWidth, WindowHeight);
-        Renderer::TexCoord2f(1.0f, 1.0f);
-        Renderer::Vertex2i(WindowWidth, 0);
-        Renderer::End().render();
+        va.first.render();
         shader.unbind();
     }
 
@@ -1020,20 +1024,22 @@ void draw_hud(worlds::World& world) {
         float xa = 1.0f;
         float ya = 0.0f;
 
+        auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec2f>>();
+        v.tex_coord({0.0f, 1.0f});
+        v.coord({xi, yi});
+        v.tex_coord({0.0f, 0.0f});
+        v.coord({xi, ya});
+        v.tex_coord({1.0f, 0.0f});
+        v.coord({xa, ya});
+        v.tex_coord({1.0f, 1.0f});
+        v.coord({xa, yi});
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+
         Renderer::shadow.bindDepthTexture(0);
         auto& shader = Renderer::shaders[Renderer::DebugShadowShader];
         shader.bind();
         shader.setUniformI("u_shadow_texture", 0);
-        Renderer::Begin(GL_QUADS, 2, 2, 0);
-        Renderer::TexCoord2f(0.0f, 1.0f);
-        Renderer::Vertex2f(xi, yi);
-        Renderer::TexCoord2f(0.0f, 0.0f);
-        Renderer::Vertex2f(xi, ya);
-        Renderer::TexCoord2f(1.0f, 0.0f);
-        Renderer::Vertex2f(xa, ya);
-        Renderer::TexCoord2f(1.0f, 1.0f);
-        Renderer::Vertex2f(xa, yi);
-        Renderer::End().render();
+        va.first.render();
         shader.unbind();
     }
 
@@ -1131,7 +1137,6 @@ void draw_hud(worlds::World& world) {
 
 void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, int ybase, int spac, float alpha) {
     // 画出背包的一行
-    auto& shader = Renderer::shaders[Renderer::UIShader];
     for (int i = 0; i < 10; i++) {
         glBindTexture(GL_TEXTURE_2D, i == itemid ? SelectedTexture : UnselectedTexture);
         glBegin(GL_QUADS);
@@ -1148,20 +1153,23 @@ void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, 
 
         auto& item = player.inventory_item_stack(row, i);
         if (!item.empty()) {
+            auto tex = static_cast<float>(Textures::getTextureIndex(item.id, 0));
+            auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>();
+            v.color({255, 255, 255, 255});
+            v.tex_coord({0.0f, 1.0f, tex});
+            v.coord({xbase + i * (32 + spac) + 2, ybase + 2});
+            v.tex_coord({0.0f, 0.0f, tex});
+            v.coord({xbase + i * (32 + spac) + 2, ybase + 30});
+            v.tex_coord({1.0f, 0.0f, tex});
+            v.coord({xbase + i * (32 + spac) + 30, ybase + 30});
+            v.tex_coord({1.0f, 1.0f, tex});
+            v.coord({xbase + i * (32 + spac) + 30, ybase + 2});
+            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+
+            auto& shader = Renderer::shaders[Renderer::UIShader];
             shader.bind();
             glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
-            Renderer::Begin(GL_QUADS, 2, 3, 4);
-            Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-            Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(item.id, 0)));
-            Renderer::TexCoord2f(0.0f, 1.0f);
-            Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 2);
-            Renderer::TexCoord2f(0.0f, 0.0f);
-            Renderer::Vertex2i(xbase + i * (32 + spac) + 2, ybase + 30);
-            Renderer::TexCoord2f(1.0f, 0.0f);
-            Renderer::Vertex2i(xbase + i * (32 + spac) + 30, ybase + 30);
-            Renderer::TexCoord2f(1.0f, 1.0f);
-            Renderer::Vertex2i(xbase + i * (32 + spac) + 30, ybase + 2);
-            Renderer::End().render();
+            va.first.render();
             shader.unbind();
 
             TextRenderer::render_string(xbase + i * (32 + spac), ybase, std::to_string(item.count));
@@ -1250,21 +1258,23 @@ void draw_inventory(player::Player& player) {
         }
 
         if (itemSelected.id != base_blocks().air) {
+            auto tex = static_cast<float>(Textures::getTextureIndex(itemSelected.id, 0));
+            auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>();
+            v.color({255, 255, 255, 255});
+            v.tex_coord({0.0f, 1.0f, tex});
+            v.coord({mx - 16, my - 16});
+            v.tex_coord({0.0f, 0.0f, tex});
+            v.coord({mx - 16, my + 16});
+            v.tex_coord({1.0f, 0.0f, tex});
+            v.coord({mx + 16, my + 16});
+            v.tex_coord({1.0f, 1.0f, tex});
+            v.coord({mx + 16, my - 16});
+            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+
             auto& shader = Renderer::shaders[Renderer::UIShader];
             shader.bind();
             glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
-            Renderer::Begin(GL_QUADS, 2, 3, 4);
-            Renderer::Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-            Renderer::TexCoord3f(0.0f, 0.0f, static_cast<float>(Textures::getTextureIndex(itemSelected.id, 0)));
-            Renderer::TexCoord2f(0.0f, 1.0f);
-            Renderer::Vertex2i(mx - 16, my - 16);
-            Renderer::TexCoord2f(0.0f, 0.0f);
-            Renderer::Vertex2i(mx - 16, my + 16);
-            Renderer::TexCoord2f(1.0f, 0.0f);
-            Renderer::Vertex2i(mx + 16, my + 16);
-            Renderer::TexCoord2f(1.0f, 1.0f);
-            Renderer::Vertex2i(mx + 16, my - 16);
-            Renderer::End().render();
+            va.first.render();
             shader.unbind();
 
             TextRenderer::render_string((int) mx - 16, (int) my - 16, std::to_string(itemSelected.count));
