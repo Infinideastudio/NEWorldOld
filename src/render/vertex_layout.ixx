@@ -5,9 +5,8 @@ module;
 export module render:vertex_layout;
 import std;
 import types;
+import debug;
 import math;
-import :buffer;
-import :vertex_array;
 
 namespace render {
 
@@ -131,11 +130,11 @@ concept is_vertex_attrib_type = requires (T t) {
     //     GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT, GL_INT, GL_UNSIGNED_INT,
     //     GL_HALF_FLOAT, GL_FLOAT, GL_DOUBLE, GL_FIXED, GL_INT_2_10_10_10_REV,
     //     GL_UNSIGNED_INT_2_10_10_10_REV, GL_UNSIGNED_INT_10F_11F_11F_REV.
-    vertex_attrib_type<T>::base_type;
+    { vertex_attrib_type<T>::base_type } -> std::convertible_to<GLenum>;
 
     // Number of base components.
     // Must be 1, 2, 3 or 4.
-    vertex_attrib_type<T>::elem_count;
+    { vertex_attrib_type<T>::elem_count } -> std::convertible_to<GLint>;
 };
 
 // Returns if the GL type name should be passed as integers to shaders.
@@ -155,12 +154,13 @@ constexpr auto use_vertex_attrib_l_pointer(GLenum type) -> bool {
     return type == GL_DOUBLE;
 }
 
-// Wraps a vertex attribute type with a semantic name.
-// Thes names are merely used for convenience in the API.
+// Transparently wraps a vertex attribute type with a semantic name.
+// These names are merely used to provide convenience in the API.
 export template <typename T>
 requires is_vertex_attrib_type<T>
 struct Coord {
     T value;
+
     Coord() = default;
     Coord(T value):
         value(value) {}
@@ -174,6 +174,7 @@ export template <typename T>
 requires is_vertex_attrib_type<T>
 struct TexCoord {
     T value;
+
     TexCoord() = default;
     TexCoord(T value):
         value(value) {}
@@ -187,6 +188,7 @@ export template <typename T>
 requires is_vertex_attrib_type<T>
 struct Color {
     T value;
+
     Color() = default;
     Color(T value):
         value(value) {}
@@ -200,6 +202,7 @@ export template <typename T>
 requires is_vertex_attrib_type<T>
 struct Normal {
     T value;
+
     Normal() = default;
     Normal(T value):
         value(value) {}
@@ -213,6 +216,7 @@ export template <typename T>
 requires is_vertex_attrib_type<T>
 struct Material {
     T value;
+
     Material() = default;
     Material(T value):
         value(value) {}
@@ -258,10 +262,11 @@ export template <typename... T>
 requires (is_vertex_attrib_type<T> && ...)
 class Vertex {
 public:
-    static constexpr auto ATTRIB_BASE_TYPES = std::array{vertex_attrib_type<T>::base_type...};
-    static constexpr auto ATTRIB_ELEM_COUNTS = std::array{vertex_attrib_type<T>::elem_count...};
-    static constexpr auto ATTRIB_SIZES = std::array{size_t{sizeof(T)}...};
+    static constexpr auto ATTRIB_BASE_TYPES = std::array{static_cast<GLenum>(vertex_attrib_type<T>::base_type)...};
+    static constexpr auto ATTRIB_ELEM_COUNTS = std::array{static_cast<GLint>(vertex_attrib_type<T>::elem_count)...};
+    static constexpr auto ATTRIB_SIZES = std::array{sizeof(T)...};
     static constexpr auto ATTRIB_OFFSETS = _prefix_sum(ATTRIB_SIZES);
+    static constexpr auto VERTEX_SIZE = _sum(ATTRIB_SIZES);
 
     template <size_t I>
     using Attrib = typename _choose<I, T...>::type;
@@ -295,8 +300,13 @@ public:
     }
 
 private:
-    std::array<std::byte, _sum(ATTRIB_SIZES)> _data = {};
+    std::array<std::byte, VERTEX_SIZE> _data = {};
 };
+
+// Note that `Vertex` has the alignment of 1 byte, and the size of all its attribute sizes summed.
+// A contiguous array of `Vertex` will be tightly packed.
+static_assert(alignof(Vertex<int32_t, Vec3f, float>) == 1);
+static_assert(sizeof(Vertex<int32_t, Vec3f, float>) == sizeof(int32_t) + sizeof(Vec3f) + sizeof(float));
 
 // Finds the first element in the list <T...> that is wrapped by a semantic wrapper W.
 template <size_t I, template <typename> typename W, typename... T>
@@ -312,6 +322,27 @@ struct _find<I, W, W<T>, U...> {
 };
 
 // A vertex array on the CPU side.
+//
+// Example usage:
+//
+// ```
+// auto builder = VertexArrayBuilder<int32_t, Vec3f, float>();
+// builder.set_attrib<0>(1);
+// builder.set_attrib<1>({1.0f, 2.0f, 3.0f});
+// builder.set_attrib<2>(0.5f);
+// builder.make_vertex();
+// ```
+//
+// Example with semantic wrappers:
+//
+// ```
+// auto builder = VertexArrayBuilder<Coord<Vec3f>, TexCoord<Vec2f>, Color<Vec4i>>();
+// builder.color({255, 0, 0, 255});
+// builder.tex_coord({0.5f, 0.5f});
+// builder.coord({0.0f, 0.0f, 0.0f});
+// builder.coord({1.0f, 0.0f, 0.0f});
+// builder.coord({1.0f, 1.0f, 0.0f});
+// ```
 export template <typename... T>
 requires (is_vertex_attrib_type<T> && ...)
 class VertexArrayBuilder {
@@ -327,12 +358,8 @@ public:
 
     VertexArrayBuilder() = default;
 
-    auto data() const -> std::span<std::byte const> {
-        return std::as_bytes(std::span(_vertices));
-    }
-
-    auto size() const -> size_t {
-        return _vertices.size();
+    auto vertices() const -> std::vector<Vertex<T...>> const& {
+        return _vertices;
     }
 
     void make_vertex() {
@@ -347,6 +374,7 @@ public:
         }
     }
 
+    // Some convenience functions wrapping `set_attrib()`.
     void coord(CoordAttrib::type attr, bool make_vertex = true) {
         set_attrib<CoordAttrib::index>(attr, make_vertex);
     }
@@ -365,37 +393,6 @@ public:
 
     void material(MaterialAttrib::type attr, bool make_vertex = false) {
         set_attrib<MaterialAttrib::index>(attr, make_vertex);
-    }
-
-    // Compatibility method.
-    auto vertex_array() -> std::pair<VertexArray, Buffer> {
-        auto bytes = data();
-        auto buffer = Buffer::create(bytes.size(), Buffer::Usage::WRITE, Buffer::Update::INFREQUENT);
-        buffer.write(bytes, 0);
-
-        auto handle = GLuint{0};
-        glGenVertexArrays(1, &handle);
-        glBindVertexArray(handle);
-        buffer.bind(Buffer::Target::VERTEX);
-
-        for (auto i = 0; i < sizeof...(T); i++) {
-            auto index = static_cast<GLuint>(i);
-            auto elem_count = static_cast<GLint>(_vertex.ATTRIB_ELEM_COUNTS[i]);
-            auto base_type = static_cast<GLenum>(_vertex.ATTRIB_BASE_TYPES[i]);
-            auto stride = static_cast<GLsizei>(_vertex.size());
-            auto offset = reinterpret_cast<void const*>(_vertex.ATTRIB_OFFSETS[i]);
-
-            glEnableVertexAttribArray(index);
-            if (use_vertex_attrib_i_pointer(base_type)) {
-                glVertexAttribIPointer(index, elem_count, base_type, stride, offset);
-            } else if (use_vertex_attrib_pointer(base_type)) {
-                glVertexAttribPointer(index, elem_count, base_type, GL_FALSE, stride, offset);
-            } else if (use_vertex_attrib_l_pointer(base_type)) {
-                glVertexAttribLPointer(index, elem_count, base_type, stride, offset);
-            }
-        }
-
-        return {VertexArray(handle, GL_QUADS, _vertices.size()), std::move(buffer)};
     }
 
 private:
