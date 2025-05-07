@@ -31,7 +31,7 @@ void update_thread_func(std::stop_token stop_token, worlds::World& world);
 void game_update(worlds::World& world);
 void frame_linked_update(worlds::World& world);
 
-void render(worlds::World& world);
+void render_scene(worlds::World& world);
 void readback(worlds::World& world);
 void draw_block_selection_border(float x, float y, float z);
 void draw_block_breaking_texture(float level, float x, float y, float z);
@@ -157,7 +157,7 @@ export int main() {
             glfwSwapBuffers(MainWindow); // 屏幕刷新，千万别删，后果自负！！！
             update_mutex.lock();
             readback(world);
-            render(world);
+            render_scene(world);
             fpsc++;
 
             // 检测帧速率
@@ -651,7 +651,7 @@ void frame_linked_update(worlds::World& world) {
 }
 
 // Render the whole scene and HUD
-void render(worlds::World& world) {
+void render_scene(worlds::World& world) {
     float const SkyColorR = 0.70f;
     float const SkyColorG = 0.80f;
     float const SkyColorB = 0.86f;
