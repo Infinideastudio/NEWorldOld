@@ -1,8 +1,6 @@
 module;
 
 #include <glad/gl.h>
-#include "kls/temp/STL.h"
-
 #undef assert
 
 export module rendering;
@@ -27,8 +25,6 @@ enum Shaders {
     DebugShadowShader
 };
 
-class VertexBuilder;
-
 double sunlightPitch = 30.0;
 double sunlightHeading = 60.0;
 std::vector<Shader> shaders;
@@ -38,354 +34,16 @@ constexpr int gBufferCount = 3;
 int gWidth, gHeight;
 Framebuffer shadow, gBuffers, dBuffer;
 
-class VertexBuffer {
-public:
-    VertexBuffer():
-        vao(0),
-        vbo(0),
-        primitive(GL_TRIANGLES),
-        numVertices(0) {}
-    VertexBuffer(VertexBuffer const&) = delete;
-    VertexBuffer(VertexBuffer&& from) noexcept:
-        VertexBuffer() {
-        swap(*this, from);
-    }
-    auto operator=(VertexBuffer const&) -> VertexBuffer& = delete;
-    auto operator=(VertexBuffer&& from) noexcept -> VertexBuffer& {
-        swap(*this, from);
-        return *this;
-    }
-
-    ~VertexBuffer() {
-        if (vbo != 0)
-            glDeleteBuffers(1, &vbo);
-        if (vao != 0)
-            glDeleteVertexArrays(1, &vao);
-    }
-
-    friend void swap(VertexBuffer& first, VertexBuffer& second) noexcept {
-        using std::swap;
-        swap(first.vao, second.vao);
-        swap(first.vbo, second.vbo);
-        swap(first.primitive, second.primitive);
-        swap(first.numVertices, second.numVertices);
-    }
-
-    bool empty() const {
-        return vao == 0 || vbo == 0 || numVertices == 0;
-    }
-    void render() const;
-
-private:
-    friend class VertexBuilder;
-    GLuint vao;
-    GLuint vbo;
-    GLenum primitive;
-    GLuint numVertices;
-};
-
-class VertexBuilder {
-public:
-    VertexBuilder(GLenum primitive, int coords, int texCoords, int colors, int normals = 0, int attributes = 0):
-        _primitive(primitive),
-        _cnt_coord(coords),
-        _cnt_tex(texCoords),
-        _cnt_col(colors),
-        _cnt_normal(normals),
-        _cnt_attr(attributes) {
-        VertexArray.reserve(1024);
-    }
-
-    VertexBuilder(VertexBuffer const&) = delete;
-    auto operator=(VertexBuilder const&) -> VertexBuilder& = delete;
-    VertexBuilder(VertexBuilder&& from) noexcept = delete;
-    auto operator=(VertexBuilder&& from) noexcept -> VertexBuilder& = delete;
-
-    void Vertex2i(int x, int y) {
-        Vertex2f(static_cast<float>(x), static_cast<float>(y));
-    }
-
-    void Vertex1f(float x) {
-        _coord[0] = x;
-        addVertex();
-    }
-
-    void Vertex2f(float x, float y) {
-        _coord[0] = x;
-        _coord[1] = y;
-        addVertex();
-    }
-
-    void Vertex3f(float x, float y, float z) {
-        _coord[0] = x;
-        _coord[1] = y;
-        _coord[2] = z;
-        addVertex();
-    }
-
-    void Vertex4f(float x, float y, float z, float w) {
-        _coord[0] = x;
-        _coord[1] = y;
-        _coord[2] = z;
-        _coord[3] = w;
-        addVertex();
-    }
-
-    void TexCoord1f(float s) {
-        _tex[0] = s;
-    }
-
-    void TexCoord2f(float s, float t) {
-        _tex[0] = s;
-        _tex[1] = t;
-    }
-
-    void TexCoord3f(float s, float t, float u) {
-        _tex[0] = s;
-        _tex[1] = t;
-        _tex[2] = u;
-    }
-
-    void TexCoord4f(float s, float t, float u, float v) {
-        _tex[0] = s;
-        _tex[1] = t;
-        _tex[2] = u;
-        _tex[3] = v;
-    }
-
-    void Color1f(float r) {
-        _col[0] = r;
-    }
-
-    void Color2f(float r, float g) {
-        _col[0] = r;
-        _col[1] = g;
-    }
-
-    void Color3f(float r, float g, float b) {
-        _col[0] = r;
-        _col[1] = g;
-        _col[2] = b;
-    }
-
-    void Color4f(float r, float g, float b, float a) {
-        _col[0] = r;
-        _col[1] = g;
-        _col[2] = b;
-        _col[3] = a;
-    }
-
-    void Normal3f(float x, float y, float z) {
-        _normal[0] = x;
-        _normal[1] = y;
-        _normal[2] = z;
-    }
-
-    void Attrib1f(float a) noexcept {
-        _attr[0] = a;
-    }
-
-    auto End(bool staticDraw = false) -> VertexBuffer {
-        VertexBuffer res;
-        res.primitive = _primitive;
-        res.numVertices = _cnt_vertices;
-
-        int vc = _cnt_coord, tc = _cnt_tex, cc = _cnt_col, nc = _cnt_normal, ac = _cnt_attr;
-        int cnt = vc + tc + cc + nc + ac;
-
-        glGenVertexArrays(1, &res.vao);
-        glBindVertexArray(res.vao);
-
-        glGenBuffers(1, &res.vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, res.vbo);
-        glBufferData(
-            GL_ARRAY_BUFFER,
-            _cnt_vertices * (cnt * sizeof(float)),
-            VertexArray.data(),
-            staticDraw ? GL_STATIC_DRAW : GL_STREAM_DRAW
-        );
-
-        GLuint arrays = 0;
-        if (vc > 0) {
-            glEnableVertexAttribArray(arrays);
-            glVertexAttribPointer(arrays++, vc, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float*) (0 * sizeof(float)));
-        }
-        if (tc > 0) {
-            glEnableVertexAttribArray(arrays);
-            glVertexAttribPointer(arrays++, tc, GL_FLOAT, GL_FALSE, cnt * sizeof(float), (float*) (vc * sizeof(float)));
-        }
-        if (cc > 0) {
-            glEnableVertexAttribArray(arrays);
-            glVertexAttribPointer(
-                arrays++,
-                cc,
-                GL_FLOAT,
-                GL_FALSE,
-                cnt * sizeof(float),
-                (float*) ((vc + tc) * sizeof(float))
-            );
-        }
-        if (nc > 0) {
-            glEnableVertexAttribArray(arrays);
-            glVertexAttribPointer(
-                arrays++,
-                nc,
-                GL_FLOAT,
-                GL_FALSE,
-                cnt * sizeof(float),
-                (float*) ((vc + tc + cc) * sizeof(float))
-            );
-        }
-        if (ac > 0) {
-            glEnableVertexAttribArray(arrays);
-            glVertexAttribPointer(
-                arrays++,
-                ac,
-                GL_FLOAT,
-                GL_FALSE,
-                cnt * sizeof(float),
-                (float*) ((vc + tc + cc + nc) * sizeof(float))
-            );
-        }
-        return res;
-    }
-private:
-    GLenum _primitive;
-    int _cnt_vertices = 0, _cnt_coord, _cnt_tex, _cnt_col, _cnt_normal, _cnt_attr;
-    std::array<float, 4> _coord{}, _tex{}, _col{}, _normal{}, _attr{};
-    kls::temp::vector<float> VertexArray;
-
-    void addVertex() {
-        _cnt_vertices++;
-        if (_cnt_coord != 0)
-            addData(kls::Span(_coord.data(), _cnt_coord));
-        if (_cnt_tex != 0)
-            addData(kls::Span(_tex.data(), _cnt_tex));
-        if (_cnt_col != 0)
-            addData(kls::Span(_col.data(), _cnt_col));
-        if (_cnt_normal != 0)
-            addData(kls::Span(_normal.data(), _cnt_normal));
-        if (_cnt_attr != 0)
-            addData(kls::Span(_attr.data(), _cnt_attr));
-    }
-
-    void addData(kls::Span<float> data) {
-        VertexArray.insert(VertexArray.end(), data.begin(), data.end());
-    }
-};
-
-std::optional<VertexBuilder> GlobalBuilder = std::nullopt;
-
-void Begin(GLenum primitive, int coords, int texCoords, int colors, int normals = 0, int attributes = 0);
-void Vertex2i(int x, int y);
-void Vertex2f(float x, float y);
-void Vertex3f(float x, float y, float z);
-void TexCoord2f(float x, float y);
-void TexCoord3f(float x, float y, float z);
-void Color3f(float r, float g, float b);
-void Color4f(float r, float g, float b, float a);
-void Normal3f(float x, float y, float z);
-void Attrib1f(float attr);
-
-inline auto End(bool staticDraw = false) -> VertexBuffer {
-    auto res = GlobalBuilder.value().End(staticDraw);
-    GlobalBuilder = std::nullopt;
-    return res;
-}
-
-inline void bindShader(int shaderID) {
+void bindShader(int shaderID) {
     shaders[shaderID].bind();
     ActiveShader = shaderID;
 }
 
-inline auto getShadowDistance() -> int {
+auto getShadowDistance() -> int {
     return std::min(MaxShadowDistance, RenderDistance);
 }
-auto getShadowMatrix() -> Mat4f;
-auto getShadowMatrixExperimental(float fov, float aspect, double heading, double pitch) -> Mat4f;
 
-void ClearSGDBuffers();
-void StartShadowPass(Mat4f const& shadowMatrix, float gameTime);
-void EndShadowPass();
-void StartOpaquePass(Mat4f const& viewMatrix, float gametime);
-void EndOpaquePass();
-void StartTranslucentPass(Mat4f const& viewMatrix, float gametime);
-void EndTranslucentPass();
-void StartFinalPass(
-    double xpos,
-    double ypos,
-    double zpos,
-    Mat4f const& viewMatrix,
-    Mat4f const& shadowMatrix,
-    float gameTime
-);
-void EndFinalPass();
-
-void Begin(GLenum primitive, int coords, int texCoords, int colors, int normals, int attributes) {
-    GlobalBuilder.emplace(primitive, coords, texCoords, colors, normals, attributes);
-}
-
-void Vertex2i(int x, int y) {
-    GlobalBuilder.value().Vertex2i(x, y);
-}
-
-void Vertex1f(float x) {
-    GlobalBuilder.value().Vertex1f(x);
-}
-
-void Vertex2f(float x, float y) {
-    GlobalBuilder.value().Vertex2f(x, y);
-}
-
-void Vertex3f(float x, float y, float z) {
-    GlobalBuilder.value().Vertex3f(x, y, z);
-}
-
-void Vertex4f(float x, float y, float z, float w) {
-    GlobalBuilder.value().Vertex4f(x, y, z, w);
-}
-
-void TexCoord1f(float s) {
-    GlobalBuilder.value().TexCoord1f(s);
-}
-
-void TexCoord2f(float s, float t) {
-    GlobalBuilder.value().TexCoord2f(s, t);
-}
-
-void TexCoord3f(float s, float t, float u) {
-    GlobalBuilder.value().TexCoord3f(s, t, u);
-}
-
-void TexCoord4f(float s, float t, float u, float v) {
-    GlobalBuilder.value().TexCoord4f(s, t, u, v);
-}
-
-void Color1f(float r) {
-    GlobalBuilder.value().Color1f(r);
-}
-
-void Color2f(float r, float g) {
-    GlobalBuilder.value().Color2f(r, g);
-}
-
-void Color3f(float r, float g, float b) {
-    GlobalBuilder.value().Color3f(r, g, b);
-}
-
-void Color4f(float r, float g, float b, float a) {
-    GlobalBuilder.value().Color4f(r, g, b, a);
-}
-
-void Normal3f(float x, float y, float z) {
-    GlobalBuilder.value().Normal3f(x, y, z);
-}
-
-void Attrib1f(float a) {
-    GlobalBuilder.value().Attrib1f(a);
-}
-
-GLuint getNoiseTexture() {
+auto getNoiseTexture() -> GLuint {
     static GLuint noiseTex = 0;
     if (noiseTex == 0) {
         auto a = std::make_unique<uint8_t[]>(256 * 256 * 4);
@@ -477,7 +135,7 @@ void init_shaders(bool reload = false) {
     Shader::unbind();
 }
 
-Mat4f getShadowMatrix() {
+auto getShadowMatrix() -> Mat4f {
     auto length = static_cast<float>(getShadowDistance() * 16);
     auto res = Mat4f(1.0f);
     res = Mat4f::rotate(-static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * res;
@@ -486,7 +144,7 @@ Mat4f getShadowMatrix() {
     return res;
 }
 
-Mat4f getShadowMatrixExperimental(float fov, float aspect, Eulerf orientation) {
+auto getShadowMatrixExperimental(float fov, float aspect, Eulerf orientation) -> Mat4f {
     auto length = static_cast<float>(getShadowDistance() * 16);
     auto res = Mat4f(1.0f);
     res = Mat4f::rotate(-static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * res;
@@ -673,8 +331,4 @@ void EndFinalPass() {
     Shader::unbind();
 }
 
-void VertexBuffer::render() const {
-    glBindVertexArray(vao);
-    glDrawArrays(primitive, 0, numVertices);
-}
 }
