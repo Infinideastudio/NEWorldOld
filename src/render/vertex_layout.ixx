@@ -455,8 +455,8 @@ public:
 
     // Primitive restart index.
     // When cast to narrower types, this will become the fixed primitive restart indices
-    // (`0xFF` for `GL_UNSIGNED_BYTE`, `0xFFFF` for `GL_UNSIGNED_SHORT`, etc.)
-    static constexpr auto PRIMITIVE_RESTART_INDEX = std::numeric_limits<size_t>::max();
+    // i.e. `0xFF` for `uint8_t` and `0xFFFF` for `uint16_t`.
+    static constexpr auto PRIMITIVE_RESTART_INDEX = std::numeric_limits<uint32_t>::max();
 
     VertexArrayIndexedBuilder() = default;
 
@@ -464,13 +464,14 @@ public:
         return _vertices;
     }
 
-    auto indices() const -> std::vector<size_t> const& {
+    auto indices() const -> std::vector<uint32_t> const& {
         return _indices;
     }
 
     // Appends a new vertex with a new index to the arrays.
     void make_vertex() {
-        _indices.push_back(_vertices.size());
+        assert(_vertices.size() < PRIMITIVE_RESTART_INDEX, "vertex array too large");
+        _indices.push_back(static_cast<uint32_t>(_vertices.size()));
         _vertices.emplace_back(_vertex);
     }
 
@@ -478,7 +479,7 @@ public:
     // The last inserted vertex has relative index 0.
     void repeat_vertex(size_t relative) {
         assert(relative + 1 <= _vertices.size(), "index out of bounds");
-        _indices.push_back(_vertices.size() - (relative + 1));
+        _indices.push_back(static_cast<uint32_t>(_vertices.size() - (relative + 1)));
     }
 
     // Appends the primitive restart index.
@@ -490,7 +491,8 @@ public:
     void set_attrib(Attrib<I>::type attr, bool make_vertex = false) {
         _vertex.template set_attrib<I>(attr);
         if (make_vertex) {
-            _indices.push_back(_vertices.size());
+            assert(_vertices.size() < PRIMITIVE_RESTART_INDEX, "vertex array too large");
+            _indices.push_back(static_cast<uint32_t>(_vertices.size()));
             _vertices.emplace_back(_vertex);
         }
     }
@@ -521,7 +523,7 @@ public:
 private:
     Vertex<Layout> _vertex;
     std::vector<Vertex<Layout>> _vertices;
-    std::vector<size_t> _indices;
+    std::vector<uint32_t> _indices;
 };
 
 }

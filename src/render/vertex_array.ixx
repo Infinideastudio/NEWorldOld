@@ -176,8 +176,9 @@ public:
         auto vertices_bytes = std::as_bytes(std::span(vertices));
         auto indices = builder.indices();
         auto index_range = vertices.size();
-        auto [index_type, indices_bytes] = _convert_indices(index_range, indices);
         auto index_offset = vertices_bytes.size();
+        auto [index_type, indices_bytes, _] = _convert_indices(index_range, indices);
+
         auto buffer = Buffer::create(
             vertices_bytes.size() + indices_bytes.size(),
             Buffer::Usage::WRITE,
@@ -260,52 +261,39 @@ private:
     static constexpr auto _fixed_restart_index(Index index_type) -> GLuint {
         switch (index_type) {
             case Index::UNSIGNED_BYTE:
-                return 0xFF;
+                return std::numeric_limits<uint8_t>::max();
             case Index::UNSIGNED_SHORT:
-                return 0xFFFF;
+                return std::numeric_limits<uint16_t>::max();
             case Index::UNSIGNED_INT:
-                return 0xFFFFFFFF;
+                return std::numeric_limits<uint32_t>::max();
             default:
                 unreachable();
         }
     }
 
-    // Automatically selects the smallest possible index type that can hold the number of vertices,
+    // The temporary storage returned by `_convert_indices`.
+    using Temp = std::variant<std::vector<uint8_t>, std::vector<uint16_t>, std::monostate>;
+
+    // Automatically selects the smallest possible index type that can hold the number of vertices
     // and returns the converted index array. Is done once per upload.
-    static auto _convert_indices(size_t max_index, std::span<size_t const> indices)
-        -> std::pair<Index, std::vector<std::byte>> {
-        auto type = Index::NONE;
-        auto res = std::vector<std::byte>();
-        if (max_index <= std::numeric_limits<uint8_t>::max()) {
-            type = Index::UNSIGNED_BYTE;
-            res.resize(indices.size());
+    static auto _convert_indices(size_t max_index, std::span<uint32_t const> indices)
+        -> std::tuple<Index, std::span<std::byte const>, Temp> {
+        // Strict less-than is needed since the maximum value is already used for primitive restart.
+        if (max_index < std::numeric_limits<uint8_t>::max()) {
+            auto temp = std::vector<uint8_t>(indices.size());
             for (auto i = 0uz; i < indices.size(); i++) {
-                res[i] = static_cast<std::byte>(indices[i]);
+                temp[i] = static_cast<uint8_t>(indices[i]);
             }
-        } else if (max_index <= std::numeric_limits<uint16_t>::max()) {
-            type = Index::UNSIGNED_SHORT;
-            res.resize(indices.size() * 2);
-            for (auto i = 0uz; i < indices.size(); i++) {
-                auto value = static_cast<uint16_t>(indices[i]);
-                auto bytes = std::as_bytes(std::span(&value, 1));
-                res[i * 2 + 0] = bytes[0];
-                res[i * 2 + 1] = bytes[1];
-            }
-        } else if (max_index <= std::numeric_limits<uint32_t>::max()) {
-            type = Index::UNSIGNED_INT;
-            res.resize(indices.size() * 4);
-            for (auto i = 0uz; i < indices.size(); i++) {
-                auto value = static_cast<uint32_t>(indices[i]);
-                auto bytes = std::as_bytes(std::span(&value, 1));
-                res[i * 4 + 0] = bytes[0];
-                res[i * 4 + 1] = bytes[1];
-                res[i * 4 + 2] = bytes[2];
-                res[i * 4 + 3] = bytes[3];
-            }
-        } else {
-            assert(false, "vertex array too large for GL-supported index types");
+            return {Index::UNSIGNED_BYTE, std::as_bytes(std::span(temp)), std::move(temp)};
         }
-        return {type, res};
+        if (max_index < std::numeric_limits<uint16_t>::max()) {
+            auto temp = std::vector<uint16_t>(indices.size());
+            for (auto i = 0uz; i < indices.size(); i++) {
+                temp[i] = static_cast<uint16_t>(indices[i]);
+            }
+            return {Index::UNSIGNED_SHORT, std::as_bytes(std::span(temp)), std::move(temp)};
+        }
+        return {Index::UNSIGNED_INT, std::as_bytes(indices), std::monostate()};
     }
 };
 
