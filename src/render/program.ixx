@@ -1,0 +1,186 @@
+module;
+
+#include <glad/gl.h>
+
+export module render:program;
+import std;
+import types;
+import debug;
+
+namespace render {
+
+// Manages a GL shader stage code object, similar to `std::unique_ptr`.
+export class Shader {
+public:
+    // Possible shader stages per GL 4.3.
+    enum class Stage : GLenum {
+        COMPUTE = GL_COMPUTE_SHADER,
+        VERTEX = GL_VERTEX_SHADER,
+        TESSELLATION_CONTROL = GL_TESS_CONTROL_SHADER,
+        TESSELLATION_EVALUATION = GL_TESS_EVALUATION_SHADER,
+        GEOMETRY = GL_GEOMETRY_SHADER,
+        FRAGMENT = GL_FRAGMENT_SHADER,
+    };
+
+    // Constructs a `Shader` which owns nothing.
+    Shader() noexcept = default;
+
+    // Constructs a `Shader` which owns the given `handle`.
+    // The `handle` must be either 0 or a valid GL shader object.
+    Shader(GLuint handle, Stage stage) noexcept:
+        _handle(handle),
+        _stage(stage) {}
+
+    Shader(Shader const&) = delete;
+    Shader(Shader&& from) noexcept {
+        swap(*this, from);
+    }
+    auto operator=(Shader const&) -> Shader& = delete;
+    auto operator=(Shader&& from) noexcept -> Shader& {
+        swap(*this, from);
+        return *this;
+    }
+
+    // Destroys the managed object if it owns one.
+    ~Shader() {
+        if (_handle != 0) {
+            glDeleteShader(_handle);
+        }
+    }
+
+    auto get() const noexcept -> GLuint {
+        return _handle;
+    }
+
+    auto stage() const noexcept -> Stage {
+        return _stage;
+    }
+
+    explicit operator bool() const noexcept {
+        return _handle != 0;
+    }
+
+    // Creates a shader object from the given source code.
+    auto create(Stage stage, std::string_view source) -> std::variant<Shader, std::string> {
+        auto handle = glCreateShader(_stage_to_gl_enum(stage));
+        if (handle == 0) {
+            return "failed to create shader object";
+        }
+        auto source_cstr = source.data();
+        auto source_length = static_cast<GLint>(source.size());
+        glShaderSource(handle, 1, &source_cstr, &source_length);
+        glCompileShader(handle);
+        auto compile_status = GL_TRUE;
+        glGetShaderiv(handle, GL_COMPILE_STATUS, &compile_status);
+        if (compile_status == GL_FALSE) {
+            glDeleteShader(handle);
+            auto info_log_length = GLint{0};
+            glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &info_log_length);
+            auto info_log = std::string(info_log_length + 1, '\0');
+            glGetShaderInfoLog(handle, info_log_length + 1, nullptr, info_log.data());
+            info_log.resize(info_log_length);
+            return info_log;
+        }
+        return Shader(handle, stage);
+    }
+
+    friend void swap(Shader& first, Shader& second) noexcept {
+        using std::swap;
+        swap(first._handle, second._handle);
+        swap(first._stage, second._stage);
+    }
+
+private:
+    GLuint _handle = 0;
+    Stage _stage = Stage::VERTEX;
+
+    static constexpr auto _stage_to_gl_enum(Stage stage) -> GLenum {
+        return static_cast<GLenum>(stage);
+    }
+};
+
+// Manages a GL program object, similar to `std::unique_ptr`.
+export class Program {
+public:
+    // Constructs a `Program` which owns nothing.
+    Program() noexcept = default;
+
+    // Constructs a `Program` which owns the given `handle`.
+    // The `handle` must be either 0 or a valid GL program object.
+    explicit Program(GLuint handle) noexcept:
+        _handle(handle) {}
+
+    Program(Program const&) = delete;
+    Program(Program&& from) noexcept {
+        swap(*this, from);
+    }
+    auto operator=(Program const&) -> Program& = delete;
+    auto operator=(Program&& from) noexcept -> Program& {
+        swap(*this, from);
+        return *this;
+    }
+
+    // Destroys the managed object if it owns one.
+    ~Program() {
+        if (_handle != 0) {
+            glDeleteProgram(_handle);
+        }
+    }
+
+    auto get() const noexcept -> GLuint {
+        return _handle;
+    }
+
+    explicit operator bool() const noexcept {
+        return _handle != 0;
+    }
+
+    // Binds the owned program to the GL state.
+    void bind() const {
+        assert(_handle != 0, "binding an uninitialised program");
+        glUseProgram(_handle);
+    }
+
+    // Compatibility method to revert to the fixed-function pipeline.
+    static void unbind() {
+        glUseProgram(0);
+    }
+
+    // Creates a program object by linking the given shader objects.
+    // Per GL specification, the shader objects can be deleted immediately after linking.
+    static auto create(std::span<Shader const> shaders) -> std::variant<Program, std::string> {
+        auto handle = glCreateProgram();
+        if (handle == 0) {
+            return "failed to create program object";
+        }
+        for (auto const& shader: shaders) {
+            if (!shader) {
+                return "trying to link an invalid shader stage";
+            }
+            glAttachShader(handle, shader.get());
+        }
+        glLinkProgram(handle);
+        auto link_status = GL_TRUE;
+        glGetProgramiv(handle, GL_LINK_STATUS, &link_status);
+        if (link_status == GL_FALSE) {
+            glDeleteProgram(handle);
+            auto info_log_length = GLint{0};
+            glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &info_log_length);
+            auto info_log = std::string(info_log_length + 1, '\0');
+            glGetProgramInfoLog(handle, info_log_length + 1, nullptr, info_log.data());
+            info_log.resize(info_log_length);
+            return info_log;
+        }
+        return Program(handle);
+    }
+
+    friend void swap(Program& first, Program& second) noexcept {
+        using std::swap;
+        swap(first._handle, second._handle);
+    }
+
+private:
+    GLuint _handle = 0;
+};
+
+}

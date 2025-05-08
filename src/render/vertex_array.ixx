@@ -79,13 +79,6 @@ public:
         return _handle;
     }
 
-    void reset(GLuint handle) noexcept {
-        if (_handle != 0) {
-            glDeleteVertexArrays(1, &_handle);
-        }
-        _handle = handle;
-    }
-
     explicit operator bool() const noexcept {
         return _handle != 0;
     }
