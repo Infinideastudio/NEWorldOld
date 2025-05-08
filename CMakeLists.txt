@@ -126,10 +126,10 @@ target_sources(
         "src/worlds/worlds.ixx"
         "src/worlds/player.ixx"
         "src/worlds/world_rendering.cpp"
+        "src/worlds/chunk_rendering.cpp"
         "src/worlds/player_impl.cpp"
         "src/items.ixx"
         PRIVATE
-        "src/chunks/chunk_rendering.cpp"
         "src/menus/main_menu.cpp"
         "src/menus/options_menu.cpp"
         "src/menus/render_options_menu.cpp"

@@ -14,7 +14,7 @@ auto World::list_render_chunks(Vec3d center, int dist, double interp, std::optio
     -> std::vector<RenderChunk> {
     auto ccenter = chunk_coord(Vec3i(center));
     auto res = std::vector<RenderChunk>{};
-    for (auto const& [_, c]: _chunks) {
+    for (auto const& [_, c]: _renders) {
         if (!c->meshed() || !c->mesh(0).first && !c->mesh(1).first
             || chunk_coord_out_of_range(c->coord(), ccenter, dist) || frustum && !c->visible(center, *frustum)) {
             continue;

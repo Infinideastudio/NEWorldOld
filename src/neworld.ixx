@@ -252,10 +252,10 @@ void game_update(worlds::World& world) {
     auto center = Vec3i(player.coord());
     world.set_center(center);
 
-    for (auto const& [_, c]: world.chunks()) {
-        // 加载动画
-        c->update_load_anim();
+    // 加载动画
+    world.update_load_anim();
 
+    for (auto const& [_, c]: world.chunks()) {
         // 随机状态更新
         if (rnd() < 1.0 / 8.0) {
             int cx = c->coord().x();
