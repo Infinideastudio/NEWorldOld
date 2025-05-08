@@ -25,8 +25,11 @@ void init_gl_defaults() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_TEXTURE_2D);
-    if (Multisample != 0)
+    if (Multisample != 0) {
         glEnable(GL_MULTISAMPLE);
+    }
+    glEnable(GL_PRIMITIVE_RESTART);
+    // glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 }

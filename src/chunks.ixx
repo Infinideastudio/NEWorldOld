@@ -177,7 +177,7 @@ private:
         }
 
         // Normal generation
-            _ensure_data();
+        _ensure_data();
         std::ranges::fill(*_data, blocks::BlockData{.id = base_blocks().air, .light = blocks::NO_LIGHT});
         int sh = height_map.WATER_LEVEL + 2 - (_coord.y() * SIZE);
         int wh = height_map.WATER_LEVEL - (_coord.y() * SIZE);

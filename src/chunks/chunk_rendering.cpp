@@ -9,7 +9,8 @@ import textures;
 import globals;
 
 using render::VertexArray;
-using VertexArrayBuilder = render::VertexArrayBuilder<
+using render::VertexArrayIndexedBuilder;
+using Layout = render::VertexLayout<
     render::Coord<Vec3f>,
     render::TexCoord<Vec3f>,
     render::Color<Vec3u8>,
@@ -134,7 +135,7 @@ private:
 };
 
 // The default method for rendering a block.
-void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t layer, int x, int y, int z) {
+void _render_block(ChunkRenderData const& rd, VertexArrayIndexedBuilder<Layout>& v, size_t layer, int x, int y, int z) {
     auto bl = rd.block(x, y, z);
     if (!bl.should_render(layer)) {
         return;
@@ -187,6 +188,7 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
         v.color(col[3]);
         v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
         v.coord({x + 1, y, z + 1});
+        v.end_primitive();
     }
 
     // Left Face
@@ -226,6 +228,7 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
         v.color(col[3]);
         v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
         v.coord({x, y + 1, z});
+        v.end_primitive();
     }
 
     // Top Face
@@ -259,6 +262,7 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
         v.color(col[3]);
         v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
         v.coord({x + 1, y + 1, z});
+        v.end_primitive();
     }
 
     // Bottom Face
@@ -292,6 +296,7 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
         v.color(col[3]);
         v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
         v.coord({x, y, z + 1});
+        v.end_primitive();
     }
 
     // Front Face
@@ -331,6 +336,7 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
         v.color(col[3]);
         v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
         v.coord({x, y + 1, z + 1});
+        v.end_primitive();
     }
 
     // Back Face
@@ -370,11 +376,12 @@ void _render_block(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
         v.color(col[3]);
         v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
         v.coord({x + 1, y, z});
+        v.end_primitive();
     }
 }
 
 // The merge face rendering method for a primitive (adjacent block faces).
-void _render_primitive(QuadPrimitive const& p, VertexArrayBuilder& v) {
+void _render_primitive(QuadPrimitive const& p, VertexArrayIndexedBuilder<Layout>& v) {
     auto col = p.col * 255 / (MAX_LIGHT * 4);
     auto x = p.x, y = p.y, z = p.z, length = p.length;
 
@@ -399,6 +406,7 @@ void _render_primitive(QuadPrimitive const& p, VertexArrayBuilder& v) {
             v.color(col[3]);
             v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
             v.coord({x + 1, y, z + length + 1});
+            v.end_primitive();
             break;
         case 1:
             if (!AdvancedRender) {
@@ -417,6 +425,7 @@ void _render_primitive(QuadPrimitive const& p, VertexArrayBuilder& v) {
             v.color(col[3]);
             v.tex_coord({length + 1, 1, static_cast<uint16_t>(p.tex)});
             v.coord({x, y + 1, z + length + 1});
+            v.end_primitive();
             break;
         case 2:
             v.normal({0, 1, 0});
@@ -432,6 +441,7 @@ void _render_primitive(QuadPrimitive const& p, VertexArrayBuilder& v) {
             v.color(col[3]);
             v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
             v.coord({x + 1, y + 1, z + length + 1});
+            v.end_primitive();
             break;
         case 3:
             v.normal({0, -1, 0});
@@ -447,6 +457,7 @@ void _render_primitive(QuadPrimitive const& p, VertexArrayBuilder& v) {
             v.color(col[3]);
             v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
             v.coord({x, y, z + length + 1});
+            v.end_primitive();
             break;
         case 4:
             if (!AdvancedRender) {
@@ -465,6 +476,7 @@ void _render_primitive(QuadPrimitive const& p, VertexArrayBuilder& v) {
             v.color(col[3]);
             v.tex_coord({1, length + 1, static_cast<uint16_t>(p.tex)});
             v.coord({x + 1, y + length + 1, z + 1});
+            v.end_primitive();
             break;
         case 5:
             if (!AdvancedRender) {
@@ -483,12 +495,13 @@ void _render_primitive(QuadPrimitive const& p, VertexArrayBuilder& v) {
             v.color(col[3]);
             v.tex_coord({1, 0, static_cast<uint16_t>(p.tex)});
             v.coord({x + 1, y, z});
+            v.end_primitive();
             break;
     }
 }
 
 // The default method for rendering a chunk.
-void _render_chunk(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t layer) {
+void _render_chunk(ChunkRenderData const& rd, VertexArrayIndexedBuilder<Layout>& v, size_t layer) {
     for (auto x = 0; x < Chunk::SIZE; x++)
         for (auto y = 0; y < Chunk::SIZE; y++)
             for (auto z = 0; z < Chunk::SIZE; z++) {
@@ -505,7 +518,7 @@ void _render_chunk(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t laye
 // The merge directions are determined by the fact that block render data are stored in a
 // X-Y-Z-major order, which means blocks adjacent in the Z direction are stored consecutively.
 // This probably allows for better cache hit rates.
-void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayBuilder& v, size_t layer) {
+void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayIndexedBuilder<Layout>& v, size_t layer) {
     // For each direction
     for (auto d = 0; d < 6; d++) {
         // Render current direction
@@ -711,8 +724,8 @@ void Chunk::build_meshes(std::array<Chunk const*, 3 * 3 * 3> neighbors) {
     // Build new VBOs
     auto rd = ChunkRenderData(coord(), neighbors);
     auto builders = std::array{
-        VertexArrayBuilder(),
-        VertexArrayBuilder(),
+        VertexArrayIndexedBuilder<Layout>(),
+        VertexArrayIndexedBuilder<Layout>(),
     };
     for (auto layer = 0; layer < 2uz; layer++) {
         if (MergeFace) {
@@ -722,8 +735,8 @@ void Chunk::build_meshes(std::array<Chunk const*, 3 * 3 * 3> neighbors) {
         }
     }
     _meshes = {
-        VertexArray::create(builders[0], VertexArray::Primitive::QUADS),
-        VertexArray::create(builders[1], VertexArray::Primitive::QUADS),
+        VertexArray::create(builders[0], VertexArray::Primitive::TRIANGLE_FAN),
+        VertexArray::create(builders[1], VertexArray::Primitive::TRIANGLE_FAN),
     };
 
     // Update flags

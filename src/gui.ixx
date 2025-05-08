@@ -1002,7 +1002,8 @@ void Form::render() {
             fbo = Framebuffer(width, height, 2, false, false, true);
         }
 
-        auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec2f>>();
+        using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec2f>>;
+        auto v = render::VertexArrayIndexedBuilder<Layout>();
         v.tex_coord({0.0f, 1.0f});
         v.coord({0, 0});
         v.tex_coord({0.0f, 0.0f});
@@ -1011,7 +1012,8 @@ void Form::render() {
         v.coord({fbo.width(), fbo.height()});
         v.tex_coord({1.0f, 1.0f});
         v.coord({fbo.width(), 0});
-        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+        v.end_primitive();
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClearDepth(1.0f);

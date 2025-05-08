@@ -8,6 +8,15 @@ import textures;
 import worlds;
 import globals;
 
+using render::VertexArray;
+using render::VertexArrayIndexedBuilder;
+using Layout = render::VertexLayout<
+    render::Coord<Vec3f>,
+    render::TexCoord<Vec3f>,
+    render::Color<Vec3u8>,
+    render::Normal<Vec3i8>,
+    render::Material<uint16_t>>;
+
 export namespace particles {
 
 struct Particle {
@@ -55,15 +64,7 @@ void update_all(worlds::World& world) {
     ptcs = std::move(next);
 }
 
-using render::VertexArray;
-using VertexArrayBuilder = render::VertexArrayBuilder<
-    render::Coord<Vec3f>,
-    render::TexCoord<Vec3f>,
-    render::Color<Vec3u8>,
-    render::Normal<Vec3i8>,
-    render::Material<uint16_t>>;
-
-void mesh(worlds::World& world, Particle const& ptc, double interp, VertexArrayBuilder& v) {
+void mesh(worlds::World& world, Particle const& ptc, double interp, VertexArrayIndexedBuilder<Layout>& v) {
     auto psize = ptc.psize;
     auto bl = ptc.bl.get();
     auto tex = static_cast<float>(ptc.tex);
@@ -94,6 +95,7 @@ void mesh(worlds::World& world, Particle const& ptc, double interp, VertexArrayB
     v.coord({xpos + psize, ypos - psize, zpos + psize});
     v.tex_coord({tcx, tcy + psize, tex});
     v.coord({xpos + psize, ypos - psize, zpos - psize});
+    v.end_primitive();
 
     v.normal({-1.0f, 0.0f, 0.0f});
     v.material(bl);
@@ -106,6 +108,7 @@ void mesh(worlds::World& world, Particle const& ptc, double interp, VertexArrayB
     v.coord({xpos - psize, ypos + psize, zpos + psize});
     v.tex_coord({tcx, tcy + psize, tex});
     v.coord({xpos - psize, ypos + psize, zpos - psize});
+    v.end_primitive();
 
     v.normal({0.0f, 1.0f, 0.0f});
     v.material(bl);
@@ -118,6 +121,7 @@ void mesh(worlds::World& world, Particle const& ptc, double interp, VertexArrayB
     v.coord({xpos - psize, ypos + psize, zpos + psize});
     v.tex_coord({tcx, tcy + psize, tex});
     v.coord({xpos + psize, ypos + psize, zpos + psize});
+    v.end_primitive();
 
     v.normal({0.0f, -1.0f, 0.0f});
     v.material(bl);
@@ -130,6 +134,7 @@ void mesh(worlds::World& world, Particle const& ptc, double interp, VertexArrayB
     v.coord({xpos + psize, ypos - psize, zpos + psize});
     v.tex_coord({tcx, tcy + psize, tex});
     v.coord({xpos - psize, ypos - psize, zpos + psize});
+    v.end_primitive();
 
     v.normal({0.0f, 0.0f, 1.0f});
     v.material(bl);
@@ -142,6 +147,7 @@ void mesh(worlds::World& world, Particle const& ptc, double interp, VertexArrayB
     v.coord({xpos + psize, ypos + psize, zpos + psize});
     v.tex_coord({tcx, tcy + psize, tex});
     v.coord({xpos - psize, ypos + psize, zpos + psize});
+    v.end_primitive();
 
     v.normal({0.0f, 0.0f, -1.0f});
     v.material(bl);
@@ -154,6 +160,7 @@ void mesh(worlds::World& world, Particle const& ptc, double interp, VertexArrayB
     v.coord({xpos + psize, ypos - psize, zpos - psize});
     v.tex_coord({tcx, tcy + psize, tex});
     v.coord({xpos - psize, ypos - psize, zpos - psize});
+    v.end_primitive();
 }
 
 void render_all(worlds::World& world, Vec3d center, double interp) {
@@ -162,12 +169,12 @@ void render_all(worlds::World& world, Vec3d center, double interp) {
     pzpos = center.z();
     ptcsrendered = 0;
 
-    auto v = VertexArrayBuilder();
+    auto v = VertexArrayIndexedBuilder<Layout>();
     for (auto const& ptc: ptcs) {
         mesh(world, ptc, interp, v);
         ptcsrendered++;
     }
-    VertexArray::create(v, VertexArray::Primitive::QUADS).first.render();
+    VertexArray::create(v, VertexArray::Primitive::TRIANGLE_FAN).first.render();
 }
 
 void throw_particle(blocks::Id pt, float x, float y, float z, float xs, float ys, float zs, float psz, int last) {

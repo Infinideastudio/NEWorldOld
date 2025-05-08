@@ -247,6 +247,22 @@ constexpr auto _prefix_sum(std::array<size_t, N> a) -> std::array<size_t, N> {
     return res;
 }
 
+// Vertex attribute type lists.
+// The attributes are stored in the order they appear in the type list.
+export template <typename... T>
+requires (vertex_attrib_type<T> && ...)
+class VertexLayout {
+public:
+    static constexpr auto ATTRIB_COUNT = sizeof...(T);
+    static constexpr auto ATTRIB_BASE_TYPES = std::array{static_cast<GLenum>(vertex_attrib_type_info<T>::base_type)...};
+    static constexpr auto ATTRIB_ELEM_COUNTS =
+        std::array{static_cast<GLint>(vertex_attrib_type_info<T>::elem_count)...};
+    static constexpr auto ATTRIB_MODES = std::array{static_cast<VertexAttribMode>(vertex_attrib_type_info<T>::mode)...};
+    static constexpr auto ATTRIB_SIZES = std::array{sizeof(T)...};
+    static constexpr auto ATTRIB_OFFSETS = _prefix_sum(ATTRIB_SIZES);
+    static constexpr auto VERTEX_SIZE = _sum(ATTRIB_SIZES);
+};
+
 // Returns the I-th element in list <T...>. Switch to C++26 pack indexing once available.
 template <size_t I, typename... T>
 struct _choose {};
@@ -259,19 +275,15 @@ struct _choose<0, T, U...> {
     using type = T;
 };
 
-// A vertex in interleaved vertex layouts, with type-erased content.
-// The attributes are stored in the order they appear in the template parameter list.
-export template <typename... T>
-requires (vertex_attrib_type<T> && ...)
-class Vertex {
+// A vertex on the CPU side. Stores type-erased attribute data.
+export template <typename Layout>
+class Vertex {};
+
+template <typename... T>
+class Vertex<VertexLayout<T...>> {
 public:
-    static constexpr auto ATTRIB_BASE_TYPES = std::array{static_cast<GLenum>(vertex_attrib_type_info<T>::base_type)...};
-    static constexpr auto ATTRIB_ELEM_COUNTS =
-        std::array{static_cast<GLint>(vertex_attrib_type_info<T>::elem_count)...};
-    static constexpr auto ATTRIB_MODES = std::array{static_cast<VertexAttribMode>(vertex_attrib_type_info<T>::mode)...};
-    static constexpr auto ATTRIB_SIZES = std::array{sizeof(T)...};
-    static constexpr auto ATTRIB_OFFSETS = _prefix_sum(ATTRIB_SIZES);
-    static constexpr auto VERTEX_SIZE = _sum(ATTRIB_SIZES);
+    // `Layout` gives information of the specified vertex layout.
+    using Layout = VertexLayout<T...>;
 
     // `Attrib<i>::type` gives the type of the i-th attribute.
     template <size_t I>
@@ -279,7 +291,7 @@ public:
 
     Vertex() = default;
 
-    auto bytes() const -> std::array<std::byte, VERTEX_SIZE> const& {
+    auto bytes() const -> std::array<std::byte, Layout::VERTEX_SIZE> const& {
         return _bytes;
     }
 
@@ -291,7 +303,7 @@ public:
     auto attrib() const -> Attrib<I>::type {
         auto attr = Attrib<I>::type();
         auto span = std::as_writable_bytes(std::span(&attr, 1));
-        auto src = _bytes.begin() + ATTRIB_OFFSETS[I];
+        auto src = _bytes.begin() + Layout::ATTRIB_OFFSETS[I];
         std::copy(src, src + span.size(), span.begin());
         return attr;
     }
@@ -299,22 +311,26 @@ public:
     template <size_t I>
     void set_attrib(Attrib<I>::type attr) {
         auto span = std::as_bytes(std::span(&attr, 1));
-        auto dst = _bytes.begin() + ATTRIB_OFFSETS[I];
+        auto dst = _bytes.begin() + Layout::ATTRIB_OFFSETS[I];
         std::copy(span.begin(), span.end(), dst);
     }
 
 private:
-    std::array<std::byte, VERTEX_SIZE> _bytes = {};
+    std::array<std::byte, Layout::VERTEX_SIZE> _bytes = {};
 };
 
 // Note that `Vertex` has the alignment of 1 byte, and the size of all its attribute sizes summed.
 // A contiguous array of `Vertex` will be tightly packed.
-static_assert(alignof(Vertex<int32_t, Vec3f, float>) == 1);
-static_assert(sizeof(Vertex<int32_t, Vec3f, float>) == sizeof(int32_t) + sizeof(Vec3f) + sizeof(float));
+static_assert(alignof(Vertex<VertexLayout<int32_t, Vec3f, float>>) == 1);
+static_assert(sizeof(Vertex<VertexLayout<int32_t, Vec3f, float>>) == sizeof(int32_t) + sizeof(Vec3f) + sizeof(float));
 
 // Finds the first element in the list <T...> that is wrapped by a semantic wrapper W.
 template <size_t I, template <typename> typename W, typename... T>
-struct _find {};
+struct _find {
+    using type = std::monostate;
+    static constexpr auto index = 0uz;
+    static constexpr auto found = false;
+};
 
 template <size_t I, template <typename> typename W, typename T, typename... U>
 struct _find<I, W, T, U...>: _find<I + 1, W, U...> {};
@@ -323,17 +339,16 @@ template <size_t I, template <typename> typename W, typename T, typename... U>
 struct _find<I, W, W<T>, U...> {
     using type = T;
     static constexpr auto index = I;
+    static constexpr auto found = true;
 };
-
-template <typename... T>
-concept has_coord_attrib = requires { typename _find<0, Coord, T...>::type; };
 
 // A vertex array on the CPU side.
 //
 // Example usage:
 //
 // ```
-// auto builder = VertexArrayBuilder<int32_t, Vec3f, float>();
+// using Layout = VertexLayout<int32_t, Vec3f, float>;
+// auto builder = VertexArrayBuilder<Layout>();
 // builder.set_attrib<0>(1);
 // builder.set_attrib<1>({1.0f, 2.0f, 3.0f});
 // builder.set_attrib<2>(0.5f);
@@ -343,42 +358,38 @@ concept has_coord_attrib = requires { typename _find<0, Coord, T...>::type; };
 // Example with semantic wrappers:
 //
 // ```
-// auto builder = VertexArrayBuilder<Coord<Vec3f>, TexCoord<Vec2f>, Color<Vec4i>>();
+// using Layout = VertexLayout<Coord<Vec3f>, TexCoord<Vec2f>, Color<Vec4i>>;
+// auto builder = VertexArrayBuilder<Layout>();
 // builder.color({255, 0, 0, 255});
 // builder.tex_coord({0.5f, 0.5f});
 // builder.coord({0.0f, 0.0f, 0.0f});
 // builder.coord({1.0f, 0.0f, 0.0f});
 // builder.coord({1.0f, 1.0f, 0.0f});
 // ```
-export template <typename... T>
-requires (vertex_attrib_type<T> && ...)
-class VertexArrayBuilder {
+export template <typename Layout>
+class VertexArrayBuilder {};
+
+template <typename... T>
+class VertexArrayBuilder<VertexLayout<T...>> {
 public:
+    // `Layout` gives information of the specified vertex layout.
+    using Layout = VertexLayout<T...>;
+
     // `Attrib<i>::type` gives the type of the i-th attribute.
     template <size_t I>
     using Attrib = _choose<I, T...>;
 
-    // These are only enabled if the corresponding semantic wrapper is found in `T`.
-    // The additional template parameter `I = 0` delays instantiation to make SFINAE work.
-    template <size_t I>
-    using CoordAttrib = _find<I, Coord, T...>;
-    template <size_t I>
-    using TexCoordAttrib = _find<I, TexCoord, T...>;
-    template <size_t I>
-    using ColorAttrib = _find<I, Color, T...>;
-    template <size_t I>
-    using NormalAttrib = _find<I, Normal, T...>;
-    template <size_t I>
-    using MaterialAttrib = _find<I, Material, T...>;
+    // Semantic wrapper find results.
+    using CoordAttrib = _find<0, Coord, T...>;
+    using TexCoordAttrib = _find<0, TexCoord, T...>;
+    using ColorAttrib = _find<0, Color, T...>;
+    using NormalAttrib = _find<0, Normal, T...>;
+    using MaterialAttrib = _find<0, Material, T...>;
 
     VertexArrayBuilder() = default;
 
-    auto vertices() const -> std::vector<Vertex<T...>> const& {
+    auto vertices() const -> std::vector<Vertex<Layout>> const& {
         return _vertices;
-    }
-
-    auto size() const -> size_t {
-        return _vertices.size();
     }
 
     void make_vertex() {
@@ -395,30 +406,122 @@ public:
 
     // Some convenience functions wrapping `set_attrib()`.
     // These are only enabled if the corresponding semantic wrapper is found in `T`.
-    template <size_t I = 0, typename = CoordAttrib<I>::type>
-    void coord(CoordAttrib<I>::type attr, bool make_vertex = true) {
-        set_attrib<CoordAttrib<I>::index>(attr, make_vertex);
+    void coord(CoordAttrib::type attr, bool make_vertex = true) requires CoordAttrib::found
+    {
+        set_attrib<CoordAttrib::index>(attr, make_vertex);
     }
-    template <size_t I = 0, typename = TexCoordAttrib<I>::type>
-    void tex_coord(TexCoordAttrib<I>::type attr, bool make_vertex = false) {
-        set_attrib<TexCoordAttrib<I>::index>(attr, make_vertex);
+    void tex_coord(TexCoordAttrib::type attr, bool make_vertex = false) requires TexCoordAttrib::found
+    {
+        set_attrib<TexCoordAttrib::index>(attr, make_vertex);
     }
-    template <size_t I = 0, typename = ColorAttrib<I>::type>
-    void color(ColorAttrib<I>::type attr, bool make_vertex = false) {
-        set_attrib<ColorAttrib<I>::index>(attr, make_vertex);
+    void color(ColorAttrib::type attr, bool make_vertex = false) requires ColorAttrib::found
+    {
+        set_attrib<ColorAttrib::index>(attr, make_vertex);
     }
-    template <size_t I = 0, typename = NormalAttrib<I>::type>
-    void normal(NormalAttrib<I>::type attr, bool make_vertex = false) {
-        set_attrib<NormalAttrib<I>::index>(attr, make_vertex);
+    void normal(NormalAttrib::type attr, bool make_vertex = false) requires NormalAttrib::found
+    {
+        set_attrib<NormalAttrib::index>(attr, make_vertex);
     }
-    template <size_t I = 0, typename = MaterialAttrib<I>::type>
-    void material(MaterialAttrib<I>::type attr, bool make_vertex = false) {
-        set_attrib<MaterialAttrib<I>::index>(attr, make_vertex);
+    void material(MaterialAttrib::type attr, bool make_vertex = false) requires MaterialAttrib::found
+    {
+        set_attrib<MaterialAttrib::index>(attr, make_vertex);
     }
 
 private:
-    Vertex<T...> _vertex;
-    std::vector<Vertex<T...>> _vertices;
+    Vertex<Layout> _vertex;
+    std::vector<Vertex<Layout>> _vertices;
+};
+
+// A vertex array together with an index array on the CPU side.
+export template <typename Layout>
+class VertexArrayIndexedBuilder {};
+
+template <typename... T>
+class VertexArrayIndexedBuilder<VertexLayout<T...>> {
+public:
+    // `Layout` gives information of the specified vertex layout.
+    using Layout = VertexLayout<T...>;
+
+    // `Attrib<i>::type` gives the type of the i-th attribute.
+    template <size_t I>
+    using Attrib = _choose<I, T...>;
+
+    // Semantic wrapper find results.
+    using CoordAttrib = _find<0, Coord, T...>;
+    using TexCoordAttrib = _find<0, TexCoord, T...>;
+    using ColorAttrib = _find<0, Color, T...>;
+    using NormalAttrib = _find<0, Normal, T...>;
+    using MaterialAttrib = _find<0, Material, T...>;
+
+    // Primitive restart index.
+    // When cast to narrower types, this will become the fixed primitive restart indices
+    // (`0xFF` for `GL_UNSIGNED_BYTE`, `0xFFFF` for `GL_UNSIGNED_SHORT`, etc.)
+    static constexpr auto PRIMITIVE_RESTART_INDEX = std::numeric_limits<size_t>::max();
+
+    VertexArrayIndexedBuilder() = default;
+
+    auto vertices() const -> std::vector<Vertex<Layout>> const& {
+        return _vertices;
+    }
+
+    auto indices() const -> std::vector<size_t> const& {
+        return _indices;
+    }
+
+    // Appends a new vertex with a new index to the arrays.
+    void make_vertex() {
+        _indices.push_back(_vertices.size());
+        _vertices.emplace_back(_vertex);
+    }
+
+    // Appends a new index referring to an existing vertex.
+    // The last inserted vertex has relative index 0.
+    void repeat_vertex(size_t relative) {
+        assert(relative + 1 <= _vertices.size(), "index out of bounds");
+        _indices.push_back(_vertices.size() - (relative + 1));
+    }
+
+    // Appends the primitive restart index.
+    void end_primitive() {
+        _indices.push_back(PRIMITIVE_RESTART_INDEX);
+    }
+
+    template <size_t I>
+    void set_attrib(Attrib<I>::type attr, bool make_vertex = false) {
+        _vertex.template set_attrib<I>(attr);
+        if (make_vertex) {
+            _indices.push_back(_vertices.size());
+            _vertices.emplace_back(_vertex);
+        }
+    }
+
+    // Some convenience functions wrapping `set_attrib()`.
+    // These are only enabled if the corresponding semantic wrapper is found in `T`.
+    void coord(CoordAttrib::type attr, bool make_vertex = true) requires CoordAttrib::found
+    {
+        set_attrib<CoordAttrib::index>(attr, make_vertex);
+    }
+    void tex_coord(TexCoordAttrib::type attr, bool make_vertex = false) requires TexCoordAttrib::found
+    {
+        set_attrib<TexCoordAttrib::index>(attr, make_vertex);
+    }
+    void color(ColorAttrib::type attr, bool make_vertex = false) requires ColorAttrib::found
+    {
+        set_attrib<ColorAttrib::index>(attr, make_vertex);
+    }
+    void normal(NormalAttrib::type attr, bool make_vertex = false) requires NormalAttrib::found
+    {
+        set_attrib<NormalAttrib::index>(attr, make_vertex);
+    }
+    void material(MaterialAttrib::type attr, bool make_vertex = false) requires MaterialAttrib::found
+    {
+        set_attrib<MaterialAttrib::index>(attr, make_vertex);
+    }
+
+private:
+    Vertex<Layout> _vertex;
+    std::vector<Vertex<Layout>> _vertices;
+    std::vector<size_t> _indices;
 };
 
 }

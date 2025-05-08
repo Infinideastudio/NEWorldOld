@@ -28,9 +28,14 @@ public:
         TRIANGLE_STRIP_ADJACENCY = GL_TRIANGLE_STRIP_ADJACENCY,
         TRIANGLES_ADJACENCY = GL_TRIANGLES_ADJACENCY,
         PATCHES = GL_PATCHES,
-        // Compatibility options.
-        // TODO: add indices support and remove this.
-        QUADS = GL_QUADS,
+    };
+
+    // Possible index types per GL 4.3.
+    enum class Index : GLenum {
+        NONE = 0,
+        UNSIGNED_BYTE = GL_UNSIGNED_BYTE,
+        UNSIGNED_SHORT = GL_UNSIGNED_SHORT,
+        UNSIGNED_INT = GL_UNSIGNED_INT,
     };
 
     // Constructs a `VertexArray` which owns nothing.
@@ -39,10 +44,20 @@ public:
     // Constructs a `VertexArray` which owns the given `handle`.
     // The `handle` must be either 0 or a valid GL vertex array object.
     // The `count` must not be more than the number of vertices in the object's storage.
-    VertexArray(GLuint handle, Primitive primitive, size_t count) noexcept:
+    VertexArray(
+        GLuint handle,
+        Primitive primitive,
+        size_t count,
+        size_t index_range,
+        Index index_type,
+        size_t index_offset
+    ) noexcept:
         _handle(handle),
-        _primitive(_primitive_to_gl_enum(primitive)),
-        _count(static_cast<GLsizei>(count)) {}
+        _primitive(primitive),
+        _count(count),
+        _index_range(index_range),
+        _index_type(index_type),
+        _index_offset(index_offset) {}
 
     VertexArray(VertexArray const&) = delete;
     VertexArray(VertexArray&& from) noexcept {
@@ -55,8 +70,9 @@ public:
     }
 
     ~VertexArray() {
-        if (_handle != 0)
+        if (_handle != 0) {
             glDeleteVertexArrays(1, &_handle);
+        }
     }
 
     auto get() const noexcept -> GLuint {
@@ -64,8 +80,9 @@ public:
     }
 
     void reset(GLuint handle) noexcept {
-        if (_handle != 0)
+        if (_handle != 0) {
             glDeleteVertexArrays(1, &_handle);
+        }
         _handle = handle;
     }
 
@@ -84,8 +101,21 @@ public:
 
     void render() const {
         assert(_handle != 0, "rendering an uninitialised vertex array");
-        glBindVertexArray(_handle);
-        glDrawArrays(_primitive, 0, _count);
+        if (_index_type == Index::NONE) {
+            glBindVertexArray(_handle);
+            glDrawArrays(_primitive_to_gl_enum(_primitive), 0, static_cast<GLsizei>(_count));
+        } else {
+            glBindVertexArray(_handle);
+            glPrimitiveRestartIndex(_fixed_restart_index(_index_type));
+            glDrawRangeElements(
+                _primitive_to_gl_enum(_primitive),
+                static_cast<GLuint>(0),
+                static_cast<GLuint>(_index_range - 1),
+                static_cast<GLsizei>(_count),
+                _index_type_to_gl_enum(_index_type),
+                reinterpret_cast<void const*>(_index_offset)
+            );
+        }
     }
 
     // Constructs a vertex array object from a vertex array builder.
@@ -93,45 +123,84 @@ public:
     //
     // The binding locations of vertex attributes are determined by the order in which they occur
     // in the template arguments. The first attribute is bound to location 0, the second to location 1, etc.
-    template <typename... T>
-    static auto create(VertexArrayBuilder<T...> const& builder, Primitive primitive) -> std::pair<VertexArray, Buffer> {
+    template <typename Layout>
+    static auto create(VertexArrayBuilder<Layout> const& builder, Primitive primitive)
+        -> std::pair<VertexArray, Buffer> {
+
+        if (builder.vertices().empty()) {
+            return {VertexArray(), Buffer()};
+        }
+
+        // Create a vertex array object.
         auto handle = GLuint{0};
         glGenVertexArrays(1, &handle);
         glBindVertexArray(handle);
 
+        // Create a buffer object and upload vertex data.
         auto vertices = builder.vertices();
         auto bytes = std::as_bytes(std::span(vertices));
         auto buffer = Buffer::create(bytes.size(), Buffer::Usage::WRITE, Buffer::Update::INFREQUENT);
         buffer.write(bytes, 0);
         buffer.bind(Buffer::Target::VERTEX_ATTRIB);
 
-        for (auto i = 0; i < sizeof...(T); i++) {
-            auto index = static_cast<GLuint>(i);
-            auto elem_count = Vertex<T...>::ATTRIB_ELEM_COUNTS[i];
-            auto base_type = Vertex<T...>::ATTRIB_BASE_TYPES[i];
-            auto mode = Vertex<T...>::ATTRIB_MODES[i];
-            auto stride = static_cast<GLsizei>(Vertex<T...>::VERTEX_SIZE);
-            auto offset = reinterpret_cast<void const*>(Vertex<T...>::ATTRIB_OFFSETS[i]);
-
-            glEnableVertexAttribArray(index);
-            switch (mode) {
-                case VertexAttribMode::INTEGER:
-                    glVertexAttribIPointer(index, elem_count, base_type, stride, offset);
-                    break;
-                case VertexAttribMode::FLOAT:
-                    glVertexAttribPointer(index, elem_count, base_type, GL_FALSE, stride, offset);
-                    break;
-                case VertexAttribMode::FLOAT_NORMALIZE:
-                    glVertexAttribPointer(index, elem_count, base_type, GL_TRUE, stride, offset);
-                    break;
-                case VertexAttribMode::DOUBLE:
-                    glVertexAttribLPointer(index, elem_count, base_type, stride, offset);
-                    break;
-                default:
-                    unreachable();
-            }
+        // Specify vertex layout.
+        for (auto i = 0; i < Layout::ATTRIB_COUNT; i++) {
+            auto elem_count = Layout::ATTRIB_ELEM_COUNTS[i];
+            auto base_type = Layout::ATTRIB_BASE_TYPES[i];
+            auto mode = Layout::ATTRIB_MODES[i];
+            auto stride = Layout::VERTEX_SIZE;
+            auto offset = Layout::ATTRIB_OFFSETS[i];
+            _vertex_attrib_pointer(i, elem_count, base_type, mode, stride, offset);
         }
-        return {VertexArray(handle, primitive, vertices.size()), std::move(buffer)};
+        return {
+            VertexArray(handle, primitive, vertices.size(), 0, Index::NONE, 0),
+            std::move(buffer),
+        };
+    }
+
+    template <typename Layout>
+    static auto create(VertexArrayIndexedBuilder<Layout> const& builder, Primitive primitive)
+        -> std::pair<VertexArray, Buffer> {
+
+        if (builder.indices().empty()) {
+            return {VertexArray(), Buffer()};
+        }
+
+        // Create a vertex array object.
+        auto handle = GLuint{0};
+        glGenVertexArrays(1, &handle);
+        glBindVertexArray(handle);
+
+        // Create a buffer object, upload vertex and index data.
+        auto vertices = builder.vertices();
+        auto vertices_bytes = std::as_bytes(std::span(vertices));
+        auto indices = builder.indices();
+        auto index_range = vertices.size();
+        auto [index_type, indices_bytes] = _convert_indices(index_range, indices);
+        auto index_offset = vertices_bytes.size();
+        auto buffer = Buffer::create(
+            vertices_bytes.size() + indices_bytes.size(),
+            Buffer::Usage::WRITE,
+            Buffer::Update::INFREQUENT
+        );
+        buffer.write(vertices_bytes, 0);
+        buffer.write(indices_bytes, index_offset);
+        buffer.bind(Buffer::Target::VERTEX_ATTRIB);
+        buffer.bind(Buffer::Target::ELEMENT_INDEX);
+
+        // Specify vertex layout.
+        for (auto i = 0; i < Layout::ATTRIB_COUNT; i++) {
+            auto elem_count = Layout::ATTRIB_ELEM_COUNTS[i];
+            auto base_type = Layout::ATTRIB_BASE_TYPES[i];
+            auto mode = Layout::ATTRIB_MODES[i];
+            auto stride = Layout::VERTEX_SIZE;
+            auto offset = Layout::ATTRIB_OFFSETS[i];
+            _vertex_attrib_pointer(i, elem_count, base_type, mode, stride, offset);
+        }
+        return {
+            VertexArray(handle, primitive, indices.size(), index_range, index_type, index_offset),
+            std::move(buffer),
+        };
     }
 
     friend void swap(VertexArray& first, VertexArray& second) noexcept {
@@ -139,15 +208,104 @@ public:
         swap(first._handle, second._handle);
         swap(first._primitive, second._primitive);
         swap(first._count, second._count);
+        swap(first._index_range, second._index_range);
+        swap(first._index_type, second._index_type);
+        swap(first._index_offset, second._index_offset);
     }
 
 private:
     GLuint _handle = 0;
-    GLenum _primitive = 0;
-    GLsizei _count = 0;
+    Primitive _primitive = Primitive::POINTS;
+    size_t _count = 0;
+    size_t _index_range = 0;
+    Index _index_type = Index::NONE;
+    size_t _index_offset = 0;
 
     static constexpr auto _primitive_to_gl_enum(Primitive primitive) -> GLenum {
         return static_cast<GLenum>(primitive);
+    }
+
+    static constexpr auto _index_type_to_gl_enum(Index index_type) -> GLenum {
+        return static_cast<GLenum>(index_type);
+    }
+
+    static constexpr void _vertex_attrib_pointer(
+        size_t index,
+        GLint elem_count,
+        GLenum base_type,
+        VertexAttribMode mode,
+        size_t stride,
+        size_t offset
+    ) {
+        auto _index = static_cast<GLuint>(index);
+        auto _stride = static_cast<GLsizei>(stride);
+        auto _offset = reinterpret_cast<void const*>(offset);
+        glEnableVertexAttribArray(_index);
+        switch (mode) {
+            case VertexAttribMode::INTEGER:
+                return glVertexAttribIPointer(_index, elem_count, base_type, _stride, _offset);
+            case VertexAttribMode::FLOAT:
+                return glVertexAttribPointer(_index, elem_count, base_type, GL_FALSE, _stride, _offset);
+            case VertexAttribMode::FLOAT_NORMALIZE:
+                return glVertexAttribPointer(_index, elem_count, base_type, GL_TRUE, _stride, _offset);
+            case VertexAttribMode::DOUBLE:
+                return glVertexAttribLPointer(_index, elem_count, base_type, _stride, _offset);
+            default:
+                unreachable();
+        }
+    }
+
+    // We use the fixed primitive restart index for the given index type.
+    // See: https://www.khronos.org/opengl/wiki/Vertex_Rendering#Primitive_Restart
+    static constexpr auto _fixed_restart_index(Index index_type) -> GLuint {
+        switch (index_type) {
+            case Index::UNSIGNED_BYTE:
+                return 0xFF;
+            case Index::UNSIGNED_SHORT:
+                return 0xFFFF;
+            case Index::UNSIGNED_INT:
+                return 0xFFFFFFFF;
+            default:
+                unreachable();
+        }
+    }
+
+    // Automatically selects the smallest possible index type that can hold the number of vertices,
+    // and returns the converted index array. Is done once per upload.
+    static auto _convert_indices(size_t max_index, std::span<size_t const> indices)
+        -> std::pair<Index, std::vector<std::byte>> {
+        auto type = Index::NONE;
+        auto res = std::vector<std::byte>();
+        if (max_index <= std::numeric_limits<uint8_t>::max()) {
+            type = Index::UNSIGNED_BYTE;
+            res.resize(indices.size());
+            for (auto i = 0uz; i < indices.size(); i++) {
+                res[i] = static_cast<std::byte>(indices[i]);
+            }
+        } else if (max_index <= std::numeric_limits<uint16_t>::max()) {
+            type = Index::UNSIGNED_SHORT;
+            res.resize(indices.size() * 2);
+            for (auto i = 0uz; i < indices.size(); i++) {
+                auto value = static_cast<uint16_t>(indices[i]);
+                auto bytes = std::as_bytes(std::span(&value, 1));
+                res[i * 2 + 0] = bytes[0];
+                res[i * 2 + 1] = bytes[1];
+            }
+        } else if (max_index <= std::numeric_limits<uint32_t>::max()) {
+            type = Index::UNSIGNED_INT;
+            res.resize(indices.size() * 4);
+            for (auto i = 0uz; i < indices.size(); i++) {
+                auto value = static_cast<uint32_t>(indices[i]);
+                auto bytes = std::as_bytes(std::span(&value, 1));
+                res[i * 4 + 0] = bytes[0];
+                res[i * 4 + 1] = bytes[1];
+                res[i * 4 + 2] = bytes[2];
+                res[i * 4 + 3] = bytes[3];
+            }
+        } else {
+            assert(false, "vertex array too large for GL-supported index types");
+        }
+        return {type, res};
     }
 };
 

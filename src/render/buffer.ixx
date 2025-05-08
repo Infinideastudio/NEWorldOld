@@ -12,19 +12,23 @@ namespace render {
 // Manages a GL buffer object, similar to `std::unique_ptr`.
 export class Buffer {
 public:
-    // Possible buffer binding points per GL 4.3.
+    // Possible non-indexed buffer binding points per GL 4.3.
     enum class Target : GLenum {
         VERTEX_ATTRIB = GL_ARRAY_BUFFER,
-        ATOMIC_COUNTER = GL_ATOMIC_COUNTER_BUFFER,
         COPY_SRC = GL_COPY_READ_BUFFER,
         COPY_DST = GL_COPY_WRITE_BUFFER,
         COMPUTE_COMMAND = GL_DISPATCH_INDIRECT_BUFFER,
         DRAW_COMMAND = GL_DRAW_INDIRECT_BUFFER,
-        INDEX = GL_ELEMENT_ARRAY_BUFFER,
+        ELEMENT_INDEX = GL_ELEMENT_ARRAY_BUFFER,
         PIXEL_DST = GL_PIXEL_PACK_BUFFER,
         TEXEL_SRC = GL_PIXEL_UNPACK_BUFFER,
-        STORAGE = GL_SHADER_STORAGE_BUFFER,
         TEXTURE = GL_TEXTURE_BUFFER,
+    };
+
+    // Possible indexed buffer binding points per GL 4.3.
+    enum class IndexedTarget : GLenum {
+        ATOMIC_COUNTER = GL_ATOMIC_COUNTER_BUFFER,
+        STORAGE = GL_SHADER_STORAGE_BUFFER,
         TRANSFORM_FEEDBACK = GL_TRANSFORM_FEEDBACK_BUFFER,
         UNIFORM = GL_UNIFORM_BUFFER,
     };
@@ -53,8 +57,9 @@ public:
 
     // Destroys the managed object if it owns one.
     ~Buffer() {
-        if (_handle != 0)
+        if (_handle != 0) {
             glDeleteBuffers(1, &_handle);
+        }
     }
 
     // Returns the underlying handle to the managed object.
@@ -65,8 +70,9 @@ public:
 
     // Replaces the managed object.
     void reset(GLuint handle) noexcept {
-        if (_handle != 0)
+        if (_handle != 0) {
             glDeleteBuffers(1, &_handle);
+        }
         _handle = handle;
     }
 
@@ -75,11 +81,18 @@ public:
         return _handle != 0;
     }
 
-    // Binds the owned buffer to the given GL target.
+    // Binds the owned buffer to the given GL target (non-indexed).
     // Should be invoked last before a GL call to avoid accidental re-binding by other functions.
     void bind(Target target) const {
         assert(_handle != 0, "binding an unallocated buffer");
         glBindBuffer(_target_to_gl_enum(target), _handle);
+    }
+
+    // Binds the owned buffer to the given GL target (indexed).
+    // Should be invoked last before a GL call to avoid accidental re-binding by other functions.
+    void bind(IndexedTarget target, size_t index) const {
+        assert(_handle != 0, "binding an unallocated buffer");
+        glBindBufferBase(_target_to_gl_enum(target), static_cast<GLuint>(index), _handle);
     }
 
     // Creates a new buffer object with the given size and usage hints.
@@ -144,6 +157,10 @@ private:
     GLuint _handle = 0;
 
     static constexpr auto _target_to_gl_enum(Target target) -> GLenum {
+        return static_cast<GLenum>(target);
+    }
+
+    static constexpr auto _target_to_gl_enum(IndexedTarget target) -> GLenum {
         return static_cast<GLenum>(target);
     }
 

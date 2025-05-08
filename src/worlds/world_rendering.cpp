@@ -15,7 +15,7 @@ auto World::list_render_chunks(Vec3d center, int dist, double interp, std::optio
     auto ccenter = chunk_coord(Vec3i(center));
     auto res = std::vector<RenderChunk>{};
     for (auto const& [_, c]: _chunks) {
-        if (!c->meshed() || c->mesh(0).first.count() == 0 && c->mesh(1).first.count() == 0
+        if (!c->meshed() || !c->mesh(0).first && !c->mesh(1).first
             || chunk_coord_out_of_range(c->coord(), ccenter, dist) || frustum && !c->visible(center, *frustum)) {
             continue;
         }
@@ -31,7 +31,7 @@ void World::render_chunks(Vec3d center, std::vector<RenderChunk> const& crs, siz
     for (auto [coord, meshes]: crs) {
         coord -= center;
         auto const& [va, buffer] = *meshes[index];
-        if (va.count() == 0) {
+        if (!va) {
             continue;
         }
         Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(coord));
