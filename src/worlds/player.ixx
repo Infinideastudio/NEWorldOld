@@ -224,7 +224,7 @@ private:
 Player::Player(std::string_view world_name) {
     spdlog::debug("Loading player data");
 
-    auto path = std::filesystem::path("world") / world_name / "player.neworldplayer";
+    auto path = std::filesystem::path("worlds") / world_name / "player.neworldplayer";
     auto file = std::ifstream(path, std::ios::binary | std::ios::in);
     if (!file.is_open()) {
         spdlog::error("Failed to open player data file");
@@ -251,7 +251,7 @@ Player::Player(std::string_view world_name) {
 }
 
 auto Player::save(std::string_view world_name) const -> bool {
-    auto path = std::filesystem::path("world") / world_name / "player.neworldplayer";
+    auto path = std::filesystem::path("worlds") / world_name / "player.neworldplayer";
     auto file = std::ofstream(path, std::ios::binary | std::ios::out);
     if (!file.is_open()) {
         return false;
