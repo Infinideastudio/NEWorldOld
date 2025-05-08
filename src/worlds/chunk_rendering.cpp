@@ -1,4 +1,5 @@
-module chunks;
+module worlds:chunk_rendering;
+import :worlds;
 import std;
 import types;
 import math;
@@ -7,6 +8,7 @@ import blocks;
 import render;
 import textures;
 import globals;
+import chunks;
 
 using render::VertexArray;
 using render::VertexArrayIndexedBuilder;
@@ -16,8 +18,6 @@ using Layout = render::VertexLayout<
     render::Color<Vec3u8>,
     render::Normal<Vec3i8>,
     render::Material<uint16_t>>;
-
-namespace chunks {
 
 // One face in merge face
 struct QuadPrimitive {
@@ -33,9 +33,9 @@ struct QuadPrimitive {
     TextureIndex tex = TextureIndex::NULLBLOCK;
 };
 
-// Before rendering, the whole chunk and neighboring blocks are converted into this structure.
+// Before rendering, the whole chunks::Chunk and neighboring blocks are converted into this structure.
 //
-// * Since merge face rendering goes through the whole chunk 12 times, it is beneficial to
+// * Since merge face rendering goes through the whole chunks::Chunk 12 times, it is beneficial to
 //   avoid repeatedly looking up block properties in the block info registry.
 // * All block properties relevant to rendering should be stored in this structure.
 class BlockRenderData {
@@ -103,20 +103,20 @@ private:
 // Temporary: maximum value obtained after mixing two light levels.
 constexpr auto MAX_LIGHT = 15;
 
-// All data needed to render a chunk.
+// All data needed to render a chunks::Chunk.
 class ChunkRenderData {
 public:
-    ChunkRenderData(Vec3i ccoord, std::array<Chunk const*, 3 * 3 * 3> neighbors) {
+    ChunkRenderData(Vec3i ccoord, std::array<chunks::Chunk const*, 3 * 3 * 3> neighbors) {
         auto index = 0uz;
-        for (int x = -1; x < Chunk::SIZE + 1; x++) {
-            auto rcx = x >> Chunk::SIZE_LOG;
-            auto bx = static_cast<uint32_t>(x) & (Chunk::SIZE - 1);
-            for (int y = -1; y < Chunk::SIZE + 1; y++) {
-                auto rcy = y >> Chunk::SIZE_LOG;
-                auto by = static_cast<uint32_t>(y) & (Chunk::SIZE - 1);
-                for (int z = -1; z < Chunk::SIZE + 1; z++) {
-                    auto rcz = z >> Chunk::SIZE_LOG;
-                    auto bz = static_cast<uint32_t>(z) & (Chunk::SIZE - 1);
+        for (int x = -1; x < chunks::Chunk::SIZE + 1; x++) {
+            auto rcx = x >> chunks::Chunk::SIZE_LOG;
+            auto bx = static_cast<uint32_t>(x) & (chunks::Chunk::SIZE - 1);
+            for (int y = -1; y < chunks::Chunk::SIZE + 1; y++) {
+                auto rcy = y >> chunks::Chunk::SIZE_LOG;
+                auto by = static_cast<uint32_t>(y) & (chunks::Chunk::SIZE - 1);
+                for (int z = -1; z < chunks::Chunk::SIZE + 1; z++) {
+                    auto rcz = z >> chunks::Chunk::SIZE_LOG;
+                    auto bz = static_cast<uint32_t>(z) & (chunks::Chunk::SIZE - 1);
                     auto& block = _data[index++];
                     auto cptr = neighbors[((rcx + 1) * 3 + rcy + 1) * 3 + rcz + 1];
                     assert(cptr, "neighbors array should not contain null pointer");
@@ -127,11 +127,11 @@ public:
     }
 
     auto block(int x, int y, int z) const -> BlockRenderData {
-        return _data[((x + 1) * (Chunk::SIZE + 2) + y + 1) * (Chunk::SIZE + 2) + z + 1];
+        return _data[((x + 1) * (chunks::Chunk::SIZE + 2) + y + 1) * (chunks::Chunk::SIZE + 2) + z + 1];
     }
 
 private:
-    std::array<BlockRenderData, (Chunk::SIZE + 2) * (Chunk::SIZE + 2) * (Chunk::SIZE + 2)> _data = {};
+    std::array<BlockRenderData, (chunks::Chunk::SIZE + 2) * (chunks::Chunk::SIZE + 2) * (chunks::Chunk::SIZE + 2)> _data = {};
 };
 
 // The default method for rendering a block.
@@ -500,16 +500,16 @@ void _render_primitive(QuadPrimitive const& p, VertexArrayIndexedBuilder<Layout>
     }
 }
 
-// The default method for rendering a chunk.
+// The default method for rendering a chunks::Chunk.
 void _render_chunk(ChunkRenderData const& rd, VertexArrayIndexedBuilder<Layout>& v, size_t layer) {
-    for (auto x = 0; x < Chunk::SIZE; x++)
-        for (auto y = 0; y < Chunk::SIZE; y++)
-            for (auto z = 0; z < Chunk::SIZE; z++) {
+    for (auto x = 0; x < chunks::Chunk::SIZE; x++)
+        for (auto y = 0; y < chunks::Chunk::SIZE; y++)
+            for (auto z = 0; z < chunks::Chunk::SIZE; z++) {
                 _render_block(rd, v, layer, x, y, z);
             }
 }
 
-// The merge face rendering method for a chunk.
+// The merge face rendering method for a chunks::Chunk.
 //
 // * For faces orienting X+ (d = 0) or X- (d = 1), the merge direction is Z+;
 // * For faces orienting Y+ (d = 2) or Y- (d = 3), the merge direction is Z+;
@@ -522,12 +522,12 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayIndexedBuild
     // For each direction
     for (auto d = 0; d < 6; d++) {
         // Render current direction
-        for (auto i = 0; i < Chunk::SIZE; i++)
-            for (auto j = 0; j < Chunk::SIZE; j++) {
+        for (auto i = 0; i < chunks::Chunk::SIZE; i++)
+            for (auto j = 0; j < chunks::Chunk::SIZE; j++) {
                 QuadPrimitive cur;
                 bool valid = false;
                 // Linear merge
-                for (int k = 0; k < Chunk::SIZE; k++) {
+                for (int k = 0; k < chunks::Chunk::SIZE; k++) {
                     // Get position (the coordinate assigned to `k` is the merge direction)
                     int x = 0, y = 0, z = 0;
                     int dx = 0, dy = 0, dz = 0;
@@ -720,9 +720,9 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayIndexedBuild
     }
 }
 
-void Chunk::build_meshes(std::array<Chunk const*, 3 * 3 * 3> neighbors) {
+void worlds::RenderData::build_meshes(std::array<chunks::Chunk const*, 3 * 3 * 3> neighbors) {
     // Build new VBOs
-    auto rd = ChunkRenderData(coord(), neighbors);
+    auto rd = ChunkRenderData(_refer->coord(), neighbors);
     auto builders = std::array{
         VertexArrayIndexedBuilder<Layout>(),
         VertexArrayIndexedBuilder<Layout>(),
@@ -741,10 +741,9 @@ void Chunk::build_meshes(std::array<Chunk const*, 3 * 3 * 3> neighbors) {
 
     // Update flags
     if (!_meshed) {
-        _load_anim = static_cast<float>(_coord.y() * Chunk::SIZE + Chunk::SIZE);
+        _load_anim = static_cast<float>(_refer->coord().y() * chunks::Chunk::SIZE + chunks::Chunk::SIZE);
     }
     _meshed = true;
-    _updated = false;
+    _refer->clear_updated();
 }
 
-}

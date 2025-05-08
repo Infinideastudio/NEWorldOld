@@ -229,7 +229,7 @@ private:
         return static_cast<GLenum>(index_type);
     }
 
-    static constexpr void _vertex_attrib_pointer(
+    static void _vertex_attrib_pointer(
         size_t index,
         GLint elem_count,
         GLenum base_type,

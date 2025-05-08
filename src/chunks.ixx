@@ -52,11 +52,6 @@ public:
         return _modified;
     }
 
-    // Meshes are available
-    auto meshed() const -> bool {
-        return _meshed;
-    }
-
     auto block(Vec3u bcoord) const -> blocks::BlockData {
         assert(bcoord.x() < SIZE && bcoord.y() < SIZE && bcoord.z() < SIZE, "block coordinates out of bounds");
         if (_empty) {
@@ -92,6 +87,11 @@ public:
         _modified = false;
     }
 
+    auto clear_updated() {
+        // TODO: maybe track this externally
+        _updated = false;
+    }
+
     auto unpackage_from(kls::temp::vector<char> data) -> bool {
         // TODO: compression, data versioning
         if (data.size() != SIZE_DATA)
@@ -102,46 +102,21 @@ public:
         return true;
     }
 
-    void build_meshes(std::array<Chunk const*, 3 * 3 * 3> neighbors);
-
     void mark_neighbor_updated() {
         _updated = true;
-    }
-
-    auto load_anim() const -> float {
-        return _load_anim;
-    }
-
-    void update_load_anim() {
-        if (_load_anim <= 0.3f)
-            _load_anim = 0.0f;
-        else
-            _load_anim *= 0.6f;
-    }
-
-    auto mesh(size_t index) const -> std::pair<render::VertexArray, render::Buffer> const& {
-        assert(index < _meshes.size(), "mesh index out of bounds");
-        return _meshes[index];
     }
 
     auto aabb() const -> AABB3d {
         return {Vec3d(_coord * SIZE), Vec3d(_coord * SIZE + SIZE)};
     }
 
-    auto visible(Vec3d orig, Frustumf const& frus) const -> bool {
-        return frus.test(static_cast<AABB3f>(aabb() - orig) - Vec3f(0.0f, _load_anim, 0.0f));
-    }
-
 private:
     Vec3i _coord;
     std::unique_ptr<std::array<blocks::BlockData, SIZE * SIZE * SIZE>> _data{};
-    std::array<std::pair<render::VertexArray, render::Buffer>, 2> _meshes{};
 
     bool _empty = true;
-    bool _meshed = false;
     bool _updated = false;
     bool _modified = false;
-    float _load_anim = 0.0f;
 
     auto _heights(HeightMap& height_map) -> std::tuple<std::array<std::array<int, SIZE>, SIZE>, int, int> {
         auto heights = std::array<std::array<int, SIZE>, SIZE>{};

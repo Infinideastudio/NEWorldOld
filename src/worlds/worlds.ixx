@@ -145,6 +145,52 @@ private:
     std::unique_ptr<leveldb::DB> _db;
 };
 
+class RenderData {
+public:
+    explicit RenderData(chunks::Chunk* refer) noexcept:
+        _refer(refer) {}
+
+    // Meshes are available
+    auto meshed() const -> bool {
+        return _meshed;
+    }
+
+    auto coord() const -> Vec3i {
+        return _refer->coord();
+    }
+
+    auto updated() const -> bool {
+        return _refer->updated();
+    }
+
+    auto load_anim() const -> float {
+        return _load_anim;
+    }
+
+    void update_load_anim() {
+        if (_load_anim <= 0.3f)
+            _load_anim = 0.0f;
+        else
+            _load_anim *= 0.6f;
+    }
+
+    auto mesh(size_t index) const -> std::pair<render::VertexArray, render::Buffer> const& {
+        assert(index < _meshes.size(), "mesh index out of bounds");
+        return _meshes[index];
+    }
+
+    void build_meshes(std::array<chunks::Chunk const*, 3 * 3 * 3> neighbors);
+
+    auto visible(Vec3d orig, Frustumf const& frus) const -> bool {
+        return frus.test(static_cast<AABB3f>(_refer->aabb() - orig) - Vec3f(0.0f, _load_anim, 0.0f));
+    }
+private:
+    bool _meshed = false;
+    float _load_anim = 0.0f;
+    chunks::Chunk* _refer;
+    std::array<std::pair<render::VertexArray, render::Buffer>, 2> _meshes;
+};
+
 export class World {
 public:
     explicit World(std::string name):
@@ -467,7 +513,7 @@ public:
 
         using LoadElem = std::pair<int, Vec3i>;
         using UnloadElem = std::pair<int, Vec3i>;
-        using MeshingElem = std::pair<int, chunks::Chunk*>;
+        using MeshingElem = std::pair<int, RenderData*>;
 
         std::priority_queue<LoadElem, std::vector<LoadElem>, std::less<>> loads;
         std::priority_queue<UnloadElem, std::vector<UnloadElem>, std::greater<>> unloads;
@@ -512,7 +558,7 @@ public:
                 break;
         }
 
-        // Sort chunk unload and meshing lists simultaneously
+        // Sort chunk unload lists
         for (auto const& [_, c]: _chunks) {
             auto cc = c->coord();
             if (chunk_coord_out_of_range(cc, ccenter, RenderDistance + 1)) {
@@ -520,7 +566,13 @@ public:
                 unloads.emplace(distsqr, cc);
                 if (unloads.size() > MAX_CHUNK_UNLOADS)
                     unloads.pop();
-            } else if (!chunk_coord_out_of_range(cc, ccenter, RenderDistance) && c->updated()) {
+            }
+        }
+
+        // Sort meshing lists
+        for (auto const& [_, c]: _renders) {
+            auto cc = c->coord();
+            if (!chunk_coord_out_of_range(cc, ccenter, RenderDistance) && c->updated()) {
                 auto distsqr = (cc * chunks::Chunk::SIZE + chunks::Chunk::SIZE / 2 - center).length_sqr();
                 meshings.emplace(distsqr, c.get());
                 if (meshings.size() > MAX_CHUNK_MESHINGS)
@@ -582,6 +634,13 @@ public:
         }
     }
 
+    void update_load_anim() {
+        // TODO: 该项应属于渲染系统
+        for (auto const& [_, c]: _renders) {
+            c->update_load_anim();
+        }
+    }
+
     using RenderChunk = std::pair<Vec3d, std::array<std::pair<render::VertexArray, render::Buffer> const*, 2>>;
 
     auto list_render_chunks(Vec3d center, int dist, double interp, std::optional<Frustumf> frustum)
@@ -604,7 +663,8 @@ private:
     std::string _name;
     TilesStore _tiles_store;
     std::unordered_map<ChunkId, std::unique_ptr<chunks::Chunk>> _chunks;
-    std::vector<std::pair<int, chunks::Chunk*>> _chunk_meshing_list;
+    std::unordered_map<ChunkId, std::unique_ptr<RenderData>> _renders;
+    std::vector<std::pair<int, RenderData*>> _chunk_meshing_list;
     std::vector<std::pair<int, Vec3i>> _chunk_load_list;
     std::vector<std::pair<int, Vec3i>> _chunk_unload_list;
     std::deque<Vec3i> _block_update_queue;
@@ -638,6 +698,9 @@ private:
         _chunk_pointer_cache_key = cid;
         _chunk_pointer_cache_value = cptr;
 
+        // TODO: extract this to player tracker later on. now just simply add to render list
+        _renders.insert_or_assign(cid, std::make_unique<RenderData>(cptr));
+
         _chunks.emplace(cid, std::move(handle));
         return cptr;
     }
@@ -662,6 +725,9 @@ private:
             _chunk_pointer_cache_key = ChunkId(Vec3i(0, 0, 0));
             _chunk_pointer_cache_value = nullptr;
         }
+
+        // TODO: extract this to player tracker later on. now just simply remove from render list
+        _renders.erase(cid);
 
         // Shrink loaded core
         auto d = (ccoord - _loaded_core.ccenter).map([](int x) { return std::abs(x); });
