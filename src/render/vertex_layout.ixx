@@ -7,6 +7,7 @@ import std;
 import types;
 import debug;
 import math;
+import :types;
 
 namespace render {
 
@@ -229,24 +230,6 @@ struct Material {
 template <typename T>
 struct vertex_attrib_type_info<Material<T>>: vertex_attrib_type_info<T> {};
 
-// Returns the sum of all elements in the array.
-template <size_t N>
-constexpr auto _sum(std::array<size_t, N> a) -> size_t {
-    return std::accumulate(a.begin(), a.end(), 0);
-}
-
-// Returns the prefix sum of all elements in the array.
-template <size_t N>
-constexpr auto _prefix_sum(std::array<size_t, N> a) -> std::array<size_t, N> {
-    auto res = std::array<size_t, N>{};
-    auto sum = 0uz;
-    for (auto i = 0uz; i < N; i++) {
-        res[i] = sum;
-        sum += a[i];
-    }
-    return res;
-}
-
 // Vertex attribute type lists.
 // The attributes are stored in the order they appear in the type list.
 export template <typename... T>
@@ -259,20 +242,8 @@ public:
         std::array{static_cast<GLint>(vertex_attrib_type_info<T>::elem_count)...};
     static constexpr auto ATTRIB_MODES = std::array{static_cast<VertexAttribMode>(vertex_attrib_type_info<T>::mode)...};
     static constexpr auto ATTRIB_SIZES = std::array{sizeof(T)...};
-    static constexpr auto ATTRIB_OFFSETS = _prefix_sum(ATTRIB_SIZES);
-    static constexpr auto VERTEX_SIZE = _sum(ATTRIB_SIZES);
-};
-
-// Returns the I-th element in list <T...>. Switch to C++26 pack indexing once available.
-template <size_t I, typename... T>
-struct _choose {};
-
-template <size_t I, typename T, typename... U>
-struct _choose<I, T, U...>: _choose<I - 1, U...> {};
-
-template <typename T, typename... U>
-struct _choose<0, T, U...> {
-    using type = T;
+    static constexpr auto ATTRIB_OFFSETS = prefix_sum(ATTRIB_SIZES);
+    static constexpr auto VERTEX_SIZE = sum(ATTRIB_SIZES);
 };
 
 // A vertex on the CPU side. Stores type-erased attribute data.
@@ -285,9 +256,9 @@ public:
     // `Layout` gives information of the specified vertex layout.
     using Layout = VertexLayout<T...>;
 
-    // `Attrib<i>::type` gives the type of the i-th attribute.
+    // `Attrib<i>` gives the type of the i-th attribute.
     template <size_t I>
-    using Attrib = _choose<I, T...>;
+    using Attrib = std::tuple_element_t<I, std::tuple<T...>>;
 
     Vertex() = default;
 
@@ -300,8 +271,8 @@ public:
     }
 
     template <size_t I>
-    auto attrib() const -> Attrib<I>::type {
-        auto attr = Attrib<I>::type();
+    auto attrib() const -> Attrib<I> {
+        auto attr = Attrib<I>();
         auto span = std::as_writable_bytes(std::span(&attr, 1));
         auto src = _bytes.begin() + Layout::ATTRIB_OFFSETS[I];
         std::copy(src, src + span.size(), span.begin());
@@ -309,7 +280,7 @@ public:
     }
 
     template <size_t I>
-    void set_attrib(Attrib<I>::type attr) {
+    void set_attrib(Attrib<I> attr) {
         auto span = std::as_bytes(std::span(&attr, 1));
         auto dst = _bytes.begin() + Layout::ATTRIB_OFFSETS[I];
         std::copy(span.begin(), span.end(), dst);
@@ -323,24 +294,6 @@ private:
 // A contiguous array of `Vertex` will be tightly packed.
 static_assert(alignof(Vertex<VertexLayout<int32_t, Vec3f, float>>) == 1);
 static_assert(sizeof(Vertex<VertexLayout<int32_t, Vec3f, float>>) == sizeof(int32_t) + sizeof(Vec3f) + sizeof(float));
-
-// Finds the first element in the list <T...> that is wrapped by a semantic wrapper W.
-template <size_t I, template <typename> typename W, typename... T>
-struct _find {
-    using type = std::monostate;
-    static constexpr auto index = 0uz;
-    static constexpr auto found = false;
-};
-
-template <size_t I, template <typename> typename W, typename T, typename... U>
-struct _find<I, W, T, U...>: _find<I + 1, W, U...> {};
-
-template <size_t I, template <typename> typename W, typename T, typename... U>
-struct _find<I, W, W<T>, U...> {
-    using type = T;
-    static constexpr auto index = I;
-    static constexpr auto found = true;
-};
 
 // A vertex array on the CPU side.
 //
@@ -375,16 +328,16 @@ public:
     // `Layout` gives information of the specified vertex layout.
     using Layout = VertexLayout<T...>;
 
-    // `Attrib<i>::type` gives the type of the i-th attribute.
+    // `Attrib<i>` gives the type of the i-th attribute.
     template <size_t I>
-    using Attrib = _choose<I, T...>;
+    using Attrib = std::tuple_element_t<I, std::tuple<T...>>;
 
     // Semantic wrapper find results.
-    using CoordAttrib = _find<0, Coord, T...>;
-    using TexCoordAttrib = _find<0, TexCoord, T...>;
-    using ColorAttrib = _find<0, Color, T...>;
-    using NormalAttrib = _find<0, Normal, T...>;
-    using MaterialAttrib = _find<0, Material, T...>;
+    using CoordAttrib = find_wrapper_t<Coord, T...>;
+    using TexCoordAttrib = find_wrapper_t<TexCoord, T...>;
+    using ColorAttrib = find_wrapper_t<Color, T...>;
+    using NormalAttrib = find_wrapper_t<Normal, T...>;
+    using MaterialAttrib = find_wrapper_t<Material, T...>;
 
     VertexArrayBuilder() = default;
 
@@ -397,7 +350,7 @@ public:
     }
 
     template <size_t I>
-    void set_attrib(Attrib<I>::type attr, bool make_vertex = false) {
+    void set_attrib(Attrib<I> attr, bool make_vertex = false) {
         _vertex.template set_attrib<I>(attr);
         if (make_vertex) {
             _vertices.emplace_back(_vertex);
@@ -442,16 +395,16 @@ public:
     // `Layout` gives information of the specified vertex layout.
     using Layout = VertexLayout<T...>;
 
-    // `Attrib<i>::type` gives the type of the i-th attribute.
+    // `Attrib<i>` gives the type of the i-th attribute.
     template <size_t I>
-    using Attrib = _choose<I, T...>;
+    using Attrib = std::tuple_element_t<I, std::tuple<T...>>;
 
     // Semantic wrapper find results.
-    using CoordAttrib = _find<0, Coord, T...>;
-    using TexCoordAttrib = _find<0, TexCoord, T...>;
-    using ColorAttrib = _find<0, Color, T...>;
-    using NormalAttrib = _find<0, Normal, T...>;
-    using MaterialAttrib = _find<0, Material, T...>;
+    using CoordAttrib = find_wrapper_t<Coord, T...>;
+    using TexCoordAttrib = find_wrapper_t<TexCoord, T...>;
+    using ColorAttrib = find_wrapper_t<Color, T...>;
+    using NormalAttrib = find_wrapper_t<Normal, T...>;
+    using MaterialAttrib = find_wrapper_t<Material, T...>;
 
     // Primitive restart index.
     // When cast to narrower types, this will become the fixed primitive restart indices
@@ -488,7 +441,7 @@ public:
     }
 
     template <size_t I>
-    void set_attrib(Attrib<I>::type attr, bool make_vertex = false) {
+    void set_attrib(Attrib<I> attr, bool make_vertex = false) {
         _vertex.template set_attrib<I>(attr);
         if (make_vertex) {
             assert(_vertices.size() < PRIMITIVE_RESTART_INDEX, "vertex array too large");
