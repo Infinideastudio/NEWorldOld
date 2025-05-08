@@ -750,7 +750,8 @@ void render_scene(worlds::World& world) {
 
     // Full screen passes
     if (AdvancedRender) {
-        auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec2f>>();
+        using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec2f>>;
+        auto v = render::VertexArrayIndexedBuilder<Layout>();
         v.tex_coord({0.0f, 1.0f});
         v.coord({0, 0});
         v.tex_coord({0.0f, 0.0f});
@@ -759,7 +760,8 @@ void render_scene(worlds::World& world) {
         v.coord({WindowWidth, WindowHeight});
         v.tex_coord({1.0f, 1.0f});
         v.coord({WindowWidth, 0});
-        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+        v.end_primitive();
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
         Renderer::StartFinalPass(
             view_coord.x(),
@@ -785,8 +787,9 @@ void render_scene(worlds::World& world) {
 
     auto int_view_coord = view_coord.floor<int32_t>();
     if (world.block_or_air(int_view_coord).id == base_blocks().water) {
+        using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>;
+        auto v = render::VertexArrayIndexedBuilder<Layout>();
         auto tex = static_cast<float>(Textures::getTextureIndex(base_blocks().water, 0));
-        auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>();
         v.color({255, 255, 255, 255});
         v.tex_coord({0.0f, 1.0f, tex});
         v.coord({0, 0});
@@ -796,7 +799,8 @@ void render_scene(worlds::World& world) {
         v.coord({WindowWidth, WindowHeight});
         v.tex_coord({1.0f, 1.0f, tex});
         v.coord({WindowWidth, 0});
-        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+        v.end_primitive();
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
         auto& shader = Renderer::shaders[Renderer::UIShader];
         shader.bind();
@@ -852,14 +856,6 @@ void readback(worlds::World& world) {
     }
 }
 
-using render::VertexArray;
-using VertexArrayBuilder = render::VertexArrayBuilder<
-    render::Coord<Vec3f>,
-    render::TexCoord<Vec3f>,
-    render::Color<Vec3u8>,
-    render::Normal<Vec3i8>,
-    render::Material<uint16_t>>;
-
 constexpr auto centers = std::array<Vec3f, 6>({
     {1.0f, 0.5f, 0.5f},
     {0.0f, 0.5f, 0.5f},
@@ -887,10 +883,19 @@ constexpr auto tex_coords = std::array<Vec2f, 4>({
 
 // Draw the block selection border
 void draw_block_selection_border(float x, float y, float z) {
+    using render::VertexArray;
+    using render::VertexArrayIndexedBuilder;
+    using Layout = render::VertexLayout<
+        render::Coord<Vec3f>,
+        render::TexCoord<Vec3f>,
+        render::Color<Vec3u8>,
+        render::Normal<Vec3i8>,
+        render::Material<uint16_t>>;
+
     constexpr auto EPS = 0.005f;
     constexpr auto WIDTH = 1.0f / 32.0f;
 
-    auto v = VertexArrayBuilder();
+    auto v = VertexArrayIndexedBuilder<Layout>();
     v.material(65535); // For indicator elements
     v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
     v.color({255, 255, 255});
@@ -912,12 +917,22 @@ void draw_block_selection_border(float x, float y, float z) {
             v.coord({x + x1, y + y1, z + z1});
             v.coord({x + x1 - xd1 * WIDTH, y + y1 - yd1 * WIDTH, z + z1 - zd1 * WIDTH});
             v.coord({x + x0 - xd0 * WIDTH, y + y0 - yd0 * WIDTH, z + z0 - zd0 * WIDTH});
+            v.end_primitive();
         }
     }
-    VertexArray::create(v, VertexArray::Primitive::QUADS).first.render();
+    VertexArray::create(v, VertexArray::Primitive::TRIANGLE_FAN).first.render();
 }
 
 void draw_block_breaking_texture(float level, float x, float y, float z) {
+    using render::VertexArray;
+    using render::VertexArrayIndexedBuilder;
+    using Layout = render::VertexLayout<
+        render::Coord<Vec3f>,
+        render::TexCoord<Vec3f>,
+        render::Color<Vec3u8>,
+        render::Normal<Vec3i8>,
+        render::Material<uint16_t>>;
+
     constexpr auto EPS = 0.005f;
     if (level <= 0.0f) {
         return;
@@ -925,7 +940,7 @@ void draw_block_breaking_texture(float level, float x, float y, float z) {
     auto index = std::clamp(int(level * 8), 0, 7);
     auto tex = static_cast<float>(TextureIndex::BREAKING_0) + static_cast<float>(index);
 
-    auto v = VertexArrayBuilder();
+    auto v = VertexArrayIndexedBuilder<Layout>();
     v.material(65535); // For indicator elements
     v.color({255, 255, 255});
 
@@ -942,8 +957,9 @@ void draw_block_breaking_texture(float level, float x, float y, float z) {
             v.tex_coord({u0, v0, tex});
             v.coord({x + x0, y + y0, z + z0});
         }
+        v.end_primitive();
     }
-    VertexArray::create(v, VertexArray::Primitive::QUADS).first.render();
+    VertexArray::create(v, VertexArray::Primitive::TRIANGLE_FAN).first.render();
 }
 
 void draw_hud(worlds::World& world) {
@@ -1024,7 +1040,8 @@ void draw_hud(worlds::World& world) {
         float xa = 1.0f;
         float ya = 0.0f;
 
-        auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec2f>>();
+        using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec2f>>;
+        auto v = render::VertexArrayIndexedBuilder<Layout>();
         v.tex_coord({0.0f, 1.0f});
         v.coord({xi, yi});
         v.tex_coord({0.0f, 0.0f});
@@ -1033,7 +1050,8 @@ void draw_hud(worlds::World& world) {
         v.coord({xa, ya});
         v.tex_coord({1.0f, 1.0f});
         v.coord({xa, yi});
-        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+        v.end_primitive();
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
         Renderer::shadow.bindDepthTexture(0);
         auto& shader = Renderer::shaders[Renderer::DebugShadowShader];
@@ -1153,8 +1171,9 @@ void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, 
 
         auto& item = player.inventory_item_stack(row, i);
         if (!item.empty()) {
+            using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>;
+            auto v = render::VertexArrayIndexedBuilder<Layout>();
             auto tex = static_cast<float>(Textures::getTextureIndex(item.id, 0));
-            auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>();
             v.color({255, 255, 255, 255});
             v.tex_coord({0.0f, 1.0f, tex});
             v.coord({xbase + i * (32 + spac) + 2, ybase + 2});
@@ -1164,7 +1183,8 @@ void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, 
             v.coord({xbase + i * (32 + spac) + 30, ybase + 30});
             v.tex_coord({1.0f, 1.0f, tex});
             v.coord({xbase + i * (32 + spac) + 30, ybase + 2});
-            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+            v.end_primitive();
+            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
             auto& shader = Renderer::shaders[Renderer::UIShader];
             shader.bind();
@@ -1258,8 +1278,9 @@ void draw_inventory(player::Player& player) {
         }
 
         if (itemSelected.id != base_blocks().air) {
+            using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>;
+            auto v = render::VertexArrayIndexedBuilder<Layout>();
             auto tex = static_cast<float>(Textures::getTextureIndex(itemSelected.id, 0));
-            auto v = render::VertexArrayBuilder<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>();
             v.color({255, 255, 255, 255});
             v.tex_coord({0.0f, 1.0f, tex});
             v.coord({mx - 16, my - 16});
@@ -1269,7 +1290,8 @@ void draw_inventory(player::Player& player) {
             v.coord({mx + 16, my + 16});
             v.tex_coord({1.0f, 1.0f, tex});
             v.coord({mx + 16, my - 16});
-            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::QUADS);
+            v.end_primitive();
+            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
             auto& shader = Renderer::shaders[Renderer::UIShader];
             shader.bind();
