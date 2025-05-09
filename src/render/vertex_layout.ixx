@@ -100,7 +100,7 @@ struct vertex_attrib_type_info<double> {
 
 // Interop with math types.
 template <size_t N>
-requires (1 <= N && N <= 4)
+requires (2 <= N && N <= 4)
 struct vertex_attrib_type_info<Vector<int8_t, N>> {
     static constexpr auto base_type = GL_BYTE;
     static constexpr auto elem_count = N;
@@ -108,7 +108,7 @@ struct vertex_attrib_type_info<Vector<int8_t, N>> {
 };
 
 template <size_t N>
-requires (1 <= N && N <= 4)
+requires (2 <= N && N <= 4)
 struct vertex_attrib_type_info<Vector<uint8_t, N>> {
     static constexpr auto base_type = GL_UNSIGNED_BYTE;
     static constexpr auto elem_count = N;
@@ -116,7 +116,7 @@ struct vertex_attrib_type_info<Vector<uint8_t, N>> {
 };
 
 template <size_t N>
-requires (1 <= N && N <= 4)
+requires (2 <= N && N <= 4)
 struct vertex_attrib_type_info<Vector<int16_t, N>> {
     static constexpr auto base_type = GL_SHORT;
     static constexpr auto elem_count = N;
@@ -124,7 +124,7 @@ struct vertex_attrib_type_info<Vector<int16_t, N>> {
 };
 
 template <size_t N>
-requires (1 <= N && N <= 4)
+requires (2 <= N && N <= 4)
 struct vertex_attrib_type_info<Vector<uint16_t, N>> {
     static constexpr auto base_type = GL_UNSIGNED_SHORT;
     static constexpr auto elem_count = N;
@@ -132,7 +132,7 @@ struct vertex_attrib_type_info<Vector<uint16_t, N>> {
 };
 
 template <size_t N>
-requires (1 <= N && N <= 4)
+requires (2 <= N && N <= 4)
 struct vertex_attrib_type_info<Vector<int32_t, N>> {
     static constexpr auto base_type = GL_INT;
     static constexpr auto elem_count = N;
@@ -140,7 +140,7 @@ struct vertex_attrib_type_info<Vector<int32_t, N>> {
 };
 
 template <size_t N>
-requires (1 <= N && N <= 4)
+requires (2 <= N && N <= 4)
 struct vertex_attrib_type_info<Vector<uint32_t, N>> {
     static constexpr auto base_type = GL_UNSIGNED_INT;
     static constexpr auto elem_count = N;
@@ -148,7 +148,7 @@ struct vertex_attrib_type_info<Vector<uint32_t, N>> {
 };
 
 template <size_t N>
-requires (1 <= N && N <= 4)
+requires (2 <= N && N <= 4)
 struct vertex_attrib_type_info<Vector<float, N>> {
     static constexpr auto base_type = GL_FLOAT;
     static constexpr auto elem_count = N;
@@ -156,7 +156,7 @@ struct vertex_attrib_type_info<Vector<float, N>> {
 };
 
 template <size_t N>
-requires (1 <= N && N <= 4)
+requires (2 <= N && N <= 4)
 struct vertex_attrib_type_info<Vector<double, N>> {
     static constexpr auto base_type = GL_DOUBLE;
     static constexpr auto elem_count = N;

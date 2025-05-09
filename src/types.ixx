@@ -111,6 +111,41 @@ struct args<T, U...> {
     constexpr args() = default;
 };
 
+// Structural construstors of inspectors.
+template <typename... T>
+struct make_type {};
+template <typename... T>
+struct make_args {};
+
+// The type inspector: atomic case.
+template <typename T>
+struct make_type<atom<T>> {
+    using type = type<T>;
+};
+
+// The type inspector: template case.
+template <template <typename...> typename T, typename... U>
+struct make_type<temp<T>, args<U...>> {
+    using type = type<T<U...>>;
+};
+
+// The argument list inspector: nil case.
+template <>
+struct make_args<> {
+    using type = args<>;
+};
+
+// The argument list inspector: cons case.
+template <typename T, typename... U>
+struct make_args<type<T>, args<U...>> {
+    using type = args<T, U...>;
+};
+
+export template <typename... T>
+using make_type_t = typename make_type<T...>::type;
+export template <typename... T>
+using make_args_t = typename make_args<T...>::type;
+
 // Type-checking constants.
 // For use in `requires` clauses to provide sane error messages.
 export template <typename T>
