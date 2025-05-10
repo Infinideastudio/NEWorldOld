@@ -77,10 +77,14 @@ struct fstring { // NOLINT
 
     consteval fstring() = default;
     consteval fstring(fstring<N> const& r) {
-        std::copy_n(r.chars.begin(), N, chars.begin());
+        for (auto i = 0uz; i < N; i++) {
+            chars[i] = r.chars[i];
+        }
     }
     consteval fstring(char const (&s)[N]) { // NOLINT
-        std::copy_n(static_cast<char const*>(s), N, chars.begin());
+        for (auto i = 0uz; i < N; i++) {
+            chars[i] = s[i];
+        }
     }
 
     /*
