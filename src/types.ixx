@@ -215,4 +215,61 @@ static_assert(std::is_same_v<elem_t<0, args<int8_t, int16_t, int32_t, int64_t>>,
 static_assert(std::is_same_v<elem_t<2, args<int8_t, int16_t, int32_t, int64_t>>, int32_t>);
 */
 
+// Structural fixed-length strings for use as non-type template arguments.
+export template <size_t N>
+struct FixedString { // NOLINT
+    std::array<char, N> chars = {};
+
+    consteval FixedString() = default;
+    consteval FixedString(FixedString<N> const& r) {
+        for (auto i = 0uz; i < N; i++) {
+            chars[i] = r.chars[i];
+        }
+    }
+    consteval FixedString(char const (&s)[N]) { // NOLINT
+        for (auto i = 0uz; i < N; i++) {
+            chars[i] = s[i];
+        }
+    }
+
+    /*
+    // Element-wise equality.
+    template <size_t M>
+    consteval auto operator==(FixedString<M> const& r) const -> bool {
+        if constexpr (N != M) {
+            return false;
+        }
+        for (size_t i = 0; i < N; i++) {
+            if (chars[i] != r.chars[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Indexing operator.
+    consteval auto operator[](size_t i) const -> char {
+        return chars[i];
+    }
+
+    // Taking substring.
+    template <size_t I, size_t L>
+    requires (I + L <= N)
+    consteval auto substr() const -> FixedString<L> {
+        auto res = FixedString<L>();
+        std::copy_n(chars.begin() + I, L, res.chars.begin());
+        return res;
+    }
+    */
+
+    // Taking suffix.
+    template <size_t I>
+    requires (I <= N)
+    consteval auto suffix() const -> FixedString<N - I> {
+        auto res = FixedString<N - I>();
+        std::copy_n(chars.begin() + I, N - I, res.chars.begin());
+        return res;
+    }
+};
+
 }

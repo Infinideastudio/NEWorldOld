@@ -27,7 +27,7 @@ public:
 
     // Constructs a `Shader` which owns the given `handle`.
     // The `handle` must be either 0 or a valid GL shader object.
-    Shader(GLuint handle, Stage stage) noexcept:
+    explicit Shader(GLuint handle, Stage stage) noexcept:
         _handle(handle),
         _stage(stage) {}
 
@@ -61,10 +61,10 @@ public:
     }
 
     // Creates a shader object from the given source code.
-    auto create(Stage stage, std::string_view source) -> std::variant<Shader, std::string> {
+    static auto create(Stage stage, std::string_view source) -> std::expected<Shader, std::string> {
         auto handle = glCreateShader(_stage_to_gl_enum(stage));
         if (handle == 0) {
-            return "failed to create shader object";
+            return std::unexpected("failed to create shader object");
         }
         auto source_cstr = source.data();
         auto source_length = static_cast<GLint>(source.size());
@@ -79,7 +79,7 @@ public:
             auto info_log = std::string(info_log_length + 1, '\0');
             glGetShaderInfoLog(handle, info_log_length + 1, nullptr, info_log.data());
             info_log.resize(info_log_length);
-            return info_log;
+            return std::unexpected("failed to compile shader: " + info_log);
         }
         return Shader(handle, stage);
     }
@@ -146,16 +146,34 @@ public:
         glUseProgram(0);
     }
 
+    // Sets the value of an opaque uniform variable (which cannot be put into blocks).
+    // This operation binds the program.
+    void set_opaque(std::string const& name, size_t value) const {
+        assert(_handle != 0, "setting uniform on an uninitialised program");
+        auto location = glGetUniformLocation(_handle, name.c_str());
+        if (location != -1) {
+            glUseProgram(_handle);
+            glUniform1i(location, static_cast<GLint>(value));
+        }
+    }
+
+    // Sets the uniform block binding for the given block name.
+    void set_uniform_block(std::string const& name, size_t index) const {
+        assert(_handle != 0, "setting uniform block binding on an uninitialised program");
+        auto location = glGetUniformBlockIndex(_handle, name.c_str());
+        glUniformBlockBinding(_handle, location, static_cast<GLuint>(index));
+    }
+
     // Creates a program object by linking the given shader objects.
     // Per GL specification, the shader objects can be deleted immediately after linking.
-    static auto create(std::span<Shader const> shaders) -> std::variant<Program, std::string> {
+    static auto create(std::initializer_list<Shader> shaders) -> std::expected<Program, std::string> {
         auto handle = glCreateProgram();
         if (handle == 0) {
-            return "failed to create program object";
+            return std::unexpected("failed to create program object");
         }
         for (auto const& shader: shaders) {
             if (!shader) {
-                return "trying to link an invalid shader stage";
+                return std::unexpected("trying to link an invalid shader stage");
             }
             glAttachShader(handle, shader.get());
         }
@@ -169,7 +187,7 @@ public:
             auto info_log = std::string(info_log_length + 1, '\0');
             glGetProgramInfoLog(handle, info_log_length + 1, nullptr, info_log.data());
             info_log.resize(info_log_length);
-            return info_log;
+            return std::unexpected("failed to link program: " + info_log);
         }
         return Program(handle);
     }
@@ -182,5 +200,30 @@ public:
 private:
     GLuint _handle = 0;
 };
+
+// Helper function to load a shader from a file.
+export auto load_shader_source(std::filesystem::path const& filename, std::vector<std::string> const& defines = {})
+    -> std::expected<std::string, std::string> {
+    auto res = std::string();
+    auto filein = std::ifstream(filename);
+    if (!filein.is_open()) {
+        return std::unexpected(std::format("failed to open shader file: {}", filename.string()));
+    }
+    auto defs = false;
+    while (!filein.eof()) {
+        auto line = std::string();
+        std::getline(filein, line);
+        line += "\n";
+        bool insert_defs = !defs && line.starts_with("#version");
+        res += line;
+        if (insert_defs) {
+            defs = true;
+            for (auto const& define: defines) {
+                res += "#define " + define + "\n";
+            }
+        }
+    }
+    return res;
+}
 
 }

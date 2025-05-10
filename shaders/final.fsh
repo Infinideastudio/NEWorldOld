@@ -10,21 +10,29 @@ uniform sampler2D u_material_buffer;
 uniform sampler2D u_depth_buffer;
 uniform sampler2DShadow u_shadow_texture;
 uniform sampler2D u_noise_texture;
-uniform float u_buffer_width;
-uniform float u_buffer_height;
-uniform float u_shadow_texture_resolution;
-uniform float u_shadow_fisheye_factor;
-uniform float u_shadow_distance;
-uniform float u_render_distance;
 
-uniform mat4 u_mvp;
-uniform mat4 u_shadow_mvp;
-uniform vec3 u_sunlight_dir;
-uniform float u_game_time;
-uniform int u_repeat_length;
-uniform ivec3 u_player_coord_int;
-uniform ivec3 u_player_coord_mod;
-uniform vec3 u_player_coord_frac;
+layout(std140, row_major) uniform Frame {
+    mat4 u_mvp;
+    float u_game_time;
+    vec3 u_sunlight_dir;
+    float u_buffer_width;
+    float u_buffer_height;
+    float u_render_distance;
+
+    mat4 u_shadow_mvp;
+    float u_shadow_resolution;
+    float u_shadow_fisheye_factor;
+    float u_shadow_distance;
+
+    int u_repeat_length;
+    ivec3 u_player_coord_int;
+    ivec3 u_player_coord_mod;
+    vec3 u_player_coord_frac;
+};
+
+layout(std140, row_major) uniform Model {
+    vec3 u_translation;
+};
 
 const float PI = 3.141593;
 const float GAMMA = 2.2;
@@ -141,7 +149,7 @@ float interpolated_noise(vec3 x) {
 
 // Sample shadow map
 float get_shadow_offset(vec3 tex_coord, vec2 offset) {
-  return texture(u_shadow_texture, vec3(tex_coord.xy + offset / u_shadow_texture_resolution, tex_coord.z));
+  return texture(u_shadow_texture, vec3(tex_coord.xy + offset / u_shadow_resolution, tex_coord.z));
 }
 
 // Sample shadow map (4 samples)
@@ -182,7 +190,7 @@ float calc_sunlight(vec3 coord, vec3 normal) {
     shadow_coord = vec3(fisheye_projection(shadow_coord.xy), shadow_coord.z);
 
     // Neighbor pixel distance in light space
-    float shift = 2.0 / u_shadow_texture_resolution;
+    float shift = 2.0 / u_shadow_resolution;
     shift = length(fisheye_inverse(shadow_coord.xy + shift * normalize(shadow_coord.xy)) - fisheye_inverse(shadow_coord.xy));
 
     // Approximate world space distance for moving one pixel in shadow map

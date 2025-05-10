@@ -5,8 +5,14 @@ layout(location = 1) in vec2 a_tex_coord;
 
 out vec2 tex_coord;
 
-uniform float u_buffer_width;
-uniform float u_buffer_height;
+layout(std140, row_major) uniform Filter {
+    float u_buffer_width;
+    float u_buffer_height;
+    int u_filter_id;
+    float u_gaussian_blur_radius;
+    float u_gaussian_blur_step_size;
+    float u_gaussian_blur_sigma; // Standard deviation
+};
 
 void main() {
     tex_coord = a_tex_coord;

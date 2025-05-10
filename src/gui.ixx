@@ -994,7 +994,7 @@ void Form::render() {
 
         float step = 2.0f;
         float upscaling = 2.0f;
-        float sigma = 16.0f / upscaling;
+        float sigma = 16.0f;
 
         int width = int(WindowWidth / upscaling);
         int height = int(WindowHeight / upscaling);
@@ -1021,31 +1021,37 @@ void Form::render() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         drawBackground();
 
-        auto& shader = Renderer::shaders[Renderer::FilterShader];
-        shader.bind();
-        shader.setUniformI("u_buffer", 0);
-        shader.setUniform("u_buffer_width", static_cast<float>(fbo.width()));
-        shader.setUniform("u_buffer_height", static_cast<float>(fbo.height()));
-        shader.setUniform("u_gaussian_blur_radius", 2.0f * sigma);
-        shader.setUniform("u_gaussian_blur_step_size", step);
-        shader.setUniform("u_gaussian_blur_sigma", sigma);
+        Renderer::shaders[Renderer::FilterShader].bind();
+
+        // Set filter uniforms.
+        Renderer::filter_uniforms.set<".u_buffer_width">(static_cast<float>(width));
+        Renderer::filter_uniforms.set<".u_buffer_height">(static_cast<float>(height));
+        Renderer::filter_uniforms.set<".u_gaussian_blur_radius">(sigma / upscaling * 2.0f);
+        Renderer::filter_uniforms.set<".u_gaussian_blur_step_size">(step);
+        Renderer::filter_uniforms.set<".u_gaussian_blur_sigma">(sigma / upscaling);
+
+        // Update uniform buffer.
+        Renderer::filter_uniform_buffer.write(Renderer::filter_uniforms.bytes(), 0);
+        Renderer::filter_uniform_buffer.bind(render::Buffer::IndexedTarget::UNIFORM, 0);
 
         fbo.bindColorTexture(0);
         fbo.bindTarget({1});
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        shader.setUniformI("u_filter_id", 1);
+        Renderer::filter_uniforms.set<".u_filter_id">(1);
+        Renderer::filter_uniform_buffer.write(Renderer::filter_uniforms.bytes(), 0);
         va.first.render();
 
         fbo.bindColorTexture(1);
         fbo.bindTarget({0});
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        shader.setUniformI("u_filter_id", 2);
+        Renderer::filter_uniforms.set<".u_filter_id">(2);
+        Renderer::filter_uniform_buffer.write(Renderer::filter_uniforms.bytes(), 0);
         va.first.render();
 
         fbo.bindColorTexture(0);
         fbo.unbindTarget();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        shader.unbind();
+        render::Program::unbind();
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();

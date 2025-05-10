@@ -7,12 +7,39 @@ export module rendering;
 import std;
 import types;
 import debug;
-import shaders;
 import framebuffers;
 import math;
 import globals;
+import render;
 
 export namespace Renderer {
+namespace spec = render::block_layout::spec;
+
+using FilterUniformBlock = spec::Struct<
+    spec::Field<"u_buffer_width", spec::Float>,
+    spec::Field<"u_buffer_height", spec::Float>,
+    spec::Field<"u_filter_id", spec::Int>,
+    spec::Field<"u_gaussian_blur_radius", spec::Float>,
+    spec::Field<"u_gaussian_blur_step_size", spec::Float>,
+    spec::Field<"u_gaussian_blur_sigma", spec::Float>>;
+
+using FrameUniformBlock = spec::Struct<
+    spec::Field<"u_mvp", spec::Mat4f>,
+    spec::Field<"u_game_time", spec::Float>,
+    spec::Field<"u_sunlight_dir", spec::Vec3f>,
+    spec::Field<"u_buffer_width", spec::Float>,
+    spec::Field<"u_buffer_height", spec::Float>,
+    spec::Field<"u_render_distance", spec::Float>,
+    spec::Field<"u_shadow_mvp", spec::Mat4f>,
+    spec::Field<"u_shadow_resolution", spec::Float>,
+    spec::Field<"u_shadow_fisheye_factor", spec::Float>,
+    spec::Field<"u_shadow_distance", spec::Float>,
+    spec::Field<"u_repeat_length", spec::Int>,
+    spec::Field<"u_player_coord_int", spec::Vec3i>,
+    spec::Field<"u_player_coord_mod", spec::Vec3i>,
+    spec::Field<"u_player_coord_frac", spec::Vec3f>>;
+
+using ModelUniformBlock = spec::Struct<spec::Field<"u_translation", spec::Vec3f>>;
 
 enum Shaders {
     UIShader,
@@ -27,17 +54,18 @@ enum Shaders {
 
 double sunlightPitch = 30.0;
 double sunlightHeading = 60.0;
-std::vector<Shader> shaders;
-int ActiveShader;
+std::vector<render::Program> shaders;
 
 constexpr int gBufferCount = 3;
 int gWidth, gHeight;
 Framebuffer shadow, gBuffers, dBuffer;
 
-void bindShader(int shaderID) {
-    shaders[shaderID].bind();
-    ActiveShader = shaderID;
-}
+auto filter_uniforms = render::Block<FilterUniformBlock>();
+auto frame_uniforms = render::Block<FrameUniformBlock>();
+auto model_uniforms = render::Block<ModelUniformBlock>();
+auto filter_uniform_buffer = render::Buffer();
+auto frame_uniform_buffer = render::Buffer();
+auto model_uniform_buffer = render::Buffer();
 
 auto getShadowDistance() -> int {
     return std::min(MaxShadowDistance, RenderDistance);
@@ -71,68 +99,88 @@ auto getNoiseTexture() -> GLuint {
 
 void init_shaders(bool reload = false) {
     if (shaders.empty() || reload) {
-        std::vector<std::string> defines;
-        if (MergeFace)
+        using render::Shader;
+        using render::Program;
+        using render::load_shader_source;
+
+        auto defines = std::vector<std::string>{};
+        if (MergeFace) {
             defines.emplace_back("MERGE_FACE");
-        if (SoftShadow)
+        }
+        if (SoftShadow) {
             defines.emplace_back("SOFT_SHADOW");
-        if (VolumetricClouds)
+        }
+        if (VolumetricClouds) {
             defines.emplace_back("VOLUMETRIC_CLOUDS");
-        if (AmbientOcclusion)
+        }
+        if (AmbientOcclusion) {
             defines.emplace_back("AMBIENT_OCCLUSION");
+        }
         shaders.clear();
-        shaders.emplace_back("shaders/ui.vsh", "shaders/ui.fsh", defines);
-        shaders.emplace_back("shaders/filter.vsh", "shaders/filter.fsh", defines);
-        shaders.emplace_back("shaders/default.vsh", "shaders/default.fsh", defines);
-        shaders.emplace_back("shaders/opaque.vsh", "shaders/opaque.fsh", defines);
-        shaders.emplace_back("shaders/translucent.vsh", "shaders/translucent.fsh", defines);
-        shaders.emplace_back("shaders/final.vsh", "shaders/final.fsh", defines);
-        shaders.emplace_back("shaders/shadow.vsh", "shaders/shadow.fsh", defines);
-        shaders.emplace_back("shaders/debug_shadow.vsh", "shaders/debug_shadow.fsh", defines);
+        auto add_shader = [&](std::string_view vertex_path, std::string_view fragment_path) {
+            auto vsh = *Shader::create(Shader::Stage::VERTEX, *load_shader_source(vertex_path, defines));
+            auto fsh = *Shader::create(Shader::Stage::FRAGMENT, *load_shader_source(fragment_path, defines));
+            shaders.emplace_back(*Program::create({std::move(vsh), std::move(fsh)}));
+        };
+        add_shader("shaders/ui.vsh", "shaders/ui.fsh");
+        add_shader("shaders/filter.vsh", "shaders/filter.fsh");
+        add_shader("shaders/default.vsh", "shaders/default.fsh");
+        add_shader("shaders/opaque.vsh", "shaders/opaque.fsh");
+        add_shader("shaders/translucent.vsh", "shaders/translucent.fsh");
+        add_shader("shaders/final.vsh", "shaders/final.fsh");
+        add_shader("shaders/shadow.vsh", "shaders/shadow.fsh");
+        add_shader("shaders/debug_shadow.vsh", "shaders/debug_shadow.fsh");
     }
 
-    // Create framebuffers
+    // Create framebuffers.
     gWidth = WindowWidth;
     gHeight = WindowHeight;
     shadow = Framebuffer(ShadowRes, ShadowRes, 0, true, true);
     gBuffers = Framebuffer(gWidth, gHeight, gBufferCount, true, false);
     dBuffer = Framebuffer(gWidth, gHeight, 0, true, false);
 
-    // Set constant uniforms
-    shaders[UIShader].bind();
-    shaders[UIShader].setUniformI("u_texture_array", 0);
-    shaders[UIShader].setUniform("u_buffer_width", float(WindowWidth));
-    shaders[UIShader].setUniform("u_buffer_height", float(WindowHeight));
+    // Create uniform buffers.
+    auto usage = render::Buffer::Usage::WRITE;
+    auto update = render::Buffer::Update::INFREQUENT;
+    filter_uniform_buffer = render::Buffer::create(filter_uniforms.size(), usage, update);
+    frame_uniform_buffer = render::Buffer::create(frame_uniforms.size(), usage, update);
+    model_uniform_buffer = render::Buffer::create(model_uniforms.size(), usage, update);
 
-    shaders[DefaultShader].bind();
-    shaders[DefaultShader].setUniformI("u_diffuse", 0);
+    // Set opaque uniforms and uniform buffer bindings.
+    shaders[UIShader].set_opaque("u_diffuse", 0);
+    shaders[UIShader].set_uniform_block("Frame", 0);
 
-    shaders[OpqaueShader].bind();
-    shaders[OpqaueShader].setUniformI("u_diffuse", 0);
+    shaders[FilterShader].set_opaque("u_buffer", 0);
+    shaders[FilterShader].set_uniform_block("Filter", 0);
 
-    shaders[TranslucentShader].bind();
-    shaders[TranslucentShader].setUniformI("u_diffuse", 0);
+    shaders[DefaultShader].set_opaque("u_diffuse", 0);
+    shaders[DefaultShader].set_uniform_block("Frame", 0);
+    shaders[DefaultShader].set_uniform_block("Model", 1);
 
-    float fisheyeFactor = 0.8f;
-    shaders[FinalShader].bind();
-    shaders[FinalShader].setUniformI("u_diffuse_buffer", 0);
-    shaders[FinalShader].setUniformI("u_normal_buffer", 1);
-    shaders[FinalShader].setUniformI("u_material_buffer", 2);
-    shaders[FinalShader].setUniformI("u_depth_buffer", gBufferCount + 0);
-    shaders[FinalShader].setUniformI("u_shadow_texture", gBufferCount + 1);
-    shaders[FinalShader].setUniformI("u_noise_texture", gBufferCount + 2);
-    shaders[FinalShader].setUniform("u_buffer_width", static_cast<float>(gWidth));
-    shaders[FinalShader].setUniform("u_buffer_height", static_cast<float>(gHeight));
-    shaders[FinalShader].setUniform("u_shadow_texture_resolution", static_cast<float>(ShadowRes));
-    shaders[FinalShader].setUniform("u_shadow_fisheye_factor", fisheyeFactor);
-    shaders[FinalShader].setUniform("u_shadow_distance", static_cast<float>(getShadowDistance() * 16));
-    shaders[FinalShader].setUniform("u_render_distance", static_cast<float>(RenderDistance * 16));
+    shaders[OpqaueShader].set_opaque("u_diffuse", 0);
+    shaders[OpqaueShader].set_uniform_block("Frame", 0);
+    shaders[OpqaueShader].set_uniform_block("Model", 1);
 
-    shaders[ShadowShader].bind();
-    shaders[ShadowShader].setUniformI("u_diffuse", 0);
-    shaders[ShadowShader].setUniform("u_shadow_fisheye_factor", fisheyeFactor);
+    shaders[TranslucentShader].set_opaque("u_diffuse", 0);
+    shaders[TranslucentShader].set_uniform_block("Frame", 0);
+    shaders[TranslucentShader].set_uniform_block("Model", 1);
 
-    Shader::unbind();
+    shaders[FinalShader].set_opaque("u_diffuse_buffer", 0);
+    shaders[FinalShader].set_opaque("u_normal_buffer", 1);
+    shaders[FinalShader].set_opaque("u_material_buffer", 2);
+    shaders[FinalShader].set_opaque("u_depth_buffer", gBufferCount + 0);
+    shaders[FinalShader].set_opaque("u_shadow_texture", gBufferCount + 1);
+    shaders[FinalShader].set_opaque("u_noise_texture", gBufferCount + 2);
+    shaders[FinalShader].set_uniform_block("Frame", 0);
+    shaders[FinalShader].set_uniform_block("Model", 1);
+
+    shaders[ShadowShader].set_opaque("u_diffuse", 0);
+    shaders[ShadowShader].set_uniform_block("Frame", 0);
+    shaders[ShadowShader].set_uniform_block("Model", 1);
+
+    shaders[DebugShadowShader].set_opaque("u_shadow_texture", 0);
+
+    render::Program::unbind();
 }
 
 auto getShadowMatrix() -> Mat4f {
@@ -207,128 +255,120 @@ void ClearSGDBuffers() {
     dBuffer.unbindTarget();
 }
 
-void StartShadowPass(Mat4f const& shadowMatrix, float gameTime) {
+void SetUniforms(Vec3d const& coord, Mat4f const& view_matrix, Mat4f const& shadow_matrix, float game_time) {
+    // Calculate frame parameters.
+    auto repeat = 25600;
+    auto coord_int = coord.floor<int>();
+    auto coord_mod = coord_int.map([=](auto x) { return x % repeat; });
+    auto coord_frac = Vec3f(coord - Vec3d(coord_int));
+    auto sunlight_dir = (Mat4f::rotate(static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f))
+                         * Mat4f::rotate(-static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)))
+                            .transform(Vec3f(0.0f, 0.0f, -1.0f));
+    auto fisheye_factor = 0.8f;
+
+    // Set frame uniforms.
+    frame_uniforms.set<".u_mvp[0]">(view_matrix.row(0));
+    frame_uniforms.set<".u_mvp[1]">(view_matrix.row(1));
+    frame_uniforms.set<".u_mvp[2]">(view_matrix.row(2));
+    frame_uniforms.set<".u_mvp[3]">(view_matrix.row(3));
+    frame_uniforms.set<".u_game_time">(game_time);
+    frame_uniforms.set<".u_sunlight_dir">(sunlight_dir);
+    frame_uniforms.set<".u_buffer_width">(static_cast<float>(gWidth));
+    frame_uniforms.set<".u_buffer_height">(static_cast<float>(gHeight));
+    frame_uniforms.set<".u_render_distance">(static_cast<float>(RenderDistance) * 16.0f);
+
+    frame_uniforms.set<".u_shadow_mvp[0]">(shadow_matrix.row(0));
+    frame_uniforms.set<".u_shadow_mvp[1]">(shadow_matrix.row(1));
+    frame_uniforms.set<".u_shadow_mvp[2]">(shadow_matrix.row(2));
+    frame_uniforms.set<".u_shadow_mvp[3]">(shadow_matrix.row(3));
+    frame_uniforms.set<".u_shadow_resolution">(static_cast<float>(ShadowRes));
+    frame_uniforms.set<".u_shadow_fisheye_factor">(fisheye_factor);
+    frame_uniforms.set<".u_shadow_distance">(static_cast<float>(getShadowDistance()) * 16.0f);
+
+    frame_uniforms.set<".u_repeat_length">(repeat);
+    frame_uniforms.set<".u_player_coord_int">(coord_int);
+    frame_uniforms.set<".u_player_coord_mod">(coord_mod);
+    frame_uniforms.set<".u_player_coord_frac">(coord_frac);
+
+    // Set model uniforms.
+    model_uniforms.set<".u_translation">({0.0f, 0.0f, 0.0f});
+
+    // Update uniform buffer.
+    frame_uniform_buffer.write(frame_uniforms.bytes(), 0);
+    frame_uniform_buffer.bind(render::Buffer::IndexedTarget::UNIFORM, 0);
+    model_uniform_buffer.write(model_uniforms.bytes(), 0);
+    model_uniform_buffer.bind(render::Buffer::IndexedTarget::UNIFORM, 1);
+}
+
+void StartShadowPass() {
     assert(AdvancedRender);
-
-    // Bind output target buffers
     shadow.bindTargets();
-
-    // Set dynamic uniforms
-    Shader& shader = shaders[ShadowShader];
-    bindShader(ShadowShader);
-    shader.setUniform("u_mvp", shadowMatrix);
-    shader.setUniform("u_game_time", gameTime);
-
-    // Disable unwanted defaults
+    shaders[ShadowShader].bind();
     glDisable(GL_BLEND);
     glDisable(GL_CULL_FACE);
 }
 
 void EndShadowPass() {
     assert(AdvancedRender);
-
-    // Unbind output target buffers
     shadow.unbindTarget();
-
-    // Disable shader
-    Shader::unbind();
-
-    // Enable defaults
+    render::Program::unbind();
     glEnable(GL_BLEND);
     glEnable(GL_CULL_FACE);
 }
 
-void StartOpaquePass(Mat4f const& viewMatrix, float gameTime) {
-    // Bind output target buffers
-    if (AdvancedRender)
+void StartOpaquePass() {
+    if (AdvancedRender) {
         gBuffers.bindTargets();
-
-    // Set dynamic uniforms
-    Shader& shader = shaders[AdvancedRender ? OpqaueShader : DefaultShader];
-    bindShader(AdvancedRender ? OpqaueShader : DefaultShader);
-    shader.setUniform("u_mvp", viewMatrix);
-    shader.setUniform("u_game_time", gameTime);
-
-    // Disable unwanted defaults
+        shaders[OpqaueShader].bind();
+    } else {
+        shaders[DefaultShader].bind();
+    }
     glDisable(GL_BLEND);
 }
 
 void EndOpaquePass() {
-    // Unbind output target buffers
-    if (AdvancedRender)
+    if (AdvancedRender) {
         gBuffers.unbindTarget();
-
-    // Disable shader
-    Shader::unbind();
-
-    // Enable defaults
+        render::Program::unbind();
+    } else {
+        render::Program::unbind();
+    }
     glEnable(GL_BLEND);
 }
 
-void StartTranslucentPass(Mat4f const& viewMatrix, float gameTime) {
-    // Copy the depth component of the G-buffer to the D-buffer, bind output target buffers
+void StartTranslucentPass() {
     if (AdvancedRender) {
         // gBuffers.copyDepthTexture(dBuffer);
         gBuffers.bindTargets();
+        shaders[TranslucentShader].bind();
+    } else {
+        shaders[DefaultShader].bind();
     }
-
-    // Set dynamic uniforms
-    Shader& shader = shaders[AdvancedRender ? TranslucentShader : DefaultShader];
-    bindShader(AdvancedRender ? TranslucentShader : DefaultShader);
-    shader.setUniform("u_mvp", viewMatrix);
-    shader.setUniform("u_game_time", gameTime);
 }
 
 void EndTranslucentPass() {
-    // Unbind output target buffers
-    if (AdvancedRender)
+    if (AdvancedRender) {
         gBuffers.unbindTarget();
-
-    // Disable shader
-    Shader::unbind();
+        render::Program::unbind();
+    } else {
+        render::Program::unbind();
+    }
 }
 
-void StartFinalPass(
-    double xpos,
-    double ypos,
-    double zpos,
-    Mat4f const& viewMatrix,
-    Mat4f const& shadowMatrix,
-    float gameTime
-) {
+void StartFinalPass() {
     assert(AdvancedRender);
-
-    // Bind textures to pre-defined slots
+    shaders[FinalShader].bind();
     gBuffers.bindColorTextures(0);
     gBuffers.bindDepthTexture(gBufferCount + 0);
     shadow.bindDepthTexture(gBufferCount + 1);
     glActiveTexture(GL_TEXTURE0 + gBufferCount + 2);
     glBindTexture(GL_TEXTURE_2D, getNoiseTexture());
     glActiveTexture(GL_TEXTURE0);
-
-    // Set dynamic uniforms
-    int repeat = 25600;
-    int ixpos = int(std::floor(xpos)), iypos = int(std::floor(ypos)), izpos = int(std::floor(zpos));
-    auto sunlightDir = (Mat4f::rotate(static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f))
-                        * Mat4f::rotate(-static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)))
-                           .transform(Vec3f(0.0f, 0.0f, -1.0f));
-
-    Shader& shader = shaders[FinalShader];
-    bindShader(FinalShader);
-    shader.setUniform("u_mvp", viewMatrix);
-    shader.setUniform("u_shadow_mvp", shadowMatrix);
-    shader.setUniform("u_sunlight_dir", sunlightDir);
-    shader.setUniform("u_game_time", gameTime);
-    shader.setUniformI("u_repeat_length", repeat);
-    shader.setUniformI("u_player_coord_int", ixpos, iypos, izpos);
-    shader.setUniformI("u_player_coord_mod", ixpos % repeat, iypos % repeat, izpos % repeat);
-    shader.setUniform("u_player_coord_frac", float(xpos - ixpos), float(ypos - iypos), float(zpos - izpos));
 }
 
 void EndFinalPass() {
     assert(AdvancedRender);
-
-    Shader::unbind();
+    render::Program::unbind();
 }
 
 }

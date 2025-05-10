@@ -46,7 +46,7 @@ public:
     // Constructs a `VertexArray` which owns the given `handle`.
     // The `handle` must be either 0 or a valid GL vertex array object.
     // The `count` must not be more than the number of vertices in the object's storage.
-    VertexArray(
+    explicit VertexArray(
         GLuint handle,
         Primitive primitive,
         size_t count,
@@ -90,26 +90,30 @@ public:
     }
 
     void bind() const {
-        assert(_handle != 0, "binding an uninitialised vertex array");
-        glBindVertexArray(_handle);
+        // Permissive of empty vertex arrays.
+        if (_handle != 0) {
+            glBindVertexArray(_handle);
+        }
     }
 
     void render() const {
-        assert(_handle != 0, "rendering an uninitialised vertex array");
-        if (_index_type == Index::NONE) {
-            glBindVertexArray(_handle);
-            glDrawArrays(_primitive_to_gl_enum(_primitive), 0, static_cast<GLsizei>(_count));
-        } else {
-            glBindVertexArray(_handle);
-            glPrimitiveRestartIndex(_fixed_restart_index(_index_type));
-            glDrawRangeElements(
-                _primitive_to_gl_enum(_primitive),
-                static_cast<GLuint>(0),
-                static_cast<GLuint>(_index_range - 1),
-                static_cast<GLsizei>(_count),
-                _index_type_to_gl_enum(_index_type),
-                reinterpret_cast<void const*>(_index_offset)
-            );
+        // Permissive of empty vertex arrays.
+        if (_handle != 0) {
+            if (_index_type == Index::NONE) {
+                glBindVertexArray(_handle);
+                glDrawArrays(_primitive_to_gl_enum(_primitive), 0, static_cast<GLsizei>(_count));
+            } else {
+                glBindVertexArray(_handle);
+                glPrimitiveRestartIndex(_fixed_restart_index(_index_type));
+                glDrawRangeElements(
+                    _primitive_to_gl_enum(_primitive),
+                    static_cast<GLuint>(0),
+                    static_cast<GLuint>(_index_range - 1),
+                    static_cast<GLsizei>(_count),
+                    _index_type_to_gl_enum(_index_type),
+                    reinterpret_cast<void const*>(_index_offset)
+                );
+            }
         }
     }
 
@@ -142,6 +146,7 @@ public:
             auto stride = builder.interleaved.stride;
             auto offset = builder.interleaved.offsets[i];
             _vertex_attrib_pointer(i, elem_count, base_type, conversion, stride, offset);
+            glEnableVertexAttribArray(static_cast<GLuint>(i));
         }
         return {
             VertexArray(handle, primitive, vertices.size(), 0, Index::NONE, 0),
@@ -184,6 +189,7 @@ public:
             auto stride = builder.interleaved.stride;
             auto offset = builder.interleaved.offsets[i];
             _vertex_attrib_pointer(i, elem_count, base_type, conversion, stride, offset);
+            glEnableVertexAttribArray(static_cast<GLuint>(i));
         }
         return {
             VertexArray(handle, primitive, indices.size(), index_range, index_type, index_offset),
@@ -228,7 +234,6 @@ private:
         auto _index = static_cast<GLuint>(index);
         auto _stride = static_cast<GLsizei>(stride);
         auto _offset = reinterpret_cast<void const*>(offset);
-        glEnableVertexAttribArray(_index);
         switch (conversion) {
             case Conversion::INT:
                 return glVertexAttribIPointer(_index, elem_count, base_type, _stride, _offset);

@@ -9,10 +9,28 @@ layout(location = 4) in uint a_block_id;
 out vec3 coord;
 out vec3 tex_coord;
 
-uniform mat4 u_mvp;
-uniform vec3 u_translation;
-uniform float u_game_time;
-uniform float u_shadow_fisheye_factor;
+layout(std140, row_major) uniform Frame {
+    mat4 u_mvp;
+    float u_game_time;
+    vec3 u_sunlight_dir;
+    float u_buffer_width;
+    float u_buffer_height;
+    float u_render_distance;
+
+    mat4 u_shadow_mvp;
+    float u_shadow_resolution;
+    float u_shadow_fisheye_factor;
+    float u_shadow_distance;
+
+    int u_repeat_length;
+    ivec3 u_player_coord_int;
+    ivec3 u_player_coord_mod;
+    vec3 u_player_coord_frac;
+};
+
+layout(std140, row_major) uniform Model {
+    vec3 u_translation;
+};
 
 const float PI = 3.1415926f;
 const uint LEAF_ID = 8u;
@@ -34,9 +52,9 @@ void main() {
     }
     tex_coord = vec3(a_tex_coord);
 
-    fisheye_projection_origin = u_mvp * vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    fisheye_projection_origin = u_shadow_mvp * vec4(0.0f, 0.0f, 0.0f, 1.0f);
     fisheye_projection_origin /= fisheye_projection_origin.w;
-    gl_Position = u_mvp * vec4(coord + u_translation, 1.0f);
+    gl_Position = u_shadow_mvp * vec4(coord + u_translation, 1.0f);
     gl_Position /= gl_Position.w;
     gl_Position = vec4(fisheye_projection(gl_Position.xy), gl_Position.zw);
 }

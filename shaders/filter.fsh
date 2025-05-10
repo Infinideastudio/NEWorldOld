@@ -5,13 +5,15 @@ in vec2 tex_coord;
 layout(location = 0) out vec4 o_frag_color;
 
 uniform sampler2D u_buffer;
-uniform float u_buffer_width;
-uniform float u_buffer_height;
-uniform int u_filter_id;
 
-uniform float u_gaussian_blur_radius;
-uniform float u_gaussian_blur_step_size;
-uniform float u_gaussian_blur_sigma; // Standard deviation
+layout(std140, row_major) uniform Filter {
+    float u_buffer_width;
+    float u_buffer_height;
+    int u_filter_id;
+    float u_gaussian_blur_radius;
+    float u_gaussian_blur_step_size;
+    float u_gaussian_blur_sigma; // Standard deviation
+};
 
 const float PI = 3.141593;
 const float GAMMA = 2.2;
