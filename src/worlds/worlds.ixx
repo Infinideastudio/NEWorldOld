@@ -742,4 +742,5 @@ private:
         cptr->mark_neighbor_updated();
     }
 };
+
 }

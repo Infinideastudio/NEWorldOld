@@ -46,6 +46,7 @@ import :types;
 // static_assert(std::is_same_v<decltype(result)::cpp_type, Vec2f>);
 // ```
 namespace render::block_layout {
+using types::FixedString;
 
 // Tags for GLSL scalar types.
 // See: https://www.khronos.org/opengl/wiki/Data_Type_(GLSL)
@@ -175,7 +176,7 @@ namespace spec {
     };
 
     // Interface block structure field specifiers.
-    export template <fstring field_name, Layout field_layout>
+    export template <FixedString field_name, Layout field_layout>
     struct Field {
         static constexpr auto name = field_name;
         using layout = field_layout;
@@ -202,6 +203,15 @@ namespace spec {
     export using Vec2d = Vector<GLSLScalarType::DOUBLE, 2>;
     export using Vec3d = Vector<GLSLScalarType::DOUBLE, 3>;
     export using Vec4d = Vector<GLSLScalarType::DOUBLE, 4>;
+    export using Mat2f = Array<Vec2f, 2>;
+    export using Mat2x3f = Array<Vec3f, 2>;
+    export using Mat2x4f = Array<Vec4f, 2>;
+    export using Mat3x2f = Array<Vec2f, 3>;
+    export using Mat3f = Array<Vec3f, 3>;
+    export using Mat3x4f = Array<Vec4f, 3>;
+    export using Mat4x2f = Array<Vec2f, 4>;
+    export using Mat4x3f = Array<Vec3f, 4>;
+    export using Mat4f = Array<Vec4f, 4>;
 }
 
 // Provides information about using `T` as a common type.
@@ -278,12 +288,12 @@ struct locate_result {
 };
 
 // Locates the given name in the given layout.
-export template <Layout T, fstring name>
+export template <Layout T, FixedString name>
 struct locate {
     static constexpr auto value = locate_result{};
 };
 
-template <Layout element, size_t count, fstring name>
+template <Layout element, size_t count, FixedString name>
 consteval auto _locate_array_element(size_t stride) {
     constexpr auto s = std::string_view(name.chars.data());
     if constexpr (s[0] != '[') {
@@ -308,7 +318,7 @@ consteval auto _locate_array_element(size_t stride) {
     }
 }
 
-template <fstring name, NameLayout... fields>
+template <FixedString name, NameLayout... fields>
 consteval auto _locate_struct_field(std::array<size_t, sizeof...(fields) + 1> const& field_offsets) {
     constexpr auto N = sizeof...(fields);
     constexpr auto s = std::string_view(name.chars.data());
@@ -344,18 +354,18 @@ struct locate<T, ""> {
 };
 
 // Locates the given name in the given array layout.
-template <Layout element, size_t count, fstring name>
+template <Layout element, size_t count, FixedString name>
 struct locate<spec::Array<element, count>, name> {
     static constexpr auto value = _locate_array_element<element, count, name>(spec::Array<element, count>::stride);
 };
 
 // Locates the given name in the given struct layout.
-template <NameLayout... fields, fstring name>
+template <NameLayout... fields, FixedString name>
 struct locate<spec::Struct<fields...>, name> {
     static constexpr auto value = _locate_struct_field<name, fields...>(spec::Struct<fields...>::field_offsets);
 };
 
-export template <Layout T, fstring name>
+export template <Layout T, FixedString name>
 constexpr auto locate_v = locate<T, name>::value;
 
 }

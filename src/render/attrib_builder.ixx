@@ -14,7 +14,6 @@ namespace render {
 using namespace attrib_layout;
 
 // A tuple of interleaved attributes on the CPU side.
-// Stores type-erased attribute data.
 export template <Layout... T>
 class Vertex {
 public:
@@ -32,12 +31,12 @@ public:
         return _bytes;
     }
 
-    auto size() const -> size_t {
-        return _bytes.size();
+    static constexpr auto size() -> size_t {
+        return interleaved.size;
     }
 
     template <size_t I>
-    auto attrib() const -> Attrib<I> {
+    auto get() const -> Attrib<I> {
         static_assert(sizeof(Attrib<I>) == interleaved.sizes[I]);
         auto attr = Attrib<I>();
         auto span = std::as_writable_bytes(std::span<Attrib<I>, 1>(&attr, 1));
@@ -47,7 +46,7 @@ public:
     }
 
     template <size_t I>
-    void set_attrib(Attrib<I> attr) {
+    void set(Attrib<I> attr) {
         static_assert(sizeof(Attrib<I>) == interleaved.sizes[I]);
         auto span = std::as_bytes(std::span<Attrib<I>, 1>(&attr, 1));
         auto dst = _bytes.begin() + interleaved.offsets[I];
@@ -72,19 +71,19 @@ namespace {
 // Example usage:
 //
 // ```
-// using Layout = VertexLayout<int32_t, Vec3f, float>;
-// auto builder = AttribBuilder<Layout>();
-// builder.set_attrib<0>(1);
-// builder.set_attrib<1>({1.0f, 2.0f, 3.0f});
-// builder.set_attrib<2>(0.5f);
+// namespace spec = attrib_layout::spec;
+// auto builder = AttribBuilder<spec::Int, spec::Vec3f, spec::Float>();
+// builder.set<0>(1);
+// builder.set<1>({1.0f, 2.0f, 3.0f});
+// builder.set<2>(0.5f);
 // builder.make_vertex();
 // ```
 //
 // Example with semantic wrappers:
 //
 // ```
-// using Layout = VertexLayout<Coord<Vec3f>, TexCoord<Vec2f>, Color<Vec4i>>;
-// auto builder = AttribBuilder<Layout>();
+// namespace spec = attrib_layout::spec;
+// auto builder = AttribBuilder<spec::Coord<spec::Vec3f>, spec::TexCoord<spec::Vec2f>, spec::Color<spec::Vec4i>>();
 // builder.color({255, 0, 0, 255});
 // builder.tex_coord({0.5f, 0.5f});
 // builder.coord({0.0f, 0.0f, 0.0f});
@@ -120,34 +119,34 @@ public:
     }
 
     template <size_t I>
-    void set_attrib(Attrib<I> attr, bool make_vertex = false) {
-        _vertex.template set_attrib<I>(attr);
+    void set(Attrib<I> attr, bool make_vertex = false) {
+        _vertex.template set<I>(attr);
         if (make_vertex) {
             _vertices.emplace_back(_vertex);
         }
     }
 
-    // Some convenience functions wrapping `set_attrib()`.
+    // Some convenience functions wrapping `set()`.
     // These are only enabled if the corresponding semantic wrapper is found in `T`.
     template <size_t I = coord_index>
     void coord(Attrib<I> attr) {
-        set_attrib<I>(attr, true);
+        set<I>(attr, true);
     }
     template <size_t I = tex_coord_index>
     void tex_coord(Attrib<I> attr) {
-        set_attrib<I>(attr, false);
+        set<I>(attr, false);
     }
     template <size_t I = color_index>
     void color(Attrib<I> attr) {
-        set_attrib<I>(attr, false);
+        set<I>(attr, false);
     }
     template <size_t I = normal_index>
     void normal(Attrib<I> attr) {
-        set_attrib<I>(attr, false);
+        set<I>(attr, false);
     }
     template <size_t I = material_index>
     void material(Attrib<I> attr) {
-        set_attrib<I>(attr, false);
+        set<I>(attr, false);
     }
 
 private:
@@ -209,8 +208,8 @@ public:
     }
 
     template <size_t I>
-    void set_attrib(Attrib<I> attr, bool make_vertex = false) {
-        _vertex.template set_attrib<I>(attr);
+    void set(Attrib<I> attr, bool make_vertex = false) {
+        _vertex.template set<I>(attr);
         if (make_vertex) {
             assert(_vertices.size() < PRIMITIVE_RESTART_INDEX, "vertex array too large");
             _indices.push_back(static_cast<uint32_t>(_vertices.size()));
@@ -218,27 +217,27 @@ public:
         }
     }
 
-    // Some convenience functions wrapping `set_attrib()`.
+    // Some convenience functions wrapping `set()`.
     // These are only enabled if the corresponding semantic wrapper is found in `T`.
     template <size_t I = coord_index>
     void coord(Attrib<I> attr) {
-        set_attrib<I>(attr, true);
+        set<I>(attr, true);
     }
     template <size_t I = tex_coord_index>
     void tex_coord(Attrib<I> attr) {
-        set_attrib<I>(attr, false);
+        set<I>(attr, false);
     }
     template <size_t I = color_index>
     void color(Attrib<I> attr) {
-        set_attrib<I>(attr, false);
+        set<I>(attr, false);
     }
     template <size_t I = normal_index>
     void normal(Attrib<I> attr) {
-        set_attrib<I>(attr, false);
+        set<I>(attr, false);
     }
     template <size_t I = material_index>
     void material(Attrib<I> attr) {
-        set_attrib<I>(attr, false);
+        set<I>(attr, false);
     }
 
 private:

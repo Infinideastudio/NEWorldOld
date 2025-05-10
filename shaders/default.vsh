@@ -8,8 +8,14 @@ out vec3 coord;
 out vec3 tex_coord;
 out vec3 color;
 
-uniform mat4 u_mvp;
-uniform vec3 u_translation;
+layout(std140, row_major) uniform Frame {
+    mat4 u_mvp;
+    float u_game_time;
+};
+
+layout(std140, row_major) uniform Model {
+    vec3 u_translation;
+};
 
 void main() {
     coord = vec3(a_coord);

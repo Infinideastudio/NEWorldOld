@@ -677,6 +677,9 @@ void render_scene(worlds::World& world) {
                   )
                 * view_matrix;
 
+    auto shadow_matrix = Renderer::getShadowMatrix();
+    Renderer::SetUniforms(view_coord, view_matrix, shadow_matrix, interpolatedTime);
+
     // Clear framebuffers
     if (AdvancedRender)
         Renderer::ClearSGDBuffers();
@@ -692,7 +695,6 @@ void render_scene(worlds::World& world) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Build shadow map
-    auto shadowMatrix = Renderer::getShadowMatrix();
     if (AdvancedRender) {
         auto shadowMatrixExp = Renderer::getShadowMatrixExperimental(
             FOVyNormal + FOVyExt,
@@ -701,9 +703,8 @@ void render_scene(worlds::World& world) {
         );
         auto shadowFrustum = Frustum(shadowMatrixExp);
         auto list = world.list_render_chunks(view_coord, Renderer::getShadowDistance(), interp, shadowFrustum);
-        Renderer::StartShadowPass(shadowMatrix, interpolatedTime);
+        Renderer::StartShadowPass();
         world.render_chunks(view_coord, list, 0);
-        Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(0.0f));
         particles::render_all(world, view_coord, interp);
         Renderer::EndShadowPass();
     }
@@ -711,35 +712,33 @@ void render_scene(worlds::World& world) {
     // Draw the opaque parts of the world
     auto list = world.list_render_chunks(view_coord, RenderDistance, interp, Frustum(view_matrix));
     rendered_chunks = static_cast<int>(list.size());
-    Renderer::StartOpaquePass(view_matrix, interpolatedTime);
+    Renderer::StartOpaquePass();
     world.render_chunks(view_coord, list, 0);
-    Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(0.0f));
     particles::render_all(world, view_coord, interp);
     Renderer::EndOpaquePass();
 
     // Draw the translucent parts of the world
-    Renderer::StartTranslucentPass(view_matrix, interpolatedTime);
+    Renderer::StartTranslucentPass();
     glDisable(GL_CULL_FACE);
     if (sel) {
-        float x = static_cast<float>(selx - view_coord.x());
-        float y = static_cast<float>(sely - view_coord.y());
-        float z = static_cast<float>(selz - view_coord.z());
-        Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(x, y, z));
+        auto x = static_cast<float>(selx - view_coord.x());
+        auto y = static_cast<float>(sely - view_coord.y());
+        auto z = static_cast<float>(selz - view_coord.z());
         if (showHUD) {
             // Temporary solution pre GL 4.0 (glBlendFuncSeparatei)
             glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-            draw_block_selection_border(0, 0, 0);
+            draw_block_selection_border(x, y, z);
             glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
             glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
             glColorMaski(2, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
             glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
-            draw_block_selection_border(0, 0, 0);
+            draw_block_selection_border(x, y, z);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
             glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
             glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         }
-        draw_block_breaking_texture(seldes, 0, 0, 0);
+        draw_block_breaking_texture(seldes, x, y, z);
     }
     world.render_chunks(view_coord, list, 1);
     glEnable(GL_CULL_FACE);
@@ -763,14 +762,7 @@ void render_scene(worlds::World& world) {
         v.end_primitive();
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
-        Renderer::StartFinalPass(
-            view_coord.x(),
-            view_coord.y(),
-            view_coord.z(),
-            view_matrix,
-            shadowMatrix,
-            interpolatedTime
-        );
+        Renderer::StartFinalPass();
         va.first.render();
         Renderer::EndFinalPass();
     }
@@ -1055,11 +1047,9 @@ void draw_hud(worlds::World& world) {
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
         Renderer::shadow.bindDepthTexture(0);
-        auto& shader = Renderer::shaders[Renderer::DebugShadowShader];
-        shader.bind();
-        shader.setUniformI("u_shadow_texture", 0);
+        Renderer::shaders[Renderer::DebugShadowShader].bind();
         va.first.render();
-        shader.unbind();
+        render::Program::unbind();
     }
 
     int lineHeight = TextRenderer::line_height();

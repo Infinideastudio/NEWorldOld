@@ -5,8 +5,8 @@ import types;
 import math;
 import debug;
 import chunks;
-import rendering;
 import render;
+import rendering;
 
 namespace worlds {
 
@@ -28,15 +28,20 @@ auto World::list_render_chunks(Vec3d center, int dist, double interp, std::optio
 }
 
 void World::render_chunks(Vec3d center, std::vector<RenderChunk> const& crs, size_t index) {
+    auto usage = render::Buffer::Usage::WRITE;
+    auto update = render::Buffer::Update::INFREQUENT;
     for (auto [coord, meshes]: crs) {
         coord -= center;
         auto const& [va, buffer] = *meshes[index];
         if (!va) {
             continue;
         }
-        Renderer::shaders[Renderer::ActiveShader].setUniform("u_translation", Vec3f(coord));
+        Renderer::model_uniforms.set<".u_translation">(Vec3f(coord));
+        Renderer::model_uniform_buffer.write(Renderer::model_uniforms.bytes(), 0);
         va.render();
     }
+    Renderer::model_uniforms.set<".u_translation">({0.0f, 0.0f, 0.0f});
+    Renderer::model_uniform_buffer.write(Renderer::model_uniforms.bytes(), 0);
 }
 
 }

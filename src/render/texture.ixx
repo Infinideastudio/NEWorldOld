@@ -7,4 +7,9 @@ import std;
 import types;
 import debug;
 
-namespace render {}
+namespace render {
+
+// Manages a GL texture object, similar to `std::unique_ptr`.
+export class Texture {};
+
+}
