@@ -8,14 +8,14 @@ import textures;
 import worlds;
 import globals;
 
+namespace spec = render::attrib_layout::spec;
 using render::VertexArray;
-using render::VertexArrayIndexedBuilder;
-using Layout = render::VertexLayout<
-    render::Coord<Vec3f>,
-    render::TexCoord<Vec3f>,
-    render::Color<Vec3u8>,
-    render::Normal<Vec3i8>,
-    render::Material<uint16_t>>;
+using AttribIndexBuilder = render::AttribIndexBuilder<
+    spec::Coord<spec::Vec3f>,
+    spec::TexCoord<spec::Vec3f>,
+    spec::Color<spec::Vec3u8>,
+    spec::Normal<spec::Vec3i8>,
+    spec::Material<spec::UInt16>>;
 
 export namespace particles {
 
@@ -64,7 +64,7 @@ void update_all(worlds::World& world) {
     ptcs = std::move(next);
 }
 
-void mesh(worlds::World& world, Particle const& ptc, double interp, VertexArrayIndexedBuilder<Layout>& v) {
+void mesh(worlds::World& world, Particle const& ptc, double interp, AttribIndexBuilder& v) {
     auto psize = ptc.psize;
     auto bl = ptc.bl.get();
     auto tex = static_cast<float>(ptc.tex);
@@ -169,7 +169,7 @@ void render_all(worlds::World& world, Vec3d center, double interp) {
     pzpos = center.z();
     ptcsrendered = 0;
 
-    auto v = VertexArrayIndexedBuilder<Layout>();
+    auto v = AttribIndexBuilder();
     for (auto const& ptc: ptcs) {
         mesh(world, ptc, interp, v);
         ptcsrendered++;

@@ -1002,8 +1002,8 @@ void Form::render() {
             fbo = Framebuffer(width, height, 2, false, false, true);
         }
 
-        using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec2f>>;
-        auto v = render::VertexArrayIndexedBuilder<Layout>();
+        namespace spec = render::attrib_layout::spec;
+        auto v = render::AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec2f>>();
         v.tex_coord({0.0f, 1.0f});
         v.coord({0, 0});
         v.tex_coord({0.0f, 0.0f});
