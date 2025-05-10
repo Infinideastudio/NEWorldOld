@@ -153,7 +153,7 @@ namespace spec {
     export template <AttribScalarType element, size_t count>
     struct Vector {
         static constexpr auto base_type = _scalar_base_type(element);
-        static constexpr auto elem_count = _scalar_packed_count(element) * count;
+        static constexpr auto elem_count = _scalar_packed_count(element) * static_cast<GLuint>(count);
         static constexpr auto mode = _scalar_mode(element);
         static constexpr auto size = _scalar_size(element) * count;
     };
