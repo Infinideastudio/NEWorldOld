@@ -10,14 +10,14 @@ import textures;
 import globals;
 import chunks;
 
+namespace spec = render::attrib_layout::spec;
 using render::VertexArray;
-using render::VertexArrayIndexedBuilder;
-using Layout = render::VertexLayout<
-    render::Coord<Vec3f>,
-    render::TexCoord<Vec3f>,
-    render::Color<Vec3u8>,
-    render::Normal<Vec3i8>,
-    render::Material<uint16_t>>;
+using AttribIndexBuilder = render::AttribIndexBuilder<
+    spec::Coord<spec::Vec3f>,
+    spec::TexCoord<spec::Vec3f>,
+    spec::Color<spec::Vec3u8>,
+    spec::Normal<spec::Vec3i8>,
+    spec::Material<spec::UInt16>>;
 
 // One face in merge face
 struct QuadPrimitive {
@@ -131,11 +131,12 @@ public:
     }
 
 private:
-    std::array<BlockRenderData, (chunks::Chunk::SIZE + 2) * (chunks::Chunk::SIZE + 2) * (chunks::Chunk::SIZE + 2)> _data = {};
+    std::array<BlockRenderData, (chunks::Chunk::SIZE + 2) * (chunks::Chunk::SIZE + 2) * (chunks::Chunk::SIZE + 2)>
+        _data = {};
 };
 
 // The default method for rendering a block.
-void _render_block(ChunkRenderData const& rd, VertexArrayIndexedBuilder<Layout>& v, size_t layer, int x, int y, int z) {
+void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t layer, int x, int y, int z) {
     auto bl = rd.block(x, y, z);
     if (!bl.should_render(layer)) {
         return;
@@ -381,7 +382,7 @@ void _render_block(ChunkRenderData const& rd, VertexArrayIndexedBuilder<Layout>&
 }
 
 // The merge face rendering method for a primitive (adjacent block faces).
-void _render_primitive(QuadPrimitive const& p, VertexArrayIndexedBuilder<Layout>& v) {
+void _render_primitive(QuadPrimitive const& p, AttribIndexBuilder& v) {
     auto col = p.col * 255 / (MAX_LIGHT * 4);
     auto x = p.x, y = p.y, z = p.z, length = p.length;
 
@@ -501,7 +502,7 @@ void _render_primitive(QuadPrimitive const& p, VertexArrayIndexedBuilder<Layout>
 }
 
 // The default method for rendering a chunks::Chunk.
-void _render_chunk(ChunkRenderData const& rd, VertexArrayIndexedBuilder<Layout>& v, size_t layer) {
+void _render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t layer) {
     for (auto x = 0; x < chunks::Chunk::SIZE; x++)
         for (auto y = 0; y < chunks::Chunk::SIZE; y++)
             for (auto z = 0; z < chunks::Chunk::SIZE; z++) {
@@ -518,7 +519,7 @@ void _render_chunk(ChunkRenderData const& rd, VertexArrayIndexedBuilder<Layout>&
 // The merge directions are determined by the fact that block render data are stored in a
 // X-Y-Z-major order, which means blocks adjacent in the Z direction are stored consecutively.
 // This probably allows for better cache hit rates.
-void _merge_face_render_chunk(ChunkRenderData const& rd, VertexArrayIndexedBuilder<Layout>& v, size_t layer) {
+void _merge_face_render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t layer) {
     // For each direction
     for (auto d = 0; d < 6; d++) {
         // Render current direction
@@ -724,8 +725,8 @@ void worlds::RenderData::build_meshes(std::array<chunks::Chunk const*, 3 * 3 * 3
     // Build new VBOs
     auto rd = ChunkRenderData(_refer->coord(), neighbors);
     auto builders = std::array{
-        VertexArrayIndexedBuilder<Layout>(),
-        VertexArrayIndexedBuilder<Layout>(),
+        AttribIndexBuilder(),
+        AttribIndexBuilder(),
     };
     for (auto layer = 0; layer < 2uz; layer++) {
         if (MergeFace) {
@@ -746,4 +747,3 @@ void worlds::RenderData::build_meshes(std::array<chunks::Chunk const*, 3 * 3 * 3
     _meshed = true;
     _refer->clear_updated();
 }
-

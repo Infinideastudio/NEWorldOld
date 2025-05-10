@@ -35,6 +35,7 @@ export using std::size_t;
 // (终究有一天 qzr 变成了曾经讨厌的样子？)
 namespace types {
 
+/*
 export template <typename... T>
 struct args;
 
@@ -193,24 +194,25 @@ template <typename... T>
 constexpr auto args_is_same_v<args<T...>, args<T...>> = true;
 
 // Returns the i-th element in the argument list `A`. Switch to pack indexing once C++26 is available.
-// export template <size_t I, typename A>
-// requires is_args_v<A>
-// constexpr auto elem() {
-//     if constexpr (A::empty) {
-//         static_assert(false, "index out of bound");
-//     } else if constexpr (I == 0) {
-//         return typename A::head{};
-//     } else {
-//         return elem<I - 1, typename A::tail>();
-//     }
-// }
+export template <size_t I, typename A>
+requires is_args_v<A>
+constexpr auto elem() {
+    if constexpr (A::empty) {
+        static_assert(false, "index out of bound");
+    } else if constexpr (I == 0) {
+        return typename A::head{};
+    } else {
+        return elem<I - 1, typename A::tail>();
+    }
+}
 
-// export template <size_t I, typename A>
-// requires is_args_v<A>
-// using elem_t = decltype(elem<I, A>())::get;
+export template <size_t I, typename A>
+requires is_args_v<A>
+using elem_t = decltype(elem<I, A>())::get;
 
 // Some compile-time unit tests.
-// static_assert(std::is_same_v<elem_t<0, args<int8_t, int16_t, int32_t, int64_t>>, int8_t>);
-// static_assert(std::is_same_v<elem_t<2, args<int8_t, int16_t, int32_t, int64_t>>, int32_t>);
+static_assert(std::is_same_v<elem_t<0, args<int8_t, int16_t, int32_t, int64_t>>, int8_t>);
+static_assert(std::is_same_v<elem_t<2, args<int8_t, int16_t, int32_t, int64_t>>, int32_t>);
+*/
 
 }

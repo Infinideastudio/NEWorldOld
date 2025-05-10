@@ -7,9 +7,11 @@ import std;
 import types;
 import debug;
 import :buffer;
-import :vertex_layout;
+import :attrib_layout;
+import :attrib_builder;
 
 namespace render {
+using namespace attrib_layout;
 
 // Manages a GL vertex array object, similar to `std::unique_ptr`.
 export class VertexArray {
@@ -116,10 +118,8 @@ public:
     //
     // The binding locations of vertex attributes are determined by the order in which they occur
     // in the template arguments. The first attribute is bound to location 0, the second to location 1, etc.
-    template <typename Layout>
-    static auto create(VertexArrayBuilder<Layout> const& builder, Primitive primitive)
-        -> std::pair<VertexArray, Buffer> {
-
+    template <Layout... T>
+    static auto create(AttribBuilder<T...> const& builder, Primitive primitive) -> std::pair<VertexArray, Buffer> {
         if (builder.vertices().empty()) {
             return {VertexArray(), Buffer()};
         }
@@ -137,13 +137,11 @@ public:
         buffer.bind(Buffer::Target::VERTEX_ATTRIB);
 
         // Specify vertex layout.
-        for (auto i = 0; i < Layout::ATTRIB_COUNT; i++) {
-            auto elem_count = Layout::ATTRIB_ELEM_COUNTS[i];
-            auto base_type = Layout::ATTRIB_BASE_TYPES[i];
-            auto mode = Layout::ATTRIB_MODES[i];
-            auto stride = Layout::VERTEX_SIZE;
-            auto offset = Layout::ATTRIB_OFFSETS[i];
-            _vertex_attrib_pointer(i, elem_count, base_type, mode, stride, offset);
+        for (auto i = 0uz; i < builder.interleaved.count; i++) {
+            auto [base_type, elem_count, conversion] = builder.interleaved.args[i];
+            auto stride = builder.interleaved.stride;
+            auto offset = builder.interleaved.offsets[i];
+            _vertex_attrib_pointer(i, elem_count, base_type, conversion, stride, offset);
         }
         return {
             VertexArray(handle, primitive, vertices.size(), 0, Index::NONE, 0),
@@ -151,10 +149,8 @@ public:
         };
     }
 
-    template <typename Layout>
-    static auto create(VertexArrayIndexedBuilder<Layout> const& builder, Primitive primitive)
-        -> std::pair<VertexArray, Buffer> {
-
+    template <Layout... T>
+    static auto create(AttribIndexBuilder<T...> const& builder, Primitive primitive) -> std::pair<VertexArray, Buffer> {
         if (builder.indices().empty()) {
             return {VertexArray(), Buffer()};
         }
@@ -183,13 +179,11 @@ public:
         buffer.bind(Buffer::Target::ELEMENT_INDEX);
 
         // Specify vertex layout.
-        for (auto i = 0; i < Layout::ATTRIB_COUNT; i++) {
-            auto elem_count = Layout::ATTRIB_ELEM_COUNTS[i];
-            auto base_type = Layout::ATTRIB_BASE_TYPES[i];
-            auto mode = Layout::ATTRIB_MODES[i];
-            auto stride = Layout::VERTEX_SIZE;
-            auto offset = Layout::ATTRIB_OFFSETS[i];
-            _vertex_attrib_pointer(i, elem_count, base_type, mode, stride, offset);
+        for (auto i = 0uz; i < builder.interleaved.count; i++) {
+            auto [base_type, elem_count, conversion] = builder.interleaved.args[i];
+            auto stride = builder.interleaved.stride;
+            auto offset = builder.interleaved.offsets[i];
+            _vertex_attrib_pointer(i, elem_count, base_type, conversion, stride, offset);
         }
         return {
             VertexArray(handle, primitive, indices.size(), index_range, index_type, index_offset),
@@ -227,7 +221,7 @@ private:
         size_t index,
         GLint elem_count,
         GLenum base_type,
-        VertexAttribMode mode,
+        Conversion conversion,
         size_t stride,
         size_t offset
     ) {
@@ -235,14 +229,14 @@ private:
         auto _stride = static_cast<GLsizei>(stride);
         auto _offset = reinterpret_cast<void const*>(offset);
         glEnableVertexAttribArray(_index);
-        switch (mode) {
-            case VertexAttribMode::INTEGER:
+        switch (conversion) {
+            case Conversion::INT:
                 return glVertexAttribIPointer(_index, elem_count, base_type, _stride, _offset);
-            case VertexAttribMode::FLOAT:
+            case Conversion::FLOAT:
                 return glVertexAttribPointer(_index, elem_count, base_type, GL_FALSE, _stride, _offset);
-            case VertexAttribMode::FLOAT_NORMALIZE:
+            case Conversion::FLOAT_NORMALIZE:
                 return glVertexAttribPointer(_index, elem_count, base_type, GL_TRUE, _stride, _offset);
-            case VertexAttribMode::DOUBLE:
+            case Conversion::DOUBLE:
                 return glVertexAttribLPointer(_index, elem_count, base_type, _stride, _offset);
             default:
                 unreachable();

@@ -750,8 +750,8 @@ void render_scene(worlds::World& world) {
 
     // Full screen passes
     if (AdvancedRender) {
-        using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec2f>>;
-        auto v = render::VertexArrayIndexedBuilder<Layout>();
+        namespace spec = render::attrib_layout::spec;
+        auto v = render::AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec2f>>();
         v.tex_coord({0.0f, 1.0f});
         v.coord({0, 0});
         v.tex_coord({0.0f, 0.0f});
@@ -787,8 +787,9 @@ void render_scene(worlds::World& world) {
 
     auto int_view_coord = view_coord.floor<int32_t>();
     if (world.block_or_air(int_view_coord).id == base_blocks().water) {
-        using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>;
-        auto v = render::VertexArrayIndexedBuilder<Layout>();
+        namespace spec = render::attrib_layout::spec;
+        auto v = render::
+            AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec3f>, spec::Color<spec::Vec4u8>>();
         auto tex = static_cast<float>(Textures::getTextureIndex(base_blocks().water, 0));
         v.color({255, 255, 255, 255});
         v.tex_coord({0.0f, 1.0f, tex});
@@ -883,19 +884,19 @@ constexpr auto tex_coords = std::array<Vec2f, 4>({
 
 // Draw the block selection border
 void draw_block_selection_border(float x, float y, float z) {
+    namespace spec = render::attrib_layout::spec;
     using render::VertexArray;
-    using render::VertexArrayIndexedBuilder;
-    using Layout = render::VertexLayout<
-        render::Coord<Vec3f>,
-        render::TexCoord<Vec3f>,
-        render::Color<Vec3u8>,
-        render::Normal<Vec3i8>,
-        render::Material<uint16_t>>;
+    using AttribIndexBuilder = render::AttribIndexBuilder<
+        spec::Coord<spec::Vec3f>,
+        spec::TexCoord<spec::Vec3f>,
+        spec::Color<spec::Vec3u8>,
+        spec::Normal<spec::Vec3i8>,
+        spec::Material<spec::UInt16>>;
 
     constexpr auto EPS = 0.005f;
     constexpr auto WIDTH = 1.0f / 32.0f;
 
-    auto v = VertexArrayIndexedBuilder<Layout>();
+    auto v = AttribIndexBuilder();
     v.material(65535); // For indicator elements
     v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
     v.color({255, 255, 255});
@@ -924,14 +925,14 @@ void draw_block_selection_border(float x, float y, float z) {
 }
 
 void draw_block_breaking_texture(float level, float x, float y, float z) {
+    namespace spec = render::attrib_layout::spec;
     using render::VertexArray;
-    using render::VertexArrayIndexedBuilder;
-    using Layout = render::VertexLayout<
-        render::Coord<Vec3f>,
-        render::TexCoord<Vec3f>,
-        render::Color<Vec3u8>,
-        render::Normal<Vec3i8>,
-        render::Material<uint16_t>>;
+    using AttribIndexBuilder = render::AttribIndexBuilder<
+        spec::Coord<spec::Vec3f>,
+        spec::TexCoord<spec::Vec3f>,
+        spec::Color<spec::Vec3u8>,
+        spec::Normal<spec::Vec3i8>,
+        spec::Material<spec::UInt16>>;
 
     constexpr auto EPS = 0.005f;
     if (level <= 0.0f) {
@@ -940,7 +941,7 @@ void draw_block_breaking_texture(float level, float x, float y, float z) {
     auto index = std::clamp(int(level * 8), 0, 7);
     auto tex = static_cast<float>(TextureIndex::BREAKING_0) + static_cast<float>(index);
 
-    auto v = VertexArrayIndexedBuilder<Layout>();
+    auto v = AttribIndexBuilder();
     v.material(65535); // For indicator elements
     v.color({255, 255, 255});
 
@@ -1040,8 +1041,8 @@ void draw_hud(worlds::World& world) {
         float xa = 1.0f;
         float ya = 0.0f;
 
-        using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec2f>>;
-        auto v = render::VertexArrayIndexedBuilder<Layout>();
+        namespace spec = render::attrib_layout::spec;
+        auto v = render::AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec2f>>();
         v.tex_coord({0.0f, 1.0f});
         v.coord({xi, yi});
         v.tex_coord({0.0f, 0.0f});
@@ -1171,8 +1172,9 @@ void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, 
 
         auto& item = player.inventory_item_stack(row, i);
         if (!item.empty()) {
-            using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>;
-            auto v = render::VertexArrayIndexedBuilder<Layout>();
+            namespace spec = render::attrib_layout::spec;
+            auto v = render::
+                AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec3f>, spec::Color<spec::Vec4u8>>();
             auto tex = static_cast<float>(Textures::getTextureIndex(item.id, 0));
             v.color({255, 255, 255, 255});
             v.tex_coord({0.0f, 1.0f, tex});
@@ -1278,8 +1280,9 @@ void draw_inventory(player::Player& player) {
         }
 
         if (itemSelected.id != base_blocks().air) {
-            using Layout = render::VertexLayout<render::Coord<Vec2f>, render::TexCoord<Vec3f>, render::Color<Vec4u8>>;
-            auto v = render::VertexArrayIndexedBuilder<Layout>();
+            namespace spec = render::attrib_layout::spec;
+            auto v = render::
+                AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec3f>, spec::Color<spec::Vec4u8>>();
             auto tex = static_cast<float>(Textures::getTextureIndex(itemSelected.id, 0));
             v.color({255, 255, 255, 255});
             v.tex_coord({0.0f, 1.0f, tex});

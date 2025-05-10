@@ -8,13 +8,13 @@ namespace render {
 
 // Returns the sum of all elements in the array.
 template <size_t N>
-constexpr auto sum(std::array<size_t, N> a) -> size_t {
+consteval auto sum(std::array<size_t, N> a) -> size_t {
     return std::accumulate(a.begin(), a.end(), 0);
 }
 
 // Returns the prefix sum of all elements in the array.
 template <size_t N>
-constexpr auto prefix_sum(std::array<size_t, N> a) -> std::array<size_t, N> {
+consteval auto prefix_sum(std::array<size_t, N> a) -> std::array<size_t, N> {
     auto res = std::array<size_t, N>{};
     auto sum = 0uz;
     for (auto i = 0uz; i < N; i++) {
@@ -24,48 +24,103 @@ constexpr auto prefix_sum(std::array<size_t, N> a) -> std::array<size_t, N> {
     return res;
 }
 
-// The index denoting "not found".
-constexpr auto not_found = static_cast<size_t>(-1);
-
-// The result type of `find_wrapper()`.
-template <size_t I, typename T>
-struct find_wrapper_result {
-    // The index of the first element in argument list `A` that is wrapped by a template `T`.
-    static constexpr auto index = I;
-    // Whether the wrapper was found.
-    static constexpr auto found = (I != not_found);
-    // The type wrapped by `T`.
-    using type = T;
-};
-
-// Finds the first element in the argument list `A` that is wrapped by a template `T`.
-template <typename T, typename A, size_t I = 0>
-requires types::is_temp_v<T> && types::is_args_v<A>
-constexpr auto find_wrapper() {
-    if constexpr (A::empty) {
-        // If the argument list is empty, return "not found".
-        return find_wrapper_result<not_found, std::monostate>{};
-    } else {
-        // Otherwise, check the head element.
-        using head = typename A::head;
-        using tail = typename A::tail;
-        if constexpr (A::head::atomic) {
-            // If the head element is atomic, it cannot be `T`, so we continue searching.
-            return find_wrapper<T, tail, I + 1>();
-        } else {
-            // If the head element is a template, check if it is `T`.
-            if constexpr (types::temp_is_same_v<typename head::temp, T>) {
-                // If it is, return the index and the wrapped type.
-                return find_wrapper_result<I, typename head::args::head::get>{};
-            } else {
-                // Otherwise, continue searching.
-                return find_wrapper<T, tail, I + 1>();
-            }
-        }
+// Converts a string to an integer at compile time.
+consteval auto stouz(std::string_view s) -> size_t {
+    auto index = 0uz;
+    for (char i: s) {
+        index *= 10;
+        index += i - '0';
     }
+    return index;
 }
 
-template <template <typename> typename T, typename... A>
-using find_wrapper_t = decltype(find_wrapper<types::temp<T>, types::args<A...>>());
+// Returns the index of the first `true` element in the array, or `N` if none is found.
+template <size_t N>
+consteval auto true_index(std::array<bool, N> const& a) {
+    return std::find(a.begin(), a.end(), true) - a.begin();
+}
+
+// Returns whether the type `T` is wrapped by the template `W`, and the wrapped type.
+template <template <typename> typename W, typename T>
+struct wrapped {
+    static constexpr auto value = false;
+    using wrapped_type = std::monostate;
+};
+
+template <template <typename> typename W, typename T>
+struct wrapped<W, W<T>> {
+    static constexpr auto value = true;
+    using wrapped_type = T;
+};
+
+// The implementation of `wrapped_index`.
+template <template <typename> typename W, typename... T>
+consteval auto _wrapped_index() -> size_t {
+    auto wrapped_matches = std::array{wrapped<W, T>::value...};
+    return true_index(wrapped_matches);
+}
+
+// Returns the index of the first element in the argument list `T` that is wrapped by
+// a template `W`, or `N` if none is found.
+template <template <typename> typename W, typename... T>
+struct wrapped_index {
+    static constexpr auto value = _wrapped_index<W, T...>();
+};
+
+template <template <typename> typename W, typename... T>
+constexpr auto wrapped_index_v = wrapped_index<W, T...>::value;
+
+// Structural fixed-length strings for use as non-type template arguments.
+template <size_t N>
+struct fstring { // NOLINT
+    std::array<char, N> chars = {};
+
+    consteval fstring() = default;
+    consteval fstring(fstring<N> const& r) {
+        std::copy_n(r.chars.begin(), N, chars.begin());
+    }
+    consteval fstring(char const (&s)[N]) { // NOLINT
+        std::copy_n(static_cast<char const*>(s), N, chars.begin());
+    }
+
+    /*
+    // Element-wise equality.
+    template <size_t M>
+    consteval auto operator==(fstring<M> const& r) const -> bool {
+        if constexpr (N != M) {
+            return false;
+        }
+        for (size_t i = 0; i < N; i++) {
+            if (chars[i] != r.chars[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Indexing operator.
+    consteval auto operator[](size_t i) const -> char {
+        return chars[i];
+    }
+
+    // Taking substring.
+    template <size_t I, size_t L>
+    requires (I + L <= N)
+    consteval auto substr() const -> fstring<L> {
+        auto res = fstring<L>();
+        std::copy_n(chars.begin() + I, L, res.chars.begin());
+        return res;
+    }
+    */
+
+    // Taking suffix.
+    template <size_t I>
+    requires (I <= N)
+    consteval auto suffix() const -> fstring<N - I> {
+        auto res = fstring<N - I>();
+        std::copy_n(chars.begin() + I, N - I, res.chars.begin());
+        return res;
+    }
+};
 
 }
