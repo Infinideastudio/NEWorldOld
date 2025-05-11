@@ -24,14 +24,11 @@ void init_gl_defaults() {
     glCullFace(GL_BACK);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
-    glEnable(GL_TEXTURE_2D);
     if (Multisample != 0) {
         glEnable(GL_MULTISAMPLE);
     }
     glEnable(GL_PRIMITIVE_RESTART);
     // glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
 void on_window_size_event(GLFWwindow* win, int width, int height) {
@@ -201,14 +198,14 @@ export void load_textures() {
     SelectedTexture = Textures::LoadTexture("textures/ui/select.png", false);
     UnselectedTexture = Textures::LoadTexture("textures/ui/unselect.png", false);
     TitleTexture = Textures::LoadTexture("textures/ui/title.png", true);
-    for (auto i = 0uz; i < 6uz; i++) {
-        UIBackgroundTextures[i] = Textures::LoadTexture(std::format("textures/ui/background_{}.png", i), true);
-    }
+    // for (auto i = 0uz; i < 6uz; i++) {
+    //     UIBackgroundTextures[i] = Textures::LoadTexture(std::format("textures/ui/background_{}.png", i), true);
+    // }
     BlockTextureArray = Textures::LoadBlockTextureArray("textures/blocks/diffuse.png");
 }
 
 export void splash_screen() {
-    if (SplashTexture == 0) {
+    if (!SplashTexture) {
         SplashTexture = Textures::LoadTexture("textures/ui/splash.png", true);
     }
 
@@ -224,7 +221,7 @@ export void splash_screen() {
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
-        glBindTexture(GL_TEXTURE_2D, SplashTexture);
+        SplashTexture.bind(0);
         glBegin(GL_QUADS);
         glColor4f(ratio, ratio, ratio, 1.0f);
         glTexCoord2f(0.0f, 1.0f);

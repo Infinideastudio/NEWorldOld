@@ -27,8 +27,6 @@ float BgR = 0.2f;
 float BgG = 0.2f;
 float BgB = 0.2f;
 float BgA = 0.3f;
-unsigned int transitionList = 0;
-unsigned int lastdisplaylist = 0;
 double transitionTimer;
 bool transitionForward;
 
@@ -169,7 +167,7 @@ public:
 
 class ImageBox: public Control {
 public:
-    TextureID imageid = 0;
+    render::Texture const* tex = {};
     float txmin = 0.0f;
     float txmax = 1.0f;
     float tymin = 0.0f;
@@ -181,7 +179,7 @@ public:
         float txmax,
         float tymin,
         float tymax,
-        TextureID imageid,
+        render::Texture const* tex,
         int xi_r,
         int xa_r,
         int yi_r,
@@ -195,7 +193,7 @@ public:
         txmax(txmax),
         tymin(tymin),
         tymax(tymax),
-        imageid(imageid) {
+        tex(tex) {
         resize(xi_r, xa_r, yi_r, ya_r, xi_b, xa_b, yi_b, ya_b);
     }
 
@@ -212,7 +210,6 @@ public:
     bool updated = false;
     int maxid = 0, currentid = 0, focusid = -1;
     int mx = 0, my = 0, mw = 0, mb = 0, mxl = 0, myl = 0, mwl = 0, mbl = 0;
-    unsigned int displaylist = 0;
     bool exit = false;
     bool MouseOnTextbox = false;
 
@@ -235,16 +232,7 @@ public:
     void singleLoop();
 };
 
-void clearTransition() {
-    if (transitionList != 0) {
-        glDeleteLists(transitionList, 1);
-        transitionList = 0;
-    }
-    if (lastdisplaylist != 0) {
-        glDeleteLists(lastdisplaylist, 1);
-        lastdisplaylist = 0;
-    }
-}
+void clearTransition() {}
 
 void drawBackground() {
     static double startTimer = timer();
@@ -261,7 +249,7 @@ void drawBackground() {
     glLoadIdentity();
     glRotated(elapsed * 4.0, 0.1, 1.0, 0.1);
 
-    glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[0]);
+    // UIBackgroundTextures.bind(0);
     glBegin(GL_QUADS);
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     glTexCoord2f(0.0f, 1.0f);
@@ -274,7 +262,6 @@ void drawBackground() {
     glVertex3f(1.0f, 1.0f, -1.0f);
     glEnd();
 
-    glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[1]);
     glBegin(GL_QUADS);
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     glTexCoord2f(0.0f, 1.0f);
@@ -287,7 +274,6 @@ void drawBackground() {
     glVertex3f(1.0f, 1.0f, 1.0f);
     glEnd();
 
-    glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[2]);
     glBegin(GL_QUADS);
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     glTexCoord2f(0.0f, 1.0f);
@@ -300,7 +286,6 @@ void drawBackground() {
     glVertex3f(-1.0f, 1.0f, 1.0f);
     glEnd();
 
-    glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[3]);
     glBegin(GL_QUADS);
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     glTexCoord2f(0.0f, 1.0f);
@@ -313,7 +298,6 @@ void drawBackground() {
     glVertex3f(-1.0f, 1.0f, -1.0f);
     glEnd();
 
-    glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[4]);
     glBegin(GL_QUADS);
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     glTexCoord2f(0.0f, 1.0f);
@@ -326,7 +310,6 @@ void drawBackground() {
     glVertex3f(-1.0f, -1.0f, -1.0f);
     glEnd();
 
-    glBindTexture(GL_TEXTURE_2D, UIBackgroundTextures[5]);
     glBegin(GL_QUADS);
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     glTexCoord2f(0.0f, 1.0f);
@@ -880,7 +863,7 @@ void VScroll::render() {
 void ImageBox::update() {}
 
 void ImageBox::render() {
-    glBindTexture(GL_TEXTURE_2D, imageid);
+    tex->bind(0);
     glBegin(GL_QUADS);
     glTexCoord2f(txmin, tymax);
     UIVertex(xmin, ymin);
@@ -989,6 +972,17 @@ void Form::update() {
 }
 
 void Form::render() {
+    Renderer::shaders[Renderer::UIShader].bind();
+
+    // Set frame uniforms used by the UI shader.
+    Renderer::frame_uniforms.set<".u_buffer_width">(static_cast<float>(WindowWidth));
+    Renderer::frame_uniforms.set<".u_buffer_height">(static_cast<float>(WindowHeight));
+
+    // Update uniform buffer.
+    Renderer::frame_uniform_buffer.write(Renderer::frame_uniforms.bytes(), 0);
+    Renderer::frame_uniform_buffer.bind(render::Buffer::IndexedTarget::UNIFORM, 0);
+
+    /*
     if (UIBackgroundBlur) {
         static Framebuffer fbo;
 
@@ -1050,8 +1044,8 @@ void Form::render() {
 
         fbo.bindColorTexture(0);
         fbo.unbindTarget();
+        Renderer::shaders[Renderer::UIShader].bind();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        render::Program::unbind();
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
@@ -1076,23 +1070,17 @@ void Form::render() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         drawBackground();
     }
-
+    */
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    /*
     double TimeDelta = timer() - transitionTimer;
-    float transitionAnim =
-        (float) (1.0 - std::pow(0.8, TimeDelta * 60.0) + std::pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, WindowWidth, WindowHeight, 0, -1.0, 1.0);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    auto transitionAnim = (float) (1.0 - std::pow(0.8, TimeDelta * 60.0) + std::pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);
 
     if (TimeDelta <= 0.3 && transitionList != 0) {
         if (transitionForward)
             glTranslatef(-transitionAnim * WindowWidth, 0.0f, 0.0f);
         else
             glTranslatef(transitionAnim * WindowWidth, 0.0f, 0.0f);
-        glCallList(transitionList);
         glLoadIdentity();
         if (transitionForward)
             glTranslatef(WindowWidth - transitionAnim * WindowWidth, 0.0f, 0.0f);
@@ -1102,15 +1090,13 @@ void Form::render() {
         glDeleteLists(transitionList, 1);
         transitionList = 0;
     }
+    */
 
-    if (displaylist == 0)
-        displaylist = glGenLists(1);
-    glNewList(displaylist, GL_COMPILE_AND_EXECUTE);
-    for (size_t i = 0; i != children.size(); i++)
-        children[i]->render();
+    for (auto const& child: children)
+        child->render();
+
     onRender();
-    glEndList();
-    lastdisplaylist = displaylist;
+    // lastdisplaylist = displaylist;
 }
 
 auto Form::getControlByID(int cid) -> Control* {
@@ -1122,7 +1108,6 @@ auto Form::getControlByID(int cid) -> Control* {
 }
 
 Form::Form() {
-    transitionList = lastdisplaylist;
     transitionForward = true;
     transitionTimer = timer();
     inputstr.clear();
@@ -1130,9 +1115,6 @@ Form::Form() {
 }
 
 Form::~Form() {
-    if (transitionList != 0)
-        glDeleteLists(transitionList, 1);
-    transitionList = displaylist;
     transitionForward = false;
     transitionTimer = timer();
 }

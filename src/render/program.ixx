@@ -141,11 +141,6 @@ public:
         glUseProgram(_handle);
     }
 
-    // Compatibility method to revert to the fixed-function pipeline.
-    static void unbind() {
-        glUseProgram(0);
-    }
-
     // Sets the value of an opaque uniform variable (which cannot be put into blocks).
     // This operation binds the program.
     void set_opaque(std::string const& name, size_t value) const {

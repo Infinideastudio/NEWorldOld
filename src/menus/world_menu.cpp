@@ -10,6 +10,7 @@ import gui;
 import globals;
 import globalization;
 import rendering;
+import render;
 import textures;
 
 namespace Menus {
@@ -25,7 +26,7 @@ private:
     int selected = 0, mouseon = false;
     std::string chosenWorldName;
     std::vector<std::string> worldnames;
-    std::vector<TextureID> thumbnails;
+    std::vector<render::Texture> thumbnails;
     std::vector<int> texSizeX, texSizeY;
     int trs = 0;
     GUI::Label title = GUI::Label("", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
@@ -110,13 +111,13 @@ private:
             for (auto const& entry: std::filesystem::directory_iterator("worlds")) {
                 if (entry.is_directory()) {
                     worldnames.emplace_back(entry.path().filename().string());
-                    thumbnails.push_back(0);
-                    texSizeX.push_back(0);
-                    texSizeY.push_back(0);
+                    thumbnails.emplace_back();
+                    texSizeX.emplace_back();
+                    texSizeY.emplace_back();
                     if (std::filesystem::exists(entry.path() / "thumbnail.png")) {
                         GLint width = 0, height = 0;
-                        thumbnails.back() = Textures::LoadTexture(entry.path() / "thumbnail.png", true, false);
-                        glBindTexture(GL_TEXTURE_2D, thumbnails.back());
+                        thumbnails.back() = Textures::LoadTexture(entry.path() / "thumbnail.png", true);
+                        thumbnails.back().bind(0);
                         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
                         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
                         texSizeX.back() = width;
@@ -157,7 +158,7 @@ private:
                 glEnd();
                 glEnable(GL_TEXTURE_2D);
             }
-            if (thumbnails[i] == 0) {
+            if (!thumbnails[i]) {
                 glDisable(GL_TEXTURE_2D);
                 glBegin(GL_QUADS);
                 if (mouseon == i)
@@ -181,7 +182,7 @@ private:
                     w = texSizeY[i] * 500 / 60.0f / texSizeX[i];
                     h = 1.0f;
                 }
-                glBindTexture(GL_TEXTURE_2D, thumbnails[i]);
+                thumbnails[i].bind(0);
                 if (mouseon == i)
                     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
                 else

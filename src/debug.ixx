@@ -21,11 +21,11 @@ export [[noreturn]] void unimplemented(std::source_location const& loc = std::so
 // optimize it out.
 export void
 assert(bool expr, std::string_view msg = "", std::source_location const& loc = std::source_location::current()) {
-#ifndef NDEBUG
+    // #ifndef NDEBUG
     if (!expr) {
         std::println(std::cerr, "{}: In function '{}':", loc.file_name(), loc.function_name());
         std::println(std::cerr, "{}:{}:{}: assertion failed: {}", loc.file_name(), loc.line(), loc.column(), msg);
         std::terminate();
     }
-#endif
+    // #endif
 }
