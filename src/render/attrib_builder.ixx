@@ -27,12 +27,9 @@ public:
 
     Vertex() = default;
 
-    auto bytes() const -> std::array<std::byte, interleaved.stride> const& {
-        return _bytes;
-    }
-
-    static constexpr auto size() -> size_t {
-        return interleaved.size;
+    template <typename Self>
+    auto bytes(this Self&& self) -> auto&& {
+        return std::forward<Self>(self)._bytes;
     }
 
     template <size_t I>

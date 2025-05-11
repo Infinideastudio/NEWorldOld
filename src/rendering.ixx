@@ -142,9 +142,9 @@ void init_shaders(bool reload = false) {
     // Create uniform buffers.
     auto usage = render::Buffer::Usage::WRITE;
     auto update = render::Buffer::Update::INFREQUENT;
-    filter_uniform_buffer = render::Buffer::create(filter_uniforms.size(), usage, update);
-    frame_uniform_buffer = render::Buffer::create(frame_uniforms.size(), usage, update);
-    model_uniform_buffer = render::Buffer::create(model_uniforms.size(), usage, update);
+    filter_uniform_buffer = render::Buffer::create(filter_uniforms.bytes().size(), usage, update);
+    frame_uniform_buffer = render::Buffer::create(frame_uniforms.bytes().size(), usage, update);
+    model_uniform_buffer = render::Buffer::create(model_uniforms.bytes().size(), usage, update);
 
     // Set opaque uniforms and uniform buffer bindings.
     shaders[UIShader].set_opaque("u_diffuse", 0);

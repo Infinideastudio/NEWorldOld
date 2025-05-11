@@ -30,8 +30,8 @@ void init_gl_defaults() {
     }
     glEnable(GL_PRIMITIVE_RESTART);
     // glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
-    glPixelStorei(GL_PACK_ALIGNMENT, 4);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 }
 
 void on_window_size_event(GLFWwindow* win, int width, int height) {
@@ -198,21 +198,18 @@ export void toggle_full_screen() {
 }
 
 export void load_textures() {
-    SelectedTexture = Textures::loadRGBTexture("textures/ui/select.bmp", false);
-    UnselectedTexture = Textures::loadRGBTexture("textures/ui/unselect.bmp", false);
-    TitleTexture = Textures::loadRGBATexture("textures/ui/title.bmp", "textures/ui/title_mask.bmp", true);
-    for (int i = 0; i < 6; i++) {
-        std::stringstream ss;
-        ss << "textures/ui/background_" << i << ".bmp";
-        UIBackgroundTextures[i] = Textures::loadRGBTexture(ss.str(), true);
+    SelectedTexture = Textures::LoadTexture("textures/ui/select.png", false);
+    UnselectedTexture = Textures::LoadTexture("textures/ui/unselect.png", false);
+    TitleTexture = Textures::LoadTexture("textures/ui/title.png", true);
+    for (auto i = 0uz; i < 6uz; i++) {
+        UIBackgroundTextures[i] = Textures::LoadTexture(std::format("textures/ui/background_{}.png", i), true);
     }
-    BlockTextureArray =
-        Textures::loadBlockTextureArray("textures/blocks/diffuse.bmp", "textures/blocks/diffuse_mask.bmp");
+    BlockTextureArray = Textures::LoadBlockTextureArray("textures/blocks/diffuse.png");
 }
 
 export void splash_screen() {
     if (SplashTexture == 0) {
-        SplashTexture = Textures::loadRGBTexture("textures/ui/splash.bmp", true);
+        SplashTexture = Textures::LoadTexture("textures/ui/splash.png", true);
     }
 
     for (int i = 0; i < 256; i += 2) {

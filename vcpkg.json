@@ -5,6 +5,7 @@
       "default-features": false
     },
     "glfw3",
-    "leveldb"
+    "leveldb",
+    "libpng"
   ]
 }
