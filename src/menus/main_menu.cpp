@@ -11,7 +11,7 @@ using Globalization::GetStrbyKey;
 
 class MainMenu: public GUI::Form {
 private:
-    GUI::ImageBox title = GUI::ImageBox(0.0f, 1.0f, 0.0f, 1.0f, TitleTexture, -256, 256, 20, 276, 0.5, 0.5, 0.0, 0.0);
+    GUI::ImageBox title = GUI::ImageBox(0.0f, 1.0f, 0.0f, 1.0f, &TitleTexture, -256, 256, 20, 276, 0.5, 0.5, 0.0, 0.0);
     GUI::Button startbtn = GUI::Button("", -200, 200, 280, 312, 0.5, 0.5, 0.0, 0.0);
     GUI::Button optionsbtn = GUI::Button("", -200, -3, 318, 352, 0.5, 0.5, 0.0, 0.0);
     GUI::Button quitbtn = GUI::Button("", 3, 200, 318, 352, 0.5, 0.5, 0.0, 0.0);

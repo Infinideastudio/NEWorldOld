@@ -689,7 +689,7 @@ void render_scene(worlds::World& world) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Bind main texture array
-    glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
+    BlockTextureArray.bind(0);
 
     if (showMeshWireframe)
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -777,6 +777,9 @@ void render_scene(worlds::World& world) {
     glClearDepth(1.0f);
     glClear(GL_DEPTH_BUFFER_BIT);
 
+    auto& shader = Renderer::shaders[Renderer::UIShader];
+    shader.bind();
+
     auto int_view_coord = view_coord.floor<int32_t>();
     if (world.block_or_air(int_view_coord).id == base_blocks().water) {
         namespace spec = render::attrib_layout::spec;
@@ -794,12 +797,8 @@ void render_scene(worlds::World& world) {
         v.coord({WindowWidth, 0});
         v.end_primitive();
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
-
-        auto& shader = Renderer::shaders[Renderer::UIShader];
-        shader.bind();
-        glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
+        BlockTextureArray.bind(0);
         va.first.render();
-        shader.unbind();
     }
 
     if (showHUD) {
@@ -822,7 +821,8 @@ void render_scene(worlds::World& world) {
 }
 
 void saveScreenshot(int x, int y, int w, int h, std::string filename) {
-    auto buffer = Textures::ImageRGBA(w, h);
+    auto buffer = Textures::ImageRGBA(1, h, w);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadBuffer(GL_FRONT);
     glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
     Textures::SaveImage(filename, buffer);
@@ -1041,7 +1041,6 @@ void draw_hud(worlds::World& world) {
         Renderer::shadow.bindDepthTexture(0);
         Renderer::shaders[Renderer::DebugShadowShader].bind();
         va.first.render();
-        render::Program::unbind();
     }
 
     int lineHeight = TextRenderer::line_height();
@@ -1139,7 +1138,7 @@ void draw_hud(worlds::World& world) {
 void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, int ybase, int spac, float alpha) {
     // 画出背包的一行
     for (int i = 0; i < 10; i++) {
-        glBindTexture(GL_TEXTURE_2D, i == itemid ? SelectedTexture : UnselectedTexture);
+        (i == itemid ? SelectedTexture : UnselectedTexture).bind(0);
         glBegin(GL_QUADS);
         glColor4f(1.0f, 1.0f, 1.0f, alpha);
         glTexCoord2f(0.0f, 1.0f);
@@ -1169,12 +1168,8 @@ void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, 
             v.coord({xbase + i * (32 + spac) + 30, ybase + 2});
             v.end_primitive();
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
-
-            auto& shader = Renderer::shaders[Renderer::UIShader];
-            shader.bind();
-            glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
+            BlockTextureArray.bind(0);
             va.first.render();
-            shader.unbind();
 
             TextRenderer::render_string(xbase + i * (32 + spac), ybase, std::to_string(item.count));
         }
@@ -1277,12 +1272,8 @@ void draw_inventory(player::Player& player) {
             v.coord({mx + 16, my - 16});
             v.end_primitive();
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
-
-            auto& shader = Renderer::shaders[Renderer::UIShader];
-            shader.bind();
-            glBindTexture(GL_TEXTURE_2D_ARRAY, BlockTextureArray);
+            BlockTextureArray.bind(0);
             va.first.render();
-            shader.unbind();
 
             TextRenderer::render_string((int) mx - 16, (int) my - 16, std::to_string(itemSelected.count));
         }

@@ -87,12 +87,12 @@ auto getNoiseTexture() -> GLuint {
             }
 
         glGenTextures(1, &noiseTex);
-        glBindTexture(GL_TEXTURE_2D, noiseTex);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, a.get());
+        glBindTexture(GL_TEXTURE_2D_ARRAY, noiseTex);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, 256, 256, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, a.get());
     }
     return noiseTex;
 }
@@ -179,8 +179,6 @@ void init_shaders(bool reload = false) {
     shaders[ShadowShader].set_uniform_block("Model", 1);
 
     shaders[DebugShadowShader].set_opaque("u_shadow_texture", 0);
-
-    render::Program::unbind();
 }
 
 auto getShadowMatrix() -> Mat4f {
@@ -311,7 +309,6 @@ void StartShadowPass() {
 void EndShadowPass() {
     assert(AdvancedRender);
     shadow.unbindTarget();
-    render::Program::unbind();
     glEnable(GL_BLEND);
     glEnable(GL_CULL_FACE);
 }
@@ -329,9 +326,6 @@ void StartOpaquePass() {
 void EndOpaquePass() {
     if (AdvancedRender) {
         gBuffers.unbindTarget();
-        render::Program::unbind();
-    } else {
-        render::Program::unbind();
     }
     glEnable(GL_BLEND);
 }
@@ -349,9 +343,6 @@ void StartTranslucentPass() {
 void EndTranslucentPass() {
     if (AdvancedRender) {
         gBuffers.unbindTarget();
-        render::Program::unbind();
-    } else {
-        render::Program::unbind();
     }
 }
 
@@ -362,13 +353,12 @@ void StartFinalPass() {
     gBuffers.bindDepthTexture(gBufferCount + 0);
     shadow.bindDepthTexture(gBufferCount + 1);
     glActiveTexture(GL_TEXTURE0 + gBufferCount + 2);
-    glBindTexture(GL_TEXTURE_2D, getNoiseTexture());
+    glBindTexture(GL_TEXTURE_2D_ARRAY, getNoiseTexture());
     glActiveTexture(GL_TEXTURE0);
 }
 
 void EndFinalPass() {
     assert(AdvancedRender);
-    render::Program::unbind();
 }
 
 }

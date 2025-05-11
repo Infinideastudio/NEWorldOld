@@ -22,7 +22,7 @@ public:
         ELEMENT_INDEX = GL_ELEMENT_ARRAY_BUFFER,
         PIXEL_DST = GL_PIXEL_PACK_BUFFER,
         TEXEL_SRC = GL_PIXEL_UNPACK_BUFFER,
-        TEXTURE = GL_TEXTURE_BUFFER,
+        STORAGE_TEXTURE = GL_TEXTURE_BUFFER,
     };
 
     // Possible indexed buffer binding points per GL 4.3.
@@ -85,6 +85,17 @@ public:
         return _handle != 0;
     }
 
+    // Creates a new buffer object with the given size and usage hints.
+    // Invalidates any existing binding to `COPY_DST` target.
+    static auto create(size_t size, Usage usage, Update freq) -> Buffer {
+        auto handle = GLuint{0};
+        auto target = _target_to_gl_enum(Target::COPY_DST);
+        glGenBuffers(1, &handle);
+        glBindBuffer(target, handle);
+        glBufferData(target, static_cast<GLsizeiptr>(size), nullptr, _hints_to_gl_enum(usage, freq));
+        return Buffer(handle, size);
+    }
+
     // Binds the owned buffer to the given GL target (non-indexed).
     // Should be invoked last before a GL call to avoid accidental re-binding by other functions.
     void bind(Target target) const {
@@ -97,17 +108,6 @@ public:
     void bind(IndexedTarget target, size_t index) const {
         assert(_handle != 0, "binding an unallocated buffer");
         glBindBufferBase(_target_to_gl_enum(target), static_cast<GLuint>(index), _handle);
-    }
-
-    // Creates a new buffer object with the given size and usage hints.
-    // Invalidates any existing binding to `COPY_DST` target.
-    static auto create(size_t size, Usage usage, Update freq) -> Buffer {
-        auto handle = GLuint{0};
-        auto target = _target_to_gl_enum(Target::COPY_DST);
-        glGenBuffers(1, &handle);
-        glBindBuffer(target, handle);
-        glBufferData(target, static_cast<GLsizeiptr>(size), nullptr, _hints_to_gl_enum(usage, freq));
-        return Buffer(handle, size);
     }
 
     // Reads data from the buffer.

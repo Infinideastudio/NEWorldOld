@@ -12,14 +12,12 @@ import blocks;
 import globals;
 import render;
 
-export using TextureID = GLuint;
-
-export TextureID SplashTexture;
-export TextureID TitleTexture;
-export std::array<TextureID, 6> UIBackgroundTextures;
-export TextureID SelectedTexture;
-export TextureID UnselectedTexture;
-export TextureID BlockTextureArray;
+export render::Texture SplashTexture;
+export render::Texture TitleTexture;
+export render::Texture UIBackgroundTextures;
+export render::Texture SelectedTexture;
+export render::Texture UnselectedTexture;
+export render::Texture BlockTextureArray;
 
 export enum class TextureIndex: uint16_t {
     WHITE,
@@ -88,73 +86,37 @@ export auto getTextureIndex(blocks::Id blockname, size_t face) -> TextureIndex {
     return i < indices.size() && j < indices[i].size() ? indices[i][j] : TextureIndex::NULLBLOCK;
 }
 
-export auto LoadTexture(std::filesystem::path const& path, bool bilinear, bool flipped = true) -> TextureID {
+export auto LoadTexture(std::filesystem::path const& path, bool bilinear) -> render::Texture {
     auto image = render::load_png_image(path);
     if (image) {
-        if (flipped) {
-            image->flip();
-        }
-        auto res = TextureID();
-        glGenTextures(1, &res);
-        glBindTexture(GL_TEXTURE_2D, res);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, bilinear ? GL_LINEAR : GL_NEAREST);
-        glTexParameteri(
-            GL_TEXTURE_2D,
-            GL_TEXTURE_MIN_FILTER,
-            bilinear ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_LINEAR
-        );
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RGBA8,
-            static_cast<GLsizei>(image->width()),
-            static_cast<GLsizei>(image->height()),
-            0,
-            GL_RGBA,
-            GL_UNSIGNED_BYTE,
-            image->data()
-        );
-        glGenerateMipmap(GL_TEXTURE_2D);
-        return res;
+        auto res = render::Texture::create(render::Texture::Format::RGBA, 1, image->height(), image->width());
+        res.fill(0, 0, 0, *image);
+        res.set_filter(bilinear, true);
+        res.set_wrap(false);
+        res.generate_mipmaps();
+        return std::move(res);
     }
     spdlog::error("failed to load texture {}: {}", path.string(), image.error());
-    return TextureID();
+    return {};
 }
 
-export auto LoadBlockTextureArray(std::filesystem::path const& path, bool flipped = true) -> TextureID {
+export auto LoadBlockTextureArray(std::filesystem::path const& path) -> render::Texture {
     auto image = render::load_png_image(path);
     if (image) {
-        if (flipped) {
-            image->flip();
-        }
-        auto res = TextureID();
         auto size = image->width();
         auto count = image->height() / size;
-        glGenTextures(1, &res);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, res);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexImage3D(
-            GL_TEXTURE_2D_ARRAY,
-            0,
-            GL_RGBA8,
-            static_cast<GLsizei>(size),
-            static_cast<GLsizei>(size),
-            static_cast<GLsizei>(count),
-            0,
-            GL_RGBA,
-            GL_UNSIGNED_BYTE,
-            image->data()
-        );
-        glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-        return res;
+        image->reshape(count, size, size);
+        auto res = render::Texture::create(render::Texture::Format::RGBA, count, size, size);
+        for (auto i = 0uz; i < count; ++i) {
+            res.fill(i, 0, 0, *image, i);
+        }
+        res.set_filter(false, true);
+        res.set_wrap(true);
+        res.generate_mipmaps();
+        return std::move(res);
     }
     spdlog::error("failed to load image {}: {}", path.string(), image.error());
-    return TextureID();
+    return {};
 }
 
 export void SaveImage(std::filesystem::path const& path, ImageRGBA const& image) {
