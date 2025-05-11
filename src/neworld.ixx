@@ -822,30 +822,22 @@ void render_scene(worlds::World& world) {
 }
 
 void saveScreenshot(int x, int y, int w, int h, std::string filename) {
-    Textures::ImageRGB scrBuffer;
-    int bufw = w, bufh = h;
-    while (bufw % 4 != 0)
-        bufw += 1;
-    while (bufh % 4 != 0)
-        bufh += 1;
-    scrBuffer.sizeX = bufw;
-    scrBuffer.sizeY = bufh;
-    scrBuffer.buffer = std::make_unique<uint8_t[]>(bufw * bufh * 3);
+    auto buffer = Textures::ImageRGBA(w, h);
     glReadBuffer(GL_FRONT);
-    glReadPixels(x, y, bufw, bufh, GL_RGB, GL_UNSIGNED_BYTE, scrBuffer.buffer.get());
-    Textures::SaveRGBImage(filename, scrBuffer);
+    glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
+    Textures::SaveImage(filename, buffer);
 }
 
 void readback(worlds::World& world) {
     if (shouldGetScreenshot) {
         shouldGetScreenshot = false;
         auto now = std::chrono::system_clock::now();
-        saveScreenshot(0, 0, WindowWidth, WindowHeight, std::format("screenshots/{}.bmp", now));
+        saveScreenshot(0, 0, WindowWidth, WindowHeight, std::format("screenshots/{}.png", now));
     }
 
     if (shouldGetThumbnail) {
         shouldGetThumbnail = false;
-        saveScreenshot(0, 0, WindowWidth, WindowHeight, std::format("worlds/{}/thumbnail.bmp", world.name()));
+        saveScreenshot(0, 0, WindowWidth, WindowHeight, std::format("worlds/{}/thumbnail.png", world.name()));
     }
 }
 

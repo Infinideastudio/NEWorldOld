@@ -113,9 +113,9 @@ private:
                     thumbnails.push_back(0);
                     texSizeX.push_back(0);
                     texSizeY.push_back(0);
-                    if (std::filesystem::exists(entry.path() / "thumbnail.bmp")) {
+                    if (std::filesystem::exists(entry.path() / "thumbnail.png")) {
                         GLint width = 0, height = 0;
-                        thumbnails.back() = Textures::loadRGBTexture(entry.path() / "thumbnail.bmp", true);
+                        thumbnails.back() = Textures::LoadTexture(entry.path() / "thumbnail.png", true, false);
                         glBindTexture(GL_TEXTURE_2D, thumbnails.back());
                         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
                         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);

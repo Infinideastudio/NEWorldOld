@@ -244,16 +244,8 @@ public:
         return _parent_handle != 0;
     }
 
-    auto region() const noexcept -> std::span<T> {
+    auto bytes() const noexcept -> std::span<T> {
         return _address_space;
-    }
-
-    auto get() const noexcept -> T* {
-        return _address_space.data();
-    }
-
-    auto size() const noexcept -> size_t {
-        return _address_space.size();
     }
 
     // Explicitly flushes changes to a sub-region of the mapped buffer.

@@ -24,12 +24,9 @@ public:
 
     Block() = default;
 
-    auto bytes() const -> std::array<std::byte, T::size> const& {
-        return _bytes;
-    }
-
-    static constexpr auto size() -> size_t {
-        return T::size;
+    template <typename Self>
+    auto bytes(this Self&& self) -> auto&& {
+        return std::forward<Self>(self)._bytes;
     }
 
     template <FixedString name>

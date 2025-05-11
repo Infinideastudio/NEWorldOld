@@ -57,7 +57,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(utfcpp)
 
-# The `spdlog` logging library
+# The `spdlog` logging library.
 FetchContent_Declare(
         spdlog
         GIT_REPOSITORY https://github.com/gabime/spdlog
@@ -65,6 +65,9 @@ FetchContent_Declare(
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(spdlog)
+
+# The `libpng` PNG encoder/decoder library.
+find_package(PNG REQUIRED)
 
 # The FreeType font rendering library.
 find_package(Freetype REQUIRED)
@@ -101,6 +104,7 @@ target_sources(
         "src/render/attrib_builder.ixx"
         "src/render/block_layout.ixx"
         "src/render/block_builder.ixx"
+        "src/render/image.ixx"
         "src/render/buffer.ixx"
         "src/render/texture.ixx"
         "src/render/framebuffer.ixx"
@@ -145,7 +149,7 @@ target_sources(
 )
 target_default_compile_options(neworld)
 set_target_properties(neworld PROPERTIES CXX_MODULE_STD 1)
-target_link_libraries(neworld PRIVATE glad glfw utf8cpp Freetype::Freetype leveldb::leveldb spdlog::spdlog)
+target_link_libraries(neworld PRIVATE glad glfw utf8cpp spdlog::spdlog PNG::PNG Freetype::Freetype leveldb::leveldb)
 target_link_libraries(neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine klsxx::io)
 target_include_directories(neworld PRIVATE "src")
 target_compile_definitions(neworld PRIVATE "$<$<CONFIG:Debug,RelWithDebInfo>:NEWORLD_DEBUG>")

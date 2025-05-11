@@ -6,6 +6,7 @@ export module render:texture;
 import std;
 import types;
 import debug;
+import :image;
 
 namespace render {
 
