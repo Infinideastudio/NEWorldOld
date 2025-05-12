@@ -63,7 +63,7 @@ export void init_font(bool reload) {
         chars.clear();
 
         // Reset the image and texture.
-        image = render::ImageRGBA(1, TEXTURE_HEIGHT_INIT, TEXTURE_WIDTH);
+        image = render::ImageRGBA(TEXTURE_WIDTH, TEXTURE_HEIGHT_INIT);
         tex = {};
         curr_row = 0uz;
         curr_col = 0uz;
@@ -98,7 +98,7 @@ auto loadChar(char32_t uc) -> UnicodeChar& {
 
     // Allocate new image layers when necessary.
     while (curr_row + curr_row_height >= image.height()) {
-        auto next = render::ImageRGBA(1, image.height() * 2, image.width());
+        auto next = render::ImageRGBA(image.width(), image.height() * 2);
         next.fill(0, 0, 0, image);
         image = std::move(next);
     }
@@ -106,14 +106,14 @@ auto loadChar(char32_t uc) -> UnicodeChar& {
     // Copy the bitmap into the atlas image.
     for (auto i = 0uz; i < bitmap.rows; i++) {
         for (auto j = 0uz; j < bitmap.width; j++) {
-            image[0, curr_row + i, curr_col + j] =
+            image[curr_col + j, curr_row + i, 0] =
                 {255, 255, 255, bitmap.buffer[(bitmap.rows - 1 - i) * bitmap.pitch + j]};
         }
     }
 
     // Update the texture to match the new atlas image.
     if (tex.height() != image.height()) {
-        tex = render::Texture::create(render::Texture::Format::RGBA, image.depth(), image.height(), image.width());
+        tex = render::Texture::create(render::Texture::Format::RGBA, image.width(), image.height(), image.depth());
         tex.fill(0, 0, 0, image);
     } else {
         tex.fill(0, 0, 0, image); // TODO: only need to update a small region

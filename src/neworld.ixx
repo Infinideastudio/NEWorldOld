@@ -816,7 +816,7 @@ void render_scene(worlds::World& world) {
 }
 
 void saveScreenshot(int x, int y, int w, int h, std::string filename) {
-    auto buffer = Textures::ImageRGBA(1, h, w);
+    auto buffer = Textures::ImageRGBA(w, h);
     render::Framebuffer::bind_default(render::Framebuffer::Target::READ);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());

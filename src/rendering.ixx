@@ -102,22 +102,22 @@ auto shadow_distance() -> int {
 
 auto create_noise_texture() -> render::Texture {
     fast_srand(1234);
-    auto image = render::ImageRGBA(1, 256, 256);
+    auto image = render::ImageRGBA(256, 256);
     for (auto i = 0uz; i < 256; i++)
         for (auto j = 0uz; j < 256; j++)
-            image[0, i, j].x() = image[0, i, j].y() = static_cast<uint8_t>(rnd() * 256);
+            image[j, i, 0].x() = image[j, i, 0].y() = static_cast<uint8_t>(rnd() * 256);
 
     auto OFFSET_X = 37uz, OFFSET_Y = 17uz;
     for (auto i = 0; i < 256uz; i++) {
         for (auto j = 0; j < 256uz; j++) {
             auto k = (i + OFFSET_Y) % 256;
             auto l = (j + OFFSET_X) % 256;
-            image[0, i, j].z() = image[0, k, l].x();
-            image[0, i, j].w() = image[0, k, l].y();
+            image[j, i, 0].z() = image[l, k, 0].x();
+            image[j, i, 0].w() = image[l, k, 0].y();
         }
     }
 
-    auto tex = render::Texture::create(render::Texture::Format::RGBA, 1, 256, 256);
+    auto tex = render::Texture::create(render::Texture::Format::RGBA, 256, 256);
     tex.fill(0, 0, 0, image);
     tex.set_wrap(true);
     tex.set_filter(true);
@@ -214,12 +214,12 @@ void init_pipeline(bool load_shaders = false, bool init_framebuffers = false) {
         bufferWidth = WindowWidth;
         bufferHeight = WindowHeight;
 
-        textures.emplace_back(Texture::create(Texture::Format::RGBA, 1, bufferHeight, bufferWidth));
-        textures.emplace_back(Texture::create(Texture::Format::RGBA, 1, bufferHeight, bufferWidth));
-        textures.emplace_back(Texture::create(Texture::Format::RGBA, 1, bufferHeight, bufferWidth));
-        textures.emplace_back(Texture::create(Texture::Format::DEPTH, 1, bufferHeight, bufferWidth));
-        textures.emplace_back(Texture::create(Texture::Format::RGBA, 1, ShadowRes, ShadowRes));
-        textures.emplace_back(Texture::create(Texture::Format::DEPTH, 1, ShadowRes, ShadowRes));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA, bufferWidth, bufferHeight));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA, bufferWidth, bufferHeight));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA, bufferWidth, bufferHeight));
+        textures.emplace_back(Texture::create(Texture::Format::DEPTH, bufferWidth, bufferHeight));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA, ShadowRes, ShadowRes));
+        textures.emplace_back(Texture::create(Texture::Format::DEPTH, ShadowRes, ShadowRes));
         textures.back().set_filter(true);
         textures.back().set_depth_compare_mode(Texture::DepthCompareMode::LEQUAL);
         textures.emplace_back(create_noise_texture());
