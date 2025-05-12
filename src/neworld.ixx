@@ -755,14 +755,14 @@ void render_scene(worlds::World& world) {
     if (AdvancedRender) {
         namespace al = render::attrib_layout::spec;
         auto v = render::AttribIndexBuilder<al::Coord<al::Vec2f>, al::TexCoord<al::Vec2f>>();
-        v.tex_coord({0.0f, 1.0f});
-        v.coord({0, 0});
-        v.tex_coord({0.0f, 0.0f});
-        v.coord({0, WindowHeight});
-        v.tex_coord({1.0f, 0.0f});
-        v.coord({WindowWidth, WindowHeight});
-        v.tex_coord({1.0f, 1.0f});
-        v.coord({WindowWidth, 0});
+        v.tex_coord(0.0f, 1.0f);
+        v.coord(0, 0);
+        v.tex_coord(0.0f, 0.0f);
+        v.coord(0, WindowHeight);
+        v.tex_coord(1.0f, 0.0f);
+        v.coord(WindowWidth, WindowHeight);
+        v.tex_coord(1.0f, 1.0f);
+        v.coord(WindowWidth, 0);
         v.end_primitive();
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
@@ -783,15 +783,15 @@ void render_scene(worlds::World& world) {
         BlockTextureArray.bind(0);
         auto v = Renderer::ui_vertex_builder();
         auto tcz = static_cast<float>(Textures::getTextureIndex(base_blocks().water, 0));
-        v.color({255, 255, 255, 255});
-        v.tex_coord({0.0f, 1.0f, tcz});
-        v.coord({0, 0});
-        v.tex_coord({0.0f, 0.0f, tcz});
-        v.coord({0, WindowHeight});
-        v.tex_coord({1.0f, 0.0f, tcz});
-        v.coord({WindowWidth, WindowHeight});
-        v.tex_coord({1.0f, 1.0f, tcz});
-        v.coord({WindowWidth, 0});
+        v.color(255, 255, 255, 255);
+        v.tex_coord(0.0f, 1.0f, tcz);
+        v.coord(0, 0);
+        v.tex_coord(0.0f, 0.0f, tcz);
+        v.coord(0, WindowHeight);
+        v.tex_coord(1.0f, 0.0f, tcz);
+        v.coord(WindowWidth, WindowHeight);
+        v.tex_coord(1.0f, 1.0f, tcz);
+        v.coord(WindowWidth, 0);
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
         va.first.render();
     }
@@ -804,12 +804,12 @@ void render_scene(worlds::World& world) {
     if (currTimer - screenshotAnimTimer <= 1.0 && !shouldGetScreenshot) {
         BlockTextureArray.bind(0);
         auto v = Renderer::ui_vertex_builder();
-        v.color({255, 255, 255, static_cast<int>(255 * (1.0 - (currTimer - screenshotAnimTimer)))});
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
-        v.coord({0, 0});
-        v.coord({0, WindowHeight});
-        v.coord({WindowWidth, WindowHeight});
-        v.coord({WindowWidth, 0});
+        v.color(255, 255, 255, static_cast<int>(255 * (1.0 - (currTimer - screenshotAnimTimer))));
+        v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
+        v.coord(0, 0);
+        v.coord(0, WindowHeight);
+        v.coord(WindowWidth, WindowHeight);
+        v.coord(WindowWidth, 0);
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
         va.first.render();
     }
@@ -868,13 +868,13 @@ void draw_block_selection_border(float x, float y, float z) {
 
     auto v = Renderer::chunk_vertex_builder();
     v.material(65535); // For indicator elements
-    v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
-    v.color({255, 255, 255});
+    v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
+    v.color(255, 255, 255);
 
     for (auto i = 0uz; i < cube.size(); i++) {
         auto const& center = centers[i];
         auto xc = center[0], yc = center[1], zc = center[2];
-        v.normal({xc * 2.0f, yc * 2.0f, zc * 2.0f});
+        v.normal(xc * 2.0f, yc * 2.0f, zc * 2.0f);
         for (auto j = 0uz; j < cube[i].size(); j++) {
             auto const& first = cube[i][j];
             auto const& second = cube[i][(j + 1) % 4];
@@ -884,10 +884,10 @@ void draw_block_selection_border(float x, float y, float z) {
             auto xd1 = (x1 - xc) * 2.0f, yd1 = (y1 - yc) * 2.0f, zd1 = (z1 - zc) * 2.0f;
             x0 += (x0 > 0.0f ? EPS : -EPS), y0 += (y0 > 0.0f ? EPS : -EPS), z0 += (z0 > 0.0f ? EPS : -EPS);
             x1 += (x1 > 0.0f ? EPS : -EPS), y1 += (y1 > 0.0f ? EPS : -EPS), z1 += (z1 > 0.0f ? EPS : -EPS);
-            v.coord({x + x0, y + y0, z + z0});
-            v.coord({x + x1, y + y1, z + z1});
-            v.coord({x + x1 - xd1 * WIDTH, y + y1 - yd1 * WIDTH, z + z1 - zd1 * WIDTH});
-            v.coord({x + x0 - xd0 * WIDTH, y + y0 - yd0 * WIDTH, z + z0 - zd0 * WIDTH});
+            v.coord(x + x0, y + y0, z + z0);
+            v.coord(x + x1, y + y1, z + z1);
+            v.coord(x + x1 - xd1 * WIDTH, y + y1 - yd1 * WIDTH, z + z1 - zd1 * WIDTH);
+            v.coord(x + x0 - xd0 * WIDTH, y + y0 - yd0 * WIDTH, z + z0 - zd0 * WIDTH);
             v.end_primitive();
         }
     }
@@ -905,20 +905,20 @@ void draw_block_breaking_texture(float level, float x, float y, float z) {
 
     auto v = Renderer::chunk_vertex_builder();
     v.material(65535); // For indicator elements
-    v.color({255, 255, 255});
+    v.color(255, 255, 255);
 
     for (auto i = 0uz; i < cube.size(); i++) {
         auto const& center = centers[i];
         auto xc = center[0], yc = center[1], zc = center[2];
-        v.normal({xc * 2.0f, yc * 2.0f, zc * 2.0f});
+        v.normal(xc * 2.0f, yc * 2.0f, zc * 2.0f);
         for (auto j = 0uz; j < cube[i].size(); j++) {
             auto const& tex_coord = tex_coords[j];
             auto const& point = cube[i][j];
             auto u0 = tex_coord[0], v0 = tex_coord[1];
             auto x0 = point[0], y0 = point[1], z0 = point[2];
             x0 += (x0 > 0.0f ? EPS : -EPS), y0 += (y0 > 0.0f ? EPS : -EPS), z0 += (z0 > 0.0f ? EPS : -EPS);
-            v.tex_coord({u0, v0, tex});
-            v.coord({x + x0, y + y0, z + z0});
+            v.tex_coord(u0, v0, tex);
+            v.coord(x + x0, y + y0, z + z0);
         }
         v.end_primitive();
     }
@@ -939,29 +939,29 @@ void draw_hud(worlds::World& world) {
 
     if (showDebugPanel) {
         auto v = Renderer::ui_vertex_builder();
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
-        v.color({255, 255, 255, 255});
-        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti});
-        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + linelength + disti});
-        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti});
-        v.coord({WindowWidth / 2 - linedist + linelength + disti, WindowHeight / 2 - linedist + disti});
-        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + disti});
-        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + linelength + disti});
-        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + disti});
-        v.coord({WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 - linedist + disti});
-        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - disti});
-        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - linelength - disti});
-        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - disti});
-        v.coord({WindowWidth / 2 - linedist + linelength + disti, WindowHeight / 2 + linedist - disti});
-        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti});
-        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - linelength - disti});
-        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti});
-        v.coord({WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 + linedist - disti});
+        v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
+        v.color(255, 255, 255, 255);
+        v.coord(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti);
+        v.coord(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + linelength + disti);
+        v.coord(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti);
+        v.coord(WindowWidth / 2 - linedist + linelength + disti, WindowHeight / 2 - linedist + disti);
+        v.coord(WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + disti);
+        v.coord(WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + linelength + disti);
+        v.coord(WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + disti);
+        v.coord(WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 - linedist + disti);
+        v.coord(WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - disti);
+        v.coord(WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - linelength - disti);
+        v.coord(WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - disti);
+        v.coord(WindowWidth / 2 - linedist + linelength + disti, WindowHeight / 2 + linedist - disti);
+        v.coord(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti);
+        v.coord(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - linelength - disti);
+        v.coord(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti);
+        v.coord(WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 + linedist - disti);
         if (selb != base_blocks().air) {
-            v.coord({WindowWidth / 2, WindowHeight / 2});
-            v.coord({WindowWidth / 2 + 50, WindowHeight / 2 + 50});
-            v.coord({WindowWidth / 2 + 50, WindowHeight / 2 + 50});
-            v.coord({WindowWidth / 2 + 250, WindowHeight / 2 + 50});
+            v.coord(WindowWidth / 2, WindowHeight / 2);
+            v.coord(WindowWidth / 2 + 50, WindowHeight / 2 + 50);
+            v.coord(WindowWidth / 2 + 50, WindowHeight / 2 + 50);
+            v.coord(WindowWidth / 2 + 250, WindowHeight / 2 + 50);
         }
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::LINES);
         va.first.render();
@@ -969,17 +969,17 @@ void draw_hud(worlds::World& world) {
 
     {
         auto v = Renderer::ui_vertex_builder();
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
-        v.color({255, 255, 255, 255});
-        v.coord({WindowWidth / 2 - 10, WindowHeight / 2 - 1});
-        v.coord({WindowWidth / 2 - 10, WindowHeight / 2 + 1});
-        v.coord({WindowWidth / 2 + 10, WindowHeight / 2 + 1});
-        v.coord({WindowWidth / 2 + 10, WindowHeight / 2 - 1});
+        v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
+        v.color(255, 255, 255, 255);
+        v.coord(WindowWidth / 2 - 10, WindowHeight / 2 - 1);
+        v.coord(WindowWidth / 2 - 10, WindowHeight / 2 + 1);
+        v.coord(WindowWidth / 2 + 10, WindowHeight / 2 + 1);
+        v.coord(WindowWidth / 2 + 10, WindowHeight / 2 - 1);
         v.end_primitive();
-        v.coord({WindowWidth / 2 - 1, WindowHeight / 2 - 10});
-        v.coord({WindowWidth / 2 - 1, WindowHeight / 2 + 10});
-        v.coord({WindowWidth / 2 + 1, WindowHeight / 2 + 10});
-        v.coord({WindowWidth / 2 + 1, WindowHeight / 2 - 10});
+        v.coord(WindowWidth / 2 - 1, WindowHeight / 2 - 10);
+        v.coord(WindowWidth / 2 - 1, WindowHeight / 2 + 10);
+        v.coord(WindowWidth / 2 + 1, WindowHeight / 2 + 10);
+        v.coord(WindowWidth / 2 + 1, WindowHeight / 2 - 10);
         v.end_primitive();
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
         va.first.render();
@@ -990,18 +990,18 @@ void draw_hud(worlds::World& world) {
     if (player.game_mode() == player::Player::GameMode::SURVIVAL) {
         auto healthPercent = player.health() / player.max_health();
         auto v = Renderer::ui_vertex_builder();
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
-        v.color({200, 0, 0, 80});
-        v.coord({10, 10});
-        v.coord({10, 30});
-        v.coord({200, 30});
-        v.coord({200, 10});
+        v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
+        v.color(200, 0, 0, 80);
+        v.coord(10, 10);
+        v.coord(10, 30);
+        v.coord(200, 30);
+        v.coord(200, 10);
         v.end_primitive();
-        v.color({200, 0, 0, 128});
-        v.coord({20, 15});
-        v.coord({20, 25});
-        v.coord({20 + healthPercent * 170, 25});
-        v.coord({20 + healthPercent * 170, 15});
+        v.color(200, 0, 0, 128);
+        v.coord(20, 15);
+        v.coord(20, 25);
+        v.coord(20 + healthPercent * 170, 25);
+        v.coord(20 + healthPercent * 170, 15);
         v.end_primitive();
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
         va.first.render();
@@ -1015,14 +1015,14 @@ void draw_hud(worlds::World& world) {
 
         namespace al = render::attrib_layout::spec;
         auto v = render::AttribIndexBuilder<al::Coord<al::Vec2f>, al::TexCoord<al::Vec2f>>();
-        v.tex_coord({0.0f, 1.0f});
-        v.coord({xi, yi});
-        v.tex_coord({0.0f, 0.0f});
-        v.coord({xi, ya});
-        v.tex_coord({1.0f, 0.0f});
-        v.coord({xa, ya});
-        v.tex_coord({1.0f, 1.0f});
-        v.coord({xa, yi});
+        v.tex_coord(0.0f, 1.0f);
+        v.coord(xi, yi);
+        v.tex_coord(0.0f, 0.0f);
+        v.coord(xi, ya);
+        v.tex_coord(1.0f, 0.0f);
+        v.coord(xa, ya);
+        v.tex_coord(1.0f, 1.0f);
+        v.coord(xa, yi);
         v.end_primitive();
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
@@ -1054,12 +1054,12 @@ void draw_hud(worlds::World& world) {
     if (chatmode) {
         BlockTextureArray.bind(0);
         auto v = Renderer::ui_vertex_builder();
-        v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
-        v.color(Vec4u8(Vec4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA) * 255.0f));
-        v.coord({1, WindowHeight - 33 - lineHeight});
-        v.coord({1, WindowHeight - 33});
-        v.coord({WindowWidth - 1, WindowHeight - 33});
-        v.coord({WindowWidth - 1, WindowHeight - 33 - lineHeight});
+        v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
+        v.color(Vec4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA) * 255.0f);
+        v.coord(1, WindowHeight - 33 - lineHeight);
+        v.coord(1, WindowHeight - 33);
+        v.coord(WindowWidth - 1, WindowHeight - 33);
+        v.coord(WindowWidth - 1, WindowHeight - 33 - lineHeight);
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
         va.first.render();
         TextRenderer::render_string(0, WindowHeight - 33 - lineHeight, chatword);
@@ -1069,15 +1069,15 @@ void draw_hud(worlds::World& world) {
         for (auto i = chat_messages.size(); i-- > 0 && count < 10; count++) {
             BlockTextureArray.bind(0);
             auto v = Renderer::ui_vertex_builder();
-            v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
-            v.color(Vec4u8(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA) * 255.0f));
-            v.coord({1, WindowHeight - 34 - lineHeight * (count + 2)});
-            v.color(Vec4u8(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA) * 255.0f));
-            v.coord({1, WindowHeight - 34 - lineHeight * (count + 1)});
-            v.color(Vec4u8(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA) * 255.0f));
-            v.coord({WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 1)});
-            v.color(Vec4u8(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA) * 255.0f));
-            v.coord({WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 2)});
+            v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
+            v.color(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA) * 255.0f);
+            v.coord(1, WindowHeight - 34 - lineHeight * (count + 2));
+            v.color(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA) * 255.0f);
+            v.coord(1, WindowHeight - 34 - lineHeight * (count + 1));
+            v.color(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA) * 255.0f);
+            v.coord(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 1));
+            v.color(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA) * 255.0f);
+            v.coord(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 2));
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
             va.first.render();
             TextRenderer::render_string(0, WindowHeight - 34 - lineHeight * (count + 2), chat_messages[i]);
@@ -1137,15 +1137,15 @@ void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, 
         for (auto i = 0; i < 10; i++) {
             (i == itemid ? SelectedTexture : UnselectedTexture).bind(0);
             auto v = Renderer::ui_vertex_builder();
-            v.color({255, 255, 255, 255 * alpha});
-            v.tex_coord({0.0f, 1.0f, 0.0f});
-            v.coord({xbase + i * (32 + spac), ybase});
-            v.tex_coord({1.0f, 1.0f, 0.0f});
-            v.coord({xbase + i * (32 + spac), ybase + 32});
-            v.tex_coord({1.0f, 0.0f, 0.0f});
-            v.coord({xbase + i * (32 + spac) + 32, ybase + 32});
-            v.tex_coord({0.0f, 0.0f, 0.0f});
-            v.coord({xbase + i * (32 + spac) + 32, ybase});
+            v.color(255, 255, 255, 255 * alpha);
+            v.tex_coord(0.0f, 1.0f, 0.0f);
+            v.coord(xbase + i * (32 + spac), ybase);
+            v.tex_coord(1.0f, 1.0f, 0.0f);
+            v.coord(xbase + i * (32 + spac), ybase + 32);
+            v.tex_coord(1.0f, 0.0f, 0.0f);
+            v.coord(xbase + i * (32 + spac) + 32, ybase + 32);
+            v.tex_coord(0.0f, 0.0f, 0.0f);
+            v.coord(xbase + i * (32 + spac) + 32, ybase);
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
             va.first.render();
         }
@@ -1153,21 +1153,21 @@ void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, 
     BlockTextureArray.bind(0);
     {
         auto v = Renderer::ui_vertex_builder();
-        v.color({255, 255, 255, 255});
+        v.color(255, 255, 255, 255);
         for (auto i = 0; i < 10; i++) {
             auto& item = player.inventory_item_stack(row, i);
             if (item.empty()) {
                 continue;
             }
             auto tex = static_cast<float>(Textures::getTextureIndex(item.id, 0));
-            v.tex_coord({0.0f, 1.0f, tex});
-            v.coord({xbase + i * (32 + spac) + 2, ybase + 2});
-            v.tex_coord({0.0f, 0.0f, tex});
-            v.coord({xbase + i * (32 + spac) + 2, ybase + 30});
-            v.tex_coord({1.0f, 0.0f, tex});
-            v.coord({xbase + i * (32 + spac) + 30, ybase + 30});
-            v.tex_coord({1.0f, 1.0f, tex});
-            v.coord({xbase + i * (32 + spac) + 30, ybase + 2});
+            v.tex_coord(0.0f, 1.0f, tex);
+            v.coord(xbase + i * (32 + spac) + 2, ybase + 2);
+            v.tex_coord(0.0f, 0.0f, tex);
+            v.coord(xbase + i * (32 + spac) + 2, ybase + 30);
+            v.tex_coord(1.0f, 0.0f, tex);
+            v.coord(xbase + i * (32 + spac) + 30, ybase + 30);
+            v.tex_coord(1.0f, 1.0f, tex);
+            v.coord(xbase + i * (32 + spac) + 30, ybase + 2);
             v.end_primitive();
         }
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
@@ -1206,14 +1206,14 @@ void draw_inventory(player::Player& player) {
             auto v = Renderer::ui_vertex_builder();
             auto tex = static_cast<float>(TextureIndex::WHITE);
             if (curtime - bagAnimTimer > bagAnimDuration) {
-                v.color({50, 50, 50, 150});
+                v.color(50, 50, 50, 150);
             } else {
-                v.color({50, 50, 50, 150 * bagAnim});
+                v.color(50, 50, 50, 150 * bagAnim);
             }
-            v.coord({0, 0});
-            v.coord({0, WindowHeight});
-            v.coord({WindowWidth, WindowHeight});
-            v.coord({WindowWidth, 0});
+            v.coord(0, 0);
+            v.coord(0, WindowHeight);
+            v.coord(WindowWidth, WindowHeight);
+            v.coord(WindowWidth, 0);
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
             va.first.render();
         }
@@ -1272,15 +1272,15 @@ void draw_inventory(player::Player& player) {
             BlockTextureArray.bind(0);
             auto v = Renderer::ui_vertex_builder();
             auto tex = static_cast<float>(Textures::getTextureIndex(itemSelected.id, 0));
-            v.color({255, 255, 255, 255});
-            v.tex_coord({0.0f, 1.0f, tex});
-            v.coord({mx - 16, my - 16});
-            v.tex_coord({0.0f, 0.0f, tex});
-            v.coord({mx - 16, my + 16});
-            v.tex_coord({1.0f, 0.0f, tex});
-            v.coord({mx + 16, my + 16});
-            v.tex_coord({1.0f, 1.0f, tex});
-            v.coord({mx + 16, my - 16});
+            v.color(255, 255, 255, 255);
+            v.tex_coord(0.0f, 1.0f, tex);
+            v.coord(mx - 16, my - 16);
+            v.tex_coord(0.0f, 0.0f, tex);
+            v.coord(mx - 16, my + 16);
+            v.tex_coord(1.0f, 0.0f, tex);
+            v.coord(mx + 16, my + 16);
+            v.tex_coord(1.0f, 1.0f, tex);
+            v.coord(mx + 16, my - 16);
             v.end_primitive();
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
             va.first.render();
@@ -1313,11 +1313,11 @@ void draw_inventory(player::Player& player) {
             BlockTextureArray.bind(0);
             auto v = Renderer::ui_vertex_builder();
             auto tex = static_cast<float>(TextureIndex::WHITE);
-            v.color({50, 50, 50, 150 * (1.0f - bagAnim)});
-            v.coord({0, 0});
-            v.coord({0, WindowHeight});
-            v.coord({WindowWidth, WindowHeight});
-            v.coord({WindowWidth, 0});
+            v.color(50, 50, 50, 150 * (1.0f - bagAnim));
+            v.coord(0, 0);
+            v.coord(0, WindowHeight);
+            v.coord(WindowWidth, WindowHeight);
+            v.coord(WindowWidth, 0);
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
             va.first.render();
 

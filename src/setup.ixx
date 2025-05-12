@@ -9,6 +9,7 @@ export module setup;
 import std;
 import types;
 import debug;
+import math;
 import globals;
 import render;
 import rendering;
@@ -220,15 +221,15 @@ export void splash_screen() {
         auto v = render::
             AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec3f>, spec::Color<spec::Vec4u8>>();
 
-        v.color({i, i, i, 255});
-        v.tex_coord({0.0f, 1.0f, 0.0f});
-        v.coord({0, 0});
-        v.tex_coord({0.0f, 0.0f, 0.0f});
-        v.coord({0, 1});
-        v.tex_coord({1.0f, 0.0f, 0.0f});
-        v.coord({1, 1});
-        v.tex_coord({1.0f, 1.0f, 0.0f});
-        v.coord({1, 0});
+        v.color(i, i, i, 255);
+        v.tex_coord(0.0f, 1.0f, 0.0f);
+        v.coord(0, 0);
+        v.tex_coord(0.0f, 0.0f, 0.0f);
+        v.coord(0, 1);
+        v.tex_coord(1.0f, 0.0f, 0.0f);
+        v.coord(1, 1);
+        v.tex_coord(1.0f, 1.0f, 0.0f);
+        v.coord(1, 0);
 
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 

@@ -6,18 +6,14 @@ import math;
 import debug;
 import blocks;
 import render;
+import rendering;
 import textures;
 import globals;
 import chunks;
 
 namespace spec = render::attrib_layout::spec;
 using render::VertexArray;
-using AttribIndexBuilder = render::AttribIndexBuilder<
-    spec::Coord<spec::Vec3f>,
-    spec::TexCoord<spec::Vec3f>,
-    spec::Color<spec::Vec3u8>,
-    spec::Normal<spec::Vec3i8>,
-    spec::Material<spec::UInt16>>;
+using AttribIndexBuilder = decltype(Renderer::chunk_vertex_builder());
 
 // One face in merge face
 struct QuadPrimitive {
@@ -176,19 +172,19 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             col = col * 7 / 10;
         }
         v.material(bl.id().get());
-        v.normal({1, 0, 0});
+        v.normal(1, 0, 0);
         v.color(col[0]);
-        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y, z});
+        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y, z);
         v.color(col[1]);
-        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y + 1, z});
+        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y + 1, z);
         v.color(col[2]);
-        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y + 1, z + 1});
+        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y + 1, z + 1);
         v.color(col[3]);
-        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y, z + 1});
+        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y, z + 1);
         v.end_primitive();
     }
 
@@ -216,19 +212,19 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             col = col * 7 / 10;
         }
         v.material(bl.id().get());
-        v.normal({-1, 0, 0});
+        v.normal(-1, 0, 0);
         v.color(col[0]);
-        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
-        v.coord({x, y, z});
+        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
+        v.coord(x, y, z);
         v.color(col[1]);
-        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
-        v.coord({x, y, z + 1});
+        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
+        v.coord(x, y, z + 1);
         v.color(col[2]);
-        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
-        v.coord({x, y + 1, z + 1});
+        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
+        v.coord(x, y + 1, z + 1);
         v.color(col[3]);
-        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
-        v.coord({x, y + 1, z});
+        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
+        v.coord(x, y + 1, z);
         v.end_primitive();
     }
 
@@ -250,19 +246,19 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
         }
         col = col * 255 / (MAX_LIGHT * 4);
         v.material(bl.id().get());
-        v.normal({0, 1, 0});
+        v.normal(0, 1, 0);
         v.color(col[0]);
-        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
-        v.coord({x, y + 1, z});
+        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
+        v.coord(x, y + 1, z);
         v.color(col[1]);
-        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
-        v.coord({x, y + 1, z + 1});
+        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
+        v.coord(x, y + 1, z + 1);
         v.color(col[2]);
-        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y + 1, z + 1});
+        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y + 1, z + 1);
         v.color(col[3]);
-        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y + 1, z});
+        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y + 1, z);
         v.end_primitive();
     }
 
@@ -284,19 +280,19 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
         }
         col = col * 255 / (MAX_LIGHT * 4);
         v.material(bl.id().get());
-        v.normal({0, -1, 0});
+        v.normal(0, -1, 0);
         v.color(col[0]);
-        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
-        v.coord({x, y, z});
+        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
+        v.coord(x, y, z);
         v.color(col[1]);
-        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y, z});
+        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y, z);
         v.color(col[2]);
-        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y, z + 1});
+        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y, z + 1);
         v.color(col[3]);
-        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
-        v.coord({x, y, z + 1});
+        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
+        v.coord(x, y, z + 1);
         v.end_primitive();
     }
 
@@ -324,19 +320,19 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             col = col * 5 / 10;
         }
         v.material(bl.id().get());
-        v.normal({0, 0, 1});
+        v.normal(0, 0, 1);
         v.color(col[0]);
-        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
-        v.coord({x, y, z + 1});
+        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
+        v.coord(x, y, z + 1);
         v.color(col[1]);
-        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y, z + 1});
+        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y, z + 1);
         v.color(col[2]);
-        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y + 1, z + 1});
+        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y + 1, z + 1);
         v.color(col[3]);
-        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
-        v.coord({x, y + 1, z + 1});
+        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
+        v.coord(x, y + 1, z + 1);
         v.end_primitive();
     }
 
@@ -364,19 +360,19 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             col = col * 5 / 10;
         }
         v.material(bl.id().get());
-        v.normal({0, 0, -1});
+        v.normal(0, 0, -1);
         v.color(col[0]);
-        v.tex_coord({1, 0, static_cast<uint16_t>(tex)});
-        v.coord({x, y, z});
+        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
+        v.coord(x, y, z);
         v.color(col[1]);
-        v.tex_coord({1, 1, static_cast<uint16_t>(tex)});
-        v.coord({x, y + 1, z});
+        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
+        v.coord(x, y + 1, z);
         v.color(col[2]);
-        v.tex_coord({0, 1, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y + 1, z});
+        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y + 1, z);
         v.color(col[3]);
-        v.tex_coord({0, 0, static_cast<uint16_t>(tex)});
-        v.coord({x + 1, y, z});
+        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
+        v.coord(x + 1, y, z);
         v.end_primitive();
     }
 }
@@ -387,115 +383,115 @@ void _render_primitive(QuadPrimitive const& p, AttribIndexBuilder& v) {
     auto x = p.x, y = p.y, z = p.z, length = p.length;
 
     v.material(p.blk.get());
-    v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
+    v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
 
     switch (p.direction) {
         case 0:
             if (!AdvancedRender) {
                 col = col * 7 / 10;
             }
-            v.normal({1, 0, 0});
+            v.normal(1, 0, 0);
             v.color(col[0]);
-            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y, z});
+            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y, z);
             v.color(col[1]);
-            v.tex_coord({0, 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y + 1, z});
+            v.tex_coord(0, 1, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y + 1, z);
             v.color(col[2]);
-            v.tex_coord({length + 1, 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y + 1, z + length + 1});
+            v.tex_coord(length + 1, 1, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y + 1, z + length + 1);
             v.color(col[3]);
-            v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y, z + length + 1});
+            v.tex_coord(length + 1, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y, z + length + 1);
             v.end_primitive();
             break;
         case 1:
             if (!AdvancedRender) {
                 col = col * 7 / 10;
             }
-            v.normal({-1, 0, 0});
+            v.normal(-1, 0, 0);
             v.color(col[0]);
-            v.tex_coord({0, 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y + 1, z});
+            v.tex_coord(0, 1, static_cast<uint16_t>(p.tex));
+            v.coord(x, y + 1, z);
             v.color(col[1]);
-            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y, z});
+            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x, y, z);
             v.color(col[2]);
-            v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y, z + length + 1});
+            v.tex_coord(length + 1, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x, y, z + length + 1);
             v.color(col[3]);
-            v.tex_coord({length + 1, 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y + 1, z + length + 1});
+            v.tex_coord(length + 1, 1, static_cast<uint16_t>(p.tex));
+            v.coord(x, y + 1, z + length + 1);
             v.end_primitive();
             break;
         case 2:
-            v.normal({0, 1, 0});
+            v.normal(0, 1, 0);
             v.color(col[0]);
-            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y + 1, z});
+            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y + 1, z);
             v.color(col[1]);
-            v.tex_coord({0, 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y + 1, z});
+            v.tex_coord(0, 1, static_cast<uint16_t>(p.tex));
+            v.coord(x, y + 1, z);
             v.color(col[2]);
-            v.tex_coord({length + 1, 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y + 1, z + length + 1});
+            v.tex_coord(length + 1, 1, static_cast<uint16_t>(p.tex));
+            v.coord(x, y + 1, z + length + 1);
             v.color(col[3]);
-            v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y + 1, z + length + 1});
+            v.tex_coord(length + 1, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y + 1, z + length + 1);
             v.end_primitive();
             break;
         case 3:
-            v.normal({0, -1, 0});
+            v.normal(0, -1, 0);
             v.color(col[0]);
-            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y, z});
+            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x, y, z);
             v.color(col[1]);
-            v.tex_coord({0, 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y, z});
+            v.tex_coord(0, 1, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y, z);
             v.color(col[2]);
-            v.tex_coord({length + 1, 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y, z + length + 1});
+            v.tex_coord(length + 1, 1, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y, z + length + 1);
             v.color(col[3]);
-            v.tex_coord({length + 1, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y, z + length + 1});
+            v.tex_coord(length + 1, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x, y, z + length + 1);
             v.end_primitive();
             break;
         case 4:
             if (!AdvancedRender) {
                 col = col * 5 / 10;
             }
-            v.normal({0, 0, 1});
+            v.normal(0, 0, 1);
             v.color(col[0]);
-            v.tex_coord({0, length + 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y + length + 1, z + 1});
+            v.tex_coord(0, length + 1, static_cast<uint16_t>(p.tex));
+            v.coord(x, y + length + 1, z + 1);
             v.color(col[1]);
-            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y, z + 1});
+            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x, y, z + 1);
             v.color(col[2]);
-            v.tex_coord({1, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y, z + 1});
+            v.tex_coord(1, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y, z + 1);
             v.color(col[3]);
-            v.tex_coord({1, length + 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y + length + 1, z + 1});
+            v.tex_coord(1, length + 1, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y + length + 1, z + 1);
             v.end_primitive();
             break;
         case 5:
             if (!AdvancedRender) {
                 col = col * 5 / 10;
             }
-            v.normal({0, 0, -1});
+            v.normal(0, 0, -1);
             v.color(col[0]);
-            v.tex_coord({0, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y, z});
+            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x, y, z);
             v.color(col[1]);
-            v.tex_coord({0, length + 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x, y + length + 1, z});
+            v.tex_coord(0, length + 1, static_cast<uint16_t>(p.tex));
+            v.coord(x, y + length + 1, z);
             v.color(col[2]);
-            v.tex_coord({1, length + 1, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y + length + 1, z});
+            v.tex_coord(1, length + 1, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y + length + 1, z);
             v.color(col[3]);
-            v.tex_coord({1, 0, static_cast<uint16_t>(p.tex)});
-            v.coord({x + 1, y, z});
+            v.tex_coord(1, 0, static_cast<uint16_t>(p.tex));
+            v.coord(x + 1, y, z);
             v.end_primitive();
             break;
     }

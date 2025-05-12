@@ -4,18 +4,14 @@ import types;
 import math;
 import blocks;
 import render;
+import rendering;
 import textures;
 import worlds;
 import globals;
 
 namespace spec = render::attrib_layout::spec;
 using render::VertexArray;
-using AttribIndexBuilder = render::AttribIndexBuilder<
-    spec::Coord<spec::Vec3f>,
-    spec::TexCoord<spec::Vec3f>,
-    spec::Color<spec::Vec3u8>,
-    spec::Normal<spec::Vec3i8>,
-    spec::Material<spec::UInt16>>;
+using AttribIndexBuilder = decltype(Renderer::chunk_vertex_builder());
 
 export namespace particles {
 
@@ -84,82 +80,82 @@ void mesh(worlds::World& world, Particle const& ptc, double interp, AttribIndexB
         col2 = col2 * 7 / 10;
     }
 
-    v.normal({1.0f, 0.0f, 0.0f});
+    v.normal(+1, 0, 0);
     v.material(bl);
-    v.color({col2, col2, col2});
-    v.tex_coord({tcx, tcy, tex});
-    v.coord({xpos + psize, ypos + psize, zpos - psize});
-    v.tex_coord({tcx + psize, tcy, tex});
-    v.coord({xpos + psize, ypos + psize, zpos + psize});
-    v.tex_coord({tcx + psize, tcy + psize, tex});
-    v.coord({xpos + psize, ypos - psize, zpos + psize});
-    v.tex_coord({tcx, tcy + psize, tex});
-    v.coord({xpos + psize, ypos - psize, zpos - psize});
+    v.color(col2, col2, col2);
+    v.tex_coord(tcx, tcy, tex);
+    v.coord(xpos + psize, ypos + psize, zpos - psize);
+    v.tex_coord(tcx + psize, tcy, tex);
+    v.coord(xpos + psize, ypos + psize, zpos + psize);
+    v.tex_coord(tcx + psize, tcy + psize, tex);
+    v.coord(xpos + psize, ypos - psize, zpos + psize);
+    v.tex_coord(tcx, tcy + psize, tex);
+    v.coord(xpos + psize, ypos - psize, zpos - psize);
     v.end_primitive();
 
-    v.normal({-1.0f, 0.0f, 0.0f});
+    v.normal(-1, 0, 0);
     v.material(bl);
-    v.color({col2, col2, col2});
-    v.tex_coord({tcx, tcy, tex});
-    v.coord({xpos - psize, ypos - psize, zpos - psize});
-    v.tex_coord({tcx + psize, tcy, tex});
-    v.coord({xpos - psize, ypos - psize, zpos + psize});
-    v.tex_coord({tcx + psize, tcy + psize, tex});
-    v.coord({xpos - psize, ypos + psize, zpos + psize});
-    v.tex_coord({tcx, tcy + psize, tex});
-    v.coord({xpos - psize, ypos + psize, zpos - psize});
+    v.color(col2, col2, col2);
+    v.tex_coord(tcx, tcy, tex);
+    v.coord(xpos - psize, ypos - psize, zpos - psize);
+    v.tex_coord(tcx + psize, tcy, tex);
+    v.coord(xpos - psize, ypos - psize, zpos + psize);
+    v.tex_coord(tcx + psize, tcy + psize, tex);
+    v.coord(xpos - psize, ypos + psize, zpos + psize);
+    v.tex_coord(tcx, tcy + psize, tex);
+    v.coord(xpos - psize, ypos + psize, zpos - psize);
     v.end_primitive();
 
-    v.normal({0.0f, 1.0f, 0.0f});
+    v.normal(0, +1, 0);
     v.material(bl);
-    v.color({col0, col0, col0});
-    v.tex_coord({tcx, tcy, tex});
-    v.coord({xpos + psize, ypos + psize, zpos - psize});
-    v.tex_coord({tcx + psize, tcy, tex});
-    v.coord({xpos - psize, ypos + psize, zpos - psize});
-    v.tex_coord({tcx + psize, tcy + psize, tex});
-    v.coord({xpos - psize, ypos + psize, zpos + psize});
-    v.tex_coord({tcx, tcy + psize, tex});
-    v.coord({xpos + psize, ypos + psize, zpos + psize});
+    v.color(col0, col0, col0);
+    v.tex_coord(tcx, tcy, tex);
+    v.coord(xpos + psize, ypos + psize, zpos - psize);
+    v.tex_coord(tcx + psize, tcy, tex);
+    v.coord(xpos - psize, ypos + psize, zpos - psize);
+    v.tex_coord(tcx + psize, tcy + psize, tex);
+    v.coord(xpos - psize, ypos + psize, zpos + psize);
+    v.tex_coord(tcx, tcy + psize, tex);
+    v.coord(xpos + psize, ypos + psize, zpos + psize);
     v.end_primitive();
 
-    v.normal({0.0f, -1.0f, 0.0f});
+    v.normal(0, -1, 0);
     v.material(bl);
-    v.color({col0, col0, col0});
-    v.tex_coord({tcx, tcy, tex});
-    v.coord({xpos - psize, ypos - psize, zpos - psize});
-    v.tex_coord({tcx + psize, tcy, tex});
-    v.coord({xpos + psize, ypos - psize, zpos - psize});
-    v.tex_coord({tcx + psize, tcy + psize, tex});
-    v.coord({xpos + psize, ypos - psize, zpos + psize});
-    v.tex_coord({tcx, tcy + psize, tex});
-    v.coord({xpos - psize, ypos - psize, zpos + psize});
+    v.color(col0, col0, col0);
+    v.tex_coord(tcx, tcy, tex);
+    v.coord(xpos - psize, ypos - psize, zpos - psize);
+    v.tex_coord(tcx + psize, tcy, tex);
+    v.coord(xpos + psize, ypos - psize, zpos - psize);
+    v.tex_coord(tcx + psize, tcy + psize, tex);
+    v.coord(xpos + psize, ypos - psize, zpos + psize);
+    v.tex_coord(tcx, tcy + psize, tex);
+    v.coord(xpos - psize, ypos - psize, zpos + psize);
     v.end_primitive();
 
-    v.normal({0.0f, 0.0f, 1.0f});
+    v.normal(0, 0, +1);
     v.material(bl);
-    v.color({col1, col1, col1});
-    v.tex_coord({tcx, tcy, tex});
-    v.coord({xpos - psize, ypos - psize, zpos + psize});
-    v.tex_coord({tcx + psize, tcy, tex});
-    v.coord({xpos + psize, ypos - psize, zpos + psize});
-    v.tex_coord({tcx + psize, tcy + psize, tex});
-    v.coord({xpos + psize, ypos + psize, zpos + psize});
-    v.tex_coord({tcx, tcy + psize, tex});
-    v.coord({xpos - psize, ypos + psize, zpos + psize});
+    v.color(col1, col1, col1);
+    v.tex_coord(tcx, tcy, tex);
+    v.coord(xpos - psize, ypos - psize, zpos + psize);
+    v.tex_coord(tcx + psize, tcy, tex);
+    v.coord(xpos + psize, ypos - psize, zpos + psize);
+    v.tex_coord(tcx + psize, tcy + psize, tex);
+    v.coord(xpos + psize, ypos + psize, zpos + psize);
+    v.tex_coord(tcx, tcy + psize, tex);
+    v.coord(xpos - psize, ypos + psize, zpos + psize);
     v.end_primitive();
 
-    v.normal({0.0f, 0.0f, -1.0f});
+    v.normal(0, 0, -1);
     v.material(bl);
-    v.color({col1, col1, col1});
-    v.tex_coord({tcx, tcy, tex});
-    v.coord({xpos - psize, ypos + psize, zpos - psize});
-    v.tex_coord({tcx + psize, tcy, tex});
-    v.coord({xpos + psize, ypos + psize, zpos - psize});
-    v.tex_coord({tcx + psize, tcy + psize, tex});
-    v.coord({xpos + psize, ypos - psize, zpos - psize});
-    v.tex_coord({tcx, tcy + psize, tex});
-    v.coord({xpos - psize, ypos - psize, zpos - psize});
+    v.color(col1, col1, col1);
+    v.tex_coord(tcx, tcy, tex);
+    v.coord(xpos - psize, ypos + psize, zpos - psize);
+    v.tex_coord(tcx + psize, tcy, tex);
+    v.coord(xpos + psize, ypos + psize, zpos - psize);
+    v.tex_coord(tcx + psize, tcy + psize, tex);
+    v.coord(xpos + psize, ypos - psize, zpos - psize);
+    v.tex_coord(tcx, tcy + psize, tex);
+    v.coord(xpos - psize, ypos - psize, zpos - psize);
     v.end_primitive();
 }
 
