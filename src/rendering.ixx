@@ -7,7 +7,6 @@ export module rendering;
 import std;
 import types;
 import debug;
-import framebuffers;
 import math;
 import globals;
 import render;
@@ -49,16 +48,31 @@ enum Shaders {
     TranslucentShader,
     FinalShader,
     ShadowShader,
-    DebugShadowShader
+    DebugShadowShader,
 };
 
+enum Textures {
+    DiffuseTexture,
+    NormalTexture,
+    MaterialTexture,
+    DepthTexture,
+    ShadowColorTexture,
+    ShadowDepthTexture,
+    NoiseTexture,
+};
+
+enum Framebuffers {
+    Shadow,
+    Deferred,
+};
+
+size_t bufferWidth = 0;
+size_t bufferHeight = 0;
 double sunlightPitch = 30.0;
 double sunlightHeading = 60.0;
 std::vector<render::Program> shaders;
-
-constexpr int gBufferCount = 3;
-int gWidth, gHeight;
-Framebuffer shadow, gBuffers, dBuffer;
+std::vector<render::Texture> textures;
+std::vector<render::Framebuffer> framebuffers;
 
 auto filter_uniforms = render::Block<FilterUniformBlock>();
 auto frame_uniforms = render::Block<FrameUniformBlock>();
@@ -67,40 +81,41 @@ auto filter_uniform_buffer = render::Buffer();
 auto frame_uniform_buffer = render::Buffer();
 auto model_uniform_buffer = render::Buffer();
 
-auto getShadowDistance() -> int {
+auto shadow_distance() -> int {
     return std::min(MaxShadowDistance, RenderDistance);
 }
 
-auto getNoiseTexture() -> GLuint {
-    static GLuint noiseTex = 0;
-    if (noiseTex == 0) {
-        auto a = std::make_unique<uint8_t[]>(256 * 256 * 4);
-        for (int i = 0; i < 256 * 256; i++)
-            a[i * 4] = a[i * 4 + 1] = static_cast<uint8_t>(rnd() * 256);
+auto create_noise_texture() -> render::Texture {
+    auto image = render::ImageRGBA(1, 256, 256);
+    for (auto i = 0uz; i < 256; i++)
+        for (auto j = 0uz; j < 256; j++)
+            image[0, i, j].x() = image[0, i, j].y() = static_cast<uint8_t>(rnd() * 256);
 
-        int const OffsetX = 37, OffsetY = 17;
-        for (int x = 0; x < 256; x++)
-            for (int y = 0; y < 256; y++) {
-                int x1 = (x + OffsetX) % 256, y1 = (y + OffsetY) % 256;
-                a[(y * 256 + x) * 4 + 2] = a[(y1 * 256 + x1) * 4];
-                a[(y * 256 + x) * 4 + 3] = a[(y1 * 256 + x1) * 4 + 1];
-            }
-
-        glGenTextures(1, &noiseTex);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, noiseTex);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, 256, 256, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, a.get());
+    auto OFFSET_X = 37uz, OFFSET_Y = 17uz;
+    for (auto i = 0; i < 256uz; i++) {
+        for (auto j = 0; j < 256uz; j++) {
+            auto k = (i + OFFSET_Y) % 256;
+            auto l = (j + OFFSET_X) % 256;
+            image[0, i, j].z() = image[0, k, l].x();
+            image[0, i, j].w() = image[0, k, l].y();
+        }
     }
-    return noiseTex;
+
+    auto tex = render::Texture::create(render::Texture::Format::RGBA, 1, 256, 256);
+    tex.fill(0, 0, 0, image);
+    tex.set_wrap(true);
+    tex.set_filter(true);
+    return std::move(tex);
 }
 
-void init_shaders(bool reload = false) {
-    if (shaders.empty() || reload) {
+void init_pipeline(bool reload_shaders = false, bool reload_framebuffers = false) {
+    // Create shaders.
+    if (shaders.empty() || reload_shaders) {
+        shaders.clear();
+
         using render::Shader;
         using render::Program;
+        using render::Buffer;
         using render::load_shader_source;
 
         auto defines = std::vector<std::string>{};
@@ -116,7 +131,7 @@ void init_shaders(bool reload = false) {
         if (AmbientOcclusion) {
             defines.emplace_back("AMBIENT_OCCLUSION");
         }
-        shaders.clear();
+
         auto add_shader = [&](std::string_view vertex_path, std::string_view fragment_path) {
             auto vsh = *Shader::create(Shader::Stage::VERTEX, *load_shader_source(vertex_path, defines));
             auto fsh = *Shader::create(Shader::Stage::FRAGMENT, *load_shader_source(fragment_path, defines));
@@ -130,59 +145,91 @@ void init_shaders(bool reload = false) {
         add_shader("shaders/final.vsh", "shaders/final.fsh");
         add_shader("shaders/shadow.vsh", "shaders/shadow.fsh");
         add_shader("shaders/debug_shadow.vsh", "shaders/debug_shadow.fsh");
+
+        shaders[UIShader].set_opaque("u_diffuse", 0);
+        shaders[UIShader].set_uniform_block("Frame", 0);
+
+        shaders[FilterShader].set_opaque("u_buffer", 0);
+        shaders[FilterShader].set_uniform_block("Filter", 0);
+
+        shaders[DefaultShader].set_opaque("u_diffuse", 0);
+        shaders[DefaultShader].set_uniform_block("Frame", 0);
+        shaders[DefaultShader].set_uniform_block("Model", 1);
+
+        shaders[OpqaueShader].set_opaque("u_diffuse", 0);
+        shaders[OpqaueShader].set_uniform_block("Frame", 0);
+        shaders[OpqaueShader].set_uniform_block("Model", 1);
+
+        shaders[TranslucentShader].set_opaque("u_diffuse", 0);
+        shaders[TranslucentShader].set_uniform_block("Frame", 0);
+        shaders[TranslucentShader].set_uniform_block("Model", 1);
+
+        shaders[FinalShader].set_opaque("u_diffuse_buffer", 0);
+        shaders[FinalShader].set_opaque("u_normal_buffer", 1);
+        shaders[FinalShader].set_opaque("u_material_buffer", 2);
+        shaders[FinalShader].set_opaque("u_depth_buffer", 3);
+        shaders[FinalShader].set_opaque("u_shadow_texture", 4);
+        shaders[FinalShader].set_opaque("u_noise_texture", 5);
+        shaders[FinalShader].set_uniform_block("Frame", 0);
+        shaders[FinalShader].set_uniform_block("Model", 1);
+
+        shaders[ShadowShader].set_opaque("u_diffuse", 0);
+        shaders[ShadowShader].set_uniform_block("Frame", 0);
+        shaders[ShadowShader].set_uniform_block("Model", 1);
+
+        shaders[DebugShadowShader].set_opaque("u_shadow_texture", 0);
+
+        filter_uniform_buffer =
+            Buffer::create(filter_uniforms.bytes().size(), Buffer::Usage::WRITE, Buffer::Update::SEMI_FREQUENT);
+        frame_uniform_buffer =
+            Buffer::create(frame_uniforms.bytes().size(), Buffer::Usage::WRITE, Buffer::Update::SEMI_FREQUENT);
+        model_uniform_buffer =
+            Buffer::create(model_uniforms.bytes().size(), Buffer::Usage::WRITE, Buffer::Update::SEMI_FREQUENT);
     }
 
     // Create framebuffers.
-    gWidth = WindowWidth;
-    gHeight = WindowHeight;
-    shadow = Framebuffer(ShadowRes, ShadowRes, 0, true, true);
-    gBuffers = Framebuffer(gWidth, gHeight, gBufferCount, true, false);
-    dBuffer = Framebuffer(gWidth, gHeight, 0, true, false);
+    if (textures.empty() || framebuffers.empty() || reload_framebuffers) {
+        textures.clear();
+        framebuffers.clear();
 
-    // Create uniform buffers.
-    auto usage = render::Buffer::Usage::WRITE;
-    auto update = render::Buffer::Update::INFREQUENT;
-    filter_uniform_buffer = render::Buffer::create(filter_uniforms.bytes().size(), usage, update);
-    frame_uniform_buffer = render::Buffer::create(frame_uniforms.bytes().size(), usage, update);
-    model_uniform_buffer = render::Buffer::create(model_uniforms.bytes().size(), usage, update);
+        using render::Texture;
+        using render::Framebuffer;
 
-    // Set opaque uniforms and uniform buffer bindings.
-    shaders[UIShader].set_opaque("u_diffuse", 0);
-    shaders[UIShader].set_uniform_block("Frame", 0);
+        bufferWidth = WindowWidth;
+        bufferHeight = WindowHeight;
 
-    shaders[FilterShader].set_opaque("u_buffer", 0);
-    shaders[FilterShader].set_uniform_block("Filter", 0);
+        textures.emplace_back(Texture::create(Texture::Format::RGBA, 1, bufferHeight, bufferWidth));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA, 1, bufferHeight, bufferWidth));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA, 1, bufferHeight, bufferWidth));
+        textures.emplace_back(Texture::create(Texture::Format::DEPTH, 1, bufferHeight, bufferWidth));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA, 1, ShadowRes, ShadowRes));
+        textures.emplace_back(Texture::create(Texture::Format::DEPTH, 1, ShadowRes, ShadowRes));
+        textures.back().set_filter(true);
+        textures.back().set_depth_compare_mode(Texture::DepthCompareMode::LEQUAL);
+        textures.emplace_back(create_noise_texture());
 
-    shaders[DefaultShader].set_opaque("u_diffuse", 0);
-    shaders[DefaultShader].set_uniform_block("Frame", 0);
-    shaders[DefaultShader].set_uniform_block("Model", 1);
-
-    shaders[OpqaueShader].set_opaque("u_diffuse", 0);
-    shaders[OpqaueShader].set_uniform_block("Frame", 0);
-    shaders[OpqaueShader].set_uniform_block("Model", 1);
-
-    shaders[TranslucentShader].set_opaque("u_diffuse", 0);
-    shaders[TranslucentShader].set_uniform_block("Frame", 0);
-    shaders[TranslucentShader].set_uniform_block("Model", 1);
-
-    shaders[FinalShader].set_opaque("u_diffuse_buffer", 0);
-    shaders[FinalShader].set_opaque("u_normal_buffer", 1);
-    shaders[FinalShader].set_opaque("u_material_buffer", 2);
-    shaders[FinalShader].set_opaque("u_depth_buffer", gBufferCount + 0);
-    shaders[FinalShader].set_opaque("u_shadow_texture", gBufferCount + 1);
-    shaders[FinalShader].set_opaque("u_noise_texture", gBufferCount + 2);
-    shaders[FinalShader].set_uniform_block("Frame", 0);
-    shaders[FinalShader].set_uniform_block("Model", 1);
-
-    shaders[ShadowShader].set_opaque("u_diffuse", 0);
-    shaders[ShadowShader].set_uniform_block("Frame", 0);
-    shaders[ShadowShader].set_uniform_block("Model", 1);
-
-    shaders[DebugShadowShader].set_opaque("u_shadow_texture", 0);
+        framebuffers.emplace_back(*Framebuffer::create(
+            {
+                Framebuffer::Attachment{ .texture = textures[DiffuseTexture], .mipmap_level = 0, .layer = 0},
+                Framebuffer::Attachment{  .texture = textures[NormalTexture], .mipmap_level = 0, .layer = 0},
+                Framebuffer::Attachment{.texture = textures[MaterialTexture], .mipmap_level = 0, .layer = 0},
+        },
+            Framebuffer::Attachment{.texture = textures[DepthTexture], .mipmap_level = 0, .layer = 0},
+            {}
+        ));
+        framebuffers.emplace_back(*Framebuffer::create(
+            {
+                Framebuffer::Attachment{.texture = textures[ShadowColorTexture], .mipmap_level = 0, .layer = 0},
+        },
+            Framebuffer::Attachment{.texture = textures[ShadowDepthTexture], .mipmap_level = 0, .layer = 0},
+            {}
+        ));
+        Framebuffer::bind_default(render::Framebuffer::Target::WRITE);
+    }
 }
 
 auto getShadowMatrix() -> Mat4f {
-    auto length = static_cast<float>(getShadowDistance() * 16);
+    auto length = static_cast<float>(shadow_distance() * 16);
     auto res = Mat4f(1.0f);
     res = Mat4f::rotate(-static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * res;
     res = Mat4f::rotate(static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * res;
@@ -191,7 +238,7 @@ auto getShadowMatrix() -> Mat4f {
 }
 
 auto getShadowMatrixExperimental(float fov, float aspect, Eulerf orientation) -> Mat4f {
-    auto length = static_cast<float>(getShadowDistance() * 16);
+    auto length = static_cast<float>(shadow_distance() * 16);
     auto res = Mat4f(1.0f);
     res = Mat4f::rotate(-static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * res;
     res = Mat4f::rotate(static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * res;
@@ -236,21 +283,14 @@ auto getShadowMatrixExperimental(float fov, float aspect, Eulerf orientation) ->
 }
 
 void ClearSGDBuffers() {
-    shadow.bindTargets();
+    framebuffers[Shadow].bind(render::Framebuffer::Target::WRITE);
     glClearDepth(1.0f);
     glClear(GL_DEPTH_BUFFER_BIT);
-    shadow.unbindTarget();
 
-    gBuffers.bindTargets();
+    framebuffers[Deferred].bind(render::Framebuffer::Target::WRITE);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClearDepth(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    gBuffers.unbindTarget();
-
-    dBuffer.bindTargets();
-    glClearDepth(1.0f);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    dBuffer.unbindTarget();
 }
 
 void SetUniforms(Vec3d const& coord, Mat4f const& view_matrix, Mat4f const& shadow_matrix, float game_time) {
@@ -271,8 +311,8 @@ void SetUniforms(Vec3d const& coord, Mat4f const& view_matrix, Mat4f const& shad
     frame_uniforms.set<".u_mvp[3]">(view_matrix.row(3));
     frame_uniforms.set<".u_game_time">(game_time);
     frame_uniforms.set<".u_sunlight_dir">(sunlight_dir);
-    frame_uniforms.set<".u_buffer_width">(static_cast<float>(gWidth));
-    frame_uniforms.set<".u_buffer_height">(static_cast<float>(gHeight));
+    frame_uniforms.set<".u_buffer_width">(static_cast<float>(bufferWidth));
+    frame_uniforms.set<".u_buffer_height">(static_cast<float>(bufferHeight));
     frame_uniforms.set<".u_render_distance">(static_cast<float>(RenderDistance) * 16.0f);
 
     frame_uniforms.set<".u_shadow_mvp[0]">(shadow_matrix.row(0));
@@ -281,7 +321,7 @@ void SetUniforms(Vec3d const& coord, Mat4f const& view_matrix, Mat4f const& shad
     frame_uniforms.set<".u_shadow_mvp[3]">(shadow_matrix.row(3));
     frame_uniforms.set<".u_shadow_resolution">(static_cast<float>(ShadowRes));
     frame_uniforms.set<".u_shadow_fisheye_factor">(fisheye_factor);
-    frame_uniforms.set<".u_shadow_distance">(static_cast<float>(getShadowDistance()) * 16.0f);
+    frame_uniforms.set<".u_shadow_distance">(static_cast<float>(shadow_distance()) * 16.0f);
 
     frame_uniforms.set<".u_repeat_length">(repeat);
     frame_uniforms.set<".u_player_coord_int">(coord_int);
@@ -300,61 +340,59 @@ void SetUniforms(Vec3d const& coord, Mat4f const& view_matrix, Mat4f const& shad
 
 void StartShadowPass() {
     assert(AdvancedRender);
-    shadow.bindTargets();
+    framebuffers[Shadow].bind(render::Framebuffer::Target::WRITE);
     shaders[ShadowShader].bind();
+    glViewport(0, 0, ShadowRes, ShadowRes);
     glDisable(GL_BLEND);
     glDisable(GL_CULL_FACE);
 }
 
 void EndShadowPass() {
     assert(AdvancedRender);
-    shadow.unbindTarget();
     glEnable(GL_BLEND);
     glEnable(GL_CULL_FACE);
 }
 
 void StartOpaquePass() {
     if (AdvancedRender) {
-        gBuffers.bindTargets();
+        framebuffers[Deferred].bind(render::Framebuffer::Target::WRITE);
         shaders[OpqaueShader].bind();
     } else {
+        render::Framebuffer::bind_default(render::Framebuffer::Target::WRITE);
         shaders[DefaultShader].bind();
     }
+    glViewport(0, 0, static_cast<GLsizei>(bufferWidth), static_cast<GLsizei>(bufferHeight));
     glDisable(GL_BLEND);
 }
 
 void EndOpaquePass() {
-    if (AdvancedRender) {
-        gBuffers.unbindTarget();
-    }
     glEnable(GL_BLEND);
 }
 
 void StartTranslucentPass() {
     if (AdvancedRender) {
-        // gBuffers.copyDepthTexture(dBuffer);
-        gBuffers.bindTargets();
+        framebuffers[Deferred].bind(render::Framebuffer::Target::WRITE);
         shaders[TranslucentShader].bind();
     } else {
+        render::Framebuffer::bind_default(render::Framebuffer::Target::WRITE);
         shaders[DefaultShader].bind();
     }
+    glViewport(0, 0, static_cast<GLsizei>(bufferWidth), static_cast<GLsizei>(bufferHeight));
 }
 
-void EndTranslucentPass() {
-    if (AdvancedRender) {
-        gBuffers.unbindTarget();
-    }
-}
+void EndTranslucentPass() {}
 
 void StartFinalPass() {
     assert(AdvancedRender);
+    render::Framebuffer::bind_default(render::Framebuffer::Target::WRITE);
     shaders[FinalShader].bind();
-    gBuffers.bindColorTextures(0);
-    gBuffers.bindDepthTexture(gBufferCount + 0);
-    shadow.bindDepthTexture(gBufferCount + 1);
-    glActiveTexture(GL_TEXTURE0 + gBufferCount + 2);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, getNoiseTexture());
-    glActiveTexture(GL_TEXTURE0);
+    textures[DiffuseTexture].bind(0);
+    textures[NormalTexture].bind(1);
+    textures[MaterialTexture].bind(2);
+    textures[DepthTexture].bind(3);
+    textures[ShadowDepthTexture].bind(4);
+    textures[NoiseTexture].bind(5);
+    glViewport(0, 0, static_cast<GLsizei>(bufferWidth), static_cast<GLsizei>(bufferHeight));
 }
 
 void EndFinalPass() {

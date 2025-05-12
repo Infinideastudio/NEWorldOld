@@ -50,7 +50,7 @@ private:
         if (uistbtn.clicked)
             uioptions();
         if (backbtn.clicked) {
-            Renderer::init_shaders(true);
+            Renderer::init_pipeline(true, false);
             exit = true;
         }
         if (savebtn.clicked)

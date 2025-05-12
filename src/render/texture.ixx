@@ -99,13 +99,20 @@ public:
     }
 
     // Creates a new 2D array texture object with the given dimensions and internal format.
-    // Invalidates any existing binding to texture slot 0.
+    // Invalidates any existing binding to texture unit 0.
     static auto create(Format format, size_t depth, size_t height, size_t width) -> Texture {
         auto handle = GLuint{0};
         glGenTextures(1, &handle);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D_ARRAY, handle);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        // Set default wrapping parameters.
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        // Set default filtering parameters.
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        // Create the texture storage.
         // TODO: change to glTexStorage3D when migrating to GL 4.3
         glTexImage3D(
             GL_TEXTURE_2D_ARRAY,
@@ -123,7 +130,7 @@ public:
     }
 
     // Fills a region within a single layer using pixels from an image.
-    // Invalidates any existing binding to texture slot 0.
+    // Invalidates any existing binding to texture unit 0.
     // Currently, only color textures and Vec*u8 images are supported.
     template <typename T, size_t N>
     requires (1 <= N && N <= 4)
@@ -151,13 +158,24 @@ public:
     // Binds the owned array texture to the 2D array texture target (indexed).
     void bind(size_t index) const {
         assert(_handle != 0, "binding an unallocated texture");
-        glActiveTexture(GL_TEXTURE0 + static_cast<GLenum>(index));
+        glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + index));
         glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
     }
 
+    // Sets the wrapping parameters for the 2D array texture.
+    // Invalidates any existing binding to texture unit 0.
+    void set_wrap(bool repeat = false) {
+        assert(_handle != 0, "setting wrap parameters on an unallocated texture");
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+    }
+
     // Sets the filtering parameters for the 2D array texture.
-    // Invalidates any existing binding to texture slot 0.
-    void set_filter(bool bilinear = false, bool mipmap = true) {
+    // Invalidates any existing binding to texture unit 0.
+    void set_filter(bool bilinear = false, bool mipmap = false) {
         assert(_handle != 0, "setting filter parameters on an unallocated texture");
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
@@ -172,19 +190,8 @@ public:
         }
     }
 
-    // Sets the wrapping parameters for the 2D array texture.
-    // Invalidates any existing binding to texture slot 0.
-    void set_wrap(bool repeat = true) {
-        assert(_handle != 0, "setting wrap parameters on an unallocated texture");
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, GL_REPEAT);
-    }
-
     // Sets the depth-stencil texture access mode.
-    // Invalidates any existing binding to texture slot 0.
+    // Invalidates any existing binding to texture unit 0.
     void set_depth_stencil_mode(DepthStencilMode mode) {
         assert(_handle != 0, "setting depth-stencil mode on an unallocated texture");
         auto value = _depth_stencil_mode_to_gl_enum(mode);
@@ -194,7 +201,7 @@ public:
     }
 
     // Sets the depth texture comparison mode.
-    // Invalidates any existing binding to texture slot 0.
+    // Invalidates any existing binding to texture unit 0.
     void set_depth_compare_mode(DepthCompareMode mode) {
         assert(_handle != 0, "setting depth compare mode on an unallocated texture");
         auto value = _depth_compare_mode_to_gl_enum(mode);
@@ -209,7 +216,7 @@ public:
     }
 
     // Recomputes the mipmap levels for the 2D array texture.
-    // Invalidates any existing binding to texture slot 0.
+    // Invalidates any existing binding to texture unit 0.
     void generate_mipmaps() {
         assert(_handle != 0, "generating mipmaps for an unallocated texture");
         glActiveTexture(GL_TEXTURE0);

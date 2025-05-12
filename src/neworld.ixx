@@ -702,7 +702,7 @@ void render_scene(worlds::World& world) {
             static_cast<Eulerf>(view_angles)
         );
         auto shadowFrustum = Frustum(shadowMatrixExp);
-        auto list = world.list_render_chunks(view_coord, Renderer::getShadowDistance(), interp, shadowFrustum);
+        auto list = world.list_render_chunks(view_coord, Renderer::shadow_distance(), interp, shadowFrustum);
         Renderer::StartShadowPass();
         world.render_chunks(view_coord, list, 0);
         particles::render_all(world, view_coord, interp);
@@ -822,8 +822,8 @@ void render_scene(worlds::World& world) {
 
 void saveScreenshot(int x, int y, int w, int h, std::string filename) {
     auto buffer = Textures::ImageRGBA(1, h, w);
+    render::Framebuffer::bind_default(render::Framebuffer::Target::READ);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadBuffer(GL_FRONT);
     glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
     Textures::SaveImage(filename, buffer);
 }
@@ -1038,7 +1038,7 @@ void draw_hud(worlds::World& world) {
         v.end_primitive();
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
-        Renderer::shadow.bindDepthTexture(0);
+        Renderer::textures[Renderer::ShadowDepthTexture].bind(0);
         Renderer::shaders[Renderer::DebugShadowShader].bind();
         va.first.render();
     }

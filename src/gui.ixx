@@ -8,7 +8,6 @@ export module gui;
 import std;
 import types;
 import math;
-import framebuffers;
 import render;
 import rendering;
 import text_rendering;
