@@ -62,8 +62,8 @@ enum Textures {
 };
 
 enum Framebuffers {
-    Shadow,
     Deferred,
+    Shadow,
 };
 
 size_t bufferWidth = 0;
@@ -101,6 +101,7 @@ auto shadow_distance() -> int {
 }
 
 auto create_noise_texture() -> render::Texture {
+    fast_srand(1234);
     auto image = render::ImageRGBA(1, 256, 256);
     for (auto i = 0uz; i < 256; i++)
         for (auto j = 0uz; j < 256; j++)

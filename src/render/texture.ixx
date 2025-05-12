@@ -155,7 +155,7 @@ public:
         );
     }
 
-    // Binds the owned array texture to the 2D array texture target (indexed).
+    // Binds the owned array texture to the given texture unit.
     void bind(size_t index) const {
         assert(_handle != 0, "binding an unallocated texture");
         glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + index));

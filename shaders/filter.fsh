@@ -4,7 +4,7 @@ in vec2 tex_coord;
 
 layout(location = 0) out vec4 o_frag_color;
 
-uniform sampler2D u_buffer;
+uniform sampler2DArray u_buffer;
 
 layout(std140, row_major) uniform Filter {
     float u_buffer_width;
@@ -19,7 +19,7 @@ const float PI = 3.141593;
 const float GAMMA = 2.2;
 
 vec4 get_color(vec2 tex_coord) {
-    return texture(u_buffer, tex_coord);
+    return texture(u_buffer, vec3(tex_coord, 0.0));
 }
 
 void main() {
