@@ -242,7 +242,7 @@ export auto save_png_image(std::filesystem::path const& filename, ImageRGBA cons
     if (setjmp(png_jmpbuf(writer.get())) == 0) {
         // Write the info.
         png_init_io(writer.get(), file.get());
-        png_set_compression_level(writer.get(), 0); // 0 = Z_NO_COMPRESSION
+        png_set_compression_level(writer.get(), 1); // 1 = Z_BEST_SPEED
         png_set_IHDR(
             writer.get(),
             init_info.get(),

@@ -4,13 +4,13 @@ in vec2 tex_coord;
 
 layout(location = 0) out vec4 o_frag_color;
 
-uniform sampler2DShadow u_shadow_texture;
+uniform sampler2DArrayShadow u_shadow_texture;
 
 float sample_shadow(vec2 pos) {
     float first = 0.0, last = 1.0, mid;
     for (int i = 0; i < 8; i++) {
         mid = (first + last) / 2.0;
-        if (texture(u_shadow_texture, vec3(pos, mid)) > 0.5) first = mid; else last = mid;
+        if (texture(u_shadow_texture, vec4(pos, 0.0, mid)) > 0.5) first = mid; else last = mid;
     }
     return mid;
 }

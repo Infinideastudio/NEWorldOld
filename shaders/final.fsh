@@ -4,12 +4,12 @@ in vec2 tex_coord;
 
 layout(location = 0) out vec4 o_frag_color;
 
-uniform sampler2D u_diffuse_buffer;
-uniform sampler2D u_normal_buffer;
-uniform sampler2D u_material_buffer;
-uniform sampler2D u_depth_buffer;
-uniform sampler2DShadow u_shadow_texture;
-uniform sampler2D u_noise_texture;
+uniform sampler2DArray u_diffuse_buffer;
+uniform sampler2DArray u_normal_buffer;
+uniform sampler2DArray u_material_buffer;
+uniform sampler2DArray u_depth_buffer;
+uniform sampler2DArrayShadow u_shadow_texture;
+uniform sampler2DArray u_noise_texture;
 
 layout(std140, row_major) uniform Frame {
     mat4 u_mvp;
@@ -94,19 +94,19 @@ vec3 blend(vec4 fore, vec3 back) {
 }
 
 vec4 get_scene_diffuse(vec2 tex_coord) {
-    return texture(u_diffuse_buffer, tex_coord);
+    return texture(u_diffuse_buffer, vec3(tex_coord, 0.0));
 }
 
 vec3 get_scene_normal(vec2 tex_coord) {
-    return normalize(texture(u_normal_buffer, tex_coord).rgb * 2.0 - vec3(1.0));
+    return normalize(texture(u_normal_buffer, vec3(tex_coord, 0.0)).rgb * 2.0 - vec3(1.0));
 }
 
 uint get_scene_material(vec2 tex_coord) {
-    return decode_u16(texture(u_material_buffer, tex_coord).rg);
+    return decode_u16(texture(u_material_buffer, vec3(tex_coord, 0.0)).rg);
 }
 
 float get_scene_depth(vec2 tex_coord) {
-    return texture(u_depth_buffer, tex_coord).r * 2.0 - 1.0;
+    return texture(u_depth_buffer, vec3(tex_coord, 0.0)).r * 2.0 - 1.0;
 }
 
 vec4 tex_coord_to_screen_space_coord(vec2 tex_coord) {
@@ -143,13 +143,13 @@ float interpolated_noise(vec3 x) {
     vec3 f = fract(x);
 //    f = smoothstep(0.0, 1.0, f);
     vec2 uv = (p.xz + NOISE_TEXTURE_OFFSET * p.y) + f.xz;
-    vec4 v = texture(u_noise_texture, uv / NOISE_TEXTURE_SIZE);
+    vec4 v = texture(u_noise_texture, vec3(uv, 0.0) / NOISE_TEXTURE_SIZE);
     return mix(v.r, v.b, f.y);
 }
 
 // Sample shadow map
 float get_shadow_offset(vec3 tex_coord, vec2 offset) {
-  return texture(u_shadow_texture, vec3(tex_coord.xy + offset / u_shadow_resolution, tex_coord.z));
+    return texture(u_shadow_texture, vec4(tex_coord.xy + offset / u_shadow_resolution, 0.0, tex_coord.z));
 }
 
 // Sample shadow map (4 samples)

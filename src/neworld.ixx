@@ -681,9 +681,11 @@ void render_scene(worlds::World& world) {
     Renderer::SetUniforms(view_coord, view_matrix, shadow_matrix, interpolatedTime);
 
     // Clear framebuffers
-    if (AdvancedRender)
+    if (AdvancedRender) {
         Renderer::ClearSGDBuffers();
+    }
 
+    render::Framebuffer::bind_default(render::Framebuffer::Target::WRITE);
     glClearColor(SkyColorR, SkyColorG, SkyColorB, 1.0f);
     glClearDepth(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -751,8 +753,8 @@ void render_scene(worlds::World& world) {
 
     // Full screen passes
     if (AdvancedRender) {
-        namespace spec = render::attrib_layout::spec;
-        auto v = render::AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec2f>>();
+        namespace al = render::attrib_layout::spec;
+        auto v = render::AttribIndexBuilder<al::Coord<al::Vec2f>, al::TexCoord<al::Vec2f>>();
         v.tex_coord({0.0f, 1.0f});
         v.coord({0, 0});
         v.tex_coord({0.0f, 0.0f});
@@ -825,7 +827,7 @@ void readback(worlds::World& world) {
     if (shouldGetScreenshot) {
         shouldGetScreenshot = false;
         auto now = std::chrono::system_clock::now();
-        saveScreenshot(0, 0, WindowWidth, WindowHeight, std::format("screenshots/{}.png", now));
+        saveScreenshot(0, 0, WindowWidth, WindowHeight, std::format("screenshots/{:%Y-%m-%d %H-%M-%S}.png", now));
     }
 
     if (shouldGetThumbnail) {
