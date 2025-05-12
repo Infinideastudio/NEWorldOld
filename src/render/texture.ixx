@@ -6,11 +6,17 @@ export module render:texture;
 import std;
 import types;
 import debug;
+import :types;
 import :image;
 
 namespace render {
 
-// Manages a GL 2D array texture object with mutable storage, similar to `std::unique_ptr`.
+// Helper function to delete a valid GL texture object.
+void _texture_deleter(GLuint handle) {
+    glDeleteTextures(1, &handle);
+}
+
+// Manages a GL 2D array texture object with mutable storage.
 // Note that 2D array textures cover most of the use cases for textures, and are likely optimized.
 export class Texture {
 public:
@@ -60,23 +66,6 @@ public:
         _height(height),
         _depth(depth) {}
 
-    Texture(Texture const&) = delete;
-    Texture(Texture&& from) noexcept {
-        swap(*this, from);
-    }
-    auto operator=(Texture const&) -> Texture& = delete;
-    auto operator=(Texture&& from) noexcept -> Texture& {
-        swap(*this, from);
-        return *this;
-    }
-
-    // Destroys the managed object if it owns one.
-    ~Texture() {
-        if (_handle != 0) {
-            glDeleteTextures(1, &_handle);
-        }
-    }
-
     auto width() const noexcept -> size_t {
         return _width;
     }
@@ -90,12 +79,12 @@ public:
     }
 
     auto get() const noexcept -> GLuint {
-        return _handle;
+        return _handle.get();
     }
 
     // Returns whether it owns a managed object.
-    explicit operator bool() const noexcept {
-        return _handle != 0;
+    operator bool() const noexcept {
+        return bool(_handle);
     }
 
     // Creates a new 2D array texture object with the given dimensions and internal format.
@@ -138,7 +127,7 @@ public:
         assert(x + src.width() <= width() && y + src.height() <= height() && z + 1 <= depth());
         assert(src_z + 1 <= src.depth());
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, get());
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glTexSubImage3D(
             GL_TEXTURE_2D_ARRAY,
@@ -157,17 +146,17 @@ public:
 
     // Binds the owned array texture to the given texture unit.
     void bind(size_t index) const {
-        assert(_handle != 0, "binding an unallocated texture");
+        assert(*this, "binding an unallocated texture");
         glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + index));
-        glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, get());
     }
 
     // Sets the wrapping parameters for the 2D array texture.
     // Invalidates any existing binding to texture unit 0.
     void set_wrap(bool repeat = false) {
-        assert(_handle != 0, "setting wrap parameters on an unallocated texture");
+        assert(*this, "setting wrap parameters on an unallocated texture");
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, get());
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
@@ -176,9 +165,9 @@ public:
     // Sets the filtering parameters for the 2D array texture.
     // Invalidates any existing binding to texture unit 0.
     void set_filter(bool bilinear = false, bool mipmap = false) {
-        assert(_handle != 0, "setting filter parameters on an unallocated texture");
+        assert(*this, "setting filter parameters on an unallocated texture");
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, get());
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, bilinear ? GL_LINEAR : GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, bilinear ? GL_LINEAR : GL_NEAREST);
         if (mipmap) {
@@ -193,20 +182,20 @@ public:
     // Sets the depth-stencil texture access mode.
     // Invalidates any existing binding to texture unit 0.
     void set_depth_stencil_mode(DepthStencilMode mode) {
-        assert(_handle != 0, "setting depth-stencil mode on an unallocated texture");
+        assert(*this, "setting depth-stencil mode on an unallocated texture");
         auto value = _depth_stencil_mode_to_gl_enum(mode);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, get());
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_DEPTH_STENCIL_TEXTURE_MODE, static_cast<GLint>(value));
     }
 
     // Sets the depth texture comparison mode.
     // Invalidates any existing binding to texture unit 0.
     void set_depth_compare_mode(DepthCompareMode mode) {
-        assert(_handle != 0, "setting depth compare mode on an unallocated texture");
+        assert(*this, "setting depth compare mode on an unallocated texture");
         auto value = _depth_compare_mode_to_gl_enum(mode);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, get());
         if (mode == DepthCompareMode::NONE) {
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_NONE);
         } else {
@@ -218,23 +207,14 @@ public:
     // Recomputes the mipmap levels for the 2D array texture.
     // Invalidates any existing binding to texture unit 0.
     void generate_mipmaps() {
-        assert(_handle != 0, "generating mipmaps for an unallocated texture");
+        assert(*this, "generating mipmaps for an unallocated texture");
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, get());
         glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
     }
 
-    // Swaps the managed objects of two `Texture`s.
-    friend void swap(Texture& first, Texture& second) noexcept {
-        using std::swap;
-        swap(first._handle, second._handle);
-        swap(first._width, second._width);
-        swap(first._height, second._height);
-        swap(first._depth, second._depth);
-    }
-
 private:
-    GLuint _handle = 0;
+    Resource<GLuint, 0, decltype(&_texture_deleter), &_texture_deleter> _handle;
     Format _format = Format::DEPTH;
     size_t _width = 0;
     size_t _height = 0;

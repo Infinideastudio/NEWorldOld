@@ -6,11 +6,17 @@ export module render:framebuffer;
 import std;
 import types;
 import debug;
+import :types;
 import :texture;
 
 namespace render {
 
-// Manages a GL framebuffer object, similar to `std::unique_ptr`.
+// Helper function to delete a valid GL framebuffer object.
+void _framebuffer_deleter(GLuint handle) {
+    glDeleteFramebuffers(1, &handle);
+}
+
+// Manages a GL framebuffer object.
 export class Framebuffer {
 public:
     // Possible framebuffer binding targets per GL 4.3.
@@ -37,27 +43,10 @@ public:
         _width(width),
         _height(height) {}
 
-    Framebuffer(Framebuffer const&) = delete;
-    Framebuffer(Framebuffer&& from) noexcept {
-        swap(*this, from);
-    }
-    auto operator=(Framebuffer const&) -> Framebuffer& = delete;
-    auto operator=(Framebuffer&& from) noexcept -> Framebuffer& {
-        swap(*this, from);
-        return *this;
-    }
-
-    // Destroys the managed object if it owns one.
-    ~Framebuffer() {
-        if (_handle != 0) {
-            glDeleteFramebuffers(1, &_handle);
-        }
-    }
-
     // Returns the underlying handle to the managed object.
     // The handle is 0 if it currently owns nothing.
     auto get() const noexcept -> GLuint {
-        return _handle;
+        return _handle.get();
     }
 
     // Returns the width of the framebuffer.
@@ -73,8 +62,8 @@ public:
     }
 
     // Returns whether it owns a managed object.
-    explicit operator bool() const noexcept {
-        return _handle != 0;
+    operator bool() const noexcept {
+        return bool(_handle);
     }
 
     // Creates a new framebuffer object with the given texture attachments.
@@ -199,8 +188,8 @@ public:
     // Binds the owned framebuffer to the given GL target.
     // Should be invoked last before a GL call to avoid accidental re-binding by other functions.
     void bind(Target target) const {
-        assert(_handle != 0, "binding an unallocated framebuffer");
-        glBindFramebuffer(_target_to_gl_enum(target), _handle);
+        assert(*this, "binding an unallocated framebuffer");
+        glBindFramebuffer(_target_to_gl_enum(target), get());
     }
 
     // Binds the default framebuffer to the given GL target.
@@ -209,16 +198,8 @@ public:
         glBindFramebuffer(_target_to_gl_enum(target), 0);
     }
 
-    // Swaps the managed objects of two `Framebuffer`s.
-    friend void swap(Framebuffer& first, Framebuffer& second) noexcept {
-        using std::swap;
-        swap(first._handle, second._handle);
-        swap(first._width, second._width);
-        swap(first._height, second._height);
-    }
-
 private:
-    GLuint _handle = 0;
+    Resource<GLuint, 0, decltype(&_framebuffer_deleter), &_framebuffer_deleter> _handle;
     size_t _width = 0;
     size_t _height = 0;
 
@@ -226,4 +207,5 @@ private:
         return static_cast<GLenum>(target);
     }
 };
+
 }

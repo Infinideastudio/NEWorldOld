@@ -6,6 +6,7 @@ export module render:vertex_array;
 import std;
 import types;
 import debug;
+import :types;
 import :buffer;
 import :attrib_layout;
 import :attrib_builder;
@@ -13,7 +14,12 @@ import :attrib_builder;
 namespace render {
 using namespace attrib_layout;
 
-// Manages a GL vertex array object, similar to `std::unique_ptr`.
+// Helper function to delete a valid GL vertex array object.
+void _vertex_array_deleter(GLuint handle) {
+    glDeleteVertexArrays(1, &handle);
+}
+
+// Manages a GL vertex array object.
 export class VertexArray {
 public:
     // Possible primitive types per GL 4.3.
@@ -61,28 +67,12 @@ public:
         _index_type(index_type),
         _index_offset(index_offset) {}
 
-    VertexArray(VertexArray const&) = delete;
-    VertexArray(VertexArray&& from) noexcept {
-        swap(*this, from);
-    }
-    auto operator=(VertexArray const&) -> VertexArray& = delete;
-    auto operator=(VertexArray&& from) noexcept -> VertexArray& {
-        swap(*this, from);
-        return *this;
-    }
-
-    ~VertexArray() {
-        if (_handle != 0) {
-            glDeleteVertexArrays(1, &_handle);
-        }
-    }
-
     auto get() const noexcept -> GLuint {
-        return _handle;
+        return _handle.get();
     }
 
-    explicit operator bool() const noexcept {
-        return _handle != 0;
+    operator bool() const noexcept {
+        return bool(_handle);
     }
 
     auto count() const noexcept -> size_t {
@@ -91,19 +81,19 @@ public:
 
     void bind() const {
         // Permissive of empty vertex arrays.
-        if (_handle != 0) {
-            glBindVertexArray(_handle);
+        if (*this) {
+            glBindVertexArray(get());
         }
     }
 
     void render() const {
         // Permissive of empty vertex arrays.
-        if (_handle != 0) {
+        if (*this) {
             if (_index_type == Index::NONE) {
-                glBindVertexArray(_handle);
+                glBindVertexArray(get());
                 glDrawArrays(_primitive_to_gl_enum(_primitive), 0, static_cast<GLsizei>(_count));
             } else {
-                glBindVertexArray(_handle);
+                glBindVertexArray(get());
                 glPrimitiveRestartIndex(_fixed_restart_index(_index_type));
                 glDrawRangeElements(
                     _primitive_to_gl_enum(_primitive),
@@ -201,18 +191,8 @@ public:
         };
     }
 
-    friend void swap(VertexArray& first, VertexArray& second) noexcept {
-        using std::swap;
-        swap(first._handle, second._handle);
-        swap(first._primitive, second._primitive);
-        swap(first._count, second._count);
-        swap(first._index_range, second._index_range);
-        swap(first._index_type, second._index_type);
-        swap(first._index_offset, second._index_offset);
-    }
-
 private:
-    GLuint _handle = 0;
+    Resource<GLuint, 0, decltype(&_vertex_array_deleter), &_vertex_array_deleter> _handle;
     Primitive _primitive = Primitive::POINTS;
     size_t _count = 0;
     size_t _index_range = 0;
