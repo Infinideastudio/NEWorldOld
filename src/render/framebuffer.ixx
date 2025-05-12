@@ -78,16 +78,18 @@ public:
     }
 
     // Creates a new framebuffer object with the given texture attachments.
-    // Invalidates any existing binding to `WRITE` target.
+    // Invalidates any existing binding to `WRITE` and `READ` targets.
     static auto create(
         std::vector<Attachment> const& colors,
         std::optional<Attachment> const& depth,
         std::optional<Attachment> const& stencil
     ) -> std::expected<Framebuffer, std::string> {
         auto handle = GLuint{0};
-        auto target = _target_to_gl_enum(Target::WRITE);
+        auto write_target = _target_to_gl_enum(Target::WRITE);
+        auto read_target = _target_to_gl_enum(Target::READ);
         glGenFramebuffers(1, &handle);
-        glBindFramebuffer(target, handle);
+        glBindFramebuffer(write_target, handle);
+        glBindFramebuffer(read_target, handle);
 
         // Calculate the size of the framebuffer.
         auto width = std::numeric_limits<size_t>::max();
@@ -120,7 +122,7 @@ public:
         for (auto i = 0uz; i < colors.size(); i++) {
             auto const& [texture, mipmap_level, layer] = colors[i];
             glFramebufferTextureLayer(
-                target,
+                write_target,
                 GL_COLOR_ATTACHMENT0 + i,
                 texture.get().get(),
                 static_cast<GLint>(mipmap_level),
@@ -132,7 +134,7 @@ public:
         if (depth) {
             auto const& [texture, mipmap_level, layer] = *depth;
             glFramebufferTextureLayer(
-                target,
+                write_target,
                 GL_DEPTH_ATTACHMENT,
                 texture.get().get(),
                 static_cast<GLint>(mipmap_level),
@@ -144,7 +146,7 @@ public:
         if (stencil) {
             auto const& [texture, mipmap_level, layer] = *stencil;
             glFramebufferTextureLayer(
-                target,
+                write_target,
                 GL_STENCIL_ATTACHMENT,
                 texture.get().get(),
                 static_cast<GLint>(mipmap_level),
@@ -171,7 +173,7 @@ public:
         }
 
         // Check for completeness.
-        auto status = glCheckFramebufferStatus(target);
+        auto status = glCheckFramebufferStatus(write_target);
         if (status != GL_FRAMEBUFFER_COMPLETE) {
             glDeleteFramebuffers(1, &handle);
             switch (status) {

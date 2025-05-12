@@ -12,33 +12,33 @@ import globals;
 import render;
 
 export namespace Renderer {
-namespace spec = render::block_layout::spec;
+namespace bl = render::block_layout::spec;
 
-using FilterUniformBlock = spec::Struct<
-    spec::Field<"u_buffer_width", spec::Float>,
-    spec::Field<"u_buffer_height", spec::Float>,
-    spec::Field<"u_filter_id", spec::Int>,
-    spec::Field<"u_gaussian_blur_radius", spec::Float>,
-    spec::Field<"u_gaussian_blur_step_size", spec::Float>,
-    spec::Field<"u_gaussian_blur_sigma", spec::Float>>;
+using FilterUniformBlock = bl::Struct<
+    bl::Field<"u_buffer_width", bl::Float>,
+    bl::Field<"u_buffer_height", bl::Float>,
+    bl::Field<"u_filter_id", bl::Int>,
+    bl::Field<"u_gaussian_blur_radius", bl::Float>,
+    bl::Field<"u_gaussian_blur_step_size", bl::Float>,
+    bl::Field<"u_gaussian_blur_sigma", bl::Float>>;
 
-using FrameUniformBlock = spec::Struct<
-    spec::Field<"u_mvp", spec::Mat4f>,
-    spec::Field<"u_game_time", spec::Float>,
-    spec::Field<"u_sunlight_dir", spec::Vec3f>,
-    spec::Field<"u_buffer_width", spec::Float>,
-    spec::Field<"u_buffer_height", spec::Float>,
-    spec::Field<"u_render_distance", spec::Float>,
-    spec::Field<"u_shadow_mvp", spec::Mat4f>,
-    spec::Field<"u_shadow_resolution", spec::Float>,
-    spec::Field<"u_shadow_fisheye_factor", spec::Float>,
-    spec::Field<"u_shadow_distance", spec::Float>,
-    spec::Field<"u_repeat_length", spec::Int>,
-    spec::Field<"u_player_coord_int", spec::Vec3i>,
-    spec::Field<"u_player_coord_mod", spec::Vec3i>,
-    spec::Field<"u_player_coord_frac", spec::Vec3f>>;
+using FrameUniformBlock = bl::Struct<
+    bl::Field<"u_mvp", bl::Mat4f>,
+    bl::Field<"u_game_time", bl::Float>,
+    bl::Field<"u_sunlight_dir", bl::Vec3f>,
+    bl::Field<"u_buffer_width", bl::Float>,
+    bl::Field<"u_buffer_height", bl::Float>,
+    bl::Field<"u_render_distance", bl::Float>,
+    bl::Field<"u_shadow_mvp", bl::Mat4f>,
+    bl::Field<"u_shadow_resolution", bl::Float>,
+    bl::Field<"u_shadow_fisheye_factor", bl::Float>,
+    bl::Field<"u_shadow_distance", bl::Float>,
+    bl::Field<"u_repeat_length", bl::Int>,
+    bl::Field<"u_player_coord_int", bl::Vec3i>,
+    bl::Field<"u_player_coord_mod", bl::Vec3i>,
+    bl::Field<"u_player_coord_frac", bl::Vec3f>>;
 
-using ModelUniformBlock = spec::Struct<spec::Field<"u_translation", spec::Vec3f>>;
+using ModelUniformBlock = bl::Struct<bl::Field<"u_translation", bl::Vec3f>>;
 
 enum Shaders {
     UIShader,
@@ -81,6 +81,21 @@ auto filter_uniform_buffer = render::Buffer();
 auto frame_uniform_buffer = render::Buffer();
 auto model_uniform_buffer = render::Buffer();
 
+auto ui_vertex_builder() {
+    namespace al = render::attrib_layout::spec;
+    return render::AttribIndexBuilder<al::Coord<al::Vec2f>, al::TexCoord<al::Vec3f>, al::Color<al::Vec4u8>>();
+}
+
+auto chunk_vertex_builder() {
+    namespace al = render::attrib_layout::spec;
+    return render::AttribIndexBuilder<
+        al::Coord<al::Vec3f>,
+        al::TexCoord<al::Vec3f>,
+        al::Color<al::Vec3u8>,
+        al::Normal<al::Vec3i8>,
+        al::Material<al::UInt16>>();
+}
+
 auto shadow_distance() -> int {
     return std::min(MaxShadowDistance, RenderDistance);
 }
@@ -108,9 +123,9 @@ auto create_noise_texture() -> render::Texture {
     return std::move(tex);
 }
 
-void init_pipeline(bool reload_shaders = false, bool reload_framebuffers = false) {
+void init_pipeline(bool load_shaders = false, bool init_framebuffers = false) {
     // Create shaders.
-    if (shaders.empty() || reload_shaders) {
+    if (load_shaders) {
         shaders.clear();
 
         using render::Shader;
@@ -188,7 +203,7 @@ void init_pipeline(bool reload_shaders = false, bool reload_framebuffers = false
     }
 
     // Create framebuffers.
-    if (textures.empty() || framebuffers.empty() || reload_framebuffers) {
+    if (init_framebuffers) {
         textures.clear();
         framebuffers.clear();
 
@@ -224,7 +239,9 @@ void init_pipeline(bool reload_shaders = false, bool reload_framebuffers = false
             Framebuffer::Attachment{.texture = textures[ShadowDepthTexture], .mipmap_level = 0, .layer = 0},
             {}
         ));
+
         Framebuffer::bind_default(render::Framebuffer::Target::WRITE);
+        glViewport(0, 0, WindowWidth, WindowHeight);
     }
 }
 

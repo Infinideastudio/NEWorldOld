@@ -10,26 +10,11 @@ import std;
 import types;
 import debug;
 import globals;
+import render;
 import rendering;
 import text_rendering;
 import textures;
 using namespace std::literals::chrono_literals;
-
-void init_gl_defaults() {
-    // Set up default GL context states
-    glViewport(0, 0, WindowWidth, WindowHeight);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-    if (Multisample != 0) {
-        glEnable(GL_MULTISAMPLE);
-    }
-    glEnable(GL_PRIMITIVE_RESTART);
-    // glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
-}
 
 void on_window_size_event(GLFWwindow* win, int width, int height) {
     if (width < 640)
@@ -39,7 +24,6 @@ void on_window_size_event(GLFWwindow* win, int width, int height) {
     WindowWidth = width;
     WindowHeight = height > 0 ? height : 1;
     glfwSetWindowSize(win, width, height);
-    init_gl_defaults();
     Renderer::init_pipeline(false, true);
 }
 
@@ -112,8 +96,9 @@ export void create_window() {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 #endif
 
-    if (UIAutoStretch)
+    if (UIAutoStretch) {
         Stretch = calculate_stretch();
+    }
     WindowWidth = static_cast<int>(DefaultWindowWidth * Stretch);
     WindowHeight = static_cast<int>(DefaultWindowHeight * Stretch);
     MainWindow = glfwCreateWindow(WindowWidth, WindowHeight, title.str().c_str(), nullptr, nullptr);
@@ -143,11 +128,22 @@ export void create_window() {
         spdlog::info("GL_KHR_debug enabled.");
     }
 #endif
+    // Set up default GL context states
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    if (Multisample != 0) {
+        glEnable(GL_MULTISAMPLE);
+    }
+    glEnable(GL_PRIMITIVE_RESTART);
+    // glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
 
     // Make sure everything is initialised
     TextRenderer::init_font();
-    init_gl_defaults();
-    Renderer::init_pipeline(false, false);
+    Renderer::init_pipeline(true, true);
 }
 
 export void toggle_stretch() {
@@ -163,7 +159,6 @@ export void toggle_stretch() {
     }
     glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
     TextRenderer::init_font(true);
-    init_gl_defaults();
     Renderer::init_pipeline(false, true);
 }
 
@@ -190,7 +185,6 @@ export void toggle_full_screen() {
             mode->refreshRate
         );
     }
-    init_gl_defaults();
     Renderer::init_pipeline(false, true);
 }
 
@@ -209,30 +203,38 @@ export void splash_screen() {
         SplashTexture = Textures::LoadTexture("textures/ui/splash.png", true);
     }
 
-    for (int i = 0; i < 256; i += 2) {
-        float ratio = static_cast<float>(i) / 256.0f;
+    // Set frame uniforms used by the UI shader.
+    Renderer::frame_uniforms.set<".u_buffer_width">(1.0f);
+    Renderer::frame_uniforms.set<".u_buffer_height">(1.0f);
 
+    // Update uniform buffer.
+    Renderer::frame_uniform_buffer.write(Renderer::frame_uniforms.bytes(), 0);
+    Renderer::frame_uniform_buffer.bind(render::Buffer::IndexedTarget::UNIFORM, 0);
+
+    for (int i = 0; i < 256; i += 2) {
+        namespace spec = render::attrib_layout::spec;
+        auto v = render::
+            AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec3f>, spec::Color<spec::Vec4u8>>();
+
+        v.color({i, i, i, 255});
+        v.tex_coord({0.0f, 1.0f, 0.0f});
+        v.coord({0, 0});
+        v.tex_coord({0.0f, 0.0f, 0.0f});
+        v.coord({0, 1});
+        v.tex_coord({1.0f, 0.0f, 0.0f});
+        v.coord({1, 1});
+        v.tex_coord({1.0f, 1.0f, 0.0f});
+        v.coord({1, 0});
+
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+
+        render::Framebuffer::bind_default(render::Framebuffer::Target::WRITE);
+        Renderer::shaders[Renderer::UIShader].bind();
+        SplashTexture.bind(0);
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClearDepth(1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
-        SplashTexture.bind(0);
-        glBegin(GL_QUADS);
-        glColor4f(ratio, ratio, ratio, 1.0f);
-        glTexCoord2f(0.0f, 1.0f);
-        glVertex2i(-1, 1);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex2i(-1, -1);
-        glTexCoord2f(1.0f, 0.0f);
-        glVertex2i(1, -1);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex2i(1, 1);
-        glEnd();
+        va.first.render();
 
         glfwSwapBuffers(MainWindow);
         glfwPollEvents();
