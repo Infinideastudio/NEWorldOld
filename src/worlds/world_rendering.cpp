@@ -36,11 +36,11 @@ void World::render_chunks(Vec3d center, std::vector<RenderChunk> const& crs, siz
         if (!va) {
             continue;
         }
-        Renderer::model_uniforms.set<".u_translation">(Vec3f(coord));
+        Renderer::model_uniforms.set<".u_translation">(coord);
         Renderer::model_uniform_buffer.write(Renderer::model_uniforms.bytes(), 0);
         va.render();
     }
-    Renderer::model_uniforms.set<".u_translation">({0.0f, 0.0f, 0.0f});
+    Renderer::model_uniforms.set<".u_translation">(0.0f, 0.0f, 0.0f);
     Renderer::model_uniform_buffer.write(Renderer::model_uniforms.bytes(), 0);
 }
 

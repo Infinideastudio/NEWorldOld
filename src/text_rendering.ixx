@@ -186,26 +186,26 @@ export void render_string(int x, int y, std::u32string_view s) {
         float width = uc.width;
         float height = uc.height;
 
-        v.color({128, 128, 128, 255 * cola});
-        v.tex_coord({tc.x() / tex.width(), (tc.y() + height) / tex.height(), tc.z()});
-        v.coord({xpos + 1.0f, ypos + 1.0f});
-        v.tex_coord({tc.x() / tex.width(), tc.y() / tex.height(), tc.z()});
-        v.coord({xpos + 1.0f, ypos + height + 1.0f});
-        v.tex_coord({(tc.x() + width) / tex.width(), tc.y() / tex.height(), tc.z()});
-        v.coord({xpos + width + 1.0f, ypos + height + 1.0f});
-        v.tex_coord({(tc.x() + width) / tex.width(), (tc.y() + height) / tex.height(), tc.z()});
-        v.coord({xpos + width + 1.0f, ypos + 1.0f});
+        v.color(128, 128, 128, 255 * cola);
+        v.tex_coord(tc.x() / tex.width(), (tc.y() + height) / tex.height(), tc.z());
+        v.coord(xpos + 1.0f, ypos + 1.0f);
+        v.tex_coord(tc.x() / tex.width(), tc.y() / tex.height(), tc.z());
+        v.coord(xpos + 1.0f, ypos + height + 1.0f);
+        v.tex_coord((tc.x() + width) / tex.width(), tc.y() / tex.height(), tc.z());
+        v.coord(xpos + width + 1.0f, ypos + height + 1.0f);
+        v.tex_coord((tc.x() + width) / tex.width(), (tc.y() + height) / tex.height(), tc.z());
+        v.coord(xpos + width + 1.0f, ypos + 1.0f);
         v.end_primitive();
 
-        v.color({255 * colr, 255 * colg, 255 * colb, 255 * cola});
-        v.tex_coord({tc.x() / tex.width(), (tc.y() + height) / tex.height(), tc.z()});
-        v.coord({xpos, ypos});
-        v.tex_coord({tc.x() / tex.width(), tc.y() / tex.height(), tc.z()});
-        v.coord({xpos, ypos + height});
-        v.tex_coord({(tc.x() + width) / tex.width(), tc.y() / tex.height(), tc.z()});
-        v.coord({xpos + width, ypos + height});
-        v.tex_coord({(tc.x() + width) / tex.width(), (tc.y() + height) / tex.height(), tc.z()});
-        v.coord({xpos + width, ypos});
+        v.color(255 * colr, 255 * colg, 255 * colb, 255 * cola);
+        v.tex_coord(tc.x() / tex.width(), (tc.y() + height) / tex.height(), tc.z());
+        v.coord(xpos, ypos);
+        v.tex_coord(tc.x() / tex.width(), tc.y() / tex.height(), tc.z());
+        v.coord(xpos, ypos + height);
+        v.tex_coord((tc.x() + width) / tex.width(), tc.y() / tex.height(), tc.z());
+        v.coord(xpos + width, ypos + height);
+        v.tex_coord((tc.x() + width) / tex.width(), (tc.y() + height) / tex.height(), tc.z());
+        v.coord(xpos + width, ypos);
         v.end_primitive();
 
         dx += uc.advance;

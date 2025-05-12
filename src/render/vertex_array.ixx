@@ -124,6 +124,8 @@ public:
     // in the template arguments. The first attribute is bound to location 0, the second to location 1, etc.
     template <Layout... T>
     static auto create(AttribBuilder<T...> const& builder, Primitive primitive) -> std::pair<VertexArray, Buffer> {
+        constexpr auto interleaved = interleave_v<T...>;
+
         if (builder.vertices().empty()) {
             return {VertexArray(), Buffer()};
         }
@@ -141,10 +143,10 @@ public:
         buffer.bind(Buffer::Target::VERTEX_ATTRIB);
 
         // Specify vertex layout.
-        for (auto i = 0uz; i < builder.interleaved.count; i++) {
-            auto [base_type, elem_count, conversion] = builder.interleaved.args[i];
-            auto stride = builder.interleaved.stride;
-            auto offset = builder.interleaved.offsets[i];
+        for (auto i = 0uz; i < interleaved.count; i++) {
+            auto [base_type, elem_count, conversion] = interleaved.args[i];
+            auto stride = interleaved.stride;
+            auto offset = interleaved.offsets[i];
             _vertex_attrib_pointer(i, elem_count, base_type, conversion, stride, offset);
             glEnableVertexAttribArray(static_cast<GLuint>(i));
         }
@@ -156,6 +158,8 @@ public:
 
     template <Layout... T>
     static auto create(AttribIndexBuilder<T...> const& builder, Primitive primitive) -> std::pair<VertexArray, Buffer> {
+        constexpr auto interleaved = interleave_v<T...>;
+
         if (builder.indices().empty()) {
             return {VertexArray(), Buffer()};
         }
@@ -184,10 +188,10 @@ public:
         buffer.bind(Buffer::Target::ELEMENT_INDEX);
 
         // Specify vertex layout.
-        for (auto i = 0uz; i < builder.interleaved.count; i++) {
-            auto [base_type, elem_count, conversion] = builder.interleaved.args[i];
-            auto stride = builder.interleaved.stride;
-            auto offset = builder.interleaved.offsets[i];
+        for (auto i = 0uz; i < interleaved.count; i++) {
+            auto [base_type, elem_count, conversion] = interleaved.args[i];
+            auto stride = interleaved.stride;
+            auto offset = interleaved.offsets[i];
             _vertex_attrib_pointer(i, elem_count, base_type, conversion, stride, offset);
             glEnableVertexAttribArray(static_cast<GLuint>(i));
         }

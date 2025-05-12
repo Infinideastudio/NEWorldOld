@@ -44,27 +44,18 @@ consteval auto true_index(std::array<bool, N> const& a) {
 template <template <typename> typename W, typename T>
 struct wrapped {
     static constexpr auto value = false;
-    using wrapped_type = std::monostate;
 };
 
 template <template <typename> typename W, typename T>
 struct wrapped<W, W<T>> {
     static constexpr auto value = true;
-    using wrapped_type = T;
 };
-
-// The implementation of `wrapped_index`.
-template <template <typename> typename W, typename... T>
-consteval auto _wrapped_index() -> size_t {
-    auto wrapped_matches = std::array{wrapped<W, T>::value...};
-    return true_index(wrapped_matches);
-}
 
 // Returns the index of the first element in the argument list `T` that is wrapped by
 // a template `W`, or `N` if none is found.
 template <template <typename> typename W, typename... T>
 struct wrapped_index {
-    static constexpr auto value = _wrapped_index<W, T...>();
+    static constexpr auto value = true_index(std::array{wrapped<W, T>::value...});
 };
 
 template <template <typename> typename W, typename... T>

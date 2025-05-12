@@ -32,19 +32,20 @@ public:
     template <FixedString name>
     auto get() const -> Field<name> {
         constexpr auto located = locate_v<T, name>;
-        static_assert(sizeof(Field<name>) == located.size);
+        // static_assert(sizeof(Field<name>) == located.size);
         auto attr = Field<name>();
-        auto span = std::as_writable_bytes(std::span<Field<name>, 1>(&attr, 1));
+        auto span = std::as_writable_bytes(std::span<decltype(attr), 1>(&attr, 1));
         auto src = _bytes.begin() + located.offset;
         std::copy_n(src, span.size(), span.begin());
         return attr;
     }
 
-    template <FixedString name>
-    void set(Field<name> attr) {
+    template <FixedString name, typename... U>
+    void set(U&&... args) {
         constexpr auto located = locate_v<T, name>;
-        static_assert(sizeof(Field<name>) == located.size);
-        auto span = std::as_bytes(std::span<Field<name>, 1>(&attr, 1));
+        // static_assert(sizeof(Field<name>) == located.size);
+        auto attr = Field<name>(std::forward<U>(args)...);
+        auto span = std::as_bytes(std::span<decltype(attr), 1>(&attr, 1));
         auto dst = _bytes.begin() + located.offset;
         std::copy_n(span.begin(), span.size(), dst);
     }

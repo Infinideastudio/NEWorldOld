@@ -347,7 +347,7 @@ void SetUniforms(Vec3d const& coord, Mat4f const& view_matrix, Mat4f const& shad
     frame_uniforms.set<".u_player_coord_frac">(coord_frac);
 
     // Set model uniforms.
-    model_uniforms.set<".u_translation">({0.0f, 0.0f, 0.0f});
+    model_uniforms.set<".u_translation">(0.0f, 0.0f, 0.0f);
 
     // Update uniform buffer.
     frame_uniform_buffer.write(frame_uniforms.bytes(), 0);
