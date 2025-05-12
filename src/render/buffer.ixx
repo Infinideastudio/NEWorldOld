@@ -6,10 +6,23 @@ export module render:buffer;
 import std;
 import types;
 import debug;
+import :types;
 
 namespace render {
 
-// Manages a GL buffer object, similar to `std::unique_ptr`.
+// Helper function to delete a valid GL buffer object.
+void _buffer_deleter(GLuint handle) {
+    glDeleteBuffers(1, &handle);
+}
+
+// GL only provides API to unmap the whole buffer, which is expected since each buffer may
+// have at most one active mapping at a time.
+void _buffer_unmapper(GLuint handle) {
+    glBindBuffer(GL_COPY_READ_BUFFER, handle);
+    glUnmapBuffer(GL_COPY_READ_BUFFER);
+}
+
+// Manages a GL buffer object.
 export class Buffer {
 public:
     // Possible non-indexed buffer binding points per GL 4.3.
@@ -51,27 +64,10 @@ public:
         _handle(handle),
         _size(size) {}
 
-    Buffer(Buffer const&) = delete;
-    Buffer(Buffer&& from) noexcept {
-        swap(*this, from);
-    }
-    auto operator=(Buffer const&) -> Buffer& = delete;
-    auto operator=(Buffer&& from) noexcept -> Buffer& {
-        swap(*this, from);
-        return *this;
-    }
-
-    // Destroys the managed object if it owns one.
-    ~Buffer() {
-        if (_handle != 0) {
-            glDeleteBuffers(1, &_handle);
-        }
-    }
-
     // Returns the underlying handle to the managed object.
     // The handle is 0 if it currently owns nothing.
     auto get() const noexcept -> GLuint {
-        return _handle;
+        return _handle.get();
     }
 
     // Returns the size of the managed object in bytes.
@@ -81,8 +77,8 @@ public:
     }
 
     // Returns whether it owns a managed object.
-    explicit operator bool() const noexcept {
-        return _handle != 0;
+    operator bool() const noexcept {
+        return bool(_handle);
     }
 
     // Creates a new buffer object with the given size and usage hints.
@@ -99,56 +95,56 @@ public:
     // Binds the owned buffer to the given GL target (non-indexed).
     // Should be invoked last before a GL call to avoid accidental re-binding by other functions.
     void bind(Target target) const {
-        assert(_handle != 0, "binding an unallocated buffer");
-        glBindBuffer(_target_to_gl_enum(target), _handle);
+        assert(*this, "binding an unallocated buffer");
+        glBindBuffer(_target_to_gl_enum(target), get());
     }
 
     // Binds the owned buffer to the given GL target (indexed).
     // Should be invoked last before a GL call to avoid accidental re-binding by other functions.
     void bind(IndexedTarget target, size_t index) const {
-        assert(_handle != 0, "binding an unallocated buffer");
-        glBindBufferBase(_target_to_gl_enum(target), static_cast<GLuint>(index), _handle);
+        assert(*this, "binding an unallocated buffer");
+        glBindBufferBase(_target_to_gl_enum(target), static_cast<GLuint>(index), get());
     }
 
     // Reads data from the buffer.
     // Invalidates any existing binding to `COPY_SRC` target.
-    auto read(size_t offset, size_t size) const -> std::vector<std::byte> {
-        assert(_handle != 0, "reading from unallocated buffer");
-        assert(offset + size <= _size, "reading out of bounds");
-        auto data = std::vector<std::byte>(size);
+    auto read(size_t offset, size_t length) const -> std::vector<std::byte> {
+        assert(*this, "reading from unallocated buffer");
+        assert(offset + length <= size(), "reading out of bounds");
+        auto data = std::vector<std::byte>(length);
         auto target = _target_to_gl_enum(Target::COPY_SRC);
-        glBindBuffer(target, _handle);
-        glGetBufferSubData(target, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size), data.data());
+        glBindBuffer(target, get());
+        glGetBufferSubData(target, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(length), data.data());
         return data;
     }
 
     // Uploads data to a subset of the buffer store.
     // Invalidates any existing binding to `COPY_DST` target.
     void write(std::span<std::byte const> data, size_t offset) const {
-        assert(_handle != 0, "uploading to unallocated buffer");
-        assert(offset + data.size() <= _size, "uploading out of bounds");
+        assert(*this, "uploading to unallocated buffer");
+        assert(offset + data.size() <= size(), "uploading out of bounds");
         auto target = _target_to_gl_enum(Target::COPY_DST);
-        glBindBuffer(target, _handle);
+        glBindBuffer(target, get());
         glBufferSubData(target, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(data.size()), data.data());
     }
 
     // Copies data from another buffer.
     // Invalidates any existing binding to COPY_SRC and `COPY_DST` targets.
-    void copy(Buffer const& src, size_t src_offset, size_t src_size, size_t offset) const {
-        assert(src._handle != 0, "copying from unallocated buffer");
-        assert(_handle != 0, "copying to unallocated buffer");
-        assert(src_offset + src_size <= src._size, "copying out of bounds");
-        assert(offset + src_size <= _size, "copying out of bounds");
+    void copy(Buffer const& src, size_t src_offset, size_t length, size_t offset) const {
+        assert(src, "copying from unallocated buffer");
+        assert(*this, "copying to unallocated buffer");
+        assert(src_offset + length <= src.size(), "copying out of bounds");
+        assert(offset + length <= size(), "copying out of bounds");
         auto src_target = _target_to_gl_enum(Target::COPY_SRC);
         auto dst_target = _target_to_gl_enum(Target::COPY_DST);
-        glBindBuffer(src_target, src._handle);
-        glBindBuffer(dst_target, _handle);
+        glBindBuffer(src_target, src.get());
+        glBindBuffer(dst_target, get());
         glCopyBufferSubData(
             src_target,
             dst_target,
             static_cast<GLintptr>(src_offset),
             static_cast<GLintptr>(offset),
-            static_cast<GLsizeiptr>(src_size)
+            static_cast<GLsizeiptr>(length)
         );
     }
 
@@ -171,15 +167,8 @@ public:
         bool auto_flush = true
     ) const -> MappedRegion<std::byte>;
 
-    // Swaps the managed objects of two `Buffer`s.
-    friend void swap(Buffer& first, Buffer& second) noexcept {
-        using std::swap;
-        swap(first._handle, second._handle);
-        swap(first._size, second._size);
-    }
-
 private:
-    GLuint _handle = 0;
+    Resource<GLuint, 0, decltype(&_buffer_deleter), &_buffer_deleter> _handle;
     size_t _size = 0;
 
     static constexpr auto _target_to_gl_enum(Target target) -> GLenum {
@@ -220,28 +209,16 @@ public:
         _parent_offset(parent_offset),
         _address_space(mapped_address, mapped_size) {}
 
-    MappedRegion(MappedRegion const&) = delete;
-    MappedRegion(MappedRegion&& from) noexcept {
-        swap(*this, from);
-    }
-    auto operator=(MappedRegion const&) -> MappedRegion& = delete;
-    auto operator=(MappedRegion&& from) noexcept -> MappedRegion& {
-        swap(*this, from);
-        return *this;
+    operator bool() const noexcept {
+        return bool(_parent_handle);
     }
 
-    ~MappedRegion() {
-        // GL only provides API to unmap the whole buffer, which is expected since each buffer may
-        // have at most one active mapping at a time.
-        if (_parent_handle != 0) {
-            auto target = _target_to_gl_enum(Target::COPY_SRC);
-            glBindBuffer(target, _parent_handle);
-            glUnmapBuffer(target);
-        }
+    auto parent() const noexcept -> GLuint {
+        return _parent_handle.get();
     }
 
-    explicit operator bool() const noexcept {
-        return _parent_handle != 0;
+    auto parent_offset() const noexcept -> size_t {
+        return _parent_offset;
     }
 
     auto bytes() const noexcept -> std::span<T> {
@@ -250,53 +227,50 @@ public:
 
     // Explicitly flushes changes to a sub-region of the mapped buffer.
     // The mapping must have `auto_flush` set to false.
-    void flush(size_t offset, size_t size) const {
-        assert(_parent_handle != 0, "flushing undefined region");
-        assert(offset + size <= _address_space.size(), "flushing out of bounds");
+    void flush(size_t offset, size_t length) const {
+        assert(*this, "flushing undefined region");
+        assert(offset + length <= bytes().size(), "flushing out of bounds");
         auto target = _target_to_gl_enum(Target::COPY_SRC);
-        glBindBuffer(target, _parent_handle);
-        glFlushMappedBufferRange(target, static_cast<GLintptr>(_parent_offset + offset), static_cast<GLsizeiptr>(size));
-    }
-
-    friend void swap(MappedRegion& first, MappedRegion& second) noexcept {
-        using std::swap;
-        swap(first._parent_handle, second._parent_handle);
-        swap(first._parent_offset, second._parent_offset);
-        swap(first._address_space, second._address_space);
+        glBindBuffer(target, parent());
+        glFlushMappedBufferRange(
+            target,
+            static_cast<GLintptr>(parent_offset() + offset),
+            static_cast<GLsizeiptr>(length)
+        );
     }
 
 private:
-    GLuint _parent_handle = 0;
+    Resource<GLuint, 0, decltype(&_buffer_unmapper), &_buffer_unmapper> _parent_handle;
     size_t _parent_offset = 0;
     std::span<T> _address_space = {};
 };
 
-auto Buffer::map_read(size_t offset, size_t size, bool synchronize) const -> MappedRegion<std::byte const> {
-    assert(_handle != 0, "mapping unallocated buffer");
-    assert(offset + size <= _size, "mapping out of bounds");
+auto Buffer::map_read(size_t offset, size_t length, bool synchronize) const -> MappedRegion<std::byte const> {
+    assert(*this, "mapping unallocated buffer");
+    assert(offset + length <= size(), "mapping out of bounds");
     auto target = _target_to_gl_enum(Target::COPY_SRC);
     auto access = GL_MAP_READ_BIT | (synchronize ? 0 : GL_MAP_UNSYNCHRONIZED_BIT);
-    glBindBuffer(target, _handle);
-    auto data = glMapBufferRange(target, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size), access);
-    return MappedRegion(_handle, offset, static_cast<std::byte const*>(data), size);
+    glBindBuffer(target, get());
+    auto data = glMapBufferRange(target, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(length), access);
+    return MappedRegion(get(), offset, static_cast<std::byte const*>(data), length);
 }
 
 auto Buffer::map_write(
     size_t offset,
-    size_t size,
+    size_t length,
     bool synchronize,
     bool write_only,
     bool invalidate_range,
     bool auto_flush
 ) const -> MappedRegion<std::byte> {
-    assert(_handle != 0, "mapping unallocated buffer");
-    assert(offset + size <= _size, "mapping out of bounds");
+    assert(*this, "mapping unallocated buffer");
+    assert(offset + length <= size(), "mapping out of bounds");
     auto target = _target_to_gl_enum(Target::COPY_SRC);
     auto access = GL_MAP_WRITE_BIT | (synchronize ? 0 : GL_MAP_UNSYNCHRONIZED_BIT) | (write_only ? 0 : GL_MAP_READ_BIT)
                 | (invalidate_range ? GL_MAP_INVALIDATE_RANGE_BIT : 0) | (auto_flush ? 0 : GL_MAP_FLUSH_EXPLICIT_BIT);
-    glBindBuffer(target, _handle);
-    auto data = glMapBufferRange(target, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(size), access);
-    return MappedRegion(_handle, offset, static_cast<std::byte*>(data), size);
+    glBindBuffer(target, get());
+    auto data = glMapBufferRange(target, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(length), access);
+    return MappedRegion(get(), offset, static_cast<std::byte*>(data), length);
 }
 
 }

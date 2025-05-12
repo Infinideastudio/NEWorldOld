@@ -346,6 +346,7 @@ consteval auto _locate_struct_field(std::array<size_t, sizeof...(fields) + 1> co
 // If the remaining name is empty, we have already located it.
 template <Layout T>
 struct locate<T, ""> {
+    static_assert(sizeof(typename _common_type<T>::cpp_type) <= T::size);
     static constexpr auto value = locate_result<typename _common_type<T>::cpp_type>{
         .exists = true,
         .offset = 0uz,

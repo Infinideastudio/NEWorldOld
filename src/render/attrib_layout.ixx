@@ -324,31 +324,26 @@ struct _common_type<spec::Material<T>>: _common_type<T> {};
 export template <typename... T>
 struct interleave_result {
     static constexpr auto count = sizeof...(T);
+    size_t stride;
     std::array<size_t, count> offsets;
     std::array<size_t, count> sizes;
     std::array<std::tuple<GLenum, GLuint, Conversion>, count> args;
-    size_t stride;
     using cpp_types = std::tuple<T...>;
 };
-
-// The implementation of `interleave`.
-template <Layout... T>
-consteval auto _interleave() {
-    auto sizes = std::array{T::size...};
-    return interleave_result<typename _common_type<T>::cpp_type...>{
-        .offsets = prefix_sum(sizes),
-        .sizes = sizes,
-        .args = std::array{std::tuple<GLenum, GLuint, Conversion>{T::base_type, T::elem_count, T::mode}...},
-        .stride = sum(sizes)
-    };
-}
 
 // Interleaves the given attribute layout specifiers.
 // Returns the offsets and sizes of each attribute, and an array of arguments for calling
 // `glVertexAttribFormat()`.
 export template <Layout... T>
 struct interleave {
-    static constexpr auto value = _interleave<T...>();
+    static constexpr auto _sizes = std::array{T::size...};
+    static_assert(((sizeof(typename _common_type<T>::cpp_type) <= T::size) && ...));
+    static constexpr auto value = interleave_result<typename _common_type<T>::cpp_type...>{
+        .stride = sum(_sizes),
+        .offsets = prefix_sum(_sizes),
+        .sizes = _sizes,
+        .args = std::array{std::tuple<GLenum, GLuint, Conversion>{T::base_type, T::elem_count, T::mode}...},
+    };
 };
 
 export template <Layout... T>

@@ -34,7 +34,6 @@ public:
 
     template <size_t I>
     auto get() const -> Attrib<I> {
-        // static_assert(sizeof(Attrib<I>) == interleaved.sizes[I]);
         auto attr = Attrib<I>();
         auto span = std::as_writable_bytes(std::span<decltype(attr), 1>(&attr, 1));
         auto src = _bytes.begin() + interleaved.offsets[I];
@@ -44,7 +43,6 @@ public:
 
     template <size_t I, typename... U>
     void set(U&&... args) {
-        // static_assert(sizeof(Attrib<I>) == interleaved.sizes[I]);
         auto attr = Attrib<I>(std::forward<U>(args)...);
         auto span = std::as_bytes(std::span<decltype(attr), 1>(&attr, 1));
         auto dst = _bytes.begin() + interleaved.offsets[I];

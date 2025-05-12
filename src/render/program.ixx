@@ -6,10 +6,21 @@ export module render:program;
 import std;
 import types;
 import debug;
+import :types;
 
 namespace render {
 
-// Manages a GL shader stage code object, similar to `std::unique_ptr`.
+// Helper function to delete a valid GL shader object.
+void _shader_deleter(GLuint handle) {
+    glDeleteShader(handle);
+}
+
+// Helper function to delete a valid GL program object.
+void _program_deleter(GLuint handle) {
+    glDeleteProgram(handle);
+}
+
+// Manages a GL shader stage code object.
 export class Shader {
 public:
     // Possible shader stages per GL 4.3.
@@ -31,33 +42,16 @@ public:
         _handle(handle),
         _stage(stage) {}
 
-    Shader(Shader const&) = delete;
-    Shader(Shader&& from) noexcept {
-        swap(*this, from);
-    }
-    auto operator=(Shader const&) -> Shader& = delete;
-    auto operator=(Shader&& from) noexcept -> Shader& {
-        swap(*this, from);
-        return *this;
-    }
-
-    // Destroys the managed object if it owns one.
-    ~Shader() {
-        if (_handle != 0) {
-            glDeleteShader(_handle);
-        }
-    }
-
     auto get() const noexcept -> GLuint {
-        return _handle;
+        return _handle.get();
     }
 
     auto stage() const noexcept -> Stage {
         return _stage;
     }
 
-    explicit operator bool() const noexcept {
-        return _handle != 0;
+    operator bool() const noexcept {
+        return bool(_handle);
     }
 
     // Creates a shader object from the given source code.
@@ -84,14 +78,8 @@ public:
         return Shader(handle, stage);
     }
 
-    friend void swap(Shader& first, Shader& second) noexcept {
-        using std::swap;
-        swap(first._handle, second._handle);
-        swap(first._stage, second._stage);
-    }
-
 private:
-    GLuint _handle = 0;
+    Resource<GLuint, 0, decltype(&_shader_deleter), &_shader_deleter> _handle;
     Stage _stage = Stage::VERTEX;
 
     static constexpr auto _stage_to_gl_enum(Stage stage) -> GLenum {
@@ -99,7 +87,7 @@ private:
     }
 };
 
-// Manages a GL program object, similar to `std::unique_ptr`.
+// Manages a GL program object.
 export class Program {
 public:
     // Constructs a `Program` which owns nothing.
@@ -110,53 +98,36 @@ public:
     explicit Program(GLuint handle) noexcept:
         _handle(handle) {}
 
-    Program(Program const&) = delete;
-    Program(Program&& from) noexcept {
-        swap(*this, from);
-    }
-    auto operator=(Program const&) -> Program& = delete;
-    auto operator=(Program&& from) noexcept -> Program& {
-        swap(*this, from);
-        return *this;
-    }
-
-    // Destroys the managed object if it owns one.
-    ~Program() {
-        if (_handle != 0) {
-            glDeleteProgram(_handle);
-        }
-    }
-
     auto get() const noexcept -> GLuint {
-        return _handle;
+        return _handle.get();
     }
 
-    explicit operator bool() const noexcept {
-        return _handle != 0;
+    operator bool() const noexcept {
+        return bool(_handle);
     }
 
     // Binds the owned program to the GL state.
     void bind() const {
-        assert(_handle != 0, "binding an uninitialised program");
-        glUseProgram(_handle);
+        assert(*this, "binding an uninitialised program");
+        glUseProgram(get());
     }
 
     // Sets the value of an opaque uniform variable (which cannot be put into blocks).
     // This operation binds the program.
     void set_opaque(std::string const& name, size_t value) const {
-        assert(_handle != 0, "setting uniform on an uninitialised program");
-        auto location = glGetUniformLocation(_handle, name.c_str());
+        assert(*this, "setting uniform on an uninitialised program");
+        auto location = glGetUniformLocation(get(), name.c_str());
         if (location != -1) {
-            glUseProgram(_handle);
+            glUseProgram(get());
             glUniform1i(location, static_cast<GLint>(value));
         }
     }
 
     // Sets the uniform block binding for the given block name.
     void set_uniform_block(std::string const& name, size_t index) const {
-        assert(_handle != 0, "setting uniform block binding on an uninitialised program");
-        auto location = glGetUniformBlockIndex(_handle, name.c_str());
-        glUniformBlockBinding(_handle, location, static_cast<GLuint>(index));
+        assert(*this, "setting uniform block binding on an uninitialised program");
+        auto location = glGetUniformBlockIndex(get(), name.c_str());
+        glUniformBlockBinding(get(), location, static_cast<GLuint>(index));
     }
 
     // Creates a program object by linking the given shader objects.
@@ -187,13 +158,8 @@ public:
         return Program(handle);
     }
 
-    friend void swap(Program& first, Program& second) noexcept {
-        using std::swap;
-        swap(first._handle, second._handle);
-    }
-
 private:
-    GLuint _handle = 0;
+    Resource<GLuint, 0, decltype(&_program_deleter), &_program_deleter> _handle;
 };
 
 // Helper function to load a shader from a file.
