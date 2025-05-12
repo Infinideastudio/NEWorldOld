@@ -18,17 +18,18 @@ export template <typename T>
 concept Color = std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>;
 
 // Stores a tightly-packed 3D texture image.
-// The dimension is `depth * height * width`. Pixels start at the bottom-left corner of the first layer.
+// The dimension is `width (columns) * height (rows) * depth (layers)` where the first dimension is continuous.
+// Pixels start at the bottom-left corner of the first layer.
 export template <Color T>
 class Image {
 public:
     Image() = default;
 
-    explicit Image(size_t depth, size_t height, size_t width):
-        _pixels(std::make_unique<T[]>(depth * height * width)),
-        _dims(_pixels.get(), depth, height, width) {}
+    explicit Image(size_t width, size_t height, size_t depth = 1):
+        _pixels(std::make_unique<T[]>(width * height * depth)),
+        _dims(_pixels.get(), width, height, depth) {}
 
-    auto depth() const -> size_t {
+    auto width() const -> size_t {
         return _dims.extent(0);
     }
 
@@ -36,7 +37,7 @@ public:
         return _dims.extent(1);
     }
 
-    auto width() const -> size_t {
+    auto depth() const -> size_t {
         return _dims.extent(2);
     }
 
@@ -51,38 +52,38 @@ public:
 
     // Pixel access.
     template <typename Self>
-    auto operator[](this Self&& self, size_t layer, size_t row, size_t column) -> auto&& {
-        return std::forward<Self>(self)._dims[layer, row, column];
+    auto operator[](this Self&& self, size_t x, size_t y, size_t z) -> auto&& {
+        return std::forward<Self>(self)._dims[x, y, z];
     }
 
     // Reshapes the dimensions without changing total size or pixel data.
-    void reshape(size_t depth, size_t height, size_t width) {
-        assert(depth * height * width == size());
-        _dims = std::mdspan<T, std::dextents<size_t, 3>>(_dims.data_handle(), depth, height, width);
+    void reshape(size_t width, size_t height, size_t depth = 1) {
+        assert(width * height * depth == size());
+        _dims = decltype(_dims)(_dims.data_handle(), width, height, depth);
     }
 
     // Fills all pixels in a single layer with the same color.
-    void fill(size_t layer, T const& color) {
-        assert(layer < depth());
-        auto stride = _dims.stride(0);
-        std::fill_n(_dims.data_handle() + layer * stride, stride, color);
+    void fill(size_t z, T const& color) {
+        assert(z + 1 <= depth());
+        auto stride = _dims.stride(2);
+        std::fill_n(_dims.data_handle() + z * stride, stride, color);
     }
 
     // Fills a region within a single layer using pixels from another image.
     // Can be replaced by `std::submdspan` in C++26.
-    void fill(size_t layer, size_t row, size_t column, Image const& src, size_t src_layer = 0) {
-        assert(layer < depth() && row + src.height() <= height() && column + src.width() <= width());
-        assert(src_layer < src.depth());
+    void fill(size_t x, size_t y, size_t z, Image const& src, size_t src_z = 0) {
+        assert(x + src.width() <= width() && y + src.height() <= height() && z + 1 <= depth());
+        assert(src_z + 1 <= src.depth());
         for (auto i = 0uz; i < src.height(); i++) {
             for (auto j = 0uz; j < src.width(); j++) {
-                _dims[layer, row + i, column + j] = src._dims[src_layer, i, j];
+                _dims[x + j, y + i, z] = src._dims[j, i, src_z];
             }
         }
     }
 
 private:
     std::unique_ptr<T[]> _pixels;
-    std::mdspan<T, std::dextents<size_t, 3>> _dims;
+    std::mdspan<T, std::dextents<size_t, 3>, std::layout_left> _dims;
 };
 
 export using ImageRGB = Image<Vec3u8>;
@@ -150,8 +151,8 @@ export auto load_png_image(std::filesystem::path const& filename) -> std::expect
         // Read the info.
         png_init_io(reader.get(), file.get());
         png_read_info(reader.get(), init_info.get());
-        auto height = png_get_image_height(reader.get(), init_info.get());
         auto width = png_get_image_width(reader.get(), init_info.get());
+        auto height = png_get_image_height(reader.get(), init_info.get());
         auto color_type = png_get_color_type(reader.get(), init_info.get());
         auto bit_depth = png_get_bit_depth(reader.get(), init_info.get());
 
@@ -190,7 +191,7 @@ export auto load_png_image(std::filesystem::path const& filename) -> std::expect
         // Create the receiving buffer.
         // This has non-trivial destructor, so we need to reset C exception handling.
         // See: https://en.cppreference.com/w/cpp/utility/program/longjmp
-        auto res = ImageRGBA(1, height, width);
+        auto res = ImageRGBA(width, height);
         if (setjmp(png_jmpbuf(reader.get())) == 0) {
             // Read image data.
             for (auto i = height; i-- > 0uz;) {

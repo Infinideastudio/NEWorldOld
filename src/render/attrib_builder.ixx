@@ -19,11 +19,11 @@ class Vertex {
 public:
     // Interleaving results.
     static constexpr auto interleaved = interleave_v<T...>;
-    using interleaved_cpp_types = typename decltype(interleaved)::cpp_types;
+    using cpp_types = typename decltype(interleaved)::cpp_types;
 
     // `Attrib<i>` gives the type of the i-th attribute.
     template <size_t I>
-    using Attrib = std::tuple_element_t<I, interleaved_cpp_types>;
+    using Attrib = std::tuple_element_t<I, cpp_types>;
 
     Vertex() = default;
 
@@ -69,8 +69,8 @@ namespace {
 // Example usage:
 //
 // ```
-// namespace spec = attrib_layout::spec;
-// auto builder = AttribBuilder<spec::Int, spec::Vec3f, spec::Float>();
+// namespace al = attrib_layout::spec;
+// auto builder = AttribBuilder<al::Int, al::Vec3f, al::Float>();
 // builder.set<0>(1);
 // builder.set<1>(1.0f, 2.0f, 3.0f);
 // builder.set<2>(0.5f);
@@ -80,8 +80,8 @@ namespace {
 // Example with semantic wrappers:
 //
 // ```
-// namespace spec = attrib_layout::spec;
-// auto builder = AttribBuilder<spec::Coord<spec::Vec3f>, spec::TexCoord<spec::Vec2f>, spec::Color<spec::Vec4i>>();
+// namespace al = attrib_layout::spec;
+// auto builder = AttribBuilder<al::Coord<al::Vec3f>, al::TexCoord<al::Vec2f>, al::Color<al::Vec4i>>();
 // builder.color(255, 0, 0, 255);
 // builder.tex_coord(0.5f, 0.5f);
 // builder.coord(0.0f, 0.0f, 0.0f);

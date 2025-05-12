@@ -53,12 +53,12 @@ public:
     // The `format` must be the internal format of the texture array.
     // The `width` and `height` must be the dimensions of the texture array in pixels.
     // The `depth` must be the number of layers in the texture array.
-    explicit Texture(GLuint handle, Format format, size_t depth, size_t height, size_t width) noexcept:
+    explicit Texture(GLuint handle, Format format, size_t width, size_t height, size_t depth = 1) noexcept:
         _handle(handle),
         _format(format),
-        _depth(depth),
+        _width(width),
         _height(height),
-        _width(width) {}
+        _depth(depth) {}
 
     Texture(Texture const&) = delete;
     Texture(Texture&& from) noexcept {
@@ -77,16 +77,16 @@ public:
         }
     }
 
-    auto depth() const noexcept -> size_t {
-        return _depth;
+    auto width() const noexcept -> size_t {
+        return _width;
     }
 
     auto height() const noexcept -> size_t {
         return _height;
     }
 
-    auto width() const noexcept -> size_t {
-        return _width;
+    auto depth() const noexcept -> size_t {
+        return _depth;
     }
 
     auto get() const noexcept -> GLuint {
@@ -100,7 +100,7 @@ public:
 
     // Creates a new 2D array texture object with the given dimensions and internal format.
     // Invalidates any existing binding to texture unit 0.
-    static auto create(Format format, size_t depth, size_t height, size_t width) -> Texture {
+    static auto create(Format format, size_t width, size_t height, size_t depth = 1) -> Texture {
         auto handle = GLuint{0};
         glGenTextures(1, &handle);
         glActiveTexture(GL_TEXTURE0);
@@ -126,7 +126,7 @@ public:
             GL_UNSIGNED_BYTE,
             nullptr
         );
-        return Texture(handle, format, depth, height, width);
+        return Texture(handle, format, width, height, depth);
     }
 
     // Fills a region within a single layer using pixels from an image.
@@ -134,24 +134,24 @@ public:
     // Currently, only color textures and Vec*u8 images are supported.
     template <typename T, size_t N>
     requires (1 <= N && N <= 4)
-    void fill(size_t layer, size_t row, size_t column, Image<Vector<T, N>> const& src, size_t src_layer = 0) {
-        assert(layer < depth() && row + src.height() <= height() && column + src.width() <= width());
-        assert(src_layer < src.depth());
+    void fill(size_t x, size_t y, size_t z, Image<Vector<T, N>> const& src, size_t src_z = 0) {
+        assert(x + src.width() <= width() && y + src.height() <= height() && z + 1 <= depth());
+        assert(src_z + 1 <= src.depth());
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D_ARRAY, _handle);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glTexSubImage3D(
             GL_TEXTURE_2D_ARRAY,
             0,
-            static_cast<GLint>(column),
-            static_cast<GLint>(row),
-            static_cast<GLint>(layer),
+            static_cast<GLint>(x),
+            static_cast<GLint>(y),
+            static_cast<GLint>(z),
             static_cast<GLsizei>(src.width()),
             static_cast<GLsizei>(src.height()),
             1,
             _elem_count_to_input_format<N>(),
             _elem_type_to_input_type<T>(),
-            &src[src_layer, 0, 0]
+            &src[0, 0, src_z]
         );
     }
 
@@ -228,17 +228,17 @@ public:
     friend void swap(Texture& first, Texture& second) noexcept {
         using std::swap;
         swap(first._handle, second._handle);
-        swap(first._depth, second._depth);
-        swap(first._height, second._height);
         swap(first._width, second._width);
+        swap(first._height, second._height);
+        swap(first._depth, second._depth);
     }
 
 private:
     GLuint _handle = 0;
     Format _format = Format::DEPTH;
-    size_t _depth = 0;
-    size_t _height = 0;
     size_t _width = 0;
+    size_t _height = 0;
+    size_t _depth = 0;
 
     static constexpr auto _format_to_gl_enum(Format format) -> GLenum {
         return static_cast<GLenum>(format);
