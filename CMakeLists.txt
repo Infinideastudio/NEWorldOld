@@ -42,6 +42,7 @@ option(BUILD_SHARED_LIBS "Build using shared libraries (DLL)" OFF)
 
 # The GLAD OpenGL function loader library. It provides a service for generating customized headers
 # and source files for project-specific needs. We have included the generated files in this project.
+# See: https://gen.glad.sh/
 add_subdirectory(src/glad)
 
 # The GLFW window handling library.

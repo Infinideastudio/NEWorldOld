@@ -91,9 +91,13 @@ export void create_window() {
     auto glfwStatus = glfwInit();
     assert(glfwStatus == GLFW_TRUE, "failed to initialize GLFW");
 
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, Multisample);
 #ifdef NEWORLD_DEBUG
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+    glfwWindowHint(GLFW_CONTEXT_DEBUG, true);
 #endif
 
     if (UIAutoStretch) {
