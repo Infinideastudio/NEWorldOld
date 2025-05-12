@@ -40,7 +40,7 @@ void on_window_size_event(GLFWwindow* win, int width, int height) {
     WindowHeight = height > 0 ? height : 1;
     glfwSetWindowSize(win, width, height);
     init_gl_defaults();
-    Renderer::init_shaders();
+    Renderer::init_pipeline(false, true);
 }
 
 void on_mouse_button_event(GLFWwindow*, int button, int action, int) {
@@ -147,7 +147,7 @@ export void create_window() {
     // Make sure everything is initialised
     TextRenderer::init_font();
     init_gl_defaults();
-    Renderer::init_shaders();
+    Renderer::init_pipeline(false, false);
 }
 
 export void toggle_stretch() {
@@ -164,7 +164,7 @@ export void toggle_stretch() {
     glfwSetWindowSize(MainWindow, WindowWidth, WindowHeight);
     TextRenderer::init_font(true);
     init_gl_defaults();
-    Renderer::init_shaders();
+    Renderer::init_pipeline(false, true);
 }
 
 export void toggle_full_screen() {
@@ -191,7 +191,7 @@ export void toggle_full_screen() {
         );
     }
     init_gl_defaults();
-    Renderer::init_shaders();
+    Renderer::init_pipeline(false, true);
 }
 
 export void load_textures() {

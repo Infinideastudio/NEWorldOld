@@ -115,7 +115,6 @@ target_sources(
         "src/chunk_pointer_arrays.ixx"
         "src/commands.ixx"
         "src/debug.ixx"
-        "src/framebuffers.ixx"
         "src/globalization.ixx"
         "src/globals.ixx"
         "src/gui.ixx"

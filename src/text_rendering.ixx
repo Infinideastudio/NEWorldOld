@@ -18,8 +18,8 @@ import textures;
 namespace TextRenderer {
 
 constexpr auto BASE_FONT_SIZE = 16.0;
-constexpr auto INITIAL_TEXTURE_DEPTH = 10uz;
-constexpr auto TEXTURE_SIZE = 256uz;
+constexpr auto TEXTURE_WIDTH = 1024uz;
+constexpr auto TEXTURE_HEIGHT_INIT = 16uz;
 
 struct UnicodeChar {
     Vec3f tc = 0.0f;
@@ -34,7 +34,6 @@ FT_Face face;
 FT_GlyphSlot slot;
 render::ImageRGBA image = {};
 render::Texture tex = {};
-size_t curr_layer = 0uz;
 size_t curr_row = 0uz;
 size_t curr_col = 0uz;
 size_t curr_row_height = 0uz;
@@ -64,9 +63,8 @@ export void init_font(bool reload) {
         chars.clear();
 
         // Reset the image and texture.
-        image = render::ImageRGBA(INITIAL_TEXTURE_DEPTH, TEXTURE_SIZE, TEXTURE_SIZE);
+        image = render::ImageRGBA(1, TEXTURE_HEIGHT_INIT, TEXTURE_WIDTH);
         tex = {};
-        curr_layer = 0uz;
         curr_row = 0uz;
         curr_col = 0uz;
         curr_row_height = 0uz;
@@ -87,56 +85,45 @@ auto loadChar(char32_t uc) -> UnicodeChar& {
         bitmap.pixel_mode == FT_PIXEL_MODE_GRAY && bitmap.num_grays == 256 && bitmap.pitch >= 0,
         "unexpected bitmap format from font rendering"
     );
-    assert(bitmap.rows <= TEXTURE_SIZE && bitmap.width <= TEXTURE_SIZE, "bitmap size exceeds maximum character size");
+    assert(bitmap.width + 1uz <= TEXTURE_WIDTH, "font bitmap size exceeds maximum allowed size");
 
     // Allocate space for the character in the atlas image.
     // Leave 1px margin around each character.
-    if (curr_col + bitmap.width + 1uz > TEXTURE_SIZE) {
+    if (curr_col + bitmap.width + 1uz > TEXTURE_WIDTH) {
+        curr_col = 0uz;
         curr_row += curr_row_height;
-        curr_col = 0uz;
         curr_row_height = 0uz;
     }
-    if (curr_row + bitmap.rows + 1uz > TEXTURE_SIZE) {
-        curr_layer++;
-        curr_row = 0uz;
-        curr_col = 0uz;
-        curr_row_height = 0uz;
-    }
+    curr_row_height = std::max(curr_row_height, bitmap.rows + 1uz);
 
     // Allocate new image layers when necessary.
-    while (curr_layer >= image.depth()) {
-        auto next = render::ImageRGBA(image.depth() * 2, image.height(), image.width());
-        for (auto i = 0uz; i < image.depth(); i++) {
-            next.fill(i, 0, 0, image, i);
-        }
+    while (curr_row + curr_row_height >= image.height()) {
+        auto next = render::ImageRGBA(1, image.height() * 2, image.width());
+        next.fill(0, 0, 0, image);
         image = std::move(next);
     }
 
     // Copy the bitmap into the atlas image.
     for (auto i = 0uz; i < bitmap.rows; i++) {
         for (auto j = 0uz; j < bitmap.width; j++) {
-            image[curr_layer, curr_row + i, curr_col + j] =
+            image[0, curr_row + i, curr_col + j] =
                 {255, 255, 255, bitmap.buffer[(bitmap.rows - 1 - i) * bitmap.pitch + j]};
         }
     }
 
-    // Record and advance the current position in the atlas image.
-    auto tc = Vec3f(curr_col, curr_row, curr_layer) / Vec3f(TEXTURE_SIZE, TEXTURE_SIZE, 1.0f);
-    curr_row_height = std::max(curr_row_height, bitmap.rows + 1uz);
-    curr_col += bitmap.width + 1uz;
-
     // Update the texture to match the new atlas image.
-    if (tex.depth() != image.depth()) {
+    if (tex.height() != image.height()) {
         tex = render::Texture::create(render::Texture::Format::RGBA, image.depth(), image.height(), image.width());
-        tex.set_filter(false, false);
-        tex.set_wrap(false);
-        for (auto i = 0uz; i < image.depth(); i++) {
-            tex.fill(i, 0, 0, image, i);
-        }
+        tex.fill(0, 0, 0, image);
     } else {
-        tex.fill(curr_layer, 0, 0, image, curr_layer);
+        tex.fill(0, 0, 0, image); // TODO: only need to update a small region
     }
 
+    // Record and advance the current position in the atlas image.
+    auto tc = Vec3f(curr_col, curr_row, 0.0f);
+    curr_col += bitmap.width + 1uz;
+
+    // Store the character metrics.
     auto const& metrics = slot->metrics;
     auto& res = chars[uc];
     res.tc = tc;
@@ -158,14 +145,14 @@ auto getChar(char32_t c) -> UnicodeChar& {
 export auto font_height() -> int {
     float ascender = static_cast<float>(face->size->metrics.ascender) / 64.0f;
     return static_cast<int>(std::round(ascender));
+    // float height = static_cast<float>(face->size->metrics.height) / 64.0f;
+    // return static_cast<int>(std::round(height));
 }
 
 export auto line_height() -> int {
     float ascender = static_cast<float>(face->size->metrics.ascender) / 64.0f;
     float descender = static_cast<float>(face->size->metrics.descender) / 64.0f;
     return static_cast<int>(std::round(ascender - descender));
-    // float height = static_cast<float>(face->size->metrics.height) / 64.0f;
-    // return static_cast<int>(std::round(height));
 }
 
 export auto rendered_width(std::string_view s) -> int {
@@ -200,24 +187,24 @@ export void render_string(int x, int y, std::u32string_view s) {
         float height = uc.height;
 
         v.color({128, 128, 128, 255 * cola});
-        v.tex_coord({tc.x(), tc.y() + height / TEXTURE_SIZE, tc.z()});
+        v.tex_coord({tc.x() / tex.width(), (tc.y() + height) / tex.height(), tc.z()});
         v.coord({xpos + 1.0f, ypos + 1.0f});
-        v.tex_coord({tc.x(), tc.y(), tc.z()});
+        v.tex_coord({tc.x() / tex.width(), tc.y() / tex.height(), tc.z()});
         v.coord({xpos + 1.0f, ypos + height + 1.0f});
-        v.tex_coord({tc.x() + width / TEXTURE_SIZE, tc.y(), tc.z()});
+        v.tex_coord({(tc.x() + width) / tex.width(), tc.y() / tex.height(), tc.z()});
         v.coord({xpos + width + 1.0f, ypos + height + 1.0f});
-        v.tex_coord({tc.x() + width / TEXTURE_SIZE, tc.y() + height / TEXTURE_SIZE, tc.z()});
+        v.tex_coord({(tc.x() + width) / tex.width(), (tc.y() + height) / tex.height(), tc.z()});
         v.coord({xpos + width + 1.0f, ypos + 1.0f});
         v.end_primitive();
 
         v.color({255 * colr, 255 * colg, 255 * colb, 255 * cola});
-        v.tex_coord({tc.x(), tc.y() + height / TEXTURE_SIZE, tc.z()});
+        v.tex_coord({tc.x() / tex.width(), (tc.y() + height) / tex.height(), tc.z()});
         v.coord({xpos, ypos});
-        v.tex_coord({tc.x(), tc.y(), tc.z()});
+        v.tex_coord({tc.x() / tex.width(), tc.y() / tex.height(), tc.z()});
         v.coord({xpos, ypos + height});
-        v.tex_coord({tc.x() + width / TEXTURE_SIZE, tc.y(), tc.z()});
+        v.tex_coord({(tc.x() + width) / tex.width(), tc.y() / tex.height(), tc.z()});
         v.coord({xpos + width, ypos + height});
-        v.tex_coord({tc.x() + width / TEXTURE_SIZE, tc.y() + height / TEXTURE_SIZE, tc.z()});
+        v.tex_coord({(tc.x() + width) / tex.width(), (tc.y() + height) / tex.height(), tc.z()});
         v.coord({xpos + width, ypos});
         v.end_primitive();
 

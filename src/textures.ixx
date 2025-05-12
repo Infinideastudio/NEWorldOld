@@ -92,7 +92,6 @@ export auto LoadTexture(std::filesystem::path const& path, bool bilinear) -> ren
         auto res = render::Texture::create(render::Texture::Format::RGBA, 1, image->height(), image->width());
         res.fill(0, 0, 0, *image);
         res.set_filter(bilinear, true);
-        res.set_wrap(false);
         res.generate_mipmaps();
         return std::move(res);
     }
@@ -110,8 +109,8 @@ export auto LoadBlockTextureArray(std::filesystem::path const& path) -> render::
         for (auto i = 0uz; i < count; ++i) {
             res.fill(i, 0, 0, *image, i);
         }
-        res.set_filter(false, true);
         res.set_wrap(true);
+        res.set_filter(false, true);
         res.generate_mipmaps();
         return std::move(res);
     }
