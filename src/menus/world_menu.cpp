@@ -142,12 +142,13 @@ private:
         int scissorBottom = static_cast<int>((downp - 72) * Stretch);
         glEnable(GL_SCISSOR_TEST);
         glScissor(0, WindowHeight - scissorBottom, WindowWidth, std::max(0, scissorBottom - scissorTop));
-        glTranslatef(0.0f, (float) -trs, 0.0f);
+        // glTranslatef(0.0f, (float) -trs, 0.0f);
         for (int i = 0; i < (int) thumbnails.size(); i++) {
             int xmin = 0, xmax = 0, ymin = 0, ymax = 0;
             xmin = midp - 250, xmax = midp + 250;
             ymin = top + i * itemHeight, ymax = top + (i + 1) * itemHeight;
             if (selected == (int) i) {
+                /*
                 glDisable(GL_TEXTURE_2D);
                 glBegin(GL_QUADS);
                 glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
@@ -157,8 +158,10 @@ private:
                 GUI::UIVertex(midp + 255, top + i * itemHeight);
                 glEnd();
                 glEnable(GL_TEXTURE_2D);
+                */
             }
             if (!thumbnails[i]) {
+                /*
                 glDisable(GL_TEXTURE_2D);
                 glBegin(GL_QUADS);
                 if (mouseon == i)
@@ -171,6 +174,7 @@ private:
                 GUI::UIVertex(midp + 250, top + i * itemHeight + borderWidth);
                 glEnd();
                 glEnable(GL_TEXTURE_2D);
+                */
             } else {
                 bool marginOnSides = false;
                 float w = 0.0f, h = 0.0f;
@@ -183,6 +187,7 @@ private:
                     h = 1.0f;
                 }
                 thumbnails[i].bind(0);
+                /*
                 if (mouseon == i)
                     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
                 else
@@ -195,6 +200,7 @@ private:
                     GUI::UIVertex(midp + 250, top + (i + 1) * itemHeight - borderWidth);
                 glTexCoord2f(0.5f + w / 2, 0.5f + h / 2), GUI::UIVertex(midp + 250, top + i * itemHeight + borderWidth);
                 glEnd();
+                */
             }
             GUI::UIRenderString(
                 midp - 250,
@@ -206,6 +212,7 @@ private:
             );
         }
         int i = (int) thumbnails.size();
+        /*
         glDisable(GL_TEXTURE_2D);
         glBegin(GL_QUADS);
         if (mouseon == i)
@@ -225,6 +232,7 @@ private:
         GUI::UIVertex(midp + 250, top + i * itemHeight + borderWidth);
         glEnd();
         glEnable(GL_TEXTURE_2D);
+        */
         GUI::UIRenderString(
             midp - 250,
             midp + 250,

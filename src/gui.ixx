@@ -237,6 +237,7 @@ void drawBackground() {
     static double startTimer = timer();
     double elapsed = timer() - startTimer;
 
+    /*
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glMultMatrixf(
@@ -320,14 +321,15 @@ void drawBackground() {
     glTexCoord2f(1.0f, 1.0f);
     glVertex3f(1.0f, 1.0f, -1.0f);
     glEnd();
+    */
 }
 
 void UIVertex(double x, double y) {
-    glVertex2d(x * Stretch, y * Stretch);
+    // glVertex2d(x * Stretch, y * Stretch);
 }
 
 void UIVertex(int x, int y) {
-    glVertex2i(static_cast<int>(x * Stretch), static_cast<int>(y * Stretch));
+    // glVertex2i(static_cast<int>(x * Stretch), static_cast<int>(y * Stretch));
 }
 
 void UISetFontColor(float r, float g, float b, float a) {
@@ -407,6 +409,7 @@ void Label::render() {
         fcA = FgA * 0.8f;
     }
     if (focused) {
+        /*
         glDisable(GL_TEXTURE_2D);
         glBegin(GL_LINE_LOOP);
         glColor4f(FgR * 0.6f, FgG * 0.6f, FgB * 0.6f, linealpha);
@@ -416,6 +419,7 @@ void Label::render() {
         UIVertex(xmax, ymin);
         glEnd();
         glEnable(GL_TEXTURE_2D);
+        */
     }
     UISetFontColor(fcR, fcG, fcB, fcA);
     UIRenderString(xmin, xmax, ymin, ymax, text, centered);
@@ -473,6 +477,7 @@ void Button::render() {
         fcA = FgA * 0.3f;
     }
 
+    /*
     glDisable(GL_TEXTURE_2D);
 
     glBegin(GL_QUADS);
@@ -496,6 +501,7 @@ void Button::render() {
     glEnd();
 
     glEnable(GL_TEXTURE_2D);
+    */
 
     UISetFontColor(1.0f, 1.0f, 1.0f, 1.0f);
     if (!enabled)
@@ -572,6 +578,7 @@ void Trackbar::render() {
         fcA = FgA * 0.3f;
     }
 
+    /*
     glDisable(GL_TEXTURE_2D);
 
     glBegin(GL_QUADS);
@@ -603,6 +610,7 @@ void Trackbar::render() {
     glEnd();
 
     glEnable(GL_TEXTURE_2D);
+    */
 
     UISetFontColor(1.0f, 1.0f, 1.0f, 1.0f);
     if (!enabled)
@@ -655,6 +663,7 @@ void TextBox::render() {
         bcA = BgA * 0.3f;
     }
 
+    /*
     glDisable(GL_TEXTURE_2D);
 
     glBegin(GL_QUADS);
@@ -678,6 +687,7 @@ void TextBox::render() {
     glEnd();
 
     glEnable(GL_TEXTURE_2D);
+    */
 
     UISetFontColor(1.0f, 1.0f, 1.0f, 1.0f);
     if (!enabled)
@@ -786,6 +796,7 @@ void VScroll::render() {
         fcA = FgA * 0.3f;
     }
 
+    /*
     glDisable(GL_TEXTURE_2D);
 
     glColor4f(bcR, bcG, bcB, bcA);
@@ -857,12 +868,14 @@ void VScroll::render() {
     glEnd();
 
     glEnable(GL_TEXTURE_2D);
+    */
 }
 
 void ImageBox::update() {}
 
 void ImageBox::render() {
     tex->bind(0);
+    /*
     glBegin(GL_QUADS);
     glTexCoord2f(txmin, tymax);
     UIVertex(xmin, ymin);
@@ -873,6 +886,7 @@ void ImageBox::render() {
     glTexCoord2f(txmax, tymax);
     UIVertex(xmax, ymin);
     glEnd();
+    */
 }
 
 void Form::registerControl(Control* c) {
