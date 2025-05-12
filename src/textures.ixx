@@ -89,7 +89,7 @@ export auto getTextureIndex(blocks::Id blockname, size_t face) -> TextureIndex {
 export auto LoadTexture(std::filesystem::path const& path, bool bilinear) -> render::Texture {
     auto image = render::load_png_image(path);
     if (image) {
-        auto res = render::Texture::create(render::Texture::Format::RGBA, image->width(), image->height());
+        auto res = render::Texture::create(render::Texture::Format::SRGBA, image->width(), image->height());
         res.fill(0, 0, 0, *image);
         res.set_filter(bilinear, true);
         res.generate_mipmaps();
@@ -105,7 +105,7 @@ export auto LoadBlockTextureArray(std::filesystem::path const& path) -> render::
         auto size = image->width();
         auto count = image->height() / size;
         image->reshape(size, size, count);
-        auto res = render::Texture::create(render::Texture::Format::RGBA, size, size, count);
+        auto res = render::Texture::create(render::Texture::Format::SRGBA, size, size, count);
         for (auto i = 0uz; i < count; ++i) {
             res.fill(0, 0, i, *image, i);
         }

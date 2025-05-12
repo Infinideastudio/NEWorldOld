@@ -16,7 +16,6 @@ layout(std140, row_major) uniform Filter {
 };
 
 const float PI = 3.141593;
-const float GAMMA = 2.2;
 
 vec4 get_color(vec2 tex_coord) {
     return texture(u_buffer, vec3(tex_coord, 0.0));

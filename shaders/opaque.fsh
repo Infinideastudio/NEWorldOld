@@ -12,8 +12,6 @@ layout(location = 2) out vec4 o_block_id;
 
 uniform sampler2DArray u_diffuse;
 
-const float GAMMA = 2.2;
-
 vec2 encode_u16(uint v) {
     uint high = v / 256u;
     uint low = v - high * 256u;
@@ -24,7 +22,6 @@ void main() {
     vec4 texel = texture(u_diffuse, tex_coord.stp);
     if (texel.a <= 0.0) discard;
     texel.a = 1.0;
-    texel.rgb = pow(texel.rgb, vec3(GAMMA));
 
     o_frag_color = vec4(color, 1.0) * texel;
     o_normal = vec4(normal * 0.5 + vec3(0.5), 1.0);

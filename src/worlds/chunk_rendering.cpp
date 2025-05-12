@@ -44,10 +44,6 @@ public:
         // Temporary: mix two light levels.
         _light = std::max(block.light.sky(), block.light.block());
 
-        // Temporary: clamp to minimum light level 2.
-        if (!info.opaque)
-            _light = std::max(_light, uint8_t{2});
-
         if (_id == base_blocks().air)
             _flags |= 0x1;
         if (info.opaque)
@@ -59,8 +55,8 @@ public:
     auto id() const -> blocks::Id {
         return _id;
     }
-    auto light() const -> std::uint8_t {
-        return _light;
+    auto color() const -> int {
+        return opaque() ? 0 : 255 / std::max(1, (16 - _light) * (16 - _light) / 10); // Simulate quadratic falloff.
     }
     auto skipped() const -> bool {
         return _flags & 0x1;
@@ -95,9 +91,6 @@ private:
     std::uint8_t _light = 0;
     std::uint8_t _flags = 0;
 };
-
-// Temporary: maximum value obtained after mixing two light levels.
-constexpr auto MAX_LIGHT = 15;
 
 // All data needed to render a chunks::Chunk.
 class ChunkRenderData {
@@ -154,22 +147,22 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             tex = Textures::getTextureIndex(bl.id(), 0);
         else
             tex = Textures::getTextureIndex(bl.id(), 1);
-        int br = rd.block(x + 1, y, z).light();
+        int br = rd.block(x + 1, y, z).color();
         if (SmoothLighting) {
-            col[0] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z - 1).light()
-                   + rd.block(x + 1, y - 1, z - 1).light();
-            col[1] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z - 1).light()
-                   + rd.block(x + 1, y + 1, z - 1).light();
-            col[2] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z + 1).light()
-                   + rd.block(x + 1, y + 1, z + 1).light();
-            col[3] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z + 1).light()
-                   + rd.block(x + 1, y - 1, z + 1).light();
+            col[0] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z - 1).color()
+                   + rd.block(x + 1, y - 1, z - 1).color();
+            col[1] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z - 1).color()
+                   + rd.block(x + 1, y + 1, z - 1).color();
+            col[2] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z + 1).color()
+                   + rd.block(x + 1, y + 1, z + 1).color();
+            col[3] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z + 1).color()
+                   + rd.block(x + 1, y - 1, z + 1).color();
         } else {
             col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col = col * 255 / (MAX_LIGHT * 4);
+        col = col / 4;
         if (!AdvancedRender) {
-            col = col * 7 / 10;
+            col = col * 5 / 10;
         }
         v.material(bl.id().get());
         v.normal(1, 0, 0);
@@ -194,22 +187,22 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             tex = Textures::getTextureIndex(bl.id(), 0);
         else
             tex = Textures::getTextureIndex(bl.id(), 1);
-        int br = rd.block(x - 1, y, z).light();
+        int br = rd.block(x - 1, y, z).color();
         if (SmoothLighting) {
-            col[0] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z - 1).light()
-                   + rd.block(x - 1, y - 1, z - 1).light();
-            col[1] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z + 1).light()
-                   + rd.block(x - 1, y - 1, z + 1).light();
-            col[2] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z + 1).light()
-                   + rd.block(x - 1, y + 1, z + 1).light();
-            col[3] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z - 1).light()
-                   + rd.block(x - 1, y + 1, z - 1).light();
+            col[0] = br + rd.block(x - 1, y - 1, z).color() + rd.block(x - 1, y, z - 1).color()
+                   + rd.block(x - 1, y - 1, z - 1).color();
+            col[1] = br + rd.block(x - 1, y - 1, z).color() + rd.block(x - 1, y, z + 1).color()
+                   + rd.block(x - 1, y - 1, z + 1).color();
+            col[2] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x - 1, y, z + 1).color()
+                   + rd.block(x - 1, y + 1, z + 1).color();
+            col[3] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x - 1, y, z - 1).color()
+                   + rd.block(x - 1, y + 1, z - 1).color();
         } else {
             col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col = col * 255 / (MAX_LIGHT * 4);
+        col = col / 4;
         if (!AdvancedRender) {
-            col = col * 7 / 10;
+            col = col * 5 / 10;
         }
         v.material(bl.id().get());
         v.normal(-1, 0, 0);
@@ -231,20 +224,20 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
     // Top Face
     if (bl.should_render_face(neighbors[2], layer)) {
         tex = Textures::getTextureIndex(bl.id(), 0);
-        int br = rd.block(x, y + 1, z).light();
+        int br = rd.block(x, y + 1, z).color();
         if (SmoothLighting) {
-            col[0] = br + rd.block(x, y + 1, z - 1).light() + rd.block(x - 1, y + 1, z).light()
-                   + rd.block(x - 1, y + 1, z - 1).light();
-            col[1] = br + rd.block(x, y + 1, z + 1).light() + rd.block(x - 1, y + 1, z).light()
-                   + rd.block(x - 1, y + 1, z + 1).light();
-            col[2] = br + rd.block(x, y + 1, z + 1).light() + rd.block(x + 1, y + 1, z).light()
-                   + rd.block(x + 1, y + 1, z + 1).light();
-            col[3] = br + rd.block(x, y + 1, z - 1).light() + rd.block(x + 1, y + 1, z).light()
-                   + rd.block(x + 1, y + 1, z - 1).light();
+            col[0] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x - 1, y + 1, z).color()
+                   + rd.block(x - 1, y + 1, z - 1).color();
+            col[1] = br + rd.block(x, y + 1, z + 1).color() + rd.block(x - 1, y + 1, z).color()
+                   + rd.block(x - 1, y + 1, z + 1).color();
+            col[2] = br + rd.block(x, y + 1, z + 1).color() + rd.block(x + 1, y + 1, z).color()
+                   + rd.block(x + 1, y + 1, z + 1).color();
+            col[3] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x + 1, y + 1, z).color()
+                   + rd.block(x + 1, y + 1, z - 1).color();
         } else {
             col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col = col * 255 / (MAX_LIGHT * 4);
+        col = col / 4;
         v.material(bl.id().get());
         v.normal(0, 1, 0);
         v.color(col[0]);
@@ -265,20 +258,20 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
     // Bottom Face
     if (bl.should_render_face(neighbors[3], layer)) {
         tex = Textures::getTextureIndex(bl.id(), 2);
-        int br = rd.block(x, y - 1, z).light();
+        int br = rd.block(x, y - 1, z).color();
         if (SmoothLighting) {
-            col[0] = br + rd.block(x, y - 1, z - 1).light() + rd.block(x - 1, y - 1, z).light()
-                   + rd.block(x - 1, y - 1, z - 1).light();
-            col[1] = br + rd.block(x, y - 1, z - 1).light() + rd.block(x + 1, y - 1, z).light()
-                   + rd.block(x + 1, y - 1, z - 1).light();
-            col[2] = br + rd.block(x, y - 1, z + 1).light() + rd.block(x + 1, y - 1, z).light()
-                   + rd.block(x + 1, y - 1, z + 1).light();
-            col[3] = br + rd.block(x, y - 1, z + 1).light() + rd.block(x - 1, y - 1, z).light()
-                   + rd.block(x - 1, y - 1, z + 1).light();
+            col[0] = br + rd.block(x, y - 1, z - 1).color() + rd.block(x - 1, y - 1, z).color()
+                   + rd.block(x - 1, y - 1, z - 1).color();
+            col[1] = br + rd.block(x, y - 1, z - 1).color() + rd.block(x + 1, y - 1, z).color()
+                   + rd.block(x + 1, y - 1, z - 1).color();
+            col[2] = br + rd.block(x, y - 1, z + 1).color() + rd.block(x + 1, y - 1, z).color()
+                   + rd.block(x + 1, y - 1, z + 1).color();
+            col[3] = br + rd.block(x, y - 1, z + 1).color() + rd.block(x - 1, y - 1, z).color()
+                   + rd.block(x - 1, y - 1, z + 1).color();
         } else {
             col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col = col * 255 / (MAX_LIGHT * 4);
+        col = col / 4;
         v.material(bl.id().get());
         v.normal(0, -1, 0);
         v.color(col[0]);
@@ -302,22 +295,22 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             tex = Textures::getTextureIndex(bl.id(), 0);
         else
             tex = Textures::getTextureIndex(bl.id(), 1);
-        int br = rd.block(x, y, z + 1).light();
+        int br = rd.block(x, y, z + 1).color();
         if (SmoothLighting) {
-            col[0] = br + rd.block(x, y - 1, z + 1).light() + rd.block(x - 1, y, z + 1).light()
-                   + rd.block(x - 1, y - 1, z + 1).light();
-            col[1] = br + rd.block(x, y - 1, z + 1).light() + rd.block(x + 1, y, z + 1).light()
-                   + rd.block(x + 1, y - 1, z + 1).light();
-            col[2] = br + rd.block(x, y + 1, z + 1).light() + rd.block(x + 1, y, z + 1).light()
-                   + rd.block(x + 1, y + 1, z + 1).light();
-            col[3] = br + rd.block(x, y + 1, z + 1).light() + rd.block(x - 1, y, z + 1).light()
-                   + rd.block(x - 1, y + 1, z + 1).light();
+            col[0] = br + rd.block(x, y - 1, z + 1).color() + rd.block(x - 1, y, z + 1).color()
+                   + rd.block(x - 1, y - 1, z + 1).color();
+            col[1] = br + rd.block(x, y - 1, z + 1).color() + rd.block(x + 1, y, z + 1).color()
+                   + rd.block(x + 1, y - 1, z + 1).color();
+            col[2] = br + rd.block(x, y + 1, z + 1).color() + rd.block(x + 1, y, z + 1).color()
+                   + rd.block(x + 1, y + 1, z + 1).color();
+            col[3] = br + rd.block(x, y + 1, z + 1).color() + rd.block(x - 1, y, z + 1).color()
+                   + rd.block(x - 1, y + 1, z + 1).color();
         } else {
             col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col = col * 255 / (MAX_LIGHT * 4);
+        col = col / 4;
         if (!AdvancedRender) {
-            col = col * 5 / 10;
+            col = col * 2 / 10;
         }
         v.material(bl.id().get());
         v.normal(0, 0, 1);
@@ -342,22 +335,22 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             tex = Textures::getTextureIndex(bl.id(), 0);
         else
             tex = Textures::getTextureIndex(bl.id(), 1);
-        int br = rd.block(x, y, z - 1).light();
+        int br = rd.block(x, y, z - 1).color();
         if (SmoothLighting) {
-            col[0] = br + rd.block(x, y - 1, z - 1).light() + rd.block(x - 1, y, z - 1).light()
-                   + rd.block(x - 1, y - 1, z - 1).light();
-            col[1] = br + rd.block(x, y + 1, z - 1).light() + rd.block(x - 1, y, z - 1).light()
-                   + rd.block(x - 1, y + 1, z - 1).light();
-            col[2] = br + rd.block(x, y + 1, z - 1).light() + rd.block(x + 1, y, z - 1).light()
-                   + rd.block(x + 1, y + 1, z - 1).light();
-            col[3] = br + rd.block(x, y - 1, z - 1).light() + rd.block(x + 1, y, z - 1).light()
-                   + rd.block(x + 1, y - 1, z - 1).light();
+            col[0] = br + rd.block(x, y - 1, z - 1).color() + rd.block(x - 1, y, z - 1).color()
+                   + rd.block(x - 1, y - 1, z - 1).color();
+            col[1] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x - 1, y, z - 1).color()
+                   + rd.block(x - 1, y + 1, z - 1).color();
+            col[2] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x + 1, y, z - 1).color()
+                   + rd.block(x + 1, y + 1, z - 1).color();
+            col[3] = br + rd.block(x, y - 1, z - 1).color() + rd.block(x + 1, y, z - 1).color()
+                   + rd.block(x + 1, y - 1, z - 1).color();
         } else {
             col[0] = col[1] = col[2] = col[3] = br * 4;
         }
-        col = col * 255 / (MAX_LIGHT * 4);
+        col = col / 4;
         if (!AdvancedRender) {
-            col = col * 5 / 10;
+            col = col * 2 / 10;
         }
         v.material(bl.id().get());
         v.normal(0, 0, -1);
@@ -379,7 +372,7 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
 
 // The merge face rendering method for a primitive (adjacent block faces).
 void _render_primitive(QuadPrimitive const& p, AttribIndexBuilder& v) {
-    auto col = p.col * 255 / (MAX_LIGHT * 4);
+    auto col = p.col / 4;
     auto x = p.x, y = p.y, z = p.z, length = p.length;
 
     v.material(p.blk.get());
@@ -388,7 +381,7 @@ void _render_primitive(QuadPrimitive const& p, AttribIndexBuilder& v) {
     switch (p.direction) {
         case 0:
             if (!AdvancedRender) {
-                col = col * 7 / 10;
+                col = col * 5 / 10;
             }
             v.normal(1, 0, 0);
             v.color(col[0]);
@@ -407,7 +400,7 @@ void _render_primitive(QuadPrimitive const& p, AttribIndexBuilder& v) {
             break;
         case 1:
             if (!AdvancedRender) {
-                col = col * 7 / 10;
+                col = col * 5 / 10;
             }
             v.normal(-1, 0, 0);
             v.color(col[0]);
@@ -458,7 +451,7 @@ void _render_primitive(QuadPrimitive const& p, AttribIndexBuilder& v) {
             break;
         case 4:
             if (!AdvancedRender) {
-                col = col * 5 / 10;
+                col = col * 2 / 10;
             }
             v.normal(0, 0, 1);
             v.color(col[0]);
@@ -477,7 +470,7 @@ void _render_primitive(QuadPrimitive const& p, AttribIndexBuilder& v) {
             break;
         case 5:
             if (!AdvancedRender) {
-                col = col * 5 / 10;
+                col = col * 2 / 10;
             }
             v.normal(0, 0, -1);
             v.color(col[0]);
@@ -575,16 +568,16 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, 
                             if (NiceGrass && bl.id() == base_blocks().grass
                                 && rd.block(x + 1, y - 1, z).id() == base_blocks().grass)
                                 tex = Textures::getTextureIndex(bl.id(), 0);
-                            br = rd.block(x + 1, y, z).light();
+                            br = rd.block(x + 1, y, z).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z - 1).light()
-                                       + rd.block(x + 1, y - 1, z - 1).light();
-                                col[1] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z - 1).light()
-                                       + rd.block(x + 1, y + 1, z - 1).light();
-                                col[2] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x + 1, y, z + 1).light()
-                                       + rd.block(x + 1, y + 1, z + 1).light();
-                                col[3] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x + 1, y, z + 1).light()
-                                       + rd.block(x + 1, y - 1, z + 1).light();
+                                col[0] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z - 1).color()
+                                       + rd.block(x + 1, y - 1, z - 1).color();
+                                col[1] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z - 1).color()
+                                       + rd.block(x + 1, y + 1, z - 1).color();
+                                col[2] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z + 1).color()
+                                       + rd.block(x + 1, y + 1, z + 1).color();
+                                col[3] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z + 1).color()
+                                       + rd.block(x + 1, y - 1, z + 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }
@@ -593,46 +586,46 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, 
                             if (NiceGrass && bl.id() == base_blocks().grass
                                 && rd.block(x - 1, y - 1, z).id() == base_blocks().grass)
                                 tex = Textures::getTextureIndex(bl.id(), 0);
-                            br = rd.block(x - 1, y, z).light();
+                            br = rd.block(x - 1, y, z).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z - 1).light()
-                                       + rd.block(x - 1, y + 1, z - 1).light();
-                                col[1] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z - 1).light()
-                                       + rd.block(x - 1, y - 1, z - 1).light();
-                                col[2] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x - 1, y, z + 1).light()
-                                       + rd.block(x - 1, y - 1, z + 1).light();
-                                col[3] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x - 1, y, z + 1).light()
-                                       + rd.block(x - 1, y + 1, z + 1).light();
+                                col[0] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x - 1, y, z - 1).color()
+                                       + rd.block(x - 1, y + 1, z - 1).color();
+                                col[1] = br + rd.block(x - 1, y - 1, z).color() + rd.block(x - 1, y, z - 1).color()
+                                       + rd.block(x - 1, y - 1, z - 1).color();
+                                col[2] = br + rd.block(x - 1, y - 1, z).color() + rd.block(x - 1, y, z + 1).color()
+                                       + rd.block(x - 1, y - 1, z + 1).color();
+                                col[3] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x - 1, y, z + 1).color()
+                                       + rd.block(x - 1, y + 1, z + 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }
                             break;
                         case 2:
-                            br = rd.block(x, y + 1, z).light();
+                            br = rd.block(x, y + 1, z).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x, y + 1, z - 1).light()
-                                       + rd.block(x + 1, y + 1, z - 1).light();
-                                col[1] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x, y + 1, z - 1).light()
-                                       + rd.block(x - 1, y + 1, z - 1).light();
-                                col[2] = br + rd.block(x - 1, y + 1, z).light() + rd.block(x, y + 1, z + 1).light()
-                                       + rd.block(x - 1, y + 1, z + 1).light();
-                                col[3] = br + rd.block(x + 1, y + 1, z).light() + rd.block(x, y + 1, z + 1).light()
-                                       + rd.block(x + 1, y + 1, z + 1).light();
+                                col[0] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x, y + 1, z - 1).color()
+                                       + rd.block(x + 1, y + 1, z - 1).color();
+                                col[1] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x, y + 1, z - 1).color()
+                                       + rd.block(x - 1, y + 1, z - 1).color();
+                                col[2] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x, y + 1, z + 1).color()
+                                       + rd.block(x - 1, y + 1, z + 1).color();
+                                col[3] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x, y + 1, z + 1).color()
+                                       + rd.block(x + 1, y + 1, z + 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }
                             break;
                         case 3:
-                            br = rd.block(x, y - 1, z).light();
+                            br = rd.block(x, y - 1, z).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x, y - 1, z - 1).light()
-                                       + rd.block(x - 1, y - 1, z - 1).light();
-                                col[1] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x, y - 1, z - 1).light()
-                                       + rd.block(x + 1, y - 1, z - 1).light();
-                                col[2] = br + rd.block(x + 1, y - 1, z).light() + rd.block(x, y - 1, z + 1).light()
-                                       + rd.block(x + 1, y - 1, z + 1).light();
-                                col[3] = br + rd.block(x - 1, y - 1, z).light() + rd.block(x, y - 1, z + 1).light()
-                                       + rd.block(x - 1, y - 1, z + 1).light();
+                                col[0] = br + rd.block(x - 1, y - 1, z).color() + rd.block(x, y - 1, z - 1).color()
+                                       + rd.block(x - 1, y - 1, z - 1).color();
+                                col[1] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x, y - 1, z - 1).color()
+                                       + rd.block(x + 1, y - 1, z - 1).color();
+                                col[2] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x, y - 1, z + 1).color()
+                                       + rd.block(x + 1, y - 1, z + 1).color();
+                                col[3] = br + rd.block(x - 1, y - 1, z).color() + rd.block(x, y - 1, z + 1).color()
+                                       + rd.block(x - 1, y - 1, z + 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }
@@ -641,16 +634,16 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, 
                             if (NiceGrass && bl.id() == base_blocks().grass
                                 && rd.block(x, y - 1, z + 1).id() == base_blocks().grass)
                                 tex = Textures::getTextureIndex(bl.id(), 0);
-                            br = rd.block(x, y, z + 1).light();
+                            br = rd.block(x, y, z + 1).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x - 1, y, z + 1).light() + rd.block(x, y + 1, z + 1).light()
-                                       + rd.block(x - 1, y + 1, z + 1).light();
-                                col[1] = br + rd.block(x - 1, y, z + 1).light() + rd.block(x, y - 1, z + 1).light()
-                                       + rd.block(x - 1, y - 1, z + 1).light();
-                                col[2] = br + rd.block(x + 1, y, z + 1).light() + rd.block(x, y - 1, z + 1).light()
-                                       + rd.block(x + 1, y - 1, z + 1).light();
-                                col[3] = br + rd.block(x + 1, y, z + 1).light() + rd.block(x, y + 1, z + 1).light()
-                                       + rd.block(x + 1, y + 1, z + 1).light();
+                                col[0] = br + rd.block(x - 1, y, z + 1).color() + rd.block(x, y + 1, z + 1).color()
+                                       + rd.block(x - 1, y + 1, z + 1).color();
+                                col[1] = br + rd.block(x - 1, y, z + 1).color() + rd.block(x, y - 1, z + 1).color()
+                                       + rd.block(x - 1, y - 1, z + 1).color();
+                                col[2] = br + rd.block(x + 1, y, z + 1).color() + rd.block(x, y - 1, z + 1).color()
+                                       + rd.block(x + 1, y - 1, z + 1).color();
+                                col[3] = br + rd.block(x + 1, y, z + 1).color() + rd.block(x, y + 1, z + 1).color()
+                                       + rd.block(x + 1, y + 1, z + 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }
@@ -659,16 +652,16 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, 
                             if (NiceGrass && bl.id() == base_blocks().grass
                                 && rd.block(x, y - 1, z - 1).id() == base_blocks().grass)
                                 tex = Textures::getTextureIndex(bl.id(), 0);
-                            br = rd.block(x, y, z - 1).light();
+                            br = rd.block(x, y, z - 1).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x - 1, y, z - 1).light() + rd.block(x, y - 1, z - 1).light()
-                                       + rd.block(x - 1, y - 1, z - 1).light();
-                                col[1] = br + rd.block(x - 1, y, z - 1).light() + rd.block(x, y + 1, z - 1).light()
-                                       + rd.block(x - 1, y + 1, z - 1).light();
-                                col[2] = br + rd.block(x + 1, y, z - 1).light() + rd.block(x, y + 1, z - 1).light()
-                                       + rd.block(x + 1, y + 1, z - 1).light();
-                                col[3] = br + rd.block(x + 1, y, z - 1).light() + rd.block(x, y - 1, z - 1).light()
-                                       + rd.block(x + 1, y - 1, z - 1).light();
+                                col[0] = br + rd.block(x - 1, y, z - 1).color() + rd.block(x, y - 1, z - 1).color()
+                                       + rd.block(x - 1, y - 1, z - 1).color();
+                                col[1] = br + rd.block(x - 1, y, z - 1).color() + rd.block(x, y + 1, z - 1).color()
+                                       + rd.block(x - 1, y + 1, z - 1).color();
+                                col[2] = br + rd.block(x + 1, y, z - 1).color() + rd.block(x, y + 1, z - 1).color()
+                                       + rd.block(x + 1, y + 1, z - 1).color();
+                                col[3] = br + rd.block(x + 1, y, z - 1).color() + rd.block(x, y - 1, z - 1).color()
+                                       + rd.block(x + 1, y - 1, z - 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }
