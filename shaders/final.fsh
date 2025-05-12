@@ -35,7 +35,6 @@ layout(std140, row_major) uniform Model {
 };
 
 const float PI = 3.141593;
-const float GAMMA = 2.2;
 const uint LEAF_ID = 8u, GLASS_ID = 9u, WATER_ID = 10u, LAVA_ID = 11u, GLOWSTONE_ID = 12u, ICE_ID = 15u, IRON_ID = 17u;
 const uint INDICATOR_ID = 65535u;
 const float NOISE_TEXTURE_SIZE = 256.0;
@@ -575,8 +574,6 @@ void main() {
     // luminance = 1.0 - exp(-luminance * 0.8); // Exposure tone mapping
     // color *= luminance;
     
-    // Gamma encoding
-    color = pow(color, vec3(1.0 / GAMMA));
     o_frag_color = vec4(color, 1.0);
     gl_FragDepth = divide(screen_space_coord).z * 0.5 + 0.5;
 }

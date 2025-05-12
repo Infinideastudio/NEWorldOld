@@ -145,6 +145,7 @@ export void create_window() {
     }
     glEnable(GL_PRIMITIVE_RESTART);
     // glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
+    glEnable(GL_FRAMEBUFFER_SRGB);
 
     // Make sure everything is initialised
     TextRenderer::init_font();

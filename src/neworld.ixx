@@ -653,9 +653,9 @@ void frame_linked_update(worlds::World& world) {
 
 // Render the whole scene and HUD
 void render_scene(worlds::World& world) {
-    float const SkyColorR = 0.70f;
-    float const SkyColorG = 0.80f;
-    float const SkyColorB = 0.86f;
+    float const SkyColorR = 0.6f;
+    float const SkyColorG = 0.8f;
+    float const SkyColorB = 1.0f;
 
     auto& player = world.player();
     double currTimer = timer();

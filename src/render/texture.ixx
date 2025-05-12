@@ -21,7 +21,7 @@ void _texture_deleter(GLuint handle) {
 export class Texture {
 public:
     // Possible internal formats per GL 4.3.
-    // Currently, only the base internal formats are considered.
+    // Currently, only the base internal formats and sRGB formats are considered.
     enum class Format : GLenum {
         DEPTH = GL_DEPTH_COMPONENT,
         DEPTH_STENCIL = GL_DEPTH_STENCIL,
@@ -30,6 +30,8 @@ public:
         RG = GL_RG,
         RGB = GL_RGB,
         RGBA = GL_RGBA,
+        SRGB = GL_SRGB8,
+        SRGBA = GL_SRGB8_ALPHA8,
     };
 
     // Possible depth-stencil texture access modes per GL 4.3.
@@ -111,7 +113,7 @@ public:
             static_cast<GLsizei>(height),
             static_cast<GLsizei>(depth),
             0,
-            _format_to_gl_enum(format),
+            _format_to_placeholder_format(format),
             GL_UNSIGNED_BYTE,
             nullptr
         );
@@ -222,6 +224,18 @@ private:
 
     static constexpr auto _format_to_gl_enum(Format format) -> GLenum {
         return static_cast<GLenum>(format);
+    }
+
+    // Temporary placeholder format before migrating to `glTexStorage3D`.
+    static constexpr auto _format_to_placeholder_format(Format format) -> GLenum {
+        switch (format) {
+            case Format::SRGB:
+                return GL_RGB;
+            case Format::SRGBA:
+                return GL_RGBA;
+            default:
+                return static_cast<GLenum>(format);
+        }
     }
 
     static constexpr auto _depth_stencil_mode_to_gl_enum(DepthStencilMode mode) -> GLenum {
