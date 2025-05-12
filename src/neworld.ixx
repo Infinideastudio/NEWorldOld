@@ -691,8 +691,9 @@ void render_scene(worlds::World& world) {
     // Bind main texture array
     BlockTextureArray.bind(0);
 
-    if (showMeshWireframe)
+    if (showMeshWireframe) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
 
     // Build shadow map
     if (AdvancedRender) {
@@ -744,8 +745,9 @@ void render_scene(worlds::World& world) {
     glEnable(GL_CULL_FACE);
     Renderer::EndTranslucentPass();
 
-    if (showMeshWireframe)
+    if (showMeshWireframe) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
 
     // Full screen passes
     if (AdvancedRender) {
@@ -768,12 +770,6 @@ void render_scene(worlds::World& world) {
     }
 
     // HUD rendering starts here
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, WindowWidth, WindowHeight, 0, -1.0, 1.0);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
     glClearDepth(1.0f);
     glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -782,22 +778,19 @@ void render_scene(worlds::World& world) {
 
     auto int_view_coord = view_coord.floor<int32_t>();
     if (world.block_or_air(int_view_coord).id == base_blocks().water) {
-        namespace spec = render::attrib_layout::spec;
-        auto v = render::
-            AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec3f>, spec::Color<spec::Vec4u8>>();
-        auto tex = static_cast<float>(Textures::getTextureIndex(base_blocks().water, 0));
-        v.color({255, 255, 255, 255});
-        v.tex_coord({0.0f, 1.0f, tex});
-        v.coord({0, 0});
-        v.tex_coord({0.0f, 0.0f, tex});
-        v.coord({0, WindowHeight});
-        v.tex_coord({1.0f, 0.0f, tex});
-        v.coord({WindowWidth, WindowHeight});
-        v.tex_coord({1.0f, 1.0f, tex});
-        v.coord({WindowWidth, 0});
-        v.end_primitive();
-        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
         BlockTextureArray.bind(0);
+        auto v = Renderer::ui_vertex_builder();
+        auto tcz = static_cast<float>(Textures::getTextureIndex(base_blocks().water, 0));
+        v.color({255, 255, 255, 255});
+        v.tex_coord({0.0f, 1.0f, tcz});
+        v.coord({0, 0});
+        v.tex_coord({0.0f, 0.0f, tcz});
+        v.coord({0, WindowHeight});
+        v.tex_coord({1.0f, 0.0f, tcz});
+        v.coord({WindowWidth, WindowHeight});
+        v.tex_coord({1.0f, 1.0f, tcz});
+        v.coord({WindowWidth, 0});
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
         va.first.render();
     }
 
@@ -807,16 +800,16 @@ void render_scene(worlds::World& world) {
     }
 
     if (currTimer - screenshotAnimTimer <= 1.0 && !shouldGetScreenshot) {
-        float col = 1.0f - static_cast<float>(currTimer - screenshotAnimTimer);
-        glDisable(GL_TEXTURE_2D);
-        glBegin(GL_QUADS);
-        glColor4f(1.0f, 1.0f, 1.0f, col);
-        glVertex2i(0, 0);
-        glVertex2i(0, WindowHeight);
-        glVertex2i(WindowWidth, WindowHeight);
-        glVertex2i(WindowWidth, 0);
-        glEnd();
-        glEnable(GL_TEXTURE_2D);
+        BlockTextureArray.bind(0);
+        auto v = Renderer::ui_vertex_builder();
+        v.color({255, 255, 255, static_cast<int>(255 * (1.0 - (currTimer - screenshotAnimTimer)))});
+        v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
+        v.coord({0, 0});
+        v.coord({0, WindowHeight});
+        v.coord({WindowWidth, WindowHeight});
+        v.coord({WindowWidth, 0});
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+        va.first.render();
     }
 }
 
@@ -868,19 +861,10 @@ constexpr auto tex_coords = std::array<Vec2f, 4>({
 
 // Draw the block selection border
 void draw_block_selection_border(float x, float y, float z) {
-    namespace spec = render::attrib_layout::spec;
-    using render::VertexArray;
-    using AttribIndexBuilder = render::AttribIndexBuilder<
-        spec::Coord<spec::Vec3f>,
-        spec::TexCoord<spec::Vec3f>,
-        spec::Color<spec::Vec3u8>,
-        spec::Normal<spec::Vec3i8>,
-        spec::Material<spec::UInt16>>;
-
     constexpr auto EPS = 0.005f;
     constexpr auto WIDTH = 1.0f / 32.0f;
 
-    auto v = AttribIndexBuilder();
+    auto v = Renderer::chunk_vertex_builder();
     v.material(65535); // For indicator elements
     v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
     v.color({255, 255, 255});
@@ -905,19 +889,11 @@ void draw_block_selection_border(float x, float y, float z) {
             v.end_primitive();
         }
     }
-    VertexArray::create(v, VertexArray::Primitive::TRIANGLE_FAN).first.render();
+    auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+    va.first.render();
 }
 
 void draw_block_breaking_texture(float level, float x, float y, float z) {
-    namespace spec = render::attrib_layout::spec;
-    using render::VertexArray;
-    using AttribIndexBuilder = render::AttribIndexBuilder<
-        spec::Coord<spec::Vec3f>,
-        spec::TexCoord<spec::Vec3f>,
-        spec::Color<spec::Vec3u8>,
-        spec::Normal<spec::Vec3i8>,
-        spec::Material<spec::UInt16>>;
-
     constexpr auto EPS = 0.005f;
     if (level <= 0.0f) {
         return;
@@ -925,7 +901,7 @@ void draw_block_breaking_texture(float level, float x, float y, float z) {
     auto index = std::clamp(int(level * 8), 0, 7);
     auto tex = static_cast<float>(TextureIndex::BREAKING_0) + static_cast<float>(index);
 
-    auto v = AttribIndexBuilder();
+    auto v = Renderer::chunk_vertex_builder();
     v.material(65535); // For indicator elements
     v.color({255, 255, 255});
 
@@ -944,7 +920,8 @@ void draw_block_breaking_texture(float level, float x, float y, float z) {
         }
         v.end_primitive();
     }
-    VertexArray::create(v, VertexArray::Primitive::TRIANGLE_FAN).first.render();
+    auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+    va.first.render();
 }
 
 void draw_hud(worlds::World& world) {
@@ -953,71 +930,80 @@ void draw_hud(worlds::World& world) {
     int disti = (int) (seldes * linedist);
     auto& player = world.player();
 
-    glDisable(GL_TEXTURE_2D);
+    Renderer::shaders[Renderer::UIShader].bind();
+    BlockTextureArray.bind(0);
+
     glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
 
     if (showDebugPanel) {
-        glBegin(GL_LINES);
-        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti);
-        glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + linelength + disti);
-        glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti);
-        glVertex2i(WindowWidth / 2 - linedist + linelength + disti, WindowHeight / 2 - linedist + disti);
-        glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + disti);
-        glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + linelength + disti);
-        glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + disti);
-        glVertex2i(WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 - linedist + disti);
-        glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - disti);
-        glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - linelength - disti);
-        glVertex2i(WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - disti);
-        glVertex2i(WindowWidth / 2 - linedist + linelength + disti, WindowHeight / 2 + linedist - disti);
-        glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti);
-        glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - linelength - disti);
-        glVertex2i(WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti);
-        glVertex2i(WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 + linedist - disti);
+        auto v = Renderer::ui_vertex_builder();
+        v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
+        v.color({255, 255, 255, 255});
+        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti});
+        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + linelength + disti});
+        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti});
+        v.coord({WindowWidth / 2 - linedist + linelength + disti, WindowHeight / 2 - linedist + disti});
+        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + disti});
+        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + linelength + disti});
+        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 - linedist + disti});
+        v.coord({WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 - linedist + disti});
+        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - disti});
+        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - linelength - disti});
+        v.coord({WindowWidth / 2 - linedist + disti, WindowHeight / 2 + linedist - disti});
+        v.coord({WindowWidth / 2 - linedist + linelength + disti, WindowHeight / 2 + linedist - disti});
+        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti});
+        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - linelength - disti});
+        v.coord({WindowWidth / 2 + linedist - disti, WindowHeight / 2 + linedist - disti});
+        v.coord({WindowWidth / 2 + linedist - linelength - disti, WindowHeight / 2 + linedist - disti});
         if (selb != base_blocks().air) {
-            glVertex2i(WindowWidth / 2, WindowHeight / 2);
-            glVertex2i(WindowWidth / 2 + 50, WindowHeight / 2 + 50);
-            glVertex2i(WindowWidth / 2 + 50, WindowHeight / 2 + 50);
-            glVertex2i(WindowWidth / 2 + 250, WindowHeight / 2 + 50);
+            v.coord({WindowWidth / 2, WindowHeight / 2});
+            v.coord({WindowWidth / 2 + 50, WindowHeight / 2 + 50});
+            v.coord({WindowWidth / 2 + 50, WindowHeight / 2 + 50});
+            v.coord({WindowWidth / 2 + 250, WindowHeight / 2 + 50});
         }
-        glEnd();
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::LINES);
+        va.first.render();
     }
 
-    glBegin(GL_QUADS);
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    glVertex2i(WindowWidth / 2 - 10, WindowHeight / 2 - 1);
-    glVertex2i(WindowWidth / 2 - 10, WindowHeight / 2 + 1);
-    glVertex2i(WindowWidth / 2 + 10, WindowHeight / 2 + 1);
-    glVertex2i(WindowWidth / 2 + 10, WindowHeight / 2 - 1);
-    glVertex2i(WindowWidth / 2 - 1, WindowHeight / 2 - 10);
-    glVertex2i(WindowWidth / 2 - 1, WindowHeight / 2 + 10);
-    glVertex2i(WindowWidth / 2 + 1, WindowHeight / 2 + 10);
-    glVertex2i(WindowWidth / 2 + 1, WindowHeight / 2 - 10);
-    glEnd();
+    {
+        auto v = Renderer::ui_vertex_builder();
+        v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
+        v.color({255, 255, 255, 255});
+        v.coord({WindowWidth / 2 - 10, WindowHeight / 2 - 1});
+        v.coord({WindowWidth / 2 - 10, WindowHeight / 2 + 1});
+        v.coord({WindowWidth / 2 + 10, WindowHeight / 2 + 1});
+        v.coord({WindowWidth / 2 + 10, WindowHeight / 2 - 1});
+        v.end_primitive();
+        v.coord({WindowWidth / 2 - 1, WindowHeight / 2 - 10});
+        v.coord({WindowWidth / 2 - 1, WindowHeight / 2 + 10});
+        v.coord({WindowWidth / 2 + 1, WindowHeight / 2 + 10});
+        v.coord({WindowWidth / 2 + 1, WindowHeight / 2 - 10});
+        v.end_primitive();
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+        va.first.render();
+    }
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     if (player.game_mode() == player::Player::GameMode::SURVIVAL) {
-        glColor4d(0.8, 0.0, 0.0, 0.3);
-        glBegin(GL_QUADS);
-        glVertex2d(10, 10);
-        glVertex2d(10, 30);
-        glVertex2d(200, 30);
-        glVertex2d(200, 10);
-        glEnd();
-
-        double healthPercent = (double) player.health() / player.max_health();
-        glColor4d(1.0, 0.0, 0.0, 0.5);
-        glBegin(GL_QUADS);
-        glVertex2d(20, 15);
-        glVertex2d(20, 25);
-        glVertex2d(20 + healthPercent * 170, 25);
-        glVertex2d(20 + healthPercent * 170, 15);
-        glEnd();
+        auto healthPercent = player.health() / player.max_health();
+        auto v = Renderer::ui_vertex_builder();
+        v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
+        v.color({200, 0, 0, 80});
+        v.coord({10, 10});
+        v.coord({10, 30});
+        v.coord({200, 30});
+        v.coord({200, 10});
+        v.end_primitive();
+        v.color({200, 0, 0, 128});
+        v.coord({20, 15});
+        v.coord({20, 25});
+        v.coord({20 + healthPercent * 170, 25});
+        v.coord({20 + healthPercent * 170, 15});
+        v.end_primitive();
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+        va.first.render();
     }
-
-    glEnable(GL_TEXTURE_2D);
 
     if (AdvancedRender && showShadowMap) {
         float xi = 1.0f - static_cast<float>(WindowHeight) / WindowWidth;
@@ -1025,8 +1011,8 @@ void draw_hud(worlds::World& world) {
         float xa = 1.0f;
         float ya = 0.0f;
 
-        namespace spec = render::attrib_layout::spec;
-        auto v = render::AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec2f>>();
+        namespace al = render::attrib_layout::spec;
+        auto v = render::AttribIndexBuilder<al::Coord<al::Vec2f>, al::TexCoord<al::Vec2f>>();
         v.tex_coord({0.0f, 1.0f});
         v.coord({xi, yi});
         v.tex_coord({0.0f, 0.0f});
@@ -1038,9 +1024,12 @@ void draw_hud(worlds::World& world) {
         v.end_primitive();
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
 
-        Renderer::textures[Renderer::ShadowDepthTexture].bind(0);
         Renderer::shaders[Renderer::DebugShadowShader].bind();
+        Renderer::textures[Renderer::ShadowDepthTexture].bind(0);
         va.first.render();
+
+        Renderer::shaders[Renderer::UIShader].bind();
+        BlockTextureArray.bind(0);
     }
 
     int lineHeight = TextRenderer::line_height();
@@ -1059,33 +1048,38 @@ void draw_hud(worlds::World& world) {
             std::format("{} (id: {})", block_info(selb).name, static_cast<int>(selb.get()))
         );
     }
+
     if (chatmode) {
-        glDisable(GL_TEXTURE_2D);
-        glBegin(GL_QUADS);
-        glColor4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA);
-        glVertex2i(1, WindowHeight - 33 - lineHeight);
-        glVertex2i(1, WindowHeight - 33);
-        glVertex2i(WindowWidth - 1, WindowHeight - 33);
-        glVertex2i(WindowWidth - 1, WindowHeight - 33 - lineHeight);
-        glEnd();
-        glEnable(GL_TEXTURE_2D);
+        BlockTextureArray.bind(0);
+        auto v = Renderer::ui_vertex_builder();
+        v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
+        v.color(Vec4u8(Vec4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA) * 255.0f));
+        v.coord({1, WindowHeight - 33 - lineHeight});
+        v.coord({1, WindowHeight - 33});
+        v.coord({WindowWidth - 1, WindowHeight - 33});
+        v.coord({WindowWidth - 1, WindowHeight - 33 - lineHeight});
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+        va.first.render();
         TextRenderer::render_string(0, WindowHeight - 33 - lineHeight, chatword);
     }
-    int count = 0;
-    for (size_t i = chat_messages.size(); i-- > 0 && count < 10; count++) {
-        glDisable(GL_TEXTURE_2D);
-        glBegin(GL_QUADS);
-        glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA);
-        glVertex2i(1, WindowHeight - 34 - lineHeight * (count + 2));
-        glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA);
-        glVertex2i(1, WindowHeight - 34 - lineHeight * (count + 1));
-        glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA);
-        glVertex2i(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 1));
-        glColor4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA);
-        glVertex2i(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 2));
-        glEnd();
-        glEnable(GL_TEXTURE_2D);
-        TextRenderer::render_string(0, WindowHeight - 34 - lineHeight * (count + 2), chat_messages[i]);
+    {
+        auto count = 0;
+        for (auto i = chat_messages.size(); i-- > 0 && count < 10; count++) {
+            BlockTextureArray.bind(0);
+            auto v = Renderer::ui_vertex_builder();
+            v.tex_coord({0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE)});
+            v.color(Vec4u8(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA) * 255.0f));
+            v.coord({1, WindowHeight - 34 - lineHeight * (count + 2)});
+            v.color(Vec4u8(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA) * 255.0f));
+            v.coord({1, WindowHeight - 34 - lineHeight * (count + 1)});
+            v.color(Vec4u8(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA) * 255.0f));
+            v.coord({WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 1)});
+            v.color(Vec4u8(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA) * 255.0f));
+            v.coord({WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 2)});
+            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+            va.first.render();
+            TextRenderer::render_string(0, WindowHeight - 34 - lineHeight * (count + 2), chat_messages[i]);
+        }
     }
 
     TextRenderer::set_font_color(1.0f, 1.0f, 1.0f, 0.9f);
@@ -1137,27 +1131,33 @@ void draw_hud(worlds::World& world) {
 
 void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, int ybase, int spac, float alpha) {
     // 画出背包的一行
-    for (int i = 0; i < 10; i++) {
-        (i == itemid ? SelectedTexture : UnselectedTexture).bind(0);
-        glBegin(GL_QUADS);
-        glColor4f(1.0f, 1.0f, 1.0f, alpha);
-        glTexCoord2f(0.0f, 1.0f);
-        glVertex2i(xbase + i * (32 + spac), ybase);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex2i(xbase + i * (32 + spac), ybase + 32);
-        glTexCoord2f(1.0f, 0.0f);
-        glVertex2i(xbase + i * (32 + spac) + 32, ybase + 32);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex2i(xbase + i * (32 + spac) + 32, ybase);
-        glEnd();
-
-        auto& item = player.inventory_item_stack(row, i);
-        if (!item.empty()) {
-            namespace spec = render::attrib_layout::spec;
-            auto v = render::
-                AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec3f>, spec::Color<spec::Vec4u8>>();
+    {
+        for (auto i = 0; i < 10; i++) {
+            (i == itemid ? SelectedTexture : UnselectedTexture).bind(0);
+            auto v = Renderer::ui_vertex_builder();
+            v.color({255, 255, 255, 255 * alpha});
+            v.tex_coord({0.0f, 1.0f, 0.0f});
+            v.coord({xbase + i * (32 + spac), ybase});
+            v.tex_coord({1.0f, 1.0f, 0.0f});
+            v.coord({xbase + i * (32 + spac), ybase + 32});
+            v.tex_coord({1.0f, 0.0f, 0.0f});
+            v.coord({xbase + i * (32 + spac) + 32, ybase + 32});
+            v.tex_coord({0.0f, 0.0f, 0.0f});
+            v.coord({xbase + i * (32 + spac) + 32, ybase});
+            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+            va.first.render();
+        }
+    }
+    BlockTextureArray.bind(0);
+    {
+        auto v = Renderer::ui_vertex_builder();
+        v.color({255, 255, 255, 255});
+        for (auto i = 0; i < 10; i++) {
+            auto& item = player.inventory_item_stack(row, i);
+            if (item.empty()) {
+                continue;
+            }
             auto tex = static_cast<float>(Textures::getTextureIndex(item.id, 0));
-            v.color({255, 255, 255, 255});
             v.tex_coord({0.0f, 1.0f, tex});
             v.coord({xbase + i * (32 + spac) + 2, ybase + 2});
             v.tex_coord({0.0f, 0.0f, tex});
@@ -1167,10 +1167,16 @@ void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, 
             v.tex_coord({1.0f, 1.0f, tex});
             v.coord({xbase + i * (32 + spac) + 30, ybase + 2});
             v.end_primitive();
-            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
-            BlockTextureArray.bind(0);
-            va.first.render();
-
+        }
+        auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+        va.first.render();
+    }
+    {
+        for (auto i = 0; i < 10; i++) {
+            auto& item = player.inventory_item_stack(row, i);
+            if (item.empty()) {
+                continue;
+            }
             TextRenderer::render_string(xbase + i * (32 + spac), ybase, std::to_string(item.count));
         }
     }
@@ -1193,18 +1199,22 @@ void draw_inventory(player::Player& player) {
         mousew = mw;
         mouseb = mb;
 
-        glDisable(GL_TEXTURE_2D);
-        glBegin(GL_QUADS);
-        if (curtime - bagAnimTimer > bagAnimDuration)
-            glColor4f(0.2f, 0.2f, 0.2f, 0.6f);
-        else
-            glColor4f(0.2f, 0.2f, 0.2f, 0.6f * bagAnim);
-        glVertex2i(0, 0);
-        glVertex2i(0, WindowHeight);
-        glVertex2i(WindowWidth, WindowHeight);
-        glVertex2i(WindowWidth, 0);
-        glEnd();
-        glEnable(GL_TEXTURE_2D);
+        {
+            BlockTextureArray.bind(0);
+            auto v = Renderer::ui_vertex_builder();
+            auto tex = static_cast<float>(TextureIndex::WHITE);
+            if (curtime - bagAnimTimer > bagAnimDuration) {
+                v.color({50, 50, 50, 150});
+            } else {
+                v.color({50, 50, 50, 150 * bagAnim});
+            }
+            v.coord({0, 0});
+            v.coord({0, WindowHeight});
+            v.coord({WindowWidth, WindowHeight});
+            v.coord({WindowWidth, 0});
+            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+            va.first.render();
+        }
 
         sf = 0;
         if (curtime - bagAnimTimer > bagAnimDuration) {
@@ -1257,9 +1267,8 @@ void draw_inventory(player::Player& player) {
         }
 
         if (itemSelected.id != base_blocks().air) {
-            namespace spec = render::attrib_layout::spec;
-            auto v = render::
-                AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec3f>, spec::Color<spec::Vec4u8>>();
+            BlockTextureArray.bind(0);
+            auto v = Renderer::ui_vertex_builder();
             auto tex = static_cast<float>(Textures::getTextureIndex(itemSelected.id, 0));
             v.color({255, 255, 255, 255});
             v.tex_coord({0.0f, 1.0f, tex});
@@ -1272,9 +1281,7 @@ void draw_inventory(player::Player& player) {
             v.coord({mx + 16, my - 16});
             v.end_primitive();
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
-            BlockTextureArray.bind(0);
             va.first.render();
-
             TextRenderer::render_string((int) mx - 16, (int) my - 16, std::to_string(itemSelected.count));
         }
         auto item = player.inventory_item_stack(si, sj);
@@ -1301,15 +1308,16 @@ void draw_inventory(player::Player& player) {
     } else {
 
         if (curtime - bagAnimTimer <= bagAnimDuration) {
-            glDisable(GL_TEXTURE_2D);
-            glColor4f(0.2f, 0.2f, 0.2f, 0.6f - 0.6f * bagAnim);
-            glBegin(GL_QUADS);
-            glVertex2i(0, 0);
-            glVertex2i(0, WindowHeight);
-            glVertex2i(WindowWidth, WindowHeight);
-            glVertex2i(WindowWidth, 0);
-            glEnd();
-            glEnable(GL_TEXTURE_2D);
+            BlockTextureArray.bind(0);
+            auto v = Renderer::ui_vertex_builder();
+            auto tex = static_cast<float>(TextureIndex::WHITE);
+            v.color({50, 50, 50, 150 * (1.0f - bagAnim)});
+            v.coord({0, 0});
+            v.coord({0, WindowHeight});
+            v.coord({WindowWidth, WindowHeight});
+            v.coord({WindowWidth, 0});
+            auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
+            va.first.render();
 
             int xbase = 0, ybase = 0, spac = 0;
             float alpha = 1.0f - 0.5f * bagAnim;
