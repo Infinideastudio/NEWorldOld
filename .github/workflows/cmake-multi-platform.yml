@@ -12,7 +12,6 @@
 name: hosted-pure-workflow
 on:
   push:
-  pull_request:
     branches:
     - qzr-scratch
 
@@ -23,7 +22,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, windows-2022]
+        os: [ubuntu-latest, windows-latest]
+        build_type: [Release]
+        c_compiler: [gcc, clang, cl]
+        include:
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: ubuntu-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+        exclude:
+          - os: windows-latest
+            c_compiler: gcc
+          - os: windows-latest
+            c_compiler: clang
+          - os: ubuntu-latest
+            c_compiler: cl
     env:
       # Indicates the location of the vcpkg as a Git submodule of the project repository.
       # Not using "VCPKG_ROOT" because a variable with the same name is defined in the VS's
@@ -81,13 +99,14 @@ jobs:
       # This step also runs vcpkg with Binary Caching leveraging GitHub Action cache to
       # store the built packages artifacts.
       - name: Restore from cache the dependencies and generate project files
-        run: |
-          cmake --preset ninja-multi-vcpkg
-
-      - name: check-format
-        if: runner.os == 'Linux'
-        run: |
-          cmake --workflow --preset check-format
+        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make
+        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_typ
+        run: >
+          cmake -B ${{ steps.strings.outputs.build-output-dir }}
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -S ${{ github.workspace }}
 
       # Build (Release configuration only) the whole project with Ninja (which is spawn by CMake).
       #
@@ -95,10 +114,8 @@ jobs:
       # configuration with the `--config` flag, e.g.:
       # run: cmake --build --preset ninja-vcpkg --config Release
       - name: Build (Release configuration)
-        run: |
-          cmake --build --preset ninja-vcpkg-release
+        run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
       # Test the whole project with CTest, again Release configuration only.
       - name: Test (Release configuration)
-        run: |
-          ctest --preset test-release
+        run: ctest --build-config ${{ matrix.build_type }}
