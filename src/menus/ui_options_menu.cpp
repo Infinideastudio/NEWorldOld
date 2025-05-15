@@ -1,6 +1,7 @@
 module menus;
 import std;
 import types;
+import ui;
 import gui;
 import globals;
 import globalization;
@@ -12,34 +13,98 @@ using Globalization::GetStrbyKey;
 
 class UIOptionsMenu: public GUI::Form {
 private:
-    GUI::Label title = GUI::Label("", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-    GUI::Trackbar fontbar = GUI::Trackbar("", 120, (FontScale - 0.5) * 120 - 1, -250, -10, 60, 84, 0.5, 0.5, 0.0, 0.0);
-    GUI::Button blurbtn = GUI::Button("", 10, 250, 60, 84, 0.5, 0.5, 0.0, 0.0);
-    GUI::Button ppistretchbtn = GUI::Button("", -250, -10, 96, 120, 0.5, 0.5, 0.0, 0.0);
-    GUI::Button backbtn = GUI::Button("", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+    ui::Context ctx = ui::Context();
+    ui::View view = ui::View(ui::Spacer({}));
 
     void onLoad() override {
-        title.centered = true;
-        registerControls({&title, &fontbar, &blurbtn, &ppistretchbtn, &backbtn});
+        using namespace ui;
+        auto font_scale_key = ctx.generate_key();
+        auto ui_stretch_key = ctx.generate_key();
+        auto ui_background_blur_key = ctx.generate_key();
+        // clang-format off
+        auto column = Column({},
+            Sizer({.max_height = 32},
+                Center({}, Label(GetStrbyKey("NEWorld.gui.caption")))
+            ),
+            Spacer({.height = 8}),
+            Sizer({.max_height = 32},
+                Row({.main_axis_size = MainAxisSize::MAX},
+                    FlexItem({.flex_grow = 1},
+                        Slider(Slider::Args<Builder>{
+                            .label = Builder(font_scale_key, [](Key) {
+                                return Label(GetStrbyKey("NEWorld.gui.fontsize") + Var2Str(FontScale));
+                            }),
+                            .value = static_cast<float>(FontScale) - 0.5f,
+                            .on_update = [this, font_scale_key](float value) {
+                                FontScale = std::round((value + 0.5f) * 10.0f) / 10.0f;
+                                TextRenderer::init_font(true);
+                                ctx.mark_for_update(font_scale_key);
+                            }
+                        })
+                    ),
+                    Spacer({.width = 8}),
+                    FlexItem({.flex_grow = 1},
+                        Button(Button::Args<Builder>{
+                            .label = Builder(ui_stretch_key, [](Key) {
+                                return Label(GetStrbyKey("NEWorld.gui.stretch") + BoolEnabled(UIAutoStretch));
+                            }),
+                            .on_click = [this, ui_stretch_key] {
+                                toggle_stretch();
+                                ctx.mark_for_update(ui_stretch_key);
+                            }
+                        })
+                    ),
+                )
+            ),
+            Spacer({.height = 8}),
+            Sizer({.max_height = 32},
+                Row({.main_axis_size = MainAxisSize::MAX},
+                    FlexItem({.flex_grow = 1},
+                        Button(Button::Args<Builder>{
+                            .label = Builder(ui_background_blur_key, [](Key) {
+                                return Label(GetStrbyKey("NEWorld.gui.blur") + BoolEnabled(UIBackgroundBlur));
+                            }),
+                            .on_click = [this, ui_background_blur_key] {
+                                UIBackgroundBlur = !UIBackgroundBlur;
+                                ctx.mark_for_update(ui_background_blur_key);
+                            }
+                        })
+                    ),
+                    Spacer({.width = 8}),
+                    FlexItem({.flex_grow = 1}, Spacer({})),
+                )
+            ),
+            FlexItem({.flex_grow = 1}, Spacer({.height = std::numeric_limits<float>::infinity()})),
+            Sizer({.max_height = 32},
+                Button({.label = GetStrbyKey("NEWorld.gui.back"), .on_click = [this]() {
+                    exit = true;
+                }}),
+            ),
+        );
+        // clang-format on
+        view = View(Center({}, Sizer({.max_width = 512}, Padding({.top = 32, .bottom = 32}, std::move(column)))));
     }
 
     void onUpdate() override {
-        title.text = GetStrbyKey("NEWorld.gui.caption");
-        fontbar.text = GetStrbyKey("NEWorld.gui.fontsize") + Var2Str(FontScale);
-        blurbtn.text = GetStrbyKey("NEWorld.gui.blur") + BoolEnabled(UIBackgroundBlur);
-        ppistretchbtn.text = GetStrbyKey("NEWorld.gui.stretch") + BoolEnabled(UIAutoStretch);
-        backbtn.text = GetStrbyKey("NEWorld.gui.back");
+        // Temporary
+        ctx.theme = ui::theme_dark();
+        ctx.scaling_factor = static_cast<float>(Stretch);
+        ctx.view_size = {static_cast<float>(WindowWidth), static_cast<float>(WindowHeight)};
+        ctx.mouse_position = {static_cast<float>(mx), static_cast<float>(my)};
+        ctx.mouse_motion = {static_cast<float>(mx - mxl), static_cast<float>(my - myl)};
+        ctx.mouse_wheel_motion = {static_cast<float>(mw - mwl)};
+        ctx.mouse_left_button_down = (mb == 1);
+        ctx.mouse_left_button_acted = (mb == 1 && mbl == 0);
+        ctx.mouse_left_button_released = (mb == 0 && mbl == 1);
+        view.update(ctx);
 
-        FontScale = (fontbar.barpos + 1) / 120.0 + 0.5;
-        if (fontbar.pressed)
-            TextRenderer::init_font(true);
-        if (blurbtn.clicked)
-            UIBackgroundBlur = !UIBackgroundBlur;
-        if (ppistretchbtn.clicked)
-            toggle_stretch();
-        if (backbtn.clicked) {
+        if (GameBegin) {
             exit = true;
         }
+    }
+
+    void onRender() override {
+        view.render(ctx);
     }
 };
 

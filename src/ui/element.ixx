@@ -36,12 +36,10 @@ public:
     }
 };
 
-// A generic element in the widget tree.
+// A generic element in the element tree.
 // During layout, "constraints go down, sizes go up, parent sets position".
 export class Element {
 public:
-    Element() = default;
-
     // Updates positions and sizes in the subtree.
     // Returns the size of the element in logical pixels.
     virtual auto layout(Context const& ctx, Constraint const& constraint) -> Size = 0;
@@ -55,10 +53,51 @@ public:
     virtual ~Element() = default;
 
 protected:
+    Element() = default;
     Element(Element const&) = default;
     Element(Element&&) = default;
     auto operator=(Element const&) -> Element& = default;
     auto operator=(Element&&) -> Element& = default;
+};
+
+// A generic dynamic element in the element tree.
+// Whenever a state is changed, a builder should be notified (TODO: a simple reactive framework)
+// by having its key added to the `keys_to_update` list in the context.
+export class Builder: public Element {
+public:
+    // A builder is constructed from a unique key and a `build` function.
+    template <typename F>
+    requires std::invocable<F, Key>
+    explicit Builder(Key key, F build):
+        _key(key),
+        _build([f = std::move(build)](Key key) {
+            using T = decltype(std::invoke(f, key));
+            static_assert(std::derived_from<T, Element>, "build function should return an Element");
+            return std::make_unique<T>(std::invoke(f, key));
+        }) {}
+
+    // Only computes layout if the child element has been built.
+    auto layout(Context const& ctx, Constraint const& constraint) -> Size override {
+        return _child ? _child->layout(ctx, constraint) : Size();
+    }
+
+    // The child element is rebuilt if this is the first run or the key is updated.
+    void update(Context const& ctx, Point position) override {
+        if (!_child || ctx.updated(_key)) {
+            _child = _build(_key);
+        }
+        _child->update(ctx, position);
+    }
+
+    // Only renders if the child element has been built.
+    void render(Context const& ctx, Point position, uint8_t clip_layer) const override {
+        return _child ? _child->render(ctx, position, clip_layer) : void();
+    }
+
+private:
+    Key _key;
+    std::function<auto(Key)->std::unique_ptr<Element>> _build;
+    std::unique_ptr<Element> _child;
 };
 
 // The root of the element tree.
@@ -69,22 +108,20 @@ public:
         _child(std::make_unique<T>(std::forward<T>(child))) {}
 
     // Updates the element tree.
-    void update(Context const& ctx) {
-        if (ctx.view_size != _view_size || ctx.scaling_factor != _scaling_factor) {
+    void update(Context& ctx) {
+        ctx.refresh_keys();
+        auto should_relayout =
+            true; // ctx.has_updated_keys() || ctx.view_size != _view_size || ctx.scaling_factor != _scaling_factor;
+        _child->update(ctx, Point());
+        if (should_relayout) {
             _view_size = ctx.view_size;
             _scaling_factor = ctx.scaling_factor;
             _child->layout(ctx, Constraint(_view_size / _scaling_factor));
         }
-        _child->update(ctx, Point());
     }
 
     // Renders the element tree.
     void render(Context const& ctx) {
-        if (ctx.view_size != _view_size || ctx.scaling_factor != _scaling_factor) {
-            _view_size = ctx.view_size;
-            _scaling_factor = ctx.scaling_factor;
-            _child->layout(ctx, Constraint(_view_size / _scaling_factor));
-        }
         auto clip_layer = uint8_t{0};
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         glStencilFunc(GL_EQUAL, clip_layer, 0xFF);

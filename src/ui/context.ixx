@@ -41,6 +41,10 @@ public:
     }
 };
 
+// Global element key.
+// Used to identify the dynamic parts in the element tree.
+export using Key = uint64_t;
+
 // Theme used for rendering.
 export class Theme {
 public:
@@ -72,10 +76,10 @@ export constexpr auto theme_light() -> Theme {
 export constexpr auto theme_dark() -> Theme {
     return {
         .container_color = {  2,   2,   2, 255},
-        .primary_color = {  0,  80, 255, 255},
-        .primary_color_darken = {  0,  32, 120, 255},
+        .primary_color = { 20,  20,  20, 255},
+        .primary_color_darken = { 10,  10,  10, 255},
         .secondary_color = { 20,  20,  20, 153},
-        .secondary_color_darken = { 32,  32,  32, 153},
+        .secondary_color_darken = { 10,  10,  10, 153},
         .text_color = {200, 200, 200, 255},
         .text_on_primary_color = {255, 255, 255, 255},
         .text_on_secondary_color = {200, 200, 200, 255},
@@ -94,6 +98,37 @@ public:
     bool mouse_left_button_down = false;
     bool mouse_left_button_acted = false;
     bool mouse_left_button_released = false;
+
+    // Returns a unique key for the next element.
+    auto generate_key() -> Key {
+        auto res = _next_key++;
+        return res;
+    }
+
+    // Checks if any key has been updated in the previous loop.
+    auto has_updated_keys() const -> bool {
+        return !_updated_keys.empty();
+    }
+
+    // Checks if a key has been updated in the previous loop.
+    auto updated(Key key) const -> bool {
+        return _updated_keys.contains(key);
+    }
+
+    // Mark a key for update.
+    void mark_for_update(Key key) {
+        _keys_to_update.insert(key);
+    }
+
+    // Refresh key lists for next loop.
+    void refresh_keys() {
+        _updated_keys = std::exchange(_keys_to_update, {});
+    }
+
+private:
+    Key _next_key = 0;
+    std::unordered_set<Key> _updated_keys = {};
+    std::unordered_set<Key> _keys_to_update = {};
 };
 
 }

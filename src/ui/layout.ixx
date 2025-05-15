@@ -19,6 +19,80 @@ export enum class Alignment {
     BOTTOM_RIGHT,
 };
 
+export constexpr auto alignment_to_fractions(Alignment alignment) -> Point {
+    switch (alignment) {
+        case Alignment::TOP_LEFT:
+            return {0.0f, 0.0f};
+        case Alignment::TOP_CENTER:
+            return {0.5f, 0.0f};
+        case Alignment::TOP_RIGHT:
+            return {1.0f, 0.0f};
+        case Alignment::CENTER_LEFT:
+            return {0.0f, 0.5f};
+        case Alignment::CENTER:
+            return {0.5f, 0.5f};
+        case Alignment::CENTER_RIGHT:
+            return {1.0f, 0.5f};
+        case Alignment::BOTTOM_LEFT:
+            return {0.0f, 1.0f};
+        case Alignment::BOTTOM_CENTER:
+            return {0.5f, 1.0f};
+        case Alignment::BOTTOM_RIGHT:
+            return {1.0f, 1.0f};
+        default:
+            unreachable();
+    }
+}
+
+export enum class BoxFit {
+    NONE,
+    FILL,
+    CONTAIN,
+    COVER,
+    FIT_WIDTH,
+    FIT_HEIGHT,
+};
+
+// Returns (fitted size of inner element, fitted size of container element).
+// The fitted sizes refer to that of the corresponding areas of the inner and container elements.
+// See: https://api.flutter.dev/flutter/painting/BoxFit.html
+export constexpr auto apply_box_fit(BoxFit fit, Size inner_size, Size container_size) -> std::pair<Size, Size> {
+    switch (fit) {
+        case BoxFit::NONE: {
+            inner_size.width() = std::min(inner_size.width(), container_size.width());
+            inner_size.height() = std::min(inner_size.height(), container_size.height());
+            return {inner_size, inner_size};
+        }
+        case BoxFit::FILL: {
+            return {inner_size, container_size};
+        }
+        case BoxFit::CONTAIN: {
+            auto scale =
+                std::min(container_size.width() / inner_size.width(), container_size.height() / inner_size.height());
+            return {inner_size, Size(inner_size * scale)};
+        }
+        case BoxFit::COVER: {
+            auto scale =
+                std::max(container_size.width() / inner_size.width(), container_size.height() / inner_size.height());
+            return {Size(container_size / scale), container_size};
+        }
+        case BoxFit::FIT_WIDTH: {
+            auto scale = container_size.width() / inner_size.width();
+            auto width = inner_size.width();
+            auto height = std::min(inner_size.height(), container_size.height() / scale);
+            return {Size(width, height), Size(width * scale, height * scale)};
+        }
+        case BoxFit::FIT_HEIGHT: {
+            auto scale = container_size.height() / inner_size.height();
+            auto width = std::min(inner_size.width(), container_size.width() / scale);
+            auto height = inner_size.height();
+            return {Size(width, height), Size(width * scale, height * scale)};
+        }
+        default:
+            unreachable();
+    }
+}
+
 export enum class FlexDirection {
     ROW,
     ROW_REVERSE,
@@ -159,57 +233,46 @@ private:
 };
 
 // Stacked item wrapper. For use in the constructor of `Stack`.
-export template <typename T>
-requires std::derived_from<T, Element>
-class StackItem {
+export class StackItem {
 public:
     struct Args {
         Alignment alignment = Alignment::TOP_LEFT;
         size_t order = 0;
     };
 
+    template <typename T>
+    requires std::derived_from<T, Element>
     StackItem(T&& child):
-        _child(std::move(child)),
-        _alignment(_convert_alignment(Args{}.alignment)),
+        _child(std::make_unique<T>(std::forward<T>(child))),
+        _alignment(alignment_to_fractions(Args{}.alignment)),
         _order(Args{}.order) {}
 
+    template <typename T>
+    requires std::derived_from<T, Element>
     StackItem(Args args, T&& child):
-        _child(std::move(child)),
-        _alignment(_convert_alignment(args.alignment)),
+        _child(std::make_unique<T>(std::forward<T>(child))),
+        _alignment(alignment_to_fractions(args.alignment)),
         _order(args.order) {}
 
 private:
-    T _child;
+    std::unique_ptr<Element> _child;
     Point _alignment;
     size_t _order;
-
-    static constexpr auto _convert_alignment(Alignment alignment) -> Point {
-        switch (alignment) {
-            case Alignment::TOP_LEFT:
-                return {0.0f, 0.0f};
-            case Alignment::TOP_CENTER:
-                return {0.5f, 0.0f};
-            case Alignment::TOP_RIGHT:
-                return {1.0f, 0.0f};
-            case Alignment::CENTER_LEFT:
-                return {0.0f, 0.5f};
-            case Alignment::CENTER:
-                return {0.5f, 0.5f};
-            case Alignment::CENTER_RIGHT:
-                return {1.0f, 0.5f};
-            case Alignment::BOTTOM_LEFT:
-                return {0.0f, 1.0f};
-            case Alignment::BOTTOM_CENTER:
-                return {0.5f, 1.0f};
-            case Alignment::BOTTOM_RIGHT:
-                return {1.0f, 1.0f};
-            default:
-                unreachable();
-        }
-    }
+    Point _position = Point();
 
     friend class Stack;
 };
+
+// Since `std::initializer_list` cannot be moved from, we have to construct a vector from a parameter pack.
+template <typename... T>
+auto make_vector_of_stack_items(T... items) -> std::vector<StackItem> {
+    auto arr = std::array{StackItem(std::forward<T>(items))...};
+    auto res = std::vector<StackItem>();
+    for (auto&& item: arr) {
+        res.push_back(std::move(item));
+    }
+    return res;
+}
 
 // Stacked container. Later children are drawn on top of earlier ones.
 export class Stack: public Element {
@@ -217,62 +280,37 @@ public:
     struct Args {};
 
     template <typename... T>
-    explicit Stack(Args, T&&... children) {
-        auto entries = std::array{_convert_item(std::forward<T>(children))...};
-        std::stable_sort(entries.begin(), entries.end(), [](auto const& a, auto const& b) {
-            return a.order < b.order;
-        });
-        for (auto&& entry: entries) {
-            _children.emplace_back(std::move(entry));
-        }
+    explicit Stack(Args args, T... items):
+        Stack(args, make_vector_of_stack_items(std::forward<T>(items)...)) {}
+
+    explicit Stack(Args args, std::vector<StackItem> items):
+        _items(std::move(items)) {
+        std::ranges::stable_sort(_items, [](auto const& a, auto const& b) { return a._order < b._order; });
     }
 
     auto layout(Context const& ctx, Constraint const& constraint) -> Size override {
         auto size = Size(constraint);
-        for (auto& entry: _children) {
-            auto child_size = entry.child->layout(ctx, constraint);
-            entry.position = Point((size - child_size) * entry.alignment);
+        for (auto& item: _items) {
+            auto child_size = item._child->layout(ctx, constraint);
+            item._position = Point((size - child_size) * item._alignment);
         }
         return size;
     }
 
     void update(Context const& ctx, Point position) override {
-        for (auto const& entry: _children) {
-            entry.child->update(ctx, Point(position + entry.position));
+        for (auto const& item: _items) {
+            item._child->update(ctx, Point(position + item._position));
         }
     }
 
     void render(Context const& ctx, Point position, uint8_t clip_layer) const override {
-        for (auto const& entry: _children) {
-            entry.child->render(ctx, Point(position + entry.position), clip_layer);
+        for (auto const& item: _items) {
+            item._child->render(ctx, Point(position + item._position), clip_layer);
         }
     }
 
 private:
-    struct Entry {
-        std::unique_ptr<Element> child;
-        Point position;
-        Point alignment;
-        size_t order;
-    };
-
-    std::vector<Entry> _children;
-
-    // Converts a `StackItem<T>` to an `Entry`.
-    template <typename T>
-    static auto _convert_item(StackItem<T>&& item) -> Entry { // NOLINT
-        return {
-            .child = std::make_unique<T>(std::move(item._child)),
-            .position = Point(),
-            .alignment = item._alignment,
-            .order = item._order
-        };
-    }
-
-    template <typename T>
-    static auto _convert_item(T&& item) -> Entry {
-        return _convert_item(StackItem<T>(std::forward<T>(item)));
-    }
+    std::vector<StackItem> _items;
 };
 
 // Aligns a single child element within available space.
@@ -285,45 +323,61 @@ public:
     template <typename T>
     requires std::derived_from<T, Element>
     explicit Align(Args args, T&& child):
-        Stack(StackItem{{.alignment = args.alignment}, std::forward<T>(child)}) {}
+        Stack({}, StackItem({.alignment = args.alignment}, std::forward<T>(child))) {}
 };
 
 // Centers the given child element within available space.
 export class Center: public Stack {
 public:
+    struct Args {};
+
     template <typename T>
     requires std::derived_from<T, Element>
-    explicit Center(T&& child):
-        Stack(StackItem{{.alignment = Alignment::CENTER}, std::forward<T>(child)}) {}
+    explicit Center(Args, T&& child):
+        Stack({}, StackItem({.alignment = Alignment::CENTER}, std::forward<T>(child))) {}
 };
 
 // Flexible box item wrapper. For use in the constructor of `Flex`.
-export template <typename T>
-requires std::derived_from<T, Element>
-class FlexItem {
+export class FlexItem {
 public:
     struct Args {
         float flex_grow = 0.0f;
         size_t order = 0;
     };
 
+    template <typename T>
+    requires std::derived_from<T, Element>
     FlexItem(T&& child):
-        _child(std::move(child)),
+        _child(std::make_unique<T>(std::forward<T>(child))),
         _flex_grow(Args{}.flex_grow),
         _order(Args{}.order) {}
 
+    template <typename T>
+    requires std::derived_from<T, Element>
     FlexItem(Args args, T&& child):
-        _child(std::move(child)),
+        _child(std::make_unique<T>(std::forward<T>(child))),
         _flex_grow(args.flex_grow),
         _order(args.order) {}
 
 private:
-    T _child;
+    std::unique_ptr<Element> _child;
     float _flex_grow;
     size_t _order;
+    Point _position = Point();
 
     friend class Flex;
 };
+
+// Since `std::initializer_list` cannot be moved from, we have to construct a vector from a parameter pack.
+template <typename... T>
+auto make_vector_of_flex_items(T... items) -> std::vector<FlexItem> {
+    auto arr = std::array{FlexItem(std::forward<T>(items))...};
+    auto res = std::vector<FlexItem>();
+    for (auto&& item: arr) {
+        res.push_back(std::move(item));
+    }
+    return res;
+}
 
 // Flexible box container. Does not support wrap-around.
 export class Flex: public Element {
@@ -337,19 +391,17 @@ public:
     };
 
     template <typename... T>
-    explicit Flex(Args args, T&&... children):
+    explicit Flex(Args args, T... items):
+        Flex(args, make_vector_of_flex_items(std::forward<T>(items)...)) {}
+
+    explicit Flex(Args args, std::vector<FlexItem> items):
         _direction(args.direction),
         _main_axis_size(args.main_axis_size),
         _main_axis_alignment(args.main_axis_alignment),
         _cross_axis_size(args.cross_axis_size),
-        _cross_axis_alignment(args.cross_axis_alignment) {
-        auto entries = std::array{_convert_item(std::forward<T>(children))...};
-        std::stable_sort(entries.begin(), entries.end(), [](auto const& a, auto const& b) {
-            return a.order < b.order;
-        });
-        for (auto&& entry: entries) {
-            _children.emplace_back(std::move(entry));
-        }
+        _cross_axis_alignment(args.cross_axis_alignment),
+        _items(std::move(items)) {
+        std::ranges::stable_sort(_items, [](auto const& a, auto const& b) { return a._order < b._order; });
     }
 
     // See: https://api.flutter.dev/flutter/widgets/Flex-class.html
@@ -358,29 +410,29 @@ public:
         auto max_length = swapped_constraint.max_width();
         auto max_height = swapped_constraint.max_height();
         // First component is main axis, second is cross axis.
-        auto child_sizes = std::vector<Size>(_children.size());
+        auto child_sizes = std::vector<Size>(_items.size());
         // Layout all non-expanding children with unbounded main axis constraint.
         auto sum_child_width = 0.0f;
         auto max_child_height = 0.0f;
         auto sum_flex_grow = 0.0f;
-        for (auto i = 0uz; i < _children.size(); ++i) {
-            auto const& child = _children[i];
-            if (child.flex_grow == 0.0f) {
+        for (auto i = 0uz; i < _items.size(); ++i) {
+            auto const& item = _items[i];
+            if (item._flex_grow == 0.0f) {
                 auto child_constraint = Constraint(std::numeric_limits<float>::infinity(), max_height);
-                child_sizes[i] = _swap_if_vertical(child.child->layout(ctx, _swap_if_vertical(child_constraint)));
+                child_sizes[i] = _swap_if_vertical(item._child->layout(ctx, _swap_if_vertical(child_constraint)));
                 sum_child_width += child_sizes[i].width();
                 max_child_height = std::max(max_child_height, child_sizes[i].height());
             }
-            sum_flex_grow += child.flex_grow;
+            sum_flex_grow += item._flex_grow;
         }
         // Divide the remaining space among the expanding children.
         // If there is at least one expanding child, all remaining space will be allocated.
         auto remaining_length = std::max(0.0f, max_length - sum_child_width);
-        for (auto i = 0uz; i < _children.size(); ++i) {
-            auto const& child = _children[i];
-            if (child.flex_grow != 0.0f) {
-                auto child_constraint = Constraint(remaining_length * (child.flex_grow / sum_flex_grow), max_height);
-                child_sizes[i] = _swap_if_vertical(child.child->layout(ctx, _swap_if_vertical(child_constraint)));
+        for (auto i = 0uz; i < _items.size(); ++i) {
+            auto const& item = _items[i];
+            if (item._flex_grow != 0.0f) {
+                auto child_constraint = Constraint(remaining_length * (item._flex_grow / sum_flex_grow), max_height);
+                child_sizes[i] = _swap_if_vertical(item._child->layout(ctx, _swap_if_vertical(child_constraint)));
                 sum_child_width += child_sizes[i].width();
                 max_child_height = std::max(max_child_height, child_sizes[i].height());
             }
@@ -402,21 +454,21 @@ public:
                 main_axis_spacing = remaining_length;
                 break;
             case MainAxisAlignment::SPACE_BETWEEN:
-                main_axis_spacing = remaining_length / static_cast<float>(_children.size() - 1);
+                main_axis_spacing = remaining_length / static_cast<float>(_items.size() - 1);
                 break;
             case MainAxisAlignment::SPACE_AROUND:
-                main_axis_spacing = remaining_length / static_cast<float>(_children.size());
+                main_axis_spacing = remaining_length / static_cast<float>(_items.size());
                 main_axis_position = main_axis_spacing / 2.0f;
                 break;
             case MainAxisAlignment::SPACE_EVENLY:
-                main_axis_spacing = remaining_length / static_cast<float>(_children.size() + 1);
+                main_axis_spacing = remaining_length / static_cast<float>(_items.size() + 1);
                 main_axis_position = main_axis_spacing;
                 break;
             default:
                 unreachable();
         }
-        for (auto i = 0uz; i < _children.size(); ++i) {
-            auto& child = _children[i];
+        for (auto i = 0uz; i < _items.size(); ++i) {
+            auto& item = _items[i];
             auto cross_axis_position = 0.0f;
             switch (_cross_axis_alignment) {
                 case CrossAxisAlignment::START:
@@ -430,9 +482,9 @@ public:
                 default:
                     unreachable();
             }
-            child.position = Point(main_axis_position, cross_axis_position);
+            item._position = Point(main_axis_position, cross_axis_position);
             if (_flipped_main_axis(_direction)) {
-                child.position.x() = width - child.position.x() - child_sizes[i].width();
+                item._position.x() = width - item._position.x() - child_sizes[i].width();
             }
             main_axis_position += child_sizes[i].width() + main_axis_spacing;
         }
@@ -441,31 +493,24 @@ public:
     }
 
     void update(Context const& ctx, Point position) override {
-        for (auto const& entry: _children) {
-            entry.child->update(ctx, Point(position + _swap_if_vertical(entry.position)));
+        for (auto const& item: _items) {
+            item._child->update(ctx, Point(position + _swap_if_vertical(item._position)));
         }
     }
 
     void render(Context const& ctx, Point position, uint8_t clip_layer) const override {
-        for (auto const& entry: _children) {
-            entry.child->render(ctx, Point(position + _swap_if_vertical(entry.position)), clip_layer);
+        for (auto const& item: _items) {
+            item._child->render(ctx, Point(position + _swap_if_vertical(item._position)), clip_layer);
         }
     }
 
 private:
-    struct Entry {
-        std::unique_ptr<Element> child;
-        Point position;
-        float flex_grow;
-        size_t order;
-    };
-
     FlexDirection _direction;
     MainAxisSize _main_axis_size;
     MainAxisAlignment _main_axis_alignment;
     CrossAxisSize _cross_axis_size;
     CrossAxisAlignment _cross_axis_alignment;
-    std::vector<Entry> _children;
+    std::vector<FlexItem> _items;
 
     static constexpr auto _vertical_main_axis(FlexDirection direction) -> bool {
         switch (direction) {
@@ -516,22 +561,6 @@ private:
         }
         return constraint;
     }
-
-    // Converts a `FlexItem<T>` to an `Entry`.
-    template <typename T>
-    static auto _convert_item(FlexItem<T>&& item) -> Entry { // NOLINT
-        return {
-            .child = std::make_unique<T>(std::move(item._child)),
-            .position = Point(),
-            .flex_grow = item._flex_grow,
-            .order = item._order
-        };
-    }
-
-    template <typename T>
-    static auto _convert_item(T&& item) -> Entry {
-        return _convert_item(FlexItem<T>(std::forward<T>(item)));
-    }
 };
 
 // Horizontal flexible box container.
@@ -545,7 +574,10 @@ public:
     };
 
     template <typename... T>
-    explicit Row(Args args, T&&... children):
+    explicit Row(Args args, T... items):
+        Row(args, make_vector_of_flex_items(std::forward<T>(items)...)) {}
+
+    explicit Row(Args args, std::vector<FlexItem>&& items):
         Flex(
             Flex::Args{
                 .direction = FlexDirection::ROW,
@@ -554,7 +586,7 @@ public:
                 .cross_axis_size = args.cross_axis_size,
                 .cross_axis_alignment = args.cross_axis_alignment,
             },
-            std::forward<T>(children)...
+            std::move(items)
         ) {}
 };
 
@@ -569,7 +601,10 @@ public:
     };
 
     template <typename... T>
-    explicit Column(Args args, T&&... children):
+    explicit Column(Args args, T... items):
+        Column(args, make_vector_of_flex_items(std::forward<T>(items)...)) {}
+
+    explicit Column(Args args, std::vector<FlexItem>&& items):
         Flex(
             Flex::Args{
                 .direction = FlexDirection::COLUMN,
@@ -578,7 +613,7 @@ public:
                 .cross_axis_size = args.cross_axis_size,
                 .cross_axis_alignment = args.cross_axis_alignment,
             },
-            std::forward<T>(children)...
+            std::move(items)
         ) {}
 };
 
