@@ -13,16 +13,13 @@ namespace ui {
 
 export class Label: public Element {
 public:
-    struct Args {
-        std::string text;
-    };
-
-    Label(Args args):
-        _text(std::move(args.text)) {}
+    // Allow implicit construction since this is quite often used.
+    Label(std::string text):
+        _text(std::move(text)) {}
 
     auto layout(Context const& ctx, Constraint const& constraint) -> Size override {
-        auto width = static_cast<float>(TextRenderer::rendered_width(_text));
-        auto height = static_cast<float>(TextRenderer::line_height());
+        auto width = static_cast<float>(TextRenderer::rendered_width(_text)) / ctx.scaling_factor;
+        auto height = static_cast<float>(TextRenderer::line_height()) / ctx.scaling_factor;
         return {width, height};
     }
 

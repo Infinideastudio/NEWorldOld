@@ -1,6 +1,7 @@
 module menus;
 import std;
 import types;
+import ui;
 import gui;
 import globals;
 import globalization;
@@ -10,53 +11,78 @@ using Globalization::GetStrbyKey;
 
 class Language: public GUI::Form {
 private:
-    struct LangInfo {
-        std::string Symbol, EngSymbol, Name;
-        std::unique_ptr<GUI::Button> Button;
+    struct Entry {
+        std::string symbol;
+        std::string english_name;
+        std::string native_name;
     };
-    std::vector<LangInfo> langs;
-    GUI::Label title = GUI::Label("", -225, 225, 20, 36, 0.5, 0.5, 0.0, 0.0);
-    GUI::Button backbtn = GUI::Button("", -250, 250, -44, -20, 0.5, 0.5, 1.0, 1.0);
+    std::vector<Entry> entries;
+    ui::Context ctx = ui::Context();
+    ui::View view = ui::View(ui::Spacer({}));
 
     void onLoad() override {
-        title.centered = true;
-        registerControls({&title, &backbtn});
-
-        std::ifstream index("lang/langs.txt");
-        std::string line;
-        int count = 0;
+        auto index = std::ifstream("lang/langs.txt");
+        auto line = std::string();
         while (std::getline(index, line)) {
             if (line.empty())
                 break;
-            LangInfo info;
-            info.Symbol = line;
-            std::ifstream LF("lang/" + info.Symbol + ".lang");
-            std::getline(LF, info.EngSymbol);
-            std::getline(LF, info.Name);
-            LF.close();
-            info.Button = std::make_unique<
-                GUI::Button>(info.Name, -200, 200, count * 36 + 60, count * 36 + 90, 0.5, 0.5, 0.0, 0.0);
-            registerControl(info.Button.get());
-            langs.emplace_back(std::move(info));
-            count++;
+            auto curr = Entry();
+            curr.symbol = line;
+            auto lang_file = std::ifstream("lang/" + curr.symbol + ".lang");
+            std::getline(lang_file, curr.english_name);
+            std::getline(lang_file, curr.native_name);
+            entries.emplace_back(std::move(curr));
         }
+        using namespace ui;
+        auto items = std::vector<FlexItem>();
+        items.emplace_back(Sizer({.max_height = 32}, Center({}, Label(GetStrbyKey("NEWorld.language.caption")))));
+        for (auto const& entry: entries) {
+            items.emplace_back(Spacer({.height = 8}));
+            items.emplace_back(Sizer(
+                {.max_height = 32},
+                Button(
+                    {.label = entry.native_name,
+                     .on_click =
+                         [this, symbol = entry.symbol]() {
+                             if (Cur_Lang != symbol) {
+                                 Globalization::LoadLang(symbol);
+                             }
+                             exit = true;
+                         }}
+                )
+            ));
+        }
+        items.emplace_back(FlexItem({.flex_grow = 1}, Spacer({.height = std::numeric_limits<float>::infinity()})));
+        items.emplace_back(Sizer(
+            {.max_height = 32},
+            Button(
+                {.label = GetStrbyKey("NEWorld.language.back"),
+                 .on_click =
+                     [this]() {
+                         exit = true;
+                     }}
+            )
+        ));
+        auto column = Column({}, std::move(items));
+        view = View(Center({}, Sizer({.max_width = 512}, Padding({.top = 32, .bottom = 32}, std::move(column)))));
     }
 
     void onUpdate() override {
-        title.text = GetStrbyKey("NEWorld.language.caption");
-        backbtn.text = GetStrbyKey("NEWorld.language.back");
+        // Temporary
+        ctx.theme = ui::theme_dark();
+        ctx.scaling_factor = static_cast<float>(Stretch);
+        ctx.view_size = {static_cast<float>(WindowWidth), static_cast<float>(WindowHeight)};
+        ctx.mouse_position = {static_cast<float>(mx), static_cast<float>(my)};
+        ctx.mouse_motion = {static_cast<float>(mx - mxl), static_cast<float>(my - myl)};
+        ctx.mouse_wheel_motion = {static_cast<float>(mw - mwl)};
+        ctx.mouse_left_button_down = (mb == 1);
+        ctx.mouse_left_button_acted = (mb == 1 && mbl == 0);
+        ctx.mouse_left_button_released = (mb == 0 && mbl == 1);
+        view.update(ctx);
+    }
 
-        if (backbtn.clicked)
-            exit = true;
-        for (size_t i = 0; i < langs.size(); i++) {
-            if (langs[i].Button->clicked) {
-                exit = true;
-                if (Cur_Lang != langs[i].Symbol) {
-                    Globalization::LoadLang(langs[i].Symbol);
-                }
-                break;
-            }
-        }
+    void onRender() override {
+        view.render(ctx);
     }
 };
 

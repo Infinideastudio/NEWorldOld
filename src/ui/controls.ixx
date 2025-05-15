@@ -3,66 +3,6 @@
 /*
 namespace ui {
 
-class TrackBar: public Control {
-public:
-    TrackBar() = default;
-    TrackBar(
-        Position const& ul,
-        Position const& lr,
-        double lower_,
-        double upper_,
-        double value_,
-        std::string const& text_ = "",
-        bool focusable = true
-    ):
-        Control(ul, lr, focusable),
-        lower(lower_),
-        upper(upper_),
-        value(value_),
-        text(text_) {}
-    double lower = 0, upper = 0, value = 0;
-    std::string text = "";
-
-    bool mouseHover() const {
-        return mHover;
-    }
-    bool modified() const {
-        return mModified;
-    }
-
-private:
-    bool mHover = false, mButtonHover = false, mSelecting = false, mModified = false;
-
-    void update(Point2D const& ul, Point2D const& lr, Form& form) override;
-    void render(Point2D const& ul, Point2D const& lr, Form const& form) const override;
-};
-
-class PictureBox: public Control {
-public:
-    PictureBox() = default;
-    PictureBox(Position const& ul, Position const& lr, Texture const* picture_, bool focusable = true):
-        Control(ul, lr, focusable),
-        picture(picture_) {}
-    Texture const* picture = nullptr;
-    float borderWidth = 1.0f;
-
-    bool mouseHover() const {
-        return mHover;
-    }
-    bool pressed() const {
-        return mPressed;
-    }
-    bool clicked() const {
-        return mClicked;
-    }
-
-private:
-    bool mHover = false, mPressed = false, mClicked = false;
-
-    void update(Point2D const& ul, Point2D const& lr, Form& form) override;
-    void render(Point2D const& ul, Point2D const& lr, Form const& form) const override;
-};
-
 class HScroll: public Control {
 public:
     HScroll() = default;
@@ -182,75 +122,6 @@ int PictureBoxBorderWidth = PictureBoxBorderWidth1;
 double const DefaultUnitFraction = 0.1; // Scroll unit length / viewport length
 int const DefaultHScrollWidth = 18;
 int const DefaultVScrollWidth = 18;
-// HiDPI Scaling
-float ScalingFactor = 1;
-float getScalingFactor() {
-    return ScalingFactor;
-}
-void setScalingFactor(float scaling) {
-    ScalingFactor = scaling;
-    TrackBarWidth = int(TrackBarWidth1 * scaling + 0.5f);
-    ScrollButtonSize = int(ScrollButtonSize1 * scaling + 0.5f);
-    MinScrollLength = int(MinScrollLength1 * scaling + 0.5f);
-    LineWidth = int(LineWidth1 * scaling + 0.5f);
-    PictureBoxBorderWidth = int(PictureBoxBorderWidth1 * scaling + 0.5f);
-}
-
-// Add a quad to vertex array
-inline void drawQuad(VertexArray& va, float x0, float y0, float x1, float y1) {
-    va.addVertex({float(x0), float(y0)});
-    va.addVertex({float(x0), float(y1)});
-    va.addVertex({float(x1), float(y0)});
-    va.addVertex({float(x1), float(y0)});
-    va.addVertex({float(x0), float(y1)});
-    va.addVertex({float(x1), float(y1)});
-}
-
-void Button::update(Point2D const& ul, Point2D const& lr, Form& form) {
-    mHover = mPressed = mClicked = false;
-    if (focusable && form.mousePosition() >= ul && form.mousePosition() <= lr) {
-        mHover = true;
-        if (form.mouseLeftDown())
-            getFocus(form);
-        if (form.mouseLeftPressed())
-            mPressed = true;
-        if (focused(form) && form.mouseLeftUp())
-            mClicked = true;
-    }
-}
-
-void Button::render(Point2D const& ul, Point2D const& lr, Form const&) const {
-    VertexArray va(120, VertexFormat(0, 4, 0, 3));
-    // Border
-    va.setColor(4, mHover ? ButtonColor1 : ButtonColor0);
-    drawQuad(va, ul.x, ul.y, lr.x, lr.y);
-    // Background quad
-    va.setColor(4, mPressed ? ButtonColor1 : ButtonColor0);
-    drawQuad(va, ul.x + LineWidth, ul.y + LineWidth, lr.x - LineWidth, lr.y - LineWidth);
-    VertexBuffer(va).render();
-    // Text
-    drawTextCentered(ul, lr, text, ButtonTextColor, mPressed ? ButtonColor1 : ButtonColor0);
-}
-
-void TrackBar::update(Point2D const& ul, Point2D const& lr, Form& form) {
-    mHover = mButtonHover = mModified = false;
-    // Begin selection
-    if (focusable && form.mousePosition() >= ul && form.mousePosition() <= lr) {
-        mHover = true;
-        if (form.mouseLeftDown())
-            getFocus(form), mSelecting = true;
-}
-// Update selection
-if (form.mouseLeftPressed() && mSelecting) {
-    float hw = std::round(TrackBarWidth / 2.0f), xmin = std::round(ul.x + hw), xmax = std::round(lr.x - hw),
-          xsel = form.mousePosition().x;
-    xsel = std::min(std::max(xsel, xmin), xmax);
-    double newValue = (double(xsel) - xmin) / (double(xmax) - xmin) * (upper - lower) + lower;
-    mModified = (newValue != value);
-    value = newValue;
-} else
-    mSelecting = false; // Released left button
-}
 
 void TrackBar::render(Point2D const& ul, Point2D const& lr, Form const&) const {
     int hw = TrackBarWidth / 2, xmin = ul.x + hw, xmax = lr.x - hw;
@@ -269,48 +140,6 @@ void TrackBar::render(Point2D const& ul, Point2D const& lr, Form const&) const {
     va.setColor(4, mSelecting ? ButtonColor1 : ButtonColor0);
     drawQuad(va, float(xsel - hw) + LineWidth, ul.y + LineWidth, float(xsel + hw) - LineWidth, lr.y - LineWidth);
     VertexBuffer(va).render();
-}
-
-void PictureBox::update(Point2D const& ul, Point2D const& lr, Form& form) {
-    mHover = mPressed = mClicked = false;
-    if (focusable && form.mousePosition() >= ul && form.mousePosition() <= lr) {
-        mHover = true;
-        if (form.mouseLeftDown())
-            getFocus(form);
-        if (form.mouseLeftPressed())
-            mPressed = true;
-        if (focused(form) && form.mouseLeftUp())
-            mClicked = true;
-    }
-}
-
-void PictureBox::render(Point2D const& ul, Point2D const& lr, Form const&) const {
-    VertexArray va(120, VertexFormat(0, 4, 0, 3)), tva(120, VertexFormat(2, 4, 0, 3));
-    // Background quad
-    va.setColor(4, mPressed ? BackColor1 : (mHover ? BackColor0 : BackColor1));
-    drawQuad(va, ul.x, ul.y, lr.x, lr.y);
-    VertexBuffer(va).render();
-    // Picture
-    float bw = borderWidth * PictureBoxBorderWidth;
-    if (picture != nullptr) {
-        tva.setColor({1.0f, 1.0f, 1.0f, 1.0f});
-        tva.setTexture({0.0f, 0.0f});
-        tva.addVertex({ul.x + bw, ul.y + bw});
-        tva.setTexture({0.0f, 1.0f});
-        tva.addVertex({ul.x + bw, lr.y - bw});
-        tva.setTexture({1.0f, 0.0f});
-        tva.addVertex({lr.x - bw, ul.y + bw});
-        tva.setTexture({0.0f, 1.0f});
-        tva.addVertex({ul.x + bw, lr.y - bw});
-        tva.setTexture({1.0f, 1.0f});
-        tva.addVertex({lr.x - bw, lr.y - bw});
-        tva.setTexture({1.0f, 0.0f});
-        tva.addVertex({lr.x - bw, ul.y + bw});
-        Renderer::enableTexture2D();
-        picture->bind();
-        VertexBuffer(tva).render();
-        Renderer::disableTexture2D();
-    }
 }
 
 void HScroll::update(Point2D const& ul, Point2D const& lr, Form& form) {

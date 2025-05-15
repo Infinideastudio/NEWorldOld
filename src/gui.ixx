@@ -1084,6 +1084,9 @@ void Form::render() {
         drawBackground();
     }
     */
+    glClearColor(0.01f, 0.01f, 0.01f, 0.0f);
+    glClearDepth(1.0f);
+    glClearStencil(0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     /*
     double TimeDelta = timer() - transitionTimer;
