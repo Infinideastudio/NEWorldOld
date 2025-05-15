@@ -41,8 +41,14 @@ public:
         _id(block.id) {
         auto const& info = block_info(_id);
 
+        // Skylight has exponential falloff (mostly affects water bodies).
+        auto sl = static_cast<uint8_t>(255 * std::pow(0.8f, 15.0f - static_cast<float>(block.light.sky())));
+
+        // Blocklight has inverse-quadratic falloff.
+        auto bl = static_cast<uint8_t>(255 / std::max(1, (16 - block.light.block()) * (16 - block.light.block()) / 10));
+
         // Temporary: mix two light levels.
-        _light = std::max(block.light.sky(), block.light.block());
+        _color = info.opaque ? 0 : std::max(sl, bl);
 
         if (_id == base_blocks().air)
             _flags |= 0x1;
@@ -56,7 +62,7 @@ public:
         return _id;
     }
     auto color() const -> int {
-        return opaque() ? 0 : 255 / std::max(1, (16 - _light) * (16 - _light) / 10); // Simulate quadratic falloff.
+        return _color;
     }
     auto skipped() const -> bool {
         return _flags & 0x1;
@@ -88,7 +94,7 @@ public:
 
 private:
     blocks::Id _id = {};
-    std::uint8_t _light = 0;
+    std::uint8_t _color = 0;
     std::uint8_t _flags = 0;
 };
 

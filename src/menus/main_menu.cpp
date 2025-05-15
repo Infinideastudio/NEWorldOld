@@ -1,6 +1,7 @@
 module menus;
 import std;
 import types;
+import ui;
 import gui;
 import globals;
 import globalization;
@@ -11,30 +12,65 @@ using Globalization::GetStrbyKey;
 
 class MainMenu: public GUI::Form {
 private:
-    GUI::ImageBox title = GUI::ImageBox(0.0f, 1.0f, 0.0f, 1.0f, &TitleTexture, -256, 256, 20, 276, 0.5, 0.5, 0.0, 0.0);
-    GUI::Button startbtn = GUI::Button("", -200, 200, 280, 312, 0.5, 0.5, 0.0, 0.0);
-    GUI::Button optionsbtn = GUI::Button("", -200, -3, 318, 352, 0.5, 0.5, 0.0, 0.0);
-    GUI::Button quitbtn = GUI::Button("", 3, 200, 318, 352, 0.5, 0.5, 0.0, 0.0);
-    GUI::Label helplabel = GUI::Label("", 0, 0, -24, -8, 0.0, 1.0, 1.0, 1.0);
+    ui::Context ctx = ui::Context();
+    ui::View view = ui::View(ui::Spacer({}));
 
     void onLoad() override {
-        registerControls({&title, &startbtn, &optionsbtn, &quitbtn, &helplabel});
+        using namespace ui;
+        // clang-format off
+        view = View(
+            Stack({},
+                StackItem({.alignment = Alignment::CENTER},
+                    Sizer({.max_width = 400},
+                        Column({},
+                            Sizer({.max_height = 34},
+                                Button({.text = GetStrbyKey("NEWorld.main.start"), .on_click = [] { worldmenu(); }})
+                            ),
+                            Spacer({.height = 6}),
+                            Sizer({.max_height = 34},
+                                Row({.main_axis_size = MainAxisSize::MAX, .cross_axis_size = CrossAxisSize::MAX},
+                                    FlexItem({.flex_grow = 1},
+                                        Button({.text = GetStrbyKey("NEWorld.main.options"), .on_click = [] { options(); }})
+                                    ),
+                                    Spacer({.width = 6}),
+                                    FlexItem({.flex_grow = 1},
+                                        Button({.text = GetStrbyKey("NEWorld.main.exit"), .on_click = [] { std::exit(0); }})
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+                StackItem({.alignment = Alignment::BOTTOM_LEFT},
+                    Padding({.bottom = 0},
+                        Label({.text = GetStrbyKey("NEWorld.main.help")})
+                    )
+                )
+            )
+        );
+        // clang-format on
     }
 
     void onUpdate() override {
-        startbtn.text = GetStrbyKey("NEWorld.main.start");
-        optionsbtn.text = GetStrbyKey("NEWorld.main.options");
-        quitbtn.text = GetStrbyKey("NEWorld.main.exit");
-        helplabel.text = GetStrbyKey("NEWorld.main.help");
+        // Temporary
+        ctx.theme = ui::theme_dark();
+        ctx.scaling_factor = static_cast<float>(Stretch);
+        ctx.view_size = {static_cast<float>(WindowWidth), static_cast<float>(WindowHeight)};
+        ctx.mouse_position = {static_cast<float>(mx * Stretch), static_cast<float>(my * Stretch)};
+        ctx.mouse_motion = {static_cast<float>((mx - mxl) * Stretch), static_cast<float>((my - myl) * Stretch)};
+        ctx.mouse_wheel_motion = {static_cast<float>(mw - mwl)};
+        ctx.mouse_left_button_down = (mb == 1);
+        ctx.mouse_left_button_acted = (mb == 1 && mbl == 0);
+        ctx.mouse_left_button_released = (mb == 0 && mbl == 1);
+        view.update(ctx);
 
-        if (startbtn.clicked)
-            worldmenu();
-        if (GameBegin)
+        if (GameBegin) {
             exit = true;
-        if (optionsbtn.clicked)
-            options();
-        if (quitbtn.clicked)
-            std::exit(0);
+        }
+    }
+
+    void onRender() override {
+        view.render(ctx);
     }
 };
 

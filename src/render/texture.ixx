@@ -22,6 +22,7 @@ export class Texture {
 public:
     // Possible internal formats per GL 4.3.
     // Currently, only the base internal formats and sRGB formats are considered.
+    // Additional sized formats are added as needed.
     enum class Format : GLenum {
         DEPTH = GL_DEPTH_COMPONENT,
         DEPTH_STENCIL = GL_DEPTH_STENCIL,
@@ -30,7 +31,10 @@ public:
         RG = GL_RG,
         RGB = GL_RGB,
         RGBA = GL_RGBA,
-        SRGB = GL_SRGB8,
+        // Sized internal formats start here.
+        DEPTH32F = GL_DEPTH_COMPONENT32F,
+        RGBA8_UNORM = GL_RGBA8,
+        RGBA32F = GL_RGBA32F,
         SRGBA = GL_SRGB8_ALPHA8,
     };
 
@@ -229,8 +233,12 @@ private:
     // Temporary placeholder format before migrating to `glTexStorage3D`.
     static constexpr auto _format_to_placeholder_format(Format format) -> GLenum {
         switch (format) {
-            case Format::SRGB:
-                return GL_RGB;
+            case Format::DEPTH32F:
+                return GL_DEPTH_COMPONENT;
+            case Format::RGBA8_UNORM:
+                return GL_RGBA;
+            case Format::RGBA32F:
+                return GL_RGBA;
             case Format::SRGBA:
                 return GL_RGBA;
             default:

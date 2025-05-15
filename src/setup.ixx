@@ -140,6 +140,8 @@ export void create_window() {
     glCullFace(GL_BACK);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
+    glEnable(GL_STENCIL_TEST);
+    glStencilFunc(GL_ALWAYS, 0, 0xFF);
     if (Multisample != 0) {
         glEnable(GL_MULTISAMPLE);
     }
