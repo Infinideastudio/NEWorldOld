@@ -40,16 +40,7 @@ size_t curr_row_height = 0uz;
 int faceSize;
 float colr, colg, colb, cola;
 
-export void init_font(bool reload = false);
-export void set_font_color(float r, float g, float b, float a);
-export auto font_height() -> int;
-export auto line_height() -> int;
-export auto rendered_width(std::string_view s) -> int;
-export auto rendered_width(std::u32string_view s) -> int;
-export void render_string(int x, int y, std::string_view s);
-export void render_string(int x, int y, std::u32string_view s);
-
-export void init_font(bool reload) {
+export void init_font(bool reload = false) {
     if (!slot || reload) {
         // Initialize FreeType and load the font.
         faceSize = std::lround(BASE_FONT_SIZE * Stretch * FontScale);
@@ -71,8 +62,11 @@ export void init_font(bool reload) {
     }
 }
 
-export void set_font_color(float r, float g, float b, float a) {
-    colr = r, colg = g, colb = b, cola = a;
+export void set_font_color(Vec4u8 color) {
+    colr = static_cast<float>(color.x()) / 255.0f;
+    colg = static_cast<float>(color.y()) / 255.0f;
+    colb = static_cast<float>(color.z()) / 255.0f;
+    cola = static_cast<float>(color.w()) / 255.0f;
 }
 
 auto loadChar(char32_t uc) -> UnicodeChar& {
@@ -113,7 +107,8 @@ auto loadChar(char32_t uc) -> UnicodeChar& {
 
     // Update the texture to match the new atlas image.
     if (tex.height() != image.height()) {
-        tex = render::Texture::create(render::Texture::Format::RGBA, image.width(), image.height(), image.depth());
+        tex =
+            render::Texture::create(render::Texture::Format::RGBA8_UNORM, image.width(), image.height(), image.depth());
         tex.fill(0, 0, 0, image);
     } else {
         tex.fill(0, 0, 0, image); // TODO: only need to update a small region
@@ -155,10 +150,6 @@ export auto line_height() -> int {
     return static_cast<int>(std::round(ascender - descender));
 }
 
-export auto rendered_width(std::string_view s) -> int {
-    return rendered_width(utf8_unicode(s));
-}
-
 export auto rendered_width(std::u32string_view s) -> int {
     float res = 0.0f;
     for (size_t i = 0; i < s.size(); i++) {
@@ -168,11 +159,11 @@ export auto rendered_width(std::u32string_view s) -> int {
     return static_cast<int>(std::round(res));
 }
 
-export void render_string(int x, int y, std::string_view s) {
-    render_string(x, y, utf8_unicode(s));
+export auto rendered_width(std::string_view s) -> int {
+    return rendered_width(utf8_unicode(s));
 }
 
-export void render_string(int x, int y, std::u32string_view s) {
+export void render_string(int x, int y, std::u32string_view s, bool shadowed = false) {
     namespace spec = render::attrib_layout::spec;
     auto v =
         render::AttribIndexBuilder<spec::Coord<spec::Vec2f>, spec::TexCoord<spec::Vec3f>, spec::Color<spec::Vec4u8>>();
@@ -186,16 +177,18 @@ export void render_string(int x, int y, std::u32string_view s) {
         float width = uc.width;
         float height = uc.height;
 
-        v.color(128, 128, 128, 255 * cola);
-        v.tex_coord(tc.x() / tex.width(), (tc.y() + height) / tex.height(), tc.z());
-        v.coord(xpos + 1.0f, ypos + 1.0f);
-        v.tex_coord(tc.x() / tex.width(), tc.y() / tex.height(), tc.z());
-        v.coord(xpos + 1.0f, ypos + height + 1.0f);
-        v.tex_coord((tc.x() + width) / tex.width(), tc.y() / tex.height(), tc.z());
-        v.coord(xpos + width + 1.0f, ypos + height + 1.0f);
-        v.tex_coord((tc.x() + width) / tex.width(), (tc.y() + height) / tex.height(), tc.z());
-        v.coord(xpos + width + 1.0f, ypos + 1.0f);
-        v.end_primitive();
+        if (shadowed) {
+            v.color(30 * colr, 30 * colg, 30 * colb, 255 * cola);
+            v.tex_coord(tc.x() / tex.width(), (tc.y() + height) / tex.height(), tc.z());
+            v.coord(xpos + 1.0f, ypos + 1.0f);
+            v.tex_coord(tc.x() / tex.width(), tc.y() / tex.height(), tc.z());
+            v.coord(xpos + 1.0f, ypos + height + 1.0f);
+            v.tex_coord((tc.x() + width) / tex.width(), tc.y() / tex.height(), tc.z());
+            v.coord(xpos + width + 1.0f, ypos + height + 1.0f);
+            v.tex_coord((tc.x() + width) / tex.width(), (tc.y() + height) / tex.height(), tc.z());
+            v.coord(xpos + width + 1.0f, ypos + 1.0f);
+            v.end_primitive();
+        }
 
         v.color(255 * colr, 255 * colg, 255 * colb, 255 * cola);
         v.tex_coord(tc.x() / tex.width(), (tc.y() + height) / tex.height(), tc.z());
@@ -216,6 +209,10 @@ export void render_string(int x, int y, std::u32string_view s) {
         tex.bind(0);
         va.first.render();
     }
+}
+
+export void render_string(int x, int y, std::string_view s, bool shadowed = false) {
+    render_string(x, y, utf8_unicode(s), shadowed);
 }
 
 }

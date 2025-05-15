@@ -57,10 +57,10 @@ For niche libraries (or our own public code repositories) that are not necessari
 
 ```cmake
 FetchContent_Declare(
-  <some_identifier>
-  GIT_REPOSITORY <git_url>
-  GIT_TAG <git_tag>
-  GIT_SHALLOW TRUE
+        <some_identifier>
+        GIT_REPOSITORY <git_url>
+        GIT_TAG <git_tag>
+        GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(<some_identifier>)
 target_link_libraries(neworld PRIVATE <package_build_target_name>)

@@ -231,15 +231,46 @@ public:
     }
 
     // Constructs a perspective projection matrix.
-    static auto perspective(T fov, T aspect, T near, T far) -> Matrix<T, 4, 4> {
+    // This results in reversed Z-values ranging in [-1, 1] which leads to much better precision.
+    static auto perspective_rev(T fov, T aspect, T near) -> Matrix<T, 4, 4> {
         auto f = T(1) / std::tan(fov / T(2));
-        auto a = near - far;
+        // auto a = far - near;
         auto res = Matrix<T, 4, 4>();
         res.elem[0][0] = f / aspect;
         res.elem[1][1] = f;
-        res.elem[2][2] = (far + near) / a;
-        res.elem[2][3] = T(2) * far * near / a;
+        res.elem[2][2] = T(1);        // (far + near) / a;
+        res.elem[2][3] = T(2) * near; // T(2) * far * near / a;
         res.elem[3][2] = T(-1);
+        return res;
+    }
+
+    // Constructs a perspective projection matrix.
+    static auto perspective(T fov, T aspect, T near) -> Matrix<T, 4, 4> {
+        auto f = T(1) / std::tan(fov / T(2));
+        // auto a = far - near;
+        auto res = Matrix<T, 4, 4>();
+        res.elem[0][0] = f / aspect;
+        res.elem[1][1] = f;
+        res.elem[2][2] = T(-1);        // -(far + near) / a;
+        res.elem[2][3] = T(-2) * near; // T(-2) * far * near / a;
+        res.elem[3][2] = T(-1);
+        return res;
+    }
+
+    // Constructs an orthogonal projection matrix.
+    // This results in reversed Z-values ranging in [-1, 1] in-line with `perspective_rev()`.
+    static auto ortho_rev(T left, T right, T bottom, T top, T near, T far) -> Matrix<T, 4, 4> {
+        auto a = right - left;
+        auto b = top - bottom;
+        auto c = far - near;
+        auto res = Matrix<T, 4, 4>();
+        res.elem[0][0] = T(2) / a;
+        res.elem[0][3] = -(right + left) / a;
+        res.elem[1][1] = T(2) / b;
+        res.elem[1][3] = -(top + bottom) / b;
+        res.elem[2][2] = T(2) / c;
+        res.elem[2][3] = (far + near) / c;
+        res.elem[3][3] = T(1);
         return res;
     }
 

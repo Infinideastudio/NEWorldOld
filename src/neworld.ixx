@@ -197,7 +197,7 @@ export int main() {
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClearDepth(1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        TextRenderer::set_font_color(1.0, 1.0, 1.0, 1.0);
+        TextRenderer::set_font_color({255, 255, 255, 255});
         TextRenderer::render_string(1, 1, "Saving world...");
         glfwSwapBuffers(MainWindow);
 
@@ -653,9 +653,9 @@ void frame_linked_update(worlds::World& world) {
 
 // Render the whole scene and HUD
 void render_scene(worlds::World& world) {
-    float const SkyColorR = 0.6f;
-    float const SkyColorG = 0.8f;
-    float const SkyColorB = 1.0f;
+    float const SkyColorR = 0.41f;
+    float const SkyColorG = 0.63f;
+    float const SkyColorB = 0.93f;
 
     auto& player = world.player();
     double currTimer = timer();
@@ -669,11 +669,10 @@ void render_scene(worlds::World& world) {
     // Calculate matrices
     auto view_angles = static_cast<Eulerf>(player.orientation());
     auto view_matrix = view_angles.view_matrix();
-    view_matrix = Mat4f::perspective(
+    view_matrix = Mat4f::perspective_rev(
                       static_cast<float>((FOVyNormal + FOVyExt) * Pi / 180.0),
                       static_cast<float>(WindowWidth) / WindowHeight,
-                      0.05f,
-                      static_cast<float>(RenderDistance * chunks::Chunk::SIZE)
+                      0.05f
                   )
                 * view_matrix;
 
@@ -687,8 +686,9 @@ void render_scene(worlds::World& world) {
 
     render::Framebuffer::bind_default(render::Framebuffer::Target::WRITE);
     glClearColor(SkyColorR, SkyColorG, SkyColorB, 1.0f);
-    glClearDepth(1.0f);
+    glClearDepth(0.0f); // Note that we are using reversed Z.
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDepthFunc(GL_GEQUAL);
 
     // Bind main texture array
     BlockTextureArray.bind(0);
@@ -774,6 +774,7 @@ void render_scene(worlds::World& world) {
     // HUD rendering starts here
     glClearDepth(1.0f);
     glClear(GL_DEPTH_BUFFER_BIT);
+    glDepthFunc(GL_LEQUAL);
 
     auto& shader = Renderer::shaders[Renderer::UIShader];
     shader.bind();
@@ -869,7 +870,7 @@ void draw_block_selection_border(float x, float y, float z) {
     auto v = Renderer::chunk_vertex_builder();
     v.material(65535); // For indicator elements
     v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
-    v.color(255, 255, 255);
+    v.color(64, 64, 64);
 
     for (auto i = 0uz; i < cube.size(); i++) {
         auto const& center = centers[i];
@@ -940,7 +941,7 @@ void draw_hud(worlds::World& world) {
     if (showDebugPanel) {
         auto v = Renderer::ui_vertex_builder();
         v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
-        v.color(255, 255, 255, 255);
+        v.color(64, 64, 64, 255);
         v.coord(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti);
         v.coord(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + linelength + disti);
         v.coord(WindowWidth / 2 - linedist + disti, WindowHeight / 2 - linedist + disti);
@@ -970,7 +971,7 @@ void draw_hud(worlds::World& world) {
     {
         auto v = Renderer::ui_vertex_builder();
         v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
-        v.color(255, 255, 255, 255);
+        v.color(64, 64, 64, 255);
         v.coord(WindowWidth / 2 - 10, WindowHeight / 2 - 1);
         v.coord(WindowWidth / 2 - 10, WindowHeight / 2 + 1);
         v.coord(WindowWidth / 2 + 10, WindowHeight / 2 + 1);
@@ -1038,16 +1039,17 @@ void draw_hud(worlds::World& world) {
     int textPos = 0;
     auto debugText = [=]<typename... Args>(std::format_string<Args...> fmt, Args&&... args) mutable {
         auto s = std::format(fmt, std::forward<Args>(args)...);
-        TextRenderer::render_string(0, lineHeight * textPos, s);
+        TextRenderer::render_string(0, lineHeight * textPos, s, true);
         textPos++;
     };
 
-    TextRenderer::set_font_color(1.0f, 1.0f, 1.0f, 0.8f);
+    TextRenderer::set_font_color({255, 255, 255, 204});
     if (showDebugPanel && selb != base_blocks().air) {
         TextRenderer::render_string(
             WindowWidth / 2 + 50,
             WindowHeight / 2 + 50 - TextRenderer::line_height(),
-            std::format("{} (id: {})", block_info(selb).name, static_cast<int>(selb.get()))
+            std::format("{} (id: {})", block_info(selb).name, static_cast<int>(selb.get())),
+            true
         );
     }
 
@@ -1062,7 +1064,7 @@ void draw_hud(worlds::World& world) {
         v.coord(WindowWidth - 1, WindowHeight - 33 - lineHeight);
         auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
         va.first.render();
-        TextRenderer::render_string(0, WindowHeight - 33 - lineHeight, chatword);
+        TextRenderer::render_string(0, WindowHeight - 33 - lineHeight, chatword, true);
     }
     {
         auto count = 0;
@@ -1080,11 +1082,11 @@ void draw_hud(worlds::World& world) {
             v.coord(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 2));
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
             va.first.render();
-            TextRenderer::render_string(0, WindowHeight - 34 - lineHeight * (count + 2), chat_messages[i]);
+            TextRenderer::render_string(0, WindowHeight - 34 - lineHeight * (count + 2), chat_messages[i], true);
         }
     }
 
-    TextRenderer::set_font_color(1.0f, 1.0f, 1.0f, 0.9f);
+    TextRenderer::set_font_color({255, 255, 255, 230});
     if (showDebugPanel) {
         auto boolstr = [](bool b) {
             return b ? "true" : "false";
@@ -1179,7 +1181,7 @@ void draw_inventory_row(player::Player& player, int row, int itemid, int xbase, 
             if (item.empty()) {
                 continue;
             }
-            TextRenderer::render_string(xbase + i * (32 + spac), ybase, std::to_string(item.count));
+            TextRenderer::render_string(xbase + i * (32 + spac), ybase, std::to_string(item.count), true);
         }
     }
 }
@@ -1284,11 +1286,11 @@ void draw_inventory(player::Player& player) {
             v.end_primitive();
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
             va.first.render();
-            TextRenderer::render_string((int) mx - 16, (int) my - 16, std::to_string(itemSelected.count));
+            TextRenderer::render_string((int) mx - 16, (int) my - 16, std::to_string(itemSelected.count), true);
         }
         auto item = player.inventory_item_stack(si, sj);
         if (!item.empty() && sf == 1) {
-            TextRenderer::render_string((int) mx, (int) my - 16, block_info(item.id).name);
+            TextRenderer::render_string((int) mx, (int) my - 16, block_info(item.id).name, true);
         }
 
         int xbase = 0, ybase = 0, spac = 0;

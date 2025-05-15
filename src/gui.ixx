@@ -18,13 +18,13 @@ import textures;
 export namespace GUI {
 
 float linealpha = 0.9f;
-float FgR = 0.2f;
-float FgG = 0.2f;
-float FgB = 0.2f;
+float FgR = 0.0f;
+float FgG = 0.0f;
+float FgB = 0.0f;
 float FgA = 0.6f;
-float BgR = 0.2f;
-float BgG = 0.2f;
-float BgB = 0.2f;
+float BgR = 0.0f;
+float BgG = 0.0f;
+float BgB = 0.0f;
 float BgA = 0.3f;
 double transitionTimer;
 bool transitionForward;
@@ -333,7 +333,7 @@ void UIVertex(int x, int y) {
 }
 
 void UISetFontColor(float r, float g, float b, float a) {
-    TextRenderer::set_font_color(r, g, b, a);
+    TextRenderer::set_font_color({r * 255, g * 255, b * 255, a * 255});
 }
 
 void UIRenderString(int xmin, int xmax, int ymin, int ymax, std::string const& s, bool centered) {
@@ -1084,7 +1084,7 @@ void Form::render() {
         drawBackground();
     }
     */
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     /*
     double TimeDelta = timer() - transitionTimer;
     auto transitionAnim = (float) (1.0 - std::pow(0.8, TimeDelta * 60.0) + std::pow(0.8, 0.3 * 60.0) / 0.3 * TimeDelta);

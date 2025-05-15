@@ -117,7 +117,7 @@ auto create_noise_texture() -> render::Texture {
         }
     }
 
-    auto tex = render::Texture::create(render::Texture::Format::RGBA, 256, 256);
+    auto tex = render::Texture::create(render::Texture::Format::RGBA8_UNORM, 256, 256);
     tex.fill(0, 0, 0, image);
     tex.set_wrap(true);
     tex.set_filter(true);
@@ -214,14 +214,14 @@ void init_pipeline(bool load_shaders = false, bool init_framebuffers = false) {
         bufferWidth = WindowWidth;
         bufferHeight = WindowHeight;
 
-        textures.emplace_back(Texture::create(Texture::Format::RGBA, bufferWidth, bufferHeight));
-        textures.emplace_back(Texture::create(Texture::Format::RGBA, bufferWidth, bufferHeight));
-        textures.emplace_back(Texture::create(Texture::Format::RGBA, bufferWidth, bufferHeight));
-        textures.emplace_back(Texture::create(Texture::Format::DEPTH, bufferWidth, bufferHeight));
-        textures.emplace_back(Texture::create(Texture::Format::RGBA, ShadowRes, ShadowRes));
-        textures.emplace_back(Texture::create(Texture::Format::DEPTH, ShadowRes, ShadowRes));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA32F, bufferWidth, bufferHeight));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA8_UNORM, bufferWidth, bufferHeight));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA8_UNORM, bufferWidth, bufferHeight));
+        textures.emplace_back(Texture::create(Texture::Format::DEPTH32F, bufferWidth, bufferHeight));
+        textures.emplace_back(Texture::create(Texture::Format::RGBA8_UNORM, ShadowRes, ShadowRes));
+        textures.emplace_back(Texture::create(Texture::Format::DEPTH32F, ShadowRes, ShadowRes));
         textures.back().set_filter(true);
-        textures.back().set_depth_compare_mode(Texture::DepthCompareMode::LEQUAL);
+        textures.back().set_depth_compare_mode(Texture::DepthCompareMode::GEQUAL);
         textures.emplace_back(create_noise_texture());
 
         framebuffers.emplace_back(*Framebuffer::create(
@@ -251,7 +251,7 @@ auto getShadowMatrix() -> Mat4f {
     auto res = Mat4f(1.0f);
     res = Mat4f::rotate(-static_cast<float>(sunlightHeading * Pi / 180.0), Vec3f(0.0f, 1.0f, 0.0f)) * res;
     res = Mat4f::rotate(static_cast<float>(sunlightPitch * Pi / 180.0), Vec3f(1.0f, 0.0f, 0.0f)) * res;
-    res = Mat4f::ortho(-length, length, -length, length, -1000.0f, 1000.0f) * res;
+    res = Mat4f::ortho_rev(-length, length, -length, length, -length * 2.0f, length * 2.0f) * res;
     return res;
 }
 
@@ -296,18 +296,18 @@ auto getShadowMatrixExperimental(float fov, float aspect, Eulerf orientation) ->
     xmax = std::min(xmax, length);
     ymin = std::max(ymin, -length);
     ymax = std::min(ymax, length);
-    res = Mat4f::ortho(xmin, xmax, ymin, ymax, -1000.0f, 1000.0f) * res;
+    res = Mat4f::ortho_rev(xmin, xmax, ymin, ymax, -length * 2.0f, length * 2.0f) * res;
     return res;
 }
 
 void ClearSGDBuffers() {
     framebuffers[Shadow].bind(render::Framebuffer::Target::WRITE);
-    glClearDepth(1.0f);
+    glClearDepth(0.0f); // Note that we are using reversed Z.
     glClear(GL_DEPTH_BUFFER_BIT);
 
     framebuffers[Deferred].bind(render::Framebuffer::Target::WRITE);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glClearDepth(1.0f);
+    glClearDepth(0.0f); // Note that we are using reversed Z.
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 

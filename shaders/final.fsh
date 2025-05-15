@@ -250,7 +250,7 @@ float calc_ambient(vec3 coord, vec3 normal) {
         vec3 sample_coord = coord + mat3(tangent, bitangent, normal) * offset;
         vec4 screen_space_sample_coord = u_mvp * vec4(sample_coord, 1.0);
         vec2 tex_space_sample_coord = screen_space_coord_to_tex_coord(screen_space_sample_coord);
-        if (get_scene_depth(tex_space_sample_coord) < divide(screen_space_sample_coord).z) {
+        if (get_scene_depth(tex_space_sample_coord) > divide(screen_space_sample_coord).z) {
             res += smoothstep(0.8, 1.0, 1.0 - distance_to_edge(tex_space_sample_coord) * 2.0);
         } else {
             res += 1.0;
@@ -388,7 +388,7 @@ vec4 ssr(vec4 org, vec4 dir, bool inside) {
 
         // Check for possible intersection with scene
         float z = get_scene_depth(tex_coord);
-        if (z <= next3.z) {
+        if (z >= next3.z) {
             if (get_scene_material(tex_coord) != 0u) {
                 // Filter out some false positives
                 vec4 relative_coord = mvp_inverse * vec4(next3.xy, z, 1.0);
@@ -494,7 +494,7 @@ void main() {
     vec4 relative_coord = mvp_inverse * screen_space_coord;
 
     vec3 view_origin = vec3(u_player_coord_mod) + u_player_coord_frac;
-    vec3 view_dir = normalize(divide(relative_coord));
+    vec3 view_dir = normalize(relative_coord.xyz);
     vec3 normal = get_scene_normal(tex_coord);
     vec3 color = get_sky_color(view_dir);
     color = blend(diffuse_with_fade(tex_coord), color);
@@ -575,5 +575,4 @@ void main() {
     // color *= luminance;
     
     o_frag_color = vec4(color, 1.0);
-    gl_FragDepth = divide(screen_space_coord).z * 0.5 + 0.5;
 }
