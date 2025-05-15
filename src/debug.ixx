@@ -15,17 +15,12 @@ export [[noreturn]] void unimplemented(std::source_location const& loc = std::so
     std::terminate();
 }
 
-// Assertion. No effect under release mode.
-// Note that (semantically) `expr` is evaluated even in release mode, which is different from using
-// a macro, so any side effect of `expr` will remain. If there is no side effect, the compiler can
-// optimize it out.
+// Assertion that remains in release builds.
 export void
 assert(bool expr, std::string_view msg = "", std::source_location const& loc = std::source_location::current()) {
-#ifndef NDEBUG
     if (!expr) {
         std::println(std::cerr, "{}: In function '{}':", loc.file_name(), loc.function_name());
         std::println(std::cerr, "{}:{}:{}: assertion failed: {}", loc.file_name(), loc.line(), loc.column(), msg);
         std::terminate();
     }
-#endif
 }
