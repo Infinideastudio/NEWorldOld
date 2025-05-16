@@ -25,11 +25,11 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Button({.label = GetStrbyKey("NEWorld.pause.continue"), .on_click = [this] { exit = true; }})
+                        Button({.label = Label(GetStrbyKey("NEWorld.pause.continue")), .on_click = [this] { exit = true; }})
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Button({.label = GetStrbyKey("NEWorld.pause.back"), .on_click = [this] { GameExit = exit = true; }})
+                        Button({.label = Label(GetStrbyKey("NEWorld.pause.back")), .on_click = [this] { GameExit = exit = true; }})
                     )
                 )
             )

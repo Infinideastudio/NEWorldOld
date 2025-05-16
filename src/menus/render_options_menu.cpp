@@ -39,7 +39,7 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Button(Button::Args<Builder>{
+                        Button({
                             .label = Builder(smooth_lighting_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.render.smooth") + BoolEnabled(SmoothLighting));
                             }),
@@ -51,7 +51,7 @@ private:
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Button(Button::Args<Builder>{
+                        Button({
                             .label = Builder(fancy_grass_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.render.grasstex") + BoolEnabled(NiceGrass));
                             }),
@@ -67,7 +67,7 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Button(Button::Args<Builder>{
+                        Button({
                             .label = Builder(merge_face_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.render.merge") + BoolEnabled(MergeFace));
                             }),
@@ -79,7 +79,7 @@ private:
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Slider(Slider::Args<Builder>{
+                        Slider({
                             .label = Builder(msaa_key, [](Key) {
                                 auto text = GetStrbyKey("NEWorld.render.multisample");
                                 text += (Multisample != 0 ? Var2Str(Multisample) + "x" : BoolEnabled(false));
@@ -98,7 +98,7 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Button(Button::Args<Builder>{
+                        Button({
                             .label = Builder(vsync_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.render.vsync") + BoolEnabled(VerticalSync));
                             }),
@@ -110,13 +110,13 @@ private:
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Button({.label = GetStrbyKey("NEWorld.render.shaders"), .on_click = shaderoptions})
+                        Button({.label = Label(GetStrbyKey("NEWorld.render.shaders")), .on_click = shaderoptions})
                     )
                 )
             ),
             FlexItem({.flex_grow = 1}, Spacer({.height = std::numeric_limits<float>::infinity()})),
             Sizer({.max_height = 32},
-                Button({.label =  GetStrbyKey("NEWorld.render.back"), .on_click = [this] { exit = true; }})
+                Button({.label =  Label(GetStrbyKey("NEWorld.render.back")), .on_click = [this] { exit = true; }})
             )
         );
         // clang-format on

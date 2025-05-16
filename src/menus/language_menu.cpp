@@ -41,7 +41,7 @@ private:
             items.emplace_back(Sizer(
                 {.max_height = 32},
                 Button(
-                    {.label = entry.native_name,
+                    {.label = Label(entry.native_name),
                      .on_click =
                          [this, symbol = entry.symbol]() {
                              if (Cur_Lang != symbol) {
@@ -56,7 +56,7 @@ private:
         items.emplace_back(Sizer(
             {.max_height = 32},
             Button(
-                {.label = GetStrbyKey("NEWorld.language.back"),
+                {.label = Label(GetStrbyKey("NEWorld.language.back")),
                  .on_click =
                      [this]() {
                          exit = true;

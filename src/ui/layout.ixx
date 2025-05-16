@@ -160,12 +160,10 @@ public:
         float max_height = std::numeric_limits<float>::infinity();
     };
 
-    template <typename T>
-    requires std::derived_from<T, Element>
-    explicit Sizer(Args args, T&& child):
+    explicit Sizer(Args args, ElementHandle&& child):
         _max_width(args.max_width),
         _max_height(args.max_height),
-        _child(std::make_unique<T>(std::forward<T>(child))) {}
+        _child(std::move(child)) {}
 
     auto layout(Context const& ctx, Constraint const& constraint) -> Size override {
         auto max_width = std::min(_max_width, constraint.max_width());
@@ -198,14 +196,12 @@ public:
         float bottom = 0.0f;
     };
 
-    template <typename T>
-    requires std::derived_from<T, Element>
-    explicit Padding(Args args, T&& child):
+    explicit Padding(Args args, ElementHandle&& child):
         _left(args.left),
         _top(args.top),
         _right(args.right),
         _bottom(args.bottom),
-        _child(std::make_unique<T>(std::forward<T>(child))) {}
+        _child(std::move(child)) {}
 
     auto layout(Context const& ctx, Constraint const& constraint) -> Size override {
         auto max_width = std::max(0.0f, constraint.max_width() - _left - _right);
@@ -240,17 +236,13 @@ public:
         size_t order = 0;
     };
 
-    template <typename T>
-    requires std::derived_from<T, Element>
-    StackItem(T&& child):
-        _child(std::make_unique<T>(std::forward<T>(child))),
+    StackItem(ElementHandle&& child):
+        _child(std::move(child)),
         _alignment(alignment_to_fractions(Args{}.alignment)),
         _order(Args{}.order) {}
 
-    template <typename T>
-    requires std::derived_from<T, Element>
-    StackItem(Args args, T&& child):
-        _child(std::make_unique<T>(std::forward<T>(child))),
+    StackItem(Args args, ElementHandle&& child):
+        _child(std::move(child)),
         _alignment(alignment_to_fractions(args.alignment)),
         _order(args.order) {}
 
@@ -320,10 +312,8 @@ public:
         Alignment alignment = Alignment::TOP_LEFT;
     };
 
-    template <typename T>
-    requires std::derived_from<T, Element>
-    explicit Align(Args args, T&& child):
-        Stack({}, StackItem({.alignment = args.alignment}, std::forward<T>(child))) {}
+    explicit Align(Args args, ElementHandle&& child):
+        Stack({}, StackItem({.alignment = args.alignment}, std::move(child))) {}
 };
 
 // Centers the given child element within available space.
@@ -331,10 +321,8 @@ export class Center: public Stack {
 public:
     struct Args {};
 
-    template <typename T>
-    requires std::derived_from<T, Element>
-    explicit Center(Args, T&& child):
-        Stack({}, StackItem({.alignment = Alignment::CENTER}, std::forward<T>(child))) {}
+    explicit Center(Args, ElementHandle&& child):
+        Stack({}, StackItem({.alignment = Alignment::CENTER}, std::move(child))) {}
 };
 
 // Flexible box item wrapper. For use in the constructor of `Flex`.
@@ -345,17 +333,13 @@ public:
         size_t order = 0;
     };
 
-    template <typename T>
-    requires std::derived_from<T, Element>
-    FlexItem(T&& child):
-        _child(std::make_unique<T>(std::forward<T>(child))),
+    FlexItem(ElementHandle&& child):
+        _child(std::move(child)),
         _flex_grow(Args{}.flex_grow),
         _order(Args{}.order) {}
 
-    template <typename T>
-    requires std::derived_from<T, Element>
-    FlexItem(Args args, T&& child):
-        _child(std::make_unique<T>(std::forward<T>(child))),
+    FlexItem(Args args, ElementHandle&& child):
+        _child(std::move(child)),
         _flex_grow(args.flex_grow),
         _order(args.order) {}
 

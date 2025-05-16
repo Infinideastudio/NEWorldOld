@@ -29,7 +29,7 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Slider(Slider::Args<Builder>{
+                        Slider({
                             .label = Builder(fov_key, [](Key) {
                                 return Label(strWithVar(GetStrbyKey("NEWorld.options.fov"), FOVyNormal));
                             }),
@@ -42,7 +42,7 @@ private:
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Slider(Slider::Args<Builder>{
+                        Slider({
                             .label = Builder(sensitivity_key, [](Key) {
                                 return Label(strWithVar(GetStrbyKey("NEWorld.options.sensitivity"), MouseSpeed));
                             }),
@@ -59,7 +59,7 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Slider(Slider::Args<Builder>{
+                        Slider({
                             .label = Builder(render_distance_key, [](Key) {
                                 return Label(strWithVar(GetStrbyKey("NEWorld.options.distance"), RenderDistance));
                             }),
@@ -72,7 +72,7 @@ private:
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Button({.label = GetStrbyKey("NEWorld.options.rendermenu"), .on_click = renderoptions}),
+                        Button({.label = Label(GetStrbyKey("NEWorld.options.rendermenu")), .on_click = renderoptions}),
                     ),
                 )
             ),
@@ -80,11 +80,11 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Button({.label = GetStrbyKey("NEWorld.options.guimenu"), .on_click = uioptions}),
+                        Button({.label = Label(GetStrbyKey("NEWorld.options.guimenu")), .on_click = uioptions}),
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Button({.label = GetStrbyKey("NEWorld.options.languagemenu"), .on_click = languagemenu}),
+                        Button({.label = Label(GetStrbyKey("NEWorld.options.languagemenu")), .on_click = languagemenu}),
                     ),
                 )
             ),
@@ -92,14 +92,14 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Button({.label = GetStrbyKey("NEWorld.options.back"), .on_click = [this]() {
+                        Button({.label = Label(GetStrbyKey("NEWorld.options.back")), .on_click = [this]() {
                             Renderer::init_pipeline(true, false);
                             exit = true;
                         }}),
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Button({.label = GetStrbyKey("NEWorld.options.save"), .on_click = save_options}),
+                        Button({.label = Label(GetStrbyKey("NEWorld.options.save")), .on_click = save_options}),
                     ),
                 )
             ),

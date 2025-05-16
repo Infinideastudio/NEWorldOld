@@ -14,17 +14,14 @@ namespace ui {
 
 export class Slider: public Element {
 public:
-    template <typename T = Label>
-    requires std::derived_from<T, Element>
     struct Args {
-        std::optional<T> label;
+        ElementHandle label;
         float value = 0.0f;
         std::function<void(float)> on_update;
     };
 
-    template <typename T = Label>
-    explicit Slider(Args<T> args):
-        _label(args.label ? std::make_unique<T>(std::move(*args.label)) : nullptr),
+    explicit Slider(Args&& args): // NOLINT
+        _label(std::move(args.label)),
         _value(args.value),
         _on_update(std::move(args.on_update)) {}
 

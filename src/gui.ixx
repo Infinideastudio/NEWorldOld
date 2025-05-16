@@ -1136,10 +1136,6 @@ Form::~Form() {
 }
 
 void Form::singleLoop() {
-    glfwSwapBuffers(MainWindow);
-    render();
-    glfwPollEvents();
-
     mxl = mx;
     myl = my;
     mwl = mw;
@@ -1160,6 +1156,10 @@ void Form::singleLoop() {
     update();
     inputstr.clear();
     backspace = false;
+
+    glfwSwapBuffers(MainWindow);
+    render();
+    glfwPollEvents();
 }
 
 void Form::start() {

@@ -13,8 +13,7 @@ namespace ui {
 
 export class Label: public Element {
 public:
-    // Allow implicit construction since this is quite often used.
-    Label(std::string text):
+    explicit Label(std::string text):
         _text(std::move(text)) {}
 
     auto layout(Context const& ctx, Constraint const& constraint) -> Size override {
