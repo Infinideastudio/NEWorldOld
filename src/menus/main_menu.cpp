@@ -25,17 +25,17 @@ private:
             Padding({.left = 48, .right = 48, .bottom = 60},
                 Column({},
                     Sizer({.max_height = 40},
-                        Button({.label = GetStrbyKey("NEWorld.main.start"), .on_click = [] { worldmenu(); }})
+                        Button({.label = Label(GetStrbyKey("NEWorld.main.start")), .on_click = [] { worldmenu(); }})
                     ),
                     Spacer({.height = 8}),
                     Sizer({.max_height = 40},
                         Row({.main_axis_size = MainAxisSize::MAX},
                             FlexItem({.flex_grow = 1},
-                                Button({.label = GetStrbyKey("NEWorld.main.options"), .on_click = [] { options(); }})
+                                Button({.label = Label(GetStrbyKey("NEWorld.main.options")), .on_click = [] { options(); }})
                             ),
                             Spacer({.width = 8}),
                             FlexItem({.flex_grow = 1},
-                                Button({.label = GetStrbyKey("NEWorld.main.exit"), .on_click = [] { std::exit(0); }})
+                                Button({.label = Label(GetStrbyKey("NEWorld.main.exit")), .on_click = [] { std::exit(0); }})
                             )
                         )
                     )

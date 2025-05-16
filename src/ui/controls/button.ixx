@@ -15,16 +15,13 @@ namespace ui {
 
 export class Button: public Element {
 public:
-    template <typename T = Label>
-    requires std::derived_from<T, Element>
     struct Args {
-        std::optional<T> label;
+        ElementHandle label;
         std::function<void()> on_click;
     };
 
-    template <typename T = Label>
-    explicit Button(Args<T> args):
-        _label(args.label ? std::make_unique<T>(std::move(*args.label)) : nullptr),
+    explicit Button(Args&& args): // NOLINT
+        _label(std::move(args.label)),
         _on_click(std::move(args.on_click)) {}
 
     auto layout(Context const& ctx, Constraint const& constraint) -> Size override {

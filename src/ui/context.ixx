@@ -42,7 +42,7 @@ public:
 };
 
 // Global element key.
-// Used to identify the dynamic parts in the element tree.
+// Used to identify the dynamic parts (builders) in the element tree.
 export using Key = uint64_t;
 
 // Theme used for rendering.

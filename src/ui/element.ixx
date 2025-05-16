@@ -101,9 +101,11 @@ private:
 };
 
 // The root of the element tree.
+// It bootstraps the update and rendering processes.
 export class View {
 public:
     template <typename T>
+    requires std::derived_from<T, Element>
     explicit View(T&& child):
         _child(std::make_unique<T>(std::forward<T>(child))) {}
 
@@ -132,6 +134,27 @@ private:
     Size _view_size = {0.0f, 0.0f};
     float _scaling_factor = 1.0f;
     std::unique_ptr<Element> _child;
+};
+
+// A convenience wrapper for implicitly converting any `Element` to a `std::unique_ptr<Element>`.
+// Useful for constructors that take different types of `Element`s as arguments.
+export class ElementHandle {
+public:
+    template <typename T>
+    requires std::derived_from<T, Element>
+    ElementHandle(T&& element):
+        _element(std::make_unique<T>(std::forward<T>(element))) {}
+
+    operator bool() const noexcept {
+        return bool(_element);
+    }
+
+    operator std::unique_ptr<Element>() && noexcept {
+        return std::move(_element);
+    }
+
+private:
+    std::unique_ptr<Element> _element;
 };
 
 }

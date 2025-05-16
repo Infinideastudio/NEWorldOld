@@ -30,7 +30,7 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Slider(Slider::Args<Builder>{
+                        Slider({
                             .label = Builder(font_scale_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.gui.fontsize") + Var2Str(FontScale));
                             }),
@@ -44,7 +44,7 @@ private:
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Button(Button::Args<Builder>{
+                        Button({
                             .label = Builder(ui_stretch_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.gui.stretch") + BoolEnabled(UIAutoStretch));
                             }),
@@ -60,7 +60,7 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Button(Button::Args<Builder>{
+                        Button({
                             .label = Builder(ui_background_blur_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.gui.blur") + BoolEnabled(UIBackgroundBlur));
                             }),
@@ -76,7 +76,7 @@ private:
             ),
             FlexItem({.flex_grow = 1}, Spacer({.height = std::numeric_limits<float>::infinity()})),
             Sizer({.max_height = 32},
-                Button({.label = GetStrbyKey("NEWorld.gui.back"), .on_click = [this]() {
+                Button({.label = Label(GetStrbyKey("NEWorld.gui.back")), .on_click = [this]() {
                     exit = true;
                 }}),
             ),

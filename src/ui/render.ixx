@@ -43,10 +43,8 @@ void draw_quad(
 // Clips around the child element.
 export class ClipRect: public Element {
 public:
-    template <typename T>
-    requires std::derived_from<T, Element>
-    explicit ClipRect(T&& child):
-        _child(std::make_unique<T>(std::forward<T>(child))) {}
+    explicit ClipRect(ElementHandle&& child):
+        _child(std::move(child)) {}
 
     auto layout(Context const& ctx, Constraint const& constraint) -> Size override {
         return _size = _child->layout(ctx, constraint);

@@ -39,7 +39,7 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Button(Button::Args<Builder>{
+                        Button({
                             .label = Builder(shaders_enable_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.shaders.enable") + BoolYesNo(AdvancedRender));
                             }),
@@ -51,7 +51,7 @@ private:
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Slider(Slider::Args<Builder>{
+                        Slider({
                             .label = Builder(shadow_resolution_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.shaders.shadowres") + Var2Str(ShadowRes) + "x");
                             }),
@@ -68,7 +68,7 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Slider(Slider::Args<Builder>{
+                        Slider({
                             .label = Builder(shadow_distance_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.shaders.distance") + Var2Str(MaxShadowDistance));
                             }),
@@ -81,7 +81,7 @@ private:
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Button(Button::Args<Builder>{
+                        Button({
                             .label = Builder(soft_shadow_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.shaders.softshadow") + BoolEnabled(SoftShadow));
                             }),
@@ -97,7 +97,7 @@ private:
             Sizer({.max_height = 32},
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
-                        Button(Button::Args<Builder>{
+                        Button({
                             .label = Builder(volumetric_clouds_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.shaders.clouds") + BoolEnabled(VolumetricClouds));
                             }),
@@ -109,7 +109,7 @@ private:
                     ),
                     Spacer({.width = 8}),
                     FlexItem({.flex_grow = 1},
-                        Button(Button::Args<Builder>{
+                        Button({
                             .label = Builder(ssao_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.shaders.ssao") + BoolEnabled(AmbientOcclusion));
                             }),
@@ -123,7 +123,7 @@ private:
             ),
             FlexItem({.flex_grow = 1}, Spacer({.height = std::numeric_limits<float>::infinity()})),
             Sizer({.max_height = 32},
-                Button({.label =  GetStrbyKey("NEWorld.shaders.back"), .on_click = [this] { exit = true; }})
+                Button({.label = Label(GetStrbyKey("NEWorld.shaders.back")), .on_click = [this] { exit = true; }})
             )
         );
         // clang-format on
