@@ -6,15 +6,19 @@ option(${PREFIX}_ENABLE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(${PREFIX}_ENABLE_ASAN "(MSVC/GCC/Clang) Enable address sanitizer" OFF)
 option(${PREFIX}_ENABLE_UBSAN "(GCC/Clang) Enable undefined behavior sanitizer" OFF)
 option(${PREFIX}_ENABLE_LIBCXX "(GCC/Clang) Use libc++ as the standard library" OFF)
-option(${PREFIX}_ENABLE_STDLIB_CHECKS "(Experimental) Enable standard library debug checks" OFF)
+option(${PREFIX}_ENABLE_STDLIB_HARDENING "Enable standard library hardening" ON)
 option(${PREFIX}_LD_EXTEND_STACK "(Experimental) Extend stack memory to 10MB (Linux LD)" OFF)
 option(${PREFIX}_MACOS_LD_EXTEND_STACK "(Experimental) Extend stack memory to 10MB (macOS LD)" OFF)
 option(${PREFIX}_LINK_EXTEND_STACK "(Experimental) Extend stack memory to 10MB (MSVC LINK)" OFF)
-option(${PREFIX}_ENABLE_IPO "Enable inter-procedural optimizations" OFF)
+option(${PREFIX}_ENABLE_IPO "Enable inter-procedural optimizations" ON)
+option(${PREFIX}_ENABLE_PIE "Enable position independent executables" ON)
 
 # See: https://cliutils.gitlab.io/modern-cmake/chapters/features/small.html
 include(CheckIPOSupported)
 check_ipo_supported(RESULT IPO_SUPPORTED)
+include(CheckPIESupported)
+check_pie_supported()
+set(PIE_SUPPORTED ${CMAKE_CXX_LINK_PIE_SUPPORTED})
 
 # Sets default compile options for target.
 # Currently supports g++/clang/cl.
@@ -62,19 +66,17 @@ function (target_default_compile_options TARGET)
     endif ()
 
     # Standard library checks.
-    if (${PREFIX}_ENABLE_STDLIB_CHECKS)
-        if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-            target_compile_definitions(${TARGET} PRIVATE "_GLIBCXX_ASSERTIONS")
-            target_compile_definitions(${TARGET} PRIVATE "_GLIBCXX_CONCEPT_CHECKS")
-            target_compile_definitions(${TARGET} PRIVATE "_GLIBCXX_DEBUG")
-            target_compile_definitions(${TARGET} PRIVATE "_GLIBCXX_DEBUG_PEDANTIC")
-        elseif (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-            target_compile_definitions(${TARGET} PRIVATE "_LIBCPP_ENABLE_DEBUG_MODE")
-        elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-            message(AUTHOR_WARNING "Standard library checks are controlled by build configuration.")
-        else()
-            message(AUTHOR_WARNING "Standard library checks not enabled for compiler '${CMAKE_CXX_COMPILER_ID}'.")
-        endif ()
+    if (${PREFIX}_ENABLE_STDLIB_HARDENING)
+        # See: https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_macros.html
+        target_compile_definitions(${TARGET} PRIVATE "_GLIBCXX_CONCEPT_CHECKS")
+        target_compile_definitions(${TARGET} PRIVATE "_GLIBCXX_ASSERTIONS")
+        target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_GLIBCXX_DEBUG>")
+        target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_GLIBCXX_DEBUG_PEDANTIC>")
+        # See: https://libcxx.llvm.org/Hardening.html
+        target_compile_definitions(${TARGET} PRIVATE "_LIBCPP_HARDENING_MODE=$<IF:$<CONFIG:Debug>,_LIBCPP_HARDENING_MODE_DEBUG,_LIBCPP_HARDENING_MODE_EXTENSIVE>")
+        # See: https://github.com/microsoft/STL/wiki/STL-Hardening
+        target_compile_definitions(${TARGET} PRIVATE "_MSVC_STL_HARDENING=1")
+        target_compile_definitions(${TARGET} PRIVATE "_MSVC_STL_DESTRUCTOR_TOMBSTONES=1")
     endif ()
 
     # ASan.
@@ -98,8 +100,13 @@ function (target_default_compile_options TARGET)
         set_target_properties(${TARGET} PROPERTIES LINK_FLAGS "/STACK:10000000")
     endif ()
 
-    # Inter-procedural(link-time) optimisations.
+    # Inter-procedural optimisations.
     if (IPO_SUPPORTED AND ${PREFIX}_ENABLE_IPO)
         set_target_properties(${TARGET} PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif ()
+
+    # Position independent executables.
+    if (PIE_SUPPORTED AND ${PREFIX}_ENABLE_PIE)
+        set_target_properties(${TARGET} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
     endif ()
 endfunction ()
