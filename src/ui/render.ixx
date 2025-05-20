@@ -50,13 +50,13 @@ public:
         return _size = _child->layout(ctx, constraint);
     }
 
-    void update(Context const& ctx, Point position) override {
+    void update(Context& ctx, Point position) override {
         _child->update(ctx, position);
     }
 
-    void render(Context const& ctx, Point position, uint8_t clip_layer) const override {
-        auto top_left = position * ctx.scaling_factor;
-        auto bottom_right = (position + _size) * ctx.scaling_factor;
+    void render(Context& ctx, Point position, uint8_t clip_layer) const override {
+        auto top_left = position * ctx.scaling_factor();
+        auto bottom_right = (position + _size) * ctx.scaling_factor();
         auto next_layer = static_cast<uint8_t>(clip_layer + 1);
         auto v = vertex_builder();
         v.color(0, 0, 0, 0);

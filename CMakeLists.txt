@@ -130,7 +130,6 @@ target_sources(
         "src/debug.ixx"
         "src/globalization.ixx"
         "src/globals.ixx"
-        "src/gui.ixx"
         "src/menus.ixx"
         "src/neworld.ixx"
         "src/height_maps.ixx"

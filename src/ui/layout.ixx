@@ -143,9 +143,9 @@ public:
         return {width, height};
     }
 
-    void update(Context const&, Point) override {}
+    void update(Context&, Point) override {}
 
-    void render(Context const&, Point, uint8_t) const override {}
+    void render(Context&, Point, uint8_t) const override {}
 
 private:
     float _width;
@@ -172,11 +172,11 @@ public:
         return child_size;
     }
 
-    void update(Context const& ctx, Point position) override {
+    void update(Context& ctx, Point position) override {
         _child->update(ctx, position);
     }
 
-    void render(Context const& ctx, Point position, uint8_t clip_layer) const override {
+    void render(Context& ctx, Point position, uint8_t clip_layer) const override {
         _child->render(ctx, position, clip_layer);
     }
 
@@ -212,11 +212,11 @@ public:
         return {width, height};
     }
 
-    void update(Context const& ctx, Point position) override {
+    void update(Context& ctx, Point position) override {
         _child->update(ctx, Point(position.x() + _left, position.y() + _top));
     }
 
-    void render(Context const& ctx, Point position, uint8_t clip_layer) const override {
+    void render(Context& ctx, Point position, uint8_t clip_layer) const override {
         _child->render(ctx, Point(position.x() + _left, position.y() + _top), clip_layer);
     }
 
@@ -289,13 +289,13 @@ public:
         return size;
     }
 
-    void update(Context const& ctx, Point position) override {
+    void update(Context& ctx, Point position) override {
         for (auto const& item: _items) {
             item._child->update(ctx, Point(position + item._position));
         }
     }
 
-    void render(Context const& ctx, Point position, uint8_t clip_layer) const override {
+    void render(Context& ctx, Point position, uint8_t clip_layer) const override {
         for (auto const& item: _items) {
             item._child->render(ctx, Point(position + item._position), clip_layer);
         }
@@ -391,7 +391,7 @@ public:
     // See: https://api.flutter.dev/flutter/widgets/Flex-class.html
     auto layout(Context const& ctx, Constraint const& constraint) -> Size override {
         auto swapped_constraint = _swap_if_vertical(constraint);
-        auto max_length = swapped_constraint.max_width();
+        auto max_width = swapped_constraint.max_width();
         auto max_height = swapped_constraint.max_height();
         // First component is main axis, second is cross axis.
         auto child_sizes = std::vector<Size>(_items.size());
@@ -411,7 +411,7 @@ public:
         }
         // Divide the remaining space among the expanding children.
         // If there is at least one expanding child, all remaining space will be allocated.
-        auto remaining_length = std::max(0.0f, max_length - sum_child_width);
+        auto remaining_length = std::max(0.0f, max_width - sum_child_width);
         for (auto i = 0uz; i < _items.size(); ++i) {
             auto const& item = _items[i];
             if (item._flex_grow != 0.0f) {
@@ -422,7 +422,7 @@ public:
             }
         }
         // Calculate self size.
-        auto width = (_main_axis_size == MainAxisSize::MIN) ? std::min(sum_child_width, max_length) : max_length;
+        auto width = (_main_axis_size == MainAxisSize::MIN) ? std::min(sum_child_width, max_width) : max_width;
         auto height = (_cross_axis_size == CrossAxisSize::MIN) ? std::min(max_child_height, max_height) : max_height;
         // Calculate all child positions.
         // If there is remaining space but no expanding children, add spacing.
@@ -432,20 +432,20 @@ public:
             case MainAxisAlignment::START:
                 break;
             case MainAxisAlignment::CENTER:
-                main_axis_position = remaining_length / 2.0f;
+                main_axis_position = (width - sum_child_width) / 2.0f;
                 break;
             case MainAxisAlignment::END:
-                main_axis_spacing = remaining_length;
+                main_axis_spacing = (width - sum_child_width);
                 break;
             case MainAxisAlignment::SPACE_BETWEEN:
-                main_axis_spacing = remaining_length / static_cast<float>(_items.size() - 1);
+                main_axis_spacing = (width - sum_child_width) / static_cast<float>(_items.size() - 1);
                 break;
             case MainAxisAlignment::SPACE_AROUND:
-                main_axis_spacing = remaining_length / static_cast<float>(_items.size());
+                main_axis_spacing = (width - sum_child_width) / static_cast<float>(_items.size());
                 main_axis_position = main_axis_spacing / 2.0f;
                 break;
             case MainAxisAlignment::SPACE_EVENLY:
-                main_axis_spacing = remaining_length / static_cast<float>(_items.size() + 1);
+                main_axis_spacing = (width - sum_child_width) / static_cast<float>(_items.size() + 1);
                 main_axis_position = main_axis_spacing;
                 break;
             default:
@@ -476,13 +476,13 @@ public:
         return _swap_if_vertical(Size(width, height));
     }
 
-    void update(Context const& ctx, Point position) override {
+    void update(Context& ctx, Point position) override {
         for (auto const& item: _items) {
             item._child->update(ctx, Point(position + _swap_if_vertical(item._position)));
         }
     }
 
-    void render(Context const& ctx, Point position, uint8_t clip_layer) const override {
+    void render(Context& ctx, Point position, uint8_t clip_layer) const override {
         for (auto const& item: _items) {
             item._child->render(ctx, Point(position + _swap_if_vertical(item._position)), clip_layer);
         }

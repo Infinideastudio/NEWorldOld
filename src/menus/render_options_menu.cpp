@@ -2,28 +2,24 @@ module menus;
 import std;
 import types;
 import ui;
-import gui;
 import globals;
 import globalization;
 
 namespace Menus {
 using Globalization::GetStrbyKey;
 
-class RenderOptionsMenu: public GUI::Form {
+class RenderOptionsMenu: public ui::Menu {
 private:
-    ui::Context ctx = ui::Context();
-    ui::View view = ui::View(ui::Spacer({}));
-
-    auto _msaa_to_position(int level) -> float {
+    static auto _msaa_to_position(int level) -> float {
         return level <= 1 ? 0.0f : std::log2(static_cast<float>(level)) / 3.0f;
     }
 
-    auto _position_to_msaa(float position) -> int {
+    static auto _position_to_msaa(float position) -> int {
         auto level = static_cast<int>(std::pow(2.0f, std::round(position * 3.0f)));
         return level <= 1 ? 0 : level;
     }
 
-    void onLoad() override {
+    auto build(ui::Context& ctx) -> ui::View override {
         using namespace ui;
         auto smooth_lighting_key = ctx.generate_key();
         auto fancy_grass_key = ctx.generate_key();
@@ -31,7 +27,7 @@ private:
         auto msaa_key = ctx.generate_key();
         auto vsync_key = ctx.generate_key();
         // clang-format off
-        auto column = Column({},
+        auto column = Column({.main_axis_size = MainAxisSize::MAX, .main_axis_alignment = MainAxisAlignment::CENTER},
             Sizer({.max_height = 32},
                 Center({}, Label(GetStrbyKey("NEWorld.render.caption")))
             ),
@@ -43,7 +39,7 @@ private:
                             .label = Builder(smooth_lighting_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.render.smooth") + BoolEnabled(SmoothLighting));
                             }),
-                            .on_click = [this, smooth_lighting_key] {
+                            .on_click = [&ctx, smooth_lighting_key] {
                                 SmoothLighting = !SmoothLighting;
                                 ctx.mark_for_update(smooth_lighting_key);
                             }
@@ -55,7 +51,7 @@ private:
                             .label = Builder(fancy_grass_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.render.grasstex") + BoolEnabled(NiceGrass));
                             }),
-                            .on_click = [this, fancy_grass_key] {
+                            .on_click = [&ctx, fancy_grass_key] {
                                 NiceGrass = !NiceGrass;
                                 ctx.mark_for_update(fancy_grass_key);
                             }
@@ -71,7 +67,7 @@ private:
                             .label = Builder(merge_face_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.render.merge") + BoolEnabled(MergeFace));
                             }),
-                            .on_click = [this, merge_face_key] {
+                            .on_click = [&ctx, merge_face_key] {
                                 MergeFace = !MergeFace;
                                 ctx.mark_for_update(merge_face_key);
                             }
@@ -86,7 +82,7 @@ private:
                                 return Label(text);
                             }),
                             .value = _msaa_to_position(Multisample),
-                            .on_update = [this, msaa_key](float value) {
+                            .on_update = [&ctx, msaa_key](float value) {
                                 Multisample = _position_to_msaa(value);
                                 ctx.mark_for_update(msaa_key);
                             }
@@ -102,7 +98,7 @@ private:
                             .label = Builder(vsync_key, [](Key) {
                                 return Label(GetStrbyKey("NEWorld.render.vsync") + BoolEnabled(VerticalSync));
                             }),
-                            .on_click = [this, vsync_key] {
+                            .on_click = [&ctx, vsync_key] {
                                 VerticalSync = !VerticalSync;
                                 ctx.mark_for_update(vsync_key);
                             }
@@ -116,34 +112,25 @@ private:
             ),
             FlexItem({.flex_grow = 1}, Spacer({.height = std::numeric_limits<float>::infinity()})),
             Sizer({.max_height = 32},
-                Button({.label =  Label(GetStrbyKey("NEWorld.render.back")), .on_click = [this] { exit = true; }})
+                Button({.label =  Label(GetStrbyKey("NEWorld.render.back")), .on_click = [this] { exit(); }})
             )
         );
         // clang-format on
-        view = View(Center({}, Sizer({.max_width = 512}, Padding({.top = 32, .bottom = 32}, std::move(column)))));
-    }
-
-    void onUpdate() override {
-        // Temporary
-        ctx.theme = ui::theme_dark();
-        ctx.scaling_factor = static_cast<float>(Stretch);
-        ctx.view_size = {static_cast<float>(WindowWidth), static_cast<float>(WindowHeight)};
-        ctx.mouse_position = {static_cast<float>(mx), static_cast<float>(my)};
-        ctx.mouse_motion = {static_cast<float>(mx - mxl), static_cast<float>(my - myl)};
-        ctx.mouse_wheel_motion = {static_cast<float>(mw - mwl)};
-        ctx.mouse_left_button_down = (mb == 1);
-        ctx.mouse_left_button_acted = (mb == 1 && mbl == 0);
-        ctx.mouse_left_button_released = (mb == 0 && mbl == 1);
-        view.update(ctx);
-    }
-
-    void onRender() override {
-        view.render(ctx);
+        return View(
+            Row({.main_axis_size = MainAxisSize::MAX, .main_axis_alignment = MainAxisAlignment::CENTER},
+                FlexItem(
+                    {.flex_grow = 1},
+                    Padding(
+                        {.left = 32, .top = 32, .right = 32, .bottom = 32},
+                        Sizer({.max_width = 512}, std::move(column))
+                    )
+                ))
+        );
     }
 };
 
 void renderoptions() {
-    RenderOptionsMenu Menu;
-    Menu.start();
+    RenderOptionsMenu().run(MainWindow);
 }
+
 }

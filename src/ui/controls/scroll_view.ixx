@@ -1,4 +1,4 @@
-export module ui:scroll_area;
+export module ui:scroll_view;
 import std;
 import types;
 import debug;

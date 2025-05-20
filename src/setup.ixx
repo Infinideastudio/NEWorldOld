@@ -18,13 +18,8 @@ import textures;
 using namespace std::literals::chrono_literals;
 
 void on_window_size_event(GLFWwindow* win, int width, int height) {
-    if (width < 640)
-        width = 640;
-    if (height < 360)
-        height = 360;
     WindowWidth = width;
     WindowHeight = height > 0 ? height : 1;
-    glfwSetWindowSize(win, width, height);
     Renderer::init_pipeline(false, true);
 }
 
@@ -199,7 +194,7 @@ export void toggle_full_screen() {
 export void load_textures() {
     SelectedTexture = Textures::LoadTexture("textures/ui/select.png", false);
     UnselectedTexture = Textures::LoadTexture("textures/ui/unselect.png", false);
-    TitleTexture = Textures::LoadTexture("textures/ui/title.png", true);
+    TitleTexture = std::make_shared<render::Texture>(Textures::LoadTexture("textures/ui/title.png", true));
     // for (auto i = 0uz; i < 6uz; i++) {
     //     UIBackgroundTextures[i] = Textures::LoadTexture(std::format("textures/ui/background_{}.png", i), true);
     // }
