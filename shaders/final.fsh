@@ -37,7 +37,7 @@ layout(std140, row_major) uniform Model {
 const float PI = 3.141593;
 const uint LEAF_ID = 8u, GLASS_ID = 9u, WATER_ID = 10u, LAVA_ID = 11u, GLOWSTONE_ID = 12u, ICE_ID = 15u, IRON_ID = 17u;
 const uint INDICATOR_ID = 65535u;
-const float NOISE_TEXTURE_SIZE = 256.0;
+const float NOISE_TEXTURE_SIZE = 128.0;
 const vec2 NOISE_TEXTURE_OFFSET = vec2(37.0, 17.0);
 
 // Shadow map
@@ -48,7 +48,6 @@ const float SSAO_RADIUS = 1.0;
 const int SSAO_SAMPLES = 16;
 
 // Water reflection
-const float WAVE_UNITS = 32.0;
 const int WAVE_OCTAVES = 7;
 const float WAVE_LEVEL = -0.5;
 const float WAVE_SCALE = 0.01;
@@ -59,7 +58,6 @@ const int REFL_ITERATIONS = 32;
 const float REFL_STEP_SCALE = 2.0 / 32.0;
 
 // Volumetric clouds
-const float CLOUD_UNITS = 32.0; // 1.0 / 16.0;
 const vec3 CLOUD_SCALE = vec3(100.0, 80.0, 100.0);
 const float CLOUD_BOTTOM = 100.0, CLOUD_TOP = 65536.0, CLOUD_TRANSITION = 120.0;
 const int CLOUD_ITERATIONS = 32;
@@ -70,6 +68,17 @@ vec4 fisheye_projection_origin;
 
 float rand(vec2 v) {
     return fract(sin(dot(v, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+float bayer2(vec2 c) { return dot(fract(0.5 * floor(c)), vec2(1.0, 0.5)); }
+float bayer4(vec2 c) { return 0.25 * bayer2(0.5 * c) + bayer2(c); }
+float bayer8(vec2 c) { return 0.25 * bayer4(0.5 * c) + bayer2(c); }
+float bayer16(vec2 c) { return 0.25 * bayer8(0.5 * c) + bayer2(c); }
+
+float dither(vec2 v) {
+    // return rand(v);
+    // return bayer16(v);
+    return texture(u_noise_texture, vec3(v / NOISE_TEXTURE_SIZE, 0.0)).b;
 }
 
 uint decode_u16(vec2 v) {
@@ -138,12 +147,13 @@ vec2 fisheye_inverse(vec2 position) {
 
 // Repeat period = NOISE_TEXTURE_SIZE
 float interpolated_noise(vec3 x) {
-    vec3 p = floor(x);
-    vec3 f = fract(x);
-//    f = smoothstep(0.0, 1.0, f);
-    vec2 uv = (p.xz + NOISE_TEXTURE_OFFSET * p.y) + f.xz;
-    vec4 v = texture(u_noise_texture, vec3(uv, 0.0) / NOISE_TEXTURE_SIZE);
-    return mix(v.r, v.b, f.y);
+    vec3 ix = floor(x);
+    vec3 fx = fract(x);
+    vec2 uv0 = (ix.xz + ix.y * NOISE_TEXTURE_OFFSET) + fx.xz;
+    vec2 uv1 = uv0 + NOISE_TEXTURE_OFFSET;
+    float texel0 = texture(u_noise_texture, vec3(uv0 / NOISE_TEXTURE_SIZE, 0.0)).r;
+    float texel1 = texture(u_noise_texture, vec3(uv1 / NOISE_TEXTURE_SIZE, 0.0)).r;
+    return mix(texel0, texel1, fx.y);
 }
 
 // Sample shadow map
@@ -152,20 +162,16 @@ float get_shadow_offset(vec3 tex_coord, vec2 offset) {
 }
 
 // Sample shadow map (4 samples)
-float get_shadow_quad(vec3 tex_coord, int i) {
-    // (i mod 4) controls stratified sampling
-    // See: https://developer.nvidia.com/gpugems/gpugems/part-ii-lighting-and-shadows/chapter-11-shadow-map-antialiasing
-    vec2 seed = gl_FragCoord.xy * 0.5 + vec2(float(i) * 0.5, float(i) * 0.25 - 0.125);
-    vec2 offset = vec2(greaterThan(fract(seed), vec2(0.5)));
+float get_shadow_quad(vec3 tex_coord) {
     float res = 0.0;
-    res += get_shadow_offset(tex_coord, offset + vec2(-1.5, -1.5));
-    res += get_shadow_offset(tex_coord, offset + vec2(+0.5, -1.5));
-    res += get_shadow_offset(tex_coord, offset + vec2(+0.5, +0.5));
-    res += get_shadow_offset(tex_coord, offset + vec2(-1.5, +0.5));
+    res += get_shadow_offset(tex_coord, vec2(-0.5, -0.5));
+    res += get_shadow_offset(tex_coord, vec2(+0.5, -0.5));
+    res += get_shadow_offset(tex_coord, vec2(+0.5, +0.5));
+    res += get_shadow_offset(tex_coord, vec2(-0.5, +0.5));
     return res * 0.25;
 }
 
-float calc_sunlight_inner(vec3 coord, bool quad, int i) {
+float calc_sunlight_inner(vec3 coord) {
     // Shadow map coordinates
     vec3 shadow_coord = divide(u_shadow_mvp * vec4(coord, 1.0));
     shadow_coord = vec3(fisheye_projection(shadow_coord.xy), shadow_coord.z);
@@ -173,7 +179,7 @@ float calc_sunlight_inner(vec3 coord, bool quad, int i) {
     vec3 tex_coord = shadow_coord * 0.5 + vec3(0.5);
 
     // Sample shadow map
-    float res = quad ? get_shadow_quad(tex_coord, i) : get_shadow_offset(tex_coord, vec2(0.0));
+    float res = get_shadow_quad(tex_coord);
     float dist = length(divide(vec4(coord, 1.0)));
     float factor = smoothstep(0.8, 1.0, dist / u_shadow_distance);
     return mix(res, 1.0, factor);
@@ -195,40 +201,16 @@ float calc_sunlight(vec3 coord, vec3 normal) {
     // Approximate world space distance for moving one pixel in shadow map
     float normal_bias = shift * u_shadow_distance;
 
-#ifdef SOFT_SHADOW
-    // Increased normal bias due to offset sampling (max 1.5 + 1 pixels)
-    normal_bias *= 2.5;
-#endif
+    // Increased normal bias due to offset sampling (max 0.5 + 1 pixels)
+    normal_bias *= 1.5;
 
 #ifdef MERGE_FACE
     // Additive geometric bias due to non-linear transformation (magic number)
     normal_bias += (16.0 / u_shadow_distance) * u_shadow_fisheye_factor * 4.0;
 #endif
 
-#ifdef SOFT_SHADOW
-    vec3 tangent = normalize(cross(normal, vec3(1.0, 1.0, 1.0)));
-    vec3 bitangent = cross(normal, tangent);
-
-    // Each `calc_sunlight_inner` call takes 4 samples
-    float res = 0.0;
-    float count = 0.0;
-    for (int i = 0; i * 4 < SHADOW_SAMPLES; i++) {
-        float ratio = float(i * 4) / float(SHADOW_SAMPLES);
-        vec3 offset = vec3(
-            rand(gl_FragCoord.xy + vec2(ratio, 0.0)) * 2.0 - 1.0,
-            rand(gl_FragCoord.xy + vec2(0.0, ratio)) * 2.0 - 1.0,
-            normal_bias
-        );
-        offset.xy *= SHADOW_RADIUS;
-        vec3 sample_coord = coord + mat3(tangent, bitangent, normal) * offset;
-        res += calc_sunlight_inner(sample_coord, true, i);
-        count += 1.0;
-    }
-    return res / count * cos_theta;
-#else
     vec3 sample_coord = coord + normal * normal_bias;
-    return calc_sunlight_inner(sample_coord, false, 0) * cos_theta;
-#endif
+    return calc_sunlight_inner(sample_coord) * cos_theta;
 }
 
 float calc_ambient(vec3 coord, vec3 normal) {
@@ -289,8 +271,11 @@ vec4 diffuse(vec2 tex_coord) {
     vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
     vec4 relative_coord = mvp_inverse * screen_space_coord;
     vec3 world_space_coord = divide(relative_coord) + translation;
+#ifdef SOFT_SHADOW
+    vec3 shadow_coord = world_space_coord - translation;
+#else
     vec3 shadow_coord = floor(world_space_coord * SHADOW_UNITS + normal * 0.5) / SHADOW_UNITS - translation;
-    // vec3 shadow_coord = world_space_coord - translation;
+#endif
 
     float sunlight = 0.0;
     float ambient = 1.0;
@@ -318,7 +303,6 @@ vec4 diffuse_with_fade(vec2 tex_coord) {
 }
 
 vec3 calc_wave_normal(vec3 pos) {
-    pos = floor(pos * WAVE_UNITS) / WAVE_UNITS;
     vec3 hs = vec3(0.0);
     for (int i = 0; i < WAVE_OCTAVES; i++) {
         float ratio = float(i) / float(WAVE_OCTAVES);
@@ -374,7 +358,7 @@ vec4 ssr(vec4 org, vec4 dir, bool inside) {
 
     for (int i = 0; i < REFL_ITERATIONS; i++) {
         float ratio = float(i) / float(REFL_ITERATIONS);
-        float step = step_mult * REFL_STEP_SCALE * (i == 0 ? 0.5 + rand(gl_FragCoord.xy) : 1.0);
+        float step = step_mult * REFL_STEP_SCALE * (i == 0 ? 0.5 + dither(gl_FragCoord.xy) : 1.0);
 
         // Stop if the step size is less than one pixel
         if (step_mult * REFL_STEP_SCALE < 2.0 / max(u_buffer_width, u_buffer_height)) break;
@@ -423,7 +407,6 @@ float cloud_noise(vec3 c) {
 }
 
 float calc_cloud_opacity(vec3 pos) {
-    pos = floor(pos * CLOUD_UNITS) / CLOUD_UNITS;
     float factor = min(
         smoothstep(CLOUD_BOTTOM, CLOUD_BOTTOM + CLOUD_TRANSITION, pos.y),
         1.0 - smoothstep(CLOUD_TOP - CLOUD_TRANSITION, CLOUD_TOP, pos.y)
@@ -448,7 +431,7 @@ vec4 cloud(vec3 org, vec3 dir, float dist, vec3 center, float quality) {
     
     for (int i = 0; i < CLOUD_ITERATIONS; i++) {
         float ratio = float(i) / float(CLOUD_ITERATIONS);
-        float step = CLOUD_STEP_SCALE / quality * (i == 0 ? 0.5 + rand(gl_FragCoord.xy) : 1.0);
+        float step = CLOUD_STEP_SCALE / quality * (i == 0 ? 0.5 + dither(gl_FragCoord.xy) : 1.0);
         curr += dir * step;
         
         if (remaining < 0.01) break;
@@ -477,12 +460,12 @@ vec4 cloud(vec3 org, vec3 dir, float dist, vec3 center, float quality) {
 }
 
 vec3 aces(vec3 x) {
-  const float a = 2.51;
-  const float b = 0.03;
-  const float c = 2.43;
-  const float d = 0.59;
-  const float e = 0.14;
-  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
 void main() {
@@ -513,18 +496,6 @@ void main() {
             if (inside) cos_theta = -cos_theta;
             if (cos_theta >= 0.0) normal = wave_normal;
         }
-
-        /*
-        // Glossy metal effect
-        if (block_id == IRON_ID) {
-            vec3 perturb = vec3(
-                rand(gl_FragCoord.xy),
-                rand(gl_FragCoord.xy + vec2(0.1, 0.0)),
-                rand(gl_FragCoord.xy + vec2(0.0, 1.0)));
-            perturb = (perturb - vec3(0.5)) * 0.03;
-            normal = normalize(normal + perturb);
-        }
-        */
 
         // Reflection calculation
         vec3 reflect_dir = reflect(normalize(reflect_origin - view_origin), normal);

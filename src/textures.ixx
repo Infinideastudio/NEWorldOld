@@ -18,6 +18,7 @@ export std::shared_ptr<render::Texture> UIBackgroundTextures;
 export render::Texture SelectedTexture;
 export render::Texture UnselectedTexture;
 export render::Texture BlockTextureArray;
+export render::Texture NoiseTextureArray;
 
 export enum class TextureIndex: uint16_t {
     WHITE,
@@ -95,7 +96,7 @@ export auto LoadTexture(std::filesystem::path const& path, bool bilinear) -> ren
         res.generate_mipmaps();
         return std::move(res);
     }
-    spdlog::error("failed to load texture {}: {}", path.string(), image.error());
+    spdlog::error("failed to load image {}: {}", path.string(), image.error());
     return {};
 }
 
@@ -112,6 +113,19 @@ export auto LoadBlockTextureArray(std::filesystem::path const& path) -> render::
         res.set_wrap(true);
         res.set_filter(false, true);
         res.generate_mipmaps();
+        return std::move(res);
+    }
+    spdlog::error("failed to load image {}: {}", path.string(), image.error());
+    return {};
+}
+
+export auto LoadNoiseTextureArray(std::filesystem::path const& path) -> render::Texture {
+    auto image = render::load_png_image(path);
+    if (image) {
+        auto res = render::Texture::create(render::Texture::Format::RGBA, image->width(), image->height());
+        res.fill(0, 0, 0, *image);
+        res.set_wrap(true);
+        res.set_filter(true, false);
         return std::move(res);
     }
     spdlog::error("failed to load image {}: {}", path.string(), image.error());
