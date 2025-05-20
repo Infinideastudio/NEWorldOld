@@ -1,12 +1,16 @@
 module;
 
 #include <glad/gl.h>
+#include <GLFW/glfw3.h>
+#undef assert
 
 export module ui:element;
 import std;
 import types;
 import debug;
 import math;
+import render;
+import rendering;
 import :context;
 
 namespace ui {
@@ -45,10 +49,10 @@ public:
     virtual auto layout(Context const& ctx, Constraint const& constraint) -> Size = 0;
 
     // Updates subtree.
-    virtual void update(Context const& ctx, Point position) = 0;
+    virtual void update(Context& ctx, Point position) = 0;
 
     // Renders subtree.
-    virtual void render(Context const& ctx, Point position, uint8_t clip_layer) const = 0;
+    virtual void render(Context& ctx, Point position, uint8_t clip_layer) const = 0;
 
     virtual ~Element() = default;
 
@@ -82,7 +86,7 @@ public:
     }
 
     // The child element is rebuilt if this is the first run or the key is updated.
-    void update(Context const& ctx, Point position) override {
+    void update(Context& ctx, Point position) override {
         if (!_child || ctx.updated(_key)) {
             _child = _build(_key);
         }
@@ -90,7 +94,7 @@ public:
     }
 
     // Only renders if the child element has been built.
-    void render(Context const& ctx, Point position, uint8_t clip_layer) const override {
+    void render(Context& ctx, Point position, uint8_t clip_layer) const override {
         return _child ? _child->render(ctx, position, clip_layer) : void();
     }
 
@@ -116,14 +120,21 @@ public:
             true; // ctx.has_updated_keys() || ctx.view_size != _view_size || ctx.scaling_factor != _scaling_factor;
         _child->update(ctx, Point());
         if (should_relayout) {
-            _view_size = ctx.view_size;
-            _scaling_factor = ctx.scaling_factor;
-            _child->layout(ctx, Constraint(_view_size / _scaling_factor));
+            _view_size = ctx.view_size();
+            _scaling_factor = ctx.scaling_factor();
+            _child->layout(ctx, Constraint(_view_size));
         }
     }
 
     // Renders the element tree.
-    void render(Context const& ctx) {
+    void render(Context& ctx, bool clear) const {
+        if (clear) {
+            auto color = Vec4f(ctx.theme().container_color) / 255.0f;
+            glClearColor(color.x(), color.y(), color.z(), color.w());
+            glClearDepth(1.0f);
+            glClearStencil(0);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        }
         auto clip_layer = uint8_t{0};
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         glStencilFunc(GL_EQUAL, clip_layer, 0xFF);
@@ -155,6 +166,51 @@ public:
 
 private:
     std::unique_ptr<Element> _element;
+};
+
+// Temporary.
+export class Menu {
+public:
+    Menu(Menu const&) = delete;
+    auto operator=(Menu const&) -> Menu& = delete;
+
+    virtual auto build(Context& ctx) -> View = 0;
+
+    void run(GLFWwindow* window) {
+        _view = build(_ctx);
+        while (!_exit) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            _ctx.update_from(window);
+            _view->update(_ctx);
+            if (_ctx.window_closing()) {
+                std::exit(0);
+            }
+            glfwSwapBuffers(window);
+            Renderer::shaders[Renderer::UIShader].bind();
+            Renderer::frame_uniforms.set<".u_buffer_width">(static_cast<float>(WindowWidth));
+            Renderer::frame_uniforms.set<".u_buffer_height">(static_cast<float>(WindowHeight));
+            Renderer::frame_uniform_buffer.write(Renderer::frame_uniforms.bytes(), 0);
+            Renderer::frame_uniform_buffer.bind(render::Buffer::IndexedTarget::UNIFORM, 0);
+            _view->render(_ctx, true);
+            glfwPollEvents();
+        }
+    }
+
+    void exit() {
+        _exit = true;
+    }
+
+    virtual ~Menu() = default;
+
+protected:
+    Menu() = default;
+    Menu(Menu&&) = default;
+    auto operator=(Menu&&) -> Menu& = default;
+
+private:
+    Context _ctx;
+    std::optional<View> _view = {};
+    bool _exit = false;
 };
 
 }

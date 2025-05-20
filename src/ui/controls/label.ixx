@@ -17,16 +17,16 @@ public:
         _text(std::move(text)) {}
 
     auto layout(Context const& ctx, Constraint const& constraint) -> Size override {
-        auto width = static_cast<float>(TextRenderer::rendered_width(_text)) / ctx.scaling_factor;
-        auto height = static_cast<float>(TextRenderer::line_height()) / ctx.scaling_factor;
+        auto width = static_cast<float>(TextRenderer::rendered_width(_text)) / ctx.scaling_factor();
+        auto height = static_cast<float>(TextRenderer::line_height()) / ctx.scaling_factor();
         return {width, height};
     }
 
-    void update(Context const& ctx, Point position) override {}
+    void update(Context& ctx, Point position) override {}
 
-    void render(Context const& ctx, Point position, uint8_t) const override {
-        auto top_left = position * ctx.scaling_factor;
-        TextRenderer::set_font_color(ctx.theme.text_color);
+    void render(Context& ctx, Point position, uint8_t) const override {
+        auto top_left = position * ctx.scaling_factor();
+        TextRenderer::set_font_color(ctx.theme().text_color);
         TextRenderer::render_string(static_cast<int>(top_left.x()), static_cast<int>(top_left.y()), _text);
     }
 

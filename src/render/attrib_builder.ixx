@@ -102,6 +102,11 @@ public:
         return _vertices;
     }
 
+    void clear() {
+        _vertex = {};
+        _vertices.clear();
+    }
+
     void make_vertex() {
         _vertices.emplace_back(_vertex);
     }
@@ -164,6 +169,12 @@ public:
 
     auto indices() const -> std::vector<uint32_t> const& {
         return _indices;
+    }
+
+    void clear() {
+        _vertex = {};
+        _vertices.clear();
+        _indices.clear();
     }
 
     // Appends a new vertex with a new index to the arrays.

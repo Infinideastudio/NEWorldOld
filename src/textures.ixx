@@ -13,8 +13,8 @@ import globals;
 import render;
 
 export render::Texture SplashTexture;
-export render::Texture TitleTexture;
-export render::Texture UIBackgroundTextures;
+export std::shared_ptr<render::Texture> TitleTexture;
+export std::shared_ptr<render::Texture> UIBackgroundTextures;
 export render::Texture SelectedTexture;
 export render::Texture UnselectedTexture;
 export render::Texture BlockTextureArray;

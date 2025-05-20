@@ -12,7 +12,6 @@ import math;
 import commands;
 import globals;
 import globalization;
-import gui;
 import menus;
 import particles;
 import rendering;
@@ -129,7 +128,6 @@ export int main() {
     // 菜单游戏循环
     while (!glfwWindowShouldClose(MainWindow)) {
         GameBegin = GameExit = false;
-        GUI::clearTransition();
         Menus::mainmenu();
 
         // 初始化游戏状态
@@ -185,7 +183,6 @@ export int main() {
             if (paused) {
                 shouldGetThumbnail = true;
                 readback(world);
-                GUI::clearTransition();
                 Menus::gamemenu();
                 paused = false;
                 mxl = mx;
@@ -1057,7 +1054,7 @@ void draw_hud(worlds::World& world) {
         BlockTextureArray.bind(0);
         auto v = Renderer::ui_vertex_builder();
         v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
-        v.color(Vec4f(GUI::FgR, GUI::FgG, GUI::FgB, GUI::FgA) * 255.0f);
+        v.color(0, 0, 0, 20);
         v.coord(1, WindowHeight - 33 - lineHeight);
         v.coord(1, WindowHeight - 33);
         v.coord(WindowWidth - 1, WindowHeight - 33);
@@ -1072,13 +1069,10 @@ void draw_hud(worlds::World& world) {
             BlockTextureArray.bind(0);
             auto v = Renderer::ui_vertex_builder();
             v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
-            v.color(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA) * 255.0f);
+            v.color(0, 0, 0, 20);
             v.coord(1, WindowHeight - 34 - lineHeight * (count + 2));
-            v.color(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA) * 255.0f);
             v.coord(1, WindowHeight - 34 - lineHeight * (count + 1));
-            v.color(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, GUI::BgA) * 255.0f);
             v.coord(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 1));
-            v.color(Vec4f(GUI::BgR, GUI::BgG, GUI::BgB, count + 1 == 10 ? 0.0f : GUI::BgA) * 255.0f);
             v.coord(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 2));
             auto va = render::VertexArray::create(v, render::VertexArray::Primitive::TRIANGLE_FAN);
             va.first.render();
