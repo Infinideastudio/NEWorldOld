@@ -10,6 +10,7 @@ import debug;
 import math;
 import globals;
 import render;
+import textures;
 
 export namespace Renderer {
 namespace bl = render::block_layout::spec;
@@ -58,7 +59,6 @@ enum Textures {
     DepthTexture,
     ShadowColorTexture,
     ShadowDepthTexture,
-    NoiseTexture,
 };
 
 enum Framebuffers {
@@ -68,7 +68,7 @@ enum Framebuffers {
 
 size_t bufferWidth = 0;
 size_t bufferHeight = 0;
-double sunlightPitch = 30.0;
+double sunlightPitch = 45.0;
 double sunlightHeading = 60.0;
 std::vector<render::Program> shaders;
 std::vector<render::Texture> textures;
@@ -98,30 +98,6 @@ auto chunk_vertex_builder() {
 
 auto shadow_distance() -> int {
     return std::min(MaxShadowDistance, RenderDistance);
-}
-
-auto create_noise_texture() -> render::Texture {
-    fast_srand(1234);
-    auto image = render::ImageRGBA(256, 256);
-    for (auto i = 0uz; i < 256; i++)
-        for (auto j = 0uz; j < 256; j++)
-            image[j, i, 0].x() = image[j, i, 0].y() = static_cast<uint8_t>(rnd() * 256);
-
-    auto OFFSET_X = 37uz, OFFSET_Y = 17uz;
-    for (auto i = 0; i < 256uz; i++) {
-        for (auto j = 0; j < 256uz; j++) {
-            auto k = (i + OFFSET_Y) % 256;
-            auto l = (j + OFFSET_X) % 256;
-            image[j, i, 0].z() = image[l, k, 0].x();
-            image[j, i, 0].w() = image[l, k, 0].y();
-        }
-    }
-
-    auto tex = render::Texture::create(render::Texture::Format::RGBA8_UNORM, 256, 256);
-    tex.fill(0, 0, 0, image);
-    tex.set_wrap(true);
-    tex.set_filter(true);
-    return std::move(tex);
 }
 
 void init_pipeline(bool load_shaders = false, bool init_framebuffers = false) {
@@ -222,7 +198,6 @@ void init_pipeline(bool load_shaders = false, bool init_framebuffers = false) {
         textures.emplace_back(Texture::create(Texture::Format::DEPTH32F, ShadowRes, ShadowRes));
         textures.back().set_filter(true);
         textures.back().set_depth_compare_mode(Texture::DepthCompareMode::GEQUAL);
-        textures.emplace_back(create_noise_texture());
 
         framebuffers.emplace_back(*Framebuffer::create(
             {
@@ -409,7 +384,7 @@ void StartFinalPass() {
     textures[MaterialTexture].bind(2);
     textures[DepthTexture].bind(3);
     textures[ShadowDepthTexture].bind(4);
-    textures[NoiseTexture].bind(5);
+    NoiseTextureArray.bind(5);
     glViewport(0, 0, static_cast<GLsizei>(bufferWidth), static_cast<GLsizei>(bufferHeight));
 }
 

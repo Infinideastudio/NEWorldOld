@@ -1054,7 +1054,7 @@ void draw_hud(worlds::World& world) {
         BlockTextureArray.bind(0);
         auto v = Renderer::ui_vertex_builder();
         v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
-        v.color(0, 0, 0, 20);
+        v.color(0, 0, 0, 128);
         v.coord(1, WindowHeight - 33 - lineHeight);
         v.coord(1, WindowHeight - 33);
         v.coord(WindowWidth - 1, WindowHeight - 33);
@@ -1069,7 +1069,7 @@ void draw_hud(worlds::World& world) {
             BlockTextureArray.bind(0);
             auto v = Renderer::ui_vertex_builder();
             v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
-            v.color(0, 0, 0, 20);
+            v.color(0, 0, 0, 128);
             v.coord(1, WindowHeight - 34 - lineHeight * (count + 2));
             v.coord(1, WindowHeight - 34 - lineHeight * (count + 1));
             v.coord(WindowWidth - 1, WindowHeight - 34 - lineHeight * (count + 1));

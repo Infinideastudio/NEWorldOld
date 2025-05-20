@@ -199,6 +199,7 @@ export void load_textures() {
     //     UIBackgroundTextures[i] = Textures::LoadTexture(std::format("textures/ui/background_{}.png", i), true);
     // }
     BlockTextureArray = Textures::LoadBlockTextureArray("textures/blocks/diffuse.png");
+    NoiseTextureArray = Textures::LoadNoiseTextureArray("textures/blocks/noise.png");
 }
 
 export void splash_screen() {
