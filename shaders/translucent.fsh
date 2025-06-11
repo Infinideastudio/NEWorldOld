@@ -1,9 +1,9 @@
 #version 330 core
 
-in vec3 coord;
-in vec3 tex_coord;
-in vec3 color;
-in vec3 normal;
+centroid in vec3 coord;
+centroid in vec3 tex_coord;
+centroid in vec3 color;
+centroid in vec3 normal;
 flat in uint block_id;
 
 layout(location = 0) out vec4 o_frag_color;

@@ -1,8 +1,8 @@
 #version 330 core
 
-in vec3 coord;
-in vec3 tex_coord;
-in vec3 color;
+centroid in vec3 coord;
+centroid in vec3 tex_coord;
+centroid in vec3 color;
 
 layout(location = 0) out vec4 o_frag_color;
 
