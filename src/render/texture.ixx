@@ -72,6 +72,10 @@ public:
         _height(height),
         _depth(depth) {}
 
+    auto format() const noexcept -> Format {
+        return _format;
+    }
+
     auto width() const noexcept -> size_t {
         return _width;
     }

@@ -1,6 +1,6 @@
 #version 330 core
 
-in vec2 tex_coord;
+centroid in vec2 tex_coord;
 
 layout(location = 0) out vec4 o_frag_color;
 

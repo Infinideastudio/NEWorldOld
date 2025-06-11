@@ -1,6 +1,6 @@
 #version 330 core
 
-in vec2 tex_coord;
+centroid in vec2 tex_coord;
 
 layout(location = 0) out vec4 o_frag_color;
 
@@ -76,9 +76,10 @@ float bayer8(vec2 c) { return 0.25 * bayer4(0.5 * c) + bayer2(c); }
 float bayer16(vec2 c) { return 0.25 * bayer8(0.5 * c) + bayer2(c); }
 
 float dither(vec2 v) {
+    v += mod(u_game_time, 30.0) * NOISE_TEXTURE_OFFSET;
     // return rand(v);
     // return bayer16(v);
-    return texture(u_noise_texture, vec3(v / NOISE_TEXTURE_SIZE, 0.0)).b;
+    return texelFetch(u_noise_texture, ivec3(mod(v, NOISE_TEXTURE_SIZE), 0), 0).b;
 }
 
 uint decode_u16(vec2 v) {
@@ -102,19 +103,23 @@ vec3 blend(vec4 fore, vec3 back) {
 }
 
 vec4 get_scene_diffuse(vec2 tex_coord) {
-    return texture(u_diffuse_buffer, vec3(tex_coord, 0.0));
+    tex_coord *= vec2(u_buffer_width, u_buffer_height);
+    return texelFetch(u_diffuse_buffer, ivec3(tex_coord, 0), 0);
 }
 
 vec3 get_scene_normal(vec2 tex_coord) {
-    return normalize(texture(u_normal_buffer, vec3(tex_coord, 0.0)).rgb * 2.0 - vec3(1.0));
+    tex_coord *= vec2(u_buffer_width, u_buffer_height);
+    return normalize(texelFetch(u_normal_buffer, ivec3(tex_coord, 0), 0).rgb * 2.0 - vec3(1.0));
 }
 
 uint get_scene_material(vec2 tex_coord) {
-    return decode_u16(texture(u_material_buffer, vec3(tex_coord, 0.0)).rg);
+    tex_coord *= vec2(u_buffer_width, u_buffer_height);
+    return decode_u16(texelFetch(u_material_buffer, ivec3(tex_coord, 0), 0).rg);
 }
 
 float get_scene_depth(vec2 tex_coord) {
-    return texture(u_depth_buffer, vec3(tex_coord, 0.0)).r * 2.0 - 1.0;
+    tex_coord *= vec2(u_buffer_width, u_buffer_height);
+    return texelFetch(u_depth_buffer, ivec3(tex_coord, 0), 0).r * 2.0 - 1.0;
 }
 
 vec4 tex_coord_to_screen_space_coord(vec2 tex_coord) {
