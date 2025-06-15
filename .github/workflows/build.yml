@@ -1,0 +1,83 @@
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: Build and Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
+      fail-fast: false
+
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        build_type: [RelWithDebInfo]
+        include:
+          - os: windows-latest
+            c_compiler: cl
+            cxx_compiler: cl
+          # GCC 14 is not supported (15+ is required)
+          # - os: ubuntu-latest
+          #   c_compiler: gcc
+          #   cxx_compiler: g++
+          - os: ubuntu-latest
+            c_compiler: clang-19
+            cxx_compiler: clang++-19
+            cxx_flags: -fsized-deallocation -fexperimental-library -stdlib=libc++
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set reusable strings
+      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+      id: strings
+      shell: bash
+      run: |
+        echo "cmake-toolchain-file=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" >> "$GITHUB_OUTPUT"
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+    - name: Setup Windows environment
+      if: ${{ matrix.os == 'windows-latest' }}
+      # Set up the Visual Studio environment variables.
+      uses: TheMrMilchmann/setup-msvc-dev@v3
+      with:
+        arch: x64
+
+    - name: Setup Ubuntu environment
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      # Install dependencies for libc++, glfw and klsxx.
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-19 clang-tools-19
+        sudo apt-get install -y libc++-19-dev libc++abi-19-dev
+        sudo apt-get install -y libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config
+        sudo apt-get install -y liburing-dev
+
+    - name: Configure CMake
+      # Configure CMake in a 'build' subdirectory.
+      # See: https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        "-DCMAKE_TOOLCHAIN_FILE=${{ steps.strings.outputs.cmake-toolchain-file }}"
+        "-DCMAKE_C_COMPILER=${{ matrix.c_compiler }}"
+        "-DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }}"
+        "-DCMAKE_CXX_FLAGS=${{ matrix.cxx_flags }}"
+        -S ${{ github.workspace }}
+        -G "Ninja"
+
+    - name: Build
+      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+
+    - name: Test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      # See: https://cmake.org/cmake/help/latest/manual/ctest.1.html
+      run: ctest --build-config ${{ matrix.build_type }}
