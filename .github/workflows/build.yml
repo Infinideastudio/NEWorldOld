@@ -63,13 +63,13 @@ jobs:
 
     - name: Configure
       # Configure CMake in a 'build' subdirectory.
-      # See: https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         "-DCMAKE_TOOLCHAIN_FILE=${{ steps.strings.outputs.cmake-toolchain-file }}"
         "-DCMAKE_C_COMPILER=${{ matrix.c_compiler }}"
         "-DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }}"
         "-DCMAKE_CXX_FLAGS=${{ matrix.cxx_flags }}"
+        "-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}"
         -S ${{ github.workspace }}
         -G "Ninja"
 
@@ -87,4 +87,8 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.os }}-${{ matrix.build_type }}
-        path: ${{ steps.strings.outputs.build-output-dir }}
+        path: |
+          ${{ steps.strings.outputs.build-output-dir }}
+          !${{ steps.strings.outputs.build-output-dir }}/vcpkg_installed
+          !${{ steps.strings.outputs.build-output-dir }}/_deps
+          !${{ steps.strings.outputs.build-output-dir }}/CMakeFiles
