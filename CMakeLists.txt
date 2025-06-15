@@ -75,7 +75,19 @@ find_package(PNG REQUIRED)
 find_package(Freetype REQUIRED)
 
 # The LevelDB key-value storage library.
-find_package(leveldb CONFIG REQUIRED)
+# find_package(leveldb CONFIG REQUIRED)
+
+# Workaround for https://github.com/microsoft/vcpkg/issues/41136: currently using `FetchContent()`
+# for all dependencies requiring C++ ABI.
+FetchContent_Declare(
+        leveldb
+        GIT_REPOSITORY https://github.com/google/leveldb
+        GIT_TAG 1.23
+        GIT_SHALLOW TRUE
+)
+option(LEVELDB_BUILD_TESTS "" OFF)
+option(LEVELDB_BUILD_BENCHMARKS "" OFF)
+FetchContent_MakeAvailable(leveldb)
 
 # The C++ utilities library for this project.
 FetchContent_Declare(
@@ -160,7 +172,7 @@ target_sources(
 )
 target_default_compile_options(neworld)
 set_target_properties(neworld PROPERTIES CXX_MODULE_STD 1)
-target_link_libraries(neworld PRIVATE glad glfw utf8cpp spdlog::spdlog PNG::PNG Freetype::Freetype leveldb::leveldb)
+target_link_libraries(neworld PRIVATE glad glfw utf8cpp spdlog::spdlog PNG::PNG Freetype::Freetype leveldb)
 target_link_libraries(neworld PRIVATE klsxx::essential klsxx::thread klsxx::coroutine klsxx::io)
 target_include_directories(neworld PRIVATE "src")
 target_compile_definitions(neworld PRIVATE "$<$<CONFIG:Debug>:NEWORLD_DEBUG>")
