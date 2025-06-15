@@ -33,7 +33,8 @@ jobs:
             cxx_flags: -fsized-deallocation -fexperimental-library -stdlib=libc++
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
@@ -60,7 +61,7 @@ jobs:
         sudo apt-get install -y libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config
         sudo apt-get install -y liburing-dev
 
-    - name: Configure CMake
+    - name: Configure
       # Configure CMake in a 'build' subdirectory.
       # See: https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: >
@@ -85,5 +86,5 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Build output
+        name: ${{ matrix.os }}-${{ matrix.build_type }}
         path: ${{ steps.strings.outputs.build-output-dir }}
