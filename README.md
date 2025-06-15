@@ -1,5 +1,7 @@
 # NEWorld
 
+[![Build and Test](https://github.com/Infinideastudio/NEWorldOld/actions/workflows/build.yml/badge.svg)](https://github.com/Infinideastudio/NEWorldOld/actions/workflows/build.yml)
+
 NEWorld is an open-source game with similar game rules to Minecraft.
 
 ## Compiling
