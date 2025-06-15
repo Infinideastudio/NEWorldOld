@@ -81,3 +81,9 @@ jobs:
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See: https://cmake.org/cmake/help/latest/manual/ctest.1.html
       run: ctest --build-config ${{ matrix.build_type }}
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Build output
+        path: ${{ steps.strings.outputs.build-output-dir }}
