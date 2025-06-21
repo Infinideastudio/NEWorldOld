@@ -371,7 +371,7 @@ void game_update(worlds::World& world) {
                         float(rnd() * 0.2f - 0.1f),
                         float(rnd() * 0.2f - 0.1f),
                         float(rnd() * 0.2f - 0.1f),
-                        float(rnd() * 0.01f + 0.02f),
+                        float(rnd() * 0.02f + 0.05f),
                         int(rnd() * 30) + 30
                     );
 
@@ -396,7 +396,7 @@ void game_update(worlds::World& world) {
                                 float(rnd() * 0.2f - 0.1f),
                                 float(rnd() * 0.2f - 0.1f),
                                 float(rnd() * 0.2f - 0.1f),
-                                float(rnd() * 0.02 + 0.03),
+                                float(rnd() * 0.02f + 0.05f),
                                 int(rnd() * 60) + 30
                             );
                         }
@@ -725,21 +725,24 @@ void render_scene(worlds::World& world) {
         auto x = static_cast<float>(selx - view_coord.x());
         auto y = static_cast<float>(sely - view_coord.y());
         auto z = static_cast<float>(selz - view_coord.z());
+        // Temporary solution pre GL 4.0 (glBlendFuncSeparatei)
+        glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        draw_block_breaking_texture(seldes, x, y, z);
         if (showHUD) {
-            // Temporary solution pre GL 4.0 (glBlendFuncSeparatei)
-            glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
             draw_block_selection_border(x, y, z);
-            glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-            glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-            glColorMaski(2, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        }
+        glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+        glColorMaski(1, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        glColorMaski(2, GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        draw_block_breaking_texture(seldes, x, y, z);
+        if (showHUD) {
             glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
             draw_block_selection_border(x, y, z);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-            glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-            glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         }
-        draw_block_breaking_texture(seldes, x, y, z);
+        glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glColorMaski(1, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glColorMaski(2, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     }
     world.render_chunks(view_coord, list, 1);
     glEnable(GL_CULL_FACE);
@@ -924,7 +927,7 @@ void draw_block_breaking_texture(float level, float x, float y, float z) {
     auto tex = static_cast<float>(TextureIndex::BREAKING_0) + static_cast<float>(index);
 
     auto v = Renderer::chunk_vertex_builder();
-    v.material(65535); // For indicator elements
+    v.material(selb.get());
     v.color(255, 255, 255);
 
     for (auto i = 0uz; i < coords.size(); i++) {

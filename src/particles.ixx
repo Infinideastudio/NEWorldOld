@@ -13,42 +13,6 @@ namespace spec = render::attrib_layout::spec;
 using render::VertexArray;
 using AttribIndexBuilder = decltype(Renderer::chunk_vertex_builder());
 
-constexpr auto coords = std::array<std::array<Vec3f, 4>, 6>({
-    {{{1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}}, // Right
-    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}}, // Left
-    {{{0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Top
-    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}}}, // Bottom
-    {{{0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}}}, // Front
-    {{{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}}}, // Back
-});
-
-constexpr auto tex_coords = std::array<std::array<Vec3f, 4>, 6>({
-    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Right
-    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Left
-    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Top
-    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Bottom
-    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Front
-    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Back
-});
-
-constexpr auto tangents = std::array<Vec3i8, 6>({
-    { 0, 0, -1}, // Right
-    { 0, 0, +1}, // Left
-    {+1, 0,  0}, // Top
-    {+1, 0,  0}, // Bottom
-    {+1, 0,  0}, // Front
-    {-1, 0,  0}, // Back
-});
-
-constexpr auto bitangents = std::array<Vec3i8, 6>({
-    {0, +1,  0}, // Right
-    {0, +1,  0}, // Left
-    {0,  0, -1}, // Top
-    {0,  0, +1}, // Bottom
-    {0, +1,  0}, // Front
-    {0, +1,  0}, // Back
-});
-
 export namespace particles {
 
 struct Particle {
@@ -73,7 +37,7 @@ void update(worlds::World& world, Particle& ptc) {
     velocity.y() -= 0.03;
     auto velocity_original = velocity;
 
-    auto particle_box = AABB3d(position - ptc.psize, position + ptc.psize);
+    auto particle_box = AABB3d(position, position + ptc.psize);
     velocity = particle_box.clip_displacement(world.hitboxes(particle_box.extend(velocity)), velocity);
     position += velocity;
 
@@ -97,6 +61,42 @@ void update_all(worlds::World& world) {
 }
 
 void mesh(worlds::World& world, Particle const& ptc, double interp, AttribIndexBuilder& v) {
+    constexpr auto coords = std::array<std::array<Vec3f, 4>, 6>({
+        {{{1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}}, // Right
+        {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}}, // Left
+        {{{0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Top
+        {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}}}, // Bottom
+        {{{0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}}}, // Front
+        {{{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}}}, // Back
+    });
+
+    constexpr auto tex_coords = std::array<std::array<Vec3f, 4>, 6>({
+        {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Right
+        {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Left
+        {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Top
+        {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Bottom
+        {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Front
+        {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Back
+    });
+
+    constexpr auto tangents = std::array<Vec3i8, 6>({
+        { 0, 0, -1}, // Right
+        { 0, 0, +1}, // Left
+        {+1, 0,  0}, // Top
+        {+1, 0,  0}, // Bottom
+        {+1, 0,  0}, // Front
+        {-1, 0,  0}, // Back
+    });
+
+    constexpr auto bitangents = std::array<Vec3i8, 6>({
+        {0, +1,  0}, // Right
+        {0, +1,  0}, // Left
+        {0,  0, -1}, // Top
+        {0,  0, +1}, // Bottom
+        {0, +1,  0}, // Front
+        {0, +1,  0}, // Back
+    });
+
     auto psize = static_cast<float>(ptc.psize);
     auto bl = ptc.bl.get();
     auto tex = static_cast<float>(ptc.tex);

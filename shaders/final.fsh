@@ -256,7 +256,7 @@ vec3 get_sky_color(vec3 dir) {
     vec3 bitangent = cross(tangent, -u_sunlight_dir);
     vec3 local = vec3(dot(dir, tangent), dot(dir, bitangent), dot(dir, -u_sunlight_dir));
     if (abs(local.x) < 0.03 && abs(local.y) < 0.03 && local.z > 0.0) {
-        return vec3(3.5, 3.0, 2.9) * 10.0;
+        return vec3(3.5, 3.0, 2.9) * 2.0;
     }
     return mix(
         vec3(1.2, 1.6, 2.0),
@@ -306,7 +306,7 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-vec3 brdf(vec3 normal, vec3 viewDir, vec3 lightDir, vec3 lightRadiance, vec3 albedo, float metallic, float roughness, vec3 ambient)
+vec3 brdf(vec3 normal, vec3 viewDir, vec3 lightDir, vec3 lightRadiance, vec3 ambientRadiance, vec3 albedo, float metallic, float roughness)
 {
     vec3 N = normalize(normal);
     vec3 V = -normalize(viewDir);
@@ -338,8 +338,7 @@ vec3 brdf(vec3 normal, vec3 viewDir, vec3 lightDir, vec3 lightRadiance, vec3 alb
     float NdotL = max(dot(N, L), 0.0);
     Lo += (kD * albedo / PI + specular) * lightRadiance * NdotL;
 
-    vec3 color = ambient * albedo + Lo;
-
+    vec3 color = ambientRadiance * albedo + Lo;
     return color;
 }
 // ================================ END TEMPORARY ================================
@@ -363,21 +362,20 @@ vec4 diffuse(vec2 tex_coord) {
 
     vec3 albedo = color.rgb;
     float metallic = 0.0;
-    float roughness = 0.75;
-    vec3 sunlight_radiance = 2.0 * vec3(3.5, 3.0, 2.9);
-    vec3 ambient = 0.5 * vec3(0.4, 0.5, 0.8);
+    float roughness = 1.0;
+    vec3 sunlight_radiance = vec3(3.5, 3.0, 2.9) * 2.0;
+    vec3 ambient_radiance = vec3(0.18, 0.25, 0.5);
 
     if (block_id == WATER_ID) {
-        roughness = 0.0;
-        sunlight_radiance = vec3(0.0);
-    } else {
-        sunlight_radiance *= calc_sunlight_radiance_factor(shadow_coord, normal);
-        ambient *= calc_ambient_factor(shadow_coord, normal);
+        return vec4(ambient_radiance * color.rgb, color.a);
     }
+
+    sunlight_radiance *= calc_sunlight_radiance_factor(shadow_coord, normal);
+    ambient_radiance *= calc_ambient_factor(shadow_coord, normal);
 
     // if (block_id == GLOWSTONE_ID) glow = 5.0;
 
-    return vec4(brdf(normal, world_space_coord - translation, u_sunlight_dir, sunlight_radiance, albedo, metallic, roughness, ambient), color.a);
+    return vec4(brdf(normal, world_space_coord - translation, u_sunlight_dir, sunlight_radiance, ambient_radiance, albedo, metallic, roughness), color.a);
 }
 
 vec4 diffuse_with_fog(vec2 tex_coord) {
@@ -539,7 +537,7 @@ vec4 cloud(vec3 org, vec3 dir, float dist, vec3 center, float quality) {
                 scattering *= pow(1.0 - calc_cloud_opacity(curr - u_sunlight_dir * 16.0), 8.0);
                 // scattering *= pow(1.0 - calc_cloud_opacity(curr - u_sunlight_dir * 32.0), 16.0);
                 // scattering *= pow(1.0 - calc_cloud_opacity(curr - u_sunlight_dir * 64.0), 32.0);
-                vec3 col = vec3(3.5, 3.0, 2.9) * scattering + vec3(0.35, 0.5, 1.0) * 0.5;
+                vec3 col = vec3(3.5, 3.0, 2.9) * scattering + vec3(0.18, 0.25, 0.5) * (1.0 - scattering);
                 res += remaining * (1.0 - transmittence) * col;
                 remaining *= transmittence;
             }
@@ -624,16 +622,19 @@ void main() {
     color = blend(cloud(view_origin, view_dir, dist, view_origin, 1.0), color);
 #endif
 
+    // Exposure
+    color *= 0.6;
+
     // Component-wise tone mapping
     // color = color / (color + vec3(1.0)); // Reinhard tone mapping
-    // color = vec3(1.0) - exp(-color * 0.8); // Exposure tone mapping
-    color = aces(color * 0.5);
+    // color = vec3(1.0) - exp(-color); // Exposure tone mapping
+    color = aces(color);
 
     // Luminance-based tone mapping
     // float luminance = color.r * 0.2125 + color.g * 0.7154 + color.b * 0.0721;
     // color /= luminance;
     // luminance = luminance / (luminance + 1.0); // Reinhard tone mapping
-    // luminance = 1.0 - exp(-luminance * 0.8); // Exposure tone mapping
+    // luminance = 1.0 - exp(-luminance); // Exposure tone mapping
     // color *= luminance;
 
     o_frag_color = vec4(color, 1.0);
