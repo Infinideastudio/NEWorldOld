@@ -3,13 +3,15 @@
 layout(location = 0) in vec3 a_coord;
 layout(location = 1) in vec3 a_tex_coord;
 layout(location = 2) in uvec3 a_color;
-layout(location = 3) in ivec3 a_normal;
-layout(location = 4) in uint a_block_id;
+layout(location = 3) in ivec3 a_tangent;
+layout(location = 4) in ivec3 a_bitangent;
+layout(location = 5) in uint a_block_id;
 
 out vec3 coord;
 out vec3 tex_coord;
 out vec3 color;
-out vec3 normal;
+out vec3 tangent;
+out vec3 bitangent;
 flat out uint block_id;
 
 layout(std140, row_major) uniform Frame {
@@ -39,7 +41,8 @@ void main() {
     coord = vec3(a_coord);
     tex_coord = vec3(a_tex_coord);
     color = vec3(a_color) / 255.0;
-    normal = vec3(a_normal);
+    tangent = vec3(a_tangent);
+    bitangent = vec3(a_bitangent);
     block_id = a_block_id;
 
     gl_Position = u_mvp * vec4(coord + u_translation, 1.0f);

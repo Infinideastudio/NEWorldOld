@@ -176,7 +176,7 @@ float get_shadow_quad(vec3 tex_coord) {
     return res * 0.25;
 }
 
-float calc_sunlight_inner(vec3 coord) {
+float calc_sunlight_radiance_factor_inner(vec3 coord) {
     // Shadow map coordinates
     vec3 shadow_coord = divide(u_shadow_mvp * vec4(coord, 1.0));
     shadow_coord = vec3(fisheye_projection(shadow_coord.xy), shadow_coord.z);
@@ -190,7 +190,7 @@ float calc_sunlight_inner(vec3 coord) {
     return mix(res, 1.0, factor);
 }
 
-float calc_sunlight(vec3 coord, vec3 normal) {
+float calc_sunlight_radiance_factor(vec3 coord, vec3 normal) {
     float cos_theta = dot(normal, -u_sunlight_dir);
     if (cos_theta <= 0.0) return 0.0;
     coord -= u_sunlight_dir * 0.1;
@@ -215,10 +215,10 @@ float calc_sunlight(vec3 coord, vec3 normal) {
 #endif
 
     vec3 sample_coord = coord + normal * normal_bias;
-    return calc_sunlight_inner(sample_coord) * cos_theta;
+    return calc_sunlight_radiance_factor_inner(sample_coord);
 }
 
-float calc_ambient(vec3 coord, vec3 normal) {
+float calc_ambient_factor(vec3 coord, vec3 normal) {
 #ifdef AMBIENT_OCCLUSION
     vec3 tangent = normalize(cross(normal, vec3(1.0, 1.0, 1.0)));
     vec3 bitangent = cross(normal, tangent);
@@ -265,6 +265,85 @@ vec3 get_sky_color(vec3 dir) {
     ) * 1.0;
 }
 
+// ================================ TEMPORARY ================================
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a      = roughness*roughness;
+    float a2     = a*a;
+    float NdotH  = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+
+    float num   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return num / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float num   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return num / denom;
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+vec3 brdf(vec3 normal, vec3 viewDir, vec3 lightDir, vec3 lightRadiance, vec3 albedo, float metallic, float roughness, vec3 ambient)
+{
+    vec3 N = normalize(normal);
+    vec3 V = -normalize(viewDir);
+    vec3 L = -normalize(lightDir);
+
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, albedo, metallic);
+
+    // reflectance equation
+    vec3 Lo = vec3(0.0);
+
+    // calculate per-light radiance
+    vec3 H = normalize(V + L);
+
+    // cook-torrance brdf
+    float NDF = DistributionGGX(N, H, roughness);
+    float G   = GeometrySmith(N, V, L, roughness);
+    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;
+
+    vec3 numerator    = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3 specular     = numerator / denominator;
+
+    // add to outgoing radiance Lo
+    float NdotL = max(dot(N, L), 0.0);
+    Lo += (kD * albedo / PI + specular) * lightRadiance * NdotL;
+
+    vec3 color = ambient * albedo + Lo;
+
+    return color;
+}
+// ================================ END TEMPORARY ================================
+
 vec4 diffuse(vec2 tex_coord) {
     uint block_id = get_scene_material(tex_coord);
     if (block_id == 0u) return vec4(0.0);
@@ -282,26 +361,33 @@ vec4 diffuse(vec2 tex_coord) {
     vec3 shadow_coord = floor(world_space_coord * SHADOW_UNITS + normal * 0.5) / SHADOW_UNITS - translation;
 #endif
 
-    float sunlight = 0.0;
-    float ambient = 1.0;
-    float glow = 0.0;
+    vec3 albedo = color.rgb;
+    float metallic = 0.0;
+    float roughness = 0.75;
+    vec3 sunlight_radiance = 2.0 * vec3(3.5, 3.0, 2.9);
+    vec3 ambient = 0.5 * vec3(0.4, 0.5, 0.8);
 
-    if (block_id != WATER_ID) {
-        sunlight = calc_sunlight(shadow_coord, normal);
-        ambient = calc_ambient(shadow_coord, normal);
+    if (block_id == WATER_ID) {
+        roughness = 0.0;
+        sunlight_radiance = vec3(0.0);
+    } else {
+        sunlight_radiance *= calc_sunlight_radiance_factor(shadow_coord, normal);
+        ambient *= calc_ambient_factor(shadow_coord, normal);
     }
 
-    if (block_id == GLOWSTONE_ID) glow = 5.0;
+    // if (block_id == GLOWSTONE_ID) glow = 5.0;
 
-    return vec4(max(vec3(3.5, 3.0, 2.9) * sunlight + vec3(0.4, 0.5, 0.8) * ambient, glow) * color.rgb, color.a);
+    return vec4(brdf(normal, world_space_coord - translation, u_sunlight_dir, sunlight_radiance, albedo, metallic, roughness, ambient), color.a);
 }
 
-vec4 diffuse_with_fade(vec2 tex_coord) {
+vec4 diffuse_with_fog(vec2 tex_coord) {
     vec4 color = diffuse(tex_coord);
     if (get_scene_material(tex_coord) != 0u) {
         vec4 screen_space_coord = tex_coord_to_screen_space_coord(tex_coord);
         vec4 relative_coord = mvp_inverse * screen_space_coord;
         float dist = length(divide(relative_coord));
+        float visibility = exp(log(0.9) * dist / u_render_distance);
+        color.rgb = mix(vec3(1.2, 1.6, 2.0), color.rgb, visibility);
         color.a *= clamp((u_render_distance - dist) / 32.0, 0.0, 1.0);
     }
     return color;
@@ -396,7 +482,7 @@ vec4 ssr(vec4 org, vec4 dir, bool inside) {
     }
 
     if (!found) return vec4(0.0);
-    vec4 color = diffuse_with_fade(best);
+    vec4 color = diffuse_with_fog(best);
     color.a *= 1.0 - smoothstep(0.8, 1.0, max(1.0 - distance_to_edge(best) * 2.0, found_ratio));
     return color;
 }
@@ -417,7 +503,7 @@ float calc_cloud_opacity(vec3 pos) {
         1.0 - smoothstep(CLOUD_TOP - CLOUD_TRANSITION, CLOUD_TOP, pos.y)
     );
     float opacity = clamp(cloud_noise(pos / CLOUD_SCALE) * 2.0 - 1.2, 0.0, 1.0);
-    return factor * opacity;
+    return sqrt(factor) * opacity;
 }
 
 vec4 cloud(vec3 org, vec3 dir, float dist, vec3 center, float quality) {
@@ -425,7 +511,7 @@ vec4 cloud(vec3 org, vec3 dir, float dist, vec3 center, float quality) {
     vec3 curr = org;
     vec3 res = vec3(0.0);
     float remaining = 1.0;
-    
+
     if (curr.y < CLOUD_BOTTOM) {
         if (dir.y <= 0.0) return vec4(0.0);
         curr += dir * (CLOUD_BOTTOM - curr.y) / dir.y;
@@ -433,15 +519,15 @@ vec4 cloud(vec3 org, vec3 dir, float dist, vec3 center, float quality) {
         if (dir.y >= 0.0) return vec4(0.0);
         curr += dir * (CLOUD_TOP - curr.y) / dir.y;
     }
-    
+
     for (int i = 0; i < CLOUD_ITERATIONS; i++) {
         float ratio = float(i) / float(CLOUD_ITERATIONS);
         float step = CLOUD_STEP_SCALE / quality * (i == 0 ? 0.5 + dither(gl_FragCoord.xy) : 1.0);
         curr += dir * step;
-        
+
         if (remaining < 0.01) break;
         if (length(curr - org) > dist) break;
-        
+
         if (curr.y >= CLOUD_BOTTOM && curr.y <= CLOUD_TOP) {
             float factor = 1.0;
             factor *= 1.0 - smoothstep(u_render_distance * 0.8, u_render_distance, length(curr - center));
@@ -485,13 +571,13 @@ void main() {
     vec3 view_dir = normalize(relative_coord.xyz);
     vec3 normal = get_scene_normal(tex_coord);
     vec3 color = get_sky_color(view_dir);
-    color = blend(diffuse_with_fade(tex_coord), color);
+    color = blend(diffuse_with_fog(tex_coord), color);
 
     uint block_id = get_scene_material(tex_coord);
     if (block_id == WATER_ID || block_id == ICE_ID || block_id == IRON_ID) {
         vec3 reflect_origin = view_origin + divide(relative_coord);
         bool inside = dot(view_origin - reflect_origin, normal) < 0.0;
-        
+
         // Water wave effect
         if (block_id == WATER_ID && normal.y > 0.9) {
             vec3 wave_normal = calc_wave_normal(reflect_origin);
@@ -506,12 +592,12 @@ void main() {
         vec3 reflect_dir = reflect(normalize(reflect_origin - view_origin), normal);
         float cos_theta = dot(normalize(view_origin - reflect_origin), normal);
         if (inside) cos_theta = -cos_theta;
-        
+
         vec3 reflection = vec3(0.1);
         if (!inside) {
             reflection = get_sky_color(reflect_dir);
 #ifdef VOLUMETRIC_CLOUDS
-            reflection = blend(cloud(reflect_origin, reflect_dir, 65536.0, view_origin, 0.5), reflection);
+            // reflection = blend(cloud(reflect_origin, reflect_dir, 65536.0, view_origin, 0.5), reflection);
 #endif
         }
         vec4 screen_space_reflect_dir = u_mvp * vec4(reflect_dir, 0.0);
@@ -530,7 +616,7 @@ void main() {
 
         color = mix(color, reflection, albedo);
     }
-    
+
     // Fog
     float dist = 65536.0;
     if (block_id != 0u) dist = length(divide(relative_coord));
@@ -549,6 +635,6 @@ void main() {
     // luminance = luminance / (luminance + 1.0); // Reinhard tone mapping
     // luminance = 1.0 - exp(-luminance * 0.8); // Exposure tone mapping
     // color *= luminance;
-    
+
     o_frag_color = vec4(color, 1.0);
 }

@@ -206,7 +206,9 @@ namespace spec {
     export template <Layout T>
     struct Color: T {};
     export template <Layout T>
-    struct Normal: T {};
+    struct Tangent: T {};
+    export template <Layout T>
+    struct Bitangent: T {};
     export template <Layout T>
     struct Material: T {};
 }
@@ -316,7 +318,9 @@ struct _common_type<spec::TexCoord<T>>: _common_type<T> {};
 template <typename T>
 struct _common_type<spec::Color<T>>: _common_type<T> {};
 template <typename T>
-struct _common_type<spec::Normal<T>>: _common_type<T> {};
+struct _common_type<spec::Tangent<T>>: _common_type<T> {};
+template <typename T>
+struct _common_type<spec::Bitangent<T>>: _common_type<T> {};
 template <typename T>
 struct _common_type<spec::Material<T>>: _common_type<T> {};
 

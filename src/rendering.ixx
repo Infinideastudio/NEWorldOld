@@ -92,7 +92,8 @@ auto chunk_vertex_builder() {
         al::Coord<al::Vec3f>,
         al::TexCoord<al::Vec3f>,
         al::Color<al::Vec3u8>,
-        al::Normal<al::Vec3i8>,
+        al::Tangent<al::Vec3i8>,
+        al::Bitangent<al::Vec3i8>,
         al::Material<al::UInt16>>();
 }
 
@@ -145,14 +146,17 @@ void init_pipeline(bool load_shaders = false, bool init_framebuffers = false) {
         shaders[FilterShader].set_uniform_block("Filter", 0);
 
         shaders[DefaultShader].set_opaque("u_diffuse", 0);
+        shaders[DefaultShader].set_opaque("u_normal", 1);
         shaders[DefaultShader].set_uniform_block("Frame", 0);
         shaders[DefaultShader].set_uniform_block("Model", 1);
 
         shaders[OpqaueShader].set_opaque("u_diffuse", 0);
+        shaders[OpqaueShader].set_opaque("u_normal", 1);
         shaders[OpqaueShader].set_uniform_block("Frame", 0);
         shaders[OpqaueShader].set_uniform_block("Model", 1);
 
         shaders[TranslucentShader].set_opaque("u_diffuse", 0);
+        shaders[TranslucentShader].set_opaque("u_normal", 1);
         shaders[TranslucentShader].set_uniform_block("Frame", 0);
         shaders[TranslucentShader].set_uniform_block("Model", 1);
 
@@ -166,6 +170,7 @@ void init_pipeline(bool load_shaders = false, bool init_framebuffers = false) {
         shaders[FinalShader].set_uniform_block("Model", 1);
 
         shaders[ShadowShader].set_opaque("u_diffuse", 0);
+        shaders[ShadowShader].set_opaque("u_normal", 1);
         shaders[ShadowShader].set_uniform_block("Frame", 0);
         shaders[ShadowShader].set_uniform_block("Model", 1);
 
