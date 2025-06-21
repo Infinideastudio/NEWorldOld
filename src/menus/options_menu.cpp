@@ -89,7 +89,7 @@ private:
                 Row({.main_axis_size = MainAxisSize::MAX},
                     FlexItem({.flex_grow = 1},
                         Button({.label = Label(GetStrbyKey("NEWorld.options.back")), .on_click = [this]() {
-                            Renderer::init_pipeline(true, false);
+                            Renderer::init_pipeline(true, true);
                             exit();
                         }})
                     ),

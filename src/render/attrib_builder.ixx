@@ -93,7 +93,8 @@ public:
     static constexpr auto coord_index = wrapped_index_v<spec::Coord, T...>;
     static constexpr auto tex_coord_index = wrapped_index_v<spec::TexCoord, T...>;
     static constexpr auto color_index = wrapped_index_v<spec::Color, T...>;
-    static constexpr auto normal_index = wrapped_index_v<spec::Normal, T...>;
+    static constexpr auto tangent_index = wrapped_index_v<spec::Tangent, T...>;
+    static constexpr auto bitangent_index = wrapped_index_v<spec::Bitangent, T...>;
     static constexpr auto material_index = wrapped_index_v<spec::Material, T...>;
 
     AttribBuilder() = default;
@@ -132,8 +133,12 @@ public:
         set<color_index, U...>(std::forward<U>(args)...);
     }
     template <typename... U>
-    void normal(U&&... args) {
-        set<normal_index, U...>(std::forward<U>(args)...);
+    void tangent(U&&... args) {
+        set<tangent_index, U...>(std::forward<U>(args)...);
+    }
+    template <typename... U>
+    void bitangent(U&&... args) {
+        set<bitangent_index, U...>(std::forward<U>(args)...);
     }
     template <typename... U>
     void material(U&&... args) {
@@ -153,7 +158,8 @@ public:
     static constexpr auto coord_index = wrapped_index_v<spec::Coord, T...>;
     static constexpr auto tex_coord_index = wrapped_index_v<spec::TexCoord, T...>;
     static constexpr auto color_index = wrapped_index_v<spec::Color, T...>;
-    static constexpr auto normal_index = wrapped_index_v<spec::Normal, T...>;
+    static constexpr auto tangent_index = wrapped_index_v<spec::Tangent, T...>;
+    static constexpr auto bitangent_index = wrapped_index_v<spec::Bitangent, T...>;
     static constexpr auto material_index = wrapped_index_v<spec::Material, T...>;
 
     // Primitive restart index.
@@ -217,8 +223,12 @@ public:
         set<color_index, U...>(std::forward<U>(args)...);
     }
     template <typename... U>
-    void normal(U&&... args) {
-        set<normal_index, U...>(std::forward<U>(args)...);
+    void tangent(U&&... args) {
+        set<tangent_index, U...>(std::forward<U>(args)...);
+    }
+    template <typename... U>
+    void bitangent(U&&... args) {
+        set<bitangent_index, U...>(std::forward<U>(args)...);
     }
     template <typename... U>
     void material(U&&... args) {

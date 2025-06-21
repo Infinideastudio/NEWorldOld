@@ -501,7 +501,7 @@ void game_update(worlds::World& world) {
         if (isKeyPressed(GLFW_KEY_X)) {
             player.set_held_item_stack_index((player.held_item_stack_index() + 1) % 10);
         }
-        player.set_held_item_stack_index((player.held_item_stack_index() + 10 + (mw - mwl) % 10) % 10);
+        player.set_held_item_stack_index((player.held_item_stack_index() + 10 + (mwl - mw) % 10) % 10);
         mwl = mw;
 
         // 起跳/上升
@@ -687,8 +687,9 @@ void render_scene(worlds::World& world) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glDepthFunc(GL_GEQUAL);
 
-    // Bind main texture array
+    // Bind main texture arrays
     BlockTextureArray.bind(0);
+    NormalTextureArray.bind(1);
 
     if (showMeshWireframe) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -843,20 +844,40 @@ constexpr auto centers = std::array<Vec3f, 6>({
     {0.5f, 0.5f, 0.0f},
 });
 
-constexpr auto cube = std::array<std::array<Vec3f, 4>, 6>({
-    {{{1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}},
-    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}},
-    {{{0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}},
-    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}}},
-    {{{0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}}},
-    {{{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}}},
+constexpr auto coords = std::array<std::array<Vec3f, 4>, 6>({
+    {{{1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}}, // Right
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}}, // Left
+    {{{0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Top
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}}}, // Bottom
+    {{{0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}}}, // Front
+    {{{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}}}, // Back
 });
 
-constexpr auto tex_coords = std::array<Vec2f, 4>({
-    {0.0f, 0.0f},
-    {1.0f, 0.0f},
-    {1.0f, 1.0f},
-    {0.0f, 1.0f},
+constexpr auto tex_coords = std::array<std::array<Vec3f, 4>, 6>({
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Right
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Left
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Top
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Bottom
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Front
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Back
+});
+
+constexpr auto tangents = std::array<Vec3i8, 6>({
+    { 0, 0, -1}, // Right
+    { 0, 0, +1}, // Left
+    {+1, 0,  0}, // Top
+    {+1, 0,  0}, // Bottom
+    {+1, 0,  0}, // Front
+    {-1, 0,  0}, // Back
+});
+
+constexpr auto bitangents = std::array<Vec3i8, 6>({
+    {0, +1,  0}, // Right
+    {0, +1,  0}, // Left
+    {0,  0, -1}, // Top
+    {0,  0, +1}, // Bottom
+    {0, +1,  0}, // Front
+    {0, +1,  0}, // Back
 });
 
 // Draw the block selection border
@@ -869,13 +890,14 @@ void draw_block_selection_border(float x, float y, float z) {
     v.tex_coord(0.0f, 0.0f, static_cast<float>(TextureIndex::WHITE));
     v.color(64, 64, 64);
 
-    for (auto i = 0uz; i < cube.size(); i++) {
+    for (auto i = 0uz; i < coords.size(); i++) {
         auto const& center = centers[i];
         auto xc = center[0], yc = center[1], zc = center[2];
-        v.normal(xc * 2.0f, yc * 2.0f, zc * 2.0f);
-        for (auto j = 0uz; j < cube[i].size(); j++) {
-            auto const& first = cube[i][j];
-            auto const& second = cube[i][(j + 1) % 4];
+        v.tangent(tangents[i]);
+        v.bitangent(bitangents[i]);
+        for (auto j = 0uz; j < coords[i].size(); j++) {
+            auto const& first = coords[i][j];
+            auto const& second = coords[i][(j + 1) % 4];
             auto x0 = first[0], y0 = first[1], z0 = first[2];
             auto x1 = second[0], y1 = second[1], z1 = second[2];
             auto xd0 = (x0 - xc) * 2.0f, yd0 = (y0 - yc) * 2.0f, zd0 = (z0 - zc) * 2.0f;
@@ -905,13 +927,14 @@ void draw_block_breaking_texture(float level, float x, float y, float z) {
     v.material(65535); // For indicator elements
     v.color(255, 255, 255);
 
-    for (auto i = 0uz; i < cube.size(); i++) {
+    for (auto i = 0uz; i < coords.size(); i++) {
         auto const& center = centers[i];
         auto xc = center[0], yc = center[1], zc = center[2];
-        v.normal(xc * 2.0f, yc * 2.0f, zc * 2.0f);
-        for (auto j = 0uz; j < cube[i].size(); j++) {
-            auto const& tex_coord = tex_coords[j];
-            auto const& point = cube[i][j];
+        v.tangent(tangents[i]);
+        v.bitangent(bitangents[i]);
+        for (auto j = 0uz; j < coords[i].size(); j++) {
+            auto const& tex_coord = tex_coords[i][j];
+            auto const& point = coords[i][j];
             auto u0 = tex_coord[0], v0 = tex_coord[1];
             auto x0 = point[0], y0 = point[1], z0 = point[2];
             x0 += (x0 > 0.0f ? EPS : -EPS), y0 += (y0 > 0.0f ? EPS : -EPS), z0 += (z0 > 0.0f ? EPS : -EPS);

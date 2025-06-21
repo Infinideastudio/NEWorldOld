@@ -6,6 +6,7 @@ centroid in vec3 tex_coord;
 layout(location = 0) out vec4 o_frag_color;
 
 uniform sampler2DArray u_diffuse;
+uniform sampler2DArray u_normal;
 
 void main() {
     vec4 texel = texture(u_diffuse, tex_coord.stp);

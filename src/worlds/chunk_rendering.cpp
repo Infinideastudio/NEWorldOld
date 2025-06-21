@@ -15,6 +15,60 @@ namespace spec = render::attrib_layout::spec;
 using render::VertexArray;
 using AttribIndexBuilder = decltype(Renderer::chunk_vertex_builder());
 
+constexpr auto coords = std::array<std::array<Vec3f, 4>, 6>({
+    {{{1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}}, // Right
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}}, // Left
+    {{{0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Top
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}}}, // Bottom
+    {{{0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}}}, // Front
+    {{{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}}}, // Back
+});
+
+constexpr auto coords_extend = std::array<std::array<Vec3f, 4>, 6>({
+    {{{0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}}, // Right (Z+)
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}}}, // Left (Z+)
+    {{{0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}}}, // Top (Z+)
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}}}, // Bottom (Z+)
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Front (Y+)
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Back (Y+)
+});
+
+constexpr auto tex_coords = std::array<std::array<Vec3f, 4>, 6>({
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Right
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Left
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Top
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Bottom
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Front
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Back
+});
+
+constexpr auto tex_coords_extend = std::array<std::array<Vec3f, 4>, 6>({
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}}}, // Right (Z+)
+    {{{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}}}, // Left (Z+)
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Top (Z+)
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Bottom (Z+)
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Front (Y+)
+    {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}}, // Back (Y+)
+});
+
+constexpr auto tangents = std::array<Vec3i8, 6>({
+    { 0, 0, -1}, // Right
+    { 0, 0, +1}, // Left
+    {+1, 0,  0}, // Top
+    {+1, 0,  0}, // Bottom
+    {+1, 0,  0}, // Front
+    {-1, 0,  0}, // Back
+});
+
+constexpr auto bitangents = std::array<Vec3i8, 6>({
+    {0, +1,  0}, // Right
+    {0, +1,  0}, // Left
+    {0,  0, -1}, // Top
+    {0,  0, +1}, // Bottom
+    {0, +1,  0}, // Front
+    {0, +1,  0}, // Back
+});
+
 // One face in merge face
 struct QuadPrimitive {
     int x = 0, y = 0, z = 0, length = 0, direction = 0;
@@ -155,14 +209,14 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             tex = Textures::getTextureIndex(bl.id(), 1);
         int br = rd.block(x + 1, y, z).color();
         if (SmoothLighting) {
-            col[0] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z - 1).color()
-                   + rd.block(x + 1, y - 1, z - 1).color();
-            col[1] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z - 1).color()
-                   + rd.block(x + 1, y + 1, z - 1).color();
-            col[2] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z + 1).color()
-                   + rd.block(x + 1, y + 1, z + 1).color();
-            col[3] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z + 1).color()
+            col[0] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z + 1).color()
                    + rd.block(x + 1, y - 1, z + 1).color();
+            col[1] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z - 1).color()
+                   + rd.block(x + 1, y - 1, z - 1).color();
+            col[2] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z - 1).color()
+                   + rd.block(x + 1, y + 1, z - 1).color();
+            col[3] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z + 1).color()
+                   + rd.block(x + 1, y + 1, z + 1).color();
         } else {
             col[0] = col[1] = col[2] = col[3] = br * 4;
         }
@@ -171,19 +225,20 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             col = col * 5 / 10;
         }
         v.material(bl.id().get());
-        v.normal(1, 0, 0);
+        v.tangent(tangents[0]);
+        v.bitangent(bitangents[0]);
         v.color(col[0]);
-        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[0][0]);
+        v.coord(Vec3f(x, y, z) + coords[0][0]);
         v.color(col[1]);
-        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y + 1, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[0][1]);
+        v.coord(Vec3f(x, y, z) + coords[0][1]);
         v.color(col[2]);
-        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y + 1, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[0][2]);
+        v.coord(Vec3f(x, y, z) + coords[0][2]);
         v.color(col[3]);
-        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[0][3]);
+        v.coord(Vec3f(x, y, z) + coords[0][3]);
         v.end_primitive();
     }
 
@@ -211,19 +266,20 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             col = col * 5 / 10;
         }
         v.material(bl.id().get());
-        v.normal(-1, 0, 0);
+        v.tangent(tangents[1]);
+        v.bitangent(bitangents[1]);
         v.color(col[0]);
-        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
-        v.coord(x, y, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[1][0]);
+        v.coord(Vec3f(x, y, z) + coords[1][0]);
         v.color(col[1]);
-        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
-        v.coord(x, y, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[1][1]);
+        v.coord(Vec3f(x, y, z) + coords[1][1]);
         v.color(col[2]);
-        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
-        v.coord(x, y + 1, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[1][2]);
+        v.coord(Vec3f(x, y, z) + coords[1][2]);
         v.color(col[3]);
-        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
-        v.coord(x, y + 1, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[1][3]);
+        v.coord(Vec3f(x, y, z) + coords[1][3]);
         v.end_primitive();
     }
 
@@ -232,32 +288,33 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
         tex = Textures::getTextureIndex(bl.id(), 0);
         int br = rd.block(x, y + 1, z).color();
         if (SmoothLighting) {
-            col[0] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x - 1, y + 1, z).color()
-                   + rd.block(x - 1, y + 1, z - 1).color();
-            col[1] = br + rd.block(x, y + 1, z + 1).color() + rd.block(x - 1, y + 1, z).color()
+            col[0] = br + rd.block(x, y + 1, z + 1).color() + rd.block(x - 1, y + 1, z).color()
                    + rd.block(x - 1, y + 1, z + 1).color();
-            col[2] = br + rd.block(x, y + 1, z + 1).color() + rd.block(x + 1, y + 1, z).color()
+            col[1] = br + rd.block(x, y + 1, z + 1).color() + rd.block(x + 1, y + 1, z).color()
                    + rd.block(x + 1, y + 1, z + 1).color();
-            col[3] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x + 1, y + 1, z).color()
+            col[2] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x + 1, y + 1, z).color()
                    + rd.block(x + 1, y + 1, z - 1).color();
+            col[3] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x - 1, y + 1, z).color()
+                   + rd.block(x - 1, y + 1, z - 1).color();
         } else {
             col[0] = col[1] = col[2] = col[3] = br * 4;
         }
         col = col / 4;
         v.material(bl.id().get());
-        v.normal(0, 1, 0);
+        v.tangent(tangents[2]);
+        v.bitangent(bitangents[2]);
         v.color(col[0]);
-        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
-        v.coord(x, y + 1, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[2][0]);
+        v.coord(Vec3f(x, y, z) + coords[2][0]);
         v.color(col[1]);
-        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
-        v.coord(x, y + 1, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[2][1]);
+        v.coord(Vec3f(x, y, z) + coords[2][1]);
         v.color(col[2]);
-        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y + 1, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[2][2]);
+        v.coord(Vec3f(x, y, z) + coords[2][2]);
         v.color(col[3]);
-        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y + 1, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[2][3]);
+        v.coord(Vec3f(x, y, z) + coords[2][3]);
         v.end_primitive();
     }
 
@@ -279,19 +336,20 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
         }
         col = col / 4;
         v.material(bl.id().get());
-        v.normal(0, -1, 0);
+        v.tangent(tangents[3]);
+        v.bitangent(bitangents[3]);
         v.color(col[0]);
-        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
-        v.coord(x, y, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[3][0]);
+        v.coord(Vec3f(x, y, z) + coords[3][0]);
         v.color(col[1]);
-        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[3][1]);
+        v.coord(Vec3f(x, y, z) + coords[3][1]);
         v.color(col[2]);
-        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[3][2]);
+        v.coord(Vec3f(x, y, z) + coords[3][2]);
         v.color(col[3]);
-        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
-        v.coord(x, y, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[3][3]);
+        v.coord(Vec3f(x, y, z) + coords[3][3]);
         v.end_primitive();
     }
 
@@ -319,19 +377,20 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             col = col * 2 / 10;
         }
         v.material(bl.id().get());
-        v.normal(0, 0, 1);
+        v.tangent(tangents[4]);
+        v.bitangent(bitangents[4]);
         v.color(col[0]);
-        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
-        v.coord(x, y, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[4][0]);
+        v.coord(Vec3f(x, y, z) + coords[4][0]);
         v.color(col[1]);
-        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[4][1]);
+        v.coord(Vec3f(x, y, z) + coords[4][1]);
         v.color(col[2]);
-        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y + 1, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[4][2]);
+        v.coord(Vec3f(x, y, z) + coords[4][2]);
         v.color(col[3]);
-        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
-        v.coord(x, y + 1, z + 1);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[4][3]);
+        v.coord(Vec3f(x, y, z) + coords[4][3]);
         v.end_primitive();
     }
 
@@ -343,14 +402,14 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             tex = Textures::getTextureIndex(bl.id(), 1);
         int br = rd.block(x, y, z - 1).color();
         if (SmoothLighting) {
-            col[0] = br + rd.block(x, y - 1, z - 1).color() + rd.block(x - 1, y, z - 1).color()
-                   + rd.block(x - 1, y - 1, z - 1).color();
-            col[1] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x - 1, y, z - 1).color()
-                   + rd.block(x - 1, y + 1, z - 1).color();
-            col[2] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x + 1, y, z - 1).color()
-                   + rd.block(x + 1, y + 1, z - 1).color();
-            col[3] = br + rd.block(x, y - 1, z - 1).color() + rd.block(x + 1, y, z - 1).color()
+            col[0] = br + rd.block(x, y - 1, z - 1).color() + rd.block(x + 1, y, z - 1).color()
                    + rd.block(x + 1, y - 1, z - 1).color();
+            col[1] = br + rd.block(x, y - 1, z - 1).color() + rd.block(x - 1, y, z - 1).color()
+                   + rd.block(x - 1, y - 1, z - 1).color();
+            col[2] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x - 1, y, z - 1).color()
+                   + rd.block(x - 1, y + 1, z - 1).color();
+            col[3] = br + rd.block(x, y + 1, z - 1).color() + rd.block(x + 1, y, z - 1).color()
+                   + rd.block(x + 1, y + 1, z - 1).color();
         } else {
             col[0] = col[1] = col[2] = col[3] = br * 4;
         }
@@ -359,141 +418,66 @@ void _render_block(ChunkRenderData const& rd, AttribIndexBuilder& v, size_t laye
             col = col * 2 / 10;
         }
         v.material(bl.id().get());
-        v.normal(0, 0, -1);
+        v.tangent(tangents[5]);
+        v.bitangent(bitangents[5]);
         v.color(col[0]);
-        v.tex_coord(1, 0, static_cast<uint16_t>(tex));
-        v.coord(x, y, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[5][0]);
+        v.coord(Vec3f(x, y, z) + coords[5][0]);
         v.color(col[1]);
-        v.tex_coord(1, 1, static_cast<uint16_t>(tex));
-        v.coord(x, y + 1, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[5][1]);
+        v.coord(Vec3f(x, y, z) + coords[5][1]);
         v.color(col[2]);
-        v.tex_coord(0, 1, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y + 1, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[5][2]);
+        v.coord(Vec3f(x, y, z) + coords[5][2]);
         v.color(col[3]);
-        v.tex_coord(0, 0, static_cast<uint16_t>(tex));
-        v.coord(x + 1, y, z);
+        v.tex_coord(Vec3f(0, 0, tex) + tex_coords[5][3]);
+        v.coord(Vec3f(x, y, z) + coords[5][3]);
         v.end_primitive();
     }
 }
 
 // The merge face rendering method for a primitive (adjacent block faces).
 void _render_primitive(QuadPrimitive const& p, AttribIndexBuilder& v) {
+    auto extend = static_cast<float>(p.length);
     auto col = p.col / 4;
-    auto x = p.x, y = p.y, z = p.z, length = p.length;
-
-    v.material(p.blk.get());
-    v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
-
     switch (p.direction) {
         case 0:
             if (!AdvancedRender) {
                 col = col * 5 / 10;
             }
-            v.normal(1, 0, 0);
-            v.color(col[0]);
-            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y, z);
-            v.color(col[1]);
-            v.tex_coord(0, 1, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y + 1, z);
-            v.color(col[2]);
-            v.tex_coord(length + 1, 1, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y + 1, z + length + 1);
-            v.color(col[3]);
-            v.tex_coord(length + 1, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y, z + length + 1);
-            v.end_primitive();
             break;
         case 1:
             if (!AdvancedRender) {
                 col = col * 5 / 10;
             }
-            v.normal(-1, 0, 0);
-            v.color(col[0]);
-            v.tex_coord(0, 1, static_cast<uint16_t>(p.tex));
-            v.coord(x, y + 1, z);
-            v.color(col[1]);
-            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x, y, z);
-            v.color(col[2]);
-            v.tex_coord(length + 1, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x, y, z + length + 1);
-            v.color(col[3]);
-            v.tex_coord(length + 1, 1, static_cast<uint16_t>(p.tex));
-            v.coord(x, y + 1, z + length + 1);
-            v.end_primitive();
-            break;
-        case 2:
-            v.normal(0, 1, 0);
-            v.color(col[0]);
-            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y + 1, z);
-            v.color(col[1]);
-            v.tex_coord(0, 1, static_cast<uint16_t>(p.tex));
-            v.coord(x, y + 1, z);
-            v.color(col[2]);
-            v.tex_coord(length + 1, 1, static_cast<uint16_t>(p.tex));
-            v.coord(x, y + 1, z + length + 1);
-            v.color(col[3]);
-            v.tex_coord(length + 1, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y + 1, z + length + 1);
-            v.end_primitive();
-            break;
-        case 3:
-            v.normal(0, -1, 0);
-            v.color(col[0]);
-            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x, y, z);
-            v.color(col[1]);
-            v.tex_coord(0, 1, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y, z);
-            v.color(col[2]);
-            v.tex_coord(length + 1, 1, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y, z + length + 1);
-            v.color(col[3]);
-            v.tex_coord(length + 1, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x, y, z + length + 1);
-            v.end_primitive();
             break;
         case 4:
             if (!AdvancedRender) {
                 col = col * 2 / 10;
             }
-            v.normal(0, 0, 1);
-            v.color(col[0]);
-            v.tex_coord(0, length + 1, static_cast<uint16_t>(p.tex));
-            v.coord(x, y + length + 1, z + 1);
-            v.color(col[1]);
-            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x, y, z + 1);
-            v.color(col[2]);
-            v.tex_coord(1, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y, z + 1);
-            v.color(col[3]);
-            v.tex_coord(1, length + 1, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y + length + 1, z + 1);
-            v.end_primitive();
             break;
         case 5:
             if (!AdvancedRender) {
                 col = col * 2 / 10;
             }
-            v.normal(0, 0, -1);
-            v.color(col[0]);
-            v.tex_coord(0, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x, y, z);
-            v.color(col[1]);
-            v.tex_coord(0, length + 1, static_cast<uint16_t>(p.tex));
-            v.coord(x, y + length + 1, z);
-            v.color(col[2]);
-            v.tex_coord(1, length + 1, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y + length + 1, z);
-            v.color(col[3]);
-            v.tex_coord(1, 0, static_cast<uint16_t>(p.tex));
-            v.coord(x + 1, y, z);
-            v.end_primitive();
             break;
     }
+    v.material(p.blk.get());
+    v.tangent(tangents[p.direction]);
+    v.bitangent(bitangents[p.direction]);
+    v.color(col[0]);
+    v.tex_coord(Vec3f(0, 0, p.tex) + tex_coords[p.direction][0] + tex_coords_extend[p.direction][0] * extend);
+    v.coord(Vec3f(p.x, p.y, p.z) + coords[p.direction][0] + coords_extend[p.direction][0] * extend);
+    v.color(col[1]);
+    v.tex_coord(Vec3f(0, 0, p.tex) + tex_coords[p.direction][1] + tex_coords_extend[p.direction][1] * extend);
+    v.coord(Vec3f(p.x, p.y, p.z) + coords[p.direction][1] + coords_extend[p.direction][1] * extend);
+    v.color(col[2]);
+    v.tex_coord(Vec3f(0, 0, p.tex) + tex_coords[p.direction][2] + tex_coords_extend[p.direction][2] * extend);
+    v.coord(Vec3f(p.x, p.y, p.z) + coords[p.direction][2] + coords_extend[p.direction][2] * extend);
+    v.color(col[3]);
+    v.tex_coord(Vec3f(0, 0, p.tex) + tex_coords[p.direction][3] + tex_coords_extend[p.direction][3] * extend);
+    v.coord(Vec3f(p.x, p.y, p.z) + coords[p.direction][3] + coords_extend[p.direction][3] * extend);
+    v.end_primitive();
 }
 
 // The default method for rendering a chunks::Chunk.
@@ -576,14 +560,14 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, 
                                 tex = Textures::getTextureIndex(bl.id(), 0);
                             br = rd.block(x + 1, y, z).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z - 1).color()
-                                       + rd.block(x + 1, y - 1, z - 1).color();
-                                col[1] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z - 1).color()
-                                       + rd.block(x + 1, y + 1, z - 1).color();
-                                col[2] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z + 1).color()
-                                       + rd.block(x + 1, y + 1, z + 1).color();
-                                col[3] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z + 1).color()
+                                col[0] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z + 1).color()
                                        + rd.block(x + 1, y - 1, z + 1).color();
+                                col[1] = br + rd.block(x + 1, y - 1, z).color() + rd.block(x + 1, y, z - 1).color()
+                                       + rd.block(x + 1, y - 1, z - 1).color();
+                                col[2] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z - 1).color()
+                                       + rd.block(x + 1, y + 1, z - 1).color();
+                                col[3] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x + 1, y, z + 1).color()
+                                       + rd.block(x + 1, y + 1, z + 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }
@@ -594,14 +578,14 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, 
                                 tex = Textures::getTextureIndex(bl.id(), 0);
                             br = rd.block(x - 1, y, z).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x - 1, y, z - 1).color()
-                                       + rd.block(x - 1, y + 1, z - 1).color();
-                                col[1] = br + rd.block(x - 1, y - 1, z).color() + rd.block(x - 1, y, z - 1).color()
+                                col[0] = br + rd.block(x - 1, y - 1, z).color() + rd.block(x - 1, y, z - 1).color()
                                        + rd.block(x - 1, y - 1, z - 1).color();
-                                col[2] = br + rd.block(x - 1, y - 1, z).color() + rd.block(x - 1, y, z + 1).color()
+                                col[1] = br + rd.block(x - 1, y - 1, z).color() + rd.block(x - 1, y, z + 1).color()
                                        + rd.block(x - 1, y - 1, z + 1).color();
-                                col[3] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x - 1, y, z + 1).color()
+                                col[2] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x - 1, y, z + 1).color()
                                        + rd.block(x - 1, y + 1, z + 1).color();
+                                col[3] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x - 1, y, z - 1).color()
+                                       + rd.block(x - 1, y + 1, z - 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }
@@ -609,14 +593,14 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, 
                         case 2:
                             br = rd.block(x, y + 1, z).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x, y + 1, z - 1).color()
-                                       + rd.block(x + 1, y + 1, z - 1).color();
-                                col[1] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x, y + 1, z - 1).color()
-                                       + rd.block(x - 1, y + 1, z - 1).color();
-                                col[2] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x, y + 1, z + 1).color()
+                                col[0] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x, y + 1, z + 1).color()
                                        + rd.block(x - 1, y + 1, z + 1).color();
-                                col[3] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x, y + 1, z + 1).color()
+                                col[1] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x, y + 1, z + 1).color()
                                        + rd.block(x + 1, y + 1, z + 1).color();
+                                col[2] = br + rd.block(x + 1, y + 1, z).color() + rd.block(x, y + 1, z - 1).color()
+                                       + rd.block(x + 1, y + 1, z - 1).color();
+                                col[3] = br + rd.block(x - 1, y + 1, z).color() + rd.block(x, y + 1, z - 1).color()
+                                       + rd.block(x - 1, y + 1, z - 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }
@@ -642,14 +626,14 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, 
                                 tex = Textures::getTextureIndex(bl.id(), 0);
                             br = rd.block(x, y, z + 1).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x - 1, y, z + 1).color() + rd.block(x, y + 1, z + 1).color()
-                                       + rd.block(x - 1, y + 1, z + 1).color();
-                                col[1] = br + rd.block(x - 1, y, z + 1).color() + rd.block(x, y - 1, z + 1).color()
+                                col[0] = br + rd.block(x - 1, y, z + 1).color() + rd.block(x, y - 1, z + 1).color()
                                        + rd.block(x - 1, y - 1, z + 1).color();
-                                col[2] = br + rd.block(x + 1, y, z + 1).color() + rd.block(x, y - 1, z + 1).color()
+                                col[1] = br + rd.block(x + 1, y, z + 1).color() + rd.block(x, y - 1, z + 1).color()
                                        + rd.block(x + 1, y - 1, z + 1).color();
-                                col[3] = br + rd.block(x + 1, y, z + 1).color() + rd.block(x, y + 1, z + 1).color()
+                                col[2] = br + rd.block(x + 1, y, z + 1).color() + rd.block(x, y + 1, z + 1).color()
                                        + rd.block(x + 1, y + 1, z + 1).color();
+                                col[3] = br + rd.block(x - 1, y, z + 1).color() + rd.block(x, y + 1, z + 1).color()
+                                       + rd.block(x - 1, y + 1, z + 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }
@@ -660,14 +644,14 @@ void _merge_face_render_chunk(ChunkRenderData const& rd, AttribIndexBuilder& v, 
                                 tex = Textures::getTextureIndex(bl.id(), 0);
                             br = rd.block(x, y, z - 1).color();
                             if (SmoothLighting) {
-                                col[0] = br + rd.block(x - 1, y, z - 1).color() + rd.block(x, y - 1, z - 1).color()
-                                       + rd.block(x - 1, y - 1, z - 1).color();
-                                col[1] = br + rd.block(x - 1, y, z - 1).color() + rd.block(x, y + 1, z - 1).color()
-                                       + rd.block(x - 1, y + 1, z - 1).color();
-                                col[2] = br + rd.block(x + 1, y, z - 1).color() + rd.block(x, y + 1, z - 1).color()
-                                       + rd.block(x + 1, y + 1, z - 1).color();
-                                col[3] = br + rd.block(x + 1, y, z - 1).color() + rd.block(x, y - 1, z - 1).color()
+                                col[0] = br + rd.block(x + 1, y, z - 1).color() + rd.block(x, y - 1, z - 1).color()
                                        + rd.block(x + 1, y - 1, z - 1).color();
+                                col[1] = br + rd.block(x - 1, y, z - 1).color() + rd.block(x, y - 1, z - 1).color()
+                                       + rd.block(x - 1, y - 1, z - 1).color();
+                                col[2] = br + rd.block(x - 1, y, z - 1).color() + rd.block(x, y + 1, z - 1).color()
+                                       + rd.block(x - 1, y + 1, z - 1).color();
+                                col[3] = br + rd.block(x + 1, y, z - 1).color() + rd.block(x, y + 1, z - 1).color()
+                                       + rd.block(x + 1, y + 1, z - 1).color();
                             } else {
                                 col[0] = col[1] = col[2] = col[3] = br * 4;
                             }

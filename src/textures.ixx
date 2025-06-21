@@ -18,6 +18,7 @@ export std::shared_ptr<render::Texture> UIBackgroundTextures;
 export render::Texture SelectedTexture;
 export render::Texture UnselectedTexture;
 export render::Texture BlockTextureArray;
+export render::Texture NormalTextureArray;
 export render::Texture NoiseTextureArray;
 
 export enum class TextureIndex: uint16_t {
@@ -107,6 +108,25 @@ export auto LoadBlockTextureArray(std::filesystem::path const& path) -> render::
         auto count = image->height() / size;
         image->reshape(size, size, count);
         auto res = render::Texture::create(render::Texture::Format::SRGBA, size, size, count);
+        for (auto i = 0uz; i < count; ++i) {
+            res.fill(0, 0, i, *image, i);
+        }
+        res.set_wrap(true);
+        res.set_filter(false, true);
+        res.generate_mipmaps();
+        return std::move(res);
+    }
+    spdlog::error("failed to load image {}: {}", path.string(), image.error());
+    return {};
+}
+
+export auto LoadNormalTextureArray(std::filesystem::path const& path) -> render::Texture {
+    auto image = render::load_png_image(path);
+    if (image) {
+        auto size = image->width();
+        auto count = image->height() / size;
+        image->reshape(size, size, count);
+        auto res = render::Texture::create(render::Texture::Format::RGBA, size, size, count);
         for (auto i = 0uz; i < count; ++i) {
             res.fill(0, 0, i, *image, i);
         }
