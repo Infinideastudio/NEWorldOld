@@ -28,7 +28,6 @@ void main() {
     if (block_id == WATER_ID || block_id == ICE_ID) texel.a = 0.02;
 
     vec3 normal_texel = texture(u_normal, tex_coord.stp).rgb * 2.0 - vec3(1.0);
-    normal_texel.y *= -1.0;
     mat3 tbn = mat3(normalize(tangent), normalize(bitangent), normalize(cross(tangent, bitangent)));
     vec3 normal = tbn * normalize(normal_texel);
 
