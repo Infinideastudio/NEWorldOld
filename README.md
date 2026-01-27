@@ -28,6 +28,21 @@ The compiler is currently set to use C++23. By default, all built-from-source de
 * @bridgekat: rendering optimizations (screen-space refractions, GPU buffer allocation and multi-draw), code modernization (from C-with-classes style to Rust-with-shared-mutability style).
 * @bridgekat: some [random](docs/block_updates.md) [thoughts](docs/worlds.md).
 
+## Rust Migration Plan
+
+A comprehensive plan for migrating this project from C++23 to Rust is available:
+
+* **[完整 Rust 迁移方案 (中文)](docs/rust_migration_plan.md)** - Detailed migration plan in Chinese
+* **[Complete Rust Migration Plan (English)](docs/rust_migration_plan_en.md)** - Detailed migration plan in English
+
+The plan includes:
+- Current architecture analysis (~12,000 lines of C++23 code)
+- Technology stack mapping (C++ dependencies → Rust crates)
+- 14-phase gradual migration roadmap (estimated 13-14 months)
+- FFI integration strategy for hybrid C++/Rust builds
+- Risk assessment and resource estimation
+- Recommendations for MVP (3-4 months) vs full migration
+
 ## Adding dependencies
 
 ### CMake configuration
