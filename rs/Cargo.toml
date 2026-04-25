@@ -64,6 +64,14 @@ raw-window-handle = "0.6.2"
 image = "0.25.10"
 glyphon = "0.11.0"
 
+# UI layer deps (`[E]` in the migration plan):
+# egui: immediate-mode GUI (replaces the C++ ui/ library).
+# egui-winit: winit event → egui input translation (winit 0.30 compatible).
+# egui-wgpu: egui → wgpu rendering backend (must match project wgpu version).
+egui = { version = "0.34", features = ["default_fonts"] }
+egui-winit = "0.34"
+egui-wgpu = "0.34"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

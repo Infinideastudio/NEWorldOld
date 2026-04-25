@@ -23,5 +23,6 @@ pub mod items;
 pub mod math;
 pub mod particles;
 pub mod setup;
+pub mod ui;
 pub mod worldgen;
 pub mod worlds;

@@ -17,12 +17,12 @@ what's still open.
 * The binary opens a 1280×720 window, generates a 7×7×7 chunk world
   (343 chunks, ~1.4 M cells) at startup, meshes every chunk on the CPU,
   uploads the resulting vertex buffers to wgpu, and renders the world each
-  frame with a free-fly WSAD + mouse-look camera. The HUD overlays a
-  glyphon-rendered debug line. Skipping `[E]` (UI / menus) and `[F]`
-  (raycast / async pipeline / save persistence) is intentional for the MVP
-  milestone.
+  frame with a free-fly WSAD + mouse-look camera. An egui-driven HUD overlays debug info, crosshair, chat bar, and
+  inventory. Menu screens (title, world select, create world, options) are
+  reachable from the in-game pause menu. Only `[F]` (raycast / async
+  pipeline / save persistence) is still skipped.
 
-## Layout (after MVP wiring)
+## Layout (after [E] UI layer)
 
 ```
 rs/src/
@@ -72,6 +72,7 @@ rs/src/
 │   │                                      #   FilterUniforms + UniformBuffer<T>
 │   │                                      #   [C4]
 │   ├── text.rs                            # glyphon TextRenderer [C5]
+│   ├── egui_renderer.rs                   # EguiRenderer (egui 0.34) [E1]
 │   ├── depth.rs                           # DepthTarget [D2]
 │   ├── mesh.rs                            # CPU greedy meshing [D1]
 │   ├── chunk_render.rs                    # ChunkMesh + ChunkPipeline [D2]
@@ -79,6 +80,19 @@ rs/src/
 │   ├── particle_render.rs                 # ParticleVertex / Mesh /
 │   │                                      #   Pipeline [D3]
 │   └── particle.wgsl                      # billboard particle shader
+│
+├── ui/                                    # immediate-mode UI ([E])
+│   ├── mod.rs                             # module declarations + re-exports
+│   ├── screen.rs                          # Screen trait + ScreenStack [E2]
+│   ├── hud.rs                             # crosshair, debug panel, chat [E4]
+│   ├── inventory.rs                       # 4×10 item slot grid [E5]
+│   └── screens/
+│       ├── mod.rs                         # re-exports all screens
+│       ├── title.rs                       # main menu [E3]
+│       ├── world_select.rs                # world list (placeholder) [E3]
+│       ├── create_world.rs                # name + seed form [E3]
+│       ├── options.rs                     # FOV, render distance, VSync [E3]
+│       └── game.rs                        # HUD + pause + inventory [E3]
 │
 └── worlds/                                # mirrors C++ src/worlds/
     ├── mod.rs                             # re-exports World + Player
@@ -92,14 +106,14 @@ rs/src/
         └── save.rs                        # save_to / load_from + PlayerError
 ```
 
-Total: ~10.3 K LoC of Rust + 235 lines of WGSL across `rs/src/`.
+Total: ~11.7 K LoC of Rust + 235 lines of WGSL across `rs/src/`.
 
 ## Migration plan tasks shipped
 
 The plan splits work into seven groups (`[A]` through `[F]`). Groups
-`[A]`, `[B]`, `[C]`, and `[D]` are complete. `[E]` (UI / menus / HUD) and
-`[F]` (raycast / async pipeline / save persistence / chat / screenshots)
-are deliberately skipped for the MVP milestone — see `[MVP]` below.
+`[A]`, `[B]`, `[C]`, `[D]`, and `[E]` are complete. Only `[F]`
+(raycast / async pipeline / save persistence / chat / screenshots) remains
+skipped — see `[MVP]` below.
 
 ### `[A]` foundations — shipped (`e2c5a56` on `main`)
 
@@ -145,6 +159,24 @@ Cargo deps added at `[C]`: `winit = "0.30"`, `wgpu = "29.0.1"`,
 | D2 chunk render | `gfx::chunk_render::{ChunkMesh, ChunkPipeline}` + `gfx::depth::DepthTarget` + `chunk.wgsl` | Two pipelines (opaque + translucent) sharing layout + bind groups; Depth32Float; `coord * CHUNK_SIZE` baked into vertex positions on upload (no per-chunk uniform). |
 | D3 particles | `crate::particles::ParticleSystem` (sim) + `gfx::particle_render::*` (GPU) + `particle.wgsl` | C++ gravity (`-0.03/tick`), drag (`0.6/tick`), AABB collision via `BlockView`. 32-byte billboard vertex. |
 | D4 final pass | `gfx::chunk.wgsl` (header) | Distance fog (24..96 m linear band) and ambient sky tint folded into the chunk shader rather than spinning up a separate deferred composition pass. |
+
+### `[E]` UI — shipped (`551afba` on `main`)
+
+| Sub-task | Module | Notes |
+|----------|--------|-------|
+| E1 egui bring-up | `gfx::egui_renderer::EguiRenderer` | egui 0.34 + egui-winit + egui-wgpu; wgpu 29.0.1 compat. `forget_render_pass_lifetime` bridges the `RenderPass<'static>` requirement. |
+| E2 screen framework | `ui::screen::{Screen, ScreenStack, Transition}` | `Screen` trait takes `&egui::Context`. `ScreenStack` push/pop/tick. `Transition` has `Push`/`Pop`/`Exit`. |
+| E3 menu screens | `ui::screens::{Title,WorldSelect,CreateWorld,Options,Game}` | All five screens implemented as `Screen` trait impls. Title shows "Back to Game" / "Options" / "Quit". Create world has name + seed form. Options sets FOV (70–120), render distance (3–15), VSync, font scale, language. |
+| E4 HUD overlay | `ui::hud::Hud` | Crosshair (`Area` at screen center), debug panel (F3 toggle, `Window` with position/yaw/pitch/FPS/chunks), chat bar (T or `/` toggle, `Panel::bottom`). |
+| E5 inventory | `ui::inventory::Inventory` | 4×10 slot grid in a centered `Window`. Each slot is a 32×32 px grey square with placeholder label + count. |
+
+`GameScreen` composes `Hud` + `Inventory` and is ticked directly by
+`App::frame` when the screen stack is empty; menu screens overlay via the
+stack. Cursor grab is driven by stack depth and pause state. The old
+glyphon debug-text line is replaced by an egui `Panel::top` status bar.
+
+Cargo deps added at `[E]`: `egui = "0.34"`, `egui-winit = "0.34"`,
+`egui-wgpu = "0.34"`.
 
 ### `[MVP]` minimum viable game — shipped (`039fe80` on `main`)
 
@@ -236,6 +268,11 @@ each fix is a targeted patch on top of `[D]` + MVP:
 * **Save format break.** No backward compatibility with C++ saves.
   Player and chunk files are tagged with `u32` magic + `u32` version
   from day one for future Rust-to-Rust upgrades.
+* **egui 0.34 chosen over 0.31 for wgpu 29 compat.** egui-wgpu 0.34.1 is
+  the first release that shares wgpu 29.0.1 with the project. The `unsafe`
+  lifetime-forget transmute in `egui_renderer.rs` bridges the
+  `RenderPass<'static>` requirement in egui-wgpu — the pass does not
+  actually borrow anything with its lifetime parameter (see wgpu#1671).
 
 ## Conventions established along the way
 
@@ -270,14 +307,11 @@ each fix is a targeted patch on top of `[D]` + MVP:
 
 Per `rust_migration.md` §5, with the partial ordering:
 
-* **`[E]`** UI — egui + screen stack + menus + HUD + inventory. Depends
-  on `[A]` + `[C]`. Skipped for MVP; the App currently overlays one
-  glyphon-rendered debug line and that's it.
 * **`[F]`** orchestration — `GameApp` root, fixed-step game loop, block
   raycast + breaking, chat input, screenshots, async chunk pipeline,
-  end-to-end smoke test. Skipped for MVP; today's `App` is a hand-rolled
-  variable-step loop with no save/load + no per-tick world mutation
-  beyond particle ticking (and the ParticleSystem is empty).
+  end-to-end smoke test. Today's `App` is a hand-rolled variable-step loop
+  with no save/load + no per-tick world mutation beyond particle ticking
+  (and the ParticleSystem is empty).
 
 Smaller follow-ups inside the layers that ARE shipped:
 
@@ -297,9 +331,9 @@ Smaller follow-ups inside the layers that ARE shipped:
 
 ## Repository state
 
-* `main` is at `6922b65`, all of `[A] + [B] + [C] + [D] + MVP + post-MVP
-  fixes` in linear history, six squashed feature commits + two surgical
-  fix commits on top of the migration plan + initial progress log.
+* `main` is at `551afba`, all of `[A] + [B] + [C] + [D] + [E] + MVP +
+  post-MVP fixes` in linear history, seven squashed feature commits + two
+  surgical fix commits on top of the migration plan + initial progress log.
 * Worktrees from agent runs live under `.claude/worktrees/`. They are
   locked by the harness while sessions are open and are reaped on
   session end.

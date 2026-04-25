@@ -2,13 +2,13 @@
 //! render entry point.
 //!
 //! Owns the window, the wgpu context (`Gfx`), the shared atlases and frame
-//! uniform buffer, the HUD text renderer, and the [`Game`] instance that
-//! holds the static world + camera + chunk meshes.
+//! uniform buffer, the HUD text renderer, the egui renderer, the screen
+//! stack, and the [`Game`] instance that holds the static world + camera +
+//! chunk meshes.
 //!
-//! Per `docs/rust_migration.md` §5, the [E] (UI / menus) and [F] (raycast,
-//! breaking, async pipeline, save/load) sub-tasks are skipped — `App` is the
-//! minimum viable harness that loads a small, fully-generated world and
-//! renders it with a free-fly camera.
+//! Per `docs/rust_migration.md` §5, tasks [E] (UI / menus / HUD / inventory)
+//! are implemented on top of egui 0.34. [F] (raycast, breaking, async
+//! pipeline, save/load) is still skipped.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -17,20 +17,20 @@ use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
 use winit::error::EventLoopError;
-use winit::event::{DeviceEvent, DeviceId, ElementState, MouseButton as WinitMouseButton, WindowEvent};
+use winit::event::{
+    DeviceEvent, DeviceId, ElementState, MouseButton as WinitMouseButton, WindowEvent,
+};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowAttributes, WindowId};
 
-use crate::game::{Game, build_block_registry};
-use crate::gfx::{Atlases, FrameUniforms, Gfx, TextLine, TextRenderer, UniformBuffer};
+use crate::game::{build_block_registry, Game};
+use crate::gfx::{
+    Atlases, EguiRenderer, FrameUniforms, Gfx, TextRenderer, UniformBuffer,
+};
 use crate::input::{InputState, Key, MouseButton};
 use crate::math::Vec2f;
-
-/// HUD text color (white).
-fn hud_color() -> glyphon::Color {
-    glyphon::Color::rgb(0xFF, 0xFF, 0xFF)
-}
+use crate::ui::{GameScreen, Screen, ScreenStack, Transition};
 
 /// Per-window runtime state. Created on the first `resumed` event.
 struct AppState {
@@ -41,12 +41,24 @@ struct AppState {
     #[allow(dead_code)]
     atlases: Atlases,
     frame_uniforms: UniformBuffer<FrameUniforms>,
+    /// Held for the GPU resources; egui superseded the debug-text HUD, but
+    /// `TextRenderer` may be re-used for chat rendering.
+    #[allow(dead_code)]
     text: TextRenderer,
     game: Game,
     input: InputState,
     last_tick: Instant,
     start_time: Instant,
     cursor_grabbed: bool,
+    egui_renderer: EguiRenderer,
+    /// The in-game screen (HUD, crosshair, inventory, pause menu).
+    /// Rendered when the screen stack is empty.
+    game_screen: GameScreen,
+    /// Menu screens overlaid on top of the game. When non-empty, the top
+    /// screen receives input and the cursor is released.
+    screen_stack: ScreenStack,
+    /// Set by `Transition::Exit` from a screen; causes the event loop to exit.
+    exit_requested: bool,
 }
 
 /// Application root. Implements [`winit::application::ApplicationHandler`].
@@ -73,8 +85,8 @@ impl App {
         PathBuf::from("rs").join("assets")
     }
 
-    /// Tick + render one frame.
-    fn frame(state: &mut AppState) {
+    /// Tick + render one frame. Returns `true` if the app should exit.
+    fn frame(state: &mut AppState) -> bool {
         // ---------- timing ----------
         let now = Instant::now();
         let dt = (now - state.last_tick).as_secs_f32().min(0.1);
@@ -90,10 +102,64 @@ impl App {
             .game
             .write_frame_uniforms(state.gfx.queue(), &state.frame_uniforms, surface_size, elapsed);
 
-        // ---------- consume per-frame input transients now that this frame
-        //            has read them; new winit events for the next frame land
-        //            after this. ----------
+        // ---------- consume per-frame input transients ----------
         state.input.begin_frame();
+
+        // ---------- update game screen with latest frame data ----------
+        let fps = if dt > 0.0 { 1.0 / dt } else { 0.0 };
+        state.game_screen.fps = fps;
+        state.game_screen.camera_pos = [
+            state.game.camera.position.x,
+            state.game.camera.position.y,
+            state.game.camera.position.z,
+        ];
+        state.game_screen.yaw = state.game.camera.yaw;
+        state.game_screen.pitch = state.game.camera.pitch;
+        state.game_screen.chunk_count = state.game.chunk_meshes.len();
+
+        // Game screen paused state freezes cursor grab.
+        let game_paused = state.game_screen.paused;
+
+        // ---------- begin egui frame ----------
+        state.egui_renderer.begin_frame(&state.window);
+
+        // ---------- tick UI (game screen or menu stack) ----------
+        let ctx = state.egui_renderer.context();
+        if state.screen_stack.is_empty() {
+            // In-game: tick the game screen directly.
+            match state.game_screen.ui(ctx) {
+                Transition::Push(s) => state.screen_stack.push(s),
+                Transition::Exit => {
+                    state.exit_requested = true;
+                    return true;
+                }
+                _ => {}
+            }
+        } else {
+            // Menus overlaying the game: tick the screen stack.
+            let action = state.screen_stack.tick(ctx);
+            if action {
+                // A screen requested exit.
+                state.exit_requested = true;
+                return true;
+            }
+        }
+
+        // ---------- end egui frame (tessellates) ----------
+        state.egui_renderer.end_frame(&state.window);
+
+        // ---------- upload egui textures (glyph atlas etc.) ----------
+        state
+            .egui_renderer
+            .update_textures(state.gfx.device(), state.gfx.queue());
+
+        // ---------- cursor grab logic ----------
+        // Grab when in-game and not paused; release when menus are open.
+        if state.screen_stack.is_empty() && !game_paused {
+            Self::grab_cursor(&state.window, &mut state.cursor_grabbed);
+        } else {
+            Self::release_cursor(&state.window, &mut state.cursor_grabbed);
+        }
 
         // ---------- acquire surface ----------
         let frame = match state.gfx.acquire() {
@@ -104,20 +170,20 @@ impl App {
                 tracing::warn!(w, h, "surface lost/outdated; reconfiguring");
                 state.gfx.reconfigure();
                 state.window.request_redraw();
-                return;
+                return false;
             }
             wgpu::CurrentSurfaceTexture::Timeout => {
                 tracing::warn!("surface acquire timed out; skipping frame");
                 state.window.request_redraw();
-                return;
+                return false;
             }
             wgpu::CurrentSurfaceTexture::Occluded => {
-                return;
+                return false;
             }
             wgpu::CurrentSurfaceTexture::Validation => {
                 tracing::error!("surface acquire raised validation error");
                 state.window.request_redraw();
-                return;
+                return false;
             }
         };
 
@@ -125,57 +191,29 @@ impl App {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder =
-            state
-                .gfx
-                .device()
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("neworld.frame_encoder"),
-                });
+        let mut encoder = state
+            .gfx
+            .device()
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("neworld.frame_encoder"),
+            });
+
+        // ---------- upload egui buffers into encoder ----------
+        let extra_cbs = state.egui_renderer.update_buffers(
+            state.gfx.device(),
+            state.gfx.queue(),
+            &mut encoder,
+        );
 
         // ---------- world render pass (clears to sky) ----------
-        state.game.record_world_pass(state.gfx.device(), &mut encoder, &view);
-
-        // ---------- HUD text overlay (load-op, paints over the world) ----------
-        let (w, h) = state.gfx.surface_size();
-        let camera = &state.game.camera;
-        let hud = format!(
-            "NEWorld (Rust port)   {w}x{h}   pos=({:.1}, {:.1}, {:.1})   yaw={:.2} pitch={:.2}   chunks={}   {:.1} fps",
-            camera.position.x,
-            camera.position.y,
-            camera.position.z,
-            camera.yaw,
-            camera.pitch,
-            state.game.chunk_meshes.len(),
-            if dt > 0.0 { 1.0 / dt } else { 0.0 },
-        );
-        let help = if state.cursor_grabbed {
-            "WSAD = move   Space/Shift = up/down   Ctrl = sprint   Esc = release mouse"
-        } else {
-            "click window to capture mouse"
-        };
-        let lines = [
-            TextLine {
-                text: &hud,
-                x: 12.0,
-                y: 10.0,
-                scale: 1.0,
-                color: hud_color(),
-            },
-            TextLine {
-                text: help,
-                x: 12.0,
-                y: 30.0,
-                scale: 1.0,
-                color: hud_color(),
-            },
-        ];
         state
-            .text
-            .prepare(state.gfx.device(), state.gfx.queue(), (w, h), &lines);
+            .game
+            .record_world_pass(state.gfx.device(), &mut encoder, &view);
+
+        // ---------- egui render pass (on top of the world) ----------
         {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("neworld.text_pass"),
+            let mut egui_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("neworld.egui_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     depth_slice: None,
@@ -190,12 +228,18 @@ impl App {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            state.text.render(&mut pass);
+            state.egui_renderer.render(&mut egui_pass);
         }
 
-        state.gfx.queue().submit(std::iter::once(encoder.finish()));
+        // ---------- submit & present ----------
+        state
+            .gfx
+            .queue()
+            .submit(std::iter::once(encoder.finish()).chain(extra_cbs));
         frame.present();
         state.window.request_redraw();
+
+        false
     }
 
     /// Try to lock the cursor to the window center for FPS-style mouse-look.
@@ -288,7 +332,8 @@ impl ApplicationHandler for App {
 
         let attributes = WindowAttributes::default()
             .with_title("NEWorld")
-            .with_inner_size(LogicalSize::new(1280, 720));
+            .with_inner_size(LogicalSize::new(1280, 720))
+            .with_min_inner_size(LogicalSize::new(256, 144));
 
         let window = match event_loop.create_window(attributes) {
             Ok(w) => Arc::new(w),
@@ -301,9 +346,6 @@ impl ApplicationHandler for App {
 
         let gfx = Gfx::new(window.clone());
 
-        // Atlases are needed before we can build the chunk pipeline (the
-        // pipeline's bind group references their texture views). Loading
-        // happens against `assets/` discovered via CARGO_MANIFEST_DIR.
         let assets = Self::assets_root();
         let atlases = match Atlases::load(gfx.device(), gfx.queue(), &assets) {
             Ok(a) => {
@@ -325,6 +367,13 @@ impl ApplicationHandler for App {
             UniformBuffer::<FrameUniforms>::new(gfx.device(), "neworld.frame_uniforms");
 
         let text = TextRenderer::new(gfx.device(), gfx.queue(), gfx.surface_format());
+
+        let egui_renderer = EguiRenderer::new(
+            gfx.device(),
+            gfx.surface_format(),
+            &window,
+            window.scale_factor() as f32,
+        );
 
         // Build registry + base blocks once for the world generator and the
         // mesher (which both consume the same registry).
@@ -361,6 +410,10 @@ impl ApplicationHandler for App {
             last_tick: now,
             start_time: now,
             cursor_grabbed: false,
+            egui_renderer,
+            game_screen: GameScreen::default(),
+            screen_stack: ScreenStack::new(),
+            exit_requested: false,
         });
         tracing::info!("app ready");
     }
@@ -375,6 +428,18 @@ impl ApplicationHandler for App {
             return;
         };
 
+        // Check exit flag (set by screen stack or close request).
+        if state.exit_requested {
+            event_loop.exit();
+            return;
+        }
+
+        // Pass all events to egui for modifier / focus tracking.
+        // We check egui_wants_focus before processing game keyboard input
+        // so typing in an egui text field doesn't also move the player.
+        let egui_resp = state.egui_renderer.handle_event(&state.window, &event);
+        let egui_wants_focus = egui_resp.consumed;
+
         match event {
             WindowEvent::CloseRequested => {
                 tracing::info!("close requested; exiting");
@@ -385,12 +450,21 @@ impl ApplicationHandler for App {
                 state
                     .game
                     .resize(state.gfx.device(), size.width, size.height);
+                state
+                    .egui_renderer
+                    .set_scale_factor(state.window.scale_factor() as f32);
                 state.window.request_redraw();
             }
             WindowEvent::RedrawRequested => {
-                Self::frame(state);
+                let should_exit = Self::frame(state);
+                if should_exit {
+                    event_loop.exit();
+                }
             }
             WindowEvent::KeyboardInput { event, .. } => {
+                if egui_wants_focus {
+                    return;
+                }
                 let PhysicalKey::Code(code) = event.physical_key else {
                     return;
                 };
@@ -399,7 +473,8 @@ impl ApplicationHandler for App {
                 };
                 match event.state {
                     ElementState::Pressed => {
-                        // Release cursor on Escape.
+                        // Release cursor on Escape (handled by game screen now,
+                        // but keep as safety for when menus are not open).
                         if key == Key::Escape && state.cursor_grabbed {
                             Self::release_cursor(&state.window, &mut state.cursor_grabbed);
                         }
@@ -419,13 +494,15 @@ impl ApplicationHandler for App {
                 button,
                 ..
             } => {
+                if egui_wants_focus {
+                    return;
+                }
                 let Some(button) = translate_mouse_button(button) else {
                     return;
                 };
                 match btn_state {
                     ElementState::Pressed => {
-                        // First click also grabs the cursor.
-                        if !state.cursor_grabbed {
+                        if !state.cursor_grabbed && state.screen_stack.is_empty() {
                             Self::grab_cursor(&state.window, &mut state.cursor_grabbed);
                         }
                         if !state.input.mouse_buttons.contains(button) {
@@ -445,6 +522,9 @@ impl ApplicationHandler for App {
                 state.input.mouse_pos = Vec2f::new(position.x as f32, position.y as f32);
             }
             WindowEvent::MouseWheel { delta, .. } => {
+                if egui_wants_focus {
+                    return;
+                }
                 let dy = match delta {
                     winit::event::MouseScrollDelta::LineDelta(_, y) => y,
                     winit::event::MouseScrollDelta::PixelDelta(p) => p.y as f32 / 32.0,
@@ -452,7 +532,6 @@ impl ApplicationHandler for App {
                 state.input.mouse_wheel_delta += dy;
             }
             WindowEvent::Focused(false) => {
-                // Release the cursor on focus loss so the user can alt-tab.
                 Self::release_cursor(&state.window, &mut state.cursor_grabbed);
             }
             _ => {}

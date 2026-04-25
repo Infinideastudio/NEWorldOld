@@ -22,6 +22,7 @@ pub mod context;
 pub mod depth;
 pub mod mesh;
 pub mod particle_render;
+pub mod egui_renderer;
 pub mod text;
 pub mod uniforms;
 
@@ -29,6 +30,7 @@ pub use self::atlases::{AtlasError, Atlases};
 pub use self::basic_pipeline::BasicPipeline;
 pub use self::chunk_render::{ChunkMesh, ChunkPipeline};
 pub use self::context::Gfx;
+pub use self::egui_renderer::EguiRenderer;
 pub use self::depth::DepthTarget;
 pub use self::mesh::{
     CHUNK_SIZE, ChunkVertex, MeshInput, MeshOutput, PADDED_SIZE, PADDED_VOLUME, mesh_chunk,

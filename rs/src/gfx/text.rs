@@ -10,11 +10,11 @@
 //!
 //! ```no_run
 //! # use neworld::gfx::text::{TextRenderer, TextLine};
-//! # fn frame(
+//! # fn frame<'a>(
 //! #     device: &wgpu::Device,
 //! #     queue: &wgpu::Queue,
-//! #     renderer: &mut TextRenderer,
-//! #     pass: &mut wgpu::RenderPass<'_>,
+//! #     renderer: &'a mut TextRenderer,
+//! #     pass: &mut wgpu::RenderPass<'a>,
 //! # ) {
 //! let lines = [TextLine {
 //!     text: "Hello, world!",
