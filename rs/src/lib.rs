@@ -20,6 +20,7 @@ pub mod i18n;
 pub mod input;
 pub mod items;
 pub mod math;
+pub mod particles;
 pub mod setup;
 pub mod worldgen;
 pub mod worlds;
