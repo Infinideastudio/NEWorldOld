@@ -36,4 +36,6 @@ pub use self::mesh::{
 };
 pub use self::particle_render::{ParticleMesh, ParticlePipeline, ParticleVertex};
 pub use self::text::{TextLine, TextRenderer};
-pub use self::uniforms::{FilterUniforms, FrameUniforms, Mat4f, ModelUniforms, UniformBuffer};
+pub use self::uniforms::{
+    FilterUniforms, FrameUniforms, Mat4f, ModelUniforms, UniformBuffer, mat4_to_array,
+};

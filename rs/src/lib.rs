@@ -15,6 +15,7 @@ pub mod blocks;
 pub mod chunks;
 pub mod commands;
 pub mod config;
+pub mod game;
 pub mod gfx;
 pub mod i18n;
 pub mod input;
