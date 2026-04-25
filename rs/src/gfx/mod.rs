@@ -14,6 +14,7 @@
 //! * [`chunk_render`] / [`depth`] — wgpu pipeline + depth target for chunk
 //!   rendering (D2 + D4).
 //! * [`particle_render`] — billboard particle pipeline (D3).
+//! * [`screenshot`] — surface readback to PNG (F4).
 
 pub mod atlases;
 pub mod basic_pipeline;
@@ -21,8 +22,10 @@ pub mod chunk_render;
 pub mod context;
 pub mod depth;
 pub mod mesh;
+pub mod mesh_pipeline;
 pub mod particle_render;
 pub mod egui_renderer;
+pub mod screenshot;
 pub mod text;
 pub mod uniforms;
 
@@ -36,7 +39,9 @@ pub use self::mesh::{
     CHUNK_SIZE, ChunkVertex, MeshInput, MeshOutput, PADDED_SIZE, PADDED_VOLUME, mesh_chunk,
     padded_index,
 };
+pub use self::mesh_pipeline::{MeshDone, MeshPipeline, MeshRequest};
 pub use self::particle_render::{ParticleMesh, ParticlePipeline, ParticleVertex};
+pub use self::screenshot::{Screenshot, ScreenshotError};
 pub use self::text::{TextLine, TextRenderer};
 pub use self::uniforms::{
     FilterUniforms, FrameUniforms, Mat4f, ModelUniforms, UniformBuffer, mat4_to_array,

@@ -16,13 +16,15 @@
 
 mod error;
 mod grid;
+mod pipeline;
 mod store;
 
 pub use self::error::WorldError;
 pub use self::grid::{ChunkGrid, ChunkKey};
+pub use self::pipeline::{ChunkPipeline, LoadRequest, LoadResult};
 pub use self::store::TilesStore;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -122,6 +124,12 @@ pub struct World {
     /// Center of the loaded region (in chunk coords). Tracked so that
     /// `tick_chunk_loading` can decide what to load/unload.
     center_ccoord: Vec3i,
+    /// Async load/save pipeline (F5). One worker thread, `crossbeam-channel`
+    /// transport. See `pipeline.rs`.
+    pipeline: ChunkPipeline,
+    /// Coords currently in flight on the pipeline. Prevents double-issuing
+    /// loads for the same coord while the worker is busy with it.
+    in_flight: HashSet<Vec3i>,
     pub unloaded_chunks: u32,
     pub updated_blocks: u32,
 }
@@ -143,6 +151,13 @@ impl World {
         let generator = Generator::new(seed);
         let grid_size = (2 * (render_distance + 2)) as usize;
         let chunk_grid = ChunkGrid::new(grid_size);
+        let pipeline = ChunkPipeline::spawn(
+            Arc::clone(&registry),
+            base_blocks,
+            generator.clone(),
+            tiles_store.db_handle(),
+            height_map_size,
+        );
         Ok(Self {
             name,
             tiles_store,
@@ -158,6 +173,8 @@ impl World {
             game_time: 0,
             render_distance,
             center_ccoord: Vec3i::new(0, 0, 0),
+            pipeline,
+            in_flight: HashSet::new(),
             unloaded_chunks: 0,
             updated_blocks: 0,
         })
@@ -584,6 +601,115 @@ impl World {
         }
     }
 
+    /// Async sibling of [`Self::tick_chunk_loading`]: walks the load/unload
+    /// windows the same way but only **issues requests** to the pipeline
+    /// worker; never blocks. Pair with [`Self::poll_load_results`] to drain
+    /// finished loads. Mirrors C++ `update_chunk_lists`.
+    pub fn tick_chunk_loading_async(&mut self) {
+        let center = self.center_ccoord;
+        let load_dist = self.render_distance;
+
+        let mut load_candidates: Vec<(i32, Vec3i)> = Vec::new();
+        for dx in -load_dist..=load_dist {
+            for dy in -load_dist..=load_dist {
+                for dz in -load_dist..=load_dist {
+                    let cc = center + Vec3i::new(dx, dy, dz);
+                    if self.by_coord.contains_key(&cc) || self.in_flight.contains(&cc) {
+                        continue;
+                    }
+                    let dist = dx * dx + dy * dy + dz * dz;
+                    load_candidates.push((dist, cc));
+                }
+            }
+        }
+        load_candidates.sort_by_key(|(d, _)| *d);
+        load_candidates.truncate(MAX_CHUNK_LOADS);
+        for (_, cc) in load_candidates {
+            if self.pipeline.request_load(cc) {
+                self.in_flight.insert(cc);
+            }
+        }
+
+        // Unloads via the async-save path: the worker writes to sled so
+        // unload-on-slide doesn't stall the simulation tick.
+        let unload_dist = self.render_distance + 1;
+        let mut unload_candidates: Vec<(i32, Vec3i)> = Vec::new();
+        for &coord in self.by_coord.keys() {
+            let d = coord - center;
+            if d.x.abs() > unload_dist
+                || d.y.abs() > unload_dist
+                || d.z.abs() > unload_dist
+            {
+                let distsqr = d.x * d.x + d.y * d.y + d.z * d.z;
+                unload_candidates.push((distsqr, coord));
+            }
+        }
+        unload_candidates.sort_by_key(|(d, _)| std::cmp::Reverse(*d));
+        unload_candidates.truncate(MAX_CHUNK_UNLOADS);
+        for (_, cc) in unload_candidates {
+            self.unload_chunk_async(cc);
+            self.unloaded_chunks = self.unloaded_chunks.wrapping_add(1);
+        }
+    }
+
+    /// Drain every available [`LoadResult`] from the pipeline worker, install
+    /// each into the slab + `by_coord` + `chunk_grid` (re-resolving by coord
+    /// per §2.5), and return the list of inserted coords so the caller can
+    /// mark them dirty for meshing.
+    pub fn poll_load_results(&mut self) -> Vec<Vec3i> {
+        let drained = self.pipeline.drain_results();
+        let mut inserted = Vec::with_capacity(drained.len());
+        for LoadResult { coord, chunk } in drained {
+            self.in_flight.remove(&coord);
+            // The world may have moved on while the worker was busy. If the
+            // coord is no longer needed, drop the result rather than reviving
+            // it. We still insert if the coord falls inside `render_distance
+            // + 1` (the unload boundary) — exact-window-only would lose
+            // chunks that arrived just past a slide.
+            let half = self.render_distance + 1;
+            let d = coord - self.center_ccoord;
+            let in_window =
+                d.x.abs() <= half && d.y.abs() <= half && d.z.abs() <= half;
+            if !in_window || self.by_coord.contains_key(&coord) {
+                continue;
+            }
+            let key = self.chunks.insert(chunk);
+            self.by_coord.insert(coord, key);
+            if self.chunk_grid.contains(coord) {
+                self.chunk_grid.set(coord, Some(key));
+            }
+            inserted.push(coord);
+        }
+        inserted
+    }
+
+    /// Fire-and-forget save through the pipeline worker.
+    pub fn request_save(&self, coord: Vec3i, bytes: Vec<u8>) {
+        self.pipeline.request_save(coord, bytes);
+    }
+
+    /// Async-save sibling of [`Self::unload_chunk`]: routes the save through
+    /// the pipeline worker instead of blocking on the main-thread sled handle.
+    fn unload_chunk_async(&mut self, ccoord: Vec3i) {
+        let Some(&key) = self.by_coord.get(&ccoord) else {
+            return;
+        };
+        if let Some(chunk) = self.chunks.get(key)
+            && chunk.modified()
+        {
+            let bytes = chunk.package_to();
+            self.pipeline.request_save(ccoord, bytes);
+            if let Some(c) = self.chunks.get_mut(key) {
+                c.clear_modified();
+            }
+        }
+        if self.chunk_grid.contains(ccoord) {
+            self.chunk_grid.set(ccoord, None);
+        }
+        self.by_coord.remove(&ccoord);
+        self.chunks.remove(key);
+    }
+
     /// Insert a chunk into all three structures — the canonical slab, the
     /// `by_coord` map, and the grid (if the coord is in the window).
     fn load_chunk(&mut self, ccoord: Vec3i) {
@@ -686,242 +812,13 @@ impl BlockView for World {
 // ======================================================================
 //   Tests
 // ======================================================================
+//
+// Per-module tests live in `tests.rs`; shared `TEST_LOCK` / `ScratchDir` are
+// in `test_support.rs`.
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::blocks::{register_base_blocks, BlockRegistry};
-    use crate::math::Vec3d;
-    use std::path::PathBuf;
-    use std::sync::atomic::{AtomicU64, Ordering};
-    use std::sync::Arc;
+mod test_support;
 
-    /// Test scratch directory rooted in the OS temp dir. Mirrors
-    /// `i18n.rs::tests::ScratchDir` so we don't need a `tempfile` dep. Each
-    /// instance gets a unique subdir; `Drop` does best-effort cleanup.
-    struct ScratchDir {
-        path: PathBuf,
-        prev_cwd: PathBuf,
-    }
+#[cfg(test)]
+mod tests;
 
-    impl ScratchDir {
-        fn new(tag: &str) -> Self {
-            static COUNTER: AtomicU64 = AtomicU64::new(0);
-            let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-            let pid = std::process::id();
-            let path = std::env::temp_dir().join(format!("neworld-world-{tag}-{pid}-{n}"));
-            let _ = std::fs::remove_dir_all(&path);
-            std::fs::create_dir_all(&path).expect("create scratch dir");
-            let prev_cwd = std::env::current_dir().expect("cwd");
-            // World::new opens "worlds/<name>/chunks.db" as a relative path,
-            // so chdir into the scratch dir for the duration of the test.
-            std::env::set_current_dir(&path).expect("chdir into scratch");
-            Self { path, prev_cwd }
-        }
-    }
-
-    impl Drop for ScratchDir {
-        fn drop(&mut self) {
-            // Restore cwd before nuking the scratch dir.
-            let _ = std::env::set_current_dir(&self.prev_cwd);
-            let _ = std::fs::remove_dir_all(&self.path);
-        }
-    }
-
-    /// World tests run in a single process; sled rejects concurrent opens of
-    /// the same DB and we change cwd, so serialise everything that touches
-    /// `ScratchDir` behind a global mutex.
-    use std::sync::Mutex;
-    static TEST_LOCK: Mutex<()> = Mutex::new(());
-
-    fn make_registry() -> (Arc<BlockRegistry>, BaseBlocks) {
-        let mut r = BlockRegistry::new();
-        let base = register_base_blocks(&mut r);
-        (Arc::new(r), base)
-    }
-
-    fn build_world(name: &str, render_distance: i32) -> World {
-        let (registry, base) = make_registry();
-        World::new(name.to_owned(), render_distance, 0, registry, base)
-            .expect("world::new")
-    }
-
-    // ChunkGrid tests live in `world/grid.rs`; TilesStore tests in `world/store.rs`.
-
-    // ---------- coord helpers ----------
-
-    #[test]
-    fn chunk_coord_negative_arithmetic_shift() {
-        // SIZE_LOG = 4, SIZE = 16. -1 >> 4 == -1.
-        assert_eq!(chunk_coord(Vec3i::new(0, 0, 0)), Vec3i::new(0, 0, 0));
-        assert_eq!(chunk_coord(Vec3i::new(15, 15, 15)), Vec3i::new(0, 0, 0));
-        assert_eq!(chunk_coord(Vec3i::new(16, 16, 16)), Vec3i::new(1, 1, 1));
-        assert_eq!(chunk_coord(Vec3i::new(-1, -1, -1)), Vec3i::new(-1, -1, -1));
-        assert_eq!(chunk_coord(Vec3i::new(-16, -16, -16)), Vec3i::new(-1, -1, -1));
-        assert_eq!(chunk_coord(Vec3i::new(-17, -17, -17)), Vec3i::new(-2, -2, -2));
-    }
-
-    #[test]
-    fn block_coord_modulo_bitmask() {
-        assert_eq!(block_coord(Vec3i::new(0, 0, 0)), Vec3::<u32>::new(0, 0, 0));
-        assert_eq!(block_coord(Vec3i::new(15, 7, 3)), Vec3::<u32>::new(15, 7, 3));
-        assert_eq!(block_coord(Vec3i::new(16, 16, 16)), Vec3::<u32>::new(0, 0, 0));
-        // -1 in two's-complement is ...11111111 → low 4 bits = 15.
-        assert_eq!(
-            block_coord(Vec3i::new(-1, -1, -1)),
-            Vec3::<u32>::new(15, 15, 15)
-        );
-        assert_eq!(
-            block_coord(Vec3i::new(-16, -16, -16)),
-            Vec3::<u32>::new(0, 0, 0)
-        );
-    }
-
-    // ---------- World ----------
-
-    #[test]
-    fn world_set_block_then_block_round_trips() {
-        let _guard = TEST_LOCK.lock().unwrap();
-        let _scratch = ScratchDir::new("set-block");
-        let mut w = build_world("set-block", 1);
-        w.set_center(Vec3i::new(0, 0, 0));
-        w.tick_chunk_loading();
-        let coord = Vec3i::new(1, 2, 3);
-        let stone = w.base_blocks.stone;
-        w.set_block(coord, stone, false);
-        let got = w.block(coord).expect("loaded");
-        assert_eq!(got.id, stone);
-        // The chunk should show as modified.
-        let cc = chunk_coord(coord);
-        let chunk = w.chunk(cc).expect("loaded chunk");
-        assert!(chunk.modified());
-    }
-
-    #[test]
-    fn world_block_or_air_returns_air_for_unloaded_coord() {
-        let _guard = TEST_LOCK.lock().unwrap();
-        let _scratch = ScratchDir::new("air");
-        let w = build_world("air", 1);
-        // No tick_chunk_loading: nothing is loaded yet.
-        let far_off = Vec3i::new(100_000, 100_000, 100_000);
-        let b = w.block_or_air(far_off);
-        assert_eq!(b.id, w.base_blocks.air);
-        assert!(w.block(far_off).is_none());
-    }
-
-    #[test]
-    fn world_chunk_and_chunk_by_coord_agree_inside_window() {
-        let _guard = TEST_LOCK.lock().unwrap();
-        let _scratch = ScratchDir::new("agree");
-        let mut w = build_world("agree", 1);
-        w.set_center(Vec3i::new(0, 0, 0));
-        w.tick_chunk_loading();
-        // Pick a coord inside the load window.
-        let cc = Vec3i::new(0, 0, 0);
-        let by_grid = w.chunk(cc).expect("via grid");
-        let by_map = w.chunk_by_coord(cc).expect("via map");
-        // Both should refer to a chunk at the same coord.
-        assert_eq!(by_grid.coord(), by_map.coord());
-        assert_eq!(by_grid.coord(), cc);
-    }
-
-    #[test]
-    fn world_chunk_grid_drops_after_slide_but_by_coord_stays() {
-        let _guard = TEST_LOCK.lock().unwrap();
-        let _scratch = ScratchDir::new("slide");
-        let mut w = build_world("slide", 1);
-        w.set_center(Vec3i::new(0, 0, 0));
-        w.tick_chunk_loading();
-        let cc = Vec3i::new(0, 0, 0);
-        assert!(w.chunk(cc).is_some());
-        assert!(w.chunk_by_coord(cc).is_some());
-
-        // Slide the grid far enough that `cc` falls outside the new window
-        // but no unloads have run yet.
-        let far = Vec3i::new(10_000, 0, 10_000);
-        w.set_center(far * Chunk::SIZE);
-        // After the slide, cc is no longer in the grid window.
-        assert!(w.chunk(cc).is_none());
-        // But `by_coord` still has it (no unload yet).
-        assert!(w.chunk_by_coord(cc).is_some());
-    }
-
-    #[test]
-    fn world_update_block_skips_when_neighbours_unloaded() {
-        let _guard = TEST_LOCK.lock().unwrap();
-        let _scratch = ScratchDir::new("update-skip");
-        let mut w = build_world("update-skip", 1);
-        // Load only the centre chunk by manually inserting it.
-        w.set_center(Vec3i::new(0, 0, 0));
-        // We don't call tick_chunk_loading; instead load just one chunk.
-        w.load_chunk(Vec3i::new(0, 0, 0));
-        // A coord inside the loaded chunk, but on the +x face, so the +x
-        // neighbour chunk (1,0,0) is unloaded.
-        let coord = Vec3i::new(15, 5, 5);
-        // Returns false because some neighbours aren't loaded.
-        assert!(!w.update_block(coord, true));
-        // Queue should be empty.
-        assert!(w.block_update_queue().is_empty());
-    }
-
-    #[test]
-    fn world_update_block_queues_neighbour_updates_when_all_loaded() {
-        let _guard = TEST_LOCK.lock().unwrap();
-        let _scratch = ScratchDir::new("update-queue");
-        let mut w = build_world("update-queue", 1);
-        w.set_center(Vec3i::new(0, 0, 0));
-        w.tick_chunk_loading();
-        // A coord with all 6 neighbours in loaded chunks.
-        let coord = Vec3i::new(2, 3, 4);
-        let drained_before = w.block_update_queue().len();
-        let ok = w.update_block(coord, true);
-        assert!(ok, "neighbours should be loaded");
-        // Six neighbour offsets pushed onto the queue.
-        assert_eq!(
-            w.block_update_queue().len() - drained_before,
-            6,
-            "expected 6 neighbour updates queued"
-        );
-    }
-
-    #[test]
-    fn world_tick_chunk_loading_is_idempotent() {
-        let _guard = TEST_LOCK.lock().unwrap();
-        let _scratch = ScratchDir::new("idempotent");
-        let mut w = build_world("idempotent", 1);
-        w.set_center(Vec3i::new(0, 0, 0));
-        w.tick_chunk_loading();
-        let n1 = w.chunks.len();
-        w.tick_chunk_loading();
-        let n2 = w.chunks.len();
-        assert_eq!(n1, n2, "second tick should not double-load");
-        // Ensure by_coord and slab agree on cardinality.
-        assert_eq!(w.by_coord.len(), w.chunks.len());
-    }
-
-    #[test]
-    fn block_view_for_world_forwards_to_inherent_methods() {
-        let _guard = TEST_LOCK.lock().unwrap();
-        let _scratch = ScratchDir::new("blockview");
-        let mut w = build_world("blockview", 1);
-        w.set_center(Vec3i::new(0, 0, 0));
-        w.tick_chunk_loading();
-        let coord = Vec3i::new(2, 3, 4);
-        let inherent = World::block(&w, coord);
-        let via_trait = <World as BlockView>::block(&w, coord);
-        assert_eq!(inherent, via_trait);
-        let inherent = World::block_or_air(&w, coord);
-        let via_trait = <World as BlockView>::block_or_air(&w, coord);
-        assert_eq!(inherent, via_trait);
-        let aabb = Aabb3d::new(
-            Vec3d::new(0.0, 0.0, 0.0),
-            Vec3d::new(1.0, 1.0, 1.0),
-        );
-        let inherent = World::hitboxes(&w, aabb);
-        let via_trait = <World as BlockView>::hitboxes(&w, aabb);
-        assert_eq!(inherent.len(), via_trait.len());
-        let inherent = World::in_water(&w, aabb);
-        let via_trait = <World as BlockView>::in_water(&w, aabb);
-        assert_eq!(inherent, via_trait);
-    }
-}

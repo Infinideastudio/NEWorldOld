@@ -98,8 +98,26 @@ impl Gfx {
             .find(|m| *m == wgpu::CompositeAlphaMode::Auto)
             .unwrap_or(caps.alpha_modes[0]);
 
+        // Try `RENDER_ATTACHMENT | COPY_SRC` so the screenshot path ([F4])
+        // can `copy_texture_to_buffer` from the swap-chain image. Most
+        // platforms allow this on sRGB swap formats; if not, fall back to
+        // RENDER_ATTACHMENT only and log a warning. The screenshot path
+        // detects the fallback at capture time and skips with a tracing
+        // warn (see `gfx::screenshot::Screenshot::capture`).
+        let preferred_usage =
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC;
+        let usage = if caps.usages.contains(preferred_usage) {
+            preferred_usage
+        } else {
+            tracing::warn!(
+                supported = ?caps.usages,
+                "surface does not support COPY_SRC; screenshots disabled"
+            );
+            wgpu::TextureUsages::RENDER_ATTACHMENT
+        };
+
         let surface_config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage,
             format: surface_format,
             width,
             height,

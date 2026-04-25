@@ -26,11 +26,11 @@ use winit::window::{CursorGrabMode, Window, WindowAttributes, WindowId};
 
 use crate::game::{build_block_registry, Game};
 use crate::gfx::{
-    Atlases, EguiRenderer, FrameUniforms, Gfx, TextRenderer, UniformBuffer,
+    Atlases, EguiRenderer, FrameUniforms, Gfx, Screenshot, TextRenderer, UniformBuffer,
 };
 use crate::input::{InputState, Key, MouseButton};
 use crate::math::Vec2f;
-use crate::ui::{GameScreen, Screen, ScreenStack, Transition};
+use crate::ui::{GameScreen, Screen, ScreenStack, Transition, initial_screen_stack};
 
 /// Per-window runtime state. Created on the first `resumed` event.
 struct AppState {
@@ -49,6 +49,10 @@ struct AppState {
     input: InputState,
     last_tick: Instant,
     start_time: Instant,
+    /// Fixed-step accumulator. Drained in [`App::TICK_DT`] slices on every
+    /// frame so the simulation runs at a fixed rate independent of render
+    /// FPS — see `docs/rust_migration.md` §4.16.
+    tick_accumulator: f32,
     cursor_grabbed: bool,
     egui_renderer: EguiRenderer,
     /// The in-game screen (HUD, crosshair, inventory, pause menu).
@@ -57,6 +61,8 @@ struct AppState {
     /// Menu screens overlaid on top of the game. When non-empty, the top
     /// screen receives input and the cursor is released.
     screen_stack: ScreenStack,
+    /// Surface readback for F2 screenshots ([F4] in the migration plan).
+    screenshot: Screenshot,
     /// Set by `Transition::Exit` from a screen; causes the event loop to exit.
     exit_requested: bool,
 }
@@ -68,6 +74,18 @@ pub struct App {
 }
 
 impl App {
+    /// Fixed simulation tick length (30 Hz). Mirrors the C++ `update_thread`'s
+    /// per-tick budget so particle drag/gravity, async load polling, and
+    /// (future) block-update queue draining run at a frame-rate-independent
+    /// rate (`docs/rust_migration.md` §4.16, [F1]). `Game::tick` is called
+    /// with this `dt` once per accumulator slice.
+    const TICK_DT: f32 = 1.0 / 30.0;
+
+    /// Maximum number of fixed-step ticks per render frame. Bounds the
+    /// "spiral of death" if a slow frame accumulates too much time — extra
+    /// time is dropped on the floor rather than chasing forever.
+    const MAX_TICKS_PER_FRAME: u32 = 5;
+
     /// Build an event loop and run the application until exit.
     pub fn run() -> Result<(), EventLoopError> {
         let event_loop = EventLoop::new()?;
@@ -93,14 +111,54 @@ impl App {
         state.last_tick = now;
         let elapsed = (now - state.start_time).as_secs_f32();
 
-        // ---------- simulation ----------
-        state.game.tick(dt, &state.input);
+        // ---------- simulation (fixed-step, [F1]) ----------
+        // Drive `Game::tick` at exactly `TICK_DT` regardless of render FPS.
+        // `mouse_motion` only applies on the first tick of the frame because
+        // its accumulated value represents motion since the last frame, not
+        // since the last sim step; subsequent ticks see zero motion which is
+        // the correct integration. Camera position integration scales with
+        // dt and so totals correctly across multiple ticks.
+        let chat_open = state.game_screen.hud.chat_open;
+        let game_paused = state.game_screen.paused || !state.screen_stack.is_empty();
+        state.tick_accumulator += dt;
+        let mut ticks = 0u32;
+        while state.tick_accumulator >= Self::TICK_DT && ticks < Self::MAX_TICKS_PER_FRAME {
+            state
+                .game
+                .tick(Self::TICK_DT, &state.input, chat_open, game_paused);
+            state.tick_accumulator -= Self::TICK_DT;
+            ticks += 1;
+            // After the first tick the per-frame mouse motion has been
+            // integrated; clear it so subsequent ticks don't double-apply.
+            if ticks == 1 {
+                state.input.mouse_motion = crate::math::Vec2f::new(0.0, 0.0);
+            }
+        }
+        // If we ran out of tick budget, drop the rest on the floor.
+        if state.tick_accumulator > Self::TICK_DT * Self::MAX_TICKS_PER_FRAME as f32 {
+            state.tick_accumulator = 0.0;
+        }
+
+        // ---------- async chunk meshing ([F6]) ----------
+        // Dispatch dirty chunks (set by break/place, async load arrival, or
+        // command-driven mutation) to the mesh worker, then drain finished
+        // meshes and upload them to the GPU. Splits from `tick` because the
+        // upload step needs `&wgpu::Device`.
+        state.game.pump_meshing(state.gfx.device());
 
         // ---------- frame uniforms ----------
         let surface_size = state.gfx.surface_size();
-        state
-            .game
-            .write_frame_uniforms(state.gfx.queue(), &state.frame_uniforms, surface_size, elapsed);
+        state.game.write_frame_uniforms(
+            state.gfx.queue(),
+            &state.frame_uniforms,
+            surface_size,
+            elapsed,
+        );
+
+        // F2 → screenshot. Sample before `begin_frame` clears the press
+        // edges; the actual capture is enqueued after the world+egui
+        // passes are encoded but before submit (see below).
+        let screenshot_requested = state.input.is_key_pressed(Key::F2);
 
         // ---------- consume per-frame input transients ----------
         state.input.begin_frame();
@@ -116,9 +174,14 @@ impl App {
         state.game_screen.yaw = state.game.camera.yaw;
         state.game_screen.pitch = state.game.camera.pitch;
         state.game_screen.chunk_count = state.game.chunk_meshes.len();
-
-        // Game screen paused state freezes cursor grab.
-        let game_paused = state.game_screen.paused;
+        state.game_screen.selected = state.game.selected;
+        state.game_screen.view_proj = state.game.view_proj;
+        state.game_screen.chat_history = state
+            .game
+            .visible_chat_lines(chat_open)
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
 
         // ---------- begin egui frame ----------
         state.egui_renderer.begin_frame(&state.window);
@@ -142,6 +205,30 @@ impl App {
                 // A screen requested exit.
                 state.exit_requested = true;
                 return true;
+            }
+        }
+
+        // ---------- chat dispatch (F3) ----------
+        // Drain submitted chat lines (Enter pressed inside chat) and feed
+        // them into the command registry. Tab autocomplete is handled here
+        // too, against the registry, since the Hud does not own it.
+        let submitted = state.game_screen.hud.drain_submitted();
+        for line in submitted {
+            state.game.submit_chat_line(line);
+        }
+        if state.game_screen.hud.chat_open {
+            // ctx.input is reentrant — query Tab via egui's accelerator.
+            let tab_pressed = state
+                .egui_renderer
+                .context()
+                .input(|i| i.key_pressed(::egui::Key::Tab));
+            if tab_pressed
+                && let Some(completed) = state
+                    .game
+                    .commands
+                    .try_auto_complete(&state.game_screen.hud.chat_input)
+            {
+                state.game_screen.hud.set_chat_input(completed);
             }
         }
 
@@ -231,6 +318,22 @@ impl App {
             state.egui_renderer.render(&mut egui_pass);
         }
 
+        // ---------- screenshot copy (F2) ----------
+        if screenshot_requested {
+            let path = screenshot_path();
+            match state.screenshot.capture(
+                state.gfx.device(),
+                &mut encoder,
+                &frame.texture,
+                state.gfx.surface_format(),
+                state.gfx.surface_size(),
+                path,
+            ) {
+                Ok(()) => {}
+                Err(err) => tracing::warn!(error = %err, "screenshot capture skipped"),
+            }
+        }
+
         // ---------- submit & present ----------
         state
             .gfx
@@ -266,6 +369,16 @@ impl App {
         window.set_cursor_visible(true);
         *state = false;
     }
+}
+
+/// Build the output path for a new F2 screenshot:
+/// `screenshots/screenshot_<unix_seconds>.png`. Avoids the `chrono`
+/// dependency by using `SystemTime`.
+fn screenshot_path() -> PathBuf {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    PathBuf::from("screenshots").join(format!("screenshot_{secs}.png"))
 }
 
 /// Translate a winit `KeyCode` into our crate-local [`Key`] enum, or `None`
@@ -409,10 +522,15 @@ impl ApplicationHandler for App {
             input: InputState::new(),
             last_tick: now,
             start_time: now,
+            tick_accumulator: 0.0,
             cursor_grabbed: false,
             egui_renderer,
             game_screen: GameScreen::default(),
-            screen_stack: ScreenStack::new(),
+            // Launch flow per `docs/rust_migration.md` §5 [F7]: start at the
+            // title screen on top of the (already-loaded) game world. The
+            // user's first input is "Back to Game" which pops back to play.
+            screen_stack: initial_screen_stack(),
+            screenshot: Screenshot::new(),
             exit_requested: false,
         });
         tracing::info!("app ready");
@@ -551,6 +669,18 @@ impl ApplicationHandler for App {
             && state.cursor_grabbed
         {
             state.input.mouse_motion += Vec2f::new(dx as f32, dy as f32);
+        }
+    }
+
+    /// Synchronous save-on-exit (F5 bonus). The pipeline worker is still
+    /// alive at this point — `World::drop` (running shortly after) closes its
+    /// request channel and joins the thread, so any pending background save
+    /// flushes before the process exits.
+    fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Some(state) = self.state.as_mut()
+            && let Err(err) = state.game.world.save_to_disk()
+        {
+            tracing::error!(error = %err, "save_to_disk failed on exit");
         }
     }
 }

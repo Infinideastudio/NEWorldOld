@@ -8,13 +8,16 @@
 //! chunk codec.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::math::Vec3i;
 
 use super::error::WorldError;
 
 pub struct TilesStore {
-    db: sled::Db,
+    /// Wrapped in `Arc` so the async chunk pipeline worker can hold a clone
+    /// of the underlying sled handle without borrowing through `&World`.
+    db: Arc<sled::Db>,
 }
 
 impl TilesStore {
@@ -24,8 +27,16 @@ impl TilesStore {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let db = sled::open(&path)?;
+        let db = Arc::new(sled::open(&path)?);
         Ok(Self { db })
+    }
+
+    /// Cheap clone of the underlying sled DB handle for a worker thread.
+    /// `sled::Db` is internally `Arc`-shared and `Send + Sync`; the explicit
+    /// `Arc` here just makes the sharing visible at the call site.
+    #[must_use]
+    pub fn db_handle(&self) -> Arc<sled::Db> {
+        Arc::clone(&self.db)
     }
 
     fn db_path(world_name: &str) -> PathBuf {
@@ -68,40 +79,7 @@ impl std::fmt::Debug for TilesStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-    use std::sync::atomic::{AtomicU64, Ordering};
-
-    /// `TilesStore::open` resolves the DB path relative to the current
-    /// working directory; chdir-into-temp + a process-global mutex serialises
-    /// concurrent tests so they don't trip over each other.
-    static TEST_LOCK: Mutex<()> = Mutex::new(());
-
-    struct ScratchDir {
-        path: PathBuf,
-        prev_cwd: PathBuf,
-    }
-
-    impl ScratchDir {
-        fn new(tag: &str) -> Self {
-            static COUNTER: AtomicU64 = AtomicU64::new(0);
-            let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-            let pid = std::process::id();
-            let path = std::env::temp_dir()
-                .join(format!("neworld-tilesstore-{tag}-{pid}-{n}"));
-            let _ = std::fs::remove_dir_all(&path);
-            std::fs::create_dir_all(&path).expect("create scratch dir");
-            let prev_cwd = std::env::current_dir().expect("cwd");
-            std::env::set_current_dir(&path).expect("chdir");
-            Self { path, prev_cwd }
-        }
-    }
-
-    impl Drop for ScratchDir {
-        fn drop(&mut self) {
-            let _ = std::env::set_current_dir(&self.prev_cwd);
-            let _ = std::fs::remove_dir_all(&self.path);
-        }
-    }
+    use super::super::test_support::{ScratchDir, TEST_LOCK};
 
     #[test]
     fn round_trips_raw_bytes() {
@@ -114,10 +92,7 @@ mod tests {
         store.flush().expect("flush");
         let loaded = store.load(coord).expect("load");
         assert_eq!(loaded.as_deref(), Some(payload.as_slice()));
-        // Missing coords return None.
-        let missing = store
-            .load(Vec3i::new(99, 99, 99))
-            .expect("load missing");
+        let missing = store.load(Vec3i::new(99, 99, 99)).expect("load missing");
         assert!(missing.is_none());
         drop(store);
     }

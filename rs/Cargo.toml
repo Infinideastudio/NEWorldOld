@@ -48,6 +48,9 @@ slab = "0.4"
 sled = "0.34"
 bincode = { version = "2", features = ["serde"] }
 
+# F5/F6: SPMC channels for chunk pipeline workers
+crossbeam-channel = "0.5"
+
 # Graphics-layer deps (`[C]` in the migration plan):
 # - winit: cross-platform windowing + event loop (0.30 ApplicationHandler API).
 # - wgpu: cross-platform GPU abstraction (replaces the C++ GL wrappers).

@@ -4,16 +4,21 @@
 //! screen. This screen provides the HUD top bar, crosshair, debug panel,
 //! chat bar, inventory window, and the pause menu (Escape).
 
+use cgmath::{Matrix4, SquareMatrix};
 use egui::Context;
 
-use super::super::screen::{Screen, Transition};
-use super::super::hud::Hud;
+use super::super::hud::{Hud, HudFrame};
 use super::super::inventory::Inventory;
+use super::super::screen::{Screen, Transition};
 use super::{OptionsScreen, TitleScreen};
+use crate::game::Hit;
 
 /// The in-game screen shown during gameplay.
 ///
 /// Composes [`Hud`] (crosshair, debug, chat) and [`Inventory`] (item grid).
+/// Per-frame state (camera pose, FPS, selection) is set by the app before
+/// `ui`; the chat history is queried via `chat_history` (a borrow into
+/// `Game::chat_messages`).
 pub struct GameScreen {
     pub paused: bool,
     pub fps: f32,
@@ -21,6 +26,12 @@ pub struct GameScreen {
     pub yaw: f64,
     pub pitch: f64,
     pub chunk_count: usize,
+    /// Currently-selected block (raycast hit). Set by app before each frame.
+    pub selected: Option<Hit>,
+    /// View-projection matrix for the selection outline. Set by app.
+    pub view_proj: Matrix4<f32>,
+    /// Visible chat history (most-recent last). Set by app each frame.
+    pub chat_history: Vec<String>,
     pub hud: Hud,
     pub inventory: Inventory,
 }
@@ -34,6 +45,9 @@ impl Default for GameScreen {
             yaw: 0.0,
             pitch: 0.0,
             chunk_count: 0,
+            selected: None,
+            view_proj: Matrix4::identity(),
+            chat_history: Vec::new(),
             hud: Hud::default(),
             inventory: Inventory::default(),
         }
@@ -55,19 +69,19 @@ impl Screen for GameScreen {
         // Sync inventory open state from hud.
         self.inventory.open = self.hud.inventory_open;
 
-        // Escape toggles pause (but not if another screen consumed it).
-        let esc_pressed = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-        if esc_pressed {
-            self.paused = !self.paused;
+        // Escape toggles pause — but only when chat is closed (otherwise
+        // the chat bar's own Escape handler closes the bar instead).
+        if !self.hud.chat_open {
+            let esc_pressed = ctx.input(|i| i.key_pressed(egui::Key::Escape));
+            if esc_pressed {
+                self.paused = !self.paused;
+            }
         }
 
         // Top status bar.
         egui::Panel::top("game_hud").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.colored_label(
-                    egui::Color32::WHITE,
-                    format!("FPS: {:.0}", self.fps),
-                );
+                ui.colored_label(egui::Color32::WHITE, format!("FPS: {:.0}", self.fps));
                 ui.separator();
                 ui.colored_label(
                     egui::Color32::from_gray(200),
@@ -76,15 +90,19 @@ impl Screen for GameScreen {
             });
         });
 
-        // HUD elements: crosshair, debug panel, chat bar.
-        self.hud.render(
-            ctx,
-            self.camera_pos,
-            self.yaw,
-            self.pitch,
-            self.fps,
-            self.chunk_count,
-        );
+        // HUD elements: crosshair, debug panel, selection outline, chat bar.
+        let history: Vec<&str> = self.chat_history.iter().map(String::as_str).collect();
+        let frame = HudFrame {
+            camera_pos: self.camera_pos,
+            yaw: self.yaw,
+            pitch: self.pitch,
+            fps: self.fps,
+            chunk_count: self.chunk_count,
+            selected: self.selected,
+            view_proj: self.view_proj,
+            chat_history: &history,
+        };
+        self.hud.render(ctx, &frame);
 
         // Inventory overlay.
         self.inventory.render(ctx);
@@ -106,16 +124,14 @@ impl Screen for GameScreen {
                     }
 
                     if ui.button("Options").clicked() {
-                        transition =
-                            Transition::Push(Box::new(OptionsScreen::default()));
+                        transition = Transition::Push(Box::new(OptionsScreen::default()));
                     }
 
                     ui.add_space(10.0);
 
                     if ui.button("Quit to Title").clicked() {
                         self.paused = false;
-                        transition =
-                            Transition::Push(Box::new(TitleScreen));
+                        transition = Transition::Push(Box::new(TitleScreen));
                     }
                 });
         }
