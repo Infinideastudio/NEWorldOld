@@ -8,11 +8,14 @@
 //!   [`input`], [`blocks`], [`items`].
 //! * World model: [`worldgen`], [`chunks`], [`worlds`] (containing [`worlds::world`]
 //!   and [`worlds::player`]), [`commands`].
+//! * Graphics + application bring-up: [`gfx`], [`app`].
 
+pub mod app;
 pub mod blocks;
 pub mod chunks;
 pub mod commands;
 pub mod config;
+pub mod gfx;
 pub mod i18n;
 pub mod input;
 pub mod items;

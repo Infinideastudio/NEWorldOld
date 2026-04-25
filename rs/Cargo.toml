@@ -48,6 +48,22 @@ slab = "0.4"
 sled = "0.34"
 bincode = { version = "2", features = ["serde"] }
 
+# Graphics-layer deps (`[C]` in the migration plan):
+# - winit: cross-platform windowing + event loop (0.30 ApplicationHandler API).
+# - wgpu: cross-platform GPU abstraction (replaces the C++ GL wrappers).
+# - pollster: tiny synchronous executor for the wgpu adapter/device requests.
+# - raw-window-handle: window-handle interop (declared explicitly even though
+#   it's usually pulled transitively).
+# - image: PNG decode for block + UI atlases (replaces the C++ image_io path).
+# - glyphon: cosmic-text shaping + wgpu glyph atlas (replaces FreeType + the
+#   hand-rolled glyph atlas in `text_rendering.ixx`).
+winit = "0.30"
+wgpu = "29.0.1"
+pollster = "0.4.0"
+raw-window-handle = "0.6.2"
+image = "0.25.10"
+glyphon = "0.11.0"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1
