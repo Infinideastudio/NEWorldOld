@@ -52,8 +52,16 @@ pub const SKY_COLOR: wgpu::Color = wgpu::Color {
 /// World seed for deterministic terrain. Fixed for the demo.
 const WORLD_SEED: u32 = 0x00C0_FFEE;
 
-/// Initial camera height (blocks above origin).
-const INITIAL_CAMERA_Y: f64 = 80.0;
+/// World coord the chunk grid centers on at startup. The terrain surface in
+/// `Generator::height` lives around `y ≈ 120` (a bit above the
+/// `WATER_LEVEL = 96` baseline), so anchoring the chunk window here gives
+/// the player something interesting to look at. With `RENDER_DISTANCE = 3`
+/// the loaded chunks span world `y ∈ [80, 191]`.
+const WORLD_CENTER: cgmath::Vector3<i32> = cgmath::Vector3::new(0, 128, 0);
+
+/// Initial camera position — above the terrain surface, slightly back so the
+/// player isn't spawned inside a block.
+const INITIAL_CAMERA: Vec3d = cgmath::Vector3::new(0.0, 160.0, 32.0);
 
 /// Default sun direction (normalized at write-time).
 fn default_sun_dir() -> Vector3<f32> {
@@ -88,7 +96,7 @@ impl Camera {
             pitch: -0.35,
             fov_y: 70.0_f32.to_radians(),
             near: 0.1,
-            far: 256.0,
+            far: 1024.0,
             speed: 18.0,
             mouse_sensitivity: 0.0025,
         }
@@ -227,7 +235,7 @@ impl Game {
             Arc::clone(registry),
             base_blocks,
         )?;
-        world.set_center(Vec3i::new(0, 0, 0));
+        world.set_center(WORLD_CENTER);
 
         // Pump synchronous chunk loading until no more loads happen.
         let target = ((2 * RENDER_DISTANCE + 1) as usize).pow(3);
@@ -270,7 +278,7 @@ impl Game {
         let mut particle_mesh = ParticleMesh::new();
         particle_mesh.rebuild(device, particles.particles());
 
-        let camera = Camera::new(Vec3d::new(0.0, INITIAL_CAMERA_Y, 0.0));
+        let camera = Camera::new(INITIAL_CAMERA);
 
         Ok(Self {
             world,
@@ -475,4 +483,3 @@ pub fn build_block_registry() -> (Arc<BlockRegistry>, BaseBlocks) {
     let base = register_base_blocks(&mut registry);
     (Arc::new(registry), base)
 }
-

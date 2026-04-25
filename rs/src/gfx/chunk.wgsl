@@ -97,9 +97,11 @@ fn face_normal(face: u32) -> vec3<f32> {
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let sample = textureSample(block_diffuse, block_sampler, in.uv, in.layer);
 
-    // Alpha test for foliage / glass cutouts. Translucent surfaces (water)
-    // pass through and are blended by the translucent pipeline state.
-    if (sample.a < 0.5) {
+    // Alpha test — discard fully-transparent texels only. Mirrors the C++
+    // `opaque.fsh` (`if (texel.a <= 0.0) discard;`); a stricter `< 0.5`
+    // throws away translucent surfaces like water that we still want to
+    // blend through the translucent pipeline.
+    if (sample.a <= 0.0) {
         discard;
     }
 

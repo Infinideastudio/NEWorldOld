@@ -354,9 +354,19 @@ fn load_strip_array(
         view_formats: &[],
     });
 
+    // The C++ `render::load_png_image` Y-flips the PNG during decode (see
+    // `src/render/image.ixx:197` — it walks rows from `height - 1` down to `0`
+    // when reading), so the source PNGs are authored with the LAST atlas
+    // entry at the top of the file and the FIRST at the bottom. Our Rust
+    // decoder loads top-down (PNG row 0 → buffer row 0), so we need to map
+    // `texture_layer[k] ← png_block[layers - 1 - k]` to match the C++
+    // convention. Within each W×W block the row order is preserved
+    // (PNG-visual top-to-bottom = wgpu's `t = 0` at top), so each block's art
+    // appears right-side-up.
     let layer_byte_len = (width * width * RGBA_BPP) as usize;
-    for layer_index in 0..layers {
-        let start = layer_index as usize * layer_byte_len;
+    for texture_layer in 0..layers {
+        let png_block = layers - 1 - texture_layer;
+        let start = png_block as usize * layer_byte_len;
         let end = start + layer_byte_len;
         let layer_bytes = &bytes[start..end];
 
@@ -367,7 +377,7 @@ fn load_strip_array(
                 origin: wgpu::Origin3d {
                     x: 0,
                     y: 0,
-                    z: layer_index,
+                    z: texture_layer,
                 },
                 aspect: wgpu::TextureAspect::All,
             },
