@@ -96,11 +96,10 @@ export auto unicode_utf8(std::u32string_view s) -> std::string {
 
 template <typename T>
 void load_option(std::map<std::string, std::string>& m, char const* name, T& value) {
-    if (m.find(name) == m.end())
-        return;
-    std::stringstream ss;
-    ss << m[name];
-    ss >> value;
+    if (auto it = m.find(name); it != m.end()) {
+        auto ss = std::stringstream(it->second);
+        ss >> value;
+    }
 }
 
 export auto load_options() -> bool {
@@ -139,7 +138,16 @@ export auto load_options() -> bool {
 
 template <typename T>
 void save_option(std::ofstream& out, char const* name, T& value) {
-    out << std::string(name) << " " << value << std::endl;
+    // I don't know why std::ofstream's operator<< is broken with Clang...
+    // out << std::string(name) << " " << value << std::endl;
+    auto line = std::string(name) + " ";
+    if constexpr (std::is_same_v<T, std::string>) {
+        line += value;
+    } else {
+        line += std::to_string(value);
+    }
+    line += "\n";
+    out.write(line.c_str(), line.size());
 }
 
 export auto save_options() -> bool {

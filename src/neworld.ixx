@@ -107,7 +107,7 @@ void updateKeyStates() {
 //==============================  Main Program  ================================//
 //==============================     主程序     ================================//
 
-export int main() {
+extern "C++" int main() {
     // 终于进入main函数了！激动人心的一刻！！！
     load_options();
     Globalization::Load();

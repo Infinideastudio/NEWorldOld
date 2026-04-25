@@ -65,14 +65,10 @@ export std::string BoolEnabled(bool b) {
 
 export template <typename T>
 std::string strWithVar(std::string const& str, T var) {
-    std::stringstream ss;
-    ss << str << var;
-    return ss.str();
+    return str + std::to_string(var);
 }
 
 export template <typename T>
 std::string Var2Str(T var) {
-    std::stringstream ss;
-    ss << var;
-    return ss.str();
+    return std::to_string(var);
 }

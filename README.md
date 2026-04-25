@@ -6,7 +6,7 @@ NEWorld is an open-source game with similar game rules to Minecraft.
 
 ## Compiling
 
-* Build commands (requires CMake 3.30+, compiler and standard library support for `import std`):
+* Build commands[^1] (requires CMake 3.30+, compiler and standard library support for `import std`):
   ```sh
   cmake -S . -B build
   cmake --build build
@@ -32,7 +32,7 @@ The compiler is currently set to use C++23. By default, all built-from-source de
 
 ### CMake configuration
 
-To add an external library, you need to modify [`CMakeLists.txt`](CMakeLists.txt) first[^1].
+To add an external library, you need to modify [`CMakeLists.txt`](CMakeLists.txt) first[^2].
 
 #### Mature and popular libraries
 
@@ -45,7 +45,7 @@ target_link_libraries(neworld PRIVATE <package_target_name>)
 
 **This can be handled by a package manager like vcpkg** if you have specified it in the command that invokes CMake configure (Visual Studio does this automatically). Note that the the two names unfortunately have subtly different meanings, and can be sometimes different:
 
-* The `<package_name>` is the name of the package **given to CMake's module mode or config mode search procedures**[^2].
+* The `<package_name>` is the name of the package **given to CMake's module mode or config mode search procedures**[^3].
   - Module mode: a script `Find<package_name>.cmake` in certain places is used to locate the package.
   - Config mode: the package specifies its own `<package_name>Config.cmake` that is searched by CMake.
 * The `<package_target_name>` is the name of the target **returned from the module mode or config mode search procedures**.
@@ -55,7 +55,7 @@ target_link_libraries(neworld PRIVATE <package_target_name>)
 
 #### Niche and small libraries
 
-For niche libraries (or our own public code repositories) that are not necessarily published in all mainstream package managers, use the `FetchContent` module to build from source[^3]. An external package reference looks like:
+For niche libraries (or our own public code repositories) that are not necessarily published in all mainstream package managers, use the `FetchContent` module to build from source[^4]. An external package reference looks like:
 
 ```cmake
 FetchContent_Declare(
@@ -72,14 +72,14 @@ target_link_libraries(neworld PRIVATE <package_build_target_name>)
 
 * The `<some_identifier>` can be arbitrary.
 * The `<package_build_target_name>` in this case is **specified in the package's `CMakeLists.txt` file**.
-  - For some packages, this can be different from the `<package_target_name>` specified in `<package_name>Config.cmake`[^4].
+  - For some packages, this can be different from the `<package_target_name>` specified in `<package_name>Config.cmake`[^5].
 
 ### Package manager configuration
 
 To instruct your package manager to automatically download dependencies, additional configuration might be necessary.
 
-* For vcpkg, the `vcpkg.json` and `vcpkg-configuration.json` manifest files serve this purpose[^5]. With them, you may directly invoke `vcpkg install` from the command line to download and install all dependencies.
-  - To add a new one, type `vcpkg add port <vcpkg_package_registry_name>` to update the manifest files[^6].
+* For vcpkg, the `vcpkg.json` and `vcpkg-configuration.json` manifest files serve this purpose[^6]. With them, you may directly invoke `vcpkg install` from the command line to download and install all dependencies.
+  - To add a new one, type `vcpkg add port <vcpkg_package_registry_name>` to update the manifest files[^7].
   - Here the `<vcpkg_package_registry_name>` might be different from the `<package_name>` `<package_target_name>` `<package_build_target_name>` previously mentioned. This should be the name of the package listed on the [vcpkg package registry](https://vcpkg.io/en/packages).
 
 ### A comparison of names
@@ -94,11 +94,10 @@ As an example, here are what I have collected so far:
 
 
 
-
-
-[^1]: See https://cmake.org/cmake/help/latest/guide/using-dependencies/index.html.
-[^2]: See https://cmake.org/cmake/help/latest/command/find_package.html#search-modes.
-[^3]: See https://cmake.org/cmake/help/latest/module/FetchContent.html.
-[^4]: Therefore, even if `FetchContent()` can be set to attempt `find_package()` first using a `FIND_PACKAGE_ARGS` argument, this may not be desirable for some packages, as it does not give a consistent `<package_target_name>` across different build environments.
-[^5]: See https://learn.microsoft.com/en-us/vcpkg/consume/manifest-mode.
-[^6]: If importing your own code repository, see https://learn.microsoft.com/en-us/vcpkg/consume/git-registries.
+[^1]: For Clang, you might have to add `-DCMAKE_CXX_FLAGS=-fsized-deallocation`.
+[^2]: See https://cmake.org/cmake/help/latest/guide/using-dependencies/index.html.
+[^3]: See https://cmake.org/cmake/help/latest/command/find_package.html#search-modes.
+[^4]: See https://cmake.org/cmake/help/latest/module/FetchContent.html.
+[^5]: Therefore, even if `FetchContent()` can be set to attempt `find_package()` first using a `FIND_PACKAGE_ARGS` argument, this may not be desirable for some packages, as it does not give a consistent `<package_target_name>` across different build environments.
+[^6]: See https://learn.microsoft.com/en-us/vcpkg/consume/manifest-mode.
+[^7]: If importing your own code repository, see https://learn.microsoft.com/en-us/vcpkg/consume/git-registries.

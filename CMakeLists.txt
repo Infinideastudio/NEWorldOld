@@ -1,14 +1,17 @@
 cmake_minimum_required(VERSION 3.30)
 cmake_policy(SET CMP0135 NEW)
 
-# ===== Enable experimental standard library modules support (CMake 3.30 ~ 4.0.2 only) =====
+# ===== Enable experimental standard library modules support (CMake 3.30 ~ 4.2 only) =====
 # See: https://github.com/Kitware/CMake/commits/master/Help/dev/experimental.rst
 if (CMAKE_VERSION VERSION_LESS "4.0.0")
     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "0e5b6991-d74f-4b3d-a41c-cf096e0b2508")
-else ()
+elseif (CMAKE_VERSION VERSION_LESS "4.1.0")
     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "a9e1cf81-9932-4810-974b-6eccaf14e457")
+elseif (CMAKE_VERSION VERSION_LESS "4.3.0")
+    set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+else ()
+    set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
 endif ()
-# set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 
 # ===== Project info =====
 project(
@@ -54,7 +57,7 @@ find_package(glfw3 CONFIG REQUIRED)
 FetchContent_Declare(
         utfcpp
         GIT_REPOSITORY https://github.com/nemtrif/utfcpp
-        GIT_TAG v4.0.6
+        GIT_TAG v4.0.8
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(utfcpp)
@@ -63,7 +66,7 @@ FetchContent_MakeAvailable(utfcpp)
 FetchContent_Declare(
         spdlog
         GIT_REPOSITORY https://github.com/gabime/spdlog
-        GIT_TAG v1.15.2
+        GIT_TAG v1.16.0
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(spdlog)
