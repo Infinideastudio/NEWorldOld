@@ -67,15 +67,11 @@ pub const SKY_COLOR: wgpu::Color = wgpu::Color {
 /// World seed for deterministic terrain. Fixed for the demo.
 const WORLD_SEED: u32 = 0x00C0_FFEE;
 
-/// World coord the chunk grid centers on at startup. The terrain surface in
-/// `Generator::height` lives around `y ≈ 120` (a bit above the
-/// `WATER_LEVEL = 96` baseline), so anchoring the chunk window here gives
-/// the player something interesting to look at. With `RENDER_DISTANCE = 3`
-/// the loaded chunks span world `y ∈ [80, 191]`.
-const WORLD_CENTER: cgmath::Vector3<i32> = cgmath::Vector3::new(0, 128, 0);
-
-/// Initial camera position — above the terrain surface, slightly back so the
-/// player isn't spawned inside a block.
+/// Initial camera position — above the terrain surface (which lives around
+/// `y ≈ 120` in `Generator::height`), slightly back so the player isn't
+/// spawned inside a block. `Game::new` seeds the world's load center from
+/// this; thereafter `tick_sim` keeps the center pinned to the player's
+/// chunk so loads/unloads follow the camera.
 const INITIAL_CAMERA: Vec3d = cgmath::Vector3::new(0.0, 160.0, 32.0);
 
 /// Half-extent of the camera's collision AABB, in blocks. Mirrors the C++
@@ -167,7 +163,10 @@ impl Game {
             Arc::clone(registry),
             base_blocks,
         )?;
-        world.set_center(WORLD_CENTER);
+        // Pin the load center to the spawn chunk so the first set of load
+        // requests covers the player's actual surroundings. `tick_sim` keeps
+        // the center following the camera from then on.
+        world.set_center(camera_world_coord(INITIAL_CAMERA));
         // Kick the async load pipeline ([F5]) so chunks start streaming in on
         // frame 1. Meshes follow once load results arrive (see `tick`).
         world.tick_chunk_loading_async();
@@ -222,21 +221,33 @@ impl Game {
         })
     }
 
-    /// Per-frame simulation. `dt` is real elapsed seconds since the last tick.
+    /// Render-rate per-frame update. `dt` is real elapsed seconds since the
+    /// last render frame, **not** the simulation step length. Runs every
+    /// frame so mouse-look + WSAD + selection raycast respond immediately
+    /// (rather than at the 30 Hz simulation rate, which makes both feel
+    /// laggy at high render FPS).
     ///
     /// `chat_open` and `paused` come from the UI layer; while either is true
-    /// we suppress the break/place mouse handling so menu / chat clicks don't
-    /// double up as world edits.
-    pub fn tick(&mut self, dt: f32, input: &InputState, chat_open: bool, paused: bool) {
+    /// we suppress the break/place mouse handling and camera input so menu /
+    /// chat clicks don't double up as world edits.
+    pub fn tick_render(
+        &mut self,
+        dt: f32,
+        input: &InputState,
+        chat_open: bool,
+        paused: bool,
+    ) {
         if !chat_open && !paused {
             self.camera.update_from_input(input, dt);
         }
 
-        // Update selection from the camera's eye position.
+        // Selection raycast is cheap and feels nicer when it tracks the
+        // camera at full frame rate.
         self.update_selection();
 
-        // Mouse → break/place. Suppressed during menus/chat so clicks on the
-        // chat bar don't pick blocks.
+        // Mouse → break/place. Press edges only fire on the frame they
+        // happened, so we have to consume them at frame rate too — running
+        // this in `tick_sim` would drop clicks that happened mid-frame.
         if !chat_open && !paused {
             if input.is_mouse_button_pressed(MouseButton::Left) {
                 self.try_break();
@@ -245,9 +256,16 @@ impl Game {
                 self.try_place();
             }
         }
+    }
 
-        // Field-disjoint borrow so particles can read the world via BlockView
-        // while we mutate particles.
+    /// Fixed-step simulation. `dt` is the simulation step length (1/30 s);
+    /// callers run this in an accumulator loop in [`crate::app::App::frame`].
+    /// Particle physics, chunk pipeline polling, and the world's load center
+    /// follow live here — anything where rate-stability matters more than
+    /// input latency.
+    pub fn tick_sim(&mut self, dt: f32) {
+        // Particle physics — gravity / drag / lifetime. Field-disjoint
+        // borrow so the simulation can read world blocks via BlockView.
         {
             let Self {
                 world, particles, ..
@@ -256,22 +274,37 @@ impl Game {
             particles.tick(dt, &BlockViewRef(view));
         }
 
-        // Drive the async chunk pipeline (F5).
+        // Slide the chunk grid + height map to follow the player. Mirrors
+        // C++ `update_chunk_lists`: only re-pivot when the player crosses a
+        // chunk boundary so we don't churn the height-map cache every tick.
+        let player_world = camera_world_coord(self.camera.position);
+        let player_chunk = crate::worlds::chunk_coord(player_world);
+        if self.world.center_ccoord() != player_chunk {
+            self.world.set_center(player_world);
+        }
+
+        // Drive the async chunk pipeline (F5): issue load/unload requests.
         self.world.tick_chunk_loading_async();
         let inserted = self.world.poll_load_results();
         if !inserted.is_empty() {
             mark_dirty_with_neighbours(&mut self.dirty_chunks, &inserted);
-            // Drop cached meshes for any coord that is no longer loaded.
-            // Borrow-split: collect stale coords first, then mutate.
-            let stale: Vec<Vec3i> = self
-                .chunk_meshes
-                .keys()
-                .copied()
-                .filter(|c| self.world.chunk_by_coord(*c).is_none())
-                .collect();
-            for c in stale {
-                self.chunk_meshes.remove(&c);
-            }
+        }
+
+        // Drop cached meshes for any coord that's no longer loaded — happens
+        // every tick (not just on insert) so unload-on-walk reaps GPU
+        // buffers as the player moves out of range. Borrow-split: collect
+        // stale coords first, then mutate.
+        let stale: Vec<Vec3i> = self
+            .chunk_meshes
+            .keys()
+            .copied()
+            .filter(|c| self.world.chunk_by_coord(*c).is_none())
+            .collect();
+        for c in stale {
+            self.chunk_meshes.remove(&c);
+            // Also clear the dirty queue so we don't dispatch a mesh job
+            // for a chunk that was just unloaded.
+            self.dirty_chunks.remove(&c);
         }
     }
 
@@ -558,6 +591,16 @@ impl Game {
 
 /// Check whether the camera's AABB (centered on `pos` with half-extent
 /// [`CAMERA_HALF_EXTENT`]) intersects the unit block AABB at `block`.
+/// Convert a camera world-space position into the integer block coord it's
+/// standing in. Mirrors the C++ player-coord rounding.
+fn camera_world_coord(pos: Vec3d) -> Vec3i {
+    Vec3i::new(
+        pos.x.floor() as i32,
+        pos.y.floor() as i32,
+        pos.z.floor() as i32,
+    )
+}
+
 fn camera_overlaps_block(pos: Vec3d, block: Vec3i) -> bool {
     let lo = Vec3d::new(f64::from(block.x), f64::from(block.y), f64::from(block.z));
     let hi = Vec3d::new(

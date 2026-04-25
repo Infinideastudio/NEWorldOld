@@ -213,6 +213,19 @@ impl World {
         self.game_time = t;
     }
 
+    /// Current chunk coord the load window is centered on. Used by `Game` to
+    /// detect when the player has crossed a chunk boundary so it can call
+    /// [`Self::set_center`] only on transitions instead of every frame.
+    #[must_use]
+    pub fn center_ccoord(&self) -> Vec3i {
+        self.center_ccoord
+    }
+
+    #[must_use]
+    pub fn render_distance(&self) -> i32 {
+        self.render_distance
+    }
+
     /// Hot-path lookup via the grid. Returns `None` if the coord is outside
     /// the grid window or not loaded. **Future:** when [D] lands this returns
     /// `&self.chunks[key].chunk` instead of `&self.chunks[key]`.

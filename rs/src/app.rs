@@ -111,30 +111,29 @@ impl App {
         state.last_tick = now;
         let elapsed = (now - state.start_time).as_secs_f32();
 
-        // ---------- simulation (fixed-step, [F1]) ----------
-        // Drive `Game::tick` at exactly `TICK_DT` regardless of render FPS.
-        // `mouse_motion` only applies on the first tick of the frame because
-        // its accumulated value represents motion since the last frame, not
-        // since the last sim step; subsequent ticks see zero motion which is
-        // the correct integration. Camera position integration scales with
-        // dt and so totals correctly across multiple ticks.
         let chat_open = state.game_screen.hud.chat_open;
         let game_paused = state.game_screen.paused || !state.screen_stack.is_empty();
+
+        // ---------- per-frame render-rate tick ----------
+        // Camera mouse-look + WSAD position + selection raycast + break/place
+        // edge consumption. Runs at full render FPS so look/movement feel
+        // immediate; doing this at the 30 Hz simulation rate produces visible
+        // stutter at high FPS. The mouse-press check has to happen here too,
+        // since press edges only live for the frame they happened on.
+        state.game.tick_render(dt, &state.input, chat_open, game_paused);
+
+        // ---------- fixed-step simulation ([F1]) ----------
+        // Particle physics, chunk pipeline polling, and the load-center
+        // follow run at exactly `TICK_DT` regardless of render FPS so they
+        // stay rate-stable. Bounded by `MAX_TICKS_PER_FRAME` to avoid the
+        // spiral-of-death case after a long pause.
         state.tick_accumulator += dt;
         let mut ticks = 0u32;
         while state.tick_accumulator >= Self::TICK_DT && ticks < Self::MAX_TICKS_PER_FRAME {
-            state
-                .game
-                .tick(Self::TICK_DT, &state.input, chat_open, game_paused);
+            state.game.tick_sim(Self::TICK_DT);
             state.tick_accumulator -= Self::TICK_DT;
             ticks += 1;
-            // After the first tick the per-frame mouse motion has been
-            // integrated; clear it so subsequent ticks don't double-apply.
-            if ticks == 1 {
-                state.input.mouse_motion = crate::math::Vec2f::new(0.0, 0.0);
-            }
         }
-        // If we ran out of tick budget, drop the rest on the floor.
         if state.tick_accumulator > Self::TICK_DT * Self::MAX_TICKS_PER_FRAME as f32 {
             state.tick_accumulator = 0.0;
         }
