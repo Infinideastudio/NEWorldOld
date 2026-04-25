@@ -4,6 +4,11 @@
 
 NEWorld is an open-source game with similar game rules to Minecraft.
 
+## Rust port
+
+**This project is being rewritten in Rust. See [docs/rust_migration.md](docs/rust_migration.md)
+for the module-by-module migration plan, ownership design, and implementation order.**
+
 ## Compiling
 
 * Build commands[^1] (requires CMake 3.30+, compiler and standard library support for `import std`):
