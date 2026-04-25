@@ -170,6 +170,28 @@ impl Gfx {
         self.surface.configure(&self.device, &self.surface_config);
     }
 
+    /// Toggle the surface's present mode: `Fifo` (vsync) or `Immediate`
+    /// (unlocked, falling back to `Mailbox` then `Fifo` if unsupported).
+    /// No-op when the mode is already `target`.
+    pub fn set_vsync(&mut self, enabled: bool) {
+        let caps = self.surface.get_capabilities(&self.adapter);
+        let target = if enabled {
+            wgpu::PresentMode::Fifo
+        } else if caps.present_modes.contains(&wgpu::PresentMode::Immediate) {
+            wgpu::PresentMode::Immediate
+        } else if caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
+            wgpu::PresentMode::Mailbox
+        } else {
+            wgpu::PresentMode::Fifo
+        };
+        if self.surface_config.present_mode == target {
+            return;
+        }
+        self.surface_config.present_mode = target;
+        self.surface.configure(&self.device, &self.surface_config);
+        tracing::debug!(?target, "wgpu surface present mode updated");
+    }
+
     /// Acquire the next surface texture for rendering.
     ///
     /// Thin wrapper around `Surface::get_current_texture`. The caller

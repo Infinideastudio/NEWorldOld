@@ -11,7 +11,7 @@
 //! pipeline, save/load) is still skipped.
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use winit::application::ApplicationHandler;
@@ -24,6 +24,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowAttributes, WindowId};
 
+use crate::config::Config;
 use crate::game::{build_block_registry, Game};
 use crate::gfx::{
     Atlases, EguiRenderer, FrameUniforms, Gfx, Screenshot, TextRenderer, UniformBuffer,
@@ -63,6 +64,13 @@ struct AppState {
     screen_stack: ScreenStack,
     /// Surface readback for F2 screenshots ([F4] in the migration plan).
     screenshot: Screenshot,
+    /// Live game configuration. Loaded from disk on `resumed`, saved on
+    /// `exiting`, edited live by `OptionsScreen`. App applies the live-
+    /// applicable values (FOV, mouse, vsync, font scale) each frame.
+    config: Arc<Mutex<Config>>,
+    /// `VSync` state from the most recent surface configuration. Tracked so
+    /// `apply_config` only triggers a `Surface::configure` on actual change.
+    last_vsync: bool,
     /// Set by `Transition::Exit` from a screen; causes the event loop to exit.
     exit_requested: bool,
 }
@@ -103,6 +111,52 @@ impl App {
         PathBuf::from("rs").join("assets")
     }
 
+    /// Resolve the options.toml location. Lives next to the binary's
+    /// `assets/` directory at build time; in dev runs that's
+    /// `<crate>/configs/options.toml`. We don't try to be clever about
+    /// per-user XDG paths — the migration plan calls for a single TOML file.
+    fn config_path() -> PathBuf {
+        if let Some(dir) = option_env!("CARGO_MANIFEST_DIR") {
+            return PathBuf::from(dir)
+                .join("configs")
+                .join("options.toml");
+        }
+        PathBuf::from(crate::config::DEFAULT_PATH)
+    }
+
+    /// Read the live `Config` and push every applicable setting into the
+    /// pieces of state that need it: camera FOV / mouse sensitivity, egui
+    /// scale factor, and the surface present mode (only reconfigured on
+    /// vsync transitions). `render_distance` is captured by `Game::new` and
+    /// only takes effect on the next world load — we don't dynamically
+    /// resize the chunk grid mid-game.
+    fn apply_config(state: &mut AppState) {
+        let cfg = state.config.lock().expect("config poisoned");
+
+        // Field of view (degrees in TOML, radians on the camera).
+        state.game.camera.fov_y = cfg.fov_y_normal.to_radians();
+
+        // Mouse sensitivity. The TOML field is "mouse_speed" (bigger =
+        // faster); the camera speaks rad-per-pixel. The C++ build uses
+        // `mouse_speed * 0.0025` as the per-pixel multiplier, so we mirror
+        // that constant here.
+        state.game.camera.mouse_sensitivity = f64::from(cfg.mouse_speed) * 0.025;
+
+        // egui font scale.
+        let logical = state.window.scale_factor() as f32;
+        state
+            .egui_renderer
+            .set_scale_factor(logical * cfg.font_scale as f32);
+
+        // VSync — only reconfigure the surface on actual change, since
+        // `Surface::configure` is not free.
+        if cfg.vertical_sync != state.last_vsync {
+            state.gfx.set_vsync(cfg.vertical_sync);
+            state.last_vsync = cfg.vertical_sync;
+            tracing::info!(vsync = cfg.vertical_sync, "surface vsync updated");
+        }
+    }
+
     /// Tick + render one frame. Returns `true` if the app should exit.
     fn frame(state: &mut AppState) -> bool {
         // ---------- timing ----------
@@ -110,6 +164,10 @@ impl App {
         let dt = (now - state.last_tick).as_secs_f32().min(0.1);
         state.last_tick = now;
         let elapsed = (now - state.start_time).as_secs_f32();
+
+        // Apply any live config changes (FOV / mouse / vsync / font scale)
+        // before reading from `state.game.camera` etc.
+        Self::apply_config(state);
 
         let chat_open = state.game_screen.hud.chat_open;
         let game_paused = state.game_screen.paused || !state.screen_stack.is_empty();
@@ -442,6 +500,19 @@ impl ApplicationHandler for App {
             return;
         }
 
+        // Load options.toml from disk; fall back to defaults if missing.
+        let config_path = Self::config_path();
+        let initial_config = match Config::load_from(&config_path) {
+            Ok(cfg) => cfg,
+            Err(err) => {
+                tracing::warn!(error = %err, ?config_path, "config load failed, using defaults");
+                Config::default()
+            }
+        };
+        let initial_render_distance = initial_config.render_distance;
+        let initial_vsync = initial_config.vertical_sync;
+        let config = Arc::new(Mutex::new(initial_config));
+
         let attributes = WindowAttributes::default()
             .with_title("NEWorld")
             .with_inner_size(LogicalSize::new(1280, 720))
@@ -456,7 +527,12 @@ impl ApplicationHandler for App {
             }
         };
 
-        let gfx = Gfx::new(window.clone());
+        let mut gfx = Gfx::new(window.clone());
+        if !initial_vsync {
+            // Default Gfx surface picks Fifo (vsync); honour the user's
+            // saved preference for Immediate up front.
+            gfx.set_vsync(false);
+        }
 
         let assets = Self::assets_root();
         let atlases = match Atlases::load(gfx.device(), gfx.queue(), &assets) {
@@ -499,6 +575,7 @@ impl ApplicationHandler for App {
             base,
             &frame_uniforms,
             &atlases,
+            initial_render_distance,
         ) {
             Ok(g) => g,
             Err(err) => {
@@ -524,12 +601,14 @@ impl ApplicationHandler for App {
             tick_accumulator: 0.0,
             cursor_grabbed: false,
             egui_renderer,
-            game_screen: GameScreen::default(),
+            game_screen: GameScreen::new(Arc::clone(&config)),
             // Launch flow per `docs/rust_migration.md` §5 [F7]: start at the
             // title screen on top of the (already-loaded) game world. The
             // user's first input is "Back to Game" which pops back to play.
-            screen_stack: initial_screen_stack(),
+            screen_stack: initial_screen_stack(Arc::clone(&config)),
             screenshot: Screenshot::new(),
+            config,
+            last_vsync: initial_vsync,
             exit_requested: false,
         });
         tracing::info!("app ready");
@@ -671,15 +750,27 @@ impl ApplicationHandler for App {
         }
     }
 
-    /// Synchronous save-on-exit (F5 bonus). The pipeline worker is still
-    /// alive at this point — `World::drop` (running shortly after) closes its
-    /// request channel and joins the thread, so any pending background save
-    /// flushes before the process exits.
+    /// Synchronous save-on-exit (F5 bonus): persist the world AND the live
+    /// config back to disk. The pipeline worker is still alive at this
+    /// point — `World::drop` (running shortly after) closes its request
+    /// channel and joins the thread, so any pending background save flushes
+    /// before the process exits.
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
-        if let Some(state) = self.state.as_mut()
-            && let Err(err) = state.game.world.save_to_disk()
-        {
+        let Some(state) = self.state.as_mut() else {
+            return;
+        };
+        if let Err(err) = state.game.world.save_to_disk() {
             tracing::error!(error = %err, "save_to_disk failed on exit");
+        }
+        // Snapshot the config under the lock so we can write without
+        // holding the lock across IO.
+        let cfg_snapshot = match state.config.lock() {
+            Ok(g) => g.clone(),
+            Err(p) => p.into_inner().clone(),
+        };
+        let path = Self::config_path();
+        if let Err(err) = cfg_snapshot.save_to(&path) {
+            tracing::error!(error = %err, ?path, "config save failed on exit");
         }
     }
 }

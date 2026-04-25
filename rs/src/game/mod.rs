@@ -50,11 +50,6 @@ use crate::worlds::{BlockView, World, WorldError};
 pub use camera::Camera;
 pub use raycast::{Hit, RAYCAST_MAX};
 
-/// Render radius in chunks (axis-aligned cube). Total = `(2N+1)^3` chunks.
-/// 3 → 343 chunks → ~1.4 M cells. Picks the largest size that meshes in
-/// well under a second on a single core.
-pub const RENDER_DISTANCE: i32 = 3;
-
 /// Sky / surface clear color. Matches `chunk.wgsl`'s `SKY_COLOR` so distant
 /// fog blends seamlessly into the cleared background.
 pub const SKY_COLOR: wgpu::Color = wgpu::Color {
@@ -151,15 +146,16 @@ impl Game {
         base_blocks: BaseBlocks,
         frame_uniforms: &UniformBuffer<FrameUniforms>,
         atlases: &Atlases,
+        render_distance: i32,
     ) -> Result<Self, WorldError> {
         let world_root = world_root();
         let world_name = format!("mvp-{}", std::process::id());
-        tracing::info!(?world_root, world_name, "creating world");
+        tracing::info!(?world_root, world_name, render_distance, "creating world");
 
         let mut world = World::new_at(
             &world_root,
             world_name,
-            RENDER_DISTANCE,
+            render_distance,
             WORLD_SEED,
             Arc::clone(registry),
             base_blocks,

@@ -1,17 +1,31 @@
 //! Title screen — the main menu.
 
+use std::sync::{Arc, Mutex};
+
 use egui::Context;
 
 use super::super::screen::{Screen, Transition};
 use super::OptionsScreen;
+use crate::config::Config;
 
 /// The main title screen.
 ///
 /// When pushed from the in-game pause menu, "Back to Game" pops this screen
 /// to return to gameplay. When the app starts with this screen (no game
-/// behind it), "Back to Game" is hidden.
-#[derive(Default)]
-pub struct TitleScreen;
+/// behind it), "Back to Game" still pops; the empty stack drops the user
+/// into the live world.
+pub struct TitleScreen {
+    /// Shared with the App + every other screen — `Options` mutates it
+    /// directly.
+    config: Arc<Mutex<Config>>,
+}
+
+impl TitleScreen {
+    #[must_use]
+    pub fn new(config: Arc<Mutex<Config>>) -> Self {
+        Self { config }
+    }
+}
 
 impl Screen for TitleScreen {
     fn title(&self) -> &'static str {
@@ -35,7 +49,9 @@ impl Screen for TitleScreen {
                 }
 
                 if ui.button("Options").clicked() {
-                    transition = Transition::Push(Box::new(OptionsScreen::default()));
+                    transition = Transition::Push(Box::new(OptionsScreen::new(
+                        Arc::clone(&self.config),
+                    )));
                 }
 
                 ui.add_space(10.0);

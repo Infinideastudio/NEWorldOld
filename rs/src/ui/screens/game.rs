@@ -4,6 +4,8 @@
 //! screen. This screen provides the HUD top bar, crosshair, debug panel,
 //! chat bar, inventory window, and the pause menu (Escape).
 
+use std::sync::{Arc, Mutex};
+
 use cgmath::{Matrix4, SquareMatrix};
 use egui::Context;
 
@@ -11,6 +13,7 @@ use super::super::hud::{Hud, HudFrame};
 use super::super::inventory::Inventory;
 use super::super::screen::{Screen, Transition};
 use super::{OptionsScreen, TitleScreen};
+use crate::config::Config;
 use crate::game::Hit;
 
 /// The in-game screen shown during gameplay.
@@ -34,10 +37,14 @@ pub struct GameScreen {
     pub chat_history: Vec<String>,
     pub hud: Hud,
     pub inventory: Inventory,
+    /// Shared with `App` and the menu screens. Forwarded into
+    /// `OptionsScreen` so settings tweaks edit the live config.
+    config: Arc<Mutex<Config>>,
 }
 
-impl Default for GameScreen {
-    fn default() -> Self {
+impl GameScreen {
+    #[must_use]
+    pub fn new(config: Arc<Mutex<Config>>) -> Self {
         Self {
             paused: false,
             fps: 0.0,
@@ -50,6 +57,7 @@ impl Default for GameScreen {
             chat_history: Vec::new(),
             hud: Hud::default(),
             inventory: Inventory::default(),
+            config,
         }
     }
 }
@@ -124,14 +132,18 @@ impl Screen for GameScreen {
                     }
 
                     if ui.button("Options").clicked() {
-                        transition = Transition::Push(Box::new(OptionsScreen::default()));
+                        transition = Transition::Push(Box::new(OptionsScreen::new(
+                            Arc::clone(&self.config),
+                        )));
                     }
 
                     ui.add_space(10.0);
 
                     if ui.button("Quit to Title").clicked() {
                         self.paused = false;
-                        transition = Transition::Push(Box::new(TitleScreen));
+                        transition = Transition::Push(Box::new(TitleScreen::new(
+                            Arc::clone(&self.config),
+                        )));
                     }
                 });
         }
