@@ -149,7 +149,21 @@ const FACE_CORNERS: [[[f32; 3]; 4]; 6] = [
 
 /// UVs for the four corners of any face, in the same order as
 /// `FACE_CORNERS[*]`.
-const FACE_UVS: [[f32; 2]; 4] = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+///
+/// The corner ordering itself follows the C++ `coords[]` table — `c0` is the
+/// face's "lower-left from outside" geometric corner. The C++ shader paired
+/// `c0` with UV `(0, 0)` because OpenGL's `t = 0` is at the *bottom* of the
+/// texture, so `t = 0` ended up sampling the visual bottom of each per-block
+/// art square (correct for the `GRASS_SIDE` / `WOOD_SIDE` / etc. anisotropic
+/// blocks where dirt sits at the bottom of the square and grass at the top).
+///
+/// wgpu / Vulkan / D3D12 invert that convention: `t = 0` is at the top of
+/// the texture data (memory row 0), and our atlas uploader stores each
+/// per-block square in PNG-natural top-to-bottom order. So we flip the V
+/// component here — `c0` pairs with `(0, 1)` instead of `(0, 0)` — and the
+/// "geometric bottom of side face" maps back to the visual bottom of the
+/// block art.
+const FACE_UVS: [[f32; 2]; 4] = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
 
 /// Per-face neighbor offset (in padded-buffer coordinate space). Index by
 /// `face_id`. Same order as `FACE_CORNERS`.
