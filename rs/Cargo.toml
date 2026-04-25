@@ -1,0 +1,49 @@
+[package]
+name = "neworld"
+version = "0.5.0"
+edition = "2024"
+description = "NEWorld is an open-source voxel game with similar gameplay as Minecraft."
+license = "GPL-3.0-only"
+publish = false
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_lossless = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+too_many_lines = "allow"
+
+[dependencies]
+# Math — chosen over glam so Aabb3<S>/Euler<S>/Frustum<S> can be true generics.
+cgmath = { version = "0.18", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# Errors
+thiserror = "2"
+anyhow = "1"
+
+# Serialization (used across config, i18n, blocks, items, player)
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+# Per-module dependencies (kept minimal in foundations layer)
+bytemuck = { version = "1.18", features = ["derive"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+debug = "line-tables-only"
+
+[profile.dev]
+opt-level = 1

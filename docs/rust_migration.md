@@ -342,7 +342,7 @@ a defense the design doesn't need.
 |---------|-------|
 | Window + events | `winit` (0.30 ApplicationHandler API) |
 | Graphics | `wgpu` (0.20+) |
-| Math | `glam` |
+| Math | `cgmath` (chosen over `glam` so `Aabb3<S>` / `Euler<S>` / `Frustum<S>` can be true scalar generics — `glam`'s `Vec3` and `DVec3` are unrelated concrete types that would force macro-generated `Aabb3f` / `Aabb3d` pairs) |
 | UI | `egui` + `egui-winit` + `egui-wgpu` |
 | Text rendering (HUD/world) | `glyphon` (built on `cosmic-text` + `wgpu`) |
 | PNG load/save | `image` |
@@ -373,15 +373,24 @@ For each module: scope, replacement, and notes specific to Rust idioms.
 
 ### 4.1 `math` → `neworld::math`
 
-* Replace `Vec2/3/4<T>`, `Mat4f`, `Eulerd/f` with `glam::{Vec2,Vec3,Vec4,IVec2,IVec3,Mat4,Quat}`.
-  Keep an alias `type Coord = DVec3;` for player/world double-precision positions; `glam`
-  has `DVec3` and `DMat4`.
-* `AABB<T,N>` → a small `Aabb3<T>` struct with `min: TVec3`, `max: TVec3`. Port
-  `intersects`, `clip_displacement`, `extend` directly.
-* `Frustum` → port directly (six planes derived from a view-projection matrix).
-* `Euler` (heading/pitch/roll) → keep as a struct; provide `to_quat()`/`view_matrix()`
-  helpers. Don't substitute `Quat` everywhere — the player code naturally thinks in
-  heading/pitch and clamps pitch to `±π/2`.
+* Replace `Vec2/3/4<T>`, `Mat3/4<T>`, `Eulerd/f` with re-exports of
+  `cgmath::{Vector2,Vector3,Vector4,Matrix3,Matrix4,Quaternion}`. cgmath's vectors
+  and matrices are parametric over the scalar (`f32` / `f64` and beyond), so
+  `Aabb3<S>` / `Euler<S>` / `Frustum<S>` can be true scalar generics. (We picked
+  cgmath over glam for exactly that reason — glam's `Vec3` and `DVec3` are
+  unrelated concrete types that would force a macro hack.) Keep
+  `type Coord = Vector3<f64>` for player/world double-precision positions, plus
+  C++-style flavour aliases (`Vec3i`, `Vec3f`, `Vec3d`, `Mat4f`, …) so call sites
+  port without renaming.
+* `AABB<T,N>` → `Aabb3<S: BaseFloat>` with `min: Vector3<S>`, `max: Vector3<S>`.
+  Port `intersects`, `clip_displacement`, `extend` directly. `Aabb3f` / `Aabb3d`
+  are aliases for `Aabb3<f32>` / `Aabb3<f64>`.
+* `Frustum` → `Frustum<S: BaseFloat>` (six clip-plane equations as `Vector4<S>`),
+  with `from_mvp(&Matrix4<S>)` and `test(&Aabb3<S>) -> bool`.
+* `Euler` (heading/pitch/roll) → `Euler<S: BaseFloat>`; keep as a struct with
+  `direction()`, `matrix()`, `view_matrix()`, `to_quat()`, `normalize()`,
+  `normalize_player()` (clamps pitch to `±π/2`). Don't substitute `Quaternion`
+  everywhere — the player code naturally thinks in heading/pitch.
 
 ### 4.2 `blocks.ixx` → `neworld::blocks`
 
