@@ -91,6 +91,12 @@ fn default_sun_dir() -> Vector3<f32> {
 /// teleport that invalidates everything in the load window).
 const MAX_MESH_DISPATCHES_PER_FRAME: usize = 8;
 
+/// `sqrt(3)` to f32 precision. Used by `write_frame_uniforms` to scale the
+/// fog distance to the diagonal of the loaded chunk cube. `f32::sqrt` is
+/// `const` in newer toolchains but not in our stable target, so we keep
+/// this as a literal to avoid a runtime call per frame.
+const SQRT_3_F32: f32 = 1.732_050_8;
+
 /// All the game-side state, owned by `App`.
 pub struct Game {
     pub world: World,
@@ -310,25 +316,31 @@ impl Game {
     /// Call once per frame from `App::frame`, after [`Self::tick`]. Splits
     /// from `tick` because the upload step needs `&wgpu::Device`.
     pub fn pump_meshing(&mut self, device: &wgpu::Device) {
-        // ---- dispatch dirty meshes ----
-        let mut to_dispatch: Vec<Vec3i> = Vec::new();
-        for &coord in &self.dirty_chunks {
-            if to_dispatch.len() >= MAX_MESH_DISPATCHES_PER_FRAME {
-                break;
-            }
-            if self.meshing_in_flight.contains(&coord) {
-                continue;
-            }
-            if self.world.chunk_by_coord(coord).is_none() {
-                continue; // not loaded yet — leave the dirty entry in place
-            }
-            to_dispatch.push(coord);
-        }
-        for coord in &to_dispatch {
-            let input = build_mesh_input(&self.world, *coord);
+        // ---- dispatch dirty meshes, closest first ----
+        // `dirty_chunks` is a `HashSet`, so iterating it directly produces
+        // hash-order which can leave nearby chunks unmeshed while distant
+        // ones get the budget — visible as fragmented pop-in at high
+        // render distance. Sort by squared chunk-distance to the player so
+        // the visible neighbourhood meshes first.
+        let player_chunk = crate::worlds::chunk_coord(camera_world_coord(self.camera.position));
+        let mut candidates: Vec<(i32, Vec3i)> = self
+            .dirty_chunks
+            .iter()
+            .filter(|c| !self.meshing_in_flight.contains(c))
+            .filter(|c| self.world.chunk_by_coord(**c).is_some())
+            .map(|&c| {
+                let d = c - player_chunk;
+                (d.x * d.x + d.y * d.y + d.z * d.z, c)
+            })
+            .collect();
+        candidates.sort_by_key(|(d, _)| *d);
+        candidates.truncate(MAX_MESH_DISPATCHES_PER_FRAME);
+
+        for (_, coord) in candidates {
+            let input = build_mesh_input(&self.world, coord);
             if self.mesh_worker.submit(input) {
-                self.meshing_in_flight.insert(*coord);
-                self.dirty_chunks.remove(coord);
+                self.meshing_in_flight.insert(coord);
+                self.dirty_chunks.remove(&coord);
             }
         }
 
@@ -384,6 +396,15 @@ impl Game {
         u.sun_dir = [self.sun_dir.x, self.sun_dir.y, self.sun_dir.z, 0.0];
         u.screen_size = [w as f32, h as f32];
         u.time = elapsed;
+        // Fog scales with the live render distance: `fog_end` lands just past
+        // the diagonal of the loaded cube (so corner chunks fade smoothly into
+        // sky), `fog_start` 65% of the way there for a generous fade band.
+        // For render_distance = 3 this lands at ~97 blocks, matching the old
+        // hard-coded `FOG_END = 96`.
+        let r = self.world.render_distance() as f32;
+        let chunk = Chunk::SIZE as f32;
+        u.fog_end = (r + 0.5) * SQRT_3_F32 * chunk;
+        u.fog_start = u.fog_end * 0.65;
         frame_uniforms.write(queue, &u);
     }
 

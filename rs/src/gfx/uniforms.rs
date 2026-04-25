@@ -47,8 +47,16 @@ pub struct FrameUniforms {
     pub sun_dir: [f32; 4],
     pub screen_size: [f32; 2],
     pub time: f32,
-    /// Padding so the struct size is a multiple of 16 bytes.
-    _pad: f32,
+    /// Distance (world-space, blocks) at which the chunk shader's distance
+    /// fog starts ramping up from `0`.
+    pub fog_start: f32,
+    /// Distance at which the fog reaches `1.0` (i.e. pure sky color).
+    /// Computed each frame from the world's render distance so a larger
+    /// view radius doesn't reveal harsh chunk-boundary clipping.
+    pub fog_end: f32,
+    _pad0: f32,
+    _pad1: f32,
+    _pad2: f32,
 }
 
 /// Per-draw transform uniforms. `normal` is the inverse-transpose of the upper

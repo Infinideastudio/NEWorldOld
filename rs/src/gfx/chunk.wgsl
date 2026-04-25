@@ -30,7 +30,11 @@ struct FrameUniforms {
     sun_dir: vec4<f32>,
     screen_size: vec2<f32>,
     time: f32,
-    _pad: f32,
+    fog_start: f32,
+    fog_end: f32,
+    _pad0: f32,
+    _pad1: f32,
+    _pad2: f32,
 };
 
 @group(0) @binding(0) var<uniform> frame: FrameUniforms;
@@ -41,9 +45,10 @@ struct FrameUniforms {
 // fog falloff lands on the same value the user already sees behind the world.
 const SKY_COLOR: vec3<f32> = vec3<f32>(0.55, 0.72, 0.92);
 
-// [D4] Fog distance band. Far blocks beyond `FOG_END` are pure sky color.
-const FOG_START: f32 = 24.0;
-const FOG_END: f32 = 96.0;
+// [D4] Fog distance band — `frame.fog_start` / `frame.fog_end`. The CPU
+// derives them from the live render distance so the fade always lands just
+// past the loaded chunk corner and grows as the user dials up the view
+// radius in the options screen. Far blocks beyond `fog_end` are pure sky.
 
 // Fraction of `SKY_COLOR` mixed back into the lit color as ambient sky-bounce.
 // Keeps shadowed faces from going pitch-black on a sunlit scene.
@@ -114,10 +119,12 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // tint so the dark side of geometry isn't a flat charcoal.
     rgb = mix(rgb, rgb * SKY_COLOR + SKY_COLOR * 0.05, AMBIENT_SKY * (1.0 - ndotl));
 
-    // [D4] Distance fog: linear band between FOG_START and FOG_END, blended
-    // toward `SKY_COLOR` so far blocks dissolve into the horizon.
+    // [D4] Distance fog: linear band from `frame.fog_start` to `frame.fog_end`,
+    // blended toward `SKY_COLOR` so far blocks dissolve into the horizon.
+    // Both ends scale with the live render distance — see `Game::write_frame_uniforms`.
     let dist = length(in.world_pos - frame.camera_pos.xyz);
-    let fog = clamp((dist - FOG_START) / (FOG_END - FOG_START), 0.0, 1.0);
+    let fog_band = max(frame.fog_end - frame.fog_start, 1.0);
+    let fog = clamp((dist - frame.fog_start) / fog_band, 0.0, 1.0);
     rgb = mix(rgb, SKY_COLOR, fog);
 
     return vec4<f32>(rgb, sample.a);
