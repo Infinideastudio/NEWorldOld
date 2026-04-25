@@ -3,49 +3,19 @@
 //! Exercises the world create → mutate → save → drop → reopen → verify flow
 //! using only public crate APIs. The wgpu / window layer is not involved —
 //! the goal is to validate that the simulation + persistence layer survives
-//! a process-style restart.
+//! a process-style restart. Uses `World::new_at` with an absolute scratch
+//! path so the test doesn't depend on cwd.
 
-use std::path::PathBuf;
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicU64, Ordering};
+mod common;
+
+use std::sync::Arc;
 
 use neworld::blocks::{BlockRegistry, register_base_blocks};
 use neworld::commands::{CommandRegistry, register_base_commands};
 use neworld::math::Vec3i;
 use neworld::worlds::World;
 
-/// `TilesStore::open` is cwd-relative and sled rejects concurrent opens of
-/// the same DB. Serialise every test that touches a `World` behind one
-/// process-global mutex.
-static TEST_LOCK: Mutex<()> = Mutex::new(());
-
-/// Test scratch directory in the OS temp dir. `Drop` restores cwd and best-
-/// effort removes the dir. Mirrors the `ScratchDir` pattern in `world::tests`.
-struct ScratchDir {
-    path: PathBuf,
-    prev_cwd: PathBuf,
-}
-
-impl ScratchDir {
-    fn new(tag: &str) -> Self {
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
-        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let pid = std::process::id();
-        let path = std::env::temp_dir().join(format!("neworld-smoke-{tag}-{pid}-{n}"));
-        let _ = std::fs::remove_dir_all(&path);
-        std::fs::create_dir_all(&path).expect("create scratch dir");
-        let prev_cwd = std::env::current_dir().expect("cwd");
-        std::env::set_current_dir(&path).expect("chdir into scratch");
-        Self { path, prev_cwd }
-    }
-}
-
-impl Drop for ScratchDir {
-    fn drop(&mut self) {
-        let _ = std::env::set_current_dir(&self.prev_cwd);
-        let _ = std::fs::remove_dir_all(&self.path);
-    }
-}
+use common::ScratchDir;
 
 /// Pump async chunk loading until `target_count` chunks are in the slab, or
 /// 256 idle iterations have elapsed. The async pipeline is single-threaded
@@ -69,8 +39,7 @@ fn pump_until_loaded(world: &mut World, target_count: usize) {
 
 #[test]
 fn round_trip_world_through_set_block_save_reopen() {
-    let _guard = TEST_LOCK.lock().unwrap();
-    let _scratch = ScratchDir::new("rt");
+    let scratch = ScratchDir::new("rt");
 
     let world_name = "smoke-rt".to_owned();
     let render_distance = 1;
@@ -84,16 +53,17 @@ fn round_trip_world_through_set_block_save_reopen() {
         let mut registry = BlockRegistry::new();
         let base = register_base_blocks(&mut registry);
         stone_id = base.stone;
-        let registry = std::sync::Arc::new(registry);
+        let registry = Arc::new(registry);
 
-        let mut world = World::new(
+        let mut world = World::new_at(
+            scratch.path(),
             world_name.clone(),
             render_distance,
             seed,
-            std::sync::Arc::clone(&registry),
+            Arc::clone(&registry),
             base,
         )
-        .expect("World::new (initial)");
+        .expect("World::new_at (initial)");
         world.set_center(Vec3i::new(0, 0, 0));
         pump_until_loaded(&mut world, target_chunks);
         assert_eq!(
@@ -125,16 +95,17 @@ fn round_trip_world_through_set_block_save_reopen() {
     {
         let mut registry = BlockRegistry::new();
         let base = register_base_blocks(&mut registry);
-        let registry = std::sync::Arc::new(registry);
+        let registry = Arc::new(registry);
 
-        let mut world = World::new(
+        let mut world = World::new_at(
+            scratch.path(),
             world_name.clone(),
             render_distance,
             seed,
-            std::sync::Arc::clone(&registry),
+            Arc::clone(&registry),
             base,
         )
-        .expect("World::new (reopen)");
+        .expect("World::new_at (reopen)");
         world.set_center(Vec3i::new(0, 0, 0));
         pump_until_loaded(&mut world, target_chunks);
 
@@ -148,26 +119,26 @@ fn round_trip_world_through_set_block_save_reopen() {
 
 #[test]
 fn slash_command_dispatch_through_full_stack() {
-    let _guard = TEST_LOCK.lock().unwrap();
-    let _scratch = ScratchDir::new("cmd");
+    let scratch = ScratchDir::new("cmd");
 
     let mut registry = BlockRegistry::new();
     let base = register_base_blocks(&mut registry);
-    let registry = std::sync::Arc::new(registry);
+    let registry = Arc::new(registry);
 
-    let mut world = World::new(
+    let mut world = World::new_at(
+        scratch.path(),
         "smoke-cmd".to_owned(),
         1,
         0xDEAD_BEEF,
-        std::sync::Arc::clone(&registry),
+        Arc::clone(&registry),
         base,
     )
-    .expect("World::new");
+    .expect("World::new_at");
     world.set_center(Vec3i::new(0, 0, 0));
     pump_until_loaded(&mut world, 27);
 
     let mut commands = CommandRegistry::new();
-    register_base_commands(&mut commands, &base, std::sync::Arc::clone(&registry));
+    register_base_commands(&mut commands, &base, Arc::clone(&registry));
 
     // `/setblock <x> <y> <z> <id>` — exercises argument parsing, world
     // mutation, and the registry dispatch path. The C++ command takes a

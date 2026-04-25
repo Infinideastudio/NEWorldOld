@@ -152,11 +152,12 @@ impl Game {
         frame_uniforms: &UniformBuffer<FrameUniforms>,
         atlases: &Atlases,
     ) -> Result<Self, WorldError> {
-        let world_dir = ensure_world_root();
+        let world_root = world_root();
         let world_name = format!("mvp-{}", std::process::id());
-        tracing::info!(?world_dir, world_name, "creating world");
+        tracing::info!(?world_root, world_name, "creating world");
 
-        let mut world = World::new(
+        let mut world = World::new_at(
+            &world_root,
             world_name,
             RENDER_DISTANCE,
             WORLD_SEED,
@@ -662,14 +663,13 @@ impl BlockView for BlockViewRef<'_> {
     }
 }
 
-/// Set CWD to a temp directory under `std::env::temp_dir()` so the world's
-/// sled DB doesn't litter wherever the binary was launched from.
-fn ensure_world_root() -> PathBuf {
+/// Root directory for the demo world's files (`<temp>/neworld-mvp/`).
+/// Returned as an absolute path; `World::new_at` and `save_to_disk` use it
+/// directly so the binary leaves no artefacts in the launch directory and
+/// nothing depends on cwd.
+fn world_root() -> PathBuf {
     let dir = std::env::temp_dir().join("neworld-mvp");
     let _ = std::fs::create_dir_all(&dir);
-    if std::env::set_current_dir(&dir).is_err() {
-        tracing::warn!(?dir, "failed to chdir into temp world root; using cwd");
-    }
     dir
 }
 

@@ -25,7 +25,7 @@ pub use self::pipeline::{ChunkPipeline, LoadRequest, LoadResult};
 pub use self::store::TilesStore;
 
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, Id, Light};
@@ -96,6 +96,10 @@ pub trait BlockView {
 
 pub struct World {
     name: String,
+    /// Directory the world's files live in (`<root>/worlds/<name>/`). Used
+    /// by [`Self::save_to_disk`] to write `player.bin` next to the chunk DB
+    /// without depending on the process's cwd.
+    dir: PathBuf,
     tiles_store: TilesStore,
     /// Canonical owner of every loaded chunk. **Future:** when [D] lands this
     /// becomes `slab::Slab<ChunkSlot { chunk: Chunk, render: ChunkRender }>`
@@ -135,17 +139,25 @@ pub struct World {
 }
 
 impl World {
-    /// Open or create world `name`. `seed` seeds the terrain generator.
-    /// `base_blocks` resolves the air/water/dirt/etc. ids the world's
-    /// internal logic depends on.
-    pub fn new(
+    /// Open or create world `name` under the given `root` directory. The
+    /// world's files live at `<root>/worlds/<name>/{chunks.db,player.bin}`.
+    /// This is the path-explicit constructor — tests + production callers
+    /// that already know where to put the world should use this instead of
+    /// [`Self::new`] so they don't depend on cwd.
+    ///
+    /// `seed` seeds the terrain generator. `base_blocks` resolves the
+    /// air/water/dirt/etc. ids the world's internal logic depends on.
+    pub fn new_at(
+        root: &Path,
         name: String,
         render_distance: i32,
         seed: u32,
         registry: Arc<BlockRegistry>,
         base_blocks: BaseBlocks,
     ) -> Result<Self, WorldError> {
-        let tiles_store = TilesStore::open(&name)?;
+        let dir = root.join("worlds").join(&name);
+        std::fs::create_dir_all(&dir)?;
+        let tiles_store = TilesStore::open_at(&dir.join("chunks.db"))?;
         let height_map_size = ((render_distance + 2) * 2 * Chunk::SIZE) as usize;
         let height_map = HeightMap::new(height_map_size);
         let generator = Generator::new(seed);
@@ -160,6 +172,7 @@ impl World {
         );
         Ok(Self {
             name,
+            dir,
             tiles_store,
             chunks: slab::Slab::new(),
             by_coord: HashMap::new(),
@@ -178,6 +191,20 @@ impl World {
             unloaded_chunks: 0,
             updated_blocks: 0,
         })
+    }
+
+    /// Convenience wrapper that opens the world relative to the current
+    /// working directory (`./worlds/<name>/`). Use [`Self::new_at`] if you
+    /// already have an explicit base path.
+    pub fn new(
+        name: String,
+        render_distance: i32,
+        seed: u32,
+        registry: Arc<BlockRegistry>,
+        base_blocks: BaseBlocks,
+    ) -> Result<Self, WorldError> {
+        let cwd = std::env::current_dir()?;
+        Self::new_at(&cwd, name, render_distance, seed, registry, base_blocks)
     }
 
     #[must_use]
@@ -224,6 +251,13 @@ impl World {
     #[must_use]
     pub fn render_distance(&self) -> i32 {
         self.render_distance
+    }
+
+    /// Block id resolution table the world was constructed with. `BaseBlocks`
+    /// is `Copy` so this is a cheap getter.
+    #[must_use]
+    pub fn base_blocks(&self) -> BaseBlocks {
+        self.base_blocks
     }
 
     /// Hot-path lookup via the grid. Returns `None` if the coord is outside
@@ -776,7 +810,8 @@ impl World {
         self.chunks.remove(key);
     }
 
-    /// Save every modified chunk + the player to disk.
+    /// Save every modified chunk + the player to disk. Uses the world
+    /// directory stored at construction time, so this is independent of cwd.
     pub fn save_to_disk(&mut self) -> Result<(), WorldError> {
         // Collect coords first so we can mutate the slab.
         let coords: Vec<Vec3i> = self
@@ -793,9 +828,8 @@ impl World {
             }
         }
         self.tiles_store.flush()?;
-        let world_dir = Path::new("worlds").join(&self.name);
-        std::fs::create_dir_all(&world_dir)?;
-        self.player.save_to(&world_dir.join("player.bin"))?;
+        std::fs::create_dir_all(&self.dir)?;
+        self.player.save_to(&self.dir.join("player.bin"))?;
         Ok(())
     }
 }
@@ -822,16 +856,8 @@ impl BlockView for World {
     }
 }
 
-// ======================================================================
-//   Tests
-// ======================================================================
-//
-// Per-module tests live in `tests.rs`; shared `TEST_LOCK` / `ScratchDir` are
-// in `test_support.rs`.
-
-#[cfg(test)]
-mod test_support;
-
-#[cfg(test)]
-mod tests;
+// World tests live in `rs/tests/world.rs` (integration). They use
+// `World::new_at` with an absolute scratch path so they don't depend on
+// cwd, which means cargo can run them in parallel with other integration
+// test binaries without a chdir race.
 
