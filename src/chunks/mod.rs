@@ -70,10 +70,12 @@ pub enum ChunkError {
 ///
 /// Block data is heap-allocated lazily on first write — empty chunks (e.g.
 /// pure-air sky chunks) take no per-cell memory until they're modified.
+/// Emptiness is encoded *in* `data`: the invariant `empty() ⇔ data.is_none()`
+/// is maintained by every method that touches `data`. There is no separate
+/// `empty` flag to keep in sync.
 pub struct Chunk {
     coord: Vec3i,
     data: Option<Box<[BlockData; Self::SIZE_CUBED]>>,
-    empty: bool,
     updated: bool,
     modified: bool,
 }
@@ -96,7 +98,6 @@ impl Chunk {
         Self {
             coord,
             data: None,
-            empty: true,
             updated: false,
             modified: false,
         }
@@ -109,10 +110,12 @@ impl Chunk {
     }
 
     /// True iff no block data has been allocated yet — the chunk reads as
-    /// uniform air with sky/no-light derived from `coord.y`.
+    /// uniform air with sky/no-light derived from `coord.y`. Equivalent to
+    /// `self.data.is_none()` (the field is the canonical encoding of
+    /// emptiness; see the struct doc).
     #[must_use]
     pub fn empty(&self) -> bool {
-        self.empty
+        self.data.is_none()
     }
 
     /// True iff the render mesh is dirty.
@@ -202,13 +205,10 @@ impl Chunk {
     }
 
     /// Write-access to one block. Lazily allocates the data array (filling
-    /// with air at the chunk's default light) on first call. Always flips
-    /// `empty = false`, `updated = true`, `modified = true` — `empty` lives
-    /// outside the lazy-alloc guard because `init_generate` can leave a
-    /// chunk in the `data = Some(_), empty = true` state for above-terrain
-    /// chunks whose normal-gen pass allocated the buffer but found nothing
-    /// solid to put in it. Without this flip, a later `block_mut` would
-    /// quietly leave `empty()` reading true even after the write.
+    /// with air at the chunk's default light) on first call, then flips
+    /// `updated = true`, `modified = true`. Allocation alone makes the
+    /// chunk non-empty under the `empty() ⇔ data.is_none()` invariant — no
+    /// separate `empty` flag to update.
     pub fn block_mut(&mut self, bcoord: Vec3u, base: &BaseBlocks) -> &mut BlockData {
         assert!(
             bcoord.x < Self::SIZE as u32
@@ -224,7 +224,6 @@ impl Chunk {
             };
             self.data = Some(Box::new([fill; Self::SIZE_CUBED]));
         }
-        self.empty = false;
         self.updated = true;
         self.modified = true;
         let data = self
@@ -259,7 +258,7 @@ impl Chunk {
     /// Mirror of C++ `post_init`: if data has been allocated, mark the mesh
     /// dirty so it gets built on the next render pass.
     pub fn post_init(&mut self) {
-        if !self.empty {
+        if self.data.is_some() {
             self.updated = true;
         }
     }
@@ -283,8 +282,8 @@ impl Chunk {
 
     /// Deserialize a chunk from bytes produced by [`Chunk::package_to`].
     /// Verifies magic and version, then copies the body into the data array
-    /// (allocating it if necessary). Sets `empty = false`, `modified = false`
-    /// (just loaded from disk; not dirty).
+    /// (allocating it if necessary). Allocation alone makes `empty()` read
+    /// false; sets `modified = false` (just loaded from disk; not dirty).
     pub fn unpackage_from(&mut self, bytes: &[u8]) -> Result<(), ChunkError> {
         if bytes.len() < HEADER_SIZE {
             return Err(ChunkError::BadSize {
@@ -315,7 +314,6 @@ impl Chunk {
             .expect("ensure_data allocated");
         let cells: &[BlockData] = bytemuck::cast_slice(body);
         data.as_mut().copy_from_slice(cells);
-        self.empty = false;
         self.modified = false;
         Ok(())
     }
