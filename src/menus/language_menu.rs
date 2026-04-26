@@ -19,9 +19,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::Context;
 
-use super::{
-    caption_row, flex_spacer, footer_height, full_row_button, menu_panel, t, MENU_ROW_SPACING,
-};
+use super::{caption_row, full_row_button, menu_panel, t, MENU_ROW_SPACING};
 use crate::config::Config;
 use crate::globalization::{I18n, LanguageEntry, list_languages};
 use crate::ui::screen::{Screen, Transition};
@@ -61,7 +59,7 @@ impl Screen for LanguageScreen {
         let mut chosen_code: Option<String> = None;
         let mut want_back = false;
 
-        menu_panel(ctx, |ui| {
+        menu_panel(ctx, "language", |ui| {
             caption_row(ui, &caption);
             ui.add_space(MENU_ROW_SPACING);
 
@@ -76,9 +74,6 @@ impl Screen for LanguageScreen {
                 }
                 ui.add_space(MENU_ROW_SPACING);
             }
-
-            // Footer: one full-width back button (32 px).
-            flex_spacer(ui, footer_height(1));
 
             if full_row_button(ui, &back_lbl) {
                 want_back = true;

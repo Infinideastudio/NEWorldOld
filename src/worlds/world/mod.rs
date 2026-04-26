@@ -55,9 +55,9 @@ pub const MAX_BLOCK_UPDATES: usize = 65536;
 /// meshable chunk has all six axis neighbours present. The mesher samples a
 /// 1-cell padded neighbourhood; without this buffer, chunks at the render
 /// boundary would mesh against `block_or_air()` air defaults across the
-/// missing neighbour seam, leaving visible cracks. Unload happens at
-/// `render_distance + 2 * LOAD_RADIUS_BUFFER` so a chunk doesn't oscillate
-/// between loaded and unloaded around the boundary.
+/// missing neighbour seam, leaving visible cracks. Unload happens further
+/// out than `render_distance + LOAD_RADIUS_BUFFER` so a chunk doesn't
+/// oscillate between loaded and unloaded around the boundary.
 pub const LOAD_RADIUS_BUFFER: i32 = 1;
 
 /// Cells sampled per non-empty chunk per `random_tick` call. Three matches
@@ -321,25 +321,37 @@ impl World {
         self.chunks.contains_key(&ccoord)
     }
 
-    /// True iff every one of `ccoord`'s six axis-aligned neighbour chunks is
-    /// loaded. The mesher's 18×18×18 padded snapshot reads cells from each
-    /// of those neighbours; meshing without all six guarantees visible
-    /// cracks at the missing-neighbour seams. The load radius
-    /// ([`LOAD_RADIUS_BUFFER`]) keeps every chunk inside the render window
-    /// neighbour-complete, so this is a tight filter rather than a hot
-    /// gate, but it stays as a defensive check for spawn-frame pop-in and
-    /// fast-teleport edge cases.
+    /// True iff every one of `ccoord`'s 26 neighbour chunks (the full
+    /// 3×3×3 cube minus self) is loaded.
+    ///
+    /// The mesher's 18×18×18 padded snapshot reads cells from every
+    /// neighbour, including the 12 edge-diagonal and 8 corner-diagonal
+    /// chunks: smooth-lighting's 4-cell AO tap at a chunk-corner face
+    /// pulls from the diagonally-adjacent chunk (e.g. the +X face at
+    /// chunk-corner cell `(15, 0, 15)` averages neighbours including
+    /// `(+1, -1, +1)`, which lives in the corner-diagonal chunk). A
+    /// face-adjacent-only check would leave those reads pulling stale
+    /// air, producing a darkened seam at every chunk corner.
+    ///
+    /// The load radius ([`LOAD_RADIUS_BUFFER`]) keeps every chunk
+    /// inside the render window neighbour-complete, so this is a tight
+    /// filter rather than a hot gate, but it stays as a defensive
+    /// check for spawn-frame pop-in and fast-teleport edge cases.
     #[must_use]
     pub fn has_neighbours_loaded(&self, ccoord: Vec3i) -> bool {
-        const OFFSETS: [Vec3i; 6] = [
-            Vec3i::new(1, 0, 0),
-            Vec3i::new(-1, 0, 0),
-            Vec3i::new(0, 1, 0),
-            Vec3i::new(0, -1, 0),
-            Vec3i::new(0, 0, 1),
-            Vec3i::new(0, 0, -1),
-        ];
-        OFFSETS.iter().all(|off| self.is_loaded(ccoord + *off))
+        for dz in -1..=1 {
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    if dx == 0 && dy == 0 && dz == 0 {
+                        continue;
+                    }
+                    if !self.is_loaded(ccoord + Vec3i::new(dx, dy, dz)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
     }
 
     /// Number of loaded chunks (including empty / pure-air ones).
@@ -366,9 +378,9 @@ impl World {
     /// chunk lookup goes through the hash map; the `non_empty` invariant
     /// guarantees every coord here is actually loaded.
     pub fn non_empty_chunks(&self) -> impl Iterator<Item = (Vec3i, &Chunk)> + '_ {
-        self.non_empty.iter().filter_map(move |coord| {
-            self.chunks.get(coord).map(|chunk| (*coord, chunk))
-        })
+        self.non_empty
+            .iter()
+            .filter_map(move |coord| self.chunks.get(coord).map(|chunk| (*coord, chunk)))
     }
 
     /// Iterate over every loaded chunk, empty or not. Linear in
@@ -416,6 +428,10 @@ impl World {
         if !touched {
             return;
         }
+        // `block_mut` flipped `cc`'s `updated` flag. Flip the other parent
+        // chunks of the 26 block-neighbours of `coord` too, so every chunk
+        // whose padded mesher region samples this cell will re-mesh.
+        self.mark_block_neighbour_chunks_updated(coord);
         if queue_update {
             self.update_block(coord, true);
         }
@@ -441,11 +457,7 @@ impl World {
                     let info = self.registry.get(id);
                     if info.solid {
                         let lo = Vec3d::new(f64::from(a), f64::from(b), f64::from(c));
-                        let hi = Vec3d::new(
-                            f64::from(a + 1),
-                            f64::from(b + 1),
-                            f64::from(c + 1),
-                        );
+                        let hi = Vec3d::new(f64::from(a + 1), f64::from(b + 1), f64::from(c + 1));
                         res.push(Aabb3d::new(lo, hi));
                     }
                 }
@@ -471,11 +483,7 @@ impl World {
                     let id = self.block_or_air(coord).id;
                     if id == self.base_blocks.water || id == self.base_blocks.lava {
                         let lo = Vec3d::new(f64::from(a), f64::from(b), f64::from(c));
-                        let hi = Vec3d::new(
-                            f64::from(a + 1),
-                            f64::from(b + 1),
-                            f64::from(c + 1),
-                        );
+                        let hi = Vec3d::new(f64::from(a + 1), f64::from(b + 1), f64::from(c + 1));
                         let block_aabb = Aabb3d::new(lo, hi);
                         if box_.intersects(&block_aabb, 0.0) {
                             return true;
@@ -517,8 +525,7 @@ impl World {
             for zt in 0..3 {
                 for yt in 0..2 {
                     let off = Vec3i::new(xt - 1, th - 1 + yt, zt - 1);
-                    if self.block_or_air(coord + off).id == air
-                        && (xt - 1).abs() != (zt - 1).abs()
+                    if self.block_or_air(coord + off).id == air && (xt - 1).abs() != (zt - 1).abs()
                     {
                         self.set_block(coord + off, leaf, true);
                     }
@@ -643,40 +650,88 @@ impl World {
             for off in &neighbour_offsets {
                 self.block_update_queue.push_back(coord + *off);
             }
-            // Propagate "neighbour updated" to chunks across each axis edge.
-            let size_minus_1 = (Chunk::SIZE - 1) as u32;
-            if bc.x == size_minus_1 {
-                self.mark_chunk_neighbor_updated(cc + Vec3i::new(1, 0, 0));
-            }
-            if bc.x == 0 {
-                self.mark_chunk_neighbor_updated(cc + Vec3i::new(-1, 0, 0));
-            }
-            if bc.y == size_minus_1 {
-                self.mark_chunk_neighbor_updated(cc + Vec3i::new(0, 1, 0));
-            }
-            if bc.y == 0 {
-                self.mark_chunk_neighbor_updated(cc + Vec3i::new(0, -1, 0));
-            }
-            if bc.z == size_minus_1 {
-                self.mark_chunk_neighbor_updated(cc + Vec3i::new(0, 0, 1));
-            }
-            if bc.z == 0 {
-                self.mark_chunk_neighbor_updated(cc + Vec3i::new(0, 0, -1));
-            }
+            // Propagate "needs re-mesh" to every chunk whose padded
+            // region samples this cell — full 3×3×3 cube of parent
+            // chunks, not just the 6 axis-faces, since smooth-light AO
+            // taps reach diagonal neighbours.
+            self.mark_block_neighbour_chunks_updated(coord);
         }
         true
     }
 
-    fn mark_chunk_neighbor_updated(&mut self, ccoord: Vec3i) {
-        // `mark_neighbor_updated` only flips the `updated` flag; it can
-        // never change `empty`. The trip through `with_chunk_mut` keeps
-        // every `&mut Chunk` access pinned to the invariant-maintaining
-        // path, even though the refresh is a no-op here.
-        self.with_chunk_mut(ccoord, |c| {
-            if !c.empty() {
-                c.mark_neighbor_updated();
+    /// Mark every chunk whose padded mesher region samples block `coord`
+    /// as needing a re-mesh. The mesher's 18×18×18 padded snapshot reads
+    /// the 26 block-neighbours of each cell, so a write at `coord`
+    /// invalidates the meshes of every chunk that contains one of those
+    /// neighbours — at most 8 distinct chunks (when `coord` is a
+    /// chunk-corner cell), 1 when `coord` is interior.
+    ///
+    /// The cell's own chunk is intentionally NOT touched here: `block_mut`
+    /// already flips its `updated` flag during the write that called us.
+    /// We only mark the (up to 7) other chunks that need to refresh.
+    fn mark_block_neighbour_chunks_updated(&mut self, coord: Vec3i) {
+        let cc = chunk_coord(coord);
+        let bc = block_coord(coord);
+        let last = (Chunk::SIZE - 1) as u32;
+
+        // Per-axis chunk-coord offsets that need marking. A cell at the
+        // 0-edge of its chunk has block-neighbours in the (-1) chunk; at
+        // the (SIZE - 1)-edge, in the (+1) chunk. Interior cells contribute
+        // only the cell's own chunk (offset 0), which we skip below.
+        let xs: &[i32] = if bc.x == 0 {
+            &[-1, 0]
+        } else if bc.x == last {
+            &[0, 1]
+        } else {
+            &[0]
+        };
+        let ys: &[i32] = if bc.y == 0 {
+            &[-1, 0]
+        } else if bc.y == last {
+            &[0, 1]
+        } else {
+            &[0]
+        };
+        let zs: &[i32] = if bc.z == 0 {
+            &[-1, 0]
+        } else if bc.z == last {
+            &[0, 1]
+        } else {
+            &[0]
+        };
+
+        for &dx in xs {
+            for &dy in ys {
+                for &dz in zs {
+                    let target = cc + Vec3i::new(dx, dy, dz);
+                    self.with_chunk_mut(target, |c| {
+                        if !c.empty() {
+                            c.mark_neighbor_updated();
+                        }
+                    });
+                }
             }
-        });
+        }
+    }
+
+    /// Mark every chunk in the 3×3×3 cube around `ccoord` as needing a
+    /// re-mesh. Used after a chunk's data arrives — terrain generation
+    /// / disk load — so neighbouring chunks whose padded-border samples
+    /// used to read unloaded-air placeholders pick up the real cells
+    /// and re-mesh seamlessly.
+    fn mark_chunk_neighbour_chunks_updated(&mut self, ccoord: Vec3i) {
+        for dz in -1..=1 {
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    let target = ccoord + Vec3i::new(dx, dy, dz);
+                    self.with_chunk_mut(target, |c| {
+                        if !c.empty() {
+                            c.mark_neighbor_updated();
+                        }
+                    });
+                }
+            }
+        }
     }
 
     /// Probabilistic per-chunk cell sampler — the "random tick" hook that
@@ -768,9 +823,10 @@ impl World {
     /// mesh rebuild without each call site having to remember to mark the
     /// chunk dirty in `Game::dirty_chunks`.
     ///
-    /// `update_block` already calls `mark_chunk_neighbor_updated` when an
-    /// edge cell changes, so neighbour chunks across a chunk boundary are
-    /// included automatically. Empty chunks can never have `updated == true`
+    /// `set_block` and `update_block` already call
+    /// `mark_block_neighbour_chunks_updated` when a cell changes, so
+    /// neighbour chunks across a chunk boundary are included
+    /// automatically. Empty chunks can never have `updated == true`
     /// (allocation flips both flags together), so this only walks the
     /// non-empty set.
     pub fn drain_updated_chunks(&mut self) -> Vec<Vec3i> {
@@ -778,7 +834,11 @@ impl World {
             .non_empty
             .iter()
             .copied()
-            .filter(|c| self.chunks.get(c).is_some_and(crate::chunks::Chunk::updated))
+            .filter(|c| {
+                self.chunks
+                    .get(c)
+                    .is_some_and(crate::chunks::Chunk::updated)
+            })
             .collect();
         for cc in &coords {
             self.with_chunk_mut(*cc, |chunk| chunk.clear_updated());
@@ -811,7 +871,7 @@ impl World {
 
     /// Synchronously load chunks within
     /// `render_distance + LOAD_RADIUS_BUFFER` of the centre and unload ones
-    /// outside `render_distance + 2 * LOAD_RADIUS_BUFFER`. The buffer
+    /// outside `render_distance + LOAD_RADIUS_BUFFER`. The buffer
     /// guarantees every meshable chunk has all six axis neighbours present
     /// so the mesher never samples missing-chunk air at the render boundary.
     /// Caps at [`MAX_CHUNK_LOADS`] loads and [`MAX_CHUNK_UNLOADS`] unloads
@@ -841,9 +901,10 @@ impl World {
             self.load_chunk(cc);
         }
 
-        // Unloads happen one buffer step beyond the load radius so chunks
-        // don't oscillate between loaded / unloaded around the boundary.
-        let unload_dist = self.render_distance + 2 * LOAD_RADIUS_BUFFER;
+        // Unloads happen more than one buffer step beyond the load radius
+        // so chunks don't oscillate between loaded / unloaded around the
+        // boundary.
+        let unload_dist = self.render_distance + LOAD_RADIUS_BUFFER;
         let mut unload_candidates: Vec<(i32, Vec3i)> = Vec::new();
         for &coord in self.chunks.keys() {
             let d = coord - center;
@@ -892,7 +953,7 @@ impl World {
         // Unloads via the async-save path: the worker writes to sled so
         // unload-on-slide doesn't stall the simulation tick. Sorted by
         // squared distance descending so the farthest chunks unload first.
-        let unload_dist = self.render_distance + 2 * LOAD_RADIUS_BUFFER;
+        let unload_dist = self.render_distance + LOAD_RADIUS_BUFFER;
         let mut unload_candidates: Vec<(i32, Vec3i)> = Vec::new();
         for &coord in self.chunks.keys() {
             let d = coord - center;
@@ -922,7 +983,7 @@ impl World {
             // it. We still insert if the coord falls inside the unload
             // boundary — exact-window-only would lose chunks that arrived
             // just past a slide.
-            let half = self.render_distance + 2 * LOAD_RADIUS_BUFFER;
+            let half = self.render_distance + LOAD_RADIUS_BUFFER;
             let d = coord - self.center_ccoord;
             let in_window = d.x.abs() <= half && d.y.abs() <= half && d.z.abs() <= half;
             if !in_window || self.chunks.contains_key(&coord) {
@@ -930,6 +991,7 @@ impl World {
             }
             self.chunks.insert(coord, chunk);
             self.refresh_non_empty(coord);
+            self.mark_chunk_neighbour_chunks_updated(coord);
             inserted.push(coord);
         }
         inserted
@@ -986,9 +1048,9 @@ impl World {
         if !from_disk {
             chunk.init_generate(&mut self.height_map, &self.generator, &self.base_blocks);
         }
-        chunk.post_init();
         self.chunks.insert(ccoord, chunk);
         self.refresh_non_empty(ccoord);
+        self.mark_chunk_neighbour_chunks_updated(ccoord);
     }
 
     /// Save a chunk to disk if dirty, then drop it from the hash map and
@@ -1024,10 +1086,7 @@ impl World {
     /// [`Self::with_chunk_mut`] instead, which calls this for you after
     /// every mutable chunk borrow.
     fn refresh_non_empty(&mut self, ccoord: Vec3i) {
-        let is_non_empty = self
-            .chunks
-            .get(&ccoord)
-            .is_some_and(|c| !c.empty());
+        let is_non_empty = self.chunks.get(&ccoord).is_some_and(|c| !c.empty());
         if is_non_empty {
             self.non_empty.insert(ccoord);
         } else {
@@ -1066,7 +1125,9 @@ impl World {
             .iter()
             .copied()
             .filter(|c| {
-                self.chunks.get(c).is_some_and(crate::chunks::Chunk::modified)
+                self.chunks
+                    .get(c)
+                    .is_some_and(crate::chunks::Chunk::modified)
             })
             .collect();
         for cc in coords {
@@ -1074,12 +1135,11 @@ impl World {
             // helper. The empty bit can't actually flip here (clear_modified
             // doesn't touch data), but funnelling every `&mut Chunk` through
             // one path keeps the contract trivially auditable.
-            let bytes = self
-                .with_chunk_mut(cc, |chunk| {
-                    let bytes = chunk.package_to();
-                    chunk.clear_modified();
-                    bytes
-                });
+            let bytes = self.with_chunk_mut(cc, |chunk| {
+                let bytes = chunk.package_to();
+                chunk.clear_modified();
+                bytes
+            });
             if let Some(bytes) = bytes {
                 self.tiles_store.save(cc, &bytes)?;
             }

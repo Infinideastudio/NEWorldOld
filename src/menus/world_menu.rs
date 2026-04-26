@@ -18,8 +18,8 @@ use std::sync::{Arc, Mutex};
 use egui::{Color32, Context};
 
 use super::{
-    CreateWorldScreen, caption_row, flex_spacer, footer_height, full_row_button, menu_panel,
-    pair_row, t, MENU_ROW_HEIGHT, MENU_ROW_SPACING,
+    CreateWorldScreen, MENU_ROW_HEIGHT, MENU_ROW_SPACING, caption_row, full_row_button, menu_panel,
+    pair_row, t,
 };
 use crate::globalization::I18n;
 use crate::ui::action::{WorldAction, WorldActionQueue};
@@ -85,12 +85,15 @@ impl Screen for WorldSelectScreen {
         let mut back_clicked = false;
         let mut enter_clicked = false;
 
-        menu_panel(ctx, |ui| {
+        menu_panel(ctx, "worlds", |ui| {
             caption_row(ui, &caption);
             ui.add_space(MENU_ROW_SPACING);
 
-            // Scrollable list of world entries. Reserve enough vertical space
-            // that the footer rows still fit at the bottom of the chrome.
+            // Scrollable list of world entries. With vertical centring,
+            // `available_height` already reflects the half-spacer above
+            // the body, so reserving 3 rows + 4 gaps for the footer keeps
+            // the list from overlapping the new / enter / delete / back
+            // buttons.
             let list_height = (ui.available_height()
                 - MENU_ROW_HEIGHT * 3.0
                 - MENU_ROW_SPACING * 4.0)
@@ -133,10 +136,9 @@ impl Screen for WorldSelectScreen {
             }
             ui.add_space(MENU_ROW_SPACING);
 
-            // Footer is two rows: pair_row (32) + spacing (8) + full-row (32).
-            flex_spacer(ui, footer_height(2));
-
-            // Enter / Delete pair, then full-width Back.
+            // Enter / Delete pair, then full-width Back. These ride at the
+            // natural bottom of the centred body — `menu_panel` no longer
+            // pushes them to the absolute panel edge.
             let has_sel = !self.selected.is_empty();
             pair_row(ui, |cols| {
                 if cols[0]

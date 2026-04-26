@@ -252,17 +252,6 @@ impl Chunk {
             .expect("index in bounds")
     }
 
-    // `init_generate` lives in `chunks/generate.rs` to keep this file focused
-    // on chunk-as-storage. `ensure_data` and `cell_mut` above are used by both.
-
-    /// Mirror of C++ `post_init`: if data has been allocated, mark the mesh
-    /// dirty so it gets built on the next render pass.
-    pub fn post_init(&mut self) {
-        if self.data.is_some() {
-            self.updated = true;
-        }
-    }
-
     // ---------- Save / load ----------
 
     /// Serialize this chunk to bytes: a `[magic, version, flags]` header
@@ -308,10 +297,7 @@ impl Chunk {
             });
         }
         self.ensure_data();
-        let data = self
-            .data
-            .as_mut()
-            .expect("ensure_data allocated");
+        let data = self.data.as_mut().expect("ensure_data allocated");
         let cells: &[BlockData] = bytemuck::cast_slice(body);
         data.as_mut().copy_from_slice(cells);
         self.modified = false;
@@ -413,18 +399,6 @@ mod tests {
     }
 
     #[test]
-    fn post_init_sets_updated_iff_not_empty() {
-        let base = make_base();
-        let mut c = Chunk::new(Vec3i::new(0, 0, 0));
-        c.post_init();
-        assert!(!c.updated()); // still empty → no change
-        c.block_mut(Vec3u::new(0, 0, 0), &base).id = base.rock;
-        c.clear_updated();
-        c.post_init();
-        assert!(c.updated());
-    }
-
-    #[test]
     fn package_round_trips_through_unpackage() {
         let base = make_base();
         let mut original = Chunk::new(Vec3i::new(7, 2, -3));
@@ -439,13 +413,18 @@ mod tests {
         assert_eq!(bytes.len(), HEADER_SIZE + Chunk::SIZE_DATA);
 
         let mut loaded = Chunk::new(Vec3i::new(7, 2, -3));
-        loaded.unpackage_from(&bytes).expect("unpackage should succeed");
+        loaded
+            .unpackage_from(&bytes)
+            .expect("unpackage should succeed");
         assert!(!loaded.empty());
         assert!(!loaded.modified()); // freshly loaded
         assert_eq!(loaded.block(Vec3u::new(0, 0, 0), &base).id, base.rock);
         assert_eq!(loaded.block(Vec3u::new(15, 15, 15), &base).id, base.bedrock);
         assert_eq!(loaded.block(Vec3u::new(8, 4, 2), &base).id, base.water);
-        assert_eq!(loaded.block(Vec3u::new(1, 2, 3), &base).light, Light::new(7, 11));
+        assert_eq!(
+            loaded.block(Vec3u::new(1, 2, 3), &base).light,
+            Light::new(7, 11)
+        );
         // Sample untouched cells: should still be air (the lazy-fill default).
         assert_eq!(loaded.block(Vec3u::new(5, 5, 5), &base).id, base.air);
     }

@@ -16,10 +16,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::Context;
 
-use super::{
-    caption_row, flex_spacer, footer_height, full_row_button, menu_panel, pair_row, t,
-    MENU_ROW_SPACING,
-};
+use super::{MENU_ROW_SPACING, caption_row, full_row_button, menu_panel, pair_row, t};
 use crate::config::Config;
 use crate::globalization::I18n;
 use crate::ui::screen::{Screen, Transition};
@@ -56,7 +53,7 @@ impl Screen for UIOptionsScreen {
 
         let mut cfg = self.config.lock().expect("config poisoned");
 
-        menu_panel(ctx, |ui| {
+        menu_panel(ctx, "ui_options", |ui| {
             caption_row(ui, &caption);
             ui.add_space(MENU_ROW_SPACING);
 
@@ -87,9 +84,7 @@ impl Screen for UIOptionsScreen {
             });
             ui.add_space(MENU_ROW_SPACING);
 
-            // Footer: one full-width back button (32 px).
-            flex_spacer(ui, footer_height(1));
-
+            // Footer back button — natural bottom of the centred body.
             if full_row_button(ui, &back_lbl) {
                 want_back = true;
             }

@@ -19,7 +19,9 @@ use std::sync::{Arc, Mutex};
 
 use egui::Context;
 
-use super::{OptionsScreen, t};
+use super::{
+    MENU_ROW_SPACING, OptionsScreen, caption_row, full_row_button, menu_overlay, pair_row, t,
+};
 use crate::blocks::{BlockRegistry, Id};
 use crate::config::Config;
 use crate::globalization::I18n;
@@ -153,10 +155,14 @@ impl GameScreen {
         // grid only when `inventory_open`).
         self.inventory.render(ctx, player, registry, air_id, block_icons);
 
-        // Pause menu overlay — mirror of `old/src/menus/game_menu.cpp`. The
-        // C++ build uses its declarative widget tree; here we produce the
-        // same shape inline (centred caption + Back / Continue pair) inside
-        // a pinned egui Window.
+        // Pause menu overlay — mirror of `old/src/menus/game_menu.cpp`.
+        // Uses the same `caption_row` + `pair_row` chrome as every other
+        // menu so button widths, row heights, and column gutters match
+        // exactly. The pause variant uses `menu_overlay` (no opaque
+        // background) so the live HUD / crosshair / inventory remain
+        // visible behind it — diverges from the C++ build, which
+        // takes a full screenshot of the gameplay frame and freezes
+        // it as a backdrop.
         if self.paused {
             let caption = t(&self.i18n, "NEWorld.pause.caption");
             let back_lbl = t(&self.i18n, "NEWorld.pause.back");
@@ -167,68 +173,28 @@ impl GameScreen {
             let mut want_options = false;
             let mut want_leave = false;
 
-            // Fixed-size window: avoids the auto-grow feedback loop where
-            // the Window's `min_width` grew each frame because the inner
-            // `centered_and_justified` cells claimed `ui.available_width()`,
-            // which then became the new min for the next frame. Locking the
-            // window's outer size + computing inner widths from a constant
-            // (not `available_width`) keeps the layout stable.
-            const PAUSE_W: f32 = 360.0;
-            const PAUSE_H: f32 = 200.0;
-            const INNER_W: f32 = PAUSE_W - 24.0; // egui Frame padding ≈ 8 px each side + a touch
-            let half = (INNER_W - 8.0) * 0.5;
+            menu_overlay(ctx, "pause", |ui| {
+                caption_row(ui, &caption);
+                ui.add_space(MENU_ROW_SPACING);
 
-            egui::Window::new("pause_window")
-                .title_bar(false)
-                .collapsible(false)
-                .resizable(false)
-                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .fixed_size(egui::vec2(PAUSE_W, PAUSE_H))
-                .show(ctx, |ui| {
-                    // Local interact_size so buttons match the menu chrome.
-                    ui.spacing_mut().interact_size.y = 32.0;
-                    ui.vertical_centered(|ui| {
-                        ui.heading(&caption);
-                        ui.add_space(12.0);
-                    });
-
-                    ui.horizontal(|ui| {
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(half, 32.0),
-                            egui::Layout::top_down_justified(egui::Align::Center),
-                            |ui| {
-                                if ui.button(&back_lbl).clicked() {
-                                    want_leave = true;
-                                }
-                            },
-                        );
-                        ui.add_space(8.0);
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(half, 32.0),
-                            egui::Layout::top_down_justified(egui::Align::Center),
-                            |ui| {
-                                if ui.button(&continue_lbl).clicked() {
-                                    want_resume = true;
-                                }
-                            },
-                        );
-                    });
-                    ui.add_space(8.0);
-
-                    // Options is not in the C++ pause-menu DSL but is useful
-                    // for tweaking sensitivity / FOV / language mid-game; the
-                    // C++ build exposes it via the F1 key. Keep it as a
-                    // single full-width row below the matched pair.
-                    ui.allocate_ui_with_layout(
-                        egui::vec2(INNER_W, 32.0),
-                        egui::Layout::top_down_justified(egui::Align::Center),
-                        |ui| {
-                            if ui.button(&options_lbl).clicked() {
-                                want_options = true;
-                            }
-                        },
-                    );
+                pair_row(ui, |cols| {
+                    if cols[0].button(&back_lbl).clicked() {
+                        want_leave = true;
+                    }
+                    if cols[1].button(&continue_lbl).clicked() {
+                        want_resume = true;
+                    }
                 });
+                ui.add_space(MENU_ROW_SPACING);
+
+                // Options is not in the C++ pause-menu DSL but is useful
+                // for tweaking sensitivity / FOV / language mid-game; the
+                // C++ build exposes it via the F1 key. Keep it as a
+                // full-width row below the matched pair.
+                if full_row_button(ui, &options_lbl) {
+                    want_options = true;
+                }
+            });
 
             if want_resume {
                 self.paused = false;

@@ -18,8 +18,8 @@ use std::sync::{Arc, Mutex};
 use egui::Context;
 
 use super::{
-    LanguageScreen, RenderOptionsScreen, UIOptionsScreen, caption_row, flex_spacer, footer_height,
-    menu_panel, pair_row, t, MENU_ROW_SPACING,
+    LanguageScreen, MENU_ROW_SPACING, RenderOptionsScreen, UIOptionsScreen, caption_row,
+    menu_panel, pair_row, t,
 };
 use crate::config::Config;
 use crate::globalization::I18n;
@@ -63,7 +63,7 @@ impl Screen for OptionsScreen {
 
         let mut cfg = self.config.lock().expect("config poisoned");
 
-        menu_panel(ctx, |ui| {
+        menu_panel(ctx, "options", |ui| {
             caption_row(ui, &caption);
             ui.add_space(MENU_ROW_SPACING);
 
@@ -97,12 +97,9 @@ impl Screen for OptionsScreen {
             });
             ui.add_space(MENU_ROW_SPACING);
 
-            // Footer is one pair_row (32 px). Reserve that height + a hair
-            // for the row's own padding so it lands just above the bottom
-            // panel edge.
-            flex_spacer(ui, footer_height(1));
-
-            // Footer: Back | Save
+            // Footer: Back | Save (sits at the natural bottom of the
+            // centred body — `menu_panel` vertically centres the whole
+            // block, so we no longer flex-spacer it to the panel edge).
             pair_row(ui, |cols| {
                 if cols[0].button(&back_lbl).clicked() {
                     want_back = true;

@@ -29,9 +29,9 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 
 use crate::blocks::{BaseBlocks, BlockRegistry};
 use crate::chunks::Chunk;
+use crate::height_maps::HeightMap;
 use crate::math::Vec3i;
 use crate::terrain_generation::Generator;
-use crate::height_maps::HeightMap;
 
 /// One unit of work for the chunk pipeline worker.
 pub enum LoadRequest {
@@ -196,7 +196,6 @@ fn build_chunk(
     if !from_disk {
         chunk.init_generate(height_map, generator, base_blocks);
     }
-    chunk.post_init();
     chunk
 }
 

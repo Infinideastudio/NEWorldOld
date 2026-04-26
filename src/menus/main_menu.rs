@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 use egui::{Align2, Color32, Context, FontId};
 
 use super::{
-    OptionsScreen, WorldSelectScreen, full_row_button, menu_panel, pair_row, t, MENU_ROW_SPACING,
+    MENU_ROW_SPACING, OptionsScreen, WorldSelectScreen, full_row_button, menu_panel, pair_row, t,
 };
 use crate::config::Config;
 use crate::globalization::I18n;
@@ -79,11 +79,11 @@ impl Screen for TitleScreen {
         let exit_label = t(&self.i18n, "NEWorld.main.exit");
         let help_label = t(&self.i18n, "NEWorld.main.help");
 
-        menu_panel(ctx, |ui| {
+        menu_panel(ctx, "title", |ui| {
             // 256-px banner at the top — placeholder for the C++ TitleTexture
             // ImageBox until the title PNG is bridged to egui.
             let avail = ui.available_width();
-            let (rect, _) = ui.allocate_exact_size(egui::vec2(avail, 256.0), egui::Sense::hover());
+            let (rect, _) = ui.allocate_exact_size(egui::vec2(avail, 128.0), egui::Sense::hover());
             ui.painter().text(
                 rect.center(),
                 Align2::CENTER_CENTER,

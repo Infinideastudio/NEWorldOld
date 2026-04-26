@@ -51,8 +51,8 @@ use crate::items::ItemStack;
 use crate::math::{Vec3d, Vec3i};
 use crate::particles::{Particle, ParticleSystem};
 use crate::render::{
-    CompositionPipeline, FrameUniforms, GBuffer, MeshInput, MeshOptions, MeshPipeline,
-    PADDED_SIZE, PADDED_VOLUME, ParticleMesh, ParticlePipeline, SelectionPipeline, ShadowMap,
+    CompositionPipeline, FrameUniforms, GBuffer, MeshInput, MeshOptions, MeshPipeline, PADDED_SIZE,
+    PADDED_VOLUME, ParticleMesh, ParticlePipeline, SelectionPipeline, ShadowMap,
     UnderwaterPipeline, UniformBuffer, mat4_to_array, padded_index,
 };
 use crate::textures::Atlases;
@@ -205,7 +205,13 @@ impl Game {
         world_name: String,
         world_seed: u32,
     ) -> Result<Self, WorldError> {
-        tracing::info!(?worlds_root, world_name, world_seed, render_distance, "creating world");
+        tracing::info!(
+            ?worlds_root,
+            world_name,
+            world_seed,
+            render_distance,
+            "creating world"
+        );
 
         let mut world = World::new_at(
             worlds_root,
@@ -225,7 +231,9 @@ impl Game {
                     *world.player_mut() = p;
                     tracing::info!(?player_path, "player restored");
                 }
-                Err(err) => tracing::warn!(error = %err, ?player_path, "player load failed, using defaults"),
+                Err(err) => {
+                    tracing::warn!(error = %err, ?player_path, "player load failed, using defaults")
+                }
             }
         }
 
@@ -407,7 +415,8 @@ impl Game {
         // pause / chat — UI overlays still want a coherent view of the world
         // behind them. Camera position is set in `write_frame_uniforms` so it
         // can include the simulation interpolation factor.
-        self.camera.set_orientation(self.world.player().orientation());
+        self.camera
+            .set_orientation(self.world.player().orientation());
         self.camera.position = self.world.player().look_coord();
 
         // Selection raycast is cheap and feels nicer when it tracks the
@@ -522,13 +531,13 @@ impl Game {
             // visually frozen.
             self.world.random_tick();
             // Promote every world-internal mutation that ran this tick
-            // (random-tick transitions, BFS light clears, queued block
-            // updates) into a mesh rebuild. `World::update_block` flips the
-            // neighbour chunk's `updated` flag at chunk-edge cells, so
-            // edge-touching changes mark both sides automatically — the
-            // explicit `mark_chunk_dirty_with_neighbors` call in
-            // try_break / try_place stays as a same-frame safety net for
-            // edge cases the queue hasn't reached yet.
+            // (break/place from `tick_render`, random-tick transitions,
+            // queued block updates) into a mesh rebuild. World marks
+            // each affected chunk's `updated` flag inside `set_block` /
+            // `update_block` / chunk-load completion — the parent
+            // chunks of the 26 block-neighbours of every changed cell,
+            // plus the 26 chunk-neighbours of every loaded chunk —
+            // so this drain captures the full fan-out automatically.
             for coord in self.world.drain_updated_chunks() {
                 self.dirty_chunks.insert(coord);
             }
@@ -549,11 +558,12 @@ impl Game {
         }
 
         // Drive the async chunk pipeline (F5): issue load/unload requests.
+        // World marks every freshly-arrived chunk's `updated` flag and
+        // those of its 26 neighbours, so the next `drain_updated_chunks`
+        // covers the load-completion case automatically — no Game-side
+        // dirty-marking call needed.
         self.world.tick_chunk_loading_async();
-        let inserted = self.world.poll_load_results();
-        if !inserted.is_empty() {
-            mark_dirty_with_neighbours(&mut self.dirty_chunks, &inserted);
-        }
+        self.world.poll_load_results();
 
         // Drop cached meshes for any coord that's no longer loaded — happens
         // every tick (not just on insert) so unload-on-walk reaps GPU
@@ -568,14 +578,12 @@ impl Game {
         for c in stale {
             self.chunk_meshes.remove(&c);
         }
-        // Drop dirty entries for any coord that isn't loaded. Without this
-        // the load-result neighbour-marking path can leave phantom coords
-        // in `dirty_chunks` (mark_dirty_with_neighbours adds the 6 axis
-        // neighbours unconditionally, and the outermost ones lie past the
-        // load radius). Phantoms are correctness-safe — `pump_meshing`
-        // already filters on `is_loaded` — but they make `dirty_chunks`
-        // grow unboundedly as the player roams. One pass per tick is
-        // O(dirty), cheap, and keeps the set bounded by the load window.
+        // Drop dirty entries for any coord that isn't loaded. World's
+        // chunk-load path marks the 26 neighbours, some of which lie
+        // outside the load radius. Phantoms are correctness-safe —
+        // `pump_meshing` already filters on `is_loaded` — but the
+        // O(dirty) sweep here keeps the set bounded by the load window
+        // as the player roams.
         self.dirty_chunks.retain(|c| self.world.is_loaded(*c));
     }
 
@@ -630,7 +638,9 @@ impl Game {
             if w_pressed {
                 let now = Instant::now();
                 let sprinted = match self.last_w_press {
-                    Some(prev) if now.duration_since(prev).as_secs_f64() <= SPRINT_DOUBLE_TAP_SECS => {
+                    Some(prev)
+                        if now.duration_since(prev).as_secs_f64() <= SPRINT_DOUBLE_TAP_SECS =>
+                    {
                         self.world.player_mut().set_running(true);
                         true
                     }
@@ -661,6 +671,16 @@ impl Game {
     /// Call once per frame from `App::frame`, after [`Self::tick_sim`]. Splits
     /// from the simulation tick because the upload step needs `&wgpu::Device`.
     pub fn pump_meshing(&mut self, device: &wgpu::Device) {
+        // Capture any chunks World marked `updated` since the last drain.
+        // `tick_sim` already drained at the end of its block-update loop,
+        // but break/place fire from `tick_render`, which runs every
+        // frame regardless of whether a sim tick fit in this frame's
+        // accumulator. Pulling once more here closes the gap so block
+        // changes re-mesh in the same frame.
+        for coord in self.world.drain_updated_chunks() {
+            self.dirty_chunks.insert(coord);
+        }
+
         // ---- dispatch dirty meshes, closest first ----
         // `dirty_chunks` is a `HashSet`, so iterating it directly produces
         // hash-order which can leave nearby chunks unmeshed while distant
@@ -981,7 +1001,8 @@ impl Game {
                 cm.draw_translucent(&mut pass);
             }
 
-            self.particle_pipeline.render(&mut pass, &self.particle_mesh);
+            self.particle_pipeline
+                .render(&mut pass, &self.particle_mesh);
             // Selection wireframe rides the same depth buffer so terrain
             // occludes it correctly.
             self.selection_pipeline.draw(&mut pass);
@@ -994,45 +1015,16 @@ impl Game {
 
     /// Run a chat / slash command line. If it begins with `/`, dispatches
     /// through the [`CommandRegistry`]; otherwise echoes the raw text into
-    /// chat history. World mutations made by the command are picked up via
-    /// `Chunk::modified()` and added to the dirty-chunk set.
+    /// chat history.
     pub fn submit_chat_line(&mut self, line: String) {
         if line.is_empty() {
             return;
         }
         if line.starts_with('/') {
-            // Take a "before" snapshot of `modified()` so we can detect every
-            // chunk the command touched. The registry expects a flat
-            // `&mut Vec<String>` for output — we drain that into our
-            // timestamped chat buffer afterwards.
-            // Only non-empty chunks can be modified — `Chunk::block_mut` is
-            // the only path that flips `modified`, and it allocates the
-            // data array (so the chunk is non-empty by then).
-            let before: HashMap<Vec3i, bool> = self
-                .world
-                .non_empty_chunks()
-                .map(|(coord, c)| (coord, c.modified()))
-                .collect();
             let mut out = Vec::<String>::new();
             self.commands.execute_on(&line, &mut self.world, &mut out);
             for s in out {
                 self.push_chat(s);
-            }
-            // Mark every chunk whose modified flag flipped or that's new.
-            let after: HashMap<Vec3i, bool> = self
-                .world
-                .non_empty_chunks()
-                .map(|(coord, c)| (coord, c.modified()))
-                .collect();
-            let mut dirtied: Vec<Vec3i> = Vec::new();
-            for (coord, now_mod) in &after {
-                let was_mod = before.get(coord).copied().unwrap_or(false);
-                if *now_mod && !was_mod {
-                    dirtied.push(*coord);
-                }
-            }
-            for coord in dirtied {
-                self.mark_chunk_dirty_with_neighbors(coord);
             }
         } else {
             self.push_chat(line);
@@ -1081,8 +1073,10 @@ impl Game {
         // broken block's face art.
         let tex_layer = u32::from(self.registry.get(block.id).face(0).0);
 
+        // `set_block` marks the cell's chunk and the parent chunks of its
+        // 26 block-neighbours as `updated`; `pump_meshing` picks them up
+        // via `World::drain_updated_chunks`.
         self.world.set_block(coord, self.base_blocks.air, true);
-        self.mark_chunk_dirty_with_neighbors(crate::worlds::chunk_coord(coord));
 
         // Drop the broken block into the player's inventory. `add_item`
         // returns false if the inventory is completely full of incompatible
@@ -1150,8 +1144,8 @@ impl Game {
         if existing != self.base_blocks.air && existing != self.base_blocks.water {
             return;
         }
+        // `set_block` handles all dirty-mesh marking — see `try_break`.
         self.world.set_block(target, placed_id, true);
-        self.mark_chunk_dirty_with_neighbors(crate::worlds::chunk_coord(target));
 
         // Decrement the hotbar stack. In creative we could keep the stack
         // full, but the C++ build always decrements — so we mirror that.
@@ -1165,24 +1159,15 @@ impl Game {
         }
     }
 
-    /// Mark the chunk at `cc` and any neighbour chunk that touches the
-    /// modified cell as dirty.
-    fn mark_chunk_dirty_with_neighbors(&mut self, cc: Vec3i) {
-        self.dirty_chunks.insert(cc);
-        // Always queue all 6 neighbour chunks (cheap; the per-frame budget
-        // bounds the actual remesh cost). Block-edge cases (faces touching
-        // the chunk boundary) need the neighbour's mesh refreshed too.
-        for off in NEIGHBOR_OFFSETS {
-            self.dirty_chunks.insert(cc + off);
-        }
-    }
-
     /// Tiny linear-congruential PRNG returning a value in `[0, 1)`. Avoids
     /// pulling in the `rand` crate — the break-particle jitter doesn't need
     /// statistical quality.
     fn rand_unit(&mut self) -> f64 {
         // Numerical Recipes constants.
-        self.rng = self.rng.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        self.rng = self
+            .rng
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         // Take the high 53 bits and divide by 2^53.
         ((self.rng >> 11) as f64) / 9_007_199_254_740_992.0
     }
@@ -1203,8 +1188,16 @@ fn player_overlaps_block(world: &World, block: Vec3i) -> bool {
         f64::from(block.y + 1),
         f64::from(block.z + 1),
     );
-    let p_lo = Vec3d::new(coord.x - PLAYER_HALF_EXTENT_HORIZ, coord.y, coord.z - PLAYER_HALF_EXTENT_HORIZ);
-    let p_hi = Vec3d::new(coord.x + PLAYER_HALF_EXTENT_HORIZ, coord.y + 1.7, coord.z + PLAYER_HALF_EXTENT_HORIZ);
+    let p_lo = Vec3d::new(
+        coord.x - PLAYER_HALF_EXTENT_HORIZ,
+        coord.y,
+        coord.z - PLAYER_HALF_EXTENT_HORIZ,
+    );
+    let p_hi = Vec3d::new(
+        coord.x + PLAYER_HALF_EXTENT_HORIZ,
+        coord.y + 1.7,
+        coord.z + PLAYER_HALF_EXTENT_HORIZ,
+    );
     p_lo.x < hi.x
         && p_hi.x > lo.x
         && p_lo.y < hi.y
@@ -1212,31 +1205,6 @@ fn player_overlaps_block(world: &World, block: Vec3i) -> bool {
         && p_lo.z < hi.z
         && p_hi.z > lo.z
 }
-
-/// 6-neighbor chunk offsets, used to mark neighbouring chunks dirty.
-const NEIGHBOR_OFFSETS: [Vec3i; 6] = [
-    Vec3i::new(1, 0, 0),
-    Vec3i::new(-1, 0, 0),
-    Vec3i::new(0, 1, 0),
-    Vec3i::new(0, -1, 0),
-    Vec3i::new(0, 0, 1),
-    Vec3i::new(0, 0, -1),
-];
-
-/// Mark each coord in `inserted` and its 6 axis-aligned neighbours dirty.
-/// Faces along the shared chunk boundary may need to update once a new chunk
-/// arrives, so the neighbours' meshes are also re-issued. Used by the async
-/// load result handler ([F5]) — break/place go through
-/// [`Game::mark_chunk_dirty_with_neighbors`] instead.
-fn mark_dirty_with_neighbours(dirty: &mut HashSet<Vec3i>, inserted: &[Vec3i]) {
-    for &c in inserted {
-        dirty.insert(c);
-        for off in NEIGHBOR_OFFSETS {
-            dirty.insert(c + off);
-        }
-    }
-}
-
 
 /// Newtype that lets us pass a `&dyn BlockView` through `&impl BlockView`
 /// constraints (needed by `ParticleSystem::tick`'s generic parameter).
@@ -1325,4 +1293,3 @@ impl Game {
             .collect()
     }
 }
-

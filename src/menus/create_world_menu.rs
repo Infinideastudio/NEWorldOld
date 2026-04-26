@@ -10,10 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::{Color32, Context};
 
-use super::{
-    caption_row, flex_spacer, footer_height, menu_panel, pair_row, t, MENU_ROW_HEIGHT,
-    MENU_ROW_SPACING,
-};
+use super::{MENU_ROW_HEIGHT, MENU_ROW_SPACING, caption_row, menu_panel, pair_row, t};
 use crate::globalization::I18n;
 use crate::ui::action::WorldActionQueue;
 use crate::ui::screen::{Screen, Transition};
@@ -96,7 +93,7 @@ impl Screen for CreateWorldScreen {
         let mut create_clicked = false;
         let mut cancel_clicked = false;
 
-        menu_panel(ctx, |ui| {
+        menu_panel(ctx, "create_world", |ui| {
             caption_row(ui, &caption);
             ui.add_space(MENU_ROW_SPACING);
 
@@ -119,9 +116,8 @@ impl Screen for CreateWorldScreen {
             );
             ui.add_space(MENU_ROW_SPACING);
 
-            // Footer: one pair_row (32 px).
-            flex_spacer(ui, footer_height(1));
-
+            // Footer: Back / OK pair_row, sitting at the natural bottom
+            // of the centred body.
             pair_row(ui, |cols| {
                 if cols[0].button(&back_label).clicked() {
                     cancel_clicked = true;

@@ -52,9 +52,15 @@ pub use world_menu::WorldSelectScreen;
 
 use std::sync::{Arc, Mutex};
 
-use egui::{Color32, Context, FontId, Layout, RichText, Ui, vec2};
+use egui::{Align2, Color32, Context, FontId, Layout, RichText, Ui, vec2};
 
 use crate::globalization::I18n;
+
+/// Alpha (0..255) of the translucent black backdrop drawn behind menu
+/// overlays — matches `Color32::from_black_alpha(120)` in
+/// `crate::ui::inventory::Inventory::render_full` so pause + inventory
+/// share a single dim level.
+const MENU_OVERLAY_DIM_ALPHA: u8 = 120;
 
 /// Match the C++ menu chrome from `old/src/menus/*.cpp`:
 /// `Padding { 32, 32, 32, 32 }` around a `Sizer { max_width = 512 }` column.
@@ -72,8 +78,8 @@ pub const MENU_ROW_SPACING: f32 = 8.0;
 /// Inter-column spacing inside a paired-button row — matches `Spacer({.width = 8})`.
 pub const MENU_COL_SPACING: f32 = 8.0;
 
-/// Build the standard centred menu container and call `body` to fill in the
-/// rows. Mirrors the C++ outer wrapper:
+/// Build the standard centred menu container and call `body` to fill in
+/// the rows. Mirrors the C++ outer wrapper:
 ///
 /// ```cpp
 /// Row({.main_axis_alignment = CENTER},
@@ -81,78 +87,137 @@ pub const MENU_COL_SPACING: f32 = 8.0;
 ///     Padding({.left=32,.top=32,.right=32,.bottom=32},
 ///       Sizer({.max_width = 512}, std::move(column)))))
 /// ```
-#[allow(deprecated)] // CentralPanel::show
-pub fn menu_panel(ctx: &Context, body: impl FnOnce(&mut Ui)) {
-    egui::CentralPanel::default()
-        .frame(
-            egui::Frame::default()
-                .inner_margin(MENU_PADDING)
-                .fill(MENU_BG),
-        )
+///
+/// The body's content is **vertically centred** within the available
+/// column height, matching the C++ `Column({.main_axis_alignment =
+/// MainAxisAlignment::CENTER})`. egui has no built-in measure-then-place
+/// API; we use the standard "lagged single-pass" idiom — render the body,
+/// stash its measured height in `egui::Memory` keyed by `id`, and use
+/// that cached value for the top spacer next frame. The first frame after
+/// a layout-shape change renders top-aligned; every subsequent frame is
+/// properly centred.
+///
+/// `id` should be unique per screen so the height cache doesn't bleed
+/// across menus on transitions (e.g. title → world-select).
+pub fn menu_panel(ctx: &Context, id: &'static str, body: impl FnOnce(&mut Ui)) {
+    menu_chrome(ctx, id, body);
+}
+
+/// HUD-aware menu overlay — same chrome rules as [`menu_panel`] but
+/// composed as two egui primitives so it lays out correctly on top of an
+/// in-game scene:
+///
+/// 1. **Dimmer.** A full-screen [`egui::Area`] at [`egui::Order::Background`]
+///    paints a `from_black_alpha({MENU_OVERLAY_DIM_ALPHA})` rectangle —
+///    same alpha as the inventory's `inv_dim` so pause + inventory match.
+/// 2. **Container window.** An auto-sized [`egui::Window`] (no title bar,
+///    no resize handle, anchored to the screen centre) holds the body. By
+///    default `egui::Window` lives at [`egui::Order::Middle`], the same
+///    layer the HUD's crosshair / debug / chat history use. Because we
+///    `show()` the window *after* the HUD in the calling frame, last-painted
+///    wins: the pause container occludes the crosshair where it overlaps
+///    and the dimmer darkens everything else (HUD included).
+///
+/// Use this for in-game overlays (pause, future death screen, etc.).
+/// Out-of-game menus should keep using [`menu_panel`] — its opaque
+/// `CentralPanel` is the appropriate full-screen treatment when there's
+/// no live render to interact with behind it.
+pub fn menu_overlay(ctx: &Context, id: &'static str, body: impl FnOnce(&mut Ui)) {
+    // ---- 1. Background dimmer ----
+    egui::Area::new(egui::Id::new(("neworld.menu_overlay.dim", id)))
+        .anchor(Align2::LEFT_TOP, vec2(0.0, 0.0))
+        .interactable(false)
+        .order(egui::Order::Background)
         .show(ctx, |ui| {
-            // Snapshot the full inner area *before* allocating any sub-Uis.
-            // We need both the width (for centring) and the height (so
-            // `flex_spacer` can compute "remaining space" correctly inside
-            // `body`). `ui.horizontal(...)` would leave `available_height()`
-            // unreliable inside the inner column, so we allocate the whole
-            // inner area as a single horizontal Ui ourselves.
-            let avail = ui.available_size();
-            let column_w = avail.x.min(MENU_MAX_WIDTH);
-            let side_pad = ((avail.x - column_w) * 0.5).max(0.0);
-            ui.allocate_ui_with_layout(
-                avail,
-                Layout::left_to_right(egui::Align::Min),
-                |ui| {
-                    ui.add_space(side_pad);
-                    // Inner top-down column. The vec2 sizes the child's
-                    // `max_rect`, so `available_height()` inside `body`
-                    // starts at `avail.y` and shrinks as rows are added —
-                    // exactly what `flex_spacer` needs to push the footer
-                    // to the bottom.
-                    ui.allocate_ui_with_layout(
-                        vec2(column_w, avail.y),
-                        Layout::top_down(egui::Align::Min),
-                        |ui| {
-                            ui.set_min_size(vec2(column_w, avail.y));
-                            // Same per-column style overrides as `pair_row`
-                            // so full-width buttons and sliders are sized
-                            // consistently across nested cells.
-                            let s = ui.spacing_mut();
-                            s.interact_size.y = MENU_ROW_HEIGHT;
-                            s.slider_width = column_w;
-                            body(ui);
-                        },
-                    );
-                },
-            );
+            let rect = ctx.content_rect();
+            ui.painter()
+                .rect_filled(rect, 0.0, Color32::from_black_alpha(MENU_OVERLAY_DIM_ALPHA));
+        });
+
+    // ---- 2. Centred container window ----
+    // Width-bounded so the body lays out at the same column width as the
+    // out-of-game menu chrome (`MENU_MAX_WIDTH`). Height is whatever the
+    // body needs — `egui::Window` auto-sizes to its content, no
+    // measure-then-place dance like `menu_panel` needs.
+    egui::Window::new(id)
+        .id(egui::Id::new(("neworld.menu_overlay.window", id)))
+        .title_bar(false)
+        .collapsible(false)
+        .resizable(false)
+        .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
+        .default_width(MENU_MAX_WIDTH)
+        .show(ctx, |ui| {
+            // Lock the inner column to MENU_MAX_WIDTH so widgets that
+            // claim `available_width` (full_row_button, pair_row, sliders)
+            // size identically to the out-of-game panels.
+            ui.set_min_width(MENU_MAX_WIDTH);
+            ui.set_max_width(MENU_MAX_WIDTH);
+            // Same per-column style overrides as `menu_panel` / `pair_row`.
+            let s = ui.spacing_mut();
+            s.interact_size.y = MENU_ROW_HEIGHT;
+            s.slider_width = MENU_MAX_WIDTH;
+            body(ui);
         });
 }
 
-/// Push the rest of the column to the bottom, leaving `reserved_below`
-/// pixels of vertical space for the trailing footer rows the caller is
-/// about to add. Mirrors the C++ `FlexItem({.flex_grow = 1}, Spacer({.height
-/// = inf}))` idiom; the C++ build sizes the footer with a `Sizer` and
-/// `Spacer` directly underneath, so the "leftover space" calculation is
-/// done by the layout engine for free — egui doesn't have a flex-grow
-/// equivalent, so we compute it here.
-///
-/// Pass the total *inner* height of the footer (rows × `MENU_ROW_HEIGHT`
-/// plus inter-row `MENU_ROW_SPACING` per gap, no trailing spacing).
-pub fn flex_spacer(ui: &mut Ui, reserved_below: f32) {
-    let h = (ui.available_height() - reserved_below).max(0.0);
-    ui.add_space(h);
-}
+/// Internal: full-screen `CentralPanel` with the standard opaque
+/// `MENU_BG` fill, centred 512-px column, and lagged-measurement
+/// vertical centring. Used by [`menu_panel`]; [`menu_overlay`] takes a
+/// different code path (Area + Window) so the HUD beneath it can render
+/// at the right z-order.
+#[allow(deprecated)] // CentralPanel::show
+fn menu_chrome(ctx: &Context, id: &'static str, body: impl FnOnce(&mut Ui)) {
+    let frame = egui::Frame::default()
+        .inner_margin(MENU_PADDING)
+        .fill(MENU_BG);
 
-/// Convenience: total height of a footer made of `rows` standard
-/// row-height rows separated by `MENU_ROW_SPACING`. Use as the
-/// `reserved_below` argument to [`flex_spacer`].
-#[must_use]
-pub fn footer_height(rows: usize) -> f32 {
-    if rows == 0 {
-        return 0.0;
-    }
-    let n = rows as f32;
-    n * MENU_ROW_HEIGHT + (n - 1.0) * MENU_ROW_SPACING
+    egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
+        // Snapshot the full inner area *before* allocating any sub-Uis so
+        // the centring math has both axes from the same frame.
+        let avail = ui.available_size();
+        let column_w = avail.x.min(MENU_MAX_WIDTH);
+        let side_pad = ((avail.x - column_w) * 0.5).max(0.0);
+        ui.allocate_ui_with_layout(
+            avail,
+            Layout::left_to_right(egui::Align::Min),
+            |ui| {
+                ui.add_space(side_pad);
+                // Inner top-down column. The vec2 sizes the child's
+                // `max_rect` to the full available area, so the column
+                // background (when opaque) covers the whole inner panel.
+                ui.allocate_ui_with_layout(
+                    vec2(column_w, avail.y),
+                    Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        ui.set_min_size(vec2(column_w, avail.y));
+                        // Same per-column style overrides as `pair_row`
+                        // so full-width buttons and sliders are sized
+                        // consistently across nested cells.
+                        let s = ui.spacing_mut();
+                        s.interact_size.y = MENU_ROW_HEIGHT;
+                        s.slider_width = column_w;
+
+                        // Vertical centre: read last frame's measured
+                        // body height, push the body down by half the
+                        // leftover space. Cached per-screen via `id`.
+                        let cache_id = egui::Id::new(("neworld.menu_panel.body_h", id));
+                        let cached_h: f32 = ui
+                            .ctx()
+                            .data(|d| d.get_temp(cache_id).unwrap_or(0.0));
+                        let space_above = ((avail.y - cached_h) * 0.5).max(0.0);
+                        ui.add_space(space_above);
+
+                        let y0 = ui.cursor().min.y;
+                        body(ui);
+                        let y1 = ui.cursor().min.y;
+                        let measured = (y1 - y0).max(0.0);
+                        ui.ctx()
+                            .data_mut(|d| d.insert_temp(cache_id, measured));
+                    },
+                );
+            },
+        );
+    });
 }
 
 /// 32-px-tall row containing a single centred caption label. Mirrors:
