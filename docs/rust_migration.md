@@ -293,12 +293,14 @@ can be picked up in any order.
 - ✅ **Reversed-Z depth.** `OPENGL_TO_WGPU_REVERSED` projection,
   `CompareFunction::Greater`, depth clear 0.0 across chunk + particle +
   selection pipelines.
-- ✅ **Light-propagation engine.** `set_block` detects opaque /
-  light-emitter transitions and runs `remove_light_bfs` to clear cells
-  whose light derived from the source. Cleared cells + independent
-  boundary cells re-enter `block_update_queue` so the existing
-  max-relaxation pass refloods the region. Sky-light's vertical
-  no-falloff is honoured during removal.
+- ✅ **Light-propagation engine.** Same single-pass max-relaxation as
+  C++ `worlds.ixx::update_block` — `set_block` writes the id and queues
+  a `block_update_queue` entry; `process_block_updates` drains the queue
+  every sim tick, recomputing each cell's light as `max(neighbours) - 1`
+  (with the `+Y sky=15 → no falloff` special case and the glowstone /
+  lava emit-15 override). Removing a source converges over a few ticks
+  rather than instantly; deliberate, since a future block-update
+  rewrite-system rework will subsume this pass.
 - ✅ **Random tick.** `World::random_tick` samples
   `RANDOM_TICKS_PER_CHUNK = 3` cells per non-empty chunk per simulation
   tick, with rules for grass smother (opaque block above → dirt) and

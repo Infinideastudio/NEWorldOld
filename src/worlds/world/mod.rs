@@ -65,29 +65,6 @@ pub const LOAD_RADIUS_BUFFER: i32 = 1;
 /// — slow enough that grass spread is gradual but visible during play.
 pub const RANDOM_TICKS_PER_CHUNK: usize = 3;
 
-/// Cap on how many cells a single `remove_light_bfs` call can clear before
-/// it gives up and falls back to plain relaxation. Bounds the worst-case
-/// `set_block` cost when a player drops a roof over a huge open atrium —
-/// 65 K cells covers the full 16³ × full-column worst case (16 × 16 × 256
-/// = 65 536) plus headroom for lateral fanout.
-const MAX_LIGHT_REMOVE_OPS: usize = 65_536;
-
-/// 6-neighbor offsets in the canonical `[+X, -X, +Y, -Y, +Z, -Z]` order. Used
-/// by `update_block` and `remove_light_bfs` and matches the face-id layout
-/// in `render::mesh`.
-const NEIGHBOR_OFFSETS: [Vec3i; 6] = [
-    Vec3i::new(1, 0, 0),
-    Vec3i::new(-1, 0, 0),
-    Vec3i::new(0, 1, 0),
-    Vec3i::new(0, -1, 0),
-    Vec3i::new(0, 0, 1),
-    Vec3i::new(0, 0, -1),
-];
-
-/// Light level emitted by an active light-source block. Mirrors the C++
-/// hard-coded `glowstone` / `lava` emit-15 path in `update_block`.
-const EMITTER_LIGHT: u8 = 15;
-
 // ----------------------------------------------------------------------
 //   Coord helpers — port of `worlds.ixx::chunk_coord` / `block_coord`
 // ----------------------------------------------------------------------
@@ -423,33 +400,14 @@ impl World {
     }
 
     /// Set a block. Marks the chunk dirty + (optionally) queues a block
-    /// update. Mirrors C++ `World::put_block`. The chunk transitions from
-    /// empty → non-empty if this is its first write — `with_chunk_mut`
-    /// re-syncs `non_empty` automatically.
-    ///
-    /// Light bookkeeping: when a transition decreases the cell's effective
-    /// light output (becoming opaque, or losing emitter status), this kicks
-    /// off a BFS removal of cells that derived their light from `coord` —
-    /// the standard fix for the relaxation-only updater not being able to
-    /// lower a neighbor's light. The BFS pushes "boundary" cells with
-    /// independent light back onto the regular update queue so the existing
-    /// max-relax flood ([`Self::update_block`]) refills the cleared region.
+    /// update. Mirrors C++ `World::put_block` exactly: write the new id,
+    /// then run the per-cell relaxation via `update_block`. Light removal
+    /// is *not* run synchronously — the relaxation pass converges over
+    /// the next several sim ticks via [`Self::process_block_updates`].
     pub fn set_block(&mut self, coord: Vec3i, id: Id, queue_update: bool) {
         let cc = chunk_coord(coord);
         let bc = block_coord(coord);
         let base = self.base_blocks;
-
-        let Some(old_block) = self.block(coord) else {
-            return;
-        };
-        // Snapshot the registry-derived flags by value so the immutable
-        // borrow on `self.registry` doesn't keep `&self` alive across the
-        // `with_chunk_mut(...)` call below.
-        let old_opaque = self.registry.get(old_block.id).opaque;
-        let new_opaque = self.registry.get(id).opaque;
-        let old_emitter = old_block.id == base.glowstone || old_block.id == base.lava;
-        let new_emitter = id == base.glowstone || id == base.lava;
-
         let touched = self
             .with_chunk_mut(cc, |chunk| {
                 chunk.block_mut(bc, &base).id = id;
@@ -458,108 +416,8 @@ impl World {
         if !touched {
             return;
         }
-
-        // Light-decrease transitions: the cell stops being a sky/block-light
-        // *source* relative to its neighbors. Either the cell is now opaque
-        // (blocks light), or it lost its emitter (no longer a torch). In
-        // both cases, surrounding cells that were lit from here need to
-        // re-evaluate; vanilla relaxation can only raise light levels, so
-        // we run an explicit removal BFS first.
-        //
-        // Gated on `queue_update` so callers that opt out of light
-        // propagation (e.g. terrain-init, test fixtures, bulk
-        // `clear_inventory`-style ops) don't have the BFS surreptitiously
-        // allocate empty neighbour chunks via `with_chunk_mut`.
-        let became_opaque = !old_opaque && new_opaque;
-        let lost_emitter = old_emitter && !new_emitter;
-        if queue_update && (became_opaque || lost_emitter) {
-            let prev_sky = if became_opaque { old_block.light.sky() } else { 0 };
-            let prev_block = if old_emitter {
-                EMITTER_LIGHT
-            } else if became_opaque {
-                old_block.light.block()
-            } else {
-                0
-            };
-            // Clear the source cell's light so the BFS doesn't see stale
-            // values when it walks back through.
-            self.with_chunk_mut(cc, |chunk| {
-                chunk.block_mut(bc, &base).light = Light::NONE;
-            });
-            if prev_sky > 0 || prev_block > 0 {
-                self.remove_light_bfs(coord, prev_sky, prev_block);
-            }
-        }
-
         if queue_update {
             self.update_block(coord, true);
-        }
-    }
-
-    /// BFS-clear cells whose light derived from `origin` after its level
-    /// dropped from `(prev_sky, prev_block)` to zero.
-    ///
-    /// The walk starts at `origin` (whose light is already cleared) and at
-    /// each step inspects 6 neighbors:
-    /// * If a neighbor's light is *less than* `prev_*` (and non-zero), it
-    ///   was lit by the chain we're tearing down → clear it and recurse
-    ///   from the cleared cell with the neighbor's now-stale level. The
-    ///   cleared cell is also queued onto [`Self::block_update_queue`] so
-    ///   the existing relaxation pass can refill it from independent
-    ///   neighbors.
-    /// * If a neighbor's light is `>= prev_*`, it has its own valid source
-    ///   → don't touch it; queue it for relaxation so any cells we just
-    ///   cleared can pick up its level on the next tick.
-    ///
-    /// Sky-light has a vertical-no-falloff special case (`Light::SKY` flows
-    /// straight down at full brightness). The downward step at `prev_sky =
-    /// 15` matches that: a directly-below neighbor at `sky == 15` is
-    /// presumed to derive from us and is cleared.
-    fn remove_light_bfs(&mut self, origin: Vec3i, prev_sky: u8, prev_block: u8) {
-        let base = self.base_blocks;
-        let mut queue: VecDeque<(Vec3i, u8, u8)> = VecDeque::new();
-        queue.push_back((origin, prev_sky, prev_block));
-        let mut ops: usize = 0;
-        while let Some((c, ps, pb)) = queue.pop_front() {
-            ops += 1;
-            if ops > MAX_LIGHT_REMOVE_OPS {
-                self.block_update_queue.push_back(c);
-                continue;
-            }
-            for off in &NEIGHBOR_OFFSETS {
-                let n = c + *off;
-                let Some(n_block) = self.block(n) else {
-                    continue;
-                };
-                let n_sky = n_block.light.sky();
-                let n_blk = n_block.light.block();
-
-                // Vertical-no-falloff: a cell directly below us at sky=15
-                // shares our column's open-sky source.
-                let derives_sky = if off.y == -1 && ps == Light::SKY.sky() {
-                    n_sky == Light::SKY.sky()
-                } else {
-                    n_sky != 0 && n_sky < ps
-                };
-                let derives_block = n_blk != 0 && n_blk < pb;
-
-                if derives_sky || derives_block {
-                    let new_sky = if derives_sky { 0 } else { n_sky };
-                    let new_blk = if derives_block { 0 } else { n_blk };
-                    let n_cc = chunk_coord(n);
-                    let n_bc = block_coord(n);
-                    self.with_chunk_mut(n_cc, |chunk| {
-                        chunk.block_mut(n_bc, &base).light = Light::new(new_sky, new_blk);
-                    });
-                    queue.push_back((n, n_sky, n_blk));
-                    self.block_update_queue.push_back(n);
-                } else {
-                    // Independent / equal-level cell — queue it for the
-                    // relaxation pass so it can flood back into the
-                    // cleared region.
-                    self.block_update_queue.push_back(n);
-                }
-            }
         }
     }
 
