@@ -301,7 +301,9 @@ impl ChunkPipeline {
             attributes: &vertex_attributes,
         }];
 
-        let primitive = wgpu::PrimitiveState {
+        // Opaque keeps back-face culling — never see the inside of solid
+        // geometry, so the rasterizer can drop half the fragments.
+        let opaque_primitive = wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
@@ -309,6 +311,13 @@ impl ChunkPipeline {
             unclipped_depth: false,
             polygon_mode: wgpu::PolygonMode::Fill,
             conservative: false,
+        };
+        // Translucent disables culling so a swimmer looking outward through
+        // a water column still sees the back of the surface (and any inner
+        // wall of a glass enclosure renders without holes).
+        let translucent_primitive = wgpu::PrimitiveState {
+            cull_mode: None,
+            ..opaque_primitive
         };
 
         let multisample = wgpu::MultisampleState {
@@ -346,7 +355,7 @@ impl ChunkPipeline {
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 buffers: &vertex_buffers,
             },
-            primitive,
+            primitive: opaque_primitive,
             depth_stencil: Some(opaque_depth),
             multisample,
             fragment: Some(wgpu::FragmentState {
@@ -372,7 +381,7 @@ impl ChunkPipeline {
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 buffers: &vertex_buffers,
             },
-            primitive,
+            primitive: translucent_primitive,
             depth_stencil: Some(translucent_depth),
             multisample,
             fragment: Some(wgpu::FragmentState {

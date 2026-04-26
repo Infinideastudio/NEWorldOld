@@ -184,12 +184,14 @@ fn world_non_empty_invariant_tracks_block_writes() {
 #[test]
 fn world_update_block_skips_when_neighbours_unloaded() {
     let scratch = ScratchDir::new("update-skip");
-    // `render_distance = 0` loads only the centre chunk; (15,5,5)'s +x
-    // neighbour lives in chunk (1, 0, 0) which stays unloaded.
+    // `render_distance = 0` + the load buffer (1) loads chunks at chunk
+    // coords `-1..=1` on every axis. Block coord (31, 5, 5) sits in chunk
+    // (1, 0, 0) — its +x neighbour at (32, 5, 5) is in chunk (2, 0, 0)
+    // which stays unloaded, so `update_block` must bail.
     let (mut w, _base) = build_world(&scratch, "update-skip", 0);
     w.set_center(Vec3i::new(0, 0, 0));
     w.tick_chunk_loading();
-    let coord = Vec3i::new(15, 5, 5);
+    let coord = Vec3i::new(31, 5, 5);
     assert!(!w.update_block(coord, true));
     assert!(w.block_update_queue().is_empty());
 }
@@ -213,14 +215,24 @@ fn world_update_block_queues_neighbour_updates_when_all_loaded() {
 
 #[test]
 fn world_tick_chunk_loading_is_idempotent() {
+    // `render_distance + LOAD_RADIUS_BUFFER` = 2 chunks → 5³=125 candidates,
+    // beyond `MAX_CHUNK_LOADS = 64` per tick. Drain to a steady state, then
+    // assert one more tick adds nothing.
     let scratch = ScratchDir::new("idempotent");
     let (mut w, _base) = build_world(&scratch, "idempotent", 1);
     w.set_center(Vec3i::new(0, 0, 0));
-    w.tick_chunk_loading();
+    let mut prev = 0;
+    for _ in 0..16 {
+        w.tick_chunk_loading();
+        if w.loaded_count() == prev {
+            break;
+        }
+        prev = w.loaded_count();
+    }
     let n1 = w.loaded_count();
     w.tick_chunk_loading();
     let n2 = w.loaded_count();
-    assert_eq!(n1, n2, "second tick should not double-load");
+    assert_eq!(n1, n2, "post-stable tick should not double-load");
 }
 
 #[test]

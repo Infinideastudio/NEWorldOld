@@ -36,6 +36,7 @@ pub mod mesh_pipeline;
 pub mod particle_render;
 pub mod screenshot;
 pub mod selection;
+pub mod underwater;
 pub mod uniforms;
 
 pub use self::basic_pipeline::BasicPipeline;
@@ -50,6 +51,7 @@ pub use self::mesh_pipeline::{MeshDone, MeshPipeline, MeshRequest};
 pub use self::particle_render::{ParticleMesh, ParticlePipeline, ParticleVertex};
 pub use self::screenshot::{Screenshot, ScreenshotError};
 pub use self::selection::SelectionPipeline;
+pub use self::underwater::UnderwaterPipeline;
 pub use self::uniforms::{
     FilterUniforms, FrameUniforms, Mat4f, ModelUniforms, UniformBuffer, mat4_to_array,
 };

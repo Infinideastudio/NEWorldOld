@@ -44,7 +44,11 @@ fn round_trip_world_through_set_block_save_reopen() {
     let world_name = "smoke-rt".to_owned();
     let render_distance = 1;
     let seed = 0x00C0_FFEE;
-    let target_chunks = ((2 * render_distance + 1) as usize).pow(3);
+    // World loads `render_distance + LOAD_RADIUS_BUFFER` (= 2 here) chunks
+    // out from the centre so every meshable chunk has all 6 axis neighbours
+    // loaded — see `worlds::world::LOAD_RADIUS_BUFFER`.
+    let load_radius = render_distance + 1;
+    let target_chunks = ((2 * load_radius + 1) as usize).pow(3);
 
     let coord = Vec3i::new(3, 5, 7);
     let stone_id;

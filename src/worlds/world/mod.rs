@@ -51,6 +51,15 @@ pub const MAX_CHUNK_UNLOADS: usize = 64;
 /// Mirrors C++ `worlds.ixx::MAX_BLOCK_UPDATES`.
 pub const MAX_BLOCK_UPDATES: usize = 65536;
 
+/// Extra radius (in chunks) loaded beyond `render_distance` so every
+/// meshable chunk has all six axis neighbours present. The mesher samples a
+/// 1-cell padded neighbourhood; without this buffer, chunks at the render
+/// boundary would mesh against `block_or_air()` air defaults across the
+/// missing neighbour seam, leaving visible cracks. Unload happens at
+/// `render_distance + 2 * LOAD_RADIUS_BUFFER` so a chunk doesn't oscillate
+/// between loaded and unloaded around the boundary.
+pub const LOAD_RADIUS_BUFFER: i32 = 1;
+
 /// Cells sampled per non-empty chunk per `random_tick` call. Three matches
 /// the order of magnitude of vanilla MC's `random-tick speed = 3` default
 /// — slow enough that grass spread is gradual but visible during play.
@@ -333,6 +342,27 @@ impl World {
     #[must_use]
     pub fn is_loaded(&self, ccoord: Vec3i) -> bool {
         self.chunks.contains_key(&ccoord)
+    }
+
+    /// True iff every one of `ccoord`'s six axis-aligned neighbour chunks is
+    /// loaded. The mesher's 18×18×18 padded snapshot reads cells from each
+    /// of those neighbours; meshing without all six guarantees visible
+    /// cracks at the missing-neighbour seams. The load radius
+    /// ([`LOAD_RADIUS_BUFFER`]) keeps every chunk inside the render window
+    /// neighbour-complete, so this is a tight filter rather than a hot
+    /// gate, but it stays as a defensive check for spawn-frame pop-in and
+    /// fast-teleport edge cases.
+    #[must_use]
+    pub fn has_neighbours_loaded(&self, ccoord: Vec3i) -> bool {
+        const OFFSETS: [Vec3i; 6] = [
+            Vec3i::new(1, 0, 0),
+            Vec3i::new(-1, 0, 0),
+            Vec3i::new(0, 1, 0),
+            Vec3i::new(0, -1, 0),
+            Vec3i::new(0, 0, 1),
+            Vec3i::new(0, 0, -1),
+        ];
+        OFFSETS.iter().all(|off| self.is_loaded(ccoord + *off))
     }
 
     /// Number of loaded chunks (including empty / pure-air ones).
@@ -921,12 +951,16 @@ impl World {
         self.height_map.set_center(new_origin * Chunk::SIZE);
     }
 
-    /// Synchronously load chunks within `render_distance` of the centre and
-    /// unload ones outside `render_distance + 1`. Caps at [`MAX_CHUNK_LOADS`]
-    /// loads and [`MAX_CHUNK_UNLOADS`] unloads per call.
+    /// Synchronously load chunks within
+    /// `render_distance + LOAD_RADIUS_BUFFER` of the centre and unload ones
+    /// outside `render_distance + 2 * LOAD_RADIUS_BUFFER`. The buffer
+    /// guarantees every meshable chunk has all six axis neighbours present
+    /// so the mesher never samples missing-chunk air at the render boundary.
+    /// Caps at [`MAX_CHUNK_LOADS`] loads and [`MAX_CHUNK_UNLOADS`] unloads
+    /// per call.
     pub fn tick_chunk_loading(&mut self) {
         let center = self.center_ccoord;
-        let load_dist = self.render_distance;
+        let load_dist = self.render_distance + LOAD_RADIUS_BUFFER;
 
         // Loads: walk the cube of side `2*load_dist`, sorted by squared
         // distance from centre; insert any cell that isn't loaded yet.
@@ -949,9 +983,9 @@ impl World {
             self.load_chunk(cc);
         }
 
-        // Unloads: the unload cutoff in C++ is `RenderDistance + 1`, computed
-        // as a per-axis Chebyshev distance.
-        let unload_dist = self.render_distance + 1;
+        // Unloads happen one buffer step beyond the load radius so chunks
+        // don't oscillate between loaded / unloaded around the boundary.
+        let unload_dist = self.render_distance + 2 * LOAD_RADIUS_BUFFER;
         let mut unload_candidates: Vec<(i32, Vec3i)> = Vec::new();
         for &coord in self.chunks.keys() {
             let d = coord - center;
@@ -974,7 +1008,7 @@ impl World {
     /// finished loads. Mirrors C++ `update_chunk_lists`.
     pub fn tick_chunk_loading_async(&mut self) {
         let center = self.center_ccoord;
-        let load_dist = self.render_distance;
+        let load_dist = self.render_distance + LOAD_RADIUS_BUFFER;
 
         let mut load_candidates: Vec<(i32, Vec3i)> = Vec::new();
         for dx in -load_dist..=load_dist {
@@ -1000,7 +1034,7 @@ impl World {
         // Unloads via the async-save path: the worker writes to sled so
         // unload-on-slide doesn't stall the simulation tick. Sorted by
         // squared distance descending so the farthest chunks unload first.
-        let unload_dist = self.render_distance + 1;
+        let unload_dist = self.render_distance + 2 * LOAD_RADIUS_BUFFER;
         let mut unload_candidates: Vec<(i32, Vec3i)> = Vec::new();
         for &coord in self.chunks.keys() {
             let d = coord - center;
@@ -1027,10 +1061,10 @@ impl World {
             self.in_flight.remove(&coord);
             // The world may have moved on while the worker was busy. If the
             // coord is no longer needed, drop the result rather than reviving
-            // it. We still insert if the coord falls inside `render_distance
-            // + 1` (the unload boundary) — exact-window-only would lose
-            // chunks that arrived just past a slide.
-            let half = self.render_distance + 1;
+            // it. We still insert if the coord falls inside the unload
+            // boundary — exact-window-only would lose chunks that arrived
+            // just past a slide.
+            let half = self.render_distance + 2 * LOAD_RADIUS_BUFFER;
             let d = coord - self.center_ccoord;
             let in_window = d.x.abs() <= half && d.y.abs() <= half && d.z.abs() <= half;
             if !in_window || self.chunks.contains_key(&coord) {

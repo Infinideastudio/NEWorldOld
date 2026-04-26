@@ -329,6 +329,30 @@ impl App {
         state.tick_accumulator = 0.0;
     }
 
+    /// Reconcile the wgpu surface size with the live window size. After an
+    /// F11 fullscreen toggle (or any OS-driven resize) `window.inner_size()`
+    /// updates immediately but the corresponding `Resized` event may not
+    /// arrive until a later frame — egui reads the window size at
+    /// `begin_frame`/`end_frame` to compute its scissor, so if the surface
+    /// is still the old size wgpu rejects the draw with
+    /// `Scissor Rect ... is not contained in the render target`.
+    /// Calling this whenever a resize might have just happened keeps both
+    /// sources of truth in lockstep.
+    fn reconcile_surface_size(state: &mut AppState) {
+        let win = state.window.inner_size();
+        if win.width == 0 || win.height == 0 {
+            return;
+        }
+        let (surf_w, surf_h) = state.gfx.surface_size();
+        if win.width == surf_w && win.height == surf_h {
+            return;
+        }
+        state.gfx.resize(win.width, win.height);
+        if let Some(game) = state.game.as_mut() {
+            game.resize(state.gfx.device(), win.width, win.height);
+        }
+    }
+
     /// Tick + render one frame. Returns `true` if the app should exit.
     fn frame(state: &mut AppState) -> bool {
         // ---------- timing ----------
@@ -336,6 +360,9 @@ impl App {
         let dt = (now - state.last_tick).as_secs_f32().min(0.1);
         state.last_tick = now;
         let elapsed = (now - state.start_time).as_secs_f32();
+
+        // Pre-frame size sync. Cheap when nothing has changed.
+        Self::reconcile_surface_size(state);
 
         // Drain any world-lifecycle requests submitted by screens last frame.
         // Doing this first means the rest of `frame` already sees the new
@@ -423,7 +450,10 @@ impl App {
 
         // F11 → fullscreen toggle. Mirrors the C++ `setup.ixx` toggle bound
         // to F11. Borderless fullscreen on the current monitor; pressing F11
-        // again restores the windowed size.
+        // again restores the windowed size. Windows updates `inner_size()`
+        // synchronously inside `set_fullscreen`, but the `Resized` winit
+        // event lags by a frame — call the reconciliation helper here so
+        // the egui pass below sees the post-toggle surface size.
         if state.input.is_key_pressed(Key::F11) {
             let next = if state.window.fullscreen().is_some() {
                 None
@@ -431,6 +461,7 @@ impl App {
                 Some(Fullscreen::Borderless(None))
             };
             state.window.set_fullscreen(next);
+            Self::reconcile_surface_size(state);
         }
 
         // ---------- consume per-frame input transients ----------
@@ -454,6 +485,10 @@ impl App {
                 .map(str::to_owned)
                 .collect();
         }
+
+        // Belt-and-suspenders: any path that mutated `state.window`'s size
+        // since the start of the frame must land before egui reads it.
+        Self::reconcile_surface_size(state);
 
         // ---------- begin egui frame ----------
         state.egui_renderer.begin_frame(&state.window);

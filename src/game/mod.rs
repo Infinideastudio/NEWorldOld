@@ -52,7 +52,8 @@ use crate::math::{Vec3d, Vec3i};
 use crate::particles::{Particle, ParticleSystem};
 use crate::render::{
     DepthTarget, FrameUniforms, MeshInput, MeshOptions, MeshPipeline, PADDED_SIZE, PADDED_VOLUME,
-    ParticleMesh, ParticlePipeline, SelectionPipeline, UniformBuffer, mat4_to_array, padded_index,
+    ParticleMesh, ParticlePipeline, SelectionPipeline, UnderwaterPipeline, UniformBuffer,
+    mat4_to_array, padded_index,
 };
 use crate::textures::Atlases;
 use crate::worlds::chunk_rendering::{ChunkMesh, ChunkPipeline};
@@ -125,6 +126,11 @@ pub struct Game {
     /// 3-D pass against the world depth buffer, so solid geometry occludes
     /// it correctly and UI elements (egui) sit on top.
     pub selection_pipeline: SelectionPipeline,
+    /// Full-screen water-textured tint, drawn after the world pass when the
+    /// player's eye is inside a water block (mirrors C++ behaviour). Toggle
+    /// is pushed to the GPU only on transitions; a no-op cost the rest of
+    /// the time.
+    pub underwater_pipeline: UnderwaterPipeline,
     pub sun_dir: Vector3<f32>,
     /// Currently-selected block (raycast hit). Updated each tick.
     pub selected: Option<Hit>,
@@ -246,6 +252,18 @@ impl Game {
             DepthTarget::FORMAT,
             frame_uniforms,
         );
+        // Resolve the water atlas layer once at world creation. `face(0)` is
+        // the top-face texture index — same as the C++ reference. Falls back
+        // to layer 0 if `base_blocks.water` somehow isn't registered (only
+        // a stripped-down test setup hits that path).
+        let water_layer = u32::from(registry.get(base_blocks.water).face(0).0);
+        let underwater_pipeline = UnderwaterPipeline::new(
+            device,
+            surface_format,
+            DepthTarget::FORMAT,
+            atlases,
+            water_layer,
+        );
 
         let particles = ParticleSystem::new();
         let mut particle_mesh = ParticleMesh::new();
@@ -272,6 +290,7 @@ impl Game {
             particle_mesh,
             particle_pipeline,
             selection_pipeline,
+            underwater_pipeline,
             sun_dir: default_sun_dir(),
             selected: None,
             mesh_worker,
@@ -523,10 +542,16 @@ impl Game {
             .collect();
         for c in stale {
             self.chunk_meshes.remove(&c);
-            // Also clear the dirty queue so we don't dispatch a mesh job
-            // for a chunk that was just unloaded.
-            self.dirty_chunks.remove(&c);
         }
+        // Drop dirty entries for any coord that isn't loaded. Without this
+        // the load-result neighbour-marking path can leave phantom coords
+        // in `dirty_chunks` (mark_dirty_with_neighbours adds the 6 axis
+        // neighbours unconditionally, and the outermost ones lie past the
+        // load radius). Phantoms are correctness-safe — `pump_meshing`
+        // already filters on `is_loaded` — but they make `dirty_chunks`
+        // grow unboundedly as the player roams. One pass per tick is
+        // O(dirty), cheap, and keeps the set bounded by the load window.
+        self.dirty_chunks.retain(|c| self.world.is_loaded(*c));
     }
 
     /// Process WSAD / Space / Shift / sprint detection and feed the player.
@@ -628,6 +653,12 @@ impl Game {
             .iter()
             .filter(|c| !self.meshing_in_flight.contains(c))
             .filter(|c| self.world.is_loaded(**c))
+            // Mesher samples a 1-cell padded neighbourhood; gating on
+            // every axis neighbour being loaded prevents visible cracks
+            // at the render boundary while a chunk is still streaming
+            // its outer ring in. Coords that fail this stay in
+            // `dirty_chunks` and re-enter the candidate pool next frame.
+            .filter(|c| self.world.has_neighbours_loaded(**c))
             .map(|&c| {
                 let d = c - player_chunk;
                 (d.x * d.x + d.y * d.y + d.z * d.z, c)
@@ -710,6 +741,17 @@ impl Game {
             Some(hit) => self.selection_pipeline.set_block(queue, hit.coord),
             None => self.selection_pipeline.clear(),
         }
+        // Underwater check — match C++ `block_or_air(int_view_coord).id ==
+        // water` from `neworld.ixx:784`. The eye coord is the same value
+        // we just lerped above, so `floor` agrees with what the camera
+        // actually sees.
+        let eye_block = Vec3i::new(
+            eye.x.floor() as i32,
+            eye.y.floor() as i32,
+            eye.z.floor() as i32,
+        );
+        let underwater = self.world.block_or_air(eye_block).id == self.base_blocks.water;
+        self.underwater_pipeline.set_enabled(queue, underwater);
 
         let mut u = FrameUniforms::default();
         u.view = mat4_to_array(view);
@@ -789,6 +831,11 @@ impl Game {
         // composites cleanly on top of opaque + translucent geometry.
         // The egui pass that follows draws every UI element on top.
         self.selection_pipeline.draw(&mut pass);
+        // Underwater tint goes after the wireframe so a selected block
+        // visible from inside water still gets the water cast applied.
+        // No depth attachment on the pipeline; the draw runs as a flat
+        // full-screen quad and is a no-op when the player's dry.
+        self.underwater_pipeline.draw(&mut pass);
     }
 
     /// Run a chat / slash command line. If it begins with `/`, dispatches
