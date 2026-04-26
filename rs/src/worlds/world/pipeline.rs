@@ -16,11 +16,11 @@
 //! `HeightMap` there suffices, and the main thread's height map stays
 //! independent of the async path.
 //!
-//! ## Slot-reuse safety (§2.5)
+//! ## Cross-thread chunk identity
 //!
-//! Every cross-thread reference is a coord, never a `ChunkKey`. The main
-//! thread re-resolves results through `by_coord` after the worker returns —
-//! a recycled slab slot can't be aliased.
+//! Every cross-thread reference is a coord. The main thread re-resolves
+//! load results through the world's hash map after the worker returns —
+//! so a chunk that was unloaded mid-flight is dropped instead of revived.
 
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -30,7 +30,8 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 use crate::blocks::{BaseBlocks, BlockRegistry};
 use crate::chunks::Chunk;
 use crate::math::Vec3i;
-use crate::worldgen::{Generator, HeightMap};
+use crate::terrain_generation::Generator;
+use crate::height_maps::HeightMap;
 
 /// One unit of work for the chunk pipeline worker.
 pub enum LoadRequest {

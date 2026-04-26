@@ -1,26 +1,30 @@
 //! World — the canonical owner of every loaded chunk plus the supporting
-//! `TilesStore`, sliding-window `ChunkGrid`, block-update queue, and player.
+//! `TilesStore`, async load/save pipeline, block-update queue, and player.
 //!
-//! Implements the design from `docs/rust_migration.md` §2.2 / §2.4 / §2.5 /
-//! §4.6: chunks live in a `slab::Slab<Chunk>` arena, every loaded chunk is
-//! also tracked in `by_coord: HashMap<Vec3i, ChunkKey>`, and the hot-path
-//! `ChunkGrid` is a 3D sliding window of `Option<ChunkKey>`.
+//! Direct port of `src/worlds/worlds.ixx` per `docs/rust_migration.md` §4.6,
+//! with one structural simplification: the C++ build's `ChunkPointerArray`
+//! sliding window + `ChunkSlot` arena is collapsed here into a plain
+//! `HashMap<Vec3i, Chunk>`. Every loaded chunk is one hash-map lookup; there
+//! is no separate "loaded core / cold ring" split, and chunk identity is
+//! always the integer chunk coord (no opaque slot key in the public API).
 //!
-//! Meshing (`list_render_chunks`, `render_chunks`, `RenderData`,
-//! `ChunkRender`) is intentionally **out of scope for B4** — that lands in
-//! [D]. When [D] arrives the slab will switch from `Slab<Chunk>` to
-//! `Slab<ChunkSlot { chunk, render }>`; every method below that touches the
-//! slab will route through the `chunk` / `chunk_mut` helpers, which are the
-//! only call sites that need to be updated. Look for the `ChunkSlot`
-//! comments below to find them.
+//! ## Empty-vs-non-empty invariant
+//!
+//! `Chunk` allocates its 16³ block array lazily on first write — pure-air
+//! chunks (most of the sky) carry no per-cell memory. To keep meshing and
+//! rendering O(`#non-empty chunks`) instead of O(`#loaded chunks`), `World`
+//! maintains a parallel `non_empty: HashSet<Vec3i>` whose membership tracks
+//! `!chunks[coord].empty()` exactly. Every World method that can flip a
+//! chunk from empty → non-empty (`set_block`, `update_block`,
+//! `poll_load_results`, `load_chunk`) calls [`Self::refresh_non_empty`]
+//! after the mutation; the transition is monotonic, so we never have to
+//! remove from `non_empty` except on chunk unload.
 
 mod error;
-mod grid;
 mod pipeline;
 mod store;
 
 pub use self::error::WorldError;
-pub use self::grid::{ChunkGrid, ChunkKey};
 pub use self::pipeline::{ChunkPipeline, LoadRequest, LoadResult};
 pub use self::store::TilesStore;
 
@@ -30,9 +34,10 @@ use std::sync::Arc;
 
 use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, Id, Light};
 use crate::chunks::Chunk;
+use crate::height_maps::HeightMap;
 use crate::math::{Aabb3d, Vec3, Vec3d, Vec3i};
+use crate::terrain_generation::Generator;
 use crate::worlds::player::Player;
-use crate::worldgen::{Generator, HeightMap};
 
 /// Maximum number of chunk loads driven by one `tick_chunk_loading` call.
 /// Mirrors C++ `worlds.ixx::MAX_CHUNK_LOADS`.
@@ -74,8 +79,6 @@ pub fn block_coord(coord: Vec3i) -> Vec3<u32> {
     )
 }
 
-// `ChunkKey`, `ChunkGrid`, `TilesStore`, and `WorldError` live in submodules.
-
 // ----------------------------------------------------------------------
 //   BlockView — read-only block lookup trait used by player physics, etc.
 // ----------------------------------------------------------------------
@@ -101,16 +104,19 @@ pub struct World {
     /// without depending on the process's cwd.
     dir: PathBuf,
     tiles_store: TilesStore,
-    /// Canonical owner of every loaded chunk. **Future:** when [D] lands this
-    /// becomes `slab::Slab<ChunkSlot { chunk: Chunk, render: ChunkRender }>`
-    /// — `chunk(_mut)` and the `insert_chunk` / `remove_chunk` helpers below
-    /// are the only call sites that need to be updated.
-    chunks: slab::Slab<Chunk>,
-    /// Every loaded chunk, regardless of whether it currently sits inside
-    /// `chunk_grid`. Required because the loaded set is not always a subset
-    /// of the grid window (future anchored chunks).
-    by_coord: HashMap<Vec3i, ChunkKey>,
-    chunk_grid: ChunkGrid,
+    /// Every loaded chunk, keyed by integer chunk coord. Empty chunks
+    /// (`Chunk::empty() == true`) live here too — being in the map means
+    /// "this coord is loaded", not "has block data". See [`Self::non_empty`]
+    /// for the parallel set that tracks which entries actually carry data.
+    chunks: HashMap<Vec3i, Chunk>,
+    /// Subset of `chunks.keys()` whose chunks have allocated block storage.
+    /// Invariant: `non_empty.contains(c) ⇔ !chunks[c].empty()`. Maintained
+    /// by [`Self::refresh_non_empty`], which every mutator calls after
+    /// touching a chunk through the lazy-allocating path
+    /// (`Chunk::block_mut`, `unpackage_from`, `init_generate`).
+    /// Iterating this set is O(non-empty) — meshing/rendering/save loops
+    /// use it to skip pure-air chunks without scanning the full hash map.
+    non_empty: HashSet<Vec3i>,
     height_map: HeightMap,
     generator: Generator,
     /// Owned by the `World`; resolved at construction from the registry.
@@ -119,7 +125,6 @@ pub struct World {
     base_blocks: BaseBlocks,
     /// Block registry. Cloned-`Arc` so the world can be torn down without
     /// holding the registry alive past the caller's lifetime.
-    #[allow(dead_code)] // used once meshing arrives in [D]
     registry: Arc<BlockRegistry>,
     block_update_queue: VecDeque<Vec3i>,
     player: Player,
@@ -161,8 +166,6 @@ impl World {
         let height_map_size = ((render_distance + 2) * 2 * Chunk::SIZE) as usize;
         let height_map = HeightMap::new(height_map_size);
         let generator = Generator::new(seed);
-        let grid_size = (2 * (render_distance + 2)) as usize;
-        let chunk_grid = ChunkGrid::new(grid_size);
         let pipeline = ChunkPipeline::spawn(
             Arc::clone(&registry),
             base_blocks,
@@ -174,9 +177,8 @@ impl World {
             name,
             dir,
             tiles_store,
-            chunks: slab::Slab::new(),
-            by_coord: HashMap::new(),
-            chunk_grid,
+            chunks: HashMap::new(),
+            non_empty: HashSet::new(),
             height_map,
             generator,
             base_blocks,
@@ -210,11 +212,6 @@ impl World {
     #[must_use]
     pub fn name(&self) -> &str {
         &self.name
-    }
-
-    #[must_use]
-    pub fn chunks(&self) -> &slab::Slab<Chunk> {
-        &self.chunks
     }
 
     #[must_use]
@@ -260,29 +257,63 @@ impl World {
         self.base_blocks
     }
 
-    /// Hot-path lookup via the grid. Returns `None` if the coord is outside
-    /// the grid window or not loaded. **Future:** when [D] lands this returns
-    /// `&self.chunks[key].chunk` instead of `&self.chunks[key]`.
+    // ---- chunk lookup ----
+
+    /// Look up the loaded chunk at `ccoord`, or `None` if it isn't loaded.
+    /// Empty chunks count as loaded; the caller can ask `chunk.empty()` to
+    /// distinguish.
     #[must_use]
     pub fn chunk(&self, ccoord: Vec3i) -> Option<&Chunk> {
-        let key = self.chunk_grid.get(ccoord)?;
-        self.chunks.get(key)
+        self.chunks.get(&ccoord)
     }
 
-    pub fn chunk_mut(&mut self, ccoord: Vec3i) -> Option<&mut Chunk> {
-        let key = self.chunk_grid.get(ccoord)?;
-        self.chunks.get_mut(key)
-    }
-
-    /// Cold-path lookup via `by_coord`. Covers every loaded chunk, including
-    /// those outside the grid window.
+    /// True iff a chunk is loaded at `ccoord`. Faster + clearer at the call
+    /// site than `world.chunk(c).is_some()`.
     #[must_use]
-    pub fn chunk_by_coord(&self, ccoord: Vec3i) -> Option<&Chunk> {
-        let key = *self.by_coord.get(&ccoord)?;
-        self.chunks.get(key)
+    pub fn is_loaded(&self, ccoord: Vec3i) -> bool {
+        self.chunks.contains_key(&ccoord)
     }
 
-    /// Block lookup by world coord, going through the grid where possible.
+    /// Number of loaded chunks (including empty / pure-air ones).
+    #[must_use]
+    pub fn loaded_count(&self) -> usize {
+        self.chunks.len()
+    }
+
+    /// Number of loaded chunks that have allocated block data
+    /// (`!chunk.empty()`). This is what the renderer / mesher iterate over.
+    #[must_use]
+    pub fn non_empty_count(&self) -> usize {
+        self.non_empty.len()
+    }
+
+    /// Iterate over every coord whose chunk is loaded **and** non-empty.
+    /// O(non-empty) — the meshing/render/save loops use this so they don't
+    /// have to scan empty sky chunks.
+    pub fn non_empty_coords(&self) -> impl Iterator<Item = Vec3i> + '_ {
+        self.non_empty.iter().copied()
+    }
+
+    /// Iterate over `(coord, &Chunk)` pairs for every non-empty chunk. The
+    /// chunk lookup goes through the hash map; the `non_empty` invariant
+    /// guarantees every coord here is actually loaded.
+    pub fn non_empty_chunks(&self) -> impl Iterator<Item = (Vec3i, &Chunk)> + '_ {
+        self.non_empty.iter().filter_map(move |coord| {
+            self.chunks.get(coord).map(|chunk| (*coord, chunk))
+        })
+    }
+
+    /// Iterate over every loaded chunk, empty or not. Linear in
+    /// [`Self::loaded_count`]; prefer [`Self::non_empty_chunks`] for the
+    /// per-frame meshing / render / save passes.
+    pub fn loaded_chunks(&self) -> impl Iterator<Item = (Vec3i, &Chunk)> + '_ {
+        self.chunks.iter().map(|(c, ch)| (*c, ch))
+    }
+
+    // ---- block lookup ----
+
+    /// Block lookup by world coord, going through the loaded chunk if
+    /// present. Returns `None` if the coord's chunk isn't loaded.
     #[must_use]
     pub fn block(&self, coord: Vec3i) -> Option<BlockData> {
         let cc = chunk_coord(coord);
@@ -301,15 +332,21 @@ impl World {
     }
 
     /// Set a block. Marks the chunk dirty + (optionally) queues a block
-    /// update. Mirrors C++ `World::put_block`.
+    /// update. Mirrors C++ `World::put_block`. The chunk transitions from
+    /// empty → non-empty if this is its first write — `with_chunk_mut`
+    /// re-syncs `non_empty` automatically.
     pub fn set_block(&mut self, coord: Vec3i, id: Id, queue_update: bool) {
         let cc = chunk_coord(coord);
         let bc = block_coord(coord);
         let base = self.base_blocks;
-        let Some(chunk) = self.chunk_mut(cc) else {
+        let touched = self
+            .with_chunk_mut(cc, |chunk| {
+                chunk.block_mut(bc, &base).id = id;
+            })
+            .is_some();
+        if !touched {
             return;
-        };
-        chunk.block_mut(bc, &base).id = id;
+        }
         if queue_update {
             self.update_block(coord, true);
         }
@@ -521,14 +558,17 @@ impl World {
 
         let new_light = Light::new(sky_light, block_light);
         let mut updated = initial;
-        {
-            let chunk = self.chunk_mut(cc).expect("chunk verified above");
+        // `with_chunk_mut` re-syncs `non_empty` after the closure returns,
+        // covering the empty → non-empty flip that `block_mut` may trigger
+        // when this is the chunk's first write.
+        self.with_chunk_mut(cc, |chunk| {
             let cell = chunk.block_mut(bc, &base);
             if cell.light != new_light {
                 cell.light = new_light;
                 updated = true;
             }
-        }
+        })
+        .expect("chunk verified above");
 
         if updated {
             for off in &neighbour_offsets {
@@ -559,11 +599,15 @@ impl World {
     }
 
     fn mark_chunk_neighbor_updated(&mut self, ccoord: Vec3i) {
-        if let Some(c) = self.chunk_mut(ccoord)
-            && !c.empty()
-        {
-            c.mark_neighbor_updated();
-        }
+        // `mark_neighbor_updated` only flips the `updated` flag; it can
+        // never change `empty`. The trip through `with_chunk_mut` keeps
+        // every `&mut Chunk` access pinned to the invariant-maintaining
+        // path, even though the refresh is a no-op here.
+        self.with_chunk_mut(ccoord, |c| {
+            if !c.empty() {
+                c.mark_neighbor_updated();
+            }
+        });
     }
 
     /// Drain up to [`MAX_BLOCK_UPDATES`] from the queue.
@@ -577,25 +621,16 @@ impl World {
         }
     }
 
-    /// Slide the chunk grid + height map to centre on `center` (a world
-    /// coord). Mirrors C++ `World::set_center`. Note: the height map is
-    /// recentered with the same offset the C++ code uses
-    /// (`(ccenter - (RD+2)) * SIZE`); the chunk grid origin is the lower
-    /// corner of the window in chunk coords.
+    /// Slide the load center to `center` (a world coord). Updates the
+    /// height-map window so future generation hits a warm cache.
+    /// `tick_chunk_loading_async` reads `center_ccoord` to drive the
+    /// load/unload windows; this method just updates the centre + cache.
     pub fn set_center(&mut self, center: Vec3i) {
         let center_chunk = chunk_coord(center);
         self.center_ccoord = center_chunk;
         let half: i32 = self.render_distance + 2;
         let new_origin = center_chunk - Vec3i::new(half, half, half);
-        self.chunk_grid.set_center(new_origin);
-        // Re-add still-loaded chunks to the grid that were not yet covered.
-        for (&coord, &key) in &self.by_coord {
-            if self.chunk_grid.contains(coord) {
-                self.chunk_grid.set(coord, Some(key));
-            }
-        }
-        self.height_map
-            .set_center(new_origin * Chunk::SIZE);
+        self.height_map.set_center(new_origin * Chunk::SIZE);
     }
 
     /// Synchronously load chunks within `render_distance` of the centre and
@@ -612,7 +647,7 @@ impl World {
             for dy in -load_dist..=load_dist {
                 for dz in -load_dist..=load_dist {
                     let cc = center + Vec3i::new(dx, dy, dz);
-                    if self.by_coord.contains_key(&cc) {
+                    if self.chunks.contains_key(&cc) {
                         continue;
                     }
                     let dist = dx * dx + dy * dy + dz * dz;
@@ -630,12 +665,9 @@ impl World {
         // as a per-axis Chebyshev distance.
         let unload_dist = self.render_distance + 1;
         let mut unload_candidates: Vec<(i32, Vec3i)> = Vec::new();
-        for &coord in self.by_coord.keys() {
+        for &coord in self.chunks.keys() {
             let d = coord - center;
-            if d.x.abs() > unload_dist
-                || d.y.abs() > unload_dist
-                || d.z.abs() > unload_dist
-            {
+            if d.x.abs() > unload_dist || d.y.abs() > unload_dist || d.z.abs() > unload_dist {
                 let distsqr = d.x * d.x + d.y * d.y + d.z * d.z;
                 unload_candidates.push((distsqr, coord));
             }
@@ -661,7 +693,7 @@ impl World {
             for dy in -load_dist..=load_dist {
                 for dz in -load_dist..=load_dist {
                     let cc = center + Vec3i::new(dx, dy, dz);
-                    if self.by_coord.contains_key(&cc) || self.in_flight.contains(&cc) {
+                    if self.chunks.contains_key(&cc) || self.in_flight.contains(&cc) {
                         continue;
                     }
                     let dist = dx * dx + dy * dy + dz * dz;
@@ -678,15 +710,13 @@ impl World {
         }
 
         // Unloads via the async-save path: the worker writes to sled so
-        // unload-on-slide doesn't stall the simulation tick.
+        // unload-on-slide doesn't stall the simulation tick. Sorted by
+        // squared distance descending so the farthest chunks unload first.
         let unload_dist = self.render_distance + 1;
         let mut unload_candidates: Vec<(i32, Vec3i)> = Vec::new();
-        for &coord in self.by_coord.keys() {
+        for &coord in self.chunks.keys() {
             let d = coord - center;
-            if d.x.abs() > unload_dist
-                || d.y.abs() > unload_dist
-                || d.z.abs() > unload_dist
-            {
+            if d.x.abs() > unload_dist || d.y.abs() > unload_dist || d.z.abs() > unload_dist {
                 let distsqr = d.x * d.x + d.y * d.y + d.z * d.z;
                 unload_candidates.push((distsqr, coord));
             }
@@ -700,9 +730,8 @@ impl World {
     }
 
     /// Drain every available [`LoadResult`] from the pipeline worker, install
-    /// each into the slab + `by_coord` + `chunk_grid` (re-resolving by coord
-    /// per §2.5), and return the list of inserted coords so the caller can
-    /// mark them dirty for meshing.
+    /// each into the hash map (and refresh `non_empty`), and return the list
+    /// of inserted coords so the caller can mark them dirty for meshing.
     pub fn poll_load_results(&mut self) -> Vec<Vec3i> {
         let drained = self.pipeline.drain_results();
         let mut inserted = Vec::with_capacity(drained.len());
@@ -715,16 +744,12 @@ impl World {
             // chunks that arrived just past a slide.
             let half = self.render_distance + 1;
             let d = coord - self.center_ccoord;
-            let in_window =
-                d.x.abs() <= half && d.y.abs() <= half && d.z.abs() <= half;
-            if !in_window || self.by_coord.contains_key(&coord) {
+            let in_window = d.x.abs() <= half && d.y.abs() <= half && d.z.abs() <= half;
+            if !in_window || self.chunks.contains_key(&coord) {
                 continue;
             }
-            let key = self.chunks.insert(chunk);
-            self.by_coord.insert(coord, key);
-            if self.chunk_grid.contains(coord) {
-                self.chunk_grid.set(coord, Some(key));
-            }
+            self.chunks.insert(coord, chunk);
+            self.refresh_non_empty(coord);
             inserted.push(coord);
         }
         inserted
@@ -738,29 +763,33 @@ impl World {
     /// Async-save sibling of [`Self::unload_chunk`]: routes the save through
     /// the pipeline worker instead of blocking on the main-thread sled handle.
     fn unload_chunk_async(&mut self, ccoord: Vec3i) {
-        let Some(&key) = self.by_coord.get(&ccoord) else {
-            return;
-        };
-        if let Some(chunk) = self.chunks.get(key)
-            && chunk.modified()
-        {
-            let bytes = chunk.package_to();
-            self.pipeline.request_save(ccoord, bytes);
-            if let Some(c) = self.chunks.get_mut(key) {
-                c.clear_modified();
+        // The save snapshot is cheap-but-not-free; we want to take it
+        // through `with_chunk_mut` so the invariant-maintenance path is
+        // honoured even on the unload route. After the closure runs we
+        // drop the chunk + mirror the removal in `non_empty`.
+        let bytes = self.with_chunk_mut(ccoord, |chunk| {
+            if chunk.modified() {
+                let bytes = chunk.package_to();
+                chunk.clear_modified();
+                Some(bytes)
+            } else {
+                None
             }
+        });
+        if let Some(Some(bytes)) = bytes {
+            self.pipeline.request_save(ccoord, bytes);
         }
-        if self.chunk_grid.contains(ccoord) {
-            self.chunk_grid.set(ccoord, None);
+        if self.chunks.remove(&ccoord).is_some() {
+            self.non_empty.remove(&ccoord);
         }
-        self.by_coord.remove(&ccoord);
-        self.chunks.remove(key);
     }
 
-    /// Insert a chunk into all three structures — the canonical slab, the
-    /// `by_coord` map, and the grid (if the coord is in the window).
+    /// Insert a chunk: try the on-disk store first, otherwise generate
+    /// fresh terrain. The chunk lands in `chunks`; if `init_generate` /
+    /// `unpackage_from` allocated the data array, the coord also lands in
+    /// `non_empty` via [`Self::refresh_non_empty`].
     fn load_chunk(&mut self, ccoord: Vec3i) {
-        if self.by_coord.contains_key(&ccoord) {
+        if self.chunks.contains_key(&ccoord) {
             return;
         }
         let mut chunk = Chunk::new(ccoord);
@@ -778,53 +807,101 @@ impl World {
             chunk.init_generate(&mut self.height_map, &self.generator, &self.base_blocks);
         }
         chunk.post_init();
-        let key = self.chunks.insert(chunk);
-        self.by_coord.insert(ccoord, key);
-        if self.chunk_grid.contains(ccoord) {
-            self.chunk_grid.set(ccoord, Some(key));
+        self.chunks.insert(ccoord, chunk);
+        self.refresh_non_empty(ccoord);
+    }
+
+    /// Save a chunk to disk if dirty, then drop it from the hash map and
+    /// the non-empty set. Mirrors C++ `_unload_chunk`.
+    fn unload_chunk(&mut self, ccoord: Vec3i) {
+        // `with_chunk_mut` keeps the unload path on the same invariant-
+        // maintaining helper as every other `&mut Chunk` consumer; the
+        // explicit removals below clean up both maps after the closure.
+        let bytes = self.with_chunk_mut(ccoord, |chunk| {
+            if chunk.modified() {
+                let bytes = chunk.package_to();
+                chunk.clear_modified();
+                Some(bytes)
+            } else {
+                None
+            }
+        });
+        if let Some(Some(bytes)) = bytes {
+            let _ = self.tiles_store.save(ccoord, &bytes);
+        }
+        if self.chunks.remove(&ccoord).is_some() {
+            self.non_empty.remove(&ccoord);
         }
     }
 
-    /// Remove a chunk from all three structures, saving it to disk first if
-    /// modified. Mirrors C++ `_unload_chunk`. Critically: clears the grid
-    /// cell **before** freeing the slot, per §2.5 ordering invariant.
-    fn unload_chunk(&mut self, ccoord: Vec3i) {
-        let Some(&key) = self.by_coord.get(&ccoord) else {
-            return;
-        };
-        // Save first.
-        if let Some(chunk) = self.chunks.get(key)
-            && chunk.modified()
-        {
-            let bytes = chunk.package_to();
-            let _ = self.tiles_store.save(ccoord, &bytes);
-            if let Some(c) = self.chunks.get_mut(key) {
-                c.clear_modified();
-            }
+    /// Reconcile `non_empty` with the actual `Chunk::empty()` state at
+    /// `ccoord`. Cheap (one hash-map lookup + one set insert/remove); call
+    /// after any path that might transition a chunk's emptiness, which in
+    /// practice means anything that goes through `Chunk::block_mut`,
+    /// `Chunk::unpackage_from`, or `Chunk::init_generate`.
+    ///
+    /// Most code shouldn't call this directly — go through
+    /// [`Self::with_chunk_mut`] instead, which calls this for you after
+    /// every mutable chunk borrow.
+    fn refresh_non_empty(&mut self, ccoord: Vec3i) {
+        let is_non_empty = self
+            .chunks
+            .get(&ccoord)
+            .is_some_and(|c| !c.empty());
+        if is_non_empty {
+            self.non_empty.insert(ccoord);
+        } else {
+            self.non_empty.remove(&ccoord);
         }
-        // Clear grid before slab — protects against stale-key aliasing.
-        if self.chunk_grid.contains(ccoord) {
-            self.chunk_grid.set(ccoord, None);
-        }
-        self.by_coord.remove(&ccoord);
-        self.chunks.remove(key);
+    }
+
+    /// Hand a `&mut Chunk` for `ccoord` to `f`, then re-sync the
+    /// `non_empty` invariant. Returns `f`'s value, or `None` when no
+    /// chunk is loaded at `ccoord`.
+    ///
+    /// **This is the only sanctioned path to `&mut Chunk` from `World`.**
+    /// Going through it guarantees that `non_empty.contains(c) ⇔
+    /// !chunks[c].empty()` even if `f` triggers a lazy `Chunk::block_mut`
+    /// allocation that would otherwise leave `non_empty` stale. Inserts
+    /// (`load_chunk`, `poll_load_results`) call `refresh_non_empty`
+    /// directly because they own a fresh `Chunk` rather than a `&mut`;
+    /// removals (`unload_chunk`, `unload_chunk_async`) clean up both maps
+    /// atomically right after the helper returns.
+    fn with_chunk_mut<F, R>(&mut self, ccoord: Vec3i, f: F) -> Option<R>
+    where
+        F: FnOnce(&mut Chunk) -> R,
+    {
+        let result = self.chunks.get_mut(&ccoord).map(f)?;
+        self.refresh_non_empty(ccoord);
+        Some(result)
     }
 
     /// Save every modified chunk + the player to disk. Uses the world
     /// directory stored at construction time, so this is independent of cwd.
+    /// Walks `non_empty` (an empty chunk can't be modified, since
+    /// `Chunk::modified` is set by `block_mut` which always allocates).
     pub fn save_to_disk(&mut self) -> Result<(), WorldError> {
-        // Collect coords first so we can mutate the slab.
         let coords: Vec<Vec3i> = self
-            .chunks
+            .non_empty
             .iter()
-            .filter(|(_, c)| c.modified())
-            .map(|(_, c)| c.coord())
+            .copied()
+            .filter(|c| {
+                self.chunks.get(c).is_some_and(crate::chunks::Chunk::modified)
+            })
             .collect();
         for cc in coords {
-            if let Some(&key) = self.by_coord.get(&cc) {
-                let bytes = self.chunks[key].package_to();
+            // Snapshot + clear-modified through the invariant-maintaining
+            // helper. The empty bit can't actually flip here (clear_modified
+            // doesn't touch data), but funnelling every `&mut Chunk` through
+            // one path keeps the contract trivially auditable.
+            let bytes = self
+                .with_chunk_mut(cc, |chunk| {
+                    let bytes = chunk.package_to();
+                    chunk.clear_modified();
+                    bytes
+                });
+            if let Some(bytes) = bytes {
                 self.tiles_store.save(cc, &bytes)?;
-                self.chunks[key].clear_modified();
             }
         }
         self.tiles_store.flush()?;
@@ -913,4 +990,3 @@ impl BlockView for World {
 // `World::new_at` with an absolute scratch path so they don't depend on
 // cwd, which means cargo can run them in parallel with other integration
 // test binaries without a chdir race.
-

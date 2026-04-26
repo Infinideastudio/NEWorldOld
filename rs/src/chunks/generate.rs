@@ -9,7 +9,8 @@
 use super::Chunk;
 use crate::blocks::{BaseBlocks, BlockData, Light, State};
 use crate::math::Vec3i;
-use crate::worldgen::{Generator, HeightMap, WATER_LEVEL};
+use crate::height_maps::HeightMap;
+use crate::terrain_generation::{Generator, WATER_LEVEL};
 
 impl Chunk {
     /// Read the 16×16 column heights for this chunk and compute the derived

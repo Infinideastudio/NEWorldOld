@@ -94,33 +94,91 @@ fn world_block_or_air_returns_air_for_unloaded_coord() {
 }
 
 #[test]
-fn world_chunk_and_chunk_by_coord_agree_inside_window() {
-    let scratch = ScratchDir::new("agree");
-    let (mut w, _base) = build_world(&scratch, "agree", 1);
+fn world_chunk_returns_loaded_chunk_at_coord() {
+    let scratch = ScratchDir::new("chunk-lookup");
+    let (mut w, _base) = build_world(&scratch, "chunk-lookup", 1);
     w.set_center(Vec3i::new(0, 0, 0));
     w.tick_chunk_loading();
     let cc = Vec3i::new(0, 0, 0);
-    let by_grid = w.chunk(cc).expect("via grid");
-    let by_map = w.chunk_by_coord(cc).expect("via map");
-    assert_eq!(by_grid.coord(), by_map.coord());
-    assert_eq!(by_grid.coord(), cc);
+    let chunk = w.chunk(cc).expect("loaded chunk");
+    assert_eq!(chunk.coord(), cc);
+    assert!(w.is_loaded(cc));
 }
 
 #[test]
-fn world_chunk_grid_drops_after_slide_but_by_coord_stays() {
-    let scratch = ScratchDir::new("slide");
-    let (mut w, _base) = build_world(&scratch, "slide", 1);
+fn world_set_center_does_not_unload_existing_chunks() {
+    // `set_center` only updates the centre + height-map cache; load /
+    // unload is `tick_chunk_loading`'s job. After a slide far past the old
+    // chunk, the chunk must still be reachable via `chunk` until the next
+    // `tick_chunk_loading` reaps it.
+    let scratch = ScratchDir::new("set-center");
+    let (mut w, _base) = build_world(&scratch, "set-center", 1);
     w.set_center(Vec3i::new(0, 0, 0));
     w.tick_chunk_loading();
     let cc = Vec3i::new(0, 0, 0);
-    assert!(w.chunk(cc).is_some());
-    assert!(w.chunk_by_coord(cc).is_some());
+    assert!(w.is_loaded(cc));
 
-    // Slide the grid so `cc` falls outside the new window without an unload.
+    // Slide far away — origin chunk is now outside the window, but no
+    // unload tick has happened yet.
     let far = Vec3i::new(10_000, 0, 10_000);
     w.set_center(far * Chunk::SIZE);
-    assert!(w.chunk(cc).is_none());
-    assert!(w.chunk_by_coord(cc).is_some());
+    assert!(w.is_loaded(cc), "set_center alone must not unload");
+
+    // After ticking, the now-distant chunk gets reaped.
+    w.tick_chunk_loading();
+    assert!(!w.is_loaded(cc), "tick_chunk_loading should unload it");
+}
+
+#[test]
+fn world_non_empty_invariant_tracks_block_writes() {
+    // Setting a block in a chunk that has no allocated data flips it to
+    // non-empty; the world's `non_empty_coords` iterator must reflect the
+    // change immediately. Centred around y=160 so the load window includes
+    // obviously-empty sky chunks (the terrain for seed=0 peaks around y≈120).
+    let scratch = ScratchDir::new("non-empty");
+    let (mut w, base) = build_world(&scratch, "non-empty", 3);
+    w.set_center(Vec3i::new(0, 160, 0));
+    // rd=3 → 7³=343 chunks needed; loads cap at 64 per tick — drain the
+    // queue with a few iterations.
+    for _ in 0..16 {
+        w.tick_chunk_loading();
+    }
+
+    // Find a loaded chunk that's still empty. High-y "sky" chunks should
+    // qualify; the test fails meaningfully if every chunk in the window
+    // carries terrain content.
+    let target_cc = w
+        .loaded_chunks()
+        .filter(|(_, c)| c.empty())
+        .map(|(c, _)| c)
+        .next()
+        .expect("at least one loaded chunk should be empty above the terrain");
+
+    assert!(!w.non_empty_coords().any(|c| c == target_cc));
+    let before = w.non_empty_count();
+
+    let world_coord = target_cc * Chunk::SIZE + Vec3i::new(1, 1, 1);
+    w.set_block(world_coord, base.stone, false);
+
+    assert!(
+        w.non_empty_coords().any(|c| c == target_cc),
+        "set_block on an empty chunk should add it to non_empty"
+    );
+    assert_eq!(
+        w.non_empty_count(),
+        before + 1,
+        "exactly one chunk transitioned to non-empty"
+    );
+
+    // Unloading the chunk drops it from non_empty too. Slide far enough
+    // that the old window is fully outside the new one, then drain the
+    // unload queue — `tick_chunk_loading` caps at MAX_CHUNK_UNLOADS=64
+    // per call, so multiple ticks are needed to reap a 343-chunk window.
+    w.set_center(Vec3i::new(10_000, 0, 0) * Chunk::SIZE);
+    for _ in 0..16 {
+        w.tick_chunk_loading();
+    }
+    assert!(!w.non_empty_coords().any(|c| c == target_cc));
 }
 
 #[test]
@@ -159,9 +217,9 @@ fn world_tick_chunk_loading_is_idempotent() {
     let (mut w, _base) = build_world(&scratch, "idempotent", 1);
     w.set_center(Vec3i::new(0, 0, 0));
     w.tick_chunk_loading();
-    let n1 = w.chunks().len();
+    let n1 = w.loaded_count();
     w.tick_chunk_loading();
-    let n2 = w.chunks().len();
+    let n2 = w.loaded_count();
     assert_eq!(n1, n2, "second tick should not double-load");
 }
 
@@ -176,7 +234,7 @@ fn async_pipeline_round_trip_matches_sync_load() {
         w.set_center(Vec3i::new(0, 0, 0));
         w.tick_chunk_loading();
         let chunk = w
-            .chunk_by_coord(target)
+            .chunk(target)
             .expect("sync load should produce chunk");
         chunk.package_to()
     };
@@ -194,7 +252,7 @@ fn async_pipeline_round_trip_matches_sync_load() {
     while std::time::Instant::now() < deadline {
         let mut got = w.poll_load_results();
         inserted.append(&mut got);
-        if w.chunk_by_coord(target).is_some() {
+        if w.chunk(target).is_some() {
             break;
         }
         std::thread::sleep(std::time::Duration::from_millis(5));
@@ -204,7 +262,7 @@ fn async_pipeline_round_trip_matches_sync_load() {
         "async load should have emitted target coord"
     );
     let chunk = w
-        .chunk_by_coord(target)
+        .chunk(target)
         .expect("async load should install chunk");
     assert_eq!(chunk.package_to(), reference_bytes);
 }

@@ -80,8 +80,8 @@ pub struct MeshInput {
 }
 
 /// Result of [`mesh_chunk`]. Tagged with the `coord` it was meshed for so the
-/// main thread can re-resolve the slot through `by_coord` rather than reusing
-/// a possibly-stale `ChunkKey` (see migration plan §2.5).
+/// main thread can re-resolve the chunk through `World::is_loaded` and skip
+/// uploading a mesh whose chunk was unloaded mid-flight.
 pub struct MeshOutput {
     pub coord: Vector3<i32>,
     pub opaque: Vec<ChunkVertex>,

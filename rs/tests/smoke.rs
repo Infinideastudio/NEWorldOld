@@ -23,10 +23,10 @@ use common::ScratchDir;
 fn pump_until_loaded(world: &mut World, target_count: usize) {
     let mut idle = 0u32;
     let mut last_count = 0usize;
-    while world.chunks().len() < target_count && idle < 256 {
+    while world.loaded_count() < target_count && idle < 256 {
         world.tick_chunk_loading_async();
         let _ = world.poll_load_results();
-        let now = world.chunks().len();
+        let now = world.loaded_count();
         if now == last_count {
             idle += 1;
             std::thread::sleep(std::time::Duration::from_millis(2));
@@ -67,7 +67,7 @@ fn round_trip_world_through_set_block_save_reopen() {
         world.set_center(Vec3i::new(0, 0, 0));
         pump_until_loaded(&mut world, target_chunks);
         assert_eq!(
-            world.chunks().len(),
+            world.loaded_count(),
             target_chunks,
             "expected all chunks to load via async pipeline"
         );

@@ -4,9 +4,9 @@
 //! `Arc<BlockRegistry>`. The main thread builds a [`MeshInput`] from the
 //! world's 27-chunk neighborhood and ships it through a `crossbeam-channel`;
 //! the worker runs [`mesh_chunk`] and returns a [`MeshOutput`] tagged with
-//! the original coord. The main thread then re-resolves the coord through
-//! `World::chunk_by_coord` (§2.5) and uploads the result via
-//! `ChunkMesh::upload`.
+//! the original coord. The main thread then re-checks the coord through
+//! `World::is_loaded` (so a chunk that was unloaded mid-flight is dropped)
+//! and uploads the result via `ChunkMesh::upload`.
 //!
 //! ## Why a single worker
 //!
@@ -21,7 +21,7 @@ use std::thread::JoinHandle;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 
 use crate::blocks::BlockRegistry;
-use crate::gfx::mesh::{MeshInput, MeshOutput, mesh_chunk};
+use crate::render::mesh::{MeshInput, MeshOutput, mesh_chunk};
 
 /// A meshing job. The main thread owns the `MeshInput` (an 18×18×18 padded
 /// `BlockData` snapshot) and ships it to the worker via the request channel.
@@ -30,8 +30,8 @@ pub struct MeshRequest {
 }
 
 /// Result of a meshing job. The `MeshOutput` is tagged with the original
-/// coord so the main thread can re-resolve the slot through `by_coord`
-/// (§2.5) rather than reusing a possibly-stale `ChunkKey`.
+/// coord so the main thread can re-check `World::is_loaded` and discard
+/// outputs for chunks that were unloaded while the worker was busy.
 pub struct MeshDone {
     pub output: MeshOutput,
 }
@@ -108,7 +108,7 @@ fn worker_loop(
 mod tests {
     use super::*;
     use crate::blocks::{BlockData, register_base_blocks};
-    use crate::gfx::mesh::{PADDED_VOLUME, padded_index};
+    use crate::render::mesh::{PADDED_VOLUME, padded_index};
     use cgmath::Vector3;
 
     /// Build a `MeshInput` that places one stone block at the chunk-local

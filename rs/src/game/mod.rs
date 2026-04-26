@@ -46,15 +46,16 @@ use cgmath::{InnerSpace, Matrix4, SquareMatrix, Vector3};
 use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, register_base_blocks};
 use crate::chunks::Chunk;
 use crate::commands::{CommandRegistry, register_base_commands};
-use crate::gfx::{
-    Atlases, ChunkMesh, ChunkPipeline, DepthTarget, FrameUniforms, MeshInput, MeshPipeline,
-    PADDED_SIZE, PADDED_VOLUME, ParticleMesh, ParticlePipeline, UniformBuffer, mat4_to_array,
-    padded_index,
-};
 use crate::input::{InputState, Key, MouseButton};
 use crate::items::ItemStack;
 use crate::math::{Vec3d, Vec3i};
 use crate::particles::{Particle, ParticleSystem};
+use crate::render::{
+    DepthTarget, FrameUniforms, MeshInput, MeshPipeline, PADDED_SIZE, PADDED_VOLUME, ParticleMesh,
+    ParticlePipeline, UniformBuffer, mat4_to_array, padded_index,
+};
+use crate::textures::Atlases;
+use crate::worlds::chunk_rendering::{ChunkMesh, ChunkPipeline};
 use crate::worlds::{BlockView, GameMode, World, WorldError};
 
 pub use camera::Camera;
@@ -111,10 +112,9 @@ const SQRT_3_F32: f32 = 1.732_050_8;
 pub struct Game {
     pub world: World,
     pub camera: Camera,
-    /// Per-coord GPU mesh. `HashMap` keyed by chunk coord so dirty-chunk
-    /// rebuilds (`[F2]`) and async-mesh delivery (`[F6]`) can swap one slot in
-    /// O(1), and chunk unload can drop the entry by coord without touching a
-    /// stale `ChunkKey`.
+    /// Per-coord GPU mesh. Keyed by chunk coord so dirty-chunk rebuilds
+    /// (`[F2]`) and async-mesh delivery (`[F6]`) can swap one entry in O(1),
+    /// and chunk unload can drop the entry by coord directly.
     pub chunk_meshes: HashMap<Vec3i, ChunkMesh>,
     pub chunk_pipeline: ChunkPipeline,
     pub depth: DepthTarget,
@@ -437,7 +437,7 @@ impl Game {
             .chunk_meshes
             .keys()
             .copied()
-            .filter(|c| self.world.chunk_by_coord(*c).is_none())
+            .filter(|c| !self.world.is_loaded(*c))
             .collect();
         for c in stale {
             self.chunk_meshes.remove(&c);
@@ -545,7 +545,7 @@ impl Game {
             .dirty_chunks
             .iter()
             .filter(|c| !self.meshing_in_flight.contains(c))
-            .filter(|c| self.world.chunk_by_coord(**c).is_some())
+            .filter(|c| self.world.is_loaded(**c))
             .map(|&c| {
                 let d = c - player_chunk;
                 (d.x * d.x + d.y * d.y + d.z * d.z, c)
@@ -566,8 +566,9 @@ impl Game {
         for done in self.mesh_worker.drain() {
             let coord = done.output.coord;
             self.meshing_in_flight.remove(&coord);
-            // Re-resolve by coord (§2.5). A stale ChunkKey is never used.
-            if self.world.chunk_by_coord(coord).is_none() {
+            // Re-resolve by coord — the chunk may have been unloaded while
+            // its mesh was in flight on the worker.
+            if !self.world.is_loaded(coord) {
                 self.chunk_meshes.remove(&coord);
                 continue;
             }
@@ -702,11 +703,13 @@ impl Game {
             // chunk the command touched. The registry expects a flat
             // `&mut Vec<String>` for output — we drain that into our
             // timestamped chat buffer afterwards.
+            // Only non-empty chunks can be modified — `Chunk::block_mut` is
+            // the only path that flips `modified`, and it allocates the
+            // data array (so the chunk is non-empty by then).
             let before: HashMap<Vec3i, bool> = self
                 .world
-                .chunks()
-                .iter()
-                .map(|(_, c)| (c.coord(), c.modified()))
+                .non_empty_chunks()
+                .map(|(coord, c)| (coord, c.modified()))
                 .collect();
             let mut out = Vec::<String>::new();
             self.commands.execute_on(&line, &mut self.world, &mut out);
@@ -716,9 +719,8 @@ impl Game {
             // Mark every chunk whose modified flag flipped or that's new.
             let after: HashMap<Vec3i, bool> = self
                 .world
-                .chunks()
-                .iter()
-                .map(|(_, c)| (c.coord(), c.modified()))
+                .non_empty_chunks()
+                .map(|(coord, c)| (coord, c.modified()))
                 .collect();
             let mut dirtied: Vec<Vec3i> = Vec::new();
             for (coord, now_mod) in &after {

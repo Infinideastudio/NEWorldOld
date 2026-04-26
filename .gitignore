@@ -208,3 +208,6 @@ FakesAssemblies/
 *.lib
 *.exe
 *.dll
+
+# Claude Code per-project state.
+.claude/

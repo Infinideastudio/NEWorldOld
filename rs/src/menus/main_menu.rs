@@ -11,8 +11,8 @@ use std::sync::{Arc, Mutex};
 
 use egui::Context;
 
-use super::super::action::WorldActionQueue;
-use super::super::screen::{Screen, Transition};
+use crate::ui::action::WorldActionQueue;
+use crate::ui::screen::{Screen, Transition};
 use super::{OptionsScreen, WorldSelectScreen};
 use crate::config::Config;
 
@@ -25,7 +25,7 @@ pub struct TitleScreen {
     config: Arc<Mutex<Config>>,
     /// Where the world list and "create world" screen anchor their disk I/O.
     /// Threaded through so the screens don't have to duplicate the dev-vs-
-    /// release path resolution from [`super::super::action::default_worlds_root`].
+    /// release path resolution from [`crate::ui::action::default_worlds_root`].
     worlds_root: PathBuf,
     /// Mailbox for cross-screen world-lifecycle requests (open / leave /
     /// delete). The world-select screen sends `Enter`; the app drains.

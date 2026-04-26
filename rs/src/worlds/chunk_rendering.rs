@@ -23,11 +23,11 @@
 
 use wgpu::util::DeviceExt;
 
-use crate::gfx::atlases::Atlases;
-use crate::gfx::mesh::{CHUNK_SIZE, ChunkVertex, MeshOutput};
-use crate::gfx::uniforms::{FrameUniforms, UniformBuffer};
+use crate::textures::Atlases;
+use crate::render::mesh::{CHUNK_SIZE, ChunkVertex, MeshOutput};
+use crate::render::uniforms::{FrameUniforms, UniformBuffer};
 
-const SHADER_SRC: &str = include_str!("chunk.wgsl");
+const SHADER_SRC: &str = include_str!("../../shaders/chunk.wgsl");
 
 /// Vertex stride in bytes — must match the WGSL header in `chunk.wgsl`.
 const VERTEX_STRIDE: wgpu::BufferAddress = std::mem::size_of::<ChunkVertex>() as wgpu::BufferAddress;
@@ -431,7 +431,7 @@ pub const fn vertex_stride() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{VERTEX_STRIDE, vertex_stride};
-    use crate::gfx::mesh::ChunkVertex;
+    use crate::render::mesh::ChunkVertex;
 
     #[test]
     fn chunk_vertex_is_28_bytes() {

@@ -11,8 +11,8 @@ use std::sync::Arc;
 
 use egui::Context;
 
-use super::super::action::WorldActionQueue;
-use super::super::screen::{Screen, Transition};
+use crate::ui::action::WorldActionQueue;
+use crate::ui::screen::{Screen, Transition};
 
 /// Create world form state.
 pub struct CreateWorldScreen {

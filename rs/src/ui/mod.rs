@@ -1,28 +1,37 @@
-//! UI layer — immediate-mode UI on top of egui ([E] in `docs/rust_migration.md`).
+//! UI infrastructure — Rust-specific glue around egui.
 //!
-//! Built on egui 0.34. Contains:
-//! * [`screen`] — `Screen` trait + `ScreenStack` push/pop model (E2).
-//! * [`screens`] — menu screens: title, world select, create world, options, game (E3).
-//! * [`hud`] — in-game HUD overlay: crosshair, debug panel, chat bar (E4).
-//! * [`inventory`] — inventory grid overlay (E5).
-//! * [`action`] — out-of-band lifecycle requests from screens up to the App
-//!   (open world, leave to title, delete world). See [`action::WorldAction`].
+//! The C++ build has its own `ui/` package (a custom widget toolkit:
+//! `Button`, `Label`, `Stack`, …); we use egui instead, so the Rust `ui/`
+//! is intentionally smaller and only contains the bits that don't fit
+//! elsewhere:
+//!
+//! * [`screen`] — `Screen` trait + `ScreenStack` push/pop model. Closest
+//!   C++ analog is the modal `Menu::run()` blocking call in `ui/element.ixx`.
+//! * [`hud`] — in-game HUD overlay (crosshair, debug panel, chat bar). C++
+//!   does this inline in `neworld.ixx::draw_hud`.
+//! * [`inventory`] — inventory grid + hotbar. C++ does this inline in
+//!   `neworld.ixx::draw_inventory`.
+//! * [`action`] — `WorldActionQueue`: out-of-band lifecycle requests from
+//!   menu screens up to the App. Rust-specific (C++ uses blocking modal
+//!   menus that mutate global state directly).
+//!
+//! The actual menu screens live next door under [`crate::menus`], mirroring
+//! the C++ `src/menus/` directory.
 
 pub mod action;
 pub mod hud;
 pub mod inventory;
 pub mod screen;
-pub mod screens;
 
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use crate::config::Config;
+use crate::menus::TitleScreen;
 
 pub use action::{WorldAction, WorldActionQueue, default_worlds_root};
 pub use screen::{Screen, ScreenStack, Transition};
-pub use screens::GameScreen;
 
 /// Build the initial screen stack with the title screen at the bottom. The
 /// app starts here on first launch, with no world loaded behind it; clicking
@@ -35,7 +44,7 @@ pub fn initial_screen_stack(
     game_loaded: Arc<AtomicBool>,
 ) -> ScreenStack {
     let mut stack = ScreenStack::new();
-    stack.push(Box::new(screens::TitleScreen::new(
+    stack.push(Box::new(TitleScreen::new(
         config,
         worlds_root,
         actions,

@@ -7,7 +7,7 @@
 //! only enqueues; the worker thread polls the device and runs the PNG
 //! encode.
 //!
-//! Surface usage must include `COPY_SRC` (set in [`crate::gfx::context::Gfx`]
+//! Surface usage must include `COPY_SRC` (set in [`crate::render::context::Gfx`]
 //! at startup); if the platform did not honor that, `capture` returns
 //! [`ScreenshotError::SurfaceNotCopySrc`] and the caller logs + skips.
 //!
@@ -32,7 +32,7 @@ const BYTES_PER_PIXEL: u32 = 4;
 #[derive(Debug, Error)]
 pub enum ScreenshotError {
     /// The surface was not configured with `COPY_SRC` usage. The caller
-    /// should log this once and skip — see [`crate::gfx::context::Gfx::new`]
+    /// should log this once and skip — see [`crate::render::context::Gfx::new`]
     /// for the fallback path that turns this on.
     #[error("surface texture lacks COPY_SRC usage")]
     SurfaceNotCopySrc,

@@ -35,14 +35,15 @@ use winit::window::{CursorGrabMode, Window, WindowAttributes, WindowId};
 
 use crate::config::Config;
 use crate::game::{build_block_registry, Game, SKY_COLOR};
-use crate::gfx::{
-    Atlases, EguiRenderer, FrameUniforms, Gfx, Screenshot, TextRenderer, UniformBuffer,
-};
 use crate::input::{InputState, Key, MouseButton};
 use crate::math::Vec2f;
+use crate::menus::GameScreen;
+use crate::render::{EguiRenderer, FrameUniforms, Gfx, Screenshot, UniformBuffer};
+use crate::text_rendering::TextRenderer;
+use crate::textures::Atlases;
 use crate::ui::{
-    GameScreen, ScreenStack, Transition, WorldAction, WorldActionQueue,
-    default_worlds_root, initial_screen_stack,
+    ScreenStack, Transition, WorldAction, WorldActionQueue, default_worlds_root,
+    initial_screen_stack,
 };
 
 /// Per-window runtime state. Created on the first `resumed` event.

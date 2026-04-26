@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::Context;
 
-use super::super::screen::{Screen, Transition};
+use crate::ui::screen::{Screen, Transition};
 use crate::config::Config;
 
 /// Sliders / pickers for the live [`Config`]. The widgets bind directly to

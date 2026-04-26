@@ -9,7 +9,7 @@
 //! Typical usage per frame:
 //!
 //! ```no_run
-//! # use neworld::gfx::text::{TextRenderer, TextLine};
+//! # use neworld::render::text::{TextRenderer, TextLine};
 //! # fn frame<'a>(
 //! #     device: &wgpu::Device,
 //! #     queue: &wgpu::Queue,
@@ -41,7 +41,7 @@ use glyphon::{
 /// Bytes of the bundled `unicode.ttf`. The C++ build keeps this at
 /// `<repo>/fonts/unicode.ttf`; the Rust port has a copy under
 /// `rs/assets/fonts/unicode.ttf` so `include_bytes!` is path-stable.
-const FONT_BYTES: &[u8] = include_bytes!("../../assets/fonts/unicode.ttf");
+const FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/unicode.ttf");
 
 /// Default metrics — `(font_size, line_height)` in pixels.
 const DEFAULT_METRICS: Metrics = Metrics::new(14.0, 18.0);

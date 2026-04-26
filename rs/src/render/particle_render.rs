@@ -15,7 +15,8 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
-use crate::gfx::{Atlases, FrameUniforms, UniformBuffer};
+use crate::render::{FrameUniforms, UniformBuffer};
+use crate::textures::Atlases;
 use crate::particles::Particle;
 
 // ----------------------------------------------------------------------
@@ -172,7 +173,7 @@ impl ParticleMesh {
 //   Pipeline
 // ----------------------------------------------------------------------
 
-const SHADER_SRC: &str = include_str!("particle.wgsl");
+const SHADER_SRC: &str = include_str!("../../shaders/particle.wgsl");
 
 /// Render pipeline + bind groups for drawing [`ParticleMesh`].
 ///

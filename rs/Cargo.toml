@@ -26,10 +26,8 @@ toml = "0.8"
 bytemuck = { version = "1.18", features = ["derive"] }
 
 # World-layer deps:
-# - slab: O(1) key-addressable arena for chunks (see migration plan §2.2)
 # - sled: pure-Rust K/V store backing TilesStore (replaces LevelDB)
 # - bincode: binary serde format for player save
-slab = "0.4"
 sled = "0.34"
 bincode = { version = "2", features = ["serde"] }
 

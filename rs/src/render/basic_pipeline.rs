@@ -19,9 +19,9 @@ use wgpu::{
     ShaderModuleDescriptor, ShaderSource, TextureFormat, VertexState,
 };
 
-/// Inline WGSL source for the scaffold triangle shader. See
-/// `basic.wgsl` next to this file for the actual shader body.
-const SHADER_SRC: &str = include_str!("basic.wgsl");
+/// Inline WGSL source for the scaffold triangle shader. The actual shader
+/// body lives at `<crate>/shaders/basic.wgsl`.
+const SHADER_SRC: &str = include_str!("../../shaders/basic.wgsl");
 
 /// Owns the GPU pipeline state object for the scaffold triangle.
 ///

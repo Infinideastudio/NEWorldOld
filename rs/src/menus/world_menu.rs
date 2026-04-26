@@ -14,8 +14,8 @@ use std::sync::Arc;
 
 use egui::Context;
 
-use super::super::action::{WorldAction, WorldActionQueue};
-use super::super::screen::{Screen, Transition};
+use crate::ui::action::{WorldAction, WorldActionQueue};
+use crate::ui::screen::{Screen, Transition};
 use super::CreateWorldScreen;
 use crate::worlds::World;
 

@@ -18,10 +18,10 @@ use std::sync::{Arc, Mutex};
 use cgmath::{Matrix4, SquareMatrix};
 use egui::Context;
 
-use super::super::action::{WorldAction, WorldActionQueue};
-use super::super::hud::{Hud, HudFrame};
-use super::super::inventory::Inventory;
-use super::super::screen::Transition;
+use crate::ui::action::{WorldAction, WorldActionQueue};
+use crate::ui::hud::{Hud, HudFrame};
+use crate::ui::inventory::Inventory;
+use crate::ui::screen::Transition;
 use super::OptionsScreen;
 use crate::blocks::{BlockRegistry, Id};
 use crate::config::Config;

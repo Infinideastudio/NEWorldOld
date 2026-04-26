@@ -2,7 +2,7 @@
 //!
 //! A single `Depth32Float` texture sized to match the surface. The wrapper
 //! exposes a `resize` helper that recreates the texture in place when the
-//! window changes; the [`crate::gfx::chunk_render::ChunkPipeline`] is built
+//! window changes; the [`crate::render::chunk_render::ChunkPipeline`] is built
 //! against [`DepthTarget::FORMAT`] so resizing never invalidates the pipeline.
 //!
 //! Reversed-Z (per migration plan §6) is *not* enabled here; the chunk
