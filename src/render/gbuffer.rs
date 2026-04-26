@@ -82,12 +82,14 @@ pub struct GBuffer {
 }
 
 impl GBuffer {
-    /// Diffuse / albedo target. `Rgba32Float` to match the C++ `RGBA32F`
-    /// G-buffer slot — this gives the BRDF (when it lands) headroom for HDR
-    /// sun radiance without losing precision in the meantime. With our
-    /// REPLACE-only blend on this attachment no `Float32Blendable` feature
-    /// flag is required.
-    pub const DIFFUSE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
+    /// Diffuse / albedo target. `Rgba16Float` — half-float HDR with full
+    /// alpha-blending support out-of-the-box (no `Float32Blendable`
+    /// feature required, unlike `Rgba32Float`). Range is more than
+    /// enough headroom for the BRDF's HDR sun radiance, and blendability
+    /// is what enables the translucent G-buffer pass to alpha-blend
+    /// water / ice / leaves into the existing opaque diffuse so the
+    /// composition's SSR sees the surface colour the C++ build does.
+    pub const DIFFUSE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
     /// World-space normal target. Linear `Rgba8Unorm` since normals must NOT
     /// be gamma-encoded; the chunk shader stores `(n + 1) * 0.5`.

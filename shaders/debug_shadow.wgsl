@@ -18,37 +18,62 @@
 // 8 iterations of binary search on the reference value, narrowing in on
 // the actual depth in `[0, 1]`. We do the same.
 //
-// Bind groups (uses the existing composition aux group so we can share
-// the same shadow texture / sampler bindings):
+// Bind groups:
 //   group 0 binding 0 : shadow_texture : texture_depth_2d
 //   group 0 binding 1 : shadow_sampler : sampler_comparison
+//   group 1 binding 0 : DebugShadowUniforms — NDC quad bounds the
+//                       host-side overlay pipeline picks (top-right
+//                       square, square sized by aspect ratio, etc).
 
 @group(0) @binding(0) var shadow_texture: texture_depth_2d;
 @group(0) @binding(1) var shadow_sampler: sampler_comparison;
+
+struct DebugShadowUniforms {
+    // (xi, yi, xa, ya) in NDC: top-left = (xi, yi), bottom-right = (xa, ya).
+    // C++ convention from `neworld.ixx::1034`: yi = 1.0 (top), ya = 0.0
+    // (middle of screen), xi = 1 - h/w, xa = 1.0 — a square in the top-right.
+    quad: vec4<f32>,
+};
+
+@group(1) @binding(0) var<uniform> debug_shadow: DebugShadowUniforms;
 
 struct VsOut {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) uv: vec2<f32>,
 };
 
-// Six-vertex full-screen quad — same trick as the composition shader.
-// The C++ debug pass has the host program upload a quad VBO with custom
-// dimensions; we just present full-screen by default. A future pipeline
-// can shrink the quad by supplying a `Filter`-style transform uniform.
+// Two-triangle quad placed in NDC at `debug_shadow.quad`. Texture-space
+// V is flipped vs the C++ port so the shadow map sampled here looks the
+// same as the C++ debug overlay (GL `t = 0` is at the bottom of the
+// texture; WGSL `t = 0` is at the top).
 @vertex
 fn vs_main(@builtin(vertex_index) vid: u32) -> VsOut {
+    let xi = debug_shadow.quad.x;
+    let yi = debug_shadow.quad.y;
+    let xa = debug_shadow.quad.z;
+    let ya = debug_shadow.quad.w;
+    // CCW winding: bottom-left, bottom-right, top-right then bottom-left,
+    // top-right, top-left. front_face: Ccw on the host pipeline rejects
+    // the alternative.
     let positions = array<vec2<f32>, 6>(
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 1.0, -1.0),
-        vec2<f32>( 1.0,  1.0),
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 1.0,  1.0),
-        vec2<f32>(-1.0,  1.0),
+        vec2<f32>(xi, ya),
+        vec2<f32>(xa, ya),
+        vec2<f32>(xa, yi),
+        vec2<f32>(xi, ya),
+        vec2<f32>(xa, yi),
+        vec2<f32>(xi, yi),
     );
-    let p = positions[vid];
+    let uvs = array<vec2<f32>, 6>(
+        vec2<f32>(0.0, 1.0), // bottom-left
+        vec2<f32>(1.0, 1.0), // bottom-right
+        vec2<f32>(1.0, 0.0), // top-right
+        vec2<f32>(0.0, 1.0),
+        vec2<f32>(1.0, 0.0),
+        vec2<f32>(0.0, 0.0), // top-left
+    );
     var out: VsOut;
-    out.clip_position = vec4<f32>(p, 0.0, 1.0);
-    out.uv = vec2<f32>(p.x * 0.5 + 0.5, 1.0 - (p.y * 0.5 + 0.5));
+    out.clip_position = vec4<f32>(positions[vid], 0.0, 1.0);
+    out.uv = uvs[vid];
     return out;
 }
 

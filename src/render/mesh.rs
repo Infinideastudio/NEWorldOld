@@ -126,6 +126,14 @@ pub struct MeshOptions {
     /// if the flag is on" — the registry stripped down for tests doesn't
     /// have grass; this stays out of the way.
     pub grass_id: Id,
+    /// `Config::advanced_render`. When true, the per-face directional
+    /// dimming (`apply_face_dim`) is skipped — the deferred lighting
+    /// pass derives directional shading from real sun lambert + shadow
+    /// PCF, and the baked dimming would otherwise double-darken side
+    /// faces. When false (basic mode), the dimming is applied so the
+    /// forward chunk shader produces the iconic Minecraft look without
+    /// needing any extra lighting math.
+    pub advanced_render: bool,
 }
 
 impl Default for MeshOptions {
@@ -135,6 +143,7 @@ impl Default for MeshOptions {
             merge_face: true,
             nice_grass: true,
             grass_id: Id(0),
+            advanced_render: false,
         }
     }
 }
@@ -423,6 +432,7 @@ fn corner_lights(
     pcy: i32,
     pcz: i32,
     face_id: usize,
+    apply_dim: bool,
 ) -> [u8; 4] {
     let off = FACE_OFFSETS[face_id];
     let ix = pcx + off[0];
@@ -456,9 +466,16 @@ fn corner_lights(
         }
         // Average the 4-cell smooth-light tap, then apply the basic-mode
         // per-face dimming (matches the C++ `col / 4` followed by
-        // `col * N / 10` for ±X / ±Z faces).
+        // `col * N / 10` for ±X / ±Z faces). Skipped under
+        // advanced rendering — the deferred composition pass derives
+        // directional shading from real sun lambert + shadow PCF, and
+        // baked face dimming would double-darken side faces.
         let avg = (sum / 4) as u8;
-        out[c] = apply_face_dim(avg, face_id);
+        out[c] = if apply_dim {
+            apply_face_dim(avg, face_id)
+        } else {
+            avg
+        };
     }
     out
 }
@@ -592,6 +609,7 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
 
                     let tex_layer = u32::from(cell_info.face(tex_index).0);
                     let translucent_cell = cell_info.translucent;
+                    let apply_dim = !opts.advanced_render;
                     let lights = if opts.smooth_lighting {
                         corner_lights(
                             &input.padded,
@@ -600,6 +618,7 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                             y + 1,
                             z + 1,
                             face_id,
+                            apply_dim,
                         )
                     } else {
                         // Flat lighting: every corner gets the in-front
@@ -612,6 +631,7 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                             y + 1,
                             z + 1,
                             face_id,
+                            apply_dim,
                         );
                         [flat; 4]
                     };
@@ -668,6 +688,7 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
 /// flat-lighting fallback when `MeshOptions::smooth_lighting` is off.
 /// Applies the same per-face dimming as [`corner_lights`] so basic-mode
 /// directional shading is consistent across smooth / flat lighting.
+/// `apply_dim = false` skips the dimming for the advanced-rendering path.
 fn flat_face_light(
     padded: &[BlockData; PADDED_VOLUME],
     registry: &BlockRegistry,
@@ -675,6 +696,7 @@ fn flat_face_light(
     pcy: i32,
     pcz: i32,
     face_id: usize,
+    apply_dim: bool,
 ) -> u8 {
     let off = FACE_OFFSETS[face_id];
     let ix = pcx + off[0];
@@ -682,7 +704,11 @@ fn flat_face_light(
     let iz = pcz + off[2];
     let in_front = padded_at(padded, ix, iy, iz);
     let raw = cell_color(in_front, registry.get(in_front.id));
-    apply_face_dim(raw, face_id)
+    if apply_dim {
+        apply_face_dim(raw, face_id)
+    } else {
+        raw
+    }
 }
 
 /// Emit the 6 vertices of `run` (after extension along the merge axis) into

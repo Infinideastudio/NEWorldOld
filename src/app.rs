@@ -195,7 +195,24 @@ impl App {
                 merge_face: cfg.merge_face,
                 nice_grass: cfg.nice_grass,
                 grass_id: state.base_blocks.grass,
+                advanced_render: cfg.advanced_render,
             });
+            // Shadow toggle + resolution + composition feature flags.
+            // Resizes the shadow map (and rebuilds composition's aux
+            // bind group) when the user changes the shader-options menu
+            // picker; rebuilds the composition pipeline only when the
+            // feature flags change (override-constants force naga to
+            // re-DCE the disabled branches).
+            game.apply_shadow_config(
+                state.gfx.device(),
+                &state.atlases,
+                cfg.advanced_render,
+                cfg.shadow_res,
+                cfg.max_shadow_distance,
+                cfg.soft_shadow,
+                cfg.volumetric_clouds,
+                cfg.ambient_occlusion,
+            );
         }
 
         // Live language switch. If the user picked a different language in
@@ -620,7 +637,13 @@ impl App {
 
         // ---------- world render pass (clears to sky) ----------
         if let Some(game) = state.game.as_mut() {
-            game.record_world_pass(state.gfx.device(), &mut encoder, &view);
+            game.record_world_pass(
+                state.gfx.device(),
+                state.gfx.queue(),
+                &mut encoder,
+                &view,
+                surface_size,
+            );
         } else {
             // No game — clear the surface to the sky color so the menu sits
             // on a neutral background instead of garbage from the previous

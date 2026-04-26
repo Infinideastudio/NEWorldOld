@@ -440,6 +440,13 @@ impl World {
     /// Solid hitboxes intersecting `box_`. Used by player physics. Port of
     /// C++ `World::hitboxes` — slightly enlarged scan window matches the C++
     /// `lround(box.min) - 2 ..= lround(box.max) + 2` bounds.
+    ///
+    /// Unloaded chunks that overlap the scan window contribute one big
+    /// chunk-sized hitbox each, treated as fully solid. Without this
+    /// guard, a fast-falling player whose simulation outruns the async
+    /// chunk loader would tunnel through the chunk-aligned grid into
+    /// the void; the chunk-sized hitbox keeps physics safe until the
+    /// real chunk lands and the per-cell probe takes over.
     #[must_use]
     pub fn hitboxes(&self, box_: Aabb3d) -> Vec<Aabb3d> {
         let mut res = Vec::new();
@@ -449,10 +456,51 @@ impl World {
         let hi_y = box_.max.y.round() as i32 + 2;
         let lo_z = box_.min.z.round() as i32 - 2;
         let hi_z = box_.max.z.round() as i32 + 2;
+
+        // First pass — scan every chunk the AABB overlaps. For each
+        // unloaded chunk, emit a single chunk-sized hitbox; for each
+        // loaded chunk, fall back to per-cell probing inside it.
+        let cc_lo = chunk_coord(Vec3i::new(lo_x, lo_y, lo_z));
+        let cc_hi = chunk_coord(Vec3i::new(hi_x, hi_y, hi_z));
+        let s = Chunk::SIZE;
+        for cz in cc_lo.z..=cc_hi.z {
+            for cy in cc_lo.y..=cc_hi.y {
+                for cx in cc_lo.x..=cc_hi.x {
+                    let ccoord = Vec3i::new(cx, cy, cz);
+                    if self.is_loaded(ccoord) {
+                        continue;
+                    }
+                    // Emit one solid chunk-sized AABB for the unloaded
+                    // chunk. The per-cell loop below skips this chunk's
+                    // cells entirely, so we don't double-emit.
+                    let origin_x = cx * s;
+                    let origin_y = cy * s;
+                    let origin_z = cz * s;
+                    let lo = Vec3d::new(
+                        f64::from(origin_x),
+                        f64::from(origin_y),
+                        f64::from(origin_z),
+                    );
+                    let hi = Vec3d::new(
+                        f64::from(origin_x + s),
+                        f64::from(origin_y + s),
+                        f64::from(origin_z + s),
+                    );
+                    res.push(Aabb3d::new(lo, hi));
+                }
+            }
+        }
+
         for a in lo_x..=hi_x {
             for b in lo_y..=hi_y {
                 for c in lo_z..=hi_z {
                     let coord = Vec3i::new(a, b, c);
+                    // Skip cells that belong to an unloaded chunk —
+                    // they're already covered by the chunk-sized
+                    // hitbox above.
+                    if !self.is_loaded(chunk_coord(coord)) {
+                        continue;
+                    }
                     let id = self.block_or_air(coord).id;
                     let info = self.registry.get(id);
                     if info.solid {

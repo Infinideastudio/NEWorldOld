@@ -70,8 +70,17 @@ struct VsOut {
 };
 
 // `shadow_params.z` holds the fisheye factor (see C++ `u_shadow_fisheye_factor`).
+//
+// The fisheye anchor is the player's projected clip-xy — i.e. the centre
+// of the shadow viewport. C++ gets this for free because its vertices are
+// camera-relative (`u_translation = chunk - camera` is pushed per-draw),
+// so `shadow_mvp * (0,0,0,1)` IS the player's clip-space position. The
+// Rust port runs against world-space vertices, so projecting world-origin
+// would land far outside `[-1, 1]` whenever the player isn't near the
+// world origin — and the warp would push every nearby chunk vertex
+// off-screen. Project `camera_pos` instead to recover C++ parity.
 fn fisheye_origin() -> vec2<f32> {
-    let p = frame.shadow_view_proj * vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    let p = frame.shadow_view_proj * vec4<f32>(frame.camera_pos.xyz, 1.0);
     return p.xy / p.w;
 }
 

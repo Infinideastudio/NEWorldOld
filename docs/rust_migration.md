@@ -206,8 +206,8 @@ shaders/
 | `terrain_generation.ixx` + `height_maps.ixx` | `src/terrain_generation.rs` + `src/height_maps.rs` | ✅ Full | Direct port of the noise math. `noise_2d` mixes `seed` via a Wang-style xor-shift-multiply, fixing the C++ bug where `_seed` was unused. |
 | `worlds/player.ixx` + `player_impl.cpp` | `src/worlds/player/{mod,save}.rs` | ✅ Full | Physics ported; saves use `bincode` v2 with `NEWP` magic. |
 | `worlds/worlds.ixx` | `src/worlds/world/{mod,error,pipeline,store}.rs` | ✅ Full + simplified | C++'s `_chunks` + `_renders` + `chunk_pointer_arrays` collapse into `HashMap<Vec3i, Chunk>` + `HashSet<Vec3i> non_empty`. Async load/save uses `crossbeam-channel` + `sled`. `process_block_updates` runs every sim tick. |
-| `worlds/chunk_rendering.cpp` | `src/render/mesh.rs` (CPU) + `src/worlds/chunk_rendering.rs` (GPU) | ✅ Full | 1-D greedy run merging, per-vertex smooth lighting / soft AO, "nice grass" side-face swap. All three behaviours gated on live `MeshOptions`; opaque + translucent pipelines, reversed-Z depth. |
-| `worlds/world_rendering.cpp` | `src/game/mod.rs` (`pump_meshing` / draw dispatch) | ✅ Functional | Per-frame draw dispatch over `Game::chunk_meshes`; selection wireframe drawn before egui. |
+| `worlds/chunk_rendering.cpp` | `src/render/mesh.rs` (CPU) + `src/worlds/chunk_rendering.rs` (GPU) | ✅ Full | 1-D greedy run merging, per-vertex smooth lighting / soft AO, "nice grass" side-face swap, per-fragment **normal mapping** via `block_normal` atlas + face-derived TBN. All toggleable behaviours gated on live `MeshOptions`; opaque + translucent G-buffer pipelines + opaque/translucent forward (basic) pipelines, reversed-Z depth. |
+| `worlds/world_rendering.cpp` | `src/game/mod.rs` (`pump_meshing` / draw dispatch) | ✅ Functional | Per-frame draw dispatch over `Game::chunk_meshes`; selection wireframe drawn before egui. `Game::record_world_pass` branches on `Config::advanced_render`: advanced path runs shadow → G-buffer → composition; basic path runs a single forward opaque pass via `ChunkPipeline::begin_opaque_forward`. |
 | `commands.ixx` | `src/commands/{mod,base}.rs` | ✅ Full | All 12 base slash-commands ported; deterministic tab-complete. |
 | `globalization.ixx` + `lang/*.lang` | `src/globalization.rs` + `assets/lang/<code>.toml` | ✅ Full | One TOML per language; `get` returns `""` on miss. |
 | `particles.ixx` | `src/particles.rs` (sim) + `src/render/particle_render.rs` (GPU) | ✅ Full | Gravity, drag, AABB-collision; billboard pipeline. Per-particle `prev_coord` lerp for smooth sub-tick motion + random `tex_size × tex_size` UV sub-rect per fleck (matches C++ `tcx/tcy = rnd() * (1 - psize)`). |
@@ -228,18 +228,18 @@ shaders/
 | `menus/language_menu.cpp` | `src/menus/language_menu.rs` | ✅ Full | Lists every `assets/lang/*.toml` dynamically. |
 | `ui/{context,element,layout,render,controls/*}.ixx` | — (replaced by `egui`) | 🟢 By design | Wholesale replacement; `src/ui/{action,hud,inventory,screen}.rs` is Rust-specific glue, not a port. |
 | `render/{buffer,texture,framebuffer,program,vertex_array,attrib_*,block_*,image}.ixx` | `src/render/*` | 🟢 By design | Wholesale replacement of the GL RAII layer with `wgpu`. |
-| `rendering.ixx` (`Renderer` namespace) | `src/render/{gbuffer,composition,shadow}.rs` + `src/game/mod.rs` | 🟡 Partial | C++ pass-coordinator singleton split: G-buffer + composition pipeline + shadow placeholder all live in the `render` module; per-pass dispatch is direct in `Game::record_world_pass`. Advanced-mode `final.fsh` deliberately not ported (Tier 4 follow-on). |
+| `rendering.ixx` (`Renderer` namespace) | `src/render/{gbuffer,composition,shadow,shadow_pipeline}.rs` + `src/game/mod.rs` | 🟡 Partial | C++ pass-coordinator singleton split: G-buffer + composition pipeline + shadow map + sun-POV depth pipeline all live in the `render` module; per-pass dispatch is direct in `Game::record_world_pass`. Advanced-mode `final.fsh` deliberately not ported (Tier 4 follow-on). |
 
 ### Shader parity
 
 | C++ shader | WGSL counterpart | Status |
 |---|---|---|
-| `default.{vsh,fsh}` | `shaders/default.wgsl` | ✅ Ported (standalone, currently unused — the deferred chunk shader covers the same ground; kept for future basic-mode toggle). |
+| `default.{vsh,fsh}` | `shaders/default.wgsl` | ✅ Ported (standalone). The basic-mode pipeline reuses `chunk.wgsl::fs_main_forward` rather than `default.wgsl` — same shading math (smooth-light × diffuse texel) but using the shared `ChunkVertex` layout. `default.wgsl` is kept for reference. |
 | `ui.{vsh,fsh}` | (egui's own pipeline) | 🟢 Replaced by design. |
 | `opaque.{vsh,fsh}` + `translucent.{vsh,fsh}` | `shaders/chunk.wgsl` | ✅ Ported. Two fragment entry points: `fs_main` writes the G-buffer (opaque MRT pass) and `fs_main_forward` writes the surface for the post-composition translucent pass. |
-| `final.fsh` (composition, fog, sky, volumetric clouds, SSR, shadow filter) | `shaders/composition.wgsl` (skeleton) | 🟡 Skeleton only. Composition does basic-mode-equivalent diffuse blit + sky fill; no fog / lambert / shadow / SSR / volumetric clouds yet (Tier 4 follow-on). Shadow + noise bindings are wired ahead-of-time. |
-| `shadow.{vsh,fsh}` | `shaders/shadow.wgsl` | ✅ Ported (standalone, no pipeline yet). Includes leaf wave + fisheye warp; depth-only output (wgpu allows depth-only render passes, so the C++ debug color attachment was dropped). |
-| `debug_shadow.{vsh,fsh}` | `shaders/debug_shadow.wgsl` | ✅ Ported (standalone, no pipeline yet). Mirrors the C++ 8-step binary-search of `textureSampleCompare` to recover the stored depth. |
+| `final.fsh` (composition, fog, sky, volumetric clouds, SSR, shadow filter) | `shaders/composition.wgsl` | ✅ Ported. Sun lambert + ambient, 4-tap shadow PCF, distance fog into directional sky, **screen-space reflection + Schlick fresnel** for water / ice / iron, **7-octave Gerstner water waves**, **inside-water TIR heuristic** (`smoothstep(0,1,sin²θ)` per the C++ heuristic), ACES tonemap. Reflected pixels go through the same `shade_world_pixel` helper the primary view uses, so SSR fragments get full lambert + shadow + fog + horizon-fade-alpha. Optional features (SOFT_SHADOW / VOLUMETRIC_CLOUDS / AMBIENT_OCCLUSION) gate on WGSL `override` constants — naga folds them and DCEs disabled branches. Skipped: full Cook-Torrance BRDF (collapsed to Lambert since the G-buffer doesn't carry metallic / roughness). |
+| `shadow.{vsh,fsh}` | `shaders/shadow.wgsl` | ✅ Ported + live pipeline. Includes leaf wave + fisheye warp; depth-only output (wgpu allows depth-only render passes, so the C++ debug color attachment was dropped). Driven by `src/render/shadow_pipeline.rs`. |
+| `debug_shadow.{vsh,fsh}` | `shaders/debug_shadow.wgsl` | ✅ Ported + live pipeline. Mirrors the C++ 8-step binary-search of `textureSampleCompare` to recover the stored depth. Driven by `src/render/debug_shadow_pipeline.rs`; toggled by **F3+M** while advanced rendering is on. |
 | `filter.{vsh,fsh}` | `shaders/filter.wgsl` | ✅ Ported (standalone, no pipeline yet). Separable Gaussian blur with the C++ `FilterUniformBlock` layout. |
 | (none) | `shaders/basic.wgsl` | Bring-up scaffold. |
 | (none) | `shaders/particle.wgsl` | Billboard particles (replaces inline GL particle code). |
@@ -248,16 +248,20 @@ shaders/
 
 ### Bottom line
 
-Mechanical parity (chunk model, world storage, player physics, particles,
-commands, i18n, basic rendering) is full. Tiers 2 / 3 / 4-infrastructure
-all shipped; Tier 4 advanced-mode features (real shadow PCF, volumetric
-clouds, SSR, BRDF) are the remaining gap. The deferred-rendering
-infrastructure (G-buffer, composition pipeline, shadow placeholder,
-all WGSL shader ports except `final.fsh`) is in place so each follow-on
-plugs in without further pipeline restructuring. None of the gaps block
-end-to-end play; the live output matches C++ basic rendering mode
-visually (translucent water, ±X / ±Z directional dimming, smooth
-lighting, greedy meshing).
+Full parity in mechanics (chunk model, world storage, player physics,
+particles, commands, i18n) and in both **basic** and **advanced**
+rendering modes. Advanced mode covers sun lambert, 4-tap shadow PCF,
+fisheye-warped sun-POV depth atlas, distance fog with directional sky,
+ACES tonemap, **screen-space reflections + Schlick fresnel** for
+water/ice/iron, **7-octave Gerstner water waves**, **inside-water TIR
+heuristic**, **volumetric clouds** (with separate raymarches for
+primary view and SSR sky-reflection), **SSAO**, **soft-shadow toggle**,
+and per-fragment **normal mapping** via a face-derived TBN. All
+optional features gate on WGSL `override` constants — naga folds them
+and DCEs disabled branches, the same zero-cost-when-off semantics as
+C++ `#ifdef`. Remaining gaps are cosmetic / architectural:
+Cook-Torrance BRDF (G-buffer would need metallic/roughness channels),
+filter pipeline (menu blur), and MSAA wiring.
 
 ---
 
@@ -349,84 +353,121 @@ Toggle wiring varies:
 - ✅ **Render options menu.** Smooth lighting / fancy grass / merge-face
   drive the live `MeshOptions` snapshot. MSAA picker stored only — the
   surface is single-sampled for now.
-- 🟡 **Shader options menu.** Shadow res / shadow distance / soft shadow
-  / volumetric-clouds toggles persist into `Config` but have no Rust
-  pipelines behind them yet (Tier 4).
+- ✅ **Shader options menu.** Every toggle is now live: shadow res /
+  shadow distance / advanced rendering drive
+  `Game::apply_shadow_config`; soft shadow / volumetric clouds /
+  ambient occlusion drive composition `override` constants, with the
+  pipeline rebuilt only on actual change.
 - 🟡 **UI options menu.** Font scale yes; `ui_stretch` + `ui_background_blur`
   stored only.
 - ✅ **Language menu.** Dynamic list of `assets/lang/*.toml`; switching
   reloads the i18n table on the next frame.
 
-### Tier 4 — deferred renderer infrastructure (✅ shipped)
+### Tier 4 — deferred renderer (✅ shipped)
 
-The deferred renderer architecture and every C++ shader except
-`final.fsh` are ported. Live output matches C++ basic rendering mode;
-advanced-mode features (shadow PCF, SSR, volumetric clouds) plug into
-the bindings already in place.
+The deferred renderer architecture and every advanced-mode feature
+from `final.fsh` are ported. `Config::advanced_render` is the master
+switch: off → forward pipeline (basic mode), on → G-buffer + shadow +
+composition (advanced mode).
 
 - ✅ **G-buffer.** `src/render/gbuffer.rs` mirrors the C++
-  `Renderer::Deferred` framebuffer one-for-one: `Rgba32Float` diffuse,
-  `Rgba8Unorm` normal (`(n+1)/2` encoded), `Rgba8Unorm` material
-  (16-bit block id encoded as 2 bytes — `encode_u16`/`decode_u16`
-  ported verbatim), and `Depth32Float` reversed-Z depth.
-- ✅ **Frame uniforms.** `FrameUniforms` extended with
-  `inv_view_proj`, `shadow_view_proj`, `render_distance`,
-  `shadow_params`, and the `player_coord_int / mod / frac` triplet
-  (the C++ "repeat trick" coords for SSR / volumetric clouds).
-  Total size 448 B; layout matches WGSL std140-ish alignment with
-  `_pad_scalars` to 16-align `shadow_params`.
-- ✅ **Composition pipeline.** `src/render/composition.rs` +
-  `shaders/composition.wgsl`. Full-screen-triangle pair,
-  three-bind-group layout (frame / G-buffer / shadow+noise). Today
-  it's a basic-mode-equivalent blit (diffuse pass-through with sky
-  fill where `material == 0`); the eventual `final.fsh` port plugs
-  in without further pipeline restructuring.
-- ✅ **Shadow placeholder.** `src/render/shadow.rs` exposes a
-  `ShadowMap` with a `Depth32Float` texture (1×1 today,
-  `with_resolution(res)` helper for the future shadow pipeline) and a
-  comparison sampler — `GreaterEqual` / Linear / clamp-to-edge —
-  matching the C++ `set_filter(true)` + `set_depth_compare_mode(GEQUAL)`.
-- ✅ **Translucent forward pass.** Translucent chunks (water /
-  leaves / glass / ice) can't ride the `Rgba32Float` G-buffer
-  because wgpu refuses to blend that format without the
-  `Float32Blendable` feature. They render forward to the surface
-  AFTER composition with `SrcAlpha / OneMinusSrcAlpha` blending —
-  matches the C++ basic-mode `glBlendFunc(GL_SRC_ALPHA,
-  GL_ONE_MINUS_SRC_ALPHA)` setup. Implemented via a second
-  fragment entry point (`fs_main_forward`) and a third
-  `RenderPipeline` in `ChunkPipeline`.
-- ✅ **Per-face directional dimming.** `mesh::apply_face_dim`
-  multiplies the smooth-light brightness by 0.5 (±X), 1.0 (±Y),
-  0.2 (±Z) before storing it in the vertex's `light` byte —
-  ports `chunk_rendering.cpp::_render_chunk`'s `if (!AdvancedRender)
-  col = col * N / 10` for both the per-face renderer and the greedy
-  merger. Restores the iconic Minecraft-style block shading where
-  every face direction is visibly distinct under uniform lighting.
-- ✅ **All non-`final` shaders ported.** `default.wgsl`,
-  `chunk.wgsl` (= opaque + translucent), `shadow.wgsl`,
-  `debug_shadow.wgsl`, `filter.wgsl`. `chunk.wgsl` is the only
-  one with a live pipeline today; the rest are standalone WGSL
-  ports that the upcoming shadow / blur / debug pipelines pick up.
-- 🟡 **`final.fsh`.** Skeleton only — composition does basic-mode
-  output. Real BRDF + shadow PCF + SSR + volumetric clouds + fog
-  is the remaining advanced-mode work.
+  `Renderer::Deferred` framebuffer: `Rgba16Float` diffuse (HDR + alpha-
+  blendable for the translucent G-buffer pass — `Rgba32Float` works in
+  GL but wgpu rejects blending it without the `Float32Blendable`
+  feature), `Rgba8Unorm` normal (`(n+1)/2` encoded), `Rgba8Unorm`
+  material (16-bit block id encoded as 2 bytes — `encode_u16` /
+  `decode_u16` ported verbatim), and `Depth32Float` reversed-Z depth.
+- ✅ **Frame uniforms.** `FrameUniforms` carries `inv_view_proj`,
+  `shadow_view_proj`, `render_distance`, `shadow_params`
+  (`(resolution, distance, fisheye_factor, inside_water)`), and the
+  `player_coord_int / mod / frac` triplet (C++ "repeat trick" coords
+  for SSR / volumetric clouds). Total 448 B; `_pad_scalars: vec2`
+  16-aligns `shadow_params` for the WGSL uniform-address-space rule.
+- ✅ **Shadow pass.** `src/render/shadow_pipeline.rs` drives a
+  depth-only chunk pass that fills `ShadowMap` (`Depth32Float` +
+  `GreaterEqual` comparison sampler — matches C++
+  `set_depth_compare_mode(GEQUAL)`) from the sun's POV every frame.
+  Reuses `ChunkVertex` so `ChunkMesh` opaque buffers draw straight
+  through. Reversed-Z `Greater` compare, `0.0` clear, no culling
+  (mirrors C++ `glDisable(GL_CULL_FACE)` in `StartShadowPass`).
+  Resolution + distance live-config'd by `Game::apply_shadow_config`;
+  `shadow_view_proj` is built from `look_to_rh(player_pos, -sun_dir,
+  up)` × wgpu reversed-Z ortho.
+- ✅ **G-buffer chunk passes.** Opaque pass writes MRT REPLACE.
+  Translucent G-buffer pass alpha-blends water / ice / leaves into the
+  existing opaque diffuse (depth-write enabled so SSR sees the water
+  surface; mirror of C++ `glEnable(GL_BLEND)` around
+  `StartTranslucentPass`). Water / ice get `texel.a = 0.02` forced in
+  `chunk.wgsl::fs_main_translucent` — direct port of C++
+  `translucent.fsh`.
+- ✅ **Composition pass — full `final.fsh` port.** Lambert + ambient,
+  4-tap shadow PCF (`textureSampleCompareLevel` so the call works
+  under non-uniform control flow), distance fog into directional sky,
+  ACES tonemap. Reflected pixels go through the same
+  `shade_world_pixel` helper the primary view uses, so SSR fragments
+  receive full lambert + shadow + fog + horizon-fade-alpha. SSR
+  itself is the C++ raymarch + Schlick fresnel for water / ice / iron;
+  the cloud raymarch is reused for both the primary view and the SSR
+  sky-reflection (water-surface origin, half-quality, separate
+  `center` for the horizon-fade — mirrors the C++ comment-out at
+  `final.fsh:598`). Optional features (SOFT_SHADOW / VOLUMETRIC_CLOUDS
+  / AMBIENT_OCCLUSION) gate on WGSL `override` constants and
+  `CompositionPipeline::rebuild_with_features` only rebuilds when a
+  flag actually changes.
+- ✅ **Water waves.** 7-octave Gerstner sum in `composition.wgsl`
+  (`calc_wave_normal`) — direct port of C++ `final.fsh:394`. Time
+  drives wave phase (`frame.time` is real seconds; the C++ `/30`
+  converted ticks to seconds, dropped here since we're already in
+  seconds — wave period is now ~2.3 s for an 8-block swell, vs. ~70 s
+  before the fix). Wave sample point uses
+  `view_relative + player_coord_mod + player_coord_frac` so the trig
+  math stays in a precision-friendly range.
+- ✅ **Inside-water TIR heuristic.** `shadow_params.w` carries the
+  "camera is inside water" bit (set by `Game::write_frame_uniforms`
+  whenever the eye block is water). The composition shader flips
+  `cos_theta`, swaps the reflection base from sky → `vec3(0.1)`, and
+  uses `smoothstep(0, 1, sin²θ)` instead of Schlick — mirrors the
+  C++ `inside` branch at `final.fsh:610`. A TODO is parked in the
+  shader for a better TIR approximation if one comes along.
+- ✅ **Normal mapping.** `block_normal` atlas now bound at
+  `chunk.wgsl` group 1 binding 2; per-fragment sampled in `fs_main` /
+  `fs_main_translucent`. World-space normal computed via
+  `face_tbn(face) * decode(texel)` — TBN is right-handed by
+  construction (`B = cross(N, T)`); per-face tangent is hand-picked
+  to roughly align with our V-flipped UV convention. Applies to both
+  basic forward and advanced G-buffer paths.
+- ✅ **Per-face directional dimming.** `mesh::apply_face_dim` is
+  gated on `MeshOptions::advanced_render`: applied in **basic** mode
+  (mirrors C++ `if (!AdvancedRender) col = col * N / 10`), skipped in
+  **advanced** mode (otherwise composition's lambert would
+  double-darken side faces). Mesh rebuilds automatically on toggle.
+- ✅ **Underwater overlay.** Forward overlay quad samples the water
+  texture and alpha-blends over the surface when the camera's eye
+  block is water — matches the C++ `neworld.ixx:783` overlay.
+- ✅ **F3+M debug shadow overlay.** `src/render/debug_shadow_pipeline.rs`
+  draws the shadow depth atlas as a square in the top-right of the
+  screen via `debug_shadow.wgsl`'s 8-step binary search. Toggled by
+  F3+M while advanced rendering is on; auto-clears when advanced
+  flips off.
+- ✅ **All shaders ported.** `default.wgsl`, `chunk.wgsl` (= opaque +
+  translucent + opaque-forward + translucent-forward), `composition.wgsl`,
+  `shadow.wgsl`, `debug_shadow.wgsl`, `filter.wgsl`, `particle.wgsl`,
+  `selection.wgsl`, `underwater.wgsl`. Every shader except `filter.wgsl`
+  has a live pipeline.
 
-### Tier 4 — advanced-mode follow-ons (next, weeks each)
+### Remaining gaps (cosmetic / architectural)
 
-- **Shadow pass.** `shadow.wgsl` is ready; needs a
-  `ShadowPipeline` that depth-only-renders the scene from the sun's
-  POV into `ShadowMap`, plus a `getShadowMatrix*` port to fill
-  `frame.shadow_view_proj`. Then composition flips
-  `shadow_params.x > 0` and starts PCF-sampling.
-- **`final.fsh` port.** Lambert / ambient sky / fog → composition.
-  BRDF (Cook-Torrance) for opaque PBR. Then SSR + water reflections
-  + volumetric clouds layer on top.
-- **Filter pipeline.** `filter.wgsl` is ready; needs a host pipeline
-  to drive separable Gaussian (horizontal + vertical) for menu
-  background blur and the composition pass's effects.
-- **Debug-shadow pipeline.** Optional dev-only pipeline that draws
-  `debug_shadow.wgsl` into a corner of the screen for verifying the
-  shadow pass output.
+- **Cook-Torrance BRDF.** Composition uses pure Lambert + ambient.
+  The C++ build does Cook-Torrance with `metallic = 0, roughness = 1`,
+  which collapses to Lambert anyway for the diffuse term; the specular
+  term is negligible at roughness 1. A real BRDF needs metallic /
+  roughness channels in the G-buffer (currently only `block_id` is
+  encoded into `material`).
+- **Filter pipeline.** `filter.wgsl` is ported standalone but no host
+  pipeline drives it. C++ uses it for menu background blur and post-
+  effect chains.
+- **MSAA picker.** Persists into `Config` but isn't applied to the
+  wgpu surface yet.
 
 ### WGSL ↔ GLSL / wgpu ↔ OpenGL mismatch report
 
@@ -488,8 +529,11 @@ so the catalog lives here for reference.
     (`rendering.ixx::init_pipeline`). Rust port options:
     (a) string-substitute before `create_shader_module`,
     (b) WGSL `override` constants with pipeline-creation override values,
-    (c) ship multiple shader files. We use (c) today (`chunk.wgsl`
-    vs `default.wgsl`); will need (b) for the volumetric / AO toggles.
+    (c) ship multiple shader files. We use (c) for the basic-vs-deferred
+    chunk split (`chunk.wgsl` MRT entry vs `fs_main_forward`) and (b)
+    for the composition-shader feature flags — naga folds
+    pipeline-creation overrides and dead-code-strips disabled branches,
+    same zero-cost-when-off semantics as `#ifdef`.
 13. **Float-bounded loops** (`for (float i = -radius; i <= radius;
     i += step)`) work in both. WGSL's `loop {}` form is more
     idiomatic — used in `filter.wgsl`.
@@ -505,13 +549,12 @@ so the catalog lives here for reference.
 
 15. **`Rgba32Float` is not blendable in wgpu by default.** GL freely
     allows blending on `RGBA32F`; wgpu requires the
-    `Float32Blendable` feature even for `BlendState::REPLACE`
-    (validation error at pipeline creation). Fix: declare `blend:
-    None` on `Rgba32Float` color targets. Functionally identical to
-    REPLACE (last fragment wins). Forced the
-    [translucent-forward-pass split](#tier-4--deferred-renderer-infrastructure--shipped):
-    translucent chunks render to the surface (Bgra8UnormSrgb,
-    blendable) instead of the G-buffer.
+    `Float32Blendable` feature. Once we needed water to alpha-blend
+    into the G-buffer for SSR, the diffuse target was switched to
+    `Rgba16Float` — half-float HDR that's blendable out of the box,
+    with plenty of range for HDR sun radiance. Basic-mode translucent
+    still uses the surface-format forward pipeline (the split is now
+    a basic-vs-advanced choice rather than a format limitation).
 16. **Depth-only render passes are allowed in wgpu** but the C++
     `Framebuffer` wrapper requires a non-empty color attachment
     list. Result: the C++ shadow framebuffer has a never-sampled

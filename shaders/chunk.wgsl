@@ -55,6 +55,11 @@ struct FrameUniforms {
 @group(0) @binding(0) var<uniform> frame: FrameUniforms;
 @group(1) @binding(0) var block_diffuse: texture_2d_array<f32>;
 @group(1) @binding(1) var block_sampler: sampler;
+// Per-block normal map atlas — same layer indexing and UV layout as
+// `block_diffuse`. Texel encoding: `(r, g, b) = (n + 1) * 0.5` in the
+// face's tangent space, with `(0.5, 0.5, 1.0)` meaning "flat" (use
+// face normal verbatim).
+@group(1) @binding(2) var block_normal: texture_2d_array<f32>;
 
 struct VsIn {
     @location(0) position: vec3<f32>,
@@ -107,6 +112,48 @@ fn face_normal(face: u32) -> vec3<f32> {
         case 5u: { return vec3<f32>( 0.0,  0.0, -1.0); }
         default: { return vec3<f32>( 0.0,  1.0,  0.0); }
     }
+}
+
+// Tangent-bitangent-normal frame for normal-map sampling. Constructed
+// to be right-handed (`cross(T, B) = N`) so the encoded normal in
+// tangent space lifts to the correct world-space orientation.
+//
+// The tangent is hand-picked so the normal map's `r` axis roughly
+// aligns with the face's U direction in the C++/Rust `FACE_UVS` table.
+// Exact U/V alignment varies face-to-face because our V-flipped UV
+// convention (WGSL +Y down) doesn't match the C++ GL convention; for
+// most blocks the normal map is roughly symmetric so the slight
+// rotation is invisible. The N component (third axis) IS exact.
+fn face_tbn(face: u32, n: vec3<f32>) -> mat3x3<f32> {
+    var t: vec3<f32>;
+    switch face {
+        case 0u: { t = vec3<f32>( 0.0,  0.0, -1.0); } // +X face: U ≈ -Z
+        case 1u: { t = vec3<f32>( 0.0,  0.0,  1.0); } // -X face: U ≈ +Z
+        case 2u: { t = vec3<f32>( 1.0,  0.0,  0.0); } // +Y face: U ≈ +X
+        case 3u: { t = vec3<f32>( 1.0,  0.0,  0.0); } // -Y face: U ≈ +X
+        case 4u: { t = vec3<f32>( 1.0,  0.0,  0.0); } // +Z face: U ≈ +X
+        case 5u: { t = vec3<f32>(-1.0,  0.0,  0.0); } // -Z face: U ≈ -X
+        default: { t = vec3<f32>( 1.0,  0.0,  0.0); }
+    }
+    // `b = cross(N, T)` guarantees `cross(T, B) = N` (right-handed),
+    // independent of T's exact direction. The chosen T above is already
+    // perpendicular to N for every face id, so no re-orthogonalization
+    // is needed.
+    let b = cross(n, t);
+    return mat3x3<f32>(t, b, n);
+}
+
+// Sample the normal-map atlas and lift to world space via the face's
+// TBN frame. `(0.5, 0.5, 1.0)` in the atlas decodes to `(0, 0, 1)` in
+// tangent space — i.e. "flat" — which leaves the world normal equal to
+// the face normal (the third basis vector). Non-flat normals perturb
+// in the T / B directions.
+fn sample_world_normal(face: u32, uv: vec2<f32>, layer: i32) -> vec3<f32> {
+    let face_n = face_normal(face);
+    let tbn = face_tbn(face, face_n);
+    let texel = textureSample(block_normal, block_sampler, uv, layer).rgb;
+    let local = normalize(texel * 2.0 - vec3<f32>(1.0));
+    return normalize(tbn * local);
 }
 
 // Three MRT outputs into the deferred G-buffer (matching C++ formats):
@@ -173,7 +220,7 @@ fn fs_main(in: VsOut) -> GBufferOut {
         discard;
     }
 
-    let normal = face_normal(in.face);
+    let normal = sample_world_normal(in.face, in.uv, in.layer);
     // Smooth-light brightness — same value the C++ build packs into the
     // chunk vertex's `a_color` attribute. `default.fsh` then does
     // `vec4(color, 1.0) * texel`, giving the texel color scaled by the
@@ -196,6 +243,40 @@ fn fs_main(in: VsOut) -> GBufferOut {
     // "no fragment / sky" to composition (cleared material texels also
     // read as zero — air never produces a fragment, so the convention
     // is unambiguous).
+    out.material = vec4<f32>(encode_u16(in.block_id), 0.0, 1.0);
+    return out;
+}
+
+// Translucent G-buffer entry point — used by `translucent_gbuffer_pipeline`.
+// Differs from `fs_main` only in forcing alpha to `0.02` for water / ice
+// blocks, mirroring C++ `translucent.fsh`. Composition's SSR + Schlick
+// fresnel relies on this near-transparent base so the reflected sky /
+// SSR sample dominates the visible water surface colour. Alpha-blended
+// against the opaque diffuse already in the G-buffer; depth-writes the
+// water surface so composition's SSR raymarch can hit opaque geometry
+// behind the water.
+const SSR_WATER_ID: u32 = 10u;
+const SSR_ICE_ID: u32 = 15u;
+
+@fragment
+fn fs_main_translucent(in: VsOut) -> GBufferOut {
+    let sample = textureSample(block_diffuse, block_sampler, in.uv, in.layer);
+    if (sample.a <= 0.0) {
+        discard;
+    }
+
+    let normal = sample_world_normal(in.face, in.uv, in.layer);
+    let brightness = in.light;
+    let albedo_lit = sample.rgb * brightness;
+
+    var alpha = sample.a;
+    if (in.block_id == SSR_WATER_ID || in.block_id == SSR_ICE_ID) {
+        alpha = 0.02;
+    }
+
+    var out: GBufferOut;
+    out.diffuse = vec4<f32>(albedo_lit, alpha);
+    out.normal = vec4<f32>(normal * 0.5 + vec3<f32>(0.5), 1.0);
     out.material = vec4<f32>(encode_u16(in.block_id), 0.0, 1.0);
     return out;
 }
