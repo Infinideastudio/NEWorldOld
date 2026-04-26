@@ -5,31 +5,6 @@
 //! [`cosmic_text`]-driven shaping and a `wgpu`-backed glyph atlas.
 //!
 //! See `docs/rust_migration.md` §4.11 for the design.
-//!
-//! Typical usage per frame:
-//!
-//! ```no_run
-//! # use neworld::render::text::{TextRenderer, TextLine};
-//! # fn frame<'a>(
-//! #     device: &wgpu::Device,
-//! #     queue: &wgpu::Queue,
-//! #     renderer: &'a mut TextRenderer,
-//! #     pass: &mut wgpu::RenderPass<'a>,
-//! # ) {
-//! let lines = [TextLine {
-//!     text: "Hello, world!",
-//!     x: 16.0,
-//!     y: 16.0,
-//!     scale: 1.0,
-//!     color: glyphon::Color::rgb(255, 255, 255),
-//! }];
-//! renderer.prepare(device, queue, (1280, 720), &lines);
-//! renderer.render(pass);
-//! # }
-//! ```
-//!
-//! `TextLine` is a single-line caller-facing wrapper; `prepare` shapes one
-//! `glyphon::Buffer` per line.
 
 use std::sync::Arc;
 
@@ -98,12 +73,8 @@ impl TextRenderer {
         let cache = Cache::new(device);
         let mut atlas = TextAtlas::new(device, queue, &cache, format);
         let viewport = Viewport::new(device, &cache);
-        let renderer = glyphon::TextRenderer::new(
-            &mut atlas,
-            device,
-            wgpu::MultisampleState::default(),
-            None,
-        );
+        let renderer =
+            glyphon::TextRenderer::new(&mut atlas, device, wgpu::MultisampleState::default(), None);
 
         Self {
             font_system,
