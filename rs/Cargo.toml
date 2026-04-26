@@ -6,21 +6,6 @@ description = "NEWorld is an open-source voxel game with similar gameplay as Min
 license = "CC0-1.0"
 publish = false
 
-[lints.rust]
-unsafe_code = "deny"
-
-[lints.clippy]
-pedantic = { level = "warn", priority = -1 }
-cast_possible_truncation = "allow"
-cast_possible_wrap = "allow"
-cast_precision_loss = "allow"
-cast_sign_loss = "allow"
-cast_lossless = "allow"
-missing_errors_doc = "allow"
-missing_panics_doc = "allow"
-module_name_repetitions = "allow"
-too_many_lines = "allow"
-
 [dependencies]
 # Math — chosen over glam so Aabb3<S>/Euler<S>/Frustum<S> can be true generics.
 cgmath = { version = "0.18", features = ["serde"] }
@@ -55,15 +40,12 @@ crossbeam-channel = "0.5"
 # - winit: cross-platform windowing + event loop (0.30 ApplicationHandler API).
 # - wgpu: cross-platform GPU abstraction (replaces the C++ GL wrappers).
 # - pollster: tiny synchronous executor for the wgpu adapter/device requests.
-# - raw-window-handle: window-handle interop (declared explicitly even though
-#   it's usually pulled transitively).
 # - image: PNG decode for block + UI atlases (replaces the C++ image_io path).
 # - glyphon: cosmic-text shaping + wgpu glyph atlas (replaces FreeType + the
 #   hand-rolled glyph atlas in `text_rendering.ixx`).
 winit = "0.30"
 wgpu = "29.0.1"
 pollster = "0.4.0"
-raw-window-handle = "0.6.2"
 image = "0.25.10"
 glyphon = "0.11.0"
 
@@ -74,11 +56,3 @@ glyphon = "0.11.0"
 egui = { version = "0.34", features = ["default_fonts"] }
 egui-winit = "0.34"
 egui-wgpu = "0.34"
-
-[profile.release]
-lto = "thin"
-codegen-units = 1
-debug = "line-tables-only"
-
-[profile.dev]
-opt-level = 1

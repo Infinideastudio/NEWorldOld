@@ -829,8 +829,61 @@ impl World {
         }
         self.tiles_store.flush()?;
         std::fs::create_dir_all(&self.dir)?;
-        self.player.save_to(&self.dir.join("player.bin"))?;
+        self.player.save_to(&self.player_path())?;
         Ok(())
+    }
+
+    /// Filesystem path of the player save file (`<world_dir>/player.bin`).
+    /// Exposed so `Game::new` can attempt a load before the simulation starts.
+    #[must_use]
+    pub fn player_path(&self) -> PathBuf {
+        self.dir.join("player.bin")
+    }
+
+    /// Tick the owned [`Player`] against the world's block map. Mirrors the
+    /// C++ `player.update(world)`; in Rust the player and the world map are
+    /// disjoint fields but the borrow checker can't prove that, so we
+    /// momentarily take the player out, run its update against `&*self` as a
+    /// `BlockView`, and put it back. The default-sentinel player that lives
+    /// in the slot during the call is never observed.
+    pub fn update_player(&mut self) {
+        let mut player = std::mem::take(&mut self.player);
+        player.update(&*self);
+        self.player = player;
+    }
+
+    /// Enumerate every subdirectory under `<root>/worlds/` and treat each as
+    /// a world. Mirrors the C++ `world_menu.cpp` flow, which does
+    /// `directory_iterator("worlds")` and shows every directory regardless of
+    /// whether it has chunks saved yet — so a freshly-created world (no
+    /// `chunks.db`, no `player.bin`) still appears in the list. I/O errors
+    /// collapse to an empty result, since the only legitimate failure mode is
+    /// a missing `worlds/` dir on first launch.
+    #[must_use]
+    pub fn list_worlds_at(root: &Path) -> Vec<String> {
+        let worlds_dir = root.join("worlds");
+        let Ok(entries) = std::fs::read_dir(&worlds_dir) else {
+            return Vec::new();
+        };
+        let mut names: Vec<String> = entries
+            .filter_map(Result::ok)
+            .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+            .filter_map(|e| e.file_name().into_string().ok())
+            .collect();
+        names.sort();
+        names
+    }
+
+    /// Recursively delete the world named `name` under `<root>/worlds/`.
+    /// Errors propagate to the caller (typically just log them — a missing
+    /// directory is a no-op success, while a permission error should surface
+    /// to the user).
+    pub fn delete_world_at(root: &Path, name: &str) -> Result<(), std::io::Error> {
+        let dir = root.join("worlds").join(name);
+        if !dir.exists() {
+            return Ok(());
+        }
+        std::fs::remove_dir_all(&dir)
     }
 }
 

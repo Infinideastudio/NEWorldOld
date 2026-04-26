@@ -67,9 +67,7 @@ impl Screen for OptionsScreen {
 
                 ui.horizontal(|ui| {
                     ui.label("Render Distance");
-                    ui.add(
-                        egui::Slider::new(&mut cfg.render_distance, 3..=15).suffix(" chunks"),
-                    );
+                    ui.add(egui::Slider::new(&mut cfg.render_distance, 3..=32).suffix(" chunks"));
                 });
                 ui.colored_label(
                     egui::Color32::from_gray(160),
@@ -123,7 +121,7 @@ impl Screen for OptionsScreen {
             // bad range. Sliders already enforce their own bounds, but a
             // future TextEdit-backed widget could overshoot.
             cfg.fov_y_normal = cfg.fov_y_normal.clamp(70.0, 120.0);
-            cfg.render_distance = cfg.render_distance.clamp(3, 15);
+            cfg.render_distance = cfg.render_distance.clamp(3, 32);
             cfg.font_scale = cfg.font_scale.clamp(0.5, 2.0);
             cfg.mouse_speed = cfg.mouse_speed.clamp(0.01, 0.5);
         });

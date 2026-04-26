@@ -1,13 +1,14 @@
-//! Free-fly camera — Y-up yaw/pitch + perspective projection.
+//! View camera — Y-up yaw/pitch + perspective projection, driven by the
+//! [`crate::worlds::Player`].
 //!
-//! WSAD + Space/Shift movement, mouse-look at a fixed sensitivity. Owns
-//! its own field-of-view, near/far planes, and movement speed; consumed
-//! by [`Game::tick`](super::Game::tick) once per simulation step.
+//! Camera is a pure view transform: position and orientation are pushed in by
+//! [`super::Game`] each frame after consuming player input + physics. There
+//! is no per-camera input state, no movement integration, no FOV easing.
+//! Mirrors the C++ `view_matrix` / `perspective` math in `neworld.ixx`.
 
 use cgmath::{InnerSpace, Matrix4, Point3, Rad, Vector3};
 
-use crate::input::{InputState, Key};
-use crate::math::Vec3d;
+use crate::math::{Eulerd, Vec3d};
 
 /// `Matrix4` that maps GL clip space `Z in [-1, 1]` to wgpu's `[0, 1]`.
 /// Pre-multiply against any `cgmath::perspective` result.
@@ -19,38 +20,44 @@ pub const OPENGL_TO_WGPU: Matrix4<f32> = Matrix4::new(
     0.0, 0.0, 0.5, 1.0,
 );
 
-/// `glm`-style Y-up free-fly camera.
+/// `glm`-style Y-up free-look camera, driven externally by [`super::Game`].
 ///
 /// Yaw rotates around the world `+Y`; positive yaw turns left (CCW from
 /// above). Pitch is around the camera's local X axis; positive looks up.
-/// Both are radians.
+/// Both are radians and mirror `Eulerd::heading` / `Eulerd::pitch`.
 #[derive(Debug, Clone)]
 pub struct Camera {
+    /// World-space eye position (`player.look_coord()` plus interpolation
+    /// offset, pushed in by `Game::write_frame_uniforms`).
     pub position: Vec3d,
     pub yaw: f64,
     pub pitch: f64,
     pub fov_y: f32,
     pub near: f32,
     pub far: f32,
-    /// Movement speed in blocks/second.
-    pub speed: f64,
-    /// Mouse sensitivity in radians per pixel of motion.
-    pub mouse_sensitivity: f64,
 }
 
 impl Camera {
+    /// Construct a camera at `position` with default orientation + projection.
+    /// `Game::tick_render` overwrites all of these from the player each frame,
+    /// but the initial values determine the first frame's view.
     #[must_use]
     pub fn new(position: Vec3d) -> Self {
         Self {
             position,
             yaw: 0.0,
-            pitch: -0.35,
+            pitch: 0.0,
             fov_y: 70.0_f32.to_radians(),
             near: 0.1,
             far: 1024.0,
-            speed: 18.0,
-            mouse_sensitivity: 0.0025,
         }
+    }
+
+    /// Sync orientation from the player's `Eulerd`. Mirrors the C++
+    /// `view_matrix` derivation: heading → yaw, pitch → pitch.
+    pub fn set_orientation(&mut self, orientation: Eulerd) {
+        self.yaw = orientation.heading;
+        self.pitch = orientation.pitch;
     }
 
     /// Unit forward vector in world space.
@@ -80,7 +87,7 @@ impl Camera {
             self.position.z as f32,
         );
         let f = self.forward();
-        let dir = Vector3::new(f.x as f32, f.y as f32, f.z as f32);
+        let dir = Vector3::new(f.x as f32, f.y as f32, f.z as f32).normalize();
         Matrix4::look_to_rh(eye, dir, Vector3::unit_y())
     }
 
@@ -89,50 +96,5 @@ impl Camera {
     #[must_use]
     pub fn proj_matrix(&self, aspect: f32) -> Matrix4<f32> {
         OPENGL_TO_WGPU * cgmath::perspective(Rad(self.fov_y), aspect, self.near, self.far)
-    }
-
-    /// Apply WSAD-space-shift movement and pitch/yaw mouse-look.
-    pub fn update_from_input(&mut self, input: &InputState, dt: f32) {
-        let dx = f64::from(input.mouse_motion.x);
-        let dy = f64::from(input.mouse_motion.y);
-        self.yaw -= dx * self.mouse_sensitivity;
-        self.pitch -= dy * self.mouse_sensitivity;
-        let limit = std::f64::consts::FRAC_PI_2 - 0.01;
-        self.pitch = self.pitch.clamp(-limit, limit);
-
-        let forward = self.forward();
-        let right = self.right();
-        let up = Vec3d::new(0.0, 1.0, 0.0);
-
-        let mut dir = Vec3d::new(0.0, 0.0, 0.0);
-        if input.is_key_down(Key::W) {
-            dir += forward;
-        }
-        if input.is_key_down(Key::S) {
-            dir -= forward;
-        }
-        if input.is_key_down(Key::D) {
-            dir += right;
-        }
-        if input.is_key_down(Key::A) {
-            dir -= right;
-        }
-        if input.is_key_down(Key::Space) {
-            dir += up;
-        }
-        if input.is_key_down(Key::LeftShift) {
-            dir -= up;
-        }
-
-        let mag2 = dir.magnitude2();
-        if mag2 > 1e-6 {
-            dir /= mag2.sqrt();
-        }
-        let speed = if input.is_key_down(Key::LeftControl) {
-            self.speed * 5.0
-        } else {
-            self.speed
-        };
-        self.position += dir * speed * f64::from(dt);
     }
 }
