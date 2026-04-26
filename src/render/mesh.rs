@@ -55,8 +55,13 @@ pub const PADDED_VOLUME: usize = PADDED_SIZE * PADDED_SIZE * PADDED_SIZE;
 
 /// Vertex format consumed by the chunk pipeline (see [D2]).
 ///
-/// Layout: 12 (position) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light) = 32
-/// bytes, alignment 4, no trailing padding — `Pod`-safe.
+/// Layout: 12 (position) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light) +
+/// 4 (block_id) = 36 bytes, alignment 4, no trailing padding — `Pod`-safe.
+///
+/// `block_id` was added for the deferred renderer (Tier 4): the chunk
+/// fragment shader writes it into the G-buffer's `material` target so the
+/// composition pass can special-case water reflections / leaf foliage /
+/// glowstone emission per pixel.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct ChunkVertex {
@@ -72,6 +77,11 @@ pub struct ChunkVertex {
     /// `[0..255]` luminance — bilinearly interpolated by the rasterizer
     /// across the four corners of the face. Upper bytes are reserved.
     pub light: u32,
+    /// Block id (0..65535). Written into the G-buffer material target so
+    /// the composition pass / SSR / volumetric clouds can branch on the
+    /// material at the surface point. Stored as `u32` for vertex-attribute
+    /// alignment; truncated to `u16` on G-buffer write.
+    pub block_id: u32,
 }
 
 /// Owned snapshot of a chunk + its 26 neighbors, copied into a single padded
@@ -329,6 +339,38 @@ const FACE_PERP_AXES: [(usize, usize); 6] = [
     (0, 1), // -Z
 ];
 
+/// Per-face directional dimming factors. Mirrors C++ basic rendering mode
+/// (`if (!AdvancedRender) col = col * N / 10` blocks in
+/// `chunk_rendering.cpp::_render_chunk` and `_render_primitive`):
+///
+/// * ±X (left/right): 5/10  → 0.5
+/// * ±Y (top/bottom): 10/10 → 1.0
+/// * ±Z (front/back): 2/10  → 0.2
+///
+/// Stored as numerator-out-of-10 so the fixed-point math in
+/// [`apply_face_dim`] stays in `u32` and matches the C++ integer
+/// arithmetic exactly. The advanced-mode `final.fsh` path multiplies
+/// the lit color by directional radiance from the sun, so it deliberately
+/// skips this baked-in dimming (col stays unscaled when `AdvancedRender`
+/// is true).
+const FACE_DIM_NUMER: [u32; 6] = [
+    5,  // +X
+    5,  // -X
+    10, // +Y
+    10, // -Y
+    2,  // +Z
+    2,  // -Z
+];
+
+/// Apply the basic-mode per-face directional dimming to a brightness
+/// value in `0..=255`. Returns the dimmed brightness clamped to the same
+/// range. Integer math matches the C++ `col * N / 10` formula exactly.
+#[inline]
+fn apply_face_dim(brightness: u8, face_id: usize) -> u8 {
+    let n = FACE_DIM_NUMER[face_id];
+    ((u32::from(brightness) * n) / 10).min(255) as u8
+}
+
 /// Per-cell brightness `0..=255`. Mirrors C++ `BlockRenderData::_color`:
 /// opaque blocks are `0` (they shouldn't contribute to the AO average since
 /// they block light); non-opaque blocks return `max(sky_brightness,
@@ -412,7 +454,11 @@ fn corner_lights(
             let b = padded_at(padded, cx, cy, cz);
             sum += u32::from(cell_color(b, registry.get(b.id)));
         }
-        out[c] = (sum / 4) as u8;
+        // Average the 4-cell smooth-light tap, then apply the basic-mode
+        // per-face dimming (matches the C++ `col / 4` followed by
+        // `col * N / 10` for ±X / ±Z faces).
+        let avg = (sum / 4) as u8;
+        out[c] = apply_face_dim(avg, face_id);
     }
     out
 }
@@ -434,6 +480,10 @@ struct Run {
     /// (so e.g. a grass strip won't merge across a `+X` `→` `+Y` direction
     /// flip — handled by separating the loops by `face` first).
     layer: u32,
+    /// Block id captured from the run's first cell. Same id is a precondition
+    /// for run extension (so the merged strip's `block_id` field is
+    /// well-defined per-vertex).
+    block_id: u32,
     /// True when the cell is `BlockInfo::translucent`. Picks the output
     /// vertex bucket on flush.
     translucent: bool,
@@ -573,6 +623,7 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                     // off, force a flush after every cell so each face
                     // emits its own quad. With it on, all the usual
                     // extension predicates apply.
+                    let cell_block_id = u32::from(cell.id.0);
                     let can_extend = opts.merge_face
                         && match run.as_ref() {
                             Some(r) => {
@@ -581,6 +632,7 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                                     && r.layer == tex_layer
                                     && r.translucent == translucent_cell
                                     && r.lights == lights
+                                    && r.block_id == cell_block_id
                             }
                             None => false,
                         };
@@ -593,6 +645,7 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                             face: face_id,
                             length: 0,
                             layer: tex_layer,
+                            block_id: cell_block_id,
                             translucent: translucent_cell,
                             lights,
                             once,
@@ -613,6 +666,8 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
 
 /// Single-cell brightness for the face's in-front neighbor — used as the
 /// flat-lighting fallback when `MeshOptions::smooth_lighting` is off.
+/// Applies the same per-face dimming as [`corner_lights`] so basic-mode
+/// directional shading is consistent across smooth / flat lighting.
 fn flat_face_light(
     padded: &[BlockData; PADDED_VOLUME],
     registry: &BlockRegistry,
@@ -626,7 +681,8 @@ fn flat_face_light(
     let iy = pcy + off[1];
     let iz = pcz + off[2];
     let in_front = padded_at(padded, ix, iy, iz);
-    cell_color(in_front, registry.get(in_front.id))
+    let raw = cell_color(in_front, registry.get(in_front.id));
+    apply_face_dim(raw, face_id)
 }
 
 /// Emit the 6 vertices of `run` (after extension along the merge axis) into
@@ -666,6 +722,7 @@ fn emit_run(out: &mut Vec<ChunkVertex>, run: Run) {
         layer: run.layer,
         face: face_u32,
         light: 0,
+        block_id: run.block_id,
     }; 4];
     for c in 0..4 {
         v[c].position = [
@@ -890,10 +947,13 @@ mod tests {
     }
 
     #[test]
-    fn chunk_vertex_layout_is_32_bytes() {
-        // The pipeline (D2) assumes 32-byte vertices with no padding —
-        // 12 (pos) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light).
-        assert_eq!(core::mem::size_of::<ChunkVertex>(), 32);
+    fn chunk_vertex_layout_is_36_bytes() {
+        // The pipeline (D2) assumes 36-byte vertices with no padding —
+        // 12 (pos) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light) + 4 (block_id).
+        // The trailing block_id was added for the deferred renderer (Tier 4)
+        // so the chunk fragment shader can write a per-pixel material into
+        // the G-buffer.
+        assert_eq!(core::mem::size_of::<ChunkVertex>(), 36);
         assert_eq!(core::mem::align_of::<ChunkVertex>(), 4);
     }
 

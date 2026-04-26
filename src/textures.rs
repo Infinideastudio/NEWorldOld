@@ -62,7 +62,21 @@ pub struct Atlas2d {
     pub size: (u32, u32),
 }
 
-/// All texture atlases used by the renderer, plus the shared sampler.
+/// All texture atlases used by the renderer, plus the shared samplers.
+///
+/// Two distinct samplers, one for the voxel pixel-art atlases and one for
+/// the deferred-renderer noise texture — each matching the C++ build's
+/// per-texture configuration (`set_filter` + `set_wrap`):
+///
+/// * `sampler` — Nearest mag/min, Linear mipmap, Repeat wrap. Used by
+///   `block_diffuse` / `block_normal` and any UI-style sampling that wants
+///   pixel-exact magnification. Mirrors the C++
+///   `LoadBlockTextureArray` / `LoadNormalTextureArray` settings
+///   (`set_filter(false, true)`, `set_wrap(true)`).
+/// * `noise_sampler` — Linear mag/min, no mipmap, Repeat wrap. Used by the
+///   composition shader's noise dither / volumetric-cloud march. Mirrors
+///   the C++ `LoadNoiseTextureArray` (`set_filter(true, false)`,
+///   `set_wrap(true)`).
 #[derive(Debug)]
 pub struct Atlases {
     pub block_diffuse: AtlasArray,
@@ -74,6 +88,7 @@ pub struct Atlases {
     pub unselect: Atlas2d,
     pub backgrounds: [Atlas2d; BACKGROUND_COUNT],
     sampler: wgpu::Sampler,
+    noise_sampler: wgpu::Sampler,
 }
 
 /// Errors returned by [`Atlases::load`] and the helper free functions.
@@ -123,9 +138,13 @@ impl Atlases {
         let blocks = root.join("textures").join("blocks");
         let ui = root.join("textures").join("ui");
 
-        // Diffuse ships with mipmaps so distant chunks dampen high-frequency
-        // aliasing. Normals don't (averaging encoded normals isn't
-        // mathematically meaningful, and nothing samples them yet anyway).
+        // Both diffuse and normal ship a full mipmap chain — matches the C++
+        // `LoadBlockTextureArray` / `LoadNormalTextureArray`, both of which
+        // call `generate_mipmaps()`. Mathematically averaging encoded
+        // normals isn't ideal, but the sampler's Nearest mag/min filter
+        // means base-level pixel art still snaps cleanly, and parity with
+        // the C++ build matters more than a hypothetical normal-mapped
+        // BRDF (which the deferred composition shader will pick up later).
         let block_diffuse = load_strip_array(
             device,
             queue,
@@ -140,7 +159,7 @@ impl Atlases {
             &blocks.join("normal.png"),
             wgpu::TextureFormat::Rgba8Unorm,
             Some("block_normal"),
-            false,
+            true,
         )?;
         let block_noise = load_2d(
             device,
@@ -217,6 +236,23 @@ impl Atlases {
             ..Default::default()
         });
 
+        // Noise sampler — Linear mag/min, no mipmap, Repeat wrap. Matches
+        // the C++ `LoadNoiseTextureArray` that runs `set_filter(true,
+        // false)` + `set_wrap(true)`. The composition shader's
+        // `noise_dither` / `interpolated_noise` (when SSR + volumetric
+        // clouds land) need bilinear interpolation, which would be lost
+        // through the Nearest-only `sampler` above.
+        let noise_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("atlases_noise_sampler"),
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            address_mode_w: wgpu::AddressMode::Repeat,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
+
         Ok(Self {
             block_diffuse,
             block_normal,
@@ -227,13 +263,22 @@ impl Atlases {
             unselect,
             backgrounds,
             sampler,
+            noise_sampler,
         })
     }
 
-    /// Shared sampler used by every atlas binding.
+    /// Shared sampler used by the block / UI atlases (Nearest mag/min,
+    /// Linear mipmap, Repeat wrap).
     #[must_use]
     pub fn sampler(&self) -> &wgpu::Sampler {
         &self.sampler
+    }
+
+    /// Linear-filtered Repeat sampler bound to the noise texture in the
+    /// composition pass. Matches the C++ `LoadNoiseTextureArray` config.
+    #[must_use]
+    pub fn noise_sampler(&self) -> &wgpu::Sampler {
+        &self.noise_sampler
     }
 }
 

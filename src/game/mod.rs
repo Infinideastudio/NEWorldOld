@@ -41,7 +41,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use cgmath::{InnerSpace, Vector3};
+use cgmath::{InnerSpace, Matrix4, SquareMatrix, Vector3};
 
 use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, register_base_blocks};
 use crate::chunks::Chunk;
@@ -51,9 +51,9 @@ use crate::items::ItemStack;
 use crate::math::{Vec3d, Vec3i};
 use crate::particles::{Particle, ParticleSystem};
 use crate::render::{
-    DepthTarget, FrameUniforms, MeshInput, MeshOptions, MeshPipeline, PADDED_SIZE, PADDED_VOLUME,
-    ParticleMesh, ParticlePipeline, SelectionPipeline, UnderwaterPipeline, UniformBuffer,
-    mat4_to_array, padded_index,
+    CompositionPipeline, FrameUniforms, GBuffer, MeshInput, MeshOptions, MeshPipeline,
+    PADDED_SIZE, PADDED_VOLUME, ParticleMesh, ParticlePipeline, SelectionPipeline, ShadowMap,
+    UnderwaterPipeline, UniformBuffer, mat4_to_array, padded_index,
 };
 use crate::textures::Atlases;
 use crate::worlds::chunk_rendering::{ChunkMesh, ChunkPipeline};
@@ -118,7 +118,19 @@ pub struct Game {
     /// and chunk unload can drop the entry by coord directly.
     pub chunk_meshes: HashMap<Vec3i, ChunkMesh>,
     pub chunk_pipeline: ChunkPipeline,
-    pub depth: DepthTarget,
+    /// Deferred G-buffer (diffuse / normal / material / depth). Owns the
+    /// world-pass depth target — the chunk MRT pass writes here, the
+    /// composition pass samples from here, and forward passes (particles
+    /// / selection / underwater) attach `gbuffer.depth_view()` so they
+    /// depth-test against the world.
+    pub gbuffer: GBuffer,
+    /// Composition pipeline — reads the G-buffer + shadow map + noise and
+    /// writes the lit color to the surface.
+    pub composition_pipeline: CompositionPipeline,
+    /// Shadow map — placeholder 1×1 depth texture today, swapped for a
+    /// real atlas when the shadow pipeline lands. The composition shader
+    /// gates real sampling on `FrameUniforms::shadow_params.x > 0`.
+    pub shadow_map: ShadowMap,
     pub particles: ParticleSystem,
     pub particle_mesh: ParticleMesh,
     pub particle_pipeline: ParticlePipeline,
@@ -230,26 +242,37 @@ impl Game {
         // frame 1. Meshes follow once load results arrive (see `tick`).
         world.tick_chunk_loading_async();
 
-        let depth = DepthTarget::new(device, surface_size.0.max(1), surface_size.1.max(1));
+        let gbuffer = GBuffer::new(device, surface_size.0.max(1), surface_size.1.max(1));
+        let shadow_map = ShadowMap::new(device);
 
-        let chunk_pipeline = ChunkPipeline::new(
+        // Chunk pipeline writes to the G-buffer (3 MRT targets) for the
+        // opaque pass, and forwards translucent chunks to the surface
+        // (`surface_format`) with alpha blending — see `ChunkPipeline`
+        // docs for why translucent can't ride the same Rgba32Float
+        // G-buffer.
+        let chunk_pipeline = ChunkPipeline::new(device, surface_format, frame_uniforms, atlases);
+        let composition_pipeline = CompositionPipeline::new(
             device,
             surface_format,
-            DepthTarget::FORMAT,
             frame_uniforms,
+            &gbuffer,
+            &shadow_map,
             atlases,
         );
+        // Forward overlays (particles / selection / underwater) draw onto
+        // the surface AFTER composition with the G-buffer depth attached so
+        // world geometry occludes them correctly.
         let particle_pipeline = ParticlePipeline::new(
             device,
             surface_format,
-            DepthTarget::FORMAT,
+            GBuffer::DEPTH_FORMAT,
             frame_uniforms,
             atlases,
         );
         let selection_pipeline = SelectionPipeline::new(
             device,
             surface_format,
-            DepthTarget::FORMAT,
+            GBuffer::DEPTH_FORMAT,
             frame_uniforms,
         );
         // Resolve the water atlas layer once at world creation. `face(0)` is
@@ -260,7 +283,7 @@ impl Game {
         let underwater_pipeline = UnderwaterPipeline::new(
             device,
             surface_format,
-            DepthTarget::FORMAT,
+            GBuffer::DEPTH_FORMAT,
             atlases,
             water_layer,
         );
@@ -285,7 +308,9 @@ impl Game {
             camera,
             chunk_meshes: HashMap::new(),
             chunk_pipeline,
-            depth,
+            gbuffer,
+            composition_pipeline,
+            shadow_map,
             particles,
             particle_mesh,
             particle_pipeline,
@@ -694,9 +719,12 @@ impl Game {
         }
     }
 
-    /// React to a window resize: resize the depth attachment.
+    /// React to a window resize: recreate every G-buffer attachment and
+    /// rebuild the composition bind group so it points at the fresh views.
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
-        self.depth.resize(device, width.max(1), height.max(1));
+        self.gbuffer.resize(device, width.max(1), height.max(1));
+        self.composition_pipeline
+            .rebuild_gbuffer_bind_group(device, &self.gbuffer);
     }
 
     /// Update `FrameUniforms` with the latest camera + sun + screen-size
@@ -753,10 +781,46 @@ impl Game {
         let underwater = self.world.block_or_air(eye_block).id == self.base_blocks.water;
         self.underwater_pipeline.set_enabled(queue, underwater);
 
+        // Inverse view-projection — composition unprojects screen-space +
+        // depth to world position. `cgmath::Matrix4::invert` returns
+        // `Option`; the perspective × translation we just composed is
+        // always invertible, but fall back to the identity for safety so a
+        // numerical edge case doesn't blow up the frame.
+        let inv_view_proj = view_proj.invert().unwrap_or_else(Matrix4::identity);
+
+        // Repeat trick (mirrors C++ `repeat = 25600`): wrap world coords
+        // into a manageable range so SSR / volumetric clouds don't lose
+        // precision far from the world origin. `25600 = 1600 * 16`.
+        const REPEAT: i32 = 25600;
+        let coord = self.camera.position;
+        let coord_int = [
+            coord.x.floor() as i32,
+            coord.y.floor() as i32,
+            coord.z.floor() as i32,
+            0,
+        ];
+        let coord_mod = [
+            coord_int[0].rem_euclid(REPEAT),
+            coord_int[1].rem_euclid(REPEAT),
+            coord_int[2].rem_euclid(REPEAT),
+            0,
+        ];
+        let coord_frac = [
+            (coord.x - f64::from(coord_int[0])) as f32,
+            (coord.y - f64::from(coord_int[1])) as f32,
+            (coord.z - f64::from(coord_int[2])) as f32,
+            0.0,
+        ];
+
         let mut u = FrameUniforms::default();
         u.view = mat4_to_array(view);
         u.proj = mat4_to_array(proj);
         u.view_proj = mat4_to_array(view_proj);
+        u.inv_view_proj = mat4_to_array(inv_view_proj);
+        // Identity until the shadow pipeline overrides it. Composition
+        // skips shadow sampling while `shadow_params.x <= 0`, so the value
+        // doesn't matter today.
+        u.shadow_view_proj = mat4_to_array(Matrix4::identity());
         u.camera_pos = [
             self.camera.position.x as f32,
             self.camera.position.y as f32,
@@ -773,11 +837,31 @@ impl Game {
         let chunk = Chunk::SIZE as f32;
         u.fog_end = (r + 0.5) * SQRT_3_F32 * chunk;
         u.fog_start = u.fog_end * 0.65;
+        u.render_distance = r * chunk;
+        // Shadow disabled today (resolution = 0). The next-step shadow
+        // pipeline will set `shadow_params = (res, distance, fisheye, _)`.
+        u.shadow_params = [0.0, 0.0, 0.0, 0.0];
+        u.player_coord_int = coord_int;
+        u.player_coord_mod = coord_mod;
+        u.player_coord_frac = coord_frac;
         frame_uniforms.write(queue, &u);
     }
 
-    /// Record the world (chunks + particles) render pass into `encoder`,
-    /// drawing into `color_view` with the owned [`DepthTarget`].
+    /// Record the deferred world render into `encoder`, writing into
+    /// `color_view`. Three sub-passes run back to back:
+    ///
+    /// 1. **G-buffer pass.** Chunk MRT — opaque then translucent — fills
+    ///    `gbuffer.{diffuse, normal, material}` with smooth-lit albedo,
+    ///    encoded normals, and per-pixel block id. Depth-tested against
+    ///    `gbuffer.depth_view()` (reversed-Z, clear to 0.0).
+    /// 2. **Composition pass.** Reads the G-buffer, samples the shadow
+    ///    map (placeholder until Tier 4 step 2) and noise atlas, applies
+    ///    sun directional lighting + ambient sky + distance fog, writes
+    ///    the lit color to `color_view`.
+    /// 3. **Forward overlay pass.** Particles, selection wireframe, and
+    ///    the underwater tint draw onto the surface with the G-buffer
+    ///    depth attached so terrain occludes them correctly. The egui
+    ///    pass that follows in `App::frame` lays UI on top.
     pub fn record_world_pass(
         &mut self,
         device: &wgpu::Device,
@@ -791,51 +875,121 @@ impl Game {
         self.particle_mesh
             .rebuild(device, self.particles.particles(), self.tick_alpha);
 
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("game.world_pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: color_view,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(SKY_COLOR),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &self.depth.view,
-                depth_ops: Some(wgpu::Operations {
-                    // Reversed-Z: clear to 0.0 (= "far plane"); the chunk +
-                    // particle pipelines use `CompareFunction::Greater`.
-                    load: wgpu::LoadOp::Clear(0.0),
-                    store: wgpu::StoreOp::Store,
+        // ---- 1. G-buffer pass (chunk MRT) ----
+        // Clear all three color targets to zero on entry. The composition
+        // pass uses material == 0 as "no fragment / sky", so the cleared
+        // areas naturally fall through to the gradient sky.
+        let clear_color = wgpu::Color {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 0.0,
+        };
+        let gbuffer_color = self
+            .gbuffer
+            .color_attachments(wgpu::LoadOp::Clear(clear_color), wgpu::StoreOp::Store);
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("game.gbuffer_pass"),
+                color_attachments: &gbuffer_color,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: self.gbuffer.depth_view(),
+                    depth_ops: Some(wgpu::Operations {
+                        // Reversed-Z: clear to 0.0 (= "far plane"); the
+                        // chunk pipelines use `CompareFunction::Greater`.
+                        load: wgpu::LoadOp::Clear(0.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
                 }),
-                stencil_ops: None,
-            }),
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
 
-        self.chunk_pipeline.begin_opaque(&mut pass);
-        for cm in self.chunk_meshes.values() {
-            cm.draw_opaque(&mut pass);
+            self.chunk_pipeline.begin_opaque(&mut pass);
+            for cm in self.chunk_meshes.values() {
+                cm.draw_opaque(&mut pass);
+            }
+            // Translucent geometry intentionally skipped here — it
+            // alpha-blends in the post-composition forward pass below
+            // (matches C++ basic mode's `glBlendFunc(SRC_ALPHA, ...)`).
         }
-        self.chunk_pipeline.begin_translucent(&mut pass);
-        for cm in self.chunk_meshes.values() {
-            cm.draw_translucent(&mut pass);
+
+        // ---- 2. Composition pass (G-buffer → surface) ----
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("game.composition_pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: color_view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        // Composition writes every pixel via its full-screen
+                        // quad, but we still clear so pixels outside the
+                        // viewport (after a fullscreen resize race) don't
+                        // show garbage. The sky color matches the App's
+                        // menu-clear color — far chunks fade into it.
+                        load: wgpu::LoadOp::Clear(SKY_COLOR),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            self.composition_pipeline.record(&mut pass);
         }
-        self.particle_pipeline.render(&mut pass, &self.particle_mesh);
-        // Selection wireframe rides the same depth buffer so terrain
-        // occludes it correctly. Drawn last in the world pass so it
-        // composites cleanly on top of opaque + translucent geometry.
-        // The egui pass that follows draws every UI element on top.
-        self.selection_pipeline.draw(&mut pass);
-        // Underwater tint goes after the wireframe so a selected block
-        // visible from inside water still gets the water cast applied.
-        // No depth attachment on the pipeline; the draw runs as a flat
-        // full-screen quad and is a no-op when the player's dry.
-        self.underwater_pipeline.draw(&mut pass);
+
+        // ---- 3. Forward overlays (particles / selection / underwater) ----
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("game.forward_overlay_pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: color_view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                // Re-attach the G-buffer depth so particles + selection
+                // depth-test against world geometry. Depth is loaded (not
+                // cleared) — same buffer the chunk pass just populated.
+                // No depth-write here; everything reads.
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: self.gbuffer.depth_view(),
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+
+            // Translucent chunks (water, leaves, glass, ice) — forward
+            // pass with `SrcAlpha / OneMinusSrcAlpha` blending. Drawn
+            // first inside the overlay pass so particles / selection /
+            // underwater compose on top of water surfaces correctly.
+            self.chunk_pipeline.begin_translucent_forward(&mut pass);
+            for cm in self.chunk_meshes.values() {
+                cm.draw_translucent(&mut pass);
+            }
+
+            self.particle_pipeline.render(&mut pass, &self.particle_mesh);
+            // Selection wireframe rides the same depth buffer so terrain
+            // occludes it correctly.
+            self.selection_pipeline.draw(&mut pass);
+            // Underwater tint goes last so a selected block visible from
+            // inside water still gets the water cast applied. No depth
+            // read; the draw is a flat full-screen quad.
+            self.underwater_pipeline.draw(&mut pass);
+        }
     }
 
     /// Run a chat / slash command line. If it begins with `/`, dispatches

@@ -23,19 +23,20 @@
 
 use wgpu::util::DeviceExt;
 
-use crate::textures::Atlases;
+use crate::render::gbuffer::GBuffer;
 use crate::render::mesh::{CHUNK_SIZE, ChunkVertex, MeshOutput};
 use crate::render::uniforms::{FrameUniforms, UniformBuffer};
+use crate::textures::Atlases;
 
 const SHADER_SRC: &str = include_str!("../../shaders/chunk.wgsl");
 
 /// Vertex stride in bytes — must match the WGSL header in `chunk.wgsl`.
 const VERTEX_STRIDE: wgpu::BufferAddress = std::mem::size_of::<ChunkVertex>() as wgpu::BufferAddress;
 
-// Compile-time check that `ChunkVertex` actually packs to the documented 32
+// Compile-time check that `ChunkVertex` actually packs to the documented 36
 // bytes. If the [D1] meshing struct grows, the shader vertex layout must be
 // updated in lockstep.
-const _: () = assert!(std::mem::size_of::<ChunkVertex>() == 32);
+const _: () = assert!(std::mem::size_of::<ChunkVertex>() == 36);
 
 // ---------- ChunkMesh ----------
 
@@ -154,6 +155,7 @@ fn create_vertex_buffer(
             layer: v.layer,
             face: v.face,
             light: v.light,
+            block_id: v.block_id,
         })
         .collect();
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -165,8 +167,20 @@ fn create_vertex_buffer(
 
 // ---------- ChunkPipeline ----------
 
-/// Two render pipelines (opaque + translucent) sharing one pipeline layout,
-/// bind-group layouts, and bind groups. Owns the WGSL shader module.
+/// Three render pipelines:
+///
+/// * `opaque_pipeline` — chunk MRT into the deferred G-buffer
+///   (`Rgba32Float` diffuse / `Rgba8Unorm` normal / `Rgba8Unorm` material).
+/// * `translucent_gbuffer_pipeline` — same target as opaque but for
+///   translucent chunks. Currently unused at runtime (the forward path
+///   handles translucent so water alpha-blends correctly), kept around
+///   so the eventual advanced-mode `final.fsh` can re-enable G-buffer
+///   compositing for translucent surfaces.
+/// * `translucent_forward_pipeline` — translucent chunks, written
+///   forward to the surface AFTER the composition pass with standard
+///   `SrcAlpha / OneMinusSrcAlpha` blending. Mirrors C++ basic-mode
+///   translucent rendering. The G-buffer can't blend `Rgba32Float`
+///   without the `Float32Blendable` feature, hence the separate path.
 pub struct ChunkPipeline {
     /// Layout for group 0 (frame uniforms).
     frame_layout: wgpu::BindGroupLayout,
@@ -176,26 +190,33 @@ pub struct ChunkPipeline {
     frame_bind_group: wgpu::BindGroup,
     /// Bind group instance for group 1.
     atlas_bind_group: wgpu::BindGroup,
-    /// Pipeline used for the opaque pass — depth-write enabled, no blend.
+    /// Opaque pass — depth-write enabled, no blend, writes G-buffer MRT.
     opaque_pipeline: wgpu::RenderPipeline,
-    /// Pipeline used for the translucent pass — alpha blend, no depth-write.
-    translucent_pipeline: wgpu::RenderPipeline,
+    /// Translucent G-buffer pass — currently unused; held for the
+    /// future `final.fsh` advanced-mode port.
+    #[allow(dead_code)]
+    translucent_gbuffer_pipeline: wgpu::RenderPipeline,
+    /// Translucent forward pass — writes surface with alpha blending,
+    /// depth-tests against G-buffer depth (no write).
+    translucent_forward_pipeline: wgpu::RenderPipeline,
 }
 
 impl ChunkPipeline {
-    /// Compile both pipelines and build their bind groups.
+    /// Compile all three pipelines and build their bind groups.
     ///
-    /// `color_format` should match the surface format the caller will draw
-    /// into; `depth_format` should match [`DepthTarget::FORMAT`] (the only
-    /// depth target the chunk pipeline supports).
+    /// `surface_format` is the format the translucent forward pass
+    /// writes into (typically the wgpu surface's `Bgra8UnormSrgb`).
+    /// The opaque pipeline uses fixed G-buffer formats from
+    /// [`GBuffer`]; depth is [`GBuffer::DEPTH_FORMAT`] across all
+    /// three pipelines.
     #[must_use]
     pub fn new(
         device: &wgpu::Device,
-        color_format: wgpu::TextureFormat,
-        depth_format: wgpu::TextureFormat,
+        surface_format: wgpu::TextureFormat,
         frame_uniforms: &UniformBuffer<FrameUniforms>,
         atlases: &Atlases,
     ) -> Self {
+        let depth_format = GBuffer::DEPTH_FORMAT;
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("gfx::chunk_render.shader"),
             source: wgpu::ShaderSource::Wgsl(SHADER_SRC.into()),
@@ -293,6 +314,11 @@ impl ChunkPipeline {
                 offset: 28,
                 shader_location: 4,
             },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Uint32,
+                offset: 32,
+                shader_location: 5,
+            },
         ];
 
         let vertex_buffers = [wgpu::VertexBufferLayout {
@@ -346,6 +372,39 @@ impl ChunkPipeline {
             bias: wgpu::DepthBiasState::default(),
         };
 
+        // The G-buffer fragment-state targets. Both pipelines write all
+        // three; the C++ deferred path leaves the default GL blend
+        // (`GL_FUNC_ADD, GL_ONE, GL_ZERO` = REPLACE) in place for both
+        // opaque and translucent draws — last fragment to survive the
+        // depth test wins per channel. Water / ice signal translucency
+        // to the composition pass via `diffuse.a < 1.0` rather than via
+        // blend math here.
+        //
+        // wgpu validation rejects `Some(BlendState::REPLACE)` on
+        // `Rgba32Float` because the format isn't "blendable" without the
+        // `Float32Blendable` feature, even though REPLACE is functionally
+        // a no-op blend. We therefore declare `blend: None` on every
+        // target — that's exactly the "no blending" state we want.
+        let g_targets = [
+            Some(wgpu::ColorTargetState {
+                format: GBuffer::DIFFUSE_FORMAT,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            }),
+            Some(wgpu::ColorTargetState {
+                format: GBuffer::NORMAL_FORMAT,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            }),
+            Some(wgpu::ColorTargetState {
+                format: GBuffer::MATERIAL_FORMAT,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            }),
+        ];
+        let opaque_targets = g_targets.clone();
+        let translucent_targets = g_targets;
+
         let opaque_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("gfx::chunk_render.opaque_pipeline"),
             layout: Some(&pipeline_layout),
@@ -362,18 +421,14 @@ impl ChunkPipeline {
                 module: &shader,
                 entry_point: Some("fs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: color_format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
+                targets: &opaque_targets,
             }),
             multiview_mask: None,
             cache: None,
         });
 
-        let translucent_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("gfx::chunk_render.translucent_pipeline"),
+        let translucent_gbuffer_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("gfx::chunk_render.translucent_gbuffer_pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -382,21 +437,51 @@ impl ChunkPipeline {
                 buffers: &vertex_buffers,
             },
             primitive: translucent_primitive,
-            depth_stencil: Some(translucent_depth),
+            depth_stencil: Some(translucent_depth.clone()),
             multisample,
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: Some("fs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: color_format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
+                targets: &translucent_targets,
             }),
             multiview_mask: None,
             cache: None,
         });
+
+        // Forward translucent pipeline — writes the surface (sRGB-encoded
+        // 8-bit, blendable) using the `fs_main_forward` entry point.
+        // Standard `SrcAlpha / OneMinusSrcAlpha` blending matches the
+        // C++ basic-mode `glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)`
+        // setup. Depth-tests against the G-buffer depth (no write) so the
+        // opaque world geometry occludes water / glass correctly.
+        let translucent_forward_targets = [Some(wgpu::ColorTargetState {
+            format: surface_format,
+            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+            write_mask: wgpu::ColorWrites::ALL,
+        })];
+        let translucent_forward_pipeline =
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("gfx::chunk_render.translucent_forward_pipeline"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_main"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    buffers: &vertex_buffers,
+                },
+                primitive: translucent_primitive,
+                depth_stencil: Some(translucent_depth),
+                multisample,
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some("fs_main_forward"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    targets: &translucent_forward_targets,
+                }),
+                multiview_mask: None,
+                cache: None,
+            });
 
         Self {
             frame_layout,
@@ -404,7 +489,8 @@ impl ChunkPipeline {
             frame_bind_group,
             atlas_bind_group,
             opaque_pipeline,
-            translucent_pipeline,
+            translucent_gbuffer_pipeline,
+            translucent_forward_pipeline,
         }
     }
 
@@ -416,10 +502,12 @@ impl ChunkPipeline {
         pass.set_bind_group(1, &self.atlas_bind_group, &[]);
     }
 
-    /// Bind the translucent pipeline + both bind groups into `pass`. Call
-    /// once before issuing any [`ChunkMesh::draw_translucent`] calls.
-    pub fn begin_translucent<'a>(&'a self, pass: &mut wgpu::RenderPass<'a>) {
-        pass.set_pipeline(&self.translucent_pipeline);
+    /// Bind the forward translucent pipeline + both bind groups into
+    /// `pass`. Call once before issuing any [`ChunkMesh::draw_translucent`]
+    /// calls in the post-composition forward pass — the pipeline writes
+    /// the surface color attachment with alpha blending.
+    pub fn begin_translucent_forward<'a>(&'a self, pass: &mut wgpu::RenderPass<'a>) {
+        pass.set_pipeline(&self.translucent_forward_pipeline);
         pass.set_bind_group(0, &self.frame_bind_group, &[]);
         pass.set_bind_group(1, &self.atlas_bind_group, &[]);
     }
@@ -451,10 +539,10 @@ mod tests {
     use crate::render::mesh::ChunkVertex;
 
     #[test]
-    fn chunk_vertex_is_32_bytes() {
-        assert_eq!(std::mem::size_of::<ChunkVertex>(), 32);
-        assert_eq!(VERTEX_STRIDE, 32);
-        assert_eq!(vertex_stride(), 32);
+    fn chunk_vertex_is_36_bytes() {
+        assert_eq!(std::mem::size_of::<ChunkVertex>(), 36);
+        assert_eq!(VERTEX_STRIDE, 36);
+        assert_eq!(vertex_stride(), 36);
     }
 
     #[test]
@@ -468,6 +556,7 @@ mod tests {
             layer: 0,
             face: 0,
             light: 0,
+            block_id: 0,
         };
         let base = std::ptr::from_ref::<ChunkVertex>(&v).cast::<u8>() as usize;
         let pos = std::ptr::from_ref(&v.position).cast::<u8>() as usize;
@@ -475,10 +564,12 @@ mod tests {
         let layer = std::ptr::from_ref(&v.layer).cast::<u8>() as usize;
         let face = std::ptr::from_ref(&v.face).cast::<u8>() as usize;
         let light = std::ptr::from_ref(&v.light).cast::<u8>() as usize;
+        let block_id = std::ptr::from_ref(&v.block_id).cast::<u8>() as usize;
         assert_eq!(pos - base, 0);
         assert_eq!(uv - base, 12);
         assert_eq!(layer - base, 20);
         assert_eq!(face - base, 24);
         assert_eq!(light - base, 28);
+        assert_eq!(block_id - base, 32);
     }
 }

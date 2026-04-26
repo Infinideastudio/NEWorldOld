@@ -228,32 +228,36 @@ shaders/
 | `menus/language_menu.cpp` | `src/menus/language_menu.rs` | ✅ Full | Lists every `assets/lang/*.toml` dynamically. |
 | `ui/{context,element,layout,render,controls/*}.ixx` | — (replaced by `egui`) | 🟢 By design | Wholesale replacement; `src/ui/{action,hud,inventory,screen}.rs` is Rust-specific glue, not a port. |
 | `render/{buffer,texture,framebuffer,program,vertex_array,attrib_*,block_*,image}.ixx` | `src/render/*` | 🟢 By design | Wholesale replacement of the GL RAII layer with `wgpu`. |
-| `rendering.ixx` (`Renderer` namespace) | — | 🟡 Replaced | The C++ pass-coordinator singleton has no Rust analog; per-pass dispatch is direct in `Game`. The deferred renderer is not ported — `final.fsh` (641 lines) has no Rust counterpart. |
+| `rendering.ixx` (`Renderer` namespace) | `src/render/{gbuffer,composition,shadow}.rs` + `src/game/mod.rs` | 🟡 Partial | C++ pass-coordinator singleton split: G-buffer + composition pipeline + shadow placeholder all live in the `render` module; per-pass dispatch is direct in `Game::record_world_pass`. Advanced-mode `final.fsh` deliberately not ported (Tier 4 follow-on). |
 
 ### Shader parity
 
 | C++ shader | WGSL counterpart | Status |
 |---|---|---|
-| `default.{vsh,fsh}` | — | Fallback; not needed in wgpu. |
-| `ui.{vsh,fsh}` | (egui's own pipeline) | Replaced. |
-| `opaque.{vsh,fsh}` + `translucent.{vsh,fsh}` | `shaders/chunk.wgsl` | Combined into one shader with two pipeline configs; deferred G-buffer outputs **not** emitted. |
-| `final.fsh` (composition, fog, sky, volumetric clouds, SSR, shadow filter) | partly folded into `chunk.wgsl` | Only fog + ambient sky tint kept; all post-processing dropped. |
-| `shadow.{vsh,fsh}` + `debug_shadow.{vsh,fsh}` | — | ❌ Not ported. No shadow maps. |
-| `filter.{vsh,fsh}` | — | ❌ Not ported. No post-blur. |
+| `default.{vsh,fsh}` | `shaders/default.wgsl` | ✅ Ported (standalone, currently unused — the deferred chunk shader covers the same ground; kept for future basic-mode toggle). |
+| `ui.{vsh,fsh}` | (egui's own pipeline) | 🟢 Replaced by design. |
+| `opaque.{vsh,fsh}` + `translucent.{vsh,fsh}` | `shaders/chunk.wgsl` | ✅ Ported. Two fragment entry points: `fs_main` writes the G-buffer (opaque MRT pass) and `fs_main_forward` writes the surface for the post-composition translucent pass. |
+| `final.fsh` (composition, fog, sky, volumetric clouds, SSR, shadow filter) | `shaders/composition.wgsl` (skeleton) | 🟡 Skeleton only. Composition does basic-mode-equivalent diffuse blit + sky fill; no fog / lambert / shadow / SSR / volumetric clouds yet (Tier 4 follow-on). Shadow + noise bindings are wired ahead-of-time. |
+| `shadow.{vsh,fsh}` | `shaders/shadow.wgsl` | ✅ Ported (standalone, no pipeline yet). Includes leaf wave + fisheye warp; depth-only output (wgpu allows depth-only render passes, so the C++ debug color attachment was dropped). |
+| `debug_shadow.{vsh,fsh}` | `shaders/debug_shadow.wgsl` | ✅ Ported (standalone, no pipeline yet). Mirrors the C++ 8-step binary-search of `textureSampleCompare` to recover the stored depth. |
+| `filter.{vsh,fsh}` | `shaders/filter.wgsl` | ✅ Ported (standalone, no pipeline yet). Separable Gaussian blur with the C++ `FilterUniformBlock` layout. |
 | (none) | `shaders/basic.wgsl` | Bring-up scaffold. |
 | (none) | `shaders/particle.wgsl` | Billboard particles (replaces inline GL particle code). |
 | (none) | `shaders/selection.wgsl` | Selection-wireframe pass — line list, reversed-Z `Greater`, color-inversion blend (`OneMinusDst` × white = `1 - dst`) so the outline is high-contrast against any backdrop. |
+| (none) | `shaders/underwater.wgsl` | Underwater overlay tint (full-screen quad). |
 
 ### Bottom line
 
 Mechanical parity (chunk model, world storage, player physics, particles,
-commands, i18n, basic rendering) is full, and Tier 2 renderer polish
-(smooth lighting, greedy meshing, reversed-Z, BFS light propagation,
-random tick, mipmaps, smooth-particle interpolation, in-world selection
-wireframe) all shipped. Remaining gaps are the Tier 4 deferred renderer
-(shadow maps, G-buffer composition, volumetric clouds, SSR) plus the
-shader-options + UI-options panels that those features back. None of the
-gaps block end-to-end play.
+commands, i18n, basic rendering) is full. Tiers 2 / 3 / 4-infrastructure
+all shipped; Tier 4 advanced-mode features (real shadow PCF, volumetric
+clouds, SSR, BRDF) are the remaining gap. The deferred-rendering
+infrastructure (G-buffer, composition pipeline, shadow placeholder,
+all WGSL shader ports except `final.fsh`) is in place so each follow-on
+plugs in without further pipeline restructuring. None of the gaps block
+end-to-end play; the live output matches C++ basic rendering mode
+visually (translucent water, ±X / ±Z directional dimming, smooth
+lighting, greedy meshing).
 
 ---
 
@@ -353,23 +357,224 @@ Toggle wiring varies:
 - ✅ **Language menu.** Dynamic list of `assets/lang/*.toml`; switching
   reloads the i18n table on the next frame.
 
-### Tier 4 — large renderer features (weeks each)
+### Tier 4 — deferred renderer infrastructure (✅ shipped)
 
-- **Shadow maps.** Port `shadow.{vsh,fsh}` to WGSL; add a
-  `ShadowPipeline` that renders the scene from the sun's POV into a
-  depth texture; sample in `chunk.wgsl` with PCF for soft shadows. Wire
-  shadow distance / resolution to the shader-options menu.
-- **Deferred G-buffer + composition pass.** Port the largest C++ shader
-  (`final.fsh`, 641 lines) — diffuse / normal / material / depth
-  attachments from the opaque pass, composited against shadow + sky.
-  This is the renderer-architecture rewrite. Without it the other
-  Tier 4 items have no place to live.
-- **Post-process pipeline.** `filter.{vsh,fsh}` → a generic blur /
-  composition pass. Foundation for menu background blur and the
-  composition pass above.
-- **Volumetric clouds.** Raymarched in the composition pass.
-- **SSR (screen-space reflections).** Reads the G-buffer in the
-  composition pass.
+The deferred renderer architecture and every C++ shader except
+`final.fsh` are ported. Live output matches C++ basic rendering mode;
+advanced-mode features (shadow PCF, SSR, volumetric clouds) plug into
+the bindings already in place.
+
+- ✅ **G-buffer.** `src/render/gbuffer.rs` mirrors the C++
+  `Renderer::Deferred` framebuffer one-for-one: `Rgba32Float` diffuse,
+  `Rgba8Unorm` normal (`(n+1)/2` encoded), `Rgba8Unorm` material
+  (16-bit block id encoded as 2 bytes — `encode_u16`/`decode_u16`
+  ported verbatim), and `Depth32Float` reversed-Z depth.
+- ✅ **Frame uniforms.** `FrameUniforms` extended with
+  `inv_view_proj`, `shadow_view_proj`, `render_distance`,
+  `shadow_params`, and the `player_coord_int / mod / frac` triplet
+  (the C++ "repeat trick" coords for SSR / volumetric clouds).
+  Total size 448 B; layout matches WGSL std140-ish alignment with
+  `_pad_scalars` to 16-align `shadow_params`.
+- ✅ **Composition pipeline.** `src/render/composition.rs` +
+  `shaders/composition.wgsl`. Full-screen-triangle pair,
+  three-bind-group layout (frame / G-buffer / shadow+noise). Today
+  it's a basic-mode-equivalent blit (diffuse pass-through with sky
+  fill where `material == 0`); the eventual `final.fsh` port plugs
+  in without further pipeline restructuring.
+- ✅ **Shadow placeholder.** `src/render/shadow.rs` exposes a
+  `ShadowMap` with a `Depth32Float` texture (1×1 today,
+  `with_resolution(res)` helper for the future shadow pipeline) and a
+  comparison sampler — `GreaterEqual` / Linear / clamp-to-edge —
+  matching the C++ `set_filter(true)` + `set_depth_compare_mode(GEQUAL)`.
+- ✅ **Translucent forward pass.** Translucent chunks (water /
+  leaves / glass / ice) can't ride the `Rgba32Float` G-buffer
+  because wgpu refuses to blend that format without the
+  `Float32Blendable` feature. They render forward to the surface
+  AFTER composition with `SrcAlpha / OneMinusSrcAlpha` blending —
+  matches the C++ basic-mode `glBlendFunc(GL_SRC_ALPHA,
+  GL_ONE_MINUS_SRC_ALPHA)` setup. Implemented via a second
+  fragment entry point (`fs_main_forward`) and a third
+  `RenderPipeline` in `ChunkPipeline`.
+- ✅ **Per-face directional dimming.** `mesh::apply_face_dim`
+  multiplies the smooth-light brightness by 0.5 (±X), 1.0 (±Y),
+  0.2 (±Z) before storing it in the vertex's `light` byte —
+  ports `chunk_rendering.cpp::_render_chunk`'s `if (!AdvancedRender)
+  col = col * N / 10` for both the per-face renderer and the greedy
+  merger. Restores the iconic Minecraft-style block shading where
+  every face direction is visibly distinct under uniform lighting.
+- ✅ **All non-`final` shaders ported.** `default.wgsl`,
+  `chunk.wgsl` (= opaque + translucent), `shadow.wgsl`,
+  `debug_shadow.wgsl`, `filter.wgsl`. `chunk.wgsl` is the only
+  one with a live pipeline today; the rest are standalone WGSL
+  ports that the upcoming shadow / blur / debug pipelines pick up.
+- 🟡 **`final.fsh`.** Skeleton only — composition does basic-mode
+  output. Real BRDF + shadow PCF + SSR + volumetric clouds + fog
+  is the remaining advanced-mode work.
+
+### Tier 4 — advanced-mode follow-ons (next, weeks each)
+
+- **Shadow pass.** `shadow.wgsl` is ready; needs a
+  `ShadowPipeline` that depth-only-renders the scene from the sun's
+  POV into `ShadowMap`, plus a `getShadowMatrix*` port to fill
+  `frame.shadow_view_proj`. Then composition flips
+  `shadow_params.x > 0` and starts PCF-sampling.
+- **`final.fsh` port.** Lambert / ambient sky / fog → composition.
+  BRDF (Cook-Torrance) for opaque PBR. Then SSR + water reflections
+  + volumetric clouds layer on top.
+- **Filter pipeline.** `filter.wgsl` is ready; needs a host pipeline
+  to drive separable Gaussian (horizontal + vertical) for menu
+  background blur and the composition pass's effects.
+- **Debug-shadow pipeline.** Optional dev-only pipeline that draws
+  `debug_shadow.wgsl` into a corner of the screen for verifying the
+  shadow pass output.
+
+### WGSL ↔ GLSL / wgpu ↔ OpenGL mismatch report
+
+Issues encountered during the Tier 4 shader ports. Future advanced-mode
+work (shadow PCF, SSR, volumetric clouds) will hit most of these again,
+so the catalog lives here for reference.
+
+#### Texture / sampler model
+
+1. **Combined samplers split into texture + sampler.** GLSL
+   `sampler2DArray u_diffuse` ↔ WGSL `texture_2d_array<f32>` plus a
+   separate `sampler` binding, called via `textureSample(tex, samp,
+   uv, layer)`. Every chunk shader needs the explicit pair.
+2. **Shadow comparison samplers.** GLSL `sampler2DArrayShadow` ↔ WGSL
+   `texture_depth_2d` + `sampler_comparison`, sampled via
+   `textureSampleCompare`. The sampler must declare `compare:` at
+   creation; binding-type mismatch is a runtime validation error.
+3. **`texelFetch` is non-filtering.** WGSL equivalent is
+   `textureLoad(tex, ivec2, level)`. Used in the composition shader
+   for G-buffer reads where filtering would average across material
+   boundaries.
+4. **Sloppy GLSL `sampler2DArray` on a 2D texture.** The C++
+   `filter.fsh` declares `sampler2DArray u_buffer` but binds a 2D
+   texture. OpenGL drivers permit this (sampling layer 0); WGSL is
+   strict. The Rust port declares `texture_2d<f32>` and drops the
+   `vec3(uv, 0.0)` z-component.
+
+#### Coordinate conventions
+
+5. **NDC depth range.** GLSL `[-1, 1]`, wgpu/Vulkan/D3D `[0, 1]`.
+   Patched at the camera level via `OPENGL_TO_WGPU_REVERSED`
+   (`src/game/camera.rs`). The shadow pass's projection matrix needs
+   the same correction when wired.
+6. **NDC Y direction is +Y up in both,** but **texture-space Y
+   differs**: GLSL `t = 0` is at the bottom of the texture, WGSL
+   `t = 0` is at the top. Already handled in `mesh.rs` (`FACE_UVS` is
+   V-flipped vs the C++ `tex_coords` table); every full-screen quad's
+   `out.uv = vec2(p.x*0.5+0.5, 1.0 - (p.y*0.5+0.5))` re-flips for the
+   composition / debug / filter passes.
+7. **`gl_FragCoord` ↔ `@builtin(position)` in fragment.** Same
+   semantics (`(screen_x, screen_y, depth, 1/clip_w)`) once the Y-flip
+   is accounted for.
+
+#### Shader language differences
+
+8. **`centroid in` ↔ `@interpolate(perspective, centroid)`** —
+   straight syntactic replacement.
+9. **`flat in` ↔ `@interpolate(flat)`** — same.
+10. **`uvec3 a_color` ↔ `@location(N) color: vec3<u32>`** with
+    `Uint32x3` vertex format. The host-side `wgpu::VertexFormat`
+    choice has to match the shader's input type bit-for-bit (no
+    implicit promotion).
+11. **No `inverse()` builtin in WGSL.** Compute on the host (we use
+    `cgmath::Matrix4::invert` in `Game::write_frame_uniforms`) and
+    upload as `inv_view_proj`.
+12. **No C-style `#define` / preprocessor in WGSL.** The C++ build
+    conditionally compiles the same shader with `MERGE_FACE`,
+    `SOFT_SHADOW`, `VOLUMETRIC_CLOUDS`, `AMBIENT_OCCLUSION` macros
+    (`rendering.ixx::init_pipeline`). Rust port options:
+    (a) string-substitute before `create_shader_module`,
+    (b) WGSL `override` constants with pipeline-creation override values,
+    (c) ship multiple shader files. We use (c) today (`chunk.wgsl`
+    vs `default.wgsl`); will need (b) for the volumetric / AO toggles.
+13. **Float-bounded loops** (`for (float i = -radius; i <= radius;
+    i += step)`) work in both. WGSL's `loop {}` form is more
+    idiomatic — used in `filter.wgsl`.
+14. **Uniform-block layout rules differ subtly from std140.**
+    WGSL's uniform-address-space alignment requires `vec4`-aligned
+    `mat4` / `vec4` fields; trailing scalars need explicit padding to
+    land any following `vec4` on a 16-byte boundary. Caught one
+    offset mismatch in `FrameUniforms` — fixed with
+    `_pad_scalars: vec2<f32>` between `render_distance` and
+    `shadow_params`.
+
+#### Render-target / blending
+
+15. **`Rgba32Float` is not blendable in wgpu by default.** GL freely
+    allows blending on `RGBA32F`; wgpu requires the
+    `Float32Blendable` feature even for `BlendState::REPLACE`
+    (validation error at pipeline creation). Fix: declare `blend:
+    None` on `Rgba32Float` color targets. Functionally identical to
+    REPLACE (last fragment wins). Forced the
+    [translucent-forward-pass split](#tier-4--deferred-renderer-infrastructure--shipped):
+    translucent chunks render to the surface (Bgra8UnormSrgb,
+    blendable) instead of the G-buffer.
+16. **Depth-only render passes are allowed in wgpu** but the C++
+    `Framebuffer` wrapper requires a non-empty color attachment
+    list. Result: the C++ shadow framebuffer has a never-sampled
+    `RGBA8_UNORM` color attachment; the Rust port omits it.
+17. **MRT clear values for uint formats.** wgpu's `wgpu::Color {
+    r, g, b, a }` is typed as `f64`; for `R*Uint` formats the
+    validator interprets the components as integer values clamped to
+    the format's max. Clear value `0.0` works correctly. Avoided
+    entirely by switching `material` from `R16Uint` → `Rgba8Unorm`
+    for C++ parity (`encode_u16` / `decode_u16` ported verbatim).
+18. **Vertex `u8` / `i8` packed attributes** in C++
+    (`Color: Vec3u8`, `Tangent: Vec3i8`) require
+    `wgpu::VertexFormat::Unorm8x4` / `Snorm8x4` and 4-byte component
+    padding. Our `ChunkVertex` doesn't carry tangents yet; whenever
+    it does we'll need 4-component packed types since wgpu doesn't
+    have `*x3` 8-bit formats.
+
+#### Vertex layout
+
+19. **`a_color: uvec3`** in C++ holds per-channel smooth-light
+    brightness (always uniform across r/g/b in practice). The Rust
+    port stores monochrome brightness in `light: u32`. Functionally
+    equivalent; the WGSL shader extracts via
+    `f32(in.light & 0xFFu) / 255.0` rather than `vec3(a_color) / 255.0`.
+20. **Texture array layer in `tex_coord.z`** vs explicit `layer:
+    u32` attribute. Adapted in every shader that consumes chunk
+    vertices.
+21. **`block_id` carried per-vertex.** Added to `ChunkVertex`
+    (vertex stride 32 → 36 B) so the chunk fragment shader can
+    write the material into the G-buffer per-pixel — same role as
+    C++ `a_block_id` (location 5) in `opaque.vsh` /
+    `translucent.vsh`.
+
+#### Reversed-Z subtleties
+
+22. **Shadow comparison direction.** C++ uses `GL_GEQUAL` for
+    reversed-Z shadow. With `sampler_comparison` +
+    `GreaterEqual`, `textureSampleCompare(tex, samp, uv, ref)`
+    returns `1.0` when the stored depth is `≥ ref` (the test point
+    is at or in front of the closest occluder, i.e. lit). The
+    `debug_shadow.wgsl` binary search comments call out that the
+    direction may need a flip when the shadow pass starts emitting
+    real data — flagged here so it isn't a surprise in the next
+    Tier 4 step.
+23. **Fisheye warp commutes through the perspective divide only
+    because xy is divided post-w-divide.** `shadow.vsh` does the
+    divide explicitly before warping. Standard rasterization
+    expects clip-space coords (pre-divide); writing post-divide
+    coords with `w=1` is a load-bearing detail the WGSL port
+    preserves.
+
+#### Bindings / pipeline state
+
+24. **Bind-group-vs-pipeline-layout reflection.** wgpu validates
+    that every binding declared in the shader has a matching
+    `BindGroupLayoutEntry`. Solution: declare all shadow / noise
+    bindings in the composition pipeline's `aux_layout` even when
+    unused at runtime.
+25. **Static bindings can get dead-stripped** if the shader never
+    reads them — wgpu's reflection then complains about a layout
+    mismatch. The composition shader does a zero-scale
+    `textureSampleCompare + textureSampleLevel` to anchor the
+    bindings without affecting output.
 
 ### Out of scope (intentionally not ported)
 
