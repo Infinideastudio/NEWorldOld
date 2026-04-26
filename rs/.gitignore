@@ -1,9 +1,0 @@
-/target
-/Cargo.lock.bak
-**/*.rs.bk
-
-# NEWorld runtime artefacts (saved worlds, options TOML, screenshots).
-# Generated next to the binary at run time; not source.
-/configs/
-/worlds/
-/screenshots/

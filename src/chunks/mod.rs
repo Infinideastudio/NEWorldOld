@@ -202,8 +202,13 @@ impl Chunk {
     }
 
     /// Write-access to one block. Lazily allocates the data array (filling
-    /// with air at the chunk's default light) on first call, then sets
-    /// `empty = false`, `updated = true`, `modified = true`.
+    /// with air at the chunk's default light) on first call. Always flips
+    /// `empty = false`, `updated = true`, `modified = true` — `empty` lives
+    /// outside the lazy-alloc guard because `init_generate` can leave a
+    /// chunk in the `data = Some(_), empty = true` state for above-terrain
+    /// chunks whose normal-gen pass allocated the buffer but found nothing
+    /// solid to put in it. Without this flip, a later `block_mut` would
+    /// quietly leave `empty()` reading true even after the write.
     pub fn block_mut(&mut self, bcoord: Vec3u, base: &BaseBlocks) -> &mut BlockData {
         assert!(
             bcoord.x < Self::SIZE as u32
@@ -218,11 +223,10 @@ impl Chunk {
                 light: self.default_light(),
             };
             self.data = Some(Box::new([fill; Self::SIZE_CUBED]));
-            self.empty = false;
         }
+        self.empty = false;
         self.updated = true;
         self.modified = true;
-        // SAFETY-free unwrap: just allocated above.
         let data = self
             .data
             .as_mut()
