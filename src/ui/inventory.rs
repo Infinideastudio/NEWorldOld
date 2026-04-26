@@ -12,12 +12,11 @@
 //! mouse-wheel and Z/X cycle the held slot — that's wired in
 //! `crate::game::Game::tick_render`, not here.
 //!
-//! Slot rendering is purely text-based for now: block name + count. Wiring
-//! this to the existing block atlas would require registering each layer of
-//! the `texture_2d_array` with egui as a separate `TextureId`, which we
-//! defer until after the gameplay loop is in place.
+//! Each non-empty slot paints the front-face block art via per-layer
+//! `egui::TextureId`s sourced from the block-diffuse atlas (built once at
+//! startup by `EguiRenderer::register_native_textures`).
 
-use egui::{Align2, Color32, Context, FontId, Pos2, Rect, Sense, Stroke, Ui, vec2};
+use egui::{Align2, Color32, Context, FontId, Pos2, Rect, Sense, Stroke, TextureId, Ui, vec2};
 
 use crate::blocks::{BlockRegistry, Id};
 use crate::items::ItemStack;
@@ -45,11 +44,12 @@ impl Inventory {
         player: &mut Player,
         registry: &BlockRegistry,
         air_id: Id,
+        block_icons: &[TextureId],
     ) {
-        self.render_hotbar(ctx, player, registry, air_id);
+        self.render_hotbar(ctx, player, registry, air_id, block_icons);
 
         if self.open {
-            self.render_full(ctx, player, registry, air_id);
+            self.render_full(ctx, player, registry, air_id, block_icons);
         }
         // If the inventory is closed while `self.held` is non-empty, the
         // stack stays cached on the cursor and reappears the next time the
@@ -65,6 +65,7 @@ impl Inventory {
         player: &mut Player,
         registry: &BlockRegistry,
         air_id: Id,
+        block_icons: &[TextureId],
     ) {
         let row = 3;
         let held_idx = player.held_item_stack_index();
@@ -84,6 +85,7 @@ impl Inventory {
                             slot,
                             registry,
                             air_id,
+                            block_icons,
                             highlighted,
                             false,
                         );
@@ -101,6 +103,7 @@ impl Inventory {
         player: &mut Player,
         registry: &BlockRegistry,
         air_id: Id,
+        block_icons: &[TextureId],
     ) {
         // Background dimmer behind the window so the world is muted.
         egui::Area::new("inv_dim".into())
@@ -124,7 +127,7 @@ impl Inventory {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = 2.0;
                         for col in 0..10 {
-                            self.handle_slot(ui, player, registry, air_id, row, col);
+                            self.handle_slot(ui, player, registry, air_id, block_icons, row, col);
                         }
                     });
                     ui.add_space(2.0);
@@ -140,6 +143,7 @@ impl Inventory {
                             player,
                             registry,
                             air_id,
+                            block_icons,
                             3,
                             col,
                             highlighted,
@@ -161,22 +165,42 @@ impl Inventory {
                 Pos2::new(pos.x - SLOT_SIZE * 0.5, pos.y - SLOT_SIZE * 0.5),
                 vec2(SLOT_SIZE, SLOT_SIZE),
             );
-            Self::paint_slot_into(&painter, rect, self.held, registry, air_id, false, true);
+            Self::paint_slot_into(
+                &painter,
+                rect,
+                self.held,
+                registry,
+                air_id,
+                block_icons,
+                false,
+                true,
+            );
         }
     }
 
     /// Render one slot with click handling. Pure dispatch wrapper around
     /// [`Self::handle_slot_with_highlight`] with `highlighted=false`.
+    #[allow(clippy::too_many_arguments)]
     fn handle_slot(
         &mut self,
         ui: &mut Ui,
         player: &mut Player,
         registry: &BlockRegistry,
         air_id: Id,
+        block_icons: &[TextureId],
         row: usize,
         col: usize,
     ) {
-        self.handle_slot_with_highlight(ui, player, registry, air_id, row, col, false);
+        self.handle_slot_with_highlight(
+            ui,
+            player,
+            registry,
+            air_id,
+            block_icons,
+            row,
+            col,
+            false,
+        );
     }
 
     /// Render one slot and react to clicks. Mutates the player's slot and
@@ -194,12 +218,13 @@ impl Inventory {
         player: &mut Player,
         registry: &BlockRegistry,
         air_id: Id,
+        block_icons: &[TextureId],
         row: usize,
         col: usize,
         highlighted: bool,
     ) {
         let slot = *player.inventory_item_stack(row, col);
-        let response = Self::draw_slot(ui, slot, registry, air_id, highlighted, true);
+        let response = Self::draw_slot(ui, slot, registry, air_id, block_icons, highlighted, true);
 
         if response.clicked() {
             self.left_click_slot(player, row, col);
@@ -265,22 +290,34 @@ impl Inventory {
         stack: ItemStack,
         registry: &BlockRegistry,
         air_id: Id,
+        block_icons: &[TextureId],
         highlighted: bool,
         interactive: bool,
     ) -> egui::Response {
         let sense = if interactive { Sense::click() } else { Sense::hover() };
         let (rect, response) = ui.allocate_exact_size(vec2(SLOT_SIZE, SLOT_SIZE), sense);
         let hovered = response.hovered();
-        Self::paint_slot_into(ui.painter(), rect, stack, registry, air_id, highlighted, hovered);
+        Self::paint_slot_into(
+            ui.painter(),
+            rect,
+            stack,
+            registry,
+            air_id,
+            block_icons,
+            highlighted,
+            hovered,
+        );
         response
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn paint_slot_into(
         painter: &egui::Painter,
         rect: Rect,
         stack: ItemStack,
         registry: &BlockRegistry,
         air_id: Id,
+        block_icons: &[TextureId],
         highlighted: bool,
         hovered: bool,
     ) {
@@ -304,22 +341,47 @@ impl Inventory {
         }
 
         let info = registry.get(stack.id);
-        // Two-letter block label centred in the slot — placeholder for the
-        // proper block-icon render once the texture array is bridged into egui.
-        let label = abbreviate(&info.name);
-        painter.text(
-            rect.center() + vec2(0.0, -4.0),
-            Align2::CENTER_CENTER,
-            label,
-            FontId::proportional(13.0),
-            Color32::from_rgb(240, 240, 240),
-        );
-        // Count in the bottom-right corner.
-        if stack.count > 1 {
+        // Block icon — face(0) is the front-facing texture index in the
+        // block-diffuse atlas. Fall back to a centred letter abbreviation
+        // when the icon would be out of range (registries with more block
+        // ids than texture layers, or block_icons not yet populated in the
+        // unit tests).
+        let layer = info.face(0).0 as usize;
+        if let Some(tex_id) = block_icons.get(layer) {
+            // Inset by 2 px so the slot border stays visible around the icon.
+            let icon_rect = rect.shrink(2.0);
+            painter.image(
+                *tex_id,
+                icon_rect,
+                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                Color32::WHITE,
+            );
+        } else {
+            let label = abbreviate(&info.name);
             painter.text(
-                rect.right_bottom() + vec2(-3.0, -2.0),
+                rect.center() + vec2(0.0, -4.0),
+                Align2::CENTER_CENTER,
+                label,
+                FontId::proportional(13.0),
+                Color32::from_rgb(240, 240, 240),
+            );
+        }
+        // Count in the bottom-right corner. Drawn over the icon with a
+        // small dark shadow so it stays readable against any block art.
+        if stack.count > 1 {
+            let text = format!("{}", stack.count);
+            let pos = rect.right_bottom() + vec2(-3.0, -2.0);
+            painter.text(
+                pos + vec2(1.0, 1.0),
                 Align2::RIGHT_BOTTOM,
-                format!("{}", stack.count),
+                &text,
+                FontId::proportional(11.0),
+                Color32::from_black_alpha(180),
+            );
+            painter.text(
+                pos,
+                Align2::RIGHT_BOTTOM,
+                text,
                 FontId::proportional(11.0),
                 Color32::WHITE,
             );
@@ -327,8 +389,10 @@ impl Inventory {
     }
 }
 
-/// Pick a short, readable label for a block name. Strips the leading capital
-/// of multi-word names ("Stone Bricks" → "SB") and truncates otherwise.
+/// Pick a short, readable label for a block name. Used as the fallback when
+/// no atlas icon is registered for the block id (e.g. unit tests). Strips the
+/// leading capital of multi-word names ("Stone Bricks" → "SB") and truncates
+/// otherwise.
 fn abbreviate(name: &str) -> String {
     let words: Vec<&str> = name.split_whitespace().collect();
     if words.len() >= 2 {

@@ -157,6 +157,8 @@ pub enum Key {
     ArrowRight = 34,
     ArrowUp = 35,
     ArrowDown = 36,
+    // Window-management keys
+    F11 = 37,
 }
 
 impl Key {

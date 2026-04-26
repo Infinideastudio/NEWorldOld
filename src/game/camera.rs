@@ -10,14 +10,18 @@ use cgmath::{InnerSpace, Matrix4, Point3, Rad, Vector3};
 
 use crate::math::{Eulerd, Vec3d};
 
-/// `Matrix4` that maps GL clip space `Z in [-1, 1]` to wgpu's `[0, 1]`.
-/// Pre-multiply against any `cgmath::perspective` result.
+/// `Matrix4` that maps GL clip space `Z in [-1, 1]` into wgpu's `[0, 1]`
+/// **with the depth axis reversed** — near maps to 1, far maps to 0. Combined
+/// with `CompareFunction::Greater` and a 0.0 depth clear in the chunk +
+/// particle pipelines, this gives reversed-Z's much-better far-plane precision
+/// without changing the projection formula. Output column-major form, so
+/// reading rows: row 2 emits `-0.5*z + 0.5*w`, i.e. `(1 - gl_z) / 2`.
 #[rustfmt::skip]
-pub const OPENGL_TO_WGPU: Matrix4<f32> = Matrix4::new(
-    1.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 0.5, 0.0,
-    0.0, 0.0, 0.5, 1.0,
+pub const OPENGL_TO_WGPU_REVERSED: Matrix4<f32> = Matrix4::new(
+    1.0, 0.0,  0.0, 0.0,
+    0.0, 1.0,  0.0, 0.0,
+    0.0, 0.0, -0.5, 0.0,
+    0.0, 0.0,  0.5, 1.0,
 );
 
 /// `glm`-style Y-up free-look camera, driven externally by [`super::Game`].
@@ -91,10 +95,12 @@ impl Camera {
         Matrix4::look_to_rh(eye, dir, Vector3::unit_y())
     }
 
-    /// Perspective projection matrix in wgpu's clip-space convention
-    /// (Z in `[0, 1]`).
+    /// Reversed-Z perspective projection in wgpu's clip-space convention
+    /// (`Z in [0, 1]`, near = 1, far = 0). Pair with `CompareFunction::Greater`
+    /// and a 0.0 depth clear at the render-pass level.
     #[must_use]
     pub fn proj_matrix(&self, aspect: f32) -> Matrix4<f32> {
-        OPENGL_TO_WGPU * cgmath::perspective(Rad(self.fov_y), aspect, self.near, self.far)
+        OPENGL_TO_WGPU_REVERSED
+            * cgmath::perspective(Rad(self.fov_y), aspect, self.near, self.far)
     }
 }

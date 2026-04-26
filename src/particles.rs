@@ -40,11 +40,17 @@ const HORIZONTAL_DRAG_PER_TICK: f64 = 0.6;
 const GRAVITY_PER_TICK: f64 = 0.03;
 
 /// AABB half-extent of a particle, in world units. The C++ code stores a
-/// per-particle `psize` set by `throw_particle`; the Rust port hard-codes a
-/// reasonable default (matching the most common spawn site — broken-block
-/// debris) so the simulation has no per-particle parameter that doesn't
-/// affect physics. Future spawners can override via [`Particle::extent`].
+/// per-particle `psize` set by `throw_particle` (used both as world size
+/// AND as the UV sub-rect size). The Rust port keeps the two decoupled but
+/// defaults to a small value so break-block debris reads as flecks rather
+/// than block-sized chunks.
 const DEFAULT_EXTENT: f64 = 0.25;
+
+/// Default UV sub-rect size, in `[0, 1]` of the source texture. Each particle
+/// samples a `tex_size × tex_size` random fragment of the block art rather
+/// than the whole face, mirroring the C++ `tcx/tcy = rnd() * (1 - psize)`
+/// trick that produces visually distinct flecks per spawn.
+const DEFAULT_TEX_SIZE: f32 = 0.25;
 
 /// Collision epsilon used when calling `Aabb3d::clip_displacement`. Matches
 /// `Player::update`.
@@ -56,16 +62,28 @@ const COLLISION_EPS: f64 = 1e-8;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Particle {
-    /// World-space center.
+    /// World-space center *after* the most recent simulation tick.
     pub coord: Vector3<f64>,
+    /// World-space center *before* the most recent simulation tick. The
+    /// renderer lerps `prev_coord → coord` by `tick_alpha` so motion stays
+    /// smooth at render rates that aren't a multiple of the 30 Hz sim
+    /// rate. On spawn this equals `coord` (no jump).
+    pub prev_coord: Vector3<f64>,
     /// World-space velocity (units per *tick*, matching the C++ semantics —
     /// `tick` integrates `coord += velocity` once per call after damping).
     pub velocity: Vector3<f64>,
     /// Atlas layer to sample. Re-uses the block diffuse atlas; broken-block
     /// particles inherit the source block's texture layer.
     pub texture_layer: u32,
-    /// Sub-rect origin within the source face (`tcx` in the C++ code).
+    /// Sub-rect origin within the source face, in `[0, 1 - tex_size]² ` —
+    /// the bottom-left corner of the random fragment the C++ port
+    /// historically picked via `tcx = rnd() * (1 - psize)`.
     pub tex_uv: [f32; 2],
+    /// Sub-rect side length, in `[0, 1]` of the source texture. Combined
+    /// with `tex_uv` this carves a `tex_size × tex_size` fragment per
+    /// particle so each fleck shows a different bit of the broken block's
+    /// art.
+    pub tex_size: f32,
     /// AABB half-extent (world units). Defaults to [`DEFAULT_EXTENT`].
     pub extent: f64,
     /// Time alive, in seconds.
@@ -75,19 +93,34 @@ pub struct Particle {
 }
 
 impl Particle {
-    /// Convenience constructor with the default extent and zero texture
-    /// offset.
+    /// Convenience constructor with default extent + UV sub-rect size and a
+    /// zeroed sub-rect origin. Spawners that want randomized flecks should
+    /// overwrite `tex_uv` after calling this — see
+    /// [`Particle::with_random_tex_uv`].
     #[must_use]
     pub fn new(coord: Vec3d, velocity: Vec3d, texture_layer: u32, max_age: f32) -> Self {
         Self {
             coord,
+            prev_coord: coord,
             velocity,
             texture_layer,
             tex_uv: [0.0, 0.0],
+            tex_size: DEFAULT_TEX_SIZE,
             extent: DEFAULT_EXTENT,
             age: 0.0,
             max_age,
         }
+    }
+
+    /// Set [`Self::tex_uv`] to `(rng_x, rng_y) * (1 - tex_size)` — both
+    /// `rng_*` should be in `[0, 1]`. This produces a uniformly-random
+    /// origin that keeps the `tex_size × tex_size` fragment fully inside
+    /// the `[0, 1]` source square (mirrors C++ `throw_particle`).
+    #[must_use]
+    pub fn with_random_tex_uv(mut self, rng_x: f32, rng_y: f32) -> Self {
+        let span = (1.0 - self.tex_size).max(0.0);
+        self.tex_uv = [rng_x.clamp(0.0, 1.0) * span, rng_y.clamp(0.0, 1.0) * span];
+        self
     }
 
     /// World-space AABB of this particle.
@@ -157,6 +190,10 @@ impl ParticleSystem {
         let mut i = 0;
         while i < self.particles.len() {
             let mut p = self.particles[i];
+
+            // Snapshot pre-tick position so the renderer can lerp between
+            // the old and new center across sub-tick frames.
+            p.prev_coord = p.coord;
 
             // Drag + gravity.
             p.velocity.x *= drag;
@@ -254,11 +291,7 @@ mod tests {
                     for z in lo_z..=hi_z {
                         out.push(Aabb3d::new(
                             Vec3d::new(f64::from(x), f64::from(y), f64::from(z)),
-                            Vec3d::new(
-                                f64::from(x + 1),
-                                f64::from(y + 1),
-                                f64::from(z + 1),
-                            ),
+                            Vec3d::new(f64::from(x + 1), f64::from(y + 1), f64::from(z + 1)),
                         ));
                     }
                 }
@@ -411,7 +444,8 @@ mod tests {
         let mut s = ParticleSystem::new();
         // Spawn just above the floor, with a strong downward velocity.
         // Floor: solid for y < 0 → top of floor at y == 0.
-        // Particle extent 0.25 → AABB bottom = coord.y - 0.25.
+        // Particle extent defaults to DEFAULT_EXTENT (small fleck), AABB
+        // bottom = coord.y - DEFAULT_EXTENT.
         s.spawn(Particle::new(
             Vec3d::new(0.5, 0.5, 0.5),
             Vec3d::new(0.0, -10.0, 0.0),
@@ -420,24 +454,23 @@ mod tests {
         ));
         s.tick(1.0 / 30.0, &GroundFloor);
         let p = s.particles()[0];
-        // Particle's bottom edge must not penetrate y=0. With extent=0.25
-        // that means `coord.y >= 0.25` (sub-pixel collision tolerance is
-        // built into the open-interval `intersects` test, so we accept
-        // 0.25 +/- 1e-6).
+        // Particle's bottom edge must not penetrate y=0 → coord.y must be
+        // ≥ DEFAULT_EXTENT (sub-pixel collision tolerance built into the
+        // open-interval `intersects` test).
         assert!(
-            p.coord.y >= 0.25 - 1e-6,
+            p.coord.y >= DEFAULT_EXTENT - 1e-6,
             "particle clipped through floor, y={}",
             p.coord.y
         );
         // Velocity is *clipped*, not zeroed — the C++ original assigns the
         // clipped vector directly so `velocity.y` retains the residual gap
-        // distance (here, -0.25). What matters is that next tick's
-        // `coord += velocity * ticks` does NOT drop us further into the
-        // floor. With ticks=1 here we'd land at y=0.0 (still on the
-        // surface) and another collision pass would clip again. So check:
-        // the post-tick |velocity.y| is no larger than the original gap.
+        // distance. The post-tick |velocity.y| must be no larger than the
+        // original gap (`spawn_y - extent` = 0.5 - DEFAULT_EXTENT = 0.45
+        // for the current default), so the next tick's `coord += velocity
+        // * ticks` doesn't drop further into the floor.
+        let gap = 0.5 - DEFAULT_EXTENT;
         assert!(
-            p.velocity.y >= -0.25 - 1e-6,
+            p.velocity.y >= -gap - 1e-6,
             "velocity.y should be clipped to gap, got {}",
             p.velocity.y
         );

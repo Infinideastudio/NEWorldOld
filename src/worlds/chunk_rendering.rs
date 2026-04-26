@@ -32,10 +32,10 @@ const SHADER_SRC: &str = include_str!("../../shaders/chunk.wgsl");
 /// Vertex stride in bytes — must match the WGSL header in `chunk.wgsl`.
 const VERTEX_STRIDE: wgpu::BufferAddress = std::mem::size_of::<ChunkVertex>() as wgpu::BufferAddress;
 
-// Compile-time check that `ChunkVertex` actually packs to the documented 28
+// Compile-time check that `ChunkVertex` actually packs to the documented 32
 // bytes. If the [D1] meshing struct grows, the shader vertex layout must be
 // updated in lockstep.
-const _: () = assert!(std::mem::size_of::<ChunkVertex>() == 28);
+const _: () = assert!(std::mem::size_of::<ChunkVertex>() == 32);
 
 // ---------- ChunkMesh ----------
 
@@ -153,6 +153,7 @@ fn create_vertex_buffer(
             uv: v.uv,
             layer: v.layer,
             face: v.face,
+            light: v.light,
         })
         .collect();
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -287,6 +288,11 @@ impl ChunkPipeline {
                 offset: 24,
                 shader_location: 3,
             },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Uint32,
+                offset: 28,
+                shader_location: 4,
+            },
         ];
 
         let vertex_buffers = [wgpu::VertexBufferLayout {
@@ -311,12 +317,14 @@ impl ChunkPipeline {
             alpha_to_coverage_enabled: false,
         };
 
-        // TODO reversed-Z (migration plan §6) — switch to `depth_compare:
-        // Greater` + clear-to-0.0 once the depth precision matters.
+        // Reversed-Z: near = 1, far = 0; pass survives if the new fragment is
+        // *greater* than what's already in the depth buffer. The render pass
+        // clears depth to 0.0 (see `Game::record_world_pass`) and the camera
+        // projection in `Camera::proj_matrix` is reversed-Z accordingly.
         let opaque_depth = wgpu::DepthStencilState {
             format: depth_format,
             depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
+            depth_compare: Some(wgpu::CompareFunction::Greater),
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         };
@@ -324,7 +332,7 @@ impl ChunkPipeline {
         let translucent_depth = wgpu::DepthStencilState {
             format: depth_format,
             depth_write_enabled: Some(false),
-            depth_compare: Some(wgpu::CompareFunction::Less),
+            depth_compare: Some(wgpu::CompareFunction::Greater),
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         };
@@ -434,10 +442,10 @@ mod tests {
     use crate::render::mesh::ChunkVertex;
 
     #[test]
-    fn chunk_vertex_is_28_bytes() {
-        assert_eq!(std::mem::size_of::<ChunkVertex>(), 28);
-        assert_eq!(VERTEX_STRIDE, 28);
-        assert_eq!(vertex_stride(), 28);
+    fn chunk_vertex_is_32_bytes() {
+        assert_eq!(std::mem::size_of::<ChunkVertex>(), 32);
+        assert_eq!(VERTEX_STRIDE, 32);
+        assert_eq!(vertex_stride(), 32);
     }
 
     #[test]
@@ -450,15 +458,18 @@ mod tests {
             uv: [0.0, 0.0],
             layer: 0,
             face: 0,
+            light: 0,
         };
         let base = std::ptr::from_ref::<ChunkVertex>(&v).cast::<u8>() as usize;
         let pos = std::ptr::from_ref(&v.position).cast::<u8>() as usize;
         let uv = std::ptr::from_ref(&v.uv).cast::<u8>() as usize;
         let layer = std::ptr::from_ref(&v.layer).cast::<u8>() as usize;
         let face = std::ptr::from_ref(&v.face).cast::<u8>() as usize;
+        let light = std::ptr::from_ref(&v.light).cast::<u8>() as usize;
         assert_eq!(pos - base, 0);
         assert_eq!(uv - base, 12);
         assert_eq!(layer - base, 20);
         assert_eq!(face - base, 24);
+        assert_eq!(light - base, 28);
     }
 }

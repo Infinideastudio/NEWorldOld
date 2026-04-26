@@ -1,49 +1,56 @@
-//! Create world screen — name + optional seed form.
+//! Create world screen — direct mirror of `old/src/menus/create_world_menu.cpp`.
 //!
-//! "Create" creates `<root>/worlds/<name>/` on disk (so the entry shows up in
-//! the world-select list immediately) and pops back to it. The world isn't
-//! actually loaded until the user selects it from the list and clicks Enter
-//! — keeping the two-step flow aligned with the C++ menu (which also forces
-//! a "back to world list, then click Enter" round trip after Create).
+//! Layout: caption row, single-line text-edit row for the world name, then a
+//! Back / OK pair row. The C++ build creates the world directory inline on
+//! "OK" and pops back; we do the same. Validation errors (empty name,
+//! illegal characters, name collision) appear above the form in red.
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use egui::Context;
+use egui::{Color32, Context};
 
+use super::{
+    caption_row, flex_spacer, footer_height, menu_panel, pair_row, t, MENU_ROW_HEIGHT,
+    MENU_ROW_SPACING,
+};
+use crate::globalization::I18n;
 use crate::ui::action::WorldActionQueue;
 use crate::ui::screen::{Screen, Transition};
 
 /// Create world form state.
 pub struct CreateWorldScreen {
     worlds_root: PathBuf,
+    i18n: Arc<Mutex<I18n>>,
     /// Held in case a future iteration wants to immediately submit
     /// `WorldAction::Enter` after creating, instead of bouncing back through
     /// the world list. Today we just pop, so the field is unused at runtime.
     #[allow(dead_code)]
     actions: Arc<WorldActionQueue>,
     world_name: String,
-    seed: String,
     /// Set to a human-readable error message if the most recent Create
-    /// attempt failed (illegal name, world already exists, fs error). Shown
-    /// inline above the form.
+    /// attempt failed. Shown inline above the form.
     error: Option<String>,
 }
 
 impl CreateWorldScreen {
     #[must_use]
-    pub fn new(worlds_root: PathBuf, actions: Arc<WorldActionQueue>) -> Self {
+    pub fn new(
+        worlds_root: PathBuf,
+        i18n: Arc<Mutex<I18n>>,
+        actions: Arc<WorldActionQueue>,
+    ) -> Self {
         Self {
             worlds_root,
+            i18n,
             actions,
             world_name: String::new(),
-            seed: String::new(),
             error: None,
         }
     }
 
     /// Validate `name` and create the world directory if it doesn't already
-    /// exist. Returns `Ok(())` on success; populates `self.error` on failure.
+    /// exist. Returns `true` on success.
     fn try_create(&mut self) -> bool {
         let name = self.world_name.trim();
         if name.is_empty() {
@@ -57,6 +64,9 @@ impl CreateWorldScreen {
             );
             return false;
         }
+        // Path convention: worlds live at `<worlds_root>/worlds/<name>/`,
+        // matching `World::new_at`'s internal layout. `worlds_root` is the
+        // parent dir (crate dir in dev), not the worlds dir itself.
         let dir = self.worlds_root.join("worlds").join(name);
         if dir.exists() {
             self.error = Some("A world with that name already exists.".to_owned());
@@ -76,48 +86,47 @@ impl Screen for CreateWorldScreen {
         "Create World"
     }
 
-    #[allow(deprecated)] // CentralPanel::show
     fn ui(&mut self, ctx: &Context) -> Transition {
+        let caption = t(&self.i18n, "NEWorld.create.caption");
+        let placeholder = t(&self.i18n, "NEWorld.create.inputname");
+        let ok_label = t(&self.i18n, "NEWorld.create.ok");
+        let back_label = t(&self.i18n, "NEWorld.create.back");
+
         let mut transition = Transition::None;
         let mut create_clicked = false;
         let mut cancel_clicked = false;
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.add_space(40.0);
-                ui.heading("Create New World");
-                ui.separator();
-                ui.add_space(10.0);
-            });
-
-            ui.horizontal(|ui| {
-                if ui.button("\u{2190} Cancel").clicked() {
-                    cancel_clicked = true;
-                }
-            });
-            ui.separator();
+        menu_panel(ctx, |ui| {
+            caption_row(ui, &caption);
+            ui.add_space(MENU_ROW_SPACING);
 
             if let Some(msg) = &self.error {
-                ui.colored_label(egui::Color32::LIGHT_RED, msg);
-                ui.add_space(8.0);
+                ui.colored_label(Color32::LIGHT_RED, msg);
+                ui.add_space(MENU_ROW_SPACING);
             }
 
-            ui.horizontal(|ui| {
-                ui.label("World Name: ");
-                ui.text_edit_singleline(&mut self.world_name);
-            });
+            // Single-line text edit row.
+            ui.allocate_ui_with_layout(
+                egui::vec2(ui.available_width(), MENU_ROW_HEIGHT),
+                egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+                |ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.world_name)
+                            .hint_text(&placeholder)
+                            .desired_width(f32::INFINITY),
+                    );
+                },
+            );
+            ui.add_space(MENU_ROW_SPACING);
 
-            ui.add_space(10.0);
+            // Footer: one pair_row (32 px).
+            flex_spacer(ui, footer_height(1));
 
-            ui.horizontal(|ui| {
-                ui.label("Seed (optional): ");
-                ui.text_edit_singleline(&mut self.seed);
-            });
-
-            ui.add_space(20.0);
-
-            ui.horizontal(|ui| {
-                if ui.button("Create").clicked() {
+            pair_row(ui, |cols| {
+                if cols[0].button(&back_label).clicked() {
+                    cancel_clicked = true;
+                }
+                if cols[1].button(&ok_label).clicked() {
                     create_clicked = true;
                 }
             });
@@ -131,9 +140,9 @@ impl Screen for CreateWorldScreen {
     }
 }
 
-/// Restrict world names to a tiny safe alphabet so we never have to worry
-/// about path-traversal sequences (`..`), reserved Windows names, or
-/// filesystem-unsafe punctuation. Empty input is rejected separately.
+/// Restrict world names to a safe alphabet so we never have to worry about
+/// path-traversal sequences (`..`), reserved Windows names, or unsafe
+/// punctuation. Empty input is rejected separately.
 fn is_safe_world_name(name: &str) -> bool {
     name.chars()
         .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')

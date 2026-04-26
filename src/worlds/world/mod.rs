@@ -51,6 +51,34 @@ pub const MAX_CHUNK_UNLOADS: usize = 64;
 /// Mirrors C++ `worlds.ixx::MAX_BLOCK_UPDATES`.
 pub const MAX_BLOCK_UPDATES: usize = 65536;
 
+/// Cells sampled per non-empty chunk per `random_tick` call. Three matches
+/// the order of magnitude of vanilla MC's `random-tick speed = 3` default
+/// — slow enough that grass spread is gradual but visible during play.
+pub const RANDOM_TICKS_PER_CHUNK: usize = 3;
+
+/// Cap on how many cells a single `remove_light_bfs` call can clear before
+/// it gives up and falls back to plain relaxation. Bounds the worst-case
+/// `set_block` cost when a player drops a roof over a huge open atrium —
+/// 65 K cells covers the full 16³ × full-column worst case (16 × 16 × 256
+/// = 65 536) plus headroom for lateral fanout.
+const MAX_LIGHT_REMOVE_OPS: usize = 65_536;
+
+/// 6-neighbor offsets in the canonical `[+X, -X, +Y, -Y, +Z, -Z]` order. Used
+/// by `update_block` and `remove_light_bfs` and matches the face-id layout
+/// in `render::mesh`.
+const NEIGHBOR_OFFSETS: [Vec3i; 6] = [
+    Vec3i::new(1, 0, 0),
+    Vec3i::new(-1, 0, 0),
+    Vec3i::new(0, 1, 0),
+    Vec3i::new(0, -1, 0),
+    Vec3i::new(0, 0, 1),
+    Vec3i::new(0, 0, -1),
+];
+
+/// Light level emitted by an active light-source block. Mirrors the C++
+/// hard-coded `glowstone` / `lava` emit-15 path in `update_block`.
+const EMITTER_LIGHT: u8 = 15;
+
 // ----------------------------------------------------------------------
 //   Coord helpers — port of `worlds.ixx::chunk_coord` / `block_coord`
 // ----------------------------------------------------------------------
@@ -139,6 +167,10 @@ pub struct World {
     /// Coords currently in flight on the pipeline. Prevents double-issuing
     /// loads for the same coord while the worker is busy with it.
     in_flight: HashSet<Vec3i>,
+    /// Tiny LCG state for `random_tick`. Avoids pulling `rand` into `World`
+    /// for what amounts to "pick three cells per non-empty chunk per
+    /// tick" — same approach `Game` takes for break-particle jitter.
+    rng: u64,
     pub unloaded_chunks: u32,
     pub updated_blocks: u32,
 }
@@ -190,6 +222,10 @@ impl World {
             center_ccoord: Vec3i::new(0, 0, 0),
             pipeline,
             in_flight: HashSet::new(),
+            // Mix the seed into a non-zero LCG state so `random_tick`'s
+            // initial pulls aren't trivially predictable from one world
+            // creation to the next.
+            rng: 0x9E37_79B9_7F4A_7C15_u64.wrapping_add(u64::from(seed)),
             unloaded_chunks: 0,
             updated_blocks: 0,
         })
@@ -248,6 +284,31 @@ impl World {
     #[must_use]
     pub fn render_distance(&self) -> i32 {
         self.render_distance
+    }
+
+    /// Update the render distance live. Resizes the height-map sliding cache
+    /// and re-pivots it around the current centre so the next
+    /// `tick_chunk_loading_async` issues loads / unloads against the new
+    /// window. Chunks that fall outside the shrunk window will be unloaded
+    /// over the next few ticks; chunks inside an expanded window will stream
+    /// in on the same path. No-op if the value is unchanged.
+    pub fn set_render_distance(&mut self, distance: i32) {
+        let distance = distance.max(1);
+        if self.render_distance == distance {
+            return;
+        }
+        self.render_distance = distance;
+        // Re-pivot the height-map cache to the new size around the existing
+        // centre. `set_center` reads `self.render_distance` to pick the new
+        // origin, so we just call through to the same code path the
+        // boundary-cross handler uses.
+        let center_world = self.center_ccoord * Chunk::SIZE;
+        // height_map needs to be rebuilt at the new size. `set_center` only
+        // shifts the existing window; we drop and rebuild here so the cache
+        // matches the new diameter exactly.
+        let new_size = ((distance + 2) * 2 * Chunk::SIZE) as usize;
+        self.height_map = crate::height_maps::HeightMap::new(new_size);
+        self.set_center(center_world);
     }
 
     /// Block id resolution table the world was constructed with. `BaseBlocks`
@@ -335,10 +396,30 @@ impl World {
     /// update. Mirrors C++ `World::put_block`. The chunk transitions from
     /// empty → non-empty if this is its first write — `with_chunk_mut`
     /// re-syncs `non_empty` automatically.
+    ///
+    /// Light bookkeeping: when a transition decreases the cell's effective
+    /// light output (becoming opaque, or losing emitter status), this kicks
+    /// off a BFS removal of cells that derived their light from `coord` —
+    /// the standard fix for the relaxation-only updater not being able to
+    /// lower a neighbor's light. The BFS pushes "boundary" cells with
+    /// independent light back onto the regular update queue so the existing
+    /// max-relax flood ([`Self::update_block`]) refills the cleared region.
     pub fn set_block(&mut self, coord: Vec3i, id: Id, queue_update: bool) {
         let cc = chunk_coord(coord);
         let bc = block_coord(coord);
         let base = self.base_blocks;
+
+        let Some(old_block) = self.block(coord) else {
+            return;
+        };
+        // Snapshot the registry-derived flags by value so the immutable
+        // borrow on `self.registry` doesn't keep `&self` alive across the
+        // `with_chunk_mut(...)` call below.
+        let old_opaque = self.registry.get(old_block.id).opaque;
+        let new_opaque = self.registry.get(id).opaque;
+        let old_emitter = old_block.id == base.glowstone || old_block.id == base.lava;
+        let new_emitter = id == base.glowstone || id == base.lava;
+
         let touched = self
             .with_chunk_mut(cc, |chunk| {
                 chunk.block_mut(bc, &base).id = id;
@@ -347,8 +428,108 @@ impl World {
         if !touched {
             return;
         }
+
+        // Light-decrease transitions: the cell stops being a sky/block-light
+        // *source* relative to its neighbors. Either the cell is now opaque
+        // (blocks light), or it lost its emitter (no longer a torch). In
+        // both cases, surrounding cells that were lit from here need to
+        // re-evaluate; vanilla relaxation can only raise light levels, so
+        // we run an explicit removal BFS first.
+        //
+        // Gated on `queue_update` so callers that opt out of light
+        // propagation (e.g. terrain-init, test fixtures, bulk
+        // `clear_inventory`-style ops) don't have the BFS surreptitiously
+        // allocate empty neighbour chunks via `with_chunk_mut`.
+        let became_opaque = !old_opaque && new_opaque;
+        let lost_emitter = old_emitter && !new_emitter;
+        if queue_update && (became_opaque || lost_emitter) {
+            let prev_sky = if became_opaque { old_block.light.sky() } else { 0 };
+            let prev_block = if old_emitter {
+                EMITTER_LIGHT
+            } else if became_opaque {
+                old_block.light.block()
+            } else {
+                0
+            };
+            // Clear the source cell's light so the BFS doesn't see stale
+            // values when it walks back through.
+            self.with_chunk_mut(cc, |chunk| {
+                chunk.block_mut(bc, &base).light = Light::NONE;
+            });
+            if prev_sky > 0 || prev_block > 0 {
+                self.remove_light_bfs(coord, prev_sky, prev_block);
+            }
+        }
+
         if queue_update {
             self.update_block(coord, true);
+        }
+    }
+
+    /// BFS-clear cells whose light derived from `origin` after its level
+    /// dropped from `(prev_sky, prev_block)` to zero.
+    ///
+    /// The walk starts at `origin` (whose light is already cleared) and at
+    /// each step inspects 6 neighbors:
+    /// * If a neighbor's light is *less than* `prev_*` (and non-zero), it
+    ///   was lit by the chain we're tearing down → clear it and recurse
+    ///   from the cleared cell with the neighbor's now-stale level. The
+    ///   cleared cell is also queued onto [`Self::block_update_queue`] so
+    ///   the existing relaxation pass can refill it from independent
+    ///   neighbors.
+    /// * If a neighbor's light is `>= prev_*`, it has its own valid source
+    ///   → don't touch it; queue it for relaxation so any cells we just
+    ///   cleared can pick up its level on the next tick.
+    ///
+    /// Sky-light has a vertical-no-falloff special case (`Light::SKY` flows
+    /// straight down at full brightness). The downward step at `prev_sky =
+    /// 15` matches that: a directly-below neighbor at `sky == 15` is
+    /// presumed to derive from us and is cleared.
+    fn remove_light_bfs(&mut self, origin: Vec3i, prev_sky: u8, prev_block: u8) {
+        let base = self.base_blocks;
+        let mut queue: VecDeque<(Vec3i, u8, u8)> = VecDeque::new();
+        queue.push_back((origin, prev_sky, prev_block));
+        let mut ops: usize = 0;
+        while let Some((c, ps, pb)) = queue.pop_front() {
+            ops += 1;
+            if ops > MAX_LIGHT_REMOVE_OPS {
+                self.block_update_queue.push_back(c);
+                continue;
+            }
+            for off in &NEIGHBOR_OFFSETS {
+                let n = c + *off;
+                let Some(n_block) = self.block(n) else {
+                    continue;
+                };
+                let n_sky = n_block.light.sky();
+                let n_blk = n_block.light.block();
+
+                // Vertical-no-falloff: a cell directly below us at sky=15
+                // shares our column's open-sky source.
+                let derives_sky = if off.y == -1 && ps == Light::SKY.sky() {
+                    n_sky == Light::SKY.sky()
+                } else {
+                    n_sky != 0 && n_sky < ps
+                };
+                let derives_block = n_blk != 0 && n_blk < pb;
+
+                if derives_sky || derives_block {
+                    let new_sky = if derives_sky { 0 } else { n_sky };
+                    let new_blk = if derives_block { 0 } else { n_blk };
+                    let n_cc = chunk_coord(n);
+                    let n_bc = block_coord(n);
+                    self.with_chunk_mut(n_cc, |chunk| {
+                        chunk.block_mut(n_bc, &base).light = Light::new(new_sky, new_blk);
+                    });
+                    queue.push_back((n, n_sky, n_blk));
+                    self.block_update_queue.push_back(n);
+                } else {
+                    // Independent / equal-level cell — queue it for the
+                    // relaxation pass so it can flood back into the
+                    // cleared region.
+                    self.block_update_queue.push_back(n);
+                }
+            }
         }
     }
 
@@ -608,6 +789,113 @@ impl World {
                 c.mark_neighbor_updated();
             }
         });
+    }
+
+    /// Probabilistic per-chunk cell sampler — the "random tick" hook that
+    /// drives slow-cycle world updates (grass spread / smother / future
+    /// fluid creep). For each non-empty chunk, picks
+    /// [`RANDOM_TICKS_PER_CHUNK`] random cells and feeds each through
+    /// [`Self::random_tick_block`].
+    ///
+    /// Cheap: only walks `non_empty` (sky chunks are skipped), and the
+    /// per-cell decision logic is a few same-chunk lookups + at most one
+    /// `set_block`.
+    pub fn random_tick(&mut self) {
+        // Snapshot coords first so we don't borrow `self.non_empty` while
+        // mutating chunks via `set_block`.
+        let coords: Vec<Vec3i> = self.non_empty.iter().copied().collect();
+        for cc in coords {
+            for _ in 0..RANDOM_TICKS_PER_CHUNK {
+                let r = self.rand_u32();
+                let bx = (r & 0xF) as i32;
+                let by = ((r >> 4) & 0xF) as i32;
+                let bz = ((r >> 8) & 0xF) as i32;
+                let world_coord = cc * Chunk::SIZE + Vec3i::new(bx, by, bz);
+                self.random_tick_block(world_coord);
+            }
+        }
+    }
+
+    /// Inspect one cell and apply random-tick rules. Currently:
+    /// * **Grass smother:** a `grass` cell with an opaque block directly
+    ///   above flips back to `dirt` (sun starves).
+    /// * **Grass spread:** a `dirt` cell with no opaque block above and at
+    ///   least one of the 4 horizontal neighbours being `grass` flips to
+    ///   `grass`.
+    ///
+    /// Air / water / unrelated cells are no-ops, so this is safe to call
+    /// on any coord (including unloaded ones — `block` returns `None`).
+    fn random_tick_block(&mut self, coord: Vec3i) {
+        let Some(cell) = self.block(coord) else {
+            return;
+        };
+        let base = self.base_blocks;
+
+        if cell.id == base.grass {
+            // Smother: opaque block directly above shadows the grass.
+            let above = self.block_or_air(coord + Vec3i::new(0, 1, 0));
+            if self.registry.get(above.id).opaque {
+                self.set_block(coord, base.dirt, true);
+            }
+            return;
+        }
+
+        if cell.id == base.dirt {
+            // Spread: needs at least one horizontal grass neighbour and a
+            // non-opaque cell above.
+            let above = self.block_or_air(coord + Vec3i::new(0, 1, 0));
+            if self.registry.get(above.id).opaque {
+                return;
+            }
+            let horizontal = [
+                Vec3i::new(1, 0, 0),
+                Vec3i::new(-1, 0, 0),
+                Vec3i::new(0, 0, 1),
+                Vec3i::new(0, 0, -1),
+            ];
+            for off in horizontal {
+                if self.block_or_air(coord + off).id == base.grass {
+                    self.set_block(coord, base.grass, true);
+                    return;
+                }
+            }
+        }
+    }
+
+    /// Tiny LCG step → `u32`. Numerical Recipes constants on a `u64`
+    /// state, taking the high 32 bits. `World::random_tick` uses this
+    /// to jitter cell selection without pulling in the `rand` crate.
+    fn rand_u32(&mut self) -> u32 {
+        self.rng = self
+            .rng
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        (self.rng >> 32) as u32
+    }
+
+    /// Collect every loaded chunk whose `Chunk::updated()` flag is set,
+    /// clear the flag, and return the list of coords. Used by the renderer
+    /// (`Game::tick_sim`) so any internal world mutation — random-tick
+    /// transitions, BFS light removal, block-update queue drains — gets a
+    /// mesh rebuild without each call site having to remember to mark the
+    /// chunk dirty in `Game::dirty_chunks`.
+    ///
+    /// `update_block` already calls `mark_chunk_neighbor_updated` when an
+    /// edge cell changes, so neighbour chunks across a chunk boundary are
+    /// included automatically. Empty chunks can never have `updated == true`
+    /// (allocation flips both flags together), so this only walks the
+    /// non-empty set.
+    pub fn drain_updated_chunks(&mut self) -> Vec<Vec3i> {
+        let coords: Vec<Vec3i> = self
+            .non_empty
+            .iter()
+            .copied()
+            .filter(|c| self.chunks.get(c).is_some_and(crate::chunks::Chunk::updated))
+            .collect();
+        for cc in &coords {
+            self.with_chunk_mut(*cc, |chunk| chunk.clear_updated());
+        }
+        coords
     }
 
     /// Drain up to [`MAX_BLOCK_UPDATES`] from the queue.

@@ -35,6 +35,7 @@ pub mod mesh;
 pub mod mesh_pipeline;
 pub mod particle_render;
 pub mod screenshot;
+pub mod selection;
 pub mod uniforms;
 
 pub use self::basic_pipeline::BasicPipeline;
@@ -42,12 +43,13 @@ pub use self::context::Gfx;
 pub use self::depth::DepthTarget;
 pub use self::egui_renderer::EguiRenderer;
 pub use self::mesh::{
-    CHUNK_SIZE, ChunkVertex, MeshInput, MeshOutput, PADDED_SIZE, PADDED_VOLUME, mesh_chunk,
-    padded_index,
+    CHUNK_SIZE, ChunkVertex, MeshInput, MeshOptions, MeshOutput, PADDED_SIZE, PADDED_VOLUME,
+    mesh_chunk, padded_index,
 };
 pub use self::mesh_pipeline::{MeshDone, MeshPipeline, MeshRequest};
 pub use self::particle_render::{ParticleMesh, ParticlePipeline, ParticleVertex};
 pub use self::screenshot::{Screenshot, ScreenshotError};
+pub use self::selection::SelectionPipeline;
 pub use self::uniforms::{
     FilterUniforms, FrameUniforms, Mat4f, ModelUniforms, UniformBuffer, mat4_to_array,
 };

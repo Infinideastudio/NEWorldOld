@@ -31,10 +31,11 @@ use winit::event::{
 };
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
-use winit::window::{CursorGrabMode, Window, WindowAttributes, WindowId};
+use winit::window::{CursorGrabMode, Fullscreen, Window, WindowAttributes, WindowId};
 
 use crate::config::Config;
 use crate::game::{build_block_registry, Game, SKY_COLOR};
+use crate::globalization::I18n;
 use crate::input::{InputState, Key, MouseButton};
 use crate::math::Vec2f;
 use crate::menus::GameScreen;
@@ -102,6 +103,20 @@ struct AppState {
     /// Base block ids resolved from `registry`. `Copy`, so cheap to clone
     /// when constructing a new `Game`.
     base_blocks: crate::blocks::BaseBlocks,
+    /// Egui texture id for each layer of the block-diffuse atlas. Indexed by
+    /// `BlockInfo::face(0).0` so the inventory can paint the front-face art
+    /// of each block. Built once at startup, after both `egui_renderer` and
+    /// `atlases` exist.
+    block_icons: Vec<egui::TextureId>,
+    /// Active language table. Mirrors the C++ `Globalization::LoadLang` /
+    /// `GetStrbyKey` singleton, but locally owned so menus take it via a
+    /// shared `Arc<Mutex<…>>` rather than a global. Reloaded by
+    /// [`Self::apply_config`] when `Config::language` changes.
+    i18n: Arc<Mutex<I18n>>,
+    /// `<assets>/lang` — directory the language picker enumerates and that
+    /// `i18n.reload` reads from. Cached so we don't recompute the path
+    /// every frame.
+    lang_dir: PathBuf,
 }
 
 /// Application root. Implements [`winit::application::ApplicationHandler`].
@@ -155,10 +170,9 @@ impl App {
 
     /// Read the live `Config` and push every applicable setting into the
     /// pieces of state that need it: camera FOV / mouse sensitivity, egui
-    /// scale factor, and the surface present mode (only reconfigured on
-    /// vsync transitions). `render_distance` is captured by `Game::new` and
-    /// only takes effect on the next world load — we don't dynamically
-    /// resize the chunk grid mid-game.
+    /// scale factor, the surface present mode (only reconfigured on vsync
+    /// transitions), and the world's render distance (resizes the height-map
+    /// cache and re-issues load/unload over the next few ticks).
     fn apply_config(state: &mut AppState) {
         let cfg = state.config.lock().expect("config poisoned");
 
@@ -168,6 +182,32 @@ impl App {
             // Mouse sensitivity. The TOML field is `mouse_speed`; the player
             // mouse-look code multiplies it by `π/180` (a 1° per pixel base).
             game.mouse_speed = f64::from(cfg.mouse_speed);
+            // Live render-distance update. World::set_render_distance is a
+            // no-op when the value matches; otherwise it rebuilds the
+            // height-map cache so subsequent `tick_chunk_loading_async`
+            // calls issue loads / unloads for the new window.
+            game.world.set_render_distance(cfg.render_distance);
+            // Mesh-options live-update. Drops every cached `ChunkMesh` and
+            // re-marks the loaded set dirty when any of the three flags
+            // changes; no-op otherwise.
+            game.apply_mesh_config(crate::render::MeshOptions {
+                smooth_lighting: cfg.smooth_lighting,
+                merge_face: cfg.merge_face,
+                nice_grass: cfg.nice_grass,
+                grass_id: state.base_blocks.grass,
+            });
+        }
+
+        // Live language switch. If the user picked a different language in
+        // the language menu, reload the strings so subsequent screen frames
+        // pull from the new table. Cheap when the language hasn't changed —
+        // a string compare against `i18n.current()`.
+        let want_lang = cfg.language.clone();
+        if state.i18n.lock().expect("i18n poisoned").current() != want_lang {
+            let mut i18n = state.i18n.lock().expect("i18n poisoned");
+            if let Err(err) = i18n.reload(&want_lang, &state.lang_dir) {
+                tracing::warn!(error = %err, lang = want_lang, "language reload failed");
+            }
         }
 
         // egui font scale.
@@ -249,6 +289,7 @@ impl App {
                 state.game = Some(g);
                 state.game_screen = Some(GameScreen::new(
                     Arc::clone(&state.config),
+                    Arc::clone(&state.i18n),
                     Arc::clone(&state.world_actions),
                 ));
                 state.screen_stack = ScreenStack::new();
@@ -280,6 +321,7 @@ impl App {
         // screens that were on top before the leave-to-title click.
         state.screen_stack = initial_screen_stack(
             Arc::clone(&state.config),
+            Arc::clone(&state.i18n),
             state.worlds_root.clone(),
             Arc::clone(&state.world_actions),
             Arc::clone(&state.game_loaded),
@@ -379,6 +421,18 @@ impl App {
         // passes are encoded but before submit (see below).
         let screenshot_requested = state.game.is_some() && state.input.is_key_pressed(Key::F2);
 
+        // F11 → fullscreen toggle. Mirrors the C++ `setup.ixx` toggle bound
+        // to F11. Borderless fullscreen on the current monitor; pressing F11
+        // again restores the windowed size.
+        if state.input.is_key_pressed(Key::F11) {
+            let next = if state.window.fullscreen().is_some() {
+                None
+            } else {
+                Some(Fullscreen::Borderless(None))
+            };
+            state.window.set_fullscreen(next);
+        }
+
         // ---------- consume per-frame input transients ----------
         state.input.begin_frame();
 
@@ -394,8 +448,6 @@ impl App {
             game_screen.yaw = game.camera.yaw;
             game_screen.pitch = game.camera.pitch;
             game_screen.chunk_count = game.chunk_meshes.len();
-            game_screen.selected = game.selected;
-            game_screen.view_proj = game.view_proj;
             game_screen.chat_history = game
                 .visible_chat_lines(chat_open)
                 .into_iter()
@@ -417,7 +469,13 @@ impl App {
                 (state.game.as_mut(), state.game_screen.as_mut())
             {
                 let air = state.base_blocks.air;
-                match game_screen.tick(ctx, game.world.player_mut(), &state.registry, air) {
+                match game_screen.tick(
+                    ctx,
+                    game.world.player_mut(),
+                    &state.registry,
+                    air,
+                    &state.block_icons,
+                ) {
                     Transition::Push(s) => state.screen_stack.push(s),
                     Transition::Exit => {
                         state.exit_requested = true;
@@ -671,6 +729,7 @@ fn translate_key(code: KeyCode) -> Option<Key> {
         KeyCode::F6 => Key::F6,
         KeyCode::F7 => Key::F7,
         KeyCode::F8 => Key::F8,
+        KeyCode::F11 => Key::F11,
         KeyCode::ArrowLeft => Key::ArrowLeft,
         KeyCode::ArrowRight => Key::ArrowRight,
         KeyCode::ArrowUp => Key::ArrowUp,
@@ -751,12 +810,19 @@ impl ApplicationHandler for App {
 
         let text = TextRenderer::new(gfx.device(), gfx.queue(), gfx.surface_format());
 
-        let egui_renderer = EguiRenderer::new(
+        let mut egui_renderer = EguiRenderer::new(
             gfx.device(),
             gfx.surface_format(),
             &window,
             window.scale_factor() as f32,
         );
+
+        // Register each layer of the block-diffuse atlas as an egui texture
+        // so the inventory can paint real block art per slot. Built once at
+        // startup; the ids stay valid for the renderer's lifetime.
+        let block_icons =
+            egui_renderer.register_native_textures(gfx.device(), &atlases.block_diffuse.layer_views);
+        tracing::info!(count = block_icons.len(), "registered block icons");
 
         // Build registry + base blocks once for the world generator and the
         // mesher (which both consume the same registry). Reused across world
@@ -767,8 +833,26 @@ impl ApplicationHandler for App {
         let game_loaded = Arc::new(AtomicBool::new(false));
         let worlds_root = default_worlds_root();
 
+        // Resolve the language directory and load the configured language.
+        // Falls back to defaults (empty table) on missing / malformed file
+        // so a misconfigured options.toml doesn't fail the whole boot.
+        let lang_dir = assets.join("lang");
+        let initial_lang = config
+            .lock()
+            .map(|c| c.language.clone())
+            .unwrap_or_else(|_| "en_US".to_owned());
+        let i18n = match I18n::load(&initial_lang, &lang_dir) {
+            Ok(i) => i,
+            Err(err) => {
+                tracing::warn!(error = %err, lang = initial_lang, "i18n load failed; using empty table");
+                I18n::empty(&initial_lang)
+            }
+        };
+        let i18n = Arc::new(Mutex::new(i18n));
+
         let screen_stack = initial_screen_stack(
             Arc::clone(&config),
+            Arc::clone(&i18n),
             worlds_root.clone(),
             Arc::clone(&world_actions),
             Arc::clone(&game_loaded),
@@ -801,6 +885,9 @@ impl ApplicationHandler for App {
             worlds_root,
             registry,
             base_blocks: base,
+            block_icons,
+            i18n,
+            lang_dir,
         });
         tracing::info!("app ready");
     }

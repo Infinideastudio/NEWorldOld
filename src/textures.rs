@@ -16,8 +16,11 @@
 //! * `block_normal`, `block_noise` → `Rgba8Unorm` (linear data; normals must
 //!   not be gamma-decoded).
 //!
-//! Sampling is `Nearest` for both filter and mipmap (the voxel pixel-art
-//! aesthetic), with `ClampToEdge` addressing. No mipmaps for now.
+//! Sampling is `Nearest` for min/mag (the voxel pixel-art aesthetic) with
+//! `Linear` mipmap filtering — `block_diffuse` ships a full mipmap chain so
+//! distant chunks anti-alias instead of shimmering, while close-up texels
+//! stay crisp. Other atlases (UI, normal map, noise) ship mip level 0 only;
+//! the sampler's mipmap filter is effectively ignored for those.
 
 use std::path::{Path, PathBuf};
 
@@ -32,11 +35,23 @@ const RGBA_BPP: u32 = 4;
 /// A 2D-array texture (vertical-strip atlas).
 ///
 /// Holds `layers` square sub-textures stacked vertically in the source PNG.
+/// In addition to the array view used by the chunk shader, holds one 2D view
+/// per layer so callers (egui, debug HUD) can sample a single sub-image.
 #[derive(Debug)]
 pub struct AtlasArray {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
+    /// One D2 view per layer (`layer_views[i]` covers `base_array_layer = i`).
+    /// Same `Texture` as `view`, just bound as a non-array sampler so it can
+    /// be handed to egui (which only knows D2 textures). Includes every mip
+    /// level so atlases with mipmaps still sample the full chain through
+    /// these views.
+    pub layer_views: Vec<wgpu::TextureView>,
     pub layers: u32,
+    /// Number of mip levels uploaded. `1` for atlases without mipmaps;
+    /// `floor(log2(width)) + 1` for the block diffuse atlas (full chain
+    /// down to a 1×1 root).
+    pub mip_levels: u32,
 }
 
 /// A single 2D texture (one PNG → one texture).
@@ -108,12 +123,16 @@ impl Atlases {
         let blocks = root.join("textures").join("blocks");
         let ui = root.join("textures").join("ui");
 
+        // Diffuse ships with mipmaps so distant chunks dampen high-frequency
+        // aliasing. Normals don't (averaging encoded normals isn't
+        // mathematically meaningful, and nothing samples them yet anyway).
         let block_diffuse = load_strip_array(
             device,
             queue,
             &blocks.join("diffuse.png"),
             wgpu::TextureFormat::Rgba8UnormSrgb,
             Some("block_diffuse"),
+            true,
         )?;
         let block_normal = load_strip_array(
             device,
@@ -121,6 +140,7 @@ impl Atlases {
             &blocks.join("normal.png"),
             wgpu::TextureFormat::Rgba8Unorm,
             Some("block_normal"),
+            false,
         )?;
         let block_noise = load_2d(
             device,
@@ -175,14 +195,25 @@ impl Atlases {
         let backgrounds: [Atlas2d; BACKGROUND_COUNT] =
             [bg(0)?, bg(1)?, bg(2)?, bg(3)?, bg(4)?, bg(5)?];
 
+        // U/V wrap so the greedy chunk mesher can tile a single block-art
+        // square across a merged quad's UV span (`length + 1` repetitions).
+        // For UI/single-tile sampling all UVs stay in `[0, 1]`, so Repeat is
+        // visually identical to ClampToEdge there.
+        //
+        // `mag/min: Nearest` keeps the voxel pixel-art look at close range;
+        // `mipmap: Linear` smoothly fades between mip levels at distance,
+        // which kills the moiré-style shimmer on faraway chunks. `lod_max =
+        // mip_count - 1` would clamp the chain explicitly; the default
+        // `f32::MAX` works too because textures with only 1 mip silently
+        // ignore the mipmap filter.
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("atlases_sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
 
@@ -316,13 +347,16 @@ fn load_2d(
 }
 
 /// Load a vertical-strip PNG into a `D2Array` texture with one layer per
-/// square sub-image.
+/// square sub-image. When `with_mipmaps` is set, generates a full mipmap
+/// chain (CPU box-filter; gamma-naive, fine for opaque pixel art) down to
+/// `1×1` so the chunk shader's distance sampling anti-aliases.
 fn load_strip_array(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     path: &Path,
     format: wgpu::TextureFormat,
     label: Option<&str>,
+    with_mipmaps: bool,
 ) -> Result<AtlasArray, AtlasError> {
     let (width, height, bytes) = decode_rgba(path)?;
     let layers = compute_layer_count(width, height).map_err(|e| match e {
@@ -338,6 +372,15 @@ fn load_strip_array(
         other => other,
     })?;
 
+    let mip_levels = if with_mipmaps {
+        // `floor(log2(width)) + 1` levels to reach a 1×1 root. Block atlas
+        // tiles are typically 32×32 → 6 levels. Layer width is the relevant
+        // dimension because each strip block is square.
+        32 - width.max(1).leading_zeros()
+    } else {
+        1
+    };
+
     let size = wgpu::Extent3d {
         width,
         height: width,
@@ -346,7 +389,7 @@ fn load_strip_array(
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label,
         size,
-        mip_level_count: 1,
+        mip_level_count: mip_levels,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format,
@@ -368,31 +411,43 @@ fn load_strip_array(
         let png_block = layers - 1 - texture_layer;
         let start = png_block as usize * layer_byte_len;
         let end = start + layer_byte_len;
-        let layer_bytes = &bytes[start..end];
+        let level0: Vec<u8> = bytes[start..end].to_vec();
 
-        queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d {
-                    x: 0,
-                    y: 0,
-                    z: texture_layer,
+        // Walk the mip chain. `current` holds the `level`'s pixel buffer,
+        // which we hand to `write_texture` and then downsample for the
+        // next iteration.
+        let mut current = level0;
+        let mut level_size = width;
+        for level in 0..mip_levels {
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &texture,
+                    mip_level: level,
+                    origin: wgpu::Origin3d {
+                        x: 0,
+                        y: 0,
+                        z: texture_layer,
+                    },
+                    aspect: wgpu::TextureAspect::All,
                 },
-                aspect: wgpu::TextureAspect::All,
-            },
-            layer_bytes,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(width * RGBA_BPP),
-                rows_per_image: Some(width),
-            },
-            wgpu::Extent3d {
-                width,
-                height: width,
-                depth_or_array_layers: 1,
-            },
-        );
+                &current,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(level_size * RGBA_BPP),
+                    rows_per_image: Some(level_size),
+                },
+                wgpu::Extent3d {
+                    width: level_size,
+                    height: level_size,
+                    depth_or_array_layers: 1,
+                },
+            );
+            if level + 1 < mip_levels {
+                let next_size = (level_size / 2).max(1);
+                current = downsample_2x_rgba8(&current, level_size, level_size);
+                level_size = next_size;
+            }
+        }
     }
 
     let view = texture.create_view(&wgpu::TextureViewDescriptor {
@@ -401,11 +456,65 @@ fn load_strip_array(
         ..Default::default()
     });
 
+    let mut layer_views = Vec::with_capacity(layers as usize);
+    for layer in 0..layers {
+        let layer_label = label.map(|l| format!("{l}.layer{layer}"));
+        layer_views.push(texture.create_view(&wgpu::TextureViewDescriptor {
+            label: layer_label.as_deref(),
+            dimension: Some(wgpu::TextureViewDimension::D2),
+            base_array_layer: layer,
+            array_layer_count: Some(1),
+            ..Default::default()
+        }));
+    }
+
     Ok(AtlasArray {
         texture,
         view,
+        layer_views,
         layers,
+        mip_levels,
     })
+}
+
+/// Downsample a `width × height` RGBA8 image to `(width/2) × (height/2)` by
+/// 2×2 box-averaging. Naive sRGB-space average — fine for the voxel atlas
+/// since each block tile is mostly hard-edged pixel art with no smooth
+/// gradients to gamma-distort. Caller guarantees `width` and `height` are
+/// powers of two so the halved sizes stay integer.
+fn downsample_2x_rgba8(src: &[u8], width: u32, height: u32) -> Vec<u8> {
+    let dst_w = (width / 2).max(1);
+    let dst_h = (height / 2).max(1);
+    let mut out = vec![0u8; (dst_w * dst_h * RGBA_BPP) as usize];
+    let stride = (width * RGBA_BPP) as usize;
+    let bpp = RGBA_BPP as usize;
+    for y in 0..dst_h {
+        for x in 0..dst_w {
+            // Source corner pixel for this destination cell.
+            let sx = (x * 2) as usize;
+            let sy = (y * 2) as usize;
+            let mut acc = [0u32; 4];
+            // 2×2 tap. Clamp the +1 step against `width` / `height` so a
+            // downsample from a 1-row image (level_size = 1) still works.
+            for dy in 0..2 {
+                for dx in 0..2 {
+                    let rx = (sx + dx).min((width - 1) as usize);
+                    let ry = (sy + dy).min((height - 1) as usize);
+                    let off = ry * stride + rx * bpp;
+                    acc[0] += u32::from(src[off]);
+                    acc[1] += u32::from(src[off + 1]);
+                    acc[2] += u32::from(src[off + 2]);
+                    acc[3] += u32::from(src[off + 3]);
+                }
+            }
+            let dst_off = (y * dst_w * RGBA_BPP + x * RGBA_BPP) as usize;
+            out[dst_off] = (acc[0] / 4) as u8;
+            out[dst_off + 1] = (acc[1] / 4) as u8;
+            out[dst_off + 2] = (acc[2] / 4) as u8;
+            out[dst_off + 3] = (acc[3] / 4) as u8;
+        }
+    }
+    out
 }
 
 #[cfg(test)]

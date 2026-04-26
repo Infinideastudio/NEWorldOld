@@ -1,9 +1,10 @@
 //! CPU-side chunk mesh builder ([D1] in `docs/rust_migration.md` §5).
 //!
-//! Ports the per-face culling half of the C++ greedy mesher in
-//! `src/worlds/chunk_rendering.cpp`. Greedy merging is intentionally **not**
-//! implemented here — every visible face emits its own quad. The greedy
-//! merge can land later as a follow-up.
+//! Direct port of `_merge_face_render_chunk` in
+//! `src/worlds/chunk_rendering.cpp`: per-face culling **with 1-D greedy run
+//! merging** along one axis per face direction. Coplanar adjacent same-id
+//! same-texture faces collapse into a single tiled quad — flat surfaces in
+//! particular drop from `S²` quads to `S` strips per chunk side.
 //!
 //! ## Conventions
 //!
@@ -41,7 +42,7 @@
 use bytemuck::{Pod, Zeroable};
 use cgmath::Vector3;
 
-use crate::blocks::{BlockData, BlockRegistry, Id};
+use crate::blocks::{BlockData, BlockInfo, BlockRegistry, Id};
 
 /// Side length of a chunk in blocks. Mirrors `chunks::Chunk::SIZE` from C++.
 pub const CHUNK_SIZE: usize = 16;
@@ -54,8 +55,8 @@ pub const PADDED_VOLUME: usize = PADDED_SIZE * PADDED_SIZE * PADDED_SIZE;
 
 /// Vertex format consumed by the chunk pipeline (see [D2]).
 ///
-/// Layout: 12 (position) + 8 (uv) + 4 (layer) + 4 (face) = 28 bytes,
-/// alignment 4, no trailing padding — `Pod`-safe.
+/// Layout: 12 (position) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light) = 32
+/// bytes, alignment 4, no trailing padding — `Pod`-safe.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct ChunkVertex {
@@ -67,6 +68,10 @@ pub struct ChunkVertex {
     pub layer: u32,
     /// Face direction id `0..6` — order: `[+X, -X, +Y, -Y, +Z, -Z]`.
     pub face: u32,
+    /// Per-vertex smooth-light brightness. Bottom byte is the AO-averaged
+    /// `[0..255]` luminance — bilinearly interpolated by the rasterizer
+    /// across the four corners of the face. Upper bytes are reserved.
+    pub light: u32,
 }
 
 /// Owned snapshot of a chunk + its 26 neighbors, copied into a single padded
@@ -77,6 +82,51 @@ pub struct MeshInput {
     pub coord: Vector3<i32>,
     /// `PADDED_SIZE^3` block data, indexed via [`padded_index`].
     pub padded: Box<[BlockData; PADDED_VOLUME]>,
+    /// Per-chunk meshing toggles, captured from the live `Config` at the
+    /// moment the snapshot is taken so the worker does deterministic work
+    /// against a stable view. The main thread debounces config changes by
+    /// dropping all meshes and re-issuing dirty chunks
+    /// (see `Game::apply_mesh_config`).
+    pub options: MeshOptions,
+}
+
+/// Live meshing toggles surfaced to the user via the render-options menu.
+/// Plain-`Copy` so the worker can grab a snapshot per job without locking
+/// any shared state. Mirrors C++ globals `SmoothLighting` / `MergeFace` /
+/// `NiceGrass` from `globals.ixx`.
+#[derive(Clone, Copy, Debug)]
+pub struct MeshOptions {
+    /// When true, the per-vertex `light` attribute is averaged over the four
+    /// cells around each face corner (smooth interpolation, soft AO). When
+    /// false, every vertex of a face just uses the in-front cell's
+    /// brightness — a flat-lit look that matches the C++ "advanced
+    /// rendering off" path.
+    pub smooth_lighting: bool,
+    /// When true, coplanar same-id same-tex same-light cells merge into
+    /// strips (1-D greedy mesher). When false every visible face emits its
+    /// own quad — useful for visualization / shader debugging.
+    pub merge_face: bool,
+    /// When true, side faces of a `grass` block sitting on top of another
+    /// `grass` block use the grass-top texture instead of the side texture
+    /// — the "fancy grass" look from C++ `NiceGrass`. Requires the grass
+    /// id (resolved at the call site, since the registry alone doesn't
+    /// expose `BaseBlocks`).
+    pub nice_grass: bool,
+    /// `BaseBlocks::grass`. Sentinel-zero means "nice grass disabled even
+    /// if the flag is on" — the registry stripped down for tests doesn't
+    /// have grass; this stays out of the way.
+    pub grass_id: Id,
+}
+
+impl Default for MeshOptions {
+    fn default() -> Self {
+        Self {
+            smooth_lighting: true,
+            merge_face: true,
+            nice_grass: true,
+            grass_id: Id(0),
+        }
+    }
 }
 
 /// Result of [`mesh_chunk`]. Tagged with the `coord` it was meshed for so the
@@ -165,6 +215,48 @@ const FACE_CORNERS: [[[f32; 3]; 4]; 6] = [
 /// block art.
 const FACE_UVS: [[f32; 2]; 4] = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
 
+/// Per-corner world-space offset to apply when extending a 1-D merged quad by
+/// `length` cells along the merge axis. Mirrors C++ `coords_extend` —
+/// merge-axis is `+Z` for face dirs `0..=3`, `+Y` for `4..=5`. The two
+/// "outer" corners (those already at the high end of the merge axis) shift,
+/// the other two stay put.
+const FACE_EXTEND_POS: [[[f32; 3]; 4]; 6] = [
+    // +X — extend c0 & c3 along +Z
+    [[0.0, 0.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+    // -X — extend c1 & c2 along +Z
+    [[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0]],
+    // +Y — extend c0 & c1 along +Z
+    [[0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+    // -Y — extend c2 & c3 along +Z
+    [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]],
+    // +Z — extend c2 & c3 along +Y
+    [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 0.0]],
+    // -Z — extend c2 & c3 along +Y
+    [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 0.0]],
+];
+
+/// Per-corner UV offset for run extension, V-flipped relative to C++
+/// `tex_coords_extend` so the "merge_axis-length" UV delta matches the
+/// V-flipped Rust `FACE_UVS`. With sampler U/V set to [`Repeat`], integer
+/// extensions tile the per-block art square `length + 1` times across the
+/// merged span.
+///
+/// [`Repeat`]: wgpu::AddressMode::Repeat
+const FACE_EXTEND_UV: [[[f32; 2]; 4]; 6] = [
+    // +X — c1.u, c2.u
+    [[0.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
+    // -X — c1.u, c2.u
+    [[0.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
+    // +Y — c2.v, c3.v (V-flipped → -1)
+    [[0.0, 0.0], [0.0, 0.0], [0.0, -1.0], [0.0, -1.0]],
+    // -Y — c2.v, c3.v
+    [[0.0, 0.0], [0.0, 0.0], [0.0, -1.0], [0.0, -1.0]],
+    // +Z — c2.v, c3.v
+    [[0.0, 0.0], [0.0, 0.0], [0.0, -1.0], [0.0, -1.0]],
+    // -Z — c2.v, c3.v
+    [[0.0, 0.0], [0.0, 0.0], [0.0, -1.0], [0.0, -1.0]],
+];
+
 /// Per-face neighbor offset (in padded-buffer coordinate space). Index by
 /// `face_id`. Same order as `FACE_CORNERS`.
 const FACE_OFFSETS: [[i32; 3]; 6] = [
@@ -206,67 +298,308 @@ fn find_leaf_id(registry: &BlockRegistry) -> Option<Id> {
 /// air check can be a single integer compare rather than a registry lookup.
 const AIR_ID: Id = Id(0);
 
-/// Build a CPU mesh for one chunk by per-face culling.
+/// Per-corner sign on the two perpendicular axes of each face direction.
+/// Used to address the 4 AO sample cells around the in-front cell. Indexed
+/// `[face][corner]` as `(sign_perp_a, sign_perp_b)`. Perp axes are: face
+/// dirs `0..2` → `(Y, Z)`, `2..4` → `(X, Z)`, `4..6` → `(X, Y)`.
+const CORNER_PERP_SIGNS: [[(i32, i32); 4]; 6] = [
+    // +X
+    [(-1,  1), (-1, -1), ( 1, -1), ( 1,  1)],
+    // -X
+    [(-1, -1), (-1,  1), ( 1,  1), ( 1, -1)],
+    // +Y
+    [(-1,  1), ( 1,  1), ( 1, -1), (-1, -1)],
+    // -Y
+    [(-1, -1), ( 1, -1), ( 1,  1), (-1,  1)],
+    // +Z
+    [(-1, -1), ( 1, -1), ( 1,  1), (-1,  1)],
+    // -Z
+    [( 1, -1), (-1, -1), (-1,  1), ( 1,  1)],
+];
+
+/// `(perp_a_axis_index, perp_b_axis_index)` for each face direction. Used
+/// together with [`CORNER_PERP_SIGNS`] to step from the in-front cell to
+/// each AO sample cell. 0 = X, 1 = Y, 2 = Z.
+const FACE_PERP_AXES: [(usize, usize); 6] = [
+    (1, 2), // +X
+    (1, 2), // -X
+    (0, 2), // +Y
+    (0, 2), // -Y
+    (0, 1), // +Z
+    (0, 1), // -Z
+];
+
+/// Per-cell brightness `0..=255`. Mirrors C++ `BlockRenderData::_color`:
+/// opaque blocks are `0` (they shouldn't contribute to the AO average since
+/// they block light); non-opaque blocks return `max(sky_brightness,
+/// block_brightness)` with the C++ falloff curves baked in.
+#[inline]
+fn cell_color(block: BlockData, info: &BlockInfo) -> u8 {
+    if info.opaque {
+        return 0;
+    }
+    let sky = f32::from(block.light.sky());
+    let blk = f32::from(block.light.block());
+    // Sky: exponential falloff `255 * 0.8^(15 - sky)` (C++).
+    let sl = (255.0 * 0.8_f32.powf(15.0 - sky)).clamp(0.0, 255.0) as u32;
+    // Block: inverse-quadratic `255 / max(1, (16 - blk)² / 10)` (C++).
+    let denom = (((16.0 - blk) * (16.0 - blk)) / 10.0).max(1.0);
+    let bl = (255.0 / denom).clamp(0.0, 255.0) as u32;
+    sl.max(bl).min(255) as u8
+}
+
+/// Read a padded cell by signed offsets. `pcx, pcy, pcz` are the *padded*
+/// indices of the cell of interest (`1..=16` for in-chunk cells); the
+/// `dx/dy/dz` step is applied directly. Total result must land in `0..18`
+/// — the AO sampling pattern guarantees this for chunk-interior cells.
+#[inline]
+fn padded_at(
+    padded: &[BlockData; PADDED_VOLUME],
+    pcx: i32,
+    pcy: i32,
+    pcz: i32,
+) -> BlockData {
+    debug_assert!(
+        (0..PADDED_SIZE as i32).contains(&pcx)
+            && (0..PADDED_SIZE as i32).contains(&pcy)
+            && (0..PADDED_SIZE as i32).contains(&pcz),
+        "padded_at out of bounds: ({pcx}, {pcy}, {pcz})"
+    );
+    padded[padded_index(pcx as usize, pcy as usize, pcz as usize)]
+}
+
+/// 4-corner smooth-lighting tap for the face on cell at padded coord
+/// `(pcx, pcy, pcz)` facing direction `face_id`. Each corner averages the
+/// brightness of 4 cells around the in-front (face-normal-direction)
+/// neighbor — the in-front itself, two perpendicular-axis neighbors, and
+/// the diagonal corner. Output is one `u8` brightness per corner in the
+/// same order as [`FACE_CORNERS`].
+fn corner_lights(
+    padded: &[BlockData; PADDED_VOLUME],
+    registry: &BlockRegistry,
+    pcx: i32,
+    pcy: i32,
+    pcz: i32,
+    face_id: usize,
+) -> [u8; 4] {
+    let off = FACE_OFFSETS[face_id];
+    let ix = pcx + off[0];
+    let iy = pcy + off[1];
+    let iz = pcz + off[2];
+    let (axis_a, axis_b) = FACE_PERP_AXES[face_id];
+    let mut step_a = [0i32; 3];
+    let mut step_b = [0i32; 3];
+    step_a[axis_a] = 1;
+    step_b[axis_b] = 1;
+
+    let mut out = [0u8; 4];
+    for c in 0..4 {
+        let (sa, sb) = CORNER_PERP_SIGNS[face_id][c];
+        let a_ofs = [step_a[0] * sa, step_a[1] * sa, step_a[2] * sa];
+        let b_ofs = [step_b[0] * sb, step_b[1] * sb, step_b[2] * sb];
+        let cells = [
+            (ix, iy, iz),
+            (ix + a_ofs[0], iy + a_ofs[1], iz + a_ofs[2]),
+            (ix + b_ofs[0], iy + b_ofs[1], iz + b_ofs[2]),
+            (
+                ix + a_ofs[0] + b_ofs[0],
+                iy + a_ofs[1] + b_ofs[1],
+                iz + a_ofs[2] + b_ofs[2],
+            ),
+        ];
+        let mut sum = 0u32;
+        for (cx, cy, cz) in cells {
+            let b = padded_at(padded, cx, cy, cz);
+            sum += u32::from(cell_color(b, registry.get(b.id)));
+        }
+        out[c] = (sum / 4) as u8;
+    }
+    out
+}
+
+/// In-flight 1-D greedy run accumulator: a maximal contiguous strip of
+/// adjacent same-id same-tex same-light faces along one axis of one face
+/// direction. Flushed to the output bucket on first mismatch (or end of
+/// strip).
+#[derive(Clone, Copy)]
+struct Run {
+    /// Chunk-local start cell of the run.
+    start: [i32; 3],
+    /// Face direction id (0..6).
+    face: usize,
+    /// Number of cells already merged *beyond* the start cell. `length == 0`
+    /// is a single-cell run.
+    length: i32,
+    /// Atlas layer index. Two runs merge only if they pick the same layer
+    /// (so e.g. a grass strip won't merge across a `+X` `→` `+Y` direction
+    /// flip — handled by separating the loops by `face` first).
+    layer: u32,
+    /// True when the cell is `BlockInfo::translucent`. Picks the output
+    /// vertex bucket on flush.
+    translucent: bool,
+    /// 4-corner smooth-light brightnesses (`u8`-per-corner). The run only
+    /// extends if subsequent cells produce identical lights — otherwise the
+    /// rasterizer would interpolate across a discontinuity.
+    lights: [u8; 4],
+    /// True iff `lights[..]` aren't all equal — i.e. this cell has a real
+    /// light gradient across its corners. Cells with non-uniform lighting
+    /// can never extend (or be extended into); they always emit a single
+    /// quad, matching the C++ `once` flag in `_merge_face_render_chunk`.
+    once: bool,
+}
+
+/// Per-direction (i, j, k) → (x, y, z) projection. `i, j` index the plane
+/// perpendicular to the merge axis; `k` walks the merge axis. Mirrors the
+/// switch in `chunk_rendering.cpp::_merge_face_render_chunk`.
+#[inline]
+fn project_axes(face_id: usize, i: i32, j: i32, k: i32) -> (i32, i32, i32) {
+    match face_id {
+        0 | 1 => (i, j, k),     // +X / -X — merge along Z
+        2 | 3 => (j, i, k),     // +Y / -Y — merge along Z
+        _     => (j, k, i),     // +Z / -Z — merge along Y
+    }
+}
+
+/// Build a CPU mesh for one chunk by 1-D greedy merging per face direction.
 ///
-/// Every visible face emits a single quad (6 vertices, two triangles). No
-/// greedy merging — that's a future optimization. See the module docs for
-/// the face-id, winding, UV, and layer-split conventions.
+/// For each of the six face directions, walks the perpendicular plane in
+/// `(i, j)` and accumulates a 1-D run of visible faces along the third axis.
+/// Adjacent cells that share an id, atlas layer, and layer-bucket
+/// (opaque vs translucent) collapse into a single tiled quad — cutting
+/// vertex counts on flat surfaces (terrain top, walls) by `~CHUNK_SIZE×`
+/// in the best case. See the module docs for face-id, winding, UV, and
+/// layer-split conventions.
+///
+/// `input.options` controls whether smooth lighting / greedy merging /
+/// "nice grass" are applied; toggling them in the menu is meant to be
+/// instant, so the caller drops all `ChunkMesh`es and re-marks every
+/// chunk dirty when these change (see `Game::apply_mesh_config`).
 #[must_use]
 pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
     let leaf_id = find_leaf_id(registry);
-    // Heuristic: most chunks emit far fewer faces than the 6 × 16³ worst
-    // case. 6 verts/face × 16³ / 4 ≈ 6144 verts is a reasonable starting
-    // capacity that avoids most reallocs without overcommitting.
-    let initial = 6 * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE / 4;
+    let opts = input.options;
+    // Worst case per direction is `S²` strips of `S` quads → 6 × `S²`
+    // strips. Realistic terrain emits a small fraction of that.
+    let initial = 6 * CHUNK_SIZE * CHUNK_SIZE / 2;
     let mut opaque: Vec<ChunkVertex> = Vec::with_capacity(initial);
     let mut translucent: Vec<ChunkVertex> = Vec::new();
 
-    for z in 0..CHUNK_SIZE {
-        for y in 0..CHUNK_SIZE {
-            for x in 0..CHUNK_SIZE {
-                let cell = input.padded[padded_index(x + 1, y + 1, z + 1)];
-                if cell.id == AIR_ID {
-                    continue;
-                }
-                let cell_info = registry.get(cell.id);
-                let is_translucent = cell_info.translucent;
-
-                for (face_id, off) in FACE_OFFSETS.iter().enumerate() {
-                    // Padded coords for the chunk interior are 1..=16; the
-                    // ±1 offsets land in 0..=17, all valid padded indices.
-                    let nx = (x as i32 + 1 + off[0]) as usize;
-                    let ny = (y as i32 + 1 + off[1]) as usize;
-                    let nz = (z as i32 + 1 + off[2]) as usize;
-                    let neighbor = input.padded[padded_index(nx, ny, nz)];
+    let s = CHUNK_SIZE as i32;
+    for (face_id, off) in FACE_OFFSETS.iter().enumerate() {
+        let layer_index = face_to_atlas_index(face_id);
+        for i in 0..s {
+            for j in 0..s {
+                let mut run: Option<Run> = None;
+                for k in 0..s {
+                    let (x, y, z) = project_axes(face_id, i, j, k);
+                    let cell = input.padded[padded_index(
+                        (x + 1) as usize,
+                        (y + 1) as usize,
+                        (z + 1) as usize,
+                    )];
+                    if cell.id == AIR_ID {
+                        flush_run(&mut opaque, &mut translucent, run.take());
+                        continue;
+                    }
+                    let cell_info = registry.get(cell.id);
+                    let neighbor = input.padded[padded_index(
+                        (x + 1 + off[0]) as usize,
+                        (y + 1 + off[1]) as usize,
+                        (z + 1 + off[2]) as usize,
+                    )];
                     let neighbor_info = registry.get(neighbor.id);
 
                     // Mirror C++ `should_render_face`:
-                    //   if (neighbor.opaque()) return false;
-                    //   if (id == neighbor.id && id != leaf) return false;
-                    //   return true;
-                    if neighbor_info.opaque {
-                        continue;
-                    }
-                    if cell.id == neighbor.id && Some(cell.id) != leaf_id {
+                    //   if (neighbor.opaque()) break run;
+                    //   if (id == neighbor.id && id != leaf) break run;
+                    if neighbor_info.opaque
+                        || (cell.id == neighbor.id && Some(cell.id) != leaf_id)
+                    {
+                        flush_run(&mut opaque, &mut translucent, run.take());
                         continue;
                     }
 
-                    let layer_index = face_to_atlas_index(face_id);
-                    let tex = cell_info.face(layer_index);
-                    let bucket = if is_translucent {
-                        &mut translucent
+                    // "Nice grass": for the four side faces of a grass cell
+                    // sitting on top of another grass cell, use the
+                    // grass-top texture (face index 0) instead of the side
+                    // texture (face index 1). The diagonal-down probe is
+                    // `(in-front + (-Y))` — same shape as the C++
+                    // `_merge_face_render_chunk` lookup.
+                    let tex_index = if opts.nice_grass
+                        && opts.grass_id != Id(0)
+                        && cell.id == opts.grass_id
+                        && (face_id == 0 || face_id == 1 || face_id == 4 || face_id == 5)
+                    {
+                        let probe = input.padded[padded_index(
+                            (x + 1 + off[0]) as usize,
+                            (y + 1 - 1) as usize,
+                            (z + 1 + off[2]) as usize,
+                        )];
+                        if probe.id == opts.grass_id { 0 } else { layer_index }
                     } else {
-                        &mut opaque
+                        layer_index
                     };
-                    emit_face(
-                        bucket,
-                        x as f32,
-                        y as f32,
-                        z as f32,
-                        face_id,
-                        u32::from(tex.0),
-                    );
+
+                    let tex_layer = u32::from(cell_info.face(tex_index).0);
+                    let translucent_cell = cell_info.translucent;
+                    let lights = if opts.smooth_lighting {
+                        corner_lights(
+                            &input.padded,
+                            registry,
+                            x + 1,
+                            y + 1,
+                            z + 1,
+                            face_id,
+                        )
+                    } else {
+                        // Flat lighting: every corner gets the in-front
+                        // cell's brightness, so the rasterizer interpolates
+                        // a uniform value (no gradient).
+                        let flat = flat_face_light(
+                            &input.padded,
+                            registry,
+                            x + 1,
+                            y + 1,
+                            z + 1,
+                            face_id,
+                        );
+                        [flat; 4]
+                    };
+                    let once = lights[0] != lights[1]
+                        || lights[1] != lights[2]
+                        || lights[2] != lights[3];
+
+                    // Run extension is gated on `merge_face`: with the flag
+                    // off, force a flush after every cell so each face
+                    // emits its own quad. With it on, all the usual
+                    // extension predicates apply.
+                    let can_extend = opts.merge_face
+                        && match run.as_ref() {
+                            Some(r) => {
+                                !r.once
+                                    && !once
+                                    && r.layer == tex_layer
+                                    && r.translucent == translucent_cell
+                                    && r.lights == lights
+                            }
+                            None => false,
+                        };
+                    if can_extend {
+                        run.as_mut().expect("can_extend → run is Some").length += 1;
+                    } else {
+                        flush_run(&mut opaque, &mut translucent, run.take());
+                        run = Some(Run {
+                            start: [x, y, z],
+                            face: face_id,
+                            length: 0,
+                            layer: tex_layer,
+                            translucent: translucent_cell,
+                            lights,
+                            once,
+                        });
+                    }
                 }
+                flush_run(&mut opaque, &mut translucent, run.take());
             }
         }
     }
@@ -278,38 +611,74 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
     }
 }
 
-/// Append the 6 vertices of a single face quad to `out`. Triangulation is
-/// `(c0, c1, c2)` then `(c0, c2, c3)`, matching the implicit triangulation
-/// of the C++ `TRIANGLE_FAN` renderer when only 4 corners are emitted.
-fn emit_face(out: &mut Vec<ChunkVertex>, bx: f32, by: f32, bz: f32, face_id: usize, layer: u32) {
-    let corners = &FACE_CORNERS[face_id];
-    let face_u32 = face_id as u32;
-    let v: [ChunkVertex; 4] = [
-        ChunkVertex {
-            position: [bx + corners[0][0], by + corners[0][1], bz + corners[0][2]],
-            uv: FACE_UVS[0],
-            layer,
-            face: face_u32,
-        },
-        ChunkVertex {
-            position: [bx + corners[1][0], by + corners[1][1], bz + corners[1][2]],
-            uv: FACE_UVS[1],
-            layer,
-            face: face_u32,
-        },
-        ChunkVertex {
-            position: [bx + corners[2][0], by + corners[2][1], bz + corners[2][2]],
-            uv: FACE_UVS[2],
-            layer,
-            face: face_u32,
-        },
-        ChunkVertex {
-            position: [bx + corners[3][0], by + corners[3][1], bz + corners[3][2]],
-            uv: FACE_UVS[3],
-            layer,
-            face: face_u32,
-        },
-    ];
+/// Single-cell brightness for the face's in-front neighbor — used as the
+/// flat-lighting fallback when `MeshOptions::smooth_lighting` is off.
+fn flat_face_light(
+    padded: &[BlockData; PADDED_VOLUME],
+    registry: &BlockRegistry,
+    pcx: i32,
+    pcy: i32,
+    pcz: i32,
+    face_id: usize,
+) -> u8 {
+    let off = FACE_OFFSETS[face_id];
+    let ix = pcx + off[0];
+    let iy = pcy + off[1];
+    let iz = pcz + off[2];
+    let in_front = padded_at(padded, ix, iy, iz);
+    cell_color(in_front, registry.get(in_front.id))
+}
+
+/// Emit the 6 vertices of `run` (after extension along the merge axis) into
+/// the matching output bucket. No-op when `run` is `None`.
+#[inline]
+fn flush_run(
+    opaque: &mut Vec<ChunkVertex>,
+    translucent: &mut Vec<ChunkVertex>,
+    run: Option<Run>,
+) {
+    let Some(run) = run else {
+        return;
+    };
+    let bucket = if run.translucent {
+        translucent
+    } else {
+        opaque
+    };
+    emit_run(bucket, run);
+}
+
+/// Append the 6 vertices of one merged-quad run to `out`. Triangulation is
+/// `(c0, c1, c2)` then `(c0, c2, c3)`, mirroring the implicit triangulation
+/// of the C++ `TRIANGLE_FAN` renderer at four corners.
+fn emit_run(out: &mut Vec<ChunkVertex>, run: Run) {
+    let corners = &FACE_CORNERS[run.face];
+    let extend_pos = &FACE_EXTEND_POS[run.face];
+    let extend_uv = &FACE_EXTEND_UV[run.face];
+    let l = run.length as f32;
+    let face_u32 = run.face as u32;
+    let bx = run.start[0] as f32;
+    let by = run.start[1] as f32;
+    let bz = run.start[2] as f32;
+    let mut v: [ChunkVertex; 4] = [ChunkVertex {
+        position: [0.0; 3],
+        uv: [0.0; 2],
+        layer: run.layer,
+        face: face_u32,
+        light: 0,
+    }; 4];
+    for c in 0..4 {
+        v[c].position = [
+            bx + corners[c][0] + extend_pos[c][0] * l,
+            by + corners[c][1] + extend_pos[c][1] * l,
+            bz + corners[c][2] + extend_pos[c][2] * l,
+        ];
+        v[c].uv = [
+            FACE_UVS[c][0] + extend_uv[c][0] * l,
+            FACE_UVS[c][1] + extend_uv[c][1] * l,
+        ];
+        v[c].light = u32::from(run.lights[c]);
+    }
     out.push(v[0]);
     out.push(v[1]);
     out.push(v[2]);
@@ -351,7 +720,11 @@ mod tests {
                 }
             }
         }
-        MeshInput { coord, padded: buf }
+        MeshInput {
+            coord,
+            padded: buf,
+            options: MeshOptions::default(),
+        }
     }
 
     fn block(id: Id) -> BlockData {
@@ -433,9 +806,10 @@ mod tests {
             }
         });
         let output = mesh_chunk(&input, &registry);
-        // 16×16 dirt cells in chunk-local y=0, only +Y face visible
-        // → 256 faces × 6 verts = 1536 vertices.
-        assert_eq!(output.opaque.len(), 16 * 16 * 6);
+        // 16×16 dirt top faces with greedy 1-D merging along Z (the merge
+        // axis for face dir +Y) collapse to 16 strips of 16 cells each → 16
+        // quads × 6 verts = 96 vertices.
+        assert_eq!(output.opaque.len(), 16 * 6);
         assert!(output.translucent.is_empty());
     }
 
@@ -516,9 +890,10 @@ mod tests {
     }
 
     #[test]
-    fn chunk_vertex_layout_is_28_bytes() {
-        // The pipeline (D2) assumes 28-byte vertices with no padding.
-        assert_eq!(core::mem::size_of::<ChunkVertex>(), 28);
+    fn chunk_vertex_layout_is_32_bytes() {
+        // The pipeline (D2) assumes 32-byte vertices with no padding —
+        // 12 (pos) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light).
+        assert_eq!(core::mem::size_of::<ChunkVertex>(), 32);
         assert_eq!(core::mem::align_of::<ChunkVertex>(), 4);
     }
 
@@ -532,6 +907,38 @@ mod tests {
         assert_eq!(face_to_atlas_index(3), 2); // -Y bottom
         assert_eq!(face_to_atlas_index(4), 1); // +Z
         assert_eq!(face_to_atlas_index(5), 1); // -Z
+    }
+
+    #[test]
+    fn greedy_merges_along_run_axis() {
+        let (registry, base) = registry_with_base();
+        // 16-cell strip of stone at chunk-local y=0, z=0 (padded y=1, z=1):
+        // x=0..16 dirt-floor surrounded by air. Top (+Y) face of every cell
+        // is visible. The +Y face merges along Z, so each x produces its
+        // own length-1 strip — 16 quads. Verify the output has exactly 16
+        // +Y quads (96 verts) and that one of them spans the full Z=0 row.
+        let input = padded_input(Vector3::new(0, 0, 0), |px, py, pz| {
+            // Bottom border (py=0) is stone too so the -Y face is culled.
+            // Only the y=0 row in chunk-local coords (py=1) is solid.
+            // Side borders (px=0, px=17, pz=0, pz=17) are air so the side
+            // faces are exposed → those rendered as well.
+            if (py == 0 || py == 1)
+                && (1..=16).contains(&px)
+                && (1..=16).contains(&pz)
+            {
+                block(base.stone)
+            } else {
+                block(base.air)
+            }
+        });
+        let output = mesh_chunk(&input, &registry);
+        // Count distinct face directions in the output. The +Y face strips
+        // collapse from 256 cells to 16 strips (one per x row, each
+        // spanning z=0..16). The 4 side faces (±X / ±Z) along the chunk
+        // edges should also collapse where possible.
+        let plus_y_verts = output.opaque.iter().filter(|v| v.face == 2).count();
+        // 16 strips × 6 verts = 96.
+        assert_eq!(plus_y_verts, 16 * 6, "+Y faces did not greedy-merge");
     }
 
     #[test]

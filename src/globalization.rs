@@ -51,6 +51,18 @@ pub enum I18nError {
 }
 
 impl I18n {
+    /// Build an empty table tagged with `lang_code`. Used as a fallback when
+    /// the configured language file is missing or malformed at boot time —
+    /// every `get(_)` returns `""`, so the menu shows blank captions instead
+    /// of crashing the app.
+    #[must_use]
+    pub fn empty(lang_code: &str) -> Self {
+        Self {
+            current: lang_code.to_owned(),
+            lines: HashMap::new(),
+        }
+    }
+
     /// Load the language file `<lang_dir>/<lang_code>.toml`.
     pub fn load(lang_code: &str, lang_dir: &Path) -> Result<Self, I18nError> {
         let path = Self::path_for(lang_code, lang_dir);
@@ -93,6 +105,64 @@ impl I18n {
     fn path_for(lang_code: &str, lang_dir: &Path) -> PathBuf {
         lang_dir.join(format!("{lang_code}.toml"))
     }
+}
+
+/// One entry returned by [`list_languages`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LanguageEntry {
+    /// Filename stem, e.g. `"en_US"`. Use as the `lang_code` argument to
+    /// [`I18n::load`] / [`I18n::reload`].
+    pub code: String,
+    /// English name read from the `language.english_name` key in the file.
+    /// Empty if the key was missing.
+    pub english_name: String,
+    /// Native name read from the `language.native_name` key. Empty if the
+    /// key was missing. The language menu picks this for the button label.
+    pub native_name: String,
+}
+
+/// Enumerate every `*.toml` under `lang_dir` and return one [`LanguageEntry`]
+/// per file. Mirrors the C++ `language_menu.cpp` flow that reads
+/// `lang/langs.txt` then opens each file for the first two lines (English +
+/// native name); here we have a single TOML per language and pull the names
+/// from the `language.english_name` / `language.native_name` keys.
+///
+/// Files that fail to read or parse are silently skipped — the language
+/// picker shouldn't crash the menu just because one TOML is malformed.
+/// Returns the list sorted by `code` for stable ordering across runs.
+#[must_use]
+pub fn list_languages(lang_dir: &Path) -> Vec<LanguageEntry> {
+    let mut out = Vec::new();
+    let Ok(reader) = std::fs::read_dir(lang_dir) else {
+        return out;
+    };
+    for entry in reader.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("toml") {
+            continue;
+        }
+        let Some(code) = path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        let code = code.to_owned();
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let parsed: Result<HashMap<String, String>, _> = toml::from_str(&text);
+        let Ok(map) = parsed else {
+            continue;
+        };
+        out.push(LanguageEntry {
+            english_name: map
+                .get("language.english_name")
+                .cloned()
+                .unwrap_or_default(),
+            native_name: map.get("language.native_name").cloned().unwrap_or_default(),
+            code,
+        });
+    }
+    out.sort_by(|a, b| a.code.cmp(&b.code));
+    out
 }
 
 #[cfg(test)]

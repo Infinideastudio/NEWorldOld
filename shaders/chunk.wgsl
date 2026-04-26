@@ -1,10 +1,12 @@
 // Forward chunk shader for [D2] + [D4] (final pass / fog).
 //
-// Vertex layout (stride 28 B, matches `gfx::mesh::ChunkVertex`):
+// Vertex layout (stride 32 B, matches `gfx::mesh::ChunkVertex`):
 //   @location(0) position : vec3<f32>  // offset  0
 //   @location(1) uv       : vec2<f32>  // offset 12
 //   @location(2) layer    : u32        // offset 20
 //   @location(3) face     : u32        // offset 24
+//   @location(4) light    : u32        // offset 28 — bottom byte = 0..255
+//                                       // smooth-light brightness
 //
 // Per-chunk world origin: baked into `position` at upload time on the CPU
 // (`ChunkMesh::upload` adds `coord * CHUNK_SIZE` to every vertex's position).
@@ -59,6 +61,7 @@ struct VsIn {
     @location(1) uv: vec2<f32>,
     @location(2) layer: u32,
     @location(3) face: u32,
+    @location(4) light: u32,
 };
 
 struct VsOut {
@@ -67,6 +70,7 @@ struct VsOut {
     @location(1) @interpolate(flat) layer: i32,
     @location(2) @interpolate(flat) face: u32,
     @location(3) world_pos: vec3<f32>,
+    @location(4) light: f32,
 };
 
 @vertex
@@ -79,6 +83,10 @@ fn vs_main(in: VsIn) -> VsOut {
     out.uv = in.uv;
     out.layer = i32(in.layer);
     out.face = in.face;
+    // Bottom byte of `in.light` is 0..255 brightness; the rasterizer
+    // interpolates this linearly across the four corners of each face,
+    // giving smooth lighting / soft AO falloff.
+    out.light = f32(in.light & 0xFFu) / 255.0;
     return out;
 }
 
@@ -113,7 +121,11 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let normal = face_normal(in.face);
     let ndotl = max(dot(normal, frame.sun_dir.xyz), 0.0);
     let lambert = mix(0.3, 1.0, ndotl);
-    var rgb = sample.rgb * lambert;
+    // Smooth-lit brightness: blend from a dim floor up to full sunlit. The
+    // floor (0.35) keeps caves and unlit rooms visible enough to navigate
+    // until a real torch / glowstone illuminates the area.
+    let brightness = mix(0.35, 1.0, in.light);
+    var rgb = sample.rgb * lambert * brightness;
 
     // [D4] Ambient sky-bounce: pull shadowed surfaces a little toward sky
     // tint so the dark side of geometry isn't a flat charcoal.

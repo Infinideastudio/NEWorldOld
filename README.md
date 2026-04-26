@@ -5,10 +5,9 @@ repository hosts the **Rust rewrite**, ported from the original C++23 code base
 (preserved under [`old/`](old/) for reference and feature-parity diffing — see
 [`old/README.md`](old/README.md) for its build instructions).
 
-The migration plan, ownership design, and a module-by-module C++ ↔ Rust mapping
-live in [`docs/rust_migration.md`](docs/rust_migration.md). The current
-implementation status (what has shipped, what is still open) lives in
-[`docs/progress.md`](docs/progress.md).
+The current Rust + C++ designs, a module-by-module feature-parity report,
+and the roadmap for closing the remaining gaps all live in
+[`docs/rust_migration.md`](docs/rust_migration.md).
 
 ## Building
 
@@ -62,6 +61,6 @@ cargo clippy --all-targets -- -D warnings
 **All seven groups of the migration plan (`[A]` – `[F]`) have shipped.** The
 binary is playable end-to-end: title → world select → in-game with chunk
 streaming, player physics, mouse-driven inventory, async load/save, and
-screenshot capture. See [`docs/progress.md`](docs/progress.md) for the
-detailed checklist plus open polish items (greedy meshing, smooth lighting,
-worldgen seed wiring, …).
+screenshot capture. See [`docs/rust_migration.md`](docs/rust_migration.md)
+for the parity report plus the roadmap for open polish items (greedy
+meshing, smooth lighting, worldgen seed wiring, …).

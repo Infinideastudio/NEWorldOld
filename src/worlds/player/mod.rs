@@ -246,7 +246,17 @@ impl Player {
     /// Insert `stack` into the inventory. Iterates rows in reverse, fills
     /// existing same-id stacks first (capped at `MAX_COUNT`), then empty
     /// slots. Returns `true` iff every item fit.
+    ///
+    /// Refuses to insert `air` (`Id(0)`) or an empty stack — those would
+    /// "succeed" by occupying a real slot with junk and breaking the
+    /// `slot.empty() ⇔ count == 0` UI assumption (an air slot looks like
+    /// it has stuff but every painter / merge helper treats it as empty).
+    /// `register_base_blocks` always assigns `Id(0)` to air, so the guard
+    /// works without threading `BaseBlocks` through.
     pub fn add_item(&mut self, mut stack: ItemStack) -> bool {
+        if stack.empty() || stack.id == crate::blocks::Id(0) {
+            return true;
+        }
         let max = ItemStack::MAX_COUNT;
         // Pass 1: top up matching stacks.
         for row in self.inventory.iter_mut().rev() {
@@ -590,6 +600,22 @@ mod tests {
         assert_eq!(p.inventory_item_stack(3, 9).count, 255);
         assert_eq!(p.inventory_item_stack(3, 0).id, Id(3));
         assert_eq!(p.inventory_item_stack(3, 0).count, 95);
+    }
+
+    #[test]
+    fn add_item_rejects_air_and_empty_stacks() {
+        // Air (Id 0) and zero-count stacks must not occupy real slots.
+        // Both call sites should return `true` (no items lost) but leave
+        // the inventory untouched.
+        let mut p = Player::default();
+        assert!(p.add_item(ItemStack::new(Id(0), 5)));
+        assert!(p.add_item(ItemStack::new(Id(7), 0)));
+        for row in &p.inventory {
+            for slot in row {
+                assert!(slot.empty(), "no slot should have been filled");
+                assert_eq!(slot.id, Id(0));
+            }
+        }
     }
 
     #[test]

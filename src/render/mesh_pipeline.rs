@@ -131,6 +131,7 @@ mod tests {
         let input = MeshInput {
             coord: Vector3::new(0, 0, 0),
             padded,
+            options: crate::render::mesh::MeshOptions::default(),
         };
         (input, registry)
     }

@@ -5,9 +5,10 @@
 //! window changes; the [`crate::render::chunk_render::ChunkPipeline`] is built
 //! against [`DepthTarget::FORMAT`] so resizing never invalidates the pipeline.
 //!
-//! Reversed-Z (per migration plan §6) is *not* enabled here; the chunk
-//! pipeline uses standard `Less` comparison with depth-clear = 1.0. See the
-//! TODO in `chunk_render.rs` for the follow-up.
+//! Reversed-Z is enabled at the pipeline / projection level: chunk + particle
+//! pipelines both use `CompareFunction::Greater`, the world render pass clears
+//! depth to 0.0, and `Camera::proj_matrix` returns a reversed-Z perspective
+//! (`OPENGL_TO_WGPU_REVERSED`). The depth attachment itself is format-neutral.
 
 /// One depth attachment, owned alongside the surface configuration.
 pub struct DepthTarget {

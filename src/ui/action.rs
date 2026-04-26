@@ -67,17 +67,18 @@ impl WorldActionQueue {
     }
 }
 
-/// Helper: the worlds root directory the app uses by default. In dev (with
-/// `CARGO_MANIFEST_DIR` set at build time) this lives next to the crate so
-/// chunk DBs survive between cargo runs without polluting the launch dir;
-/// in a deployed build it's just `worlds/` under the cwd, matching the C++
-/// build's behaviour.
+/// Helper: the parent directory under which worlds live. `World::new_at`,
+/// `World::list_worlds_at`, and `World::delete_world_at` all internally
+/// append `"worlds"`, so this returns the parent — the crate dir in dev (so
+/// chunk DBs survive between cargo runs without polluting the launch dir),
+/// or the cwd in a deployed build (matching the C++ build's behaviour).
+/// Net result: worlds live at `<this>/worlds/<name>/`.
 #[must_use]
 pub fn default_worlds_root() -> PathBuf {
     if let Some(dir) = option_env!("CARGO_MANIFEST_DIR") {
-        return PathBuf::from(dir).join("worlds");
+        return PathBuf::from(dir);
     }
-    PathBuf::from("worlds")
+    PathBuf::from(".")
 }
 
 #[cfg(test)]

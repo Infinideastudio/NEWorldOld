@@ -28,6 +28,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use crate::config::Config;
+use crate::globalization::I18n;
 use crate::menus::TitleScreen;
 
 pub use action::{WorldAction, WorldActionQueue, default_worlds_root};
@@ -39,6 +40,7 @@ pub use screen::{Screen, ScreenStack, Transition};
 #[must_use]
 pub fn initial_screen_stack(
     config: Arc<Mutex<Config>>,
+    i18n: Arc<Mutex<I18n>>,
     worlds_root: PathBuf,
     actions: Arc<WorldActionQueue>,
     game_loaded: Arc<AtomicBool>,
@@ -46,6 +48,7 @@ pub fn initial_screen_stack(
     let mut stack = ScreenStack::new();
     stack.push(Box::new(TitleScreen::new(
         config,
+        i18n,
         worlds_root,
         actions,
         game_loaded,

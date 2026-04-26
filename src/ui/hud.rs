@@ -9,11 +9,6 @@
 //! * Recent chat history above the chat bar (auto-decay after 5 s, or always
 //!   visible while the chat bar is open).
 
-use cgmath::Matrix4;
-
-use crate::game::Hit;
-use crate::math::Vec3i;
-
 /// Per-frame data the HUD reads. Bundled to keep [`Hud::render`] under the
 /// clippy `too_many_arguments` threshold and to make it obvious which fields
 /// are inputs vs. owned `Hud` state.
@@ -23,27 +18,8 @@ pub struct HudFrame<'a> {
     pub pitch: f64,
     pub fps: f32,
     pub chunk_count: usize,
-    pub selected: Option<Hit>,
-    pub view_proj: Matrix4<f32>,
     pub chat_history: &'a [&'a str],
 }
-
-/// 12 cube edges; corners are addressed by the dx/dy/dz bit scheme used
-/// inside [`Hud::render_selection_outline`] (bit 0 = x, bit 1 = y, bit 2 = z).
-const SELECTION_EDGES: [(usize, usize); 12] = [
-    (0, 1),
-    (2, 3),
-    (4, 5),
-    (6, 7),
-    (0, 2),
-    (1, 3),
-    (4, 6),
-    (5, 7),
-    (0, 4),
-    (1, 5),
-    (2, 6),
-    (3, 7),
-];
 
 /// In-game HUD state.
 #[derive(Default)]
@@ -89,10 +65,9 @@ impl Hud {
 
     /// Render the full HUD. Call from the game screen's `ui` method.
     ///
-    /// `selected` and `view_proj` come from the [`crate::game::Game`] tick:
-    /// when `selected` is `Some`, we draw a wireframe outline of the block.
-    /// `chat_history` is the auto-decayed list of recent chat lines (most
-    /// recent last).
+    /// The selection wireframe is *not* drawn here — that's a real 3-D
+    /// pass owned by [`crate::render::SelectionPipeline`], composited into
+    /// the world render pass before egui so UI elements always sit on top.
     pub fn render(&mut self, ctx: &egui::Context, frame: &HudFrame<'_>) {
         Self::render_crosshair(ctx);
         self.render_debug_panel(
@@ -103,9 +78,6 @@ impl Hud {
             frame.fps,
             frame.chunk_count,
         );
-        if let Some(hit) = frame.selected {
-            Self::render_selection_outline(ctx, hit.coord, frame.view_proj);
-        }
         Self::render_chat_history(ctx, frame.chat_history);
 
         if self.chat_open {
@@ -169,57 +141,6 @@ impl Hud {
                 ui.label(format!("FPS: {fps:.0}"));
                 ui.label(format!("Chunks: {chunk_count}"));
             });
-    }
-
-    /// Project the 8 corners of a unit cube at `coord` through `view_proj`
-    /// and draw 12 line segments via egui. Skips when any corner is behind
-    /// the camera (`w <= 0`).
-    #[allow(clippy::many_single_char_names)] // x/y/z/w mirror cgmath::Matrix4 col names
-    fn render_selection_outline(ctx: &egui::Context, coord: Vec3i, view_proj: Matrix4<f32>) {
-        let rect = ctx.content_rect();
-        let width = rect.width();
-        let height = rect.height();
-        let origin = rect.left_top();
-
-        let base = [coord.x as f32, coord.y as f32, coord.z as f32];
-        let mut clip = [(0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32); 8];
-        for (idx, slot) in clip.iter_mut().enumerate() {
-            let dx = ((idx & 1) != 0) as i32 as f32;
-            let dy = ((idx & 2) != 0) as i32 as f32;
-            let dz = ((idx & 4) != 0) as i32 as f32;
-            let x = base[0] + dx;
-            let y = base[1] + dy;
-            let z = base[2] + dz;
-            // Manual mat4 * vec4 — cgmath's Matrix4 stores columns in `.x`,
-            // `.y`, `.z`, `.w`; the `.x.x` etc. fields are individual scalars.
-            let cx = view_proj.x.x * x + view_proj.y.x * y + view_proj.z.x * z + view_proj.w.x;
-            let cy = view_proj.x.y * x + view_proj.y.y * y + view_proj.z.y * z + view_proj.w.y;
-            let cz = view_proj.x.z * x + view_proj.y.z * y + view_proj.z.z * z + view_proj.w.z;
-            let cw = view_proj.x.w * x + view_proj.y.w * y + view_proj.z.w * z + view_proj.w.w;
-            *slot = (cx, cy, cz, cw);
-        }
-
-        if clip.iter().any(|(_, _, _, cw)| *cw <= 0.0) {
-            return;
-        }
-
-        let mut screen = [egui::pos2(0.0, 0.0); 8];
-        for (idx, (cx, cy, _, cw)) in clip.iter().enumerate() {
-            let ndc_x = cx / cw;
-            let ndc_y = cy / cw;
-            let sx = origin.x + (ndc_x + 1.0) * 0.5 * width;
-            let sy = origin.y + (1.0 - (ndc_y + 1.0) * 0.5) * height;
-            screen[idx] = egui::pos2(sx, sy);
-        }
-
-        let painter = ctx.layer_painter(egui::LayerId::new(
-            egui::Order::Foreground,
-            egui::Id::new("selection_outline"),
-        ));
-        let stroke = egui::Stroke::new(1.5, egui::Color32::from_gray(220));
-        for (a, b) in SELECTION_EDGES {
-            painter.line_segment([screen[a], screen[b]], stroke);
-        }
     }
 
     /// Recent chat lines, drawn as a translucent panel above the chat bar.

@@ -51,6 +51,10 @@ glyphon = "0.11.0"
 # egui: immediate-mode GUI (replaces the C++ ui/ library).
 # egui-winit: winit event → egui input translation (winit 0.30 compatible).
 # egui-wgpu: egui → wgpu rendering backend (must match project wgpu version).
-egui = { version = "0.34", features = ["default_fonts"] }
+# `default-features = false` drops egui's bundled Hack / Ubuntu Light /
+# Noto Emoji fonts (~2 MB of binary) — we install `assets/fonts/unicode.ttf`
+# as the sole font in `EguiRenderer::install_unicode_font` and don't need
+# the upstream fallbacks.
+egui = { version = "0.34", default-features = false }
 egui-winit = "0.34"
 egui-wgpu = "0.34"

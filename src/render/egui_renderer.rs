@@ -4,7 +4,16 @@
 //! [`egui_wgpu::Renderer`] so that [`crate::app::App`] can build immediate-mode
 //! UI panels (HUD, inventory, menus) and composite them on top of the 3-D world.
 
+use std::sync::Arc;
+
 use egui_wgpu::ScreenDescriptor;
+
+/// Bundled font with broad Unicode coverage (incl. CJK). egui's default
+/// fonts cover Latin only, so without this swap the localised menu strings
+/// rendered as missing-glyph boxes. Same TTF the glyphon HUD uses, kept
+/// in-binary via `include_bytes!` so the runtime doesn't depend on the
+/// file's presence on disk.
+const UNICODE_FONT_BYTES: &[u8] = include_bytes!("../../assets/fonts/unicode.ttf");
 
 /// Wgpu `RenderPass` lifetime-forget helper.
 ///
@@ -48,6 +57,20 @@ impl EguiRenderer {
         scale_factor: f32,
     ) -> Self {
         let context = egui::Context::default();
+        // Force the dark theme for every widget — the menus draw their own
+        // dark backgrounds and would look out of place against egui's
+        // light-mode defaults.
+        context.set_visuals(egui::Visuals::dark());
+        // Disable text selection on `Label` widgets. Static menu text has
+        // no reason to be selectable, and egui's drag-selection (left-down
+        // starts; mouse-up should end) misbehaves in our event flow —
+        // selection keeps following the cursor after release. Turning the
+        // feature off avoids the issue entirely. `TextEdit` widgets keep
+        // their own internal selection (different code path).
+        context.global_style_mut(|style| {
+            style.interaction.selectable_labels = false;
+        });
+        install_unicode_font(&context);
 
         let state = egui_winit::State::new(
             context.clone(),
@@ -198,4 +221,48 @@ impl EguiRenderer {
     pub fn set_scale_factor(&mut self, scale_factor: f32) {
         self.screen_descriptor.pixels_per_point = scale_factor;
     }
+
+    /// Register each of `views` as an egui [`TextureId`], returning the ids
+    /// in the same order. Sampled with nearest-neighbour filtering (the voxel
+    /// pixel-art aesthetic; matches the world atlas sampler).
+    ///
+    /// The returned ids stay valid for the lifetime of `self.renderer`. Used
+    /// by the inventory to draw real block art per slot instead of letter
+    /// abbreviations.
+    pub fn register_native_textures(
+        &mut self,
+        device: &wgpu::Device,
+        views: &[wgpu::TextureView],
+    ) -> Vec<egui::TextureId> {
+        views
+            .iter()
+            .map(|v| {
+                self.renderer
+                    .register_native_texture(device, v, wgpu::FilterMode::Nearest)
+            })
+            .collect()
+    }
+}
+
+/// Install `assets/fonts/unicode.ttf` as the sole font for both the
+/// proportional and monospace families. We disable egui's `default_fonts`
+/// feature in `Cargo.toml`, so `FontDefinitions::default()` returns an
+/// empty set with the family vecs populated; we just push our font into
+/// each. The bundled TTF is broad-coverage (CJK, Latin, common
+/// punctuation), so dropping the upstream Hack / Ubuntu Light / Noto Emoji
+/// fallbacks costs nothing visible in our menus.
+fn install_unicode_font(ctx: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+    fonts.font_data.insert(
+        "neworld_unicode".to_owned(),
+        Arc::new(egui::FontData::from_static(UNICODE_FONT_BYTES)),
+    );
+    for family in [egui::FontFamily::Proportional, egui::FontFamily::Monospace] {
+        fonts
+            .families
+            .entry(family)
+            .or_default()
+            .insert(0, "neworld_unicode".to_owned());
+    }
+    ctx.set_fonts(fonts);
 }

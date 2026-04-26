@@ -41,7 +41,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use cgmath::{InnerSpace, Matrix4, SquareMatrix, Vector3};
+use cgmath::{InnerSpace, Vector3};
 
 use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, register_base_blocks};
 use crate::chunks::Chunk;
@@ -51,8 +51,8 @@ use crate::items::ItemStack;
 use crate::math::{Vec3d, Vec3i};
 use crate::particles::{Particle, ParticleSystem};
 use crate::render::{
-    DepthTarget, FrameUniforms, MeshInput, MeshPipeline, PADDED_SIZE, PADDED_VOLUME, ParticleMesh,
-    ParticlePipeline, UniformBuffer, mat4_to_array, padded_index,
+    DepthTarget, FrameUniforms, MeshInput, MeshOptions, MeshPipeline, PADDED_SIZE, PADDED_VOLUME,
+    ParticleMesh, ParticlePipeline, SelectionPipeline, UniformBuffer, mat4_to_array, padded_index,
 };
 use crate::textures::Atlases;
 use crate::worlds::chunk_rendering::{ChunkMesh, ChunkPipeline};
@@ -121,13 +121,13 @@ pub struct Game {
     pub particles: ParticleSystem,
     pub particle_mesh: ParticleMesh,
     pub particle_pipeline: ParticlePipeline,
+    /// Wireframe outline for the currently-selected block. Drawn as a real
+    /// 3-D pass against the world depth buffer, so solid geometry occludes
+    /// it correctly and UI elements (egui) sit on top.
+    pub selection_pipeline: SelectionPipeline,
     pub sun_dir: Vector3<f32>,
     /// Currently-selected block (raycast hit). Updated each tick.
     pub selected: Option<Hit>,
-    /// Latest computed view-projection matrix; the HUD reads it to draw the
-    /// selection outline. Mirrored from the value uploaded into
-    /// `FrameUniforms` the same frame.
-    pub view_proj: Matrix4<f32>,
     /// Off-thread mesher ([F6]). Drained per frame by [`Self::pump_meshing`].
     mesh_worker: MeshPipeline,
     /// Set of chunk coords that need their mesh rebuilt. Walked per frame and
@@ -155,6 +155,18 @@ pub struct Game {
     /// Mouse sensitivity multiplier sourced from `Config.mouse_speed`. Pushed
     /// in by the app's `apply_config` each frame.
     pub mouse_speed: f64,
+    /// Latest accumulator fraction of the simulation tick, in `[0, 1)`.
+    /// Set by [`Self::write_frame_uniforms`] and consumed by
+    /// [`Self::record_world_pass`] so particles can lerp between their
+    /// pre- and post-tick positions for smooth motion at render rates
+    /// faster than the 30 Hz simulation.
+    tick_alpha: f32,
+    /// Live meshing toggles (smooth lighting / merge-face / nice grass)
+    /// captured into each `MeshInput` at submit time. Updated by
+    /// [`Self::apply_mesh_config`] when the menu flips one of the flags;
+    /// the change handler also drops every cached `ChunkMesh` and re-marks
+    /// the loaded set dirty so the next pump rebuilds with the new options.
+    mesh_options: MeshOptions,
 }
 
 impl Game {
@@ -228,10 +240,17 @@ impl Game {
             frame_uniforms,
             atlases,
         );
+        let selection_pipeline = SelectionPipeline::new(
+            device,
+            surface_format,
+            DepthTarget::FORMAT,
+            frame_uniforms,
+        );
 
         let particles = ParticleSystem::new();
         let mut particle_mesh = ParticleMesh::new();
-        particle_mesh.rebuild(device, particles.particles());
+        // Empty particle list, alpha is unused — pass 0.0.
+        particle_mesh.rebuild(device, particles.particles(), 0.0);
 
         // Camera starts at the eye position; tick_render keeps it synced.
         let look = world.player().look_coord();
@@ -252,9 +271,9 @@ impl Game {
             particles,
             particle_mesh,
             particle_pipeline,
+            selection_pipeline,
             sun_dir: default_sun_dir(),
             selected: None,
-            view_proj: Matrix4::identity(),
             mesh_worker,
             dirty_chunks: HashSet::new(),
             meshing_in_flight: HashSet::new(),
@@ -265,7 +284,45 @@ impl Game {
             rng: 0x9E37_79B9_7F4A_7C15,
             last_w_press: None,
             mouse_speed: 0.1,
+            tick_alpha: 0.0,
+            // `apply_mesh_config` rewrites this on the first frame from the
+            // live `Config`; the default keeps things sensible if the world
+            // were ever ticked before the app's `apply_config` ran.
+            mesh_options: MeshOptions {
+                grass_id: base_blocks.grass,
+                ..MeshOptions::default()
+            },
         })
+    }
+
+    /// Reconcile the live mesh-options snapshot with `desired`. When any of
+    /// the toggles flip, every cached `ChunkMesh` is dropped, every loaded
+    /// chunk is re-marked dirty, and any in-flight mesh job is forgotten —
+    /// the next [`Self::pump_meshing`] re-issues the loaded set against
+    /// the new options. Cheap on the no-op path (single struct compare).
+    pub fn apply_mesh_config(&mut self, desired: MeshOptions) {
+        if self.mesh_options.smooth_lighting == desired.smooth_lighting
+            && self.mesh_options.merge_face == desired.merge_face
+            && self.mesh_options.nice_grass == desired.nice_grass
+            && self.mesh_options.grass_id == desired.grass_id
+        {
+            return;
+        }
+        tracing::info!(
+            smooth_lighting = desired.smooth_lighting,
+            merge_face = desired.merge_face,
+            nice_grass = desired.nice_grass,
+            "mesh options changed; rebuilding all chunk meshes"
+        );
+        self.mesh_options = desired;
+        self.chunk_meshes.clear();
+        self.meshing_in_flight.clear();
+        // Re-mark every loaded chunk dirty (empty chunks have no mesh, but
+        // marking them is a no-op once `pump_meshing` filters them).
+        self.dirty_chunks.clear();
+        for (coord, _) in self.world.loaded_chunks() {
+            self.dirty_chunks.insert(coord);
+        }
     }
 
     /// Render-rate per-frame update. `dt` is real elapsed seconds since the
@@ -407,6 +464,31 @@ impl Game {
         // a menu is open, just like the C++ build. `World::update_player`
         // hides the player/world borrow split internally (see its docs).
         self.world.update_player();
+
+        // Drain the block-update queue. Mirrors the C++ `update_thread` loop
+        // calling `process_block_updates()` once per tick. Drives the BFS
+        // light-removal flushes and per-cell relaxation (e.g. after break /
+        // place). Suppressed while paused so a paused game stays perfectly
+        // frozen.
+        if !paused {
+            self.world.process_block_updates();
+            // Random tick drives slow world dynamics: grass spread / smother
+            // and future tickable blocks. Cheap (per-chunk fixed sample
+            // count) but skipped while paused so a frozen world stays
+            // visually frozen.
+            self.world.random_tick();
+            // Promote every world-internal mutation that ran this tick
+            // (random-tick transitions, BFS light clears, queued block
+            // updates) into a mesh rebuild. `World::update_block` flips the
+            // neighbour chunk's `updated` flag at chunk-edge cells, so
+            // edge-touching changes mark both sides automatically — the
+            // explicit `mark_chunk_dirty_with_neighbors` call in
+            // try_break / try_place stays as a same-frame safety net for
+            // edge cases the queue hasn't reached yet.
+            for coord in self.world.drain_updated_chunks() {
+                self.dirty_chunks.insert(coord);
+            }
+        }
 
         // Slide the chunk grid + height map to follow the player. Mirrors
         // C++ `update_chunk_lists`: only re-pivot when the player crosses a
@@ -555,7 +637,7 @@ impl Game {
         candidates.truncate(MAX_MESH_DISPATCHES_PER_FRAME);
 
         for (_, coord) in candidates {
-            let input = build_mesh_input(&self.world, coord);
+            let input = build_mesh_input(&self.world, coord, self.mesh_options);
             if self.mesh_worker.submit(input) {
                 self.meshing_in_flight.insert(coord);
                 self.dirty_chunks.remove(&coord);
@@ -600,6 +682,9 @@ impl Game {
         elapsed: f32,
         tick_alpha: f32,
     ) {
+        // Cache `tick_alpha` so `record_world_pass` can lerp particle
+        // positions on the same fraction the camera uses.
+        self.tick_alpha = tick_alpha.clamp(0.0, 1.0);
         // Interpolated eye position. Mirrors the C++ formula from
         // `render_scene`: at α=0 (tick just happened) we show the pre-tick
         // position so motion is continuous; at α=1 (about to tick again) we
@@ -617,7 +702,14 @@ impl Game {
         let view = self.camera.view_matrix();
         let proj = self.camera.proj_matrix(aspect);
         let view_proj = proj * view;
-        self.view_proj = view_proj;
+
+        // Push the current selection to the wireframe pipeline. Doing it
+        // here keeps the upload colocated with the per-frame uniform writes
+        // so the data is consistent within a single frame's render.
+        match self.selected {
+            Some(hit) => self.selection_pipeline.set_block(queue, hit.coord),
+            None => self.selection_pipeline.clear(),
+        }
 
         let mut u = FrameUniforms::default();
         u.view = mat4_to_array(view);
@@ -652,8 +744,10 @@ impl Game {
     ) {
         // Particle vertex buffer — rebuild per-frame from the current
         // particle list (cheap when empty; a one-buffer write otherwise).
+        // `tick_alpha` lerps each particle between its pre- and post-tick
+        // position so motion stays smooth at sub-tick frame rates.
         self.particle_mesh
-            .rebuild(device, self.particles.particles());
+            .rebuild(device, self.particles.particles(), self.tick_alpha);
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("game.world_pass"),
@@ -669,7 +763,9 @@ impl Game {
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &self.depth.view,
                 depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
+                    // Reversed-Z: clear to 0.0 (= "far plane"); the chunk +
+                    // particle pipelines use `CompareFunction::Greater`.
+                    load: wgpu::LoadOp::Clear(0.0),
                     store: wgpu::StoreOp::Store,
                 }),
                 stencil_ops: None,
@@ -688,6 +784,11 @@ impl Game {
             cm.draw_translucent(&mut pass);
         }
         self.particle_pipeline.render(&mut pass, &self.particle_mesh);
+        // Selection wireframe rides the same depth buffer so terrain
+        // occludes it correctly. Drawn last in the world pass so it
+        // composites cleanly on top of opaque + translucent geometry.
+        // The egui pass that follows draws every UI element on top.
+        self.selection_pipeline.draw(&mut pass);
     }
 
     /// Run a chat / slash command line. If it begins with `/`, dispatches
@@ -791,7 +892,10 @@ impl Game {
             .player_mut()
             .add_item(ItemStack::new(block.id, 1));
 
-        // Spawn debris.
+        // Spawn debris. Each fleck samples a small random fragment of the
+        // broken block's face art (mirrors C++ `throw_particle` choosing a
+        // `psize × psize` sub-rect at a random origin) so a single break
+        // shows visually distinct flecks instead of 10 identical thumbnails.
         for _ in 0..PARTICLES_PER_BREAK {
             let px = f64::from(coord.x) + self.rand_unit();
             let py = f64::from(coord.y) + self.rand_unit();
@@ -799,12 +903,17 @@ impl Game {
             let vx = (self.rand_unit() - 0.5) * 0.4;
             let vy = self.rand_unit() * 0.3;
             let vz = (self.rand_unit() - 0.5) * 0.4;
-            self.particles.spawn(Particle::new(
-                Vec3d::new(px, py, pz),
-                Vec3d::new(vx, vy, vz),
-                tex_layer,
-                1.0,
-            ));
+            let rng_u = self.rand_unit() as f32;
+            let rng_v = self.rand_unit() as f32;
+            self.particles.spawn(
+                Particle::new(
+                    Vec3d::new(px, py, pz),
+                    Vec3d::new(vx, vy, vz),
+                    tex_layer,
+                    1.0,
+                )
+                .with_random_tex_uv(rng_u, rng_v),
+            );
         }
     }
 
@@ -949,7 +1058,10 @@ impl BlockView for BlockViewRef<'_> {
 
 /// Build a [`MeshInput`] for `ccoord` by sampling the world's blocks at every
 /// padded cell. Out-of-range neighbors return `block_or_air`'s air default.
-fn build_mesh_input(world: &World, ccoord: Vec3i) -> MeshInput {
+/// `options` is captured at submit time so the worker meshes against a stable
+/// view; menu toggles take effect by re-issuing every dirty chunk
+/// (see [`Game::apply_mesh_config`]).
+fn build_mesh_input(world: &World, ccoord: Vec3i, options: MeshOptions) -> MeshInput {
     let air = BlockData::default();
     // Heap-allocate without putting the array on the stack first.
     let v = vec![air; PADDED_VOLUME];
@@ -979,6 +1091,7 @@ fn build_mesh_input(world: &World, ccoord: Vec3i) -> MeshInput {
     MeshInput {
         coord: ccoord,
         padded,
+        options,
     }
 }
 

@@ -1,0 +1,67 @@
+# English language table for NEWorld.
+# Direct port of `old/lang/keys.lk` + `old/lang/en_US.lang` to TOML form.
+
+"language.english_name" = "English"
+"language.native_name"  = "English"
+
+"NEWorld.yes" = "Yes"
+"NEWorld.no" = "No"
+"NEWorld.enabled" = "Enabled"
+"NEWorld.disabled" = "Disabled"
+
+"NEWorld.main.start" = "Start game"
+"NEWorld.main.options" = ">> Options..."
+"NEWorld.main.exit" = "Exit"
+"NEWorld.main.help" = "Press ENTER and type \"/help\" in-game for more instructions!"
+
+"NEWorld.options.caption" = "< OPTIONS >"
+"NEWorld.options.fov" = "Field of view: "
+"NEWorld.options.sensitivity" = "Mouse sensitivity: "
+"NEWorld.options.distance" = "Render distance: "
+"NEWorld.options.rendermenu" = ">> Render options..."
+"NEWorld.options.guimenu" = ">> UI options..."
+"NEWorld.options.languagemenu" = ">> Select language..."
+"NEWorld.options.back" = "<< Back to main menu"
+"NEWorld.options.save" = "Save options"
+
+"NEWorld.render.caption" = "< RENDER OPTIONS >"
+"NEWorld.render.smooth" = "Smooth lighting: "
+"NEWorld.render.grasstex" = "Connect grass texture: "
+"NEWorld.render.merge" = "Merge face rendering: "
+"NEWorld.render.multisample" = "Multi-sample AA: "
+"NEWorld.render.shaders" = ">> Advanced rendering ..."
+"NEWorld.render.vsync" = "Vertical sync: "
+"NEWorld.render.back" = "<< Back to options menu"
+
+"NEWorld.shaders.caption" = "< ADVANCED SHADING >"
+"NEWorld.shaders.enable" = "Enabled: "
+"NEWorld.shaders.shadowres" = "Shadow map resolution: "
+"NEWorld.shaders.distance" = "Max shadow distance: "
+"NEWorld.shaders.softshadow" = "Soft shadow: "
+"NEWorld.shaders.clouds" = "Volumetric clouds: "
+"NEWorld.shaders.ssao" = "Ambient occlusion: "
+"NEWorld.shaders.back" = "<< Back to render options"
+
+"NEWorld.gui.caption" = "< UI OPTIONS >"
+"NEWorld.gui.fontsize" = "Font size: "
+"NEWorld.gui.blur" = "Background blur: "
+"NEWorld.gui.stretch" = "PPI stretch: "
+"NEWorld.gui.back" = "<< Back to options menu"
+
+"NEWorld.worlds.caption" = "< SELECT WORLD >"
+"NEWorld.worlds.enter" = "Enter this world"
+"NEWorld.worlds.delete" = "Delete this world"
+"NEWorld.worlds.new" = ">> Create a new world ..."
+"NEWorld.worlds.back" = "<< Back to main menu"
+
+"NEWorld.pause.caption" = "< GAME PAUSED >"
+"NEWorld.pause.continue" = "Continue game"
+"NEWorld.pause.back" = "<< Back to main menu"
+
+"NEWorld.create.caption" = "< CREATE A NEW WORLD >"
+"NEWorld.create.inputname" = "Input world name"
+"NEWorld.create.ok" = "OK"
+"NEWorld.create.back" = "<< Back to world menu"
+
+"NEWorld.language.caption" = "< LANGUAGES >"
+"NEWorld.language.back" = "<< Back to options menu"

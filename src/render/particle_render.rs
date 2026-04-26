@@ -78,12 +78,18 @@ const _: () = assert!(std::mem::size_of::<ParticleVertex>() % 16 == 0);
 ///
 /// ```text
 ///   2---3        triangles: (0,1,2) (0,2,3)
-///   |  /|        UVs: (0,0) (1,0) (1,1) (1,1) (0,1) (0,0)
+///   |  /|        corner uv: (0,0) (1,0) (1,1) (1,1) (0,1) (0,0)
 ///   | / |
 ///   |/  |
 ///   0---1
 /// ```
-fn build_vertices(particles: &[Particle]) -> Vec<ParticleVertex> {
+///
+/// Per-vertex `uv` is the texture-space sub-rect coord — `tex_uv +
+/// corner_uv * tex_size` — so the rasterizer samples a small random
+/// fragment of the source face per particle. Per-vertex `world_pos` is
+/// the *interpolated* center (`lerp(prev_coord, coord, tick_alpha)`) so
+/// motion stays smooth between 30 Hz sim ticks.
+fn build_vertices(particles: &[Particle], tick_alpha: f32) -> Vec<ParticleVertex> {
     // Per-corner UVs for the triangle pair (BL, BR, TR, TR, TL, BL).
     const CORNER_UVS: [[f32; 2]; 6] = [
         [0.0, 0.0],
@@ -94,20 +100,20 @@ fn build_vertices(particles: &[Particle]) -> Vec<ParticleVertex> {
         [0.0, 0.0],
     ];
 
+    let alpha = f64::from(tick_alpha.clamp(0.0, 1.0));
     let mut out = Vec::with_capacity(particles.len() * 6);
     for p in particles {
-        let world_pos = [
-            p.coord.x as f32,
-            p.coord.y as f32,
-            p.coord.z as f32,
-        ];
+        let interp = p.prev_coord + (p.coord - p.prev_coord) * alpha;
+        let world_pos = [interp.x as f32, interp.y as f32, interp.z as f32];
         let size = p.extent as f32;
         let layer = p.texture_layer;
-        for uv in CORNER_UVS {
+        let [u0, v0] = p.tex_uv;
+        let s = p.tex_size;
+        for [cu, cv] in CORNER_UVS {
             out.push(ParticleVertex {
                 world_pos,
                 size,
-                uv,
+                uv: [u0 + cu * s, v0 + cv * s],
                 layer,
                 _pad: 0,
             });
@@ -138,15 +144,19 @@ impl ParticleMesh {
     }
 
     /// Replace the GPU buffer with one containing the vertex data for
-    /// `particles`. With an empty input this drops the buffer; subsequent
-    /// [`ParticleMesh::draw`] calls become no-ops.
-    pub fn rebuild(&mut self, device: &wgpu::Device, particles: &[Particle]) {
+    /// `particles`, with positions lerped between each particle's
+    /// `prev_coord` and `coord` by `tick_alpha`. Pass `0.0` to render at
+    /// the just-ticked snapshot, `1.0` to render the next frame's
+    /// projected position; values in between produce smooth motion
+    /// between sim ticks. With an empty input this drops the buffer;
+    /// subsequent [`ParticleMesh::draw`] calls become no-ops.
+    pub fn rebuild(&mut self, device: &wgpu::Device, particles: &[Particle], tick_alpha: f32) {
         if particles.is_empty() {
             self.buffer = None;
             self.vertex_count = 0;
             return;
         }
-        let verts = build_vertices(particles);
+        let verts = build_vertices(particles, tick_alpha);
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("particle_mesh vertices"),
             contents: bytemuck::cast_slice(&verts),
@@ -219,6 +229,12 @@ impl ParticlePipeline {
             }],
         });
 
+        // The shared `Atlases::sampler()` is a filtering sampler (it uses
+        // `mipmap_filter: Linear` so the chunk diffuse atlas anti-aliases
+        // at distance). Wgpu requires the binding type to match — so even
+        // though particles only need point sampling at level 0, we declare
+        // a filtering binding here. The visual result is unchanged because
+        // mag/min stay `Nearest`.
         let atlas_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("particle_pipeline atlas_bgl"),
             entries: &[
@@ -226,7 +242,7 @@ impl ParticlePipeline {
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         view_dimension: wgpu::TextureViewDimension::D2Array,
                         multisampled: false,
                     },
@@ -235,7 +251,7 @@ impl ParticlePipeline {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
             ],
@@ -352,11 +368,16 @@ mod tests {
 
     #[test]
     fn build_vertices_emits_six_per_particle() {
-        let ps = vec![
-            Particle::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::zero(), 3, 1.0),
-            Particle::new(Vec3d::new(1.0, 2.0, 3.0), Vec3d::zero(), 7, 1.0),
-        ];
-        let v = build_vertices(&ps);
+        // `tex_size = 1.0` keeps the per-vertex UV equal to the corner UV
+        // (so the assertions below match the unscaled triangle layout).
+        let mut p0 = Particle::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::zero(), 3, 1.0);
+        p0.tex_size = 1.0;
+        let mut p1 = Particle::new(Vec3d::new(1.0, 2.0, 3.0), Vec3d::zero(), 7, 1.0);
+        p1.tex_size = 1.0;
+        let ps = vec![p0, p1];
+        // tick_alpha = 0 → render at prev_coord (== coord here, since the
+        // particles haven't ticked yet).
+        let v = build_vertices(&ps, 0.0);
         assert_eq!(v.len(), 12);
         assert_eq!(v[0].layer, 3);
         assert_eq!(v[6].layer, 7);
@@ -375,6 +396,18 @@ mod tests {
         // triangle pair.
         assert!(approx_eq2(v[0].uv, [0.0, 0.0]));
         assert!(approx_eq2(v[5].uv, [0.0, 0.0]));
+    }
+
+    #[test]
+    fn build_vertices_lerps_between_prev_and_current() {
+        let mut p = Particle::new(Vec3d::new(2.0, 4.0, 6.0), Vec3d::zero(), 0, 1.0);
+        p.prev_coord = Vec3d::new(0.0, 0.0, 0.0);
+        p.tex_size = 1.0;
+        let half = build_vertices(&[p], 0.5);
+        // 6 verts share the same lerped position.
+        assert!((half[0].world_pos[0] - 1.0).abs() < 1e-6);
+        assert!((half[0].world_pos[1] - 2.0).abs() < 1e-6);
+        assert!((half[0].world_pos[2] - 3.0).abs() < 1e-6);
     }
 
     #[test]
