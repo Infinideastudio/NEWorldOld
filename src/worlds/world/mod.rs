@@ -21,7 +21,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, Id, Light};
+use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, Id, Light, State};
 use crate::chunks::Chunk;
 use crate::height_maps::HeightMap;
 use crate::math::{Aabb3d, Vec3, Vec3d, Vec3i};
@@ -465,12 +465,29 @@ impl World {
     /// is *not* run synchronously — the relaxation pass converges over
     /// the next several sim ticks via [`Self::process_block_updates`].
     pub fn set_block(&mut self, coord: Vec3i, id: Id, queue_update: bool) {
+        self.set_block_with_state(coord, id, State::default(), queue_update);
+    }
+
+    /// Like [`Self::set_block`] but also writes a state byte. Used when
+    /// placing orientation-bearing blocks (logs, etc.) so the placement
+    /// face/direction lands in the cell's state immediately. Existing
+    /// callers that don't care about state should keep using
+    /// [`Self::set_block`], which forwards here with `State::default()`.
+    pub fn set_block_with_state(
+        &mut self,
+        coord: Vec3i,
+        id: Id,
+        state: State,
+        queue_update: bool,
+    ) {
         let cc = chunk_coord(coord);
         let bc = block_coord(coord);
         let base = self.base_blocks;
         let touched = self
             .with_chunk_mut(cc, |chunk| {
-                chunk.block_mut(bc, &base).id = id;
+                let cell = chunk.block_mut(bc, &base);
+                cell.id = id;
+                cell.state = state;
             })
             .is_some();
         if !touched {

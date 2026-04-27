@@ -46,11 +46,14 @@ struct FrameUniforms {
     player_coord_int: vec4<i32>,
     player_coord_mod: vec4<i32>,
     player_coord_frac: vec4<f32>,
-};
+}
 
-@group(0) @binding(0) var<uniform> frame: FrameUniforms;
-@group(1) @binding(0) var block_diffuse: texture_2d_array<f32>;
-@group(1) @binding(1) var block_sampler: sampler;
+@group(0) @binding(0)
+var<uniform> frame: FrameUniforms;
+@group(1) @binding(0)
+var block_diffuse: texture_2d_array<f32>;
+@group(1) @binding(1)
+var block_sampler: sampler;
 
 struct VsIn {
     @location(0) position: vec3<f32>,
@@ -58,8 +61,8 @@ struct VsIn {
     @location(2) layer: u32,
     @location(3) face: u32,
     @location(4) light: u32,
-    @location(5) block_id: u32,
-};
+    @location(5) material_id: u32,
+}
 
 struct VsOut {
     @builtin(position) clip_position: vec4<f32>,
@@ -69,7 +72,7 @@ struct VsOut {
     @location(0) @interpolate(perspective, centroid) uv: vec2<f32>,
     @location(1) @interpolate(flat) layer: i32,
     @location(2) @interpolate(perspective, centroid) brightness: f32,
-};
+}
 
 @vertex
 fn vs_main(in: VsIn) -> VsOut {

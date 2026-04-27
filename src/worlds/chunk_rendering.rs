@@ -31,7 +31,8 @@ use crate::textures::Atlases;
 const SHADER_SRC: &str = include_str!("../../shaders/chunk.wgsl");
 
 /// Vertex stride in bytes — must match the WGSL header in `chunk.wgsl`.
-const VERTEX_STRIDE: wgpu::BufferAddress = std::mem::size_of::<ChunkVertex>() as wgpu::BufferAddress;
+const VERTEX_STRIDE: wgpu::BufferAddress =
+    std::mem::size_of::<ChunkVertex>() as wgpu::BufferAddress;
 
 // Compile-time check that `ChunkVertex` actually packs to the documented 36
 // bytes. If the [D1] meshing struct grows, the shader vertex layout must be
@@ -155,7 +156,7 @@ fn create_vertex_buffer(
             layer: v.layer,
             face: v.face,
             light: v.light,
-            block_id: v.block_id,
+            material_id: v.material_id,
         })
         .collect();
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -501,30 +502,31 @@ impl ChunkPipeline {
             cache: None,
         });
 
-        let translucent_gbuffer_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("gfx::chunk_render.translucent_gbuffer_pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs_main"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &vertex_buffers,
-            },
-            primitive: translucent_primitive,
-            depth_stencil: Some(translucent_gbuffer_depth),
-            multisample,
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                // Dedicated entry point that forces water/ice alpha to
-                // 0.02 — mirrors C++ `translucent.fsh` so composition
-                // sees the same near-transparent water diffuse.
-                entry_point: Some("fs_main_translucent"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &translucent_targets,
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
+        let translucent_gbuffer_pipeline =
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("gfx::chunk_render.translucent_gbuffer_pipeline"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_main"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    buffers: &vertex_buffers,
+                },
+                primitive: translucent_primitive,
+                depth_stencil: Some(translucent_gbuffer_depth),
+                multisample,
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    // Dedicated entry point that forces water/ice alpha to
+                    // 0.02 — mirrors C++ `translucent.fsh` so composition
+                    // sees the same near-transparent water diffuse.
+                    entry_point: Some("fs_main_translucent"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    targets: &translucent_targets,
+                }),
+                multiview_mask: None,
+                cache: None,
+            });
 
         // Forward translucent pipeline — writes the surface (sRGB-encoded
         // 8-bit, blendable) using the `fs_main_forward` entry point.
@@ -688,7 +690,7 @@ mod tests {
             layer: 0,
             face: 0,
             light: 0,
-            block_id: 0,
+            material_id: 0,
         };
         let base = std::ptr::from_ref::<ChunkVertex>(&v).cast::<u8>() as usize;
         let pos = std::ptr::from_ref(&v.position).cast::<u8>() as usize;
@@ -696,12 +698,12 @@ mod tests {
         let layer = std::ptr::from_ref(&v.layer).cast::<u8>() as usize;
         let face = std::ptr::from_ref(&v.face).cast::<u8>() as usize;
         let light = std::ptr::from_ref(&v.light).cast::<u8>() as usize;
-        let block_id = std::ptr::from_ref(&v.block_id).cast::<u8>() as usize;
+        let material_id = std::ptr::from_ref(&v.material_id).cast::<u8>() as usize;
         assert_eq!(pos - base, 0);
         assert_eq!(uv - base, 12);
         assert_eq!(layer - base, 20);
         assert_eq!(face - base, 24);
         assert_eq!(light - base, 28);
-        assert_eq!(block_id - base, 32);
+        assert_eq!(material_id - base, 32);
     }
 }

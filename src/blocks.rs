@@ -234,10 +234,36 @@ impl TextureIndex {
     pub const TNT: TextureIndex = TextureIndex(29);
 }
 
+// ---------- FaceMapping ----------
+
+/// How `BlockInfo::face_for` resolves a face direction (one of
+/// `[+X, -X, +Y, -Y, +Z, -Z]`) into a [`TextureIndex`] given a block's
+/// [`State`].
+///
+/// Most blocks are state-independent — both `State(0)` and any other byte
+/// pick the same texture per face — and use [`FaceMapping::Static`]. Logs
+/// (`wood`) and other axis-oriented blocks use [`FaceMapping::AxisAligned`]
+/// to read 6 placement orientations out of the state byte.
+#[derive(Clone, Debug, PartialEq)]
+pub enum FaceMapping {
+    /// State-independent. Face `+Y` reads `faces[0]` (top), `-Y` reads
+    /// `faces[2]` (bottom), every other face reads `faces[1]` (side) —
+    /// the existing `Textures::indices` layout.
+    Static,
+    /// Block is "axis aligned": `state.0 / 2` selects the cap axis
+    /// (`0 = Y`, `1 = X`, `2 = Z`); state values `0..=5` therefore encode
+    /// six discrete orientations, two per axis (positive vs negative
+    /// pointing — visually identical for a symmetric log, kept distinct
+    /// so a future placement system can record direction). Faces parallel
+    /// to the cap axis read `faces[0]` (cap); the four perpendicular
+    /// faces read `faces[1]` (side). `faces[2]` is ignored.
+    AxisAligned,
+}
+
 // ---------- BlockInfo ----------
 
 /// Static, registry-owned properties of a block id. Includes the per-face
-/// texture mapping (`faces[0..3]` = side, top, bottom) — what was previously
+/// texture mapping (`faces[0..3]` = top, side, bottom) — what was previously
 /// `Textures::getTextureIndex` in C++.
 #[derive(Clone, Debug, PartialEq)]
 pub struct BlockInfo {
@@ -249,17 +275,188 @@ pub struct BlockInfo {
     /// Texture for `[top, side, bottom]` faces (the order used by the C++
     /// `Textures::indices` table). Replaces `Textures::getTextureIndex`.
     pub faces: [TextureIndex; 3],
+    /// How [`Self::face_for`] resolves a face direction + state into a
+    /// slot of `faces`. Defaults to [`FaceMapping::Static`] in
+    /// `BlockInfo::new_static` / the helper `info(...)` constructor.
+    pub face_mapping: FaceMapping,
 }
 
 impl BlockInfo {
-    /// Texture for a specific face index. Returns `NULLBLOCK` if `face >= 3`,
-    /// matching the out-of-range fallback in the C++ `getTextureIndex`.
+    /// Texture for a specific face *index* (`0 = top`, `1 = side`,
+    /// `2 = bottom`). Returns `NULLBLOCK` if `face >= 3`, matching the
+    /// out-of-range fallback in the C++ `getTextureIndex`. Ignores state
+    /// — callers that need state-aware lookup (the chunk mesher) use
+    /// [`Self::face_for`].
     #[must_use]
     pub fn face(&self, face: usize) -> TextureIndex {
         self.faces
             .get(face)
             .copied()
             .unwrap_or(TextureIndex::NULLBLOCK)
+    }
+
+    /// Texture for a face *direction* (0..6, in the mesher's
+    /// `[+X, -X, +Y, -Y, +Z, -Z]` order) given the cell's [`State`]. The
+    /// state byte is consulted only when [`Self::face_mapping`] is
+    /// non-`Static`.
+    #[must_use]
+    pub fn face_for(&self, face_dir: usize, state: State) -> TextureIndex {
+        match self.face_mapping {
+            FaceMapping::Static => self.face(face_index_static(face_dir)),
+            FaceMapping::AxisAligned => {
+                // state 0,1 → Y (default vertical, like the legacy
+                // state-0 log); 2,3 → X; 4,5 → Z. `>= 6` falls back to Y
+                // so an undefined state still renders a sensible log
+                // rather than `NULLBLOCK`.
+                let cap_axis: u8 = match (state.0 >> 1) % 3 {
+                    1 => 0, // X
+                    2 => 2, // Z
+                    _ => 1, // Y
+                };
+                if face_axis(face_dir) == cap_axis {
+                    self.face(0) // cap
+                } else {
+                    self.face(1) // side / bark
+                }
+            }
+        }
+    }
+}
+
+/// Map a face direction (0..6, `[+X, -X, +Y, -Y, +Z, -Z]`) to a
+/// `BlockInfo::faces` slot under the static layout: top = 0, side = 1,
+/// bottom = 2. Mirrors the switch in C++ `_merge_face_render_chunk`.
+#[inline]
+pub fn face_index_static(face_dir: usize) -> usize {
+    match face_dir {
+        2 => 0,
+        3 => 2,
+        _ => 1,
+    }
+}
+
+/// Primary axis (0 = X, 1 = Y, 2 = Z) of a face direction (0..6).
+#[inline]
+fn face_axis(face_dir: usize) -> u8 {
+    match face_dir {
+        0 | 1 => 0,
+        2 | 3 => 1,
+        _ => 2,
+    }
+}
+
+// ---------- Orientation ----------
+
+/// World↔canonical rotation for a block's stored state. Used by the chunk
+/// mesher to derive per-corner UVs that rotate consistently with the
+/// block: `state.0 % 6` selects one of six axis-aligned rotations of the
+/// unit cube about its centre, so a state-2 (X-axis) log places its bark
+/// grain along world X, a state-4 (Z-axis) log along Z, and so on.
+///
+/// For [`FaceMapping::Static`] blocks, the orientation is always the
+/// identity — state is ignored, and the mesher's UV computation collapses
+/// to the legacy `FACE_UVS` table. The state-byte→rotation mapping for
+/// [`FaceMapping::AxisAligned`] is:
+///
+/// | state | placement axis | derivation                     |
+/// |-------|----------------|--------------------------------|
+/// | 0     | +Y (default)   | identity                       |
+/// | 1     | -Y             | 180° around world X            |
+/// | 2     | +X             | -90° around world Z            |
+/// | 3     | -X             | +90° around world Z            |
+/// | 4     | +Z             | +90° around world X            |
+/// | 5     | -Z             | -90° around world X            |
+///
+/// Each row encodes a `world→canonical` linear transform — i.e.
+/// `canonical[i] = m[i][0]·world[0] + m[i][1]·world[1] + m[i][2]·world[2]`.
+/// The affine offset for a unit-cube point is folded into [`Self::apply_point`]
+/// via the cube-centre `(0.5, 0.5, 0.5)`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Orientation {
+    m: [[i8; 3]; 3],
+}
+
+impl Orientation {
+    /// Identity rotation. `world = canonical`.
+    pub const IDENTITY: Orientation = Orientation {
+        m: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    };
+
+    /// Pick the `world→canonical` rotation for an axis-aligned block at
+    /// the given state. `state.0 % 6` keys into the table above; any
+    /// other byte (we treat `0..6` as defined and everything else as
+    /// undefined) falls back to identity so an unset state still
+    /// renders a sensible upright log.
+    #[must_use]
+    pub fn for_axis_aligned(state: State) -> Orientation {
+        match state.0 % 6 {
+            0 => Self::IDENTITY,
+            1 => Self {
+                m: [[1, 0, 0], [0, -1, 0], [0, 0, -1]],
+            },
+            2 => Self {
+                m: [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
+            },
+            3 => Self {
+                m: [[0, 1, 0], [-1, 0, 0], [0, 0, 1]],
+            },
+            4 => Self {
+                m: [[1, 0, 0], [0, 0, 1], [0, -1, 0]],
+            },
+            5 => Self {
+                m: [[1, 0, 0], [0, 0, -1], [0, 1, 0]],
+            },
+            _ => Self::IDENTITY,
+        }
+    }
+
+    /// Pick the orientation for any block: `Static` ignores state and
+    /// returns identity; `AxisAligned` dispatches to
+    /// [`Self::for_axis_aligned`].
+    #[must_use]
+    pub fn for_block(face_mapping: &FaceMapping, state: State) -> Orientation {
+        match face_mapping {
+            FaceMapping::Static => Self::IDENTITY,
+            FaceMapping::AxisAligned => Self::for_axis_aligned(state),
+        }
+    }
+
+    /// Apply the linear part of the rotation to a `f32` direction vector
+    /// (no translation). Useful for transforming face normals and merge
+    /// extension directions.
+    #[inline]
+    #[must_use]
+    pub fn apply_dir(&self, d: [f32; 3]) -> [f32; 3] {
+        let m = &self.m;
+        [
+            f32::from(m[0][0]) * d[0] + f32::from(m[0][1]) * d[1] + f32::from(m[0][2]) * d[2],
+            f32::from(m[1][0]) * d[0] + f32::from(m[1][1]) * d[1] + f32::from(m[1][2]) * d[2],
+            f32::from(m[2][0]) * d[0] + f32::from(m[2][1]) * d[1] + f32::from(m[2][2]) * d[2],
+        ]
+    }
+
+    /// Apply the linear part to an `i32` direction. Convenience wrapper for
+    /// face-normal lookups (which start as integer ±1 unit vectors).
+    #[inline]
+    #[must_use]
+    pub fn apply_dir_i(&self, d: [i32; 3]) -> [i32; 3] {
+        let m = &self.m;
+        [
+            i32::from(m[0][0]) * d[0] + i32::from(m[0][1]) * d[1] + i32::from(m[0][2]) * d[2],
+            i32::from(m[1][0]) * d[0] + i32::from(m[1][1]) * d[1] + i32::from(m[1][2]) * d[2],
+            i32::from(m[2][0]) * d[0] + i32::from(m[2][1]) * d[1] + i32::from(m[2][2]) * d[2],
+        ]
+    }
+
+    /// Apply the affine rotation to a point in the unit cube. Rotations
+    /// are about the cube centre `(0.5, 0.5, 0.5)`, so each input
+    /// component lands back in `[0, 1]` for inputs in the same range.
+    #[inline]
+    #[must_use]
+    pub fn apply_point(&self, p: [f32; 3]) -> [f32; 3] {
+        let centred = [p[0] - 0.5, p[1] - 0.5, p[2] - 0.5];
+        let r = self.apply_dir(centred);
+        [r[0] + 0.5, r[1] + 0.5, r[2] + 0.5]
     }
 }
 
@@ -276,6 +473,7 @@ static DEFAULT_INFO: BlockInfo = BlockInfo {
         TextureIndex::NULLBLOCK,
         TextureIndex::NULLBLOCK,
     ],
+    face_mapping: FaceMapping::Static,
 };
 
 // ---------- BlockRegistry ----------
@@ -358,8 +556,8 @@ pub struct BaseBlocks {
     pub tnt: Id,
 }
 
-/// Helper: build a `BlockInfo` with the `[side, top, bottom]` face mapping
-/// required by `BlockInfo::face`.
+/// Helper: build a state-independent `BlockInfo` with the `[top, side,
+/// bottom]` face mapping required by `BlockInfo::face`.
 fn info(
     name: &'static str,
     solid: bool,
@@ -375,6 +573,23 @@ fn info(
         translucent,
         hardness,
         faces,
+        face_mapping: FaceMapping::Static,
+    }
+}
+
+/// Same as [`info`] but with [`FaceMapping::AxisAligned`] — used for log
+/// blocks where state 0..=5 picks one of six placement orientations.
+fn info_axis(
+    name: &'static str,
+    solid: bool,
+    opaque: bool,
+    translucent: bool,
+    hardness: f32,
+    faces: [TextureIndex; 3],
+) -> BlockInfo {
+    BlockInfo {
+        face_mapping: FaceMapping::AxisAligned,
+        ..info(name, solid, opaque, translucent, hardness, faces)
     }
 }
 
@@ -400,7 +615,11 @@ pub fn register_base_blocks(registry: &mut BlockRegistry) -> BaseBlocks {
     let dirt = registry.add(info("dirt", true, true, false, 0.3, [T::DIRT; 3]));
     let stone = registry.add(info("stone", true, true, false, 1.0, [T::STONE; 3]));
     let plank = registry.add(info("plank", true, true, false, 1.0, [T::PLANK; 3]));
-    let wood = registry.add(info(
+    // Wood is axis-aligned: `state.0 / 2` selects the cap axis, so values
+    // 0..=5 encode six placement orientations. `faces[0]` is the cap
+    // (rings) texture; `faces[1]` is the bark texture; `faces[2]` is
+    // unused under the AxisAligned mapping.
+    let wood = registry.add(info_axis(
         "wood",
         true,
         true,
@@ -547,5 +766,59 @@ mod tests {
         assert_eq!(wood.face(2), TextureIndex::WOOD_TOP);
         // Out-of-range face → NULLBLOCK fallback.
         assert_eq!(grass.face(7), TextureIndex::NULLBLOCK);
+    }
+
+    #[test]
+    fn face_for_static_grass_matches_face_index_layout() {
+        // For a `Static` block, `face_for(face_dir, _)` ignores state and
+        // returns the same `[top, side, bottom]` slot as the legacy mesher
+        // helper (top = +Y, bottom = -Y, side = everything else).
+        let mut r = BlockRegistry::new();
+        let base = register_base_blocks(&mut r);
+        let grass = r.get(base.grass);
+        // Any state byte should produce the same answer for a Static
+        // block — try 0, 5, and 99 to verify.
+        for s in [State(0), State(5), State(99)] {
+            assert_eq!(grass.face_for(2, s), TextureIndex::GRASS_TOP); // +Y
+            assert_eq!(grass.face_for(3, s), TextureIndex::DIRT); // -Y
+            for face in [0usize, 1, 4, 5] {
+                assert_eq!(grass.face_for(face, s), TextureIndex::GRASS_SIDE);
+            }
+        }
+    }
+
+    #[test]
+    fn face_for_axis_aligned_wood_picks_cap_per_state() {
+        // Wood is `AxisAligned`: state 0,1 → Y; 2,3 → X; 4,5 → Z.
+        // Faces parallel to the cap axis sample the cap (WOOD_TOP); the
+        // four perpendicular faces sample the bark (WOOD_SIDE).
+        let mut r = BlockRegistry::new();
+        let base = register_base_blocks(&mut r);
+        let wood = r.get(base.wood);
+
+        // Y-axis (default): ±Y are caps, ±X / ±Z are bark.
+        for s in [State(0), State(1)] {
+            assert_eq!(wood.face_for(2, s), TextureIndex::WOOD_TOP); // +Y cap
+            assert_eq!(wood.face_for(3, s), TextureIndex::WOOD_TOP); // -Y cap
+            for face in [0usize, 1, 4, 5] {
+                assert_eq!(wood.face_for(face, s), TextureIndex::WOOD_SIDE);
+            }
+        }
+        // X-axis: ±X are caps.
+        for s in [State(2), State(3)] {
+            assert_eq!(wood.face_for(0, s), TextureIndex::WOOD_TOP);
+            assert_eq!(wood.face_for(1, s), TextureIndex::WOOD_TOP);
+            for face in [2usize, 3, 4, 5] {
+                assert_eq!(wood.face_for(face, s), TextureIndex::WOOD_SIDE);
+            }
+        }
+        // Z-axis: ±Z are caps.
+        for s in [State(4), State(5)] {
+            assert_eq!(wood.face_for(4, s), TextureIndex::WOOD_TOP);
+            assert_eq!(wood.face_for(5, s), TextureIndex::WOOD_TOP);
+            for face in [0usize, 1, 2, 3] {
+                assert_eq!(wood.face_for(face, s), TextureIndex::WOOD_SIDE);
+            }
+        }
     }
 }

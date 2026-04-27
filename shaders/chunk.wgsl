@@ -7,8 +7,8 @@
 //   @location(2) layer    : u32        // offset 20
 //   @location(3) face     : u32        // offset 24
 //   @location(4) light    : u32        // offset 28 — bottom byte = 0..255
-//                                       // smooth-light brightness
-//   @location(5) block_id : u32        // offset 32 — 16-bit material id
+//                                      // smooth-light brightness
+//   @location(5) material_id : u32     // offset 32 — 16-bit material id
 //
 // Per-chunk world origin: baked into `position` at upload time on the CPU
 // (`ChunkMesh::upload` adds `coord * CHUNK_SIZE` to every vertex's position).
@@ -50,16 +50,22 @@ struct FrameUniforms {
     player_coord_int: vec4<i32>,
     player_coord_mod: vec4<i32>,
     player_coord_frac: vec4<f32>,
-};
+}
 
-@group(0) @binding(0) var<uniform> frame: FrameUniforms;
-@group(1) @binding(0) var block_diffuse: texture_2d_array<f32>;
-@group(1) @binding(1) var block_sampler: sampler;
+;
+
+@group(0) @binding(0)
+var<uniform> frame: FrameUniforms;
+@group(1) @binding(0)
+var block_diffuse: texture_2d_array<f32>;
+@group(1) @binding(1)
+var block_sampler: sampler;
 // Per-block normal map atlas — same layer indexing and UV layout as
 // `block_diffuse`. Texel encoding: `(r, g, b) = (n + 1) * 0.5` in the
 // face's tangent space, with `(0.5, 0.5, 1.0)` meaning "flat" (use
 // face normal verbatim).
-@group(1) @binding(2) var block_normal: texture_2d_array<f32>;
+@group(1) @binding(2)
+var block_normal: texture_2d_array<f32>;
 
 struct VsIn {
     @location(0) position: vec3<f32>,
@@ -67,8 +73,10 @@ struct VsIn {
     @location(2) layer: u32,
     @location(3) face: u32,
     @location(4) light: u32,
-    @location(5) block_id: u32,
-};
+    @location(5) material_id: u32,
+}
+
+;
 
 struct VsOut {
     @builtin(position) clip_position: vec4<f32>,
@@ -77,8 +85,10 @@ struct VsOut {
     @location(2) @interpolate(flat) face: u32,
     @location(3) world_pos: vec3<f32>,
     @location(4) light: f32,
-    @location(5) @interpolate(flat) block_id: u32,
-};
+    @location(5) @interpolate(flat) material_id: u32,
+}
+
+;
 
 @vertex
 fn vs_main(in: VsIn) -> VsOut {
@@ -94,7 +104,7 @@ fn vs_main(in: VsIn) -> VsOut {
     // interpolates this linearly across the four corners of each face,
     // giving smooth lighting / soft AO falloff.
     out.light = f32(in.light & 0xFFu) / 255.0;
-    out.block_id = in.block_id;
+    out.material_id = in.material_id;
     return out;
 }
 
@@ -104,13 +114,27 @@ fn vs_main(in: VsIn) -> VsOut {
 //   4 = +Z (Front), 5 = -Z (Back).
 fn face_normal(face: u32) -> vec3<f32> {
     switch face {
-        case 0u: { return vec3<f32>( 1.0,  0.0,  0.0); }
-        case 1u: { return vec3<f32>(-1.0,  0.0,  0.0); }
-        case 2u: { return vec3<f32>( 0.0,  1.0,  0.0); }
-        case 3u: { return vec3<f32>( 0.0, -1.0,  0.0); }
-        case 4u: { return vec3<f32>( 0.0,  0.0,  1.0); }
-        case 5u: { return vec3<f32>( 0.0,  0.0, -1.0); }
-        default: { return vec3<f32>( 0.0,  1.0,  0.0); }
+        case 0u : {
+            return vec3<f32>(1.0, 0.0, 0.0);
+        }
+        case 1u : {
+            return vec3<f32>(- 1.0, 0.0, 0.0);
+        }
+        case 2u : {
+            return vec3<f32>(0.0, 1.0, 0.0);
+        }
+        case 3u : {
+            return vec3<f32>(0.0, - 1.0, 0.0);
+        }
+        case 4u : {
+            return vec3<f32>(0.0, 0.0, 1.0);
+        }
+        case 5u : {
+            return vec3<f32>(0.0, 0.0, - 1.0);
+        }
+        default : {
+            return vec3<f32>(0.0, 1.0, 0.0);
+        }
     }
 }
 
@@ -127,13 +151,33 @@ fn face_normal(face: u32) -> vec3<f32> {
 fn face_tbn(face: u32, n: vec3<f32>) -> mat3x3<f32> {
     var t: vec3<f32>;
     switch face {
-        case 0u: { t = vec3<f32>( 0.0,  0.0, -1.0); } // +X face: U ≈ -Z
-        case 1u: { t = vec3<f32>( 0.0,  0.0,  1.0); } // -X face: U ≈ +Z
-        case 2u: { t = vec3<f32>( 1.0,  0.0,  0.0); } // +Y face: U ≈ +X
-        case 3u: { t = vec3<f32>( 1.0,  0.0,  0.0); } // -Y face: U ≈ +X
-        case 4u: { t = vec3<f32>( 1.0,  0.0,  0.0); } // +Z face: U ≈ +X
-        case 5u: { t = vec3<f32>(-1.0,  0.0,  0.0); } // -Z face: U ≈ -X
-        default: { t = vec3<f32>( 1.0,  0.0,  0.0); }
+        case 0u : {
+            t = vec3<f32>(0.0, 0.0, - 1.0);
+        }
+        // +X face: U ≈ -Z
+        case 1u : {
+            t = vec3<f32>(0.0, 0.0, 1.0);
+        }
+        // -X face: U ≈ +Z
+        case 2u : {
+            t = vec3<f32>(1.0, 0.0, 0.0);
+        }
+        // +Y face: U ≈ +X
+        case 3u : {
+            t = vec3<f32>(1.0, 0.0, 0.0);
+        }
+        // -Y face: U ≈ +X
+        case 4u : {
+            t = vec3<f32>(1.0, 0.0, 0.0);
+        }
+        // +Z face: U ≈ +X
+        case 5u : {
+            t = vec3<f32>(- 1.0, 0.0, 0.0);
+        }
+        // -Z face: U ≈ -X
+        default : {
+            t = vec3<f32>(1.0, 0.0, 0.0);
+        }
     }
     // `b = cross(N, T)` guarantees `cross(T, B) = N` (right-handed),
     // independent of T's exact direction. The chosen T above is already
@@ -164,14 +208,16 @@ fn sample_world_normal(face: u32, uv: vec2<f32>, layer: i32) -> vec3<f32> {
 //   @location(1) normal   : rgba8_unorm
 //                            rgb = (n + 1) * 0.5  (encoded world-space normal)
 //   @location(2) material : rgba8_unorm
-//                            rg  = encode_u16(block_id) — high byte / low byte
+//                            rg  = encode_u16(material_id) — high byte / low byte
 //                            ba  = (0, 1) — composition decodes via hi*256 + lo
-//                            (block_id == 0 reserved for "no fragment / sky")
+//                            (material_id == 0 reserved for "no fragment / sky")
 struct GBufferOut {
     @location(0) diffuse: vec4<f32>,
     @location(1) normal: vec4<f32>,
     @location(2) material: vec4<f32>,
-};
+}
+
+;
 
 // Mirrors the C++ `encode_u16` helper from `opaque.fsh` — splits a u16
 // across the R and G channels of an Rgba8Unorm texel. Composition pairs
@@ -239,11 +285,11 @@ fn fs_main(in: VsOut) -> GBufferOut {
     out.normal = vec4<f32>(normal * 0.5 + vec3<f32>(0.5), 1.0);
     // Block id (16-bit) encoded as two bytes (R = high, G = low) — same
     // as C++ `opaque.fsh` / `translucent.fsh` so the composition shader
-    // is a direct port. `block_id == 0` reads as `(0, 0)` and signals
+    // is a direct port. `material_id == 0` reads as `(0, 0)` and signals
     // "no fragment / sky" to composition (cleared material texels also
     // read as zero — air never produces a fragment, so the convention
     // is unambiguous).
-    out.material = vec4<f32>(encode_u16(in.block_id), 0.0, 1.0);
+    out.material = vec4<f32>(encode_u16(in.material_id), 0.0, 1.0);
     return out;
 }
 
@@ -255,8 +301,8 @@ fn fs_main(in: VsOut) -> GBufferOut {
 // against the opaque diffuse already in the G-buffer; depth-writes the
 // water surface so composition's SSR raymarch can hit opaque geometry
 // behind the water.
-const SSR_WATER_ID: u32 = 10u;
-const SSR_ICE_ID: u32 = 15u;
+const SSR_WATER_ID: u32 = 21u;
+const SSR_ICE_ID: u32 = 26u;
 
 @fragment
 fn fs_main_translucent(in: VsOut) -> GBufferOut {
@@ -270,13 +316,13 @@ fn fs_main_translucent(in: VsOut) -> GBufferOut {
     let albedo_lit = sample.rgb * brightness;
 
     var alpha = sample.a;
-    if (in.block_id == SSR_WATER_ID || in.block_id == SSR_ICE_ID) {
+    if (in.material_id == SSR_WATER_ID || in.material_id == SSR_ICE_ID) {
         alpha = 0.02;
     }
 
     var out: GBufferOut;
     out.diffuse = vec4<f32>(albedo_lit, alpha);
     out.normal = vec4<f32>(normal * 0.5 + vec3<f32>(0.5), 1.0);
-    out.material = vec4<f32>(encode_u16(in.block_id), 0.0, 1.0);
+    out.material = vec4<f32>(encode_u16(in.material_id), 0.0, 1.0);
     return out;
 }

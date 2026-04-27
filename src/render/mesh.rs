@@ -42,7 +42,7 @@
 use bytemuck::{Pod, Zeroable};
 use cgmath::Vector3;
 
-use crate::blocks::{BlockData, BlockInfo, BlockRegistry, Id};
+use crate::blocks::{BlockData, BlockInfo, BlockRegistry, Id, Orientation};
 
 /// Side length of a chunk in blocks. Mirrors `chunks::Chunk::SIZE` from C++.
 pub const CHUNK_SIZE: usize = 16;
@@ -56,9 +56,9 @@ pub const PADDED_VOLUME: usize = PADDED_SIZE * PADDED_SIZE * PADDED_SIZE;
 /// Vertex format consumed by the chunk pipeline (see [D2]).
 ///
 /// Layout: 12 (position) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light) +
-/// 4 (block_id) = 36 bytes, alignment 4, no trailing padding — `Pod`-safe.
+/// 4 (material_id) = 36 bytes, alignment 4, no trailing padding — `Pod`-safe.
 ///
-/// `block_id` was added for the deferred renderer (Tier 4): the chunk
+/// `material_id` was added for the deferred renderer (Tier 4): the chunk
 /// fragment shader writes it into the G-buffer's `material` target so the
 /// composition pass can special-case water reflections / leaf foliage /
 /// glowstone emission per pixel.
@@ -77,11 +77,11 @@ pub struct ChunkVertex {
     /// `[0..255]` luminance — bilinearly interpolated by the rasterizer
     /// across the four corners of the face. Upper bytes are reserved.
     pub light: u32,
-    /// Block id (0..65535). Written into the G-buffer material target so
+    /// Material id (0..65535). Written into the G-buffer material target so
     /// the composition pass / SSR / volumetric clouds can branch on the
     /// material at the surface point. Stored as `u32` for vertex-attribute
     /// alignment; truncated to `u16` on G-buffer write.
-    pub block_id: u32,
+    pub material_id: u32,
 }
 
 /// Owned snapshot of a chunk + its 26 neighbors, copied into a single padded
@@ -216,64 +216,61 @@ const FACE_CORNERS: [[[f32; 3]; 4]; 6] = [
     ],
 ];
 
-/// UVs for the four corners of any face, in the same order as
-/// `FACE_CORNERS[*]`.
-///
-/// The corner ordering itself follows the C++ `coords[]` table — `c0` is the
-/// face's "lower-left from outside" geometric corner. The C++ shader paired
-/// `c0` with UV `(0, 0)` because OpenGL's `t = 0` is at the *bottom* of the
-/// texture, so `t = 0` ended up sampling the visual bottom of each per-block
-/// art square (correct for the `GRASS_SIDE` / `WOOD_SIDE` / etc. anisotropic
-/// blocks where dirt sits at the bottom of the square and grass at the top).
-///
-/// wgpu / Vulkan / D3D12 invert that convention: `t = 0` is at the top of
-/// the texture data (memory row 0), and our atlas uploader stores each
-/// per-block square in PNG-natural top-to-bottom order. So we flip the V
-/// component here — `c0` pairs with `(0, 1)` instead of `(0, 0)` — and the
-/// "geometric bottom of side face" maps back to the visual bottom of the
-/// block art.
-const FACE_UVS: [[f32; 2]; 4] = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
-
-/// Per-corner world-space offset to apply when extending a 1-D merged quad by
-/// `length` cells along the merge axis. Mirrors C++ `coords_extend` —
+/// Per-corner world-space offset to apply when extending a 1-D merged quad
+/// by `length` cells along the merge axis. Mirrors C++ `coords_extend` —
 /// merge-axis is `+Z` for face dirs `0..=3`, `+Y` for `4..=5`. The two
-/// "outer" corners (those already at the high end of the merge axis) shift,
-/// the other two stay put.
+/// "outer" corners (those already at the high end of the merge axis)
+/// shift, the other two stay put.
+///
+/// Per-corner UV deltas are derived from these offsets at run-construction
+/// time via [`corner_uv_extends`], which transforms the world-extent
+/// direction back to canonical-block space through [`Orientation`] before
+/// projecting onto the canonical face's UV basis. That collapses to the
+/// legacy `FACE_EXTEND_UV` for state-0 / static blocks but rotates with
+/// the placement axis for axis-aligned blocks (logs).
 const FACE_EXTEND_POS: [[[f32; 3]; 4]; 6] = [
     // +X — extend c0 & c3 along +Z
-    [[0.0, 0.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+    [
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ],
     // -X — extend c1 & c2 along +Z
-    [[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0]],
+    [
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 0.0],
+    ],
     // +Y — extend c0 & c1 along +Z
-    [[0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+    [
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+    ],
     // -Y — extend c2 & c3 along +Z
-    [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]],
+    [
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+    ],
     // +Z — extend c2 & c3 along +Y
-    [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 0.0]],
+    [
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ],
     // -Z — extend c2 & c3 along +Y
-    [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 0.0]],
-];
-
-/// Per-corner UV offset for run extension, V-flipped relative to C++
-/// `tex_coords_extend` so the "merge_axis-length" UV delta matches the
-/// V-flipped Rust `FACE_UVS`. With sampler U/V set to [`Repeat`], integer
-/// extensions tile the per-block art square `length + 1` times across the
-/// merged span.
-///
-/// [`Repeat`]: wgpu::AddressMode::Repeat
-const FACE_EXTEND_UV: [[[f32; 2]; 4]; 6] = [
-    // +X — c1.u, c2.u
-    [[0.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-    // -X — c1.u, c2.u
-    [[0.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-    // +Y — c2.v, c3.v (V-flipped → -1)
-    [[0.0, 0.0], [0.0, 0.0], [0.0, -1.0], [0.0, -1.0]],
-    // -Y — c2.v, c3.v
-    [[0.0, 0.0], [0.0, 0.0], [0.0, -1.0], [0.0, -1.0]],
-    // +Z — c2.v, c3.v
-    [[0.0, 0.0], [0.0, 0.0], [0.0, -1.0], [0.0, -1.0]],
-    // -Z — c2.v, c3.v
-    [[0.0, 0.0], [0.0, 0.0], [0.0, -1.0], [0.0, -1.0]],
+    [
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ],
 ];
 
 /// Per-face neighbor offset (in padded-buffer coordinate space). Index by
@@ -287,16 +284,99 @@ const FACE_OFFSETS: [[i32; 3]; 6] = [
     [0, 0, -1], // -Z
 ];
 
-/// Map a face id to the `BlockInfo::faces[..]` index. Mirrors the C++
-/// `_merge_face_render_chunk` switch (`chunk_rendering.cpp:547`):
-/// `+Y` → 0 (top), `-Y` → 2 (bottom), sides → 1.
+/// Map a unit-axis integer direction to a face id `0..6`. Used to find
+/// the canonical face id after rotating a world face normal back to the
+/// block's local frame via [`Orientation::apply_dir_i`].
 #[inline]
-fn face_to_atlas_index(face_id: usize) -> usize {
-    match face_id {
-        2 => 0,
-        3 => 2,
-        _ => 1,
+fn face_id_from_dir_i(d: [i32; 3]) -> usize {
+    if d[0] > 0 {
+        0
+    } else if d[0] < 0 {
+        1
+    } else if d[1] > 0 {
+        2
+    } else if d[1] < 0 {
+        3
+    } else if d[2] > 0 {
+        4
+    } else {
+        5
     }
+}
+
+/// Project a unit-cube point onto the canonical face's UV plane. The face
+/// UV axes match the layout the legacy `FACE_UVS` table set up for
+/// state-0 blocks: `+Y` → `(x, z)`, `-Y` → `(x, 1-z)`, `+X` → `(1-z, 1-y)`,
+/// `-X` → `(z, 1-y)`, `+Z` → `(x, 1-y)`, `-Z` → `(1-x, 1-y)`. With this
+/// projection, identity-orientation state-0 blocks round-trip to the
+/// existing `FACE_UVS` corners exactly.
+#[inline]
+fn project_canon_face_point(face_id: usize, p: [f32; 3]) -> [f32; 2] {
+    match face_id {
+        0 => [1.0 - p[2], 1.0 - p[1]], // +X
+        1 => [p[2], 1.0 - p[1]],       // -X
+        2 => [p[0], p[2]],             // +Y
+        3 => [p[0], 1.0 - p[2]],       // -Y
+        4 => [p[0], 1.0 - p[1]],       // +Z
+        5 => [1.0 - p[0], 1.0 - p[1]], // -Z
+        _ => [0.0, 0.0],
+    }
+}
+
+/// Linear part of [`project_canon_face_point`]: a unit step in canonical
+/// XYZ shifts the UV by this much. Used for the per-corner extension UV
+/// when greedy-merging — a world extension direction transforms back to
+/// a canonical extension via [`Orientation::apply_dir`], then projects
+/// here onto the canonical face's UV basis.
+#[inline]
+fn project_canon_face_dir(face_id: usize, d: [f32; 3]) -> [f32; 2] {
+    match face_id {
+        0 => [-d[2], -d[1]], // +X
+        1 => [d[2], -d[1]],  // -X
+        2 => [d[0], d[2]],   // +Y
+        3 => [d[0], -d[2]],  // -Y
+        4 => [d[0], -d[1]],  // +Z
+        5 => [-d[0], -d[1]], // -Z
+        _ => [0.0, 0.0],
+    }
+}
+
+/// Per-corner base UV for one face direction under the given world-block
+/// orientation. Each world corner is rotated back to its canonical
+/// position and projected onto the canonical face's UV plane. For
+/// identity orientation this matches the legacy `FACE_UVS` table; for
+/// axis-aligned blocks it rotates the per-block art to follow the
+/// placement axis (so e.g. a state-2 log shows its bark grain along
+/// world X instead of world Y).
+fn corner_uvs(face_id: usize, canon_face: usize, orientation: &Orientation) -> [[f32; 2]; 4] {
+    let mut out = [[0.0_f32; 2]; 4];
+    for c in 0..4 {
+        let p_canon = orientation.apply_point(FACE_CORNERS[face_id][c]);
+        out[c] = project_canon_face_point(canon_face, p_canon);
+    }
+    out
+}
+
+/// Per-corner UV-extension delta along the merge axis under the given
+/// orientation. Replaces the legacy `FACE_EXTEND_UV` table. Corners with
+/// zero `FACE_EXTEND_POS` get zero UV delta — the canonical-direction
+/// projection of `(0,0,0)` is `(0,0)`, but we short-circuit so floating-
+/// point noise doesn't leak in.
+fn corner_uv_extends(
+    face_id: usize,
+    canon_face: usize,
+    orientation: &Orientation,
+) -> [[f32; 2]; 4] {
+    let mut out = [[0.0_f32; 2]; 4];
+    for c in 0..4 {
+        let world_ext = FACE_EXTEND_POS[face_id][c];
+        if world_ext == [0.0, 0.0, 0.0] {
+            continue;
+        }
+        let canon_ext = orientation.apply_dir(world_ext);
+        out[c] = project_canon_face_dir(canon_face, canon_ext);
+    }
+    out
 }
 
 /// Identify the `leaf` block id by name. The C++ `should_render_face` has a
@@ -323,17 +403,17 @@ const AIR_ID: Id = Id(0);
 /// dirs `0..2` → `(Y, Z)`, `2..4` → `(X, Z)`, `4..6` → `(X, Y)`.
 const CORNER_PERP_SIGNS: [[(i32, i32); 4]; 6] = [
     // +X
-    [(-1,  1), (-1, -1), ( 1, -1), ( 1,  1)],
+    [(-1, 1), (-1, -1), (1, -1), (1, 1)],
     // -X
-    [(-1, -1), (-1,  1), ( 1,  1), ( 1, -1)],
+    [(-1, -1), (-1, 1), (1, 1), (1, -1)],
     // +Y
-    [(-1,  1), ( 1,  1), ( 1, -1), (-1, -1)],
+    [(-1, 1), (1, 1), (1, -1), (-1, -1)],
     // -Y
-    [(-1, -1), ( 1, -1), ( 1,  1), (-1,  1)],
+    [(-1, -1), (1, -1), (1, 1), (-1, 1)],
     // +Z
-    [(-1, -1), ( 1, -1), ( 1,  1), (-1,  1)],
+    [(-1, -1), (1, -1), (1, 1), (-1, 1)],
     // -Z
-    [( 1, -1), (-1, -1), (-1,  1), ( 1,  1)],
+    [(1, -1), (-1, -1), (-1, 1), (1, 1)],
 ];
 
 /// `(perp_a_axis_index, perp_b_axis_index)` for each face direction. Used
@@ -404,12 +484,7 @@ fn cell_color(block: BlockData, info: &BlockInfo) -> u8 {
 /// `dx/dy/dz` step is applied directly. Total result must land in `0..18`
 /// — the AO sampling pattern guarantees this for chunk-interior cells.
 #[inline]
-fn padded_at(
-    padded: &[BlockData; PADDED_VOLUME],
-    pcx: i32,
-    pcy: i32,
-    pcz: i32,
-) -> BlockData {
+fn padded_at(padded: &[BlockData; PADDED_VOLUME], pcx: i32, pcy: i32, pcz: i32) -> BlockData {
     debug_assert!(
         (0..PADDED_SIZE as i32).contains(&pcx)
             && (0..PADDED_SIZE as i32).contains(&pcy)
@@ -497,10 +572,6 @@ struct Run {
     /// (so e.g. a grass strip won't merge across a `+X` `→` `+Y` direction
     /// flip — handled by separating the loops by `face` first).
     layer: u32,
-    /// Block id captured from the run's first cell. Same id is a precondition
-    /// for run extension (so the merged strip's `block_id` field is
-    /// well-defined per-vertex).
-    block_id: u32,
     /// True when the cell is `BlockInfo::translucent`. Picks the output
     /// vertex bucket on flush.
     translucent: bool,
@@ -513,6 +584,21 @@ struct Run {
     /// can never extend (or be extended into); they always emit a single
     /// quad, matching the C++ `once` flag in `_merge_face_render_chunk`.
     once: bool,
+    /// Per-corner base UVs at run start. Run extension also gates on
+    /// `base_uv == cell.base_uv`, so two cells with different
+    /// orientations only merge if they happen to produce identical UVs
+    /// on this face (which means they look identical on it). For
+    /// `FaceMapping::Static` blocks this is always true; for
+    /// `AxisAligned` blocks it filters out orientation-mismatched logs
+    /// without needing a separate state check.
+    base_uv: [[f32; 2]; 4],
+    /// Per-corner UV delta per unit length along the merge axis. Replaces
+    /// the legacy global `FACE_EXTEND_UV` lookup; folds the per-state
+    /// rotation through the canonical-face projection at run start. Also
+    /// gated on for run extension — two cells with matching `base_uv`
+    /// but mismatched `extend_uv` would tile differently across the
+    /// merged span, so they cannot merge.
+    extend_uv: [[f32; 2]; 4],
 }
 
 /// Per-direction (i, j, k) → (x, y, z) projection. `i, j` index the plane
@@ -521,9 +607,9 @@ struct Run {
 #[inline]
 fn project_axes(face_id: usize, i: i32, j: i32, k: i32) -> (i32, i32, i32) {
     match face_id {
-        0 | 1 => (i, j, k),     // +X / -X — merge along Z
-        2 | 3 => (j, i, k),     // +Y / -Y — merge along Z
-        _     => (j, k, i),     // +Z / -Z — merge along Y
+        0 | 1 => (i, j, k), // +X / -X — merge along Z
+        2 | 3 => (j, i, k), // +Y / -Y — merge along Z
+        _ => (j, k, i),     // +Z / -Z — merge along Y
     }
 }
 
@@ -553,17 +639,13 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
 
     let s = CHUNK_SIZE as i32;
     for (face_id, off) in FACE_OFFSETS.iter().enumerate() {
-        let layer_index = face_to_atlas_index(face_id);
         for i in 0..s {
             for j in 0..s {
                 let mut run: Option<Run> = None;
                 for k in 0..s {
                     let (x, y, z) = project_axes(face_id, i, j, k);
-                    let cell = input.padded[padded_index(
-                        (x + 1) as usize,
-                        (y + 1) as usize,
-                        (z + 1) as usize,
-                    )];
+                    let cell = input.padded
+                        [padded_index((x + 1) as usize, (y + 1) as usize, (z + 1) as usize)];
                     if cell.id == AIR_ID {
                         flush_run(&mut opaque, &mut translucent, run.take());
                         continue;
@@ -579,8 +661,7 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                     // Mirror C++ `should_render_face`:
                     //   if (neighbor.opaque()) break run;
                     //   if (id == neighbor.id && id != leaf) break run;
-                    if neighbor_info.opaque
-                        || (cell.id == neighbor.id && Some(cell.id) != leaf_id)
+                    if neighbor_info.opaque || (cell.id == neighbor.id && Some(cell.id) != leaf_id)
                     {
                         flush_run(&mut opaque, &mut translucent, run.take());
                         continue;
@@ -592,22 +673,42 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                     // texture (face index 1). The diagonal-down probe is
                     // `(in-front + (-Y))` — same shape as the C++
                     // `_merge_face_render_chunk` lookup.
-                    let tex_index = if opts.nice_grass
+                    //
+                    // Default texture lookup is state-aware via
+                    // `face_for(face_id, state)` — logs use
+                    // `FaceMapping::AxisAligned` to pick cap vs bark from
+                    // the state byte; everything else uses the static
+                    // top/side/bottom layout.
+                    let tex_index_override = (opts.nice_grass
                         && opts.grass_id != Id(0)
                         && cell.id == opts.grass_id
-                        && (face_id == 0 || face_id == 1 || face_id == 4 || face_id == 5)
-                    {
-                        let probe = input.padded[padded_index(
-                            (x + 1 + off[0]) as usize,
-                            (y + 1 - 1) as usize,
-                            (z + 1 + off[2]) as usize,
-                        )];
-                        if probe.id == opts.grass_id { 0 } else { layer_index }
-                    } else {
-                        layer_index
+                        && (face_id == 0 || face_id == 1 || face_id == 4 || face_id == 5))
+                        .then(|| {
+                            let probe = input.padded[padded_index(
+                                (x + 1 + off[0]) as usize,
+                                (y + 1 - 1) as usize,
+                                (z + 1 + off[2]) as usize,
+                            )];
+                            (probe.id == opts.grass_id).then_some(0usize)
+                        })
+                        .flatten();
+                    let tex_layer = match tex_index_override {
+                        Some(slot) => u32::from(cell_info.face(slot).0),
+                        None => u32::from(cell_info.face_for(face_id, cell.state).0),
                     };
 
-                    let tex_layer = u32::from(cell_info.face(tex_index).0);
+                    // Orientation-aware per-corner UVs: rotate the world
+                    // corners back to canonical space, project onto the
+                    // canonical face's UV plane. For static blocks this
+                    // collapses to the legacy `FACE_UVS` / `FACE_EXTEND_UV`;
+                    // for axis-aligned blocks (logs) the bark grain
+                    // follows the placement axis through the four lateral
+                    // faces and the cap rotates with the log end.
+                    let orientation = Orientation::for_block(&cell_info.face_mapping, cell.state);
+                    let canon_face =
+                        face_id_from_dir_i(orientation.apply_dir_i(FACE_OFFSETS[face_id]));
+                    let base_uv = corner_uvs(face_id, canon_face, &orientation);
+                    let extend_uv = corner_uv_extends(face_id, canon_face, &orientation);
                     let translucent_cell = cell_info.translucent;
                     let apply_dim = !opts.advanced_render;
                     let lights = if opts.smooth_lighting {
@@ -635,15 +736,22 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                         );
                         [flat; 4]
                     };
-                    let once = lights[0] != lights[1]
-                        || lights[1] != lights[2]
-                        || lights[2] != lights[3];
+                    let once =
+                        lights[0] != lights[1] || lights[1] != lights[2] || lights[2] != lights[3];
 
                     // Run extension is gated on `merge_face`: with the flag
                     // off, force a flush after every cell so each face
-                    // emits its own quad. With it on, all the usual
-                    // extension predicates apply.
-                    let cell_block_id = u32::from(cell.id.0);
+                    // emits its own quad. With it on, two cells merge
+                    // iff their visual output on this face is identical
+                    // — same atlas layer, same per-corner UVs (base +
+                    // extend), same lighting, same translucent bucket.
+                    // Block id and state are deliberately not gated on:
+                    // two distinct blocks that happen to share the same
+                    // texture art (e.g. an alias block) tile correctly,
+                    // and two states whose base/extend UVs collapse to
+                    // the same numbers (e.g. wood states 0 and 1, whose
+                    // caps are visually identical with our symmetric
+                    // ring texture) merge harmlessly.
                     let can_extend = opts.merge_face
                         && match run.as_ref() {
                             Some(r) => {
@@ -652,7 +760,8 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                                     && r.layer == tex_layer
                                     && r.translucent == translucent_cell
                                     && r.lights == lights
-                                    && r.block_id == cell_block_id
+                                    && r.base_uv == base_uv
+                                    && r.extend_uv == extend_uv
                             }
                             None => false,
                         };
@@ -665,10 +774,11 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                             face: face_id,
                             length: 0,
                             layer: tex_layer,
-                            block_id: cell_block_id,
                             translucent: translucent_cell,
                             lights,
                             once,
+                            base_uv,
+                            extend_uv,
                         });
                     }
                 }
@@ -714,19 +824,11 @@ fn flat_face_light(
 /// Emit the 6 vertices of `run` (after extension along the merge axis) into
 /// the matching output bucket. No-op when `run` is `None`.
 #[inline]
-fn flush_run(
-    opaque: &mut Vec<ChunkVertex>,
-    translucent: &mut Vec<ChunkVertex>,
-    run: Option<Run>,
-) {
+fn flush_run(opaque: &mut Vec<ChunkVertex>, translucent: &mut Vec<ChunkVertex>, run: Option<Run>) {
     let Some(run) = run else {
         return;
     };
-    let bucket = if run.translucent {
-        translucent
-    } else {
-        opaque
-    };
+    let bucket = if run.translucent { translucent } else { opaque };
     emit_run(bucket, run);
 }
 
@@ -736,7 +838,6 @@ fn flush_run(
 fn emit_run(out: &mut Vec<ChunkVertex>, run: Run) {
     let corners = &FACE_CORNERS[run.face];
     let extend_pos = &FACE_EXTEND_POS[run.face];
-    let extend_uv = &FACE_EXTEND_UV[run.face];
     let l = run.length as f32;
     let face_u32 = run.face as u32;
     let bx = run.start[0] as f32;
@@ -748,7 +849,7 @@ fn emit_run(out: &mut Vec<ChunkVertex>, run: Run) {
         layer: run.layer,
         face: face_u32,
         light: 0,
-        block_id: run.block_id,
+        material_id: run.layer,
     }; 4];
     for c in 0..4 {
         v[c].position = [
@@ -757,8 +858,8 @@ fn emit_run(out: &mut Vec<ChunkVertex>, run: Run) {
             bz + corners[c][2] + extend_pos[c][2] * l,
         ];
         v[c].uv = [
-            FACE_UVS[c][0] + extend_uv[c][0] * l,
-            FACE_UVS[c][1] + extend_uv[c][1] * l,
+            run.base_uv[c][0] + run.extend_uv[c][0] * l,
+            run.base_uv[c][1] + run.extend_uv[c][1] * l,
         ];
         v[c].light = u32::from(run.lights[c]);
     }
@@ -773,7 +874,7 @@ fn emit_run(out: &mut Vec<ChunkVertex>, run: Run) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::{BaseBlocks, register_base_blocks};
+    use crate::blocks::{BaseBlocks, State, register_base_blocks};
 
     /// Build a fresh registry populated with the base game's 19 blocks, plus
     /// the matching `BaseBlocks` ids.
@@ -791,11 +892,10 @@ mod tests {
     {
         // `Box::new([_; PADDED_VOLUME])` would stack-allocate the array
         // first; instead we build a Vec and convert to a fixed-size box.
-        let mut buf: Box<[BlockData; PADDED_VOLUME]> =
-            vec![BlockData::default(); PADDED_VOLUME]
-                .into_boxed_slice()
-                .try_into()
-                .expect("PADDED_VOLUME-sized vec");
+        let mut buf: Box<[BlockData; PADDED_VOLUME]> = vec![BlockData::default(); PADDED_VOLUME]
+            .into_boxed_slice()
+            .try_into()
+            .expect("PADDED_VOLUME-sized vec");
         for z in 0..PADDED_SIZE {
             for y in 0..PADDED_SIZE {
                 for x in 0..PADDED_SIZE {
@@ -975,24 +1075,12 @@ mod tests {
     #[test]
     fn chunk_vertex_layout_is_36_bytes() {
         // The pipeline (D2) assumes 36-byte vertices with no padding —
-        // 12 (pos) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light) + 4 (block_id).
-        // The trailing block_id was added for the deferred renderer (Tier 4)
+        // 12 (pos) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light) + 4 (material_id).
+        // The trailing material_id was added for the deferred renderer (Tier 4)
         // so the chunk fragment shader can write a per-pixel material into
         // the G-buffer.
         assert_eq!(core::mem::size_of::<ChunkVertex>(), 36);
         assert_eq!(core::mem::align_of::<ChunkVertex>(), 4);
-    }
-
-    #[test]
-    fn face_to_atlas_index_matches_cpp_table() {
-        // C++: face 2 (+Y) → top (faces[0]); face 3 (-Y) → bottom (faces[2]);
-        // every other face → side (faces[1]).
-        assert_eq!(face_to_atlas_index(0), 1); // +X
-        assert_eq!(face_to_atlas_index(1), 1); // -X
-        assert_eq!(face_to_atlas_index(2), 0); // +Y top
-        assert_eq!(face_to_atlas_index(3), 2); // -Y bottom
-        assert_eq!(face_to_atlas_index(4), 1); // +Z
-        assert_eq!(face_to_atlas_index(5), 1); // -Z
     }
 
     #[test]
@@ -1008,10 +1096,7 @@ mod tests {
             // Only the y=0 row in chunk-local coords (py=1) is solid.
             // Side borders (px=0, px=17, pz=0, pz=17) are air so the side
             // faces are exposed → those rendered as well.
-            if (py == 0 || py == 1)
-                && (1..=16).contains(&px)
-                && (1..=16).contains(&pz)
-            {
+            if (py == 0 || py == 1) && (1..=16).contains(&px) && (1..=16).contains(&pz) {
                 block(base.stone)
             } else {
                 block(base.air)
@@ -1067,5 +1152,312 @@ mod tests {
             }
         }
         assert!(saw_top && saw_side && saw_bottom);
+    }
+
+    /// Build a `MeshInput` with one wood block at padded coord (9,9,9), the
+    /// given state, surrounded by air. Returns `(layers_by_face)` — index 0
+    /// holds the layer of the +X face vertex, index 1 the -X face, etc.
+    fn wood_face_layers(base: &BaseBlocks, state: State) -> [u32; 6] {
+        let mut input = padded_input(Vector3::new(0, 0, 0), |px, py, pz| {
+            if (px, py, pz) == (9, 9, 9) {
+                BlockData {
+                    id: base.wood,
+                    state,
+                    ..BlockData::default()
+                }
+            } else {
+                block(base.air)
+            }
+        });
+        // Greedy merging would still pick the same layer per face for a
+        // single block, but turn it off to keep the test as close to the
+        // raw face-id → layer mapping as possible.
+        input.options.merge_face = false;
+        let mut r = BlockRegistry::new();
+        let _ = register_base_blocks(&mut r);
+        let output = mesh_chunk(&input, &r);
+        let mut layers = [u32::MAX; 6];
+        for v in &output.opaque {
+            layers[v.face as usize] = v.layer;
+        }
+        layers
+    }
+
+    #[test]
+    fn wood_state_drives_per_face_texture() {
+        // Wood is `FaceMapping::AxisAligned`: state.0 / 2 selects the cap
+        // axis. Faces parallel to that axis sample WOOD_TOP; the four
+        // perpendicular faces sample WOOD_SIDE.
+        let (registry, base) = registry_with_base();
+        let top = u32::from(registry.get(base.wood).face(0).0); // WOOD_TOP
+        let side = u32::from(registry.get(base.wood).face(1).0); // WOOD_SIDE
+
+        // Y-axis (state 0 or 1).
+        for s in [State(0), State(1)] {
+            let l = wood_face_layers(&base, s);
+            assert_eq!(l, [side, side, top, top, side, side], "state {:?}", s);
+        }
+        // X-axis (state 2 or 3).
+        for s in [State(2), State(3)] {
+            let l = wood_face_layers(&base, s);
+            assert_eq!(l, [top, top, side, side, side, side], "state {:?}", s);
+        }
+        // Z-axis (state 4 or 5).
+        for s in [State(4), State(5)] {
+            let l = wood_face_layers(&base, s);
+            assert_eq!(l, [side, side, side, side, top, top], "state {:?}", s);
+        }
+    }
+
+    /// Read the four corner UVs of the unique quad meshed for `face_id`
+    /// out of a single-cell mesh output. Asserts that exactly one quad
+    /// (6 vertices) was emitted for that face.
+    fn face_quad_uvs(out: &MeshOutput, face_id: u32) -> [[f32; 2]; 4] {
+        let verts: Vec<&ChunkVertex> = out.opaque.iter().filter(|v| v.face == face_id).collect();
+        assert_eq!(
+            verts.len(),
+            6,
+            "expected 6 vertices for face {face_id}, got {}",
+            verts.len()
+        );
+        // The triangulation is `(c0, c1, c2)` then `(c0, c2, c3)`, so the
+        // 6 emitted vertex UVs are c0, c1, c2, c0, c2, c3. We extract
+        // c0..c3 from positions 0, 1, 2, 5.
+        [verts[0].uv, verts[1].uv, verts[2].uv, verts[5].uv]
+    }
+
+    fn solo_wood_mesh(base: &BaseBlocks, registry: &BlockRegistry, state: State) -> MeshOutput {
+        let mut input = padded_input(Vector3::new(0, 0, 0), |px, py, pz| {
+            if (px, py, pz) == (9, 9, 9) {
+                BlockData {
+                    id: base.wood,
+                    state,
+                    ..BlockData::default()
+                }
+            } else {
+                block(base.air)
+            }
+        });
+        input.options.merge_face = false;
+        mesh_chunk(&input, registry)
+    }
+
+    #[test]
+    fn state_0_wood_uvs_match_legacy_face_layout() {
+        // State 0 / Static must round-trip to the same per-corner UVs the
+        // pre-orientation code produced from the legacy `FACE_UVS` table:
+        // c0=(0,1), c1=(1,1), c2=(1,0), c3=(0,0). This is the regression
+        // anchor that says "introducing the canonical-projection
+        // pipeline doesn't shift state-0 blocks."
+        let (registry, base) = registry_with_base();
+        let out = solo_wood_mesh(&base, &registry, State(0));
+        let expected = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+        for face in 0..6_u32 {
+            let uvs = face_quad_uvs(&out, face);
+            assert_eq!(
+                uvs, expected,
+                "state 0 face {face} UVs drifted from legacy layout"
+            );
+        }
+    }
+
+    #[test]
+    fn axis_aligned_states_rotate_bark_to_match_log_axis() {
+        // For each axis-aligned state, the four "bark" side faces are
+        // exactly the faces perpendicular to the cap axis. Their UV
+        // mappings must put the texture's V axis (vertical = bark grain)
+        // along the log's cap axis in world space.
+        //
+        // For each bark face, find the pair of corners that share a U
+        // coordinate but differ in V. The world-space delta between
+        // those two corners is the direction the texture V axis maps to
+        // — and it must lie along the log's cap axis, not along the
+        // two perpendicular axes.
+        let (registry, base) = registry_with_base();
+        // (state, cap_axis_index) — 0 = X, 1 = Y, 2 = Z.
+        let cases = [
+            (State(0), 1usize),
+            (State(1), 1),
+            (State(2), 0),
+            (State(3), 0),
+            (State(4), 2),
+            (State(5), 2),
+        ];
+        for (state, cap_axis) in cases {
+            let out = solo_wood_mesh(&base, &registry, state);
+            let face_axes: [usize; 6] = [0, 0, 1, 1, 2, 2];
+            for face in 0..6_u32 {
+                if face_axes[face as usize] == cap_axis {
+                    continue; // cap face, not bark.
+                }
+                let uvs = face_quad_uvs(&out, face);
+                let verts: Vec<&ChunkVertex> =
+                    out.opaque.iter().filter(|v| v.face == face).collect();
+                let positions = [
+                    verts[0].position,
+                    verts[1].position,
+                    verts[2].position,
+                    verts[5].position,
+                ];
+                // Find a corner pair (a, b) with the same U and
+                // different V — that's the V-axis traversal in world
+                // space.
+                let mut found = None;
+                'outer: for a in 0..4usize {
+                    for b in (a + 1)..4 {
+                        if (uvs[a][0] - uvs[b][0]).abs() < 1e-4
+                            && (uvs[a][1] - uvs[b][1]).abs() > 0.5
+                        {
+                            found = Some((a, b));
+                            break 'outer;
+                        }
+                    }
+                }
+                let (a, b) = found.unwrap_or_else(|| {
+                    panic!("state {state:?} face {face}: no V-axis pair found in UVs {uvs:?}")
+                });
+                let delta = [
+                    positions[b][0] - positions[a][0],
+                    positions[b][1] - positions[a][1],
+                    positions[b][2] - positions[a][2],
+                ];
+                let abs = [delta[0].abs(), delta[1].abs(), delta[2].abs()];
+                let dominant = (0..3)
+                    .max_by(|x, y| abs[*x].partial_cmp(&abs[*y]).unwrap())
+                    .unwrap();
+                assert_eq!(
+                    dominant, cap_axis,
+                    "state {state:?} face {face}: V-axis traversal is along axis {dominant}, expected cap axis {cap_axis}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn wood_runs_merge_iff_uvs_match() {
+        // Run extension is gated on `(layer, base_uv, extend_uv,
+        // lights, translucent)` only — `block_id` and `state` are
+        // *not* checked. So two logs merge along the run axis exactly
+        // when their visual output on the merged face is identical:
+        //
+        // * State 2 + State 2 (both +X-axis): identical → merge.
+        // * State 0 + State 2 (Y-axis cap meets X-axis bark on +Y):
+        //   different layer → no merge.
+        // * State 0 + State 1 (both Y-axis, caps look the same with
+        //   our symmetric ring texture): identical layer / UVs → merge.
+        let (registry, base) = registry_with_base();
+
+        let make = |state_a: State, state_b: State| {
+            padded_input(Vector3::new(0, 0, 0), move |px, py, pz| {
+                // Two cells at (9,9,9) and (9,9,10) — adjacent along +Z,
+                // which is the +Y face's merge axis.
+                if py == 9 && px == 9 && pz == 9 {
+                    BlockData {
+                        id: base.wood,
+                        state: state_a,
+                        ..BlockData::default()
+                    }
+                } else if py == 9 && px == 9 && pz == 10 {
+                    BlockData {
+                        id: base.wood,
+                        state: state_b,
+                        ..BlockData::default()
+                    }
+                } else {
+                    block(base.air)
+                }
+            })
+        };
+
+        let plus_y = |out: &MeshOutput| out.opaque.iter().filter(|v| v.face == 2).count();
+
+        // Same state → +Y faces merge into one quad (6 verts).
+        assert_eq!(
+            plus_y(&mesh_chunk(&make(State(2), State(2)), &registry)),
+            6,
+            "same-state logs should merge along +Y"
+        );
+
+        // Y-axis (cap) meets X-axis (bark) → different layer, no merge.
+        assert_eq!(
+            plus_y(&mesh_chunk(&make(State(0), State(2)), &registry)),
+            12,
+            "cap-vs-bark on +Y should not merge"
+        );
+
+        // Y-axis state 0 meets Y-axis state 1: same layer (cap), same
+        // base/extend UVs → merge. This is the visually-identical case
+        // the new predicate is meant to allow through.
+        assert_eq!(
+            plus_y(&mesh_chunk(&make(State(0), State(1)), &registry)),
+            6,
+            "visually identical Y-axis logs should merge across state byte"
+        );
+    }
+
+    #[test]
+    fn distinct_block_ids_with_same_texture_merge() {
+        // The merge predicate ignores `block_id`, so two distinct
+        // registry entries that happen to share a face texture tile
+        // into one quad. We synthesise a tiny registry with `air` (id 0)
+        // plus two solid blocks that both use `TextureIndex::ROCK` for
+        // every face — distinct ids, identical art.
+        use crate::blocks::{BlockInfo, FaceMapping, TextureIndex};
+        use std::borrow::Cow;
+        let mut r = BlockRegistry::new();
+        r.add(BlockInfo {
+            name: Cow::Borrowed("air"),
+            solid: false,
+            opaque: false,
+            translucent: false,
+            hardness: 0.0,
+            faces: [TextureIndex::WHITE; 3],
+            face_mapping: FaceMapping::Static,
+        });
+        let id_a = r.add(BlockInfo {
+            name: Cow::Borrowed("rock_a"),
+            solid: true,
+            opaque: false, // non-opaque so adjacent-cell faces aren't culled
+            translucent: false,
+            hardness: 1.0,
+            faces: [TextureIndex::ROCK; 3],
+            face_mapping: FaceMapping::Static,
+        });
+        let id_b = r.add(BlockInfo {
+            name: Cow::Borrowed("rock_b"),
+            solid: true,
+            opaque: false,
+            translucent: false,
+            hardness: 1.0,
+            faces: [TextureIndex::ROCK; 3],
+            face_mapping: FaceMapping::Static,
+        });
+        let input = padded_input(Vector3::new(0, 0, 0), |px, py, pz| {
+            if py == 9 && px == 9 && pz == 9 {
+                BlockData {
+                    id: id_a,
+                    ..BlockData::default()
+                }
+            } else if py == 9 && px == 9 && pz == 10 {
+                BlockData {
+                    id: id_b,
+                    ..BlockData::default()
+                }
+            } else {
+                BlockData::default() // air
+            }
+        });
+        let out = mesh_chunk(&input, &r);
+        // Both blocks are non-opaque and have different ids, so the
+        // shared face between them stays visible — but it does because
+        // of the `id != neighbour.id` clause in `should_render_face`.
+        // The +Y faces of both blocks should merge into one quad along
+        // their +Z merge axis (6 verts), since they share layer / UV /
+        // lighting.
+        let plus_y = out.opaque.iter().filter(|v| v.face == 2).count();
+        assert_eq!(
+            plus_y, 6,
+            "distinct ids with identical art should merge on +Y"
+        );
     }
 }
