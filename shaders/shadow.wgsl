@@ -7,7 +7,7 @@
 // **Adapted vertex layout.** Same `ChunkVertex` layout as `chunk.wgsl`
 // — the C++ build uses `Color: Vec3u8` / `TexCoord: Vec3f` while we
 // pack equivalents into `light` / `(uv, layer)`. The shadow pass only
-// reads `position`, `uv`, `layer`, `block_id`; `light` and `face` are
+// reads `position`, `uv`, `layer`, `material_id`; `light` and `face` are
 // ignored (no lighting in this pass).
 //
 // Fisheye projection: the C++ build warps the post-perspective xy by
@@ -16,10 +16,6 @@
 // perspective divide so it operates in NDC space — same as C++. wgpu's
 // rasterizer will re-project from clip space, but since `clip.w = 1`
 // after the explicit divide the warp survives.
-//
-// Leaf wave: the C++ vertex shader animates leaf blocks (`block_id == 8`)
-// with a small per-axis sinusoid driven by `u_game_time`. We mirror that
-// using `block_id` from the vertex attributes.
 //
 // Bind groups (shared with the deferred chunk shader so the same
 // pipeline layout slots in):
@@ -45,14 +41,16 @@ struct FrameUniforms {
     player_coord_int: vec4<i32>,
     player_coord_mod: vec4<i32>,
     player_coord_frac: vec4<f32>,
-};
+}
 
-@group(0) @binding(0) var<uniform> frame: FrameUniforms;
-@group(1) @binding(0) var block_diffuse: texture_2d_array<f32>;
-@group(1) @binding(1) var block_sampler: sampler;
+@group(0) @binding(0)
+var<uniform> frame: FrameUniforms;
+@group(1) @binding(0)
+var block_diffuse: texture_2d_array<f32>;
+@group(1) @binding(1)
+var block_sampler: sampler;
 
 const PI: f32 = 3.1415926;
-const LEAF_ID: u32 = 8u;
 
 struct VsIn {
     @location(0) position: vec3<f32>,
@@ -60,14 +58,14 @@ struct VsIn {
     @location(2) layer: u32,
     @location(3) face: u32,
     @location(4) light: u32,
-    @location(5) block_id: u32,
-};
+    @location(5) material_id: u32,
+}
 
 struct VsOut {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) @interpolate(perspective, centroid) uv: vec2<f32>,
     @location(1) @interpolate(flat) layer: i32,
-};
+}
 
 // `shadow_params.z` holds the fisheye factor (see C++ `u_shadow_fisheye_factor`).
 //
@@ -97,19 +95,6 @@ fn fisheye_project(p: vec2<f32>) -> vec2<f32> {
 fn vs_main(in: VsIn) -> VsOut {
     var out: VsOut;
     var coord = in.position;
-
-    // Leaf-block wave — direct port of the C++ `if (a_block_id == LEAF_ID)`
-    // sinusoid. Animates leaves so the shadow map's leaf footprint shimmers
-    // along with the visible foliage.
-    if (in.block_id == LEAF_ID) {
-        let a = frame.time * 0.2;
-        coord += vec3<f32>(
-            sin(coord.x + a),
-            sin(coord.y * 10.0 + a + PI / 3.0 * 2.0),
-            sin(coord.z * 10.0 + a + PI / 3.0 * 4.0),
-        ) * 0.005;
-    }
-
     var pos = frame.shadow_view_proj * vec4<f32>(coord, 1.0);
     // Apply the perspective divide explicitly so the fisheye warp lands
     // in NDC space — matches C++ `gl_Position /= gl_Position.w` then

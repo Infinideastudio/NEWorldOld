@@ -11,7 +11,7 @@
 //! `rendering.ixx`:
 //!
 //! * Reuses the chunk vertex layout — the shader ignores `face` and `light`
-//!   but reads `block_id` (leaf-wave animation) and `uv` / `layer` (alpha
+//!   but reads `material_id` (leaf-wave animation) and `uv` / `layer` (alpha
 //!   discard for non-rectangular blocks).
 //! * Reuses the chunk pipeline's bind-group layouts so vertex buffers from
 //!   `ChunkMesh` can be drawn through this pipeline without rebinding the

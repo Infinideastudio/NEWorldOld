@@ -51,19 +51,28 @@ struct FrameUniforms {
     player_coord_int: vec4<i32>,
     player_coord_mod: vec4<i32>,
     player_coord_frac: vec4<f32>,
-};
+}
 
-@group(0) @binding(0) var<uniform> frame: FrameUniforms;
+@group(0) @binding(0)
+var<uniform> frame: FrameUniforms;
 
-@group(1) @binding(0) var g_diffuse: texture_2d<f32>;
-@group(1) @binding(1) var g_normal: texture_2d<f32>;
-@group(1) @binding(2) var g_material: texture_2d<f32>;
-@group(1) @binding(3) var g_depth: texture_depth_2d;
+@group(1) @binding(0)
+var g_diffuse: texture_2d<f32>;
+@group(1) @binding(1)
+var g_normal: texture_2d<f32>;
+@group(1) @binding(2)
+var g_material: texture_2d<f32>;
+@group(1) @binding(3)
+var g_depth: texture_depth_2d;
 
-@group(2) @binding(0) var shadow_texture: texture_depth_2d;
-@group(2) @binding(1) var shadow_sampler: sampler_comparison;
-@group(2) @binding(2) var noise_texture: texture_2d<f32>;
-@group(2) @binding(3) var noise_sampler: sampler;
+@group(2) @binding(0)
+var shadow_texture: texture_depth_2d;
+@group(2) @binding(1)
+var shadow_sampler: sampler_comparison;
+@group(2) @binding(2)
+var noise_texture: texture_2d<f32>;
+@group(2) @binding(3)
+var noise_sampler: sampler;
 
 // ---- pipeline-creation feature flags ----
 //
@@ -79,7 +88,8 @@ const PI: f32 = 3.141593;
 // Sky tint constants — port of C++ `final.fsh::get_sky_color`.
 const SKY_HIGH: vec3<f32> = vec3<f32>(0.3, 0.5, 1.2);
 const SKY_LOW: vec3<f32> = vec3<f32>(1.2, 1.6, 2.0);
-const SUN_RADIANCE: vec3<f32> = vec3<f32>(7.0, 6.0, 5.8); // = vec3(3.5, 3.0, 2.9) * 2.0
+const SUN_RADIANCE: vec3<f32> = vec3<f32>(7.0, 6.0, 5.8);
+// = vec3(3.5, 3.0, 2.9) * 2.0
 const AMBIENT_RADIANCE: vec3<f32> = vec3<f32>(0.18, 0.25, 0.5);
 const EXPOSURE: f32 = 0.6;
 
@@ -93,9 +103,9 @@ const SSAO_SAMPLES: i32 = 16;
 // Reflective material ids — must match `BaseBlocks` registration order
 // in `src/blocks.rs::register_base_blocks`. C++ pins these in
 // `final.fsh` lines 38–39 with the same numeric values.
-const WATER_ID: u32 = 10u;
-const ICE_ID: u32 = 15u;
-const IRON_ID: u32 = 17u;
+const WATER_ID: u32 = 21u;
+const ICE_ID: u32 = 26u;
+const IRON_ID: u32 = 28u;
 
 // SSR raymarch constants — match C++ `final.fsh`.
 const REFL_ITERATIONS: i32 = 32;
@@ -103,7 +113,7 @@ const REFL_STEP_SCALE: f32 = 2.0 / 32.0;
 
 // Water wave constants — match C++ `final.fsh`.
 const WAVE_OCTAVES: i32 = 7;
-const WAVE_LEVEL: f32 = -0.5;
+const WAVE_LEVEL: f32 = - 0.5;
 const WAVE_SCALE: f32 = 0.01;
 const WAVE_MIN_LENGTH: f32 = 4.0;
 const WAVE_MAX_LENGTH: f32 = 12.0;
@@ -119,24 +129,17 @@ const CLOUD_BOTTOM: f32 = 100.0;
 const CLOUD_TOP: f32 = 65536.0;
 const CLOUD_TRANSITION: f32 = 120.0;
 const CLOUD_ITERATIONS: i32 = 32;
-const CLOUD_STEP_SCALE: f32 = 16.0; // = 512 / 32
+const CLOUD_STEP_SCALE: f32 = 16.0;
 
 struct VsOut {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) uv: vec2<f32>,
-};
+}
 
 // Full-screen triangle / quad — six vertices over two triangles.
 @vertex
 fn vs_main(@builtin(vertex_index) vid: u32) -> VsOut {
-    let positions = array<vec2<f32>, 6>(
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 1.0, -1.0),
-        vec2<f32>( 1.0,  1.0),
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 1.0,  1.0),
-        vec2<f32>(-1.0,  1.0),
-    );
+    let positions = array<vec2<f32>, 6>(vec2<f32>(- 1.0, - 1.0), vec2<f32>(1.0, - 1.0), vec2<f32>(1.0, 1.0), vec2<f32>(- 1.0, - 1.0), vec2<f32>(1.0, 1.0), vec2<f32>(- 1.0, 1.0),);
     let p = positions[vid];
     var out: VsOut;
     out.clip_position = vec4<f32>(p, 0.0, 1.0);
@@ -217,14 +220,10 @@ fn get_shadow_quad(uv: vec2<f32>, ref_d: f32) -> f32 {
     let resolution = max(frame.shadow_params.x, 1.0);
     let texel = 1.0 / resolution;
     var res: f32 = 0.0;
-    res += textureSampleCompareLevel(shadow_texture, shadow_sampler,
-        uv + vec2<f32>(-0.5, -0.5) * texel, ref_d);
-    res += textureSampleCompareLevel(shadow_texture, shadow_sampler,
-        uv + vec2<f32>( 0.5, -0.5) * texel, ref_d);
-    res += textureSampleCompareLevel(shadow_texture, shadow_sampler,
-        uv + vec2<f32>( 0.5,  0.5) * texel, ref_d);
-    res += textureSampleCompareLevel(shadow_texture, shadow_sampler,
-        uv + vec2<f32>(-0.5,  0.5) * texel, ref_d);
+    res += textureSampleCompareLevel(shadow_texture, shadow_sampler, uv + vec2<f32>(- 0.5, - 0.5) * texel, ref_d);
+    res += textureSampleCompareLevel(shadow_texture, shadow_sampler, uv + vec2<f32>(0.5, - 0.5) * texel, ref_d);
+    res += textureSampleCompareLevel(shadow_texture, shadow_sampler, uv + vec2<f32>(0.5, 0.5) * texel, ref_d);
+    res += textureSampleCompareLevel(shadow_texture, shadow_sampler, uv + vec2<f32>(- 0.5, 0.5) * texel, ref_d);
     return res * 0.25;
 }
 
@@ -243,13 +242,13 @@ fn calc_sunlight_factor(view_relative: vec3<f32>, normal: vec3<f32>) -> f32 {
     var biased: vec3<f32>;
     if (soft_shadow) {
         biased = world_pos + to_sun * 0.1 + normal * normal_bias;
-    } else {
+    }
+    else {
         // Snap to a SHADOW_UNITS grid; mirrors C++ `floor(coord *
         // SHADOW_UNITS + normal * 0.5) / SHADOW_UNITS`. The biased-by-
         // normal half-grid offset keeps the sample a hair off the
         // surface.
-        biased = floor(world_pos * SHADOW_UNITS + normal * 0.5) / SHADOW_UNITS
-            + to_sun * 0.1;
+        biased = floor(world_pos * SHADOW_UNITS + normal * 0.5) / SHADOW_UNITS + to_sun * 0.1;
     }
 
     let shadow_clip = frame.shadow_view_proj * vec4<f32>(biased, 1.0);
@@ -261,10 +260,7 @@ fn calc_sunlight_factor(view_relative: vec3<f32>, normal: vec3<f32>) -> f32 {
     let uv_clamped = clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0));
     let pcf = get_shadow_quad(uv_clamped, shadow_ndc.z);
 
-    let in_frustum = f32(
-        shadow_ndc.x >= -1.0 && shadow_ndc.x <= 1.0 &&
-        shadow_ndc.y >= -1.0 && shadow_ndc.y <= 1.0
-    );
+    let in_frustum = f32(shadow_ndc.x >= - 1.0 && shadow_ndc.x <= 1.0 && shadow_ndc.y >= - 1.0 && shadow_ndc.y <= 1.0);
     let in_frustum_factor = mix(1.0, pcf, in_frustum);
 
     let dist = length(view_relative);
@@ -293,15 +289,8 @@ fn calc_ambient_factor(view_relative: vec3<f32>, normal: vec3<f32>, frag_xy: vec
     var res: f32 = 0.0;
     for (var i: i32 = 0; i < SSAO_SAMPLES; i = i + 1) {
         let r = f32(i) / f32(SSAO_SAMPLES);
-        let raw_offset = vec3<f32>(
-            rand2(frag_xy + vec2<f32>(r, 0.0)) * 2.0 - 1.0,
-            rand2(frag_xy + vec2<f32>(0.0, r)) * 2.0 - 1.0,
-            rand2(frag_xy + vec2<f32>(r, r)),
-        ) * SSAO_RADIUS;
-        let sample_world = world_pos
-            + tangent * raw_offset.x
-            + bitangent * raw_offset.y
-            + normal * raw_offset.z;
+        let raw_offset = vec3<f32>(rand2(frag_xy + vec2<f32>(r, 0.0)) * 2.0 - 1.0, rand2(frag_xy + vec2<f32>(0.0, r)) * 2.0 - 1.0, rand2(frag_xy + vec2<f32>(r, r)),) * SSAO_RADIUS;
+        let sample_world = world_pos + tangent * raw_offset.x + bitangent * raw_offset.y + normal * raw_offset.z;
         let sample_clip = frame.view_proj * vec4<f32>(sample_world, 1.0);
         // Reject samples behind the camera (would project to garbage).
         if (sample_clip.w <= 0.0) {
@@ -310,9 +299,7 @@ fn calc_ambient_factor(view_relative: vec3<f32>, normal: vec3<f32>, frag_xy: vec
         }
         let sample_ndc = sample_clip.xyz / sample_clip.w;
         let sample_uv = vec2<f32>(sample_ndc.x * 0.5 + 0.5, 0.5 - sample_ndc.y * 0.5);
-        let in_bounds =
-            sample_uv.x >= 0.0 && sample_uv.x <= 1.0 &&
-            sample_uv.y >= 0.0 && sample_uv.y <= 1.0;
+        let in_bounds = sample_uv.x >= 0.0 && sample_uv.x <= 1.0 && sample_uv.y >= 0.0 && sample_uv.y <= 1.0;
         if (!in_bounds) {
             res += 1.0;
             continue;
@@ -326,7 +313,8 @@ fn calc_ambient_factor(view_relative: vec3<f32>, normal: vec3<f32>, frag_xy: vec
         // SSAO doesn't darken the viewport border.
         if (scene_depth > sample_ndc.z) {
             res += smoothstep(0.8, 1.0, 1.0 - distance_to_edge(sample_uv) * 2.0);
-        } else {
+        }
+        else {
             res += 1.0;
         }
     }
@@ -349,18 +337,13 @@ fn calc_wave_normal(pos: vec3<f32>) -> vec3<f32> {
     var hs = vec3<f32>(0.0);
     for (var i: i32 = 0; i < WAVE_OCTAVES; i = i + 1) {
         let ratio = f32(i) / f32(WAVE_OCTAVES);
-        let lambda = WAVE_MIN_LENGTH
-            + rand2(vec2<f32>(ratio, ratio)) * (WAVE_MAX_LENGTH - WAVE_MIN_LENGTH);
+        let lambda = WAVE_MIN_LENGTH + rand2(vec2<f32>(ratio, ratio)) * (WAVE_MAX_LENGTH - WAVE_MIN_LENGTH);
         let k = 2.0 * PI / lambda;
         let a = exp(k * WAVE_LEVEL) / k;
         let c = sqrt(WAVE_GRAVITY / k);
         let angle = 2.0 * PI * ratio * WAVE_DIRECTION_RANGE;
         let direction = vec2<f32>(cos(angle), sin(angle));
-        let ps = vec3<f32>(
-            dot(pos.xz + vec2<f32>(0.1, 0.0), direction),
-            dot(pos.xz, direction),
-            dot(pos.xz + vec2<f32>(0.0, 0.1), direction),
-        );
+        let ps = vec3<f32>(dot(pos.xz + vec2<f32>(0.1, 0.0), direction), dot(pos.xz, direction), dot(pos.xz + vec2<f32>(0.0, 0.1), direction),);
         // C++ writes `u_game_time / 30.0` to convert its tick counter
         // (30 Hz integer) into seconds. Our `frame.time` is already in
         // seconds, so we use it directly — the C++ /30 was a unit
@@ -372,7 +355,7 @@ fn calc_wave_normal(pos: vec3<f32>) -> vec3<f32> {
         ps0 = ps - a * sin(k * (ps0 + c * t));
         ps0 = ps - a * sin(k * (ps0 + c * t));
         ps0 = ps - a * sin(k * (ps0 + c * t));
-        hs = hs + (-a) * cos(k * (ps0 + c * t));
+        hs = hs + (- a) * cos(k * (ps0 + c * t));
     }
     hs = hs * WAVE_SCALE;
     let xx = vec3<f32>(0.1, hs.x - hs.y, 0.0);
@@ -463,7 +446,8 @@ fn shade_world_pixel(uv: vec2<f32>, frag_xy: vec2<f32>) -> vec4<f32> {
     var color: vec3<f32>;
     if (material == WATER_ID) {
         color = albedo * ambient;
-    } else {
+    }
+    else {
         let sun_factor = calc_sunlight_factor(view_relative, normal);
         let cos_n_s = max(dot(normal, to_sun), 0.0);
         let direct = SUN_RADIANCE * (sun_factor * cos_n_s / PI);
@@ -527,7 +511,7 @@ fn ssr(org_clip: vec4<f32>, dir_clip: vec4<f32>, frag_xy: vec2<f32>) -> vec4<f32
         }
 
         let next3 = curr3 + dir3 * step;
-        if (next3.x < -1.0 || next3.x > 1.0 || next3.y < -1.0 || next3.y > 1.0) {
+        if (next3.x < - 1.0 || next3.x > 1.0 || next3.y < - 1.0 || next3.y > 1.0) {
             break;
         }
 
@@ -545,7 +529,7 @@ fn ssr(org_clip: vec4<f32>, dir_clip: vec4<f32>, frag_xy: vec2<f32>) -> vec4<f32
                 // Reject near-tangent intersections — the dot product is
                 // almost zero when the ray grazes a surface, which
                 // produces visible streaks.
-                if (dot(curr_ws - sample_ws, surface_normal) >= -0.1) {
+                if (dot(curr_ws - sample_ws, surface_normal) >= - 0.1) {
                     if (!found) {
                         found_ratio = ratio;
                     }
@@ -554,7 +538,8 @@ fn ssr(org_clip: vec4<f32>, dir_clip: vec4<f32>, frag_xy: vec2<f32>) -> vec4<f32
                 }
             }
             step_mult = step_mult * 0.5;
-        } else {
+        }
+        else {
             curr3 = next3;
         }
     }
@@ -567,10 +552,7 @@ fn ssr(org_clip: vec4<f32>, dir_clip: vec4<f32>, frag_xy: vec2<f32>) -> vec4<f32
     // by an edge-fade factor so the SSR result tapers near screen
     // edges / at the iteration limit. We do the same.
     let lit = shade_world_pixel(best, frag_xy);
-    let edge_fade = 1.0 - smoothstep(
-        0.8, 1.0,
-        max(1.0 - distance_to_edge(best) * 2.0, found_ratio),
-    );
+    let edge_fade = 1.0 - smoothstep(0.8, 1.0, max(1.0 - distance_to_edge(best) * 2.0, found_ratio),);
     return vec4<f32>(lit.rgb, lit.a * edge_fade);
 }
 
@@ -585,10 +567,8 @@ fn interpolated_noise(x: vec3<f32>) -> f32 {
     let fx = fract(x);
     let uv0 = ix.xz + ix.y * NOISE_TEXTURE_OFFSET + fx.xz;
     let uv1 = uv0 + NOISE_TEXTURE_OFFSET;
-    let texel0 = textureSampleLevel(
-        noise_texture, noise_sampler, uv0 / NOISE_TEXTURE_SIZE, 0.0).r;
-    let texel1 = textureSampleLevel(
-        noise_texture, noise_sampler, uv1 / NOISE_TEXTURE_SIZE, 0.0).r;
+    let texel0 = textureSampleLevel(noise_texture, noise_sampler, uv0 / NOISE_TEXTURE_SIZE, 0.0).r;
+    let texel1 = textureSampleLevel(noise_texture, noise_sampler, uv1 / NOISE_TEXTURE_SIZE, 0.0).r;
     return mix(texel0, texel1, fx.y);
 }
 
@@ -602,10 +582,7 @@ fn cloud_noise(c: vec3<f32>) -> f32 {
 }
 
 fn calc_cloud_opacity(pos: vec3<f32>) -> f32 {
-    let factor = min(
-        smoothstep(CLOUD_BOTTOM, CLOUD_BOTTOM + CLOUD_TRANSITION, pos.y),
-        1.0 - smoothstep(CLOUD_TOP - CLOUD_TRANSITION, CLOUD_TOP, pos.y),
-    );
+    let factor = min(smoothstep(CLOUD_BOTTOM, CLOUD_BOTTOM + CLOUD_TRANSITION, pos.y), 1.0 - smoothstep(CLOUD_TOP - CLOUD_TRANSITION, CLOUD_TOP, pos.y),);
     let opacity = clamp(cloud_noise(pos / CLOUD_SCALE) * 2.0 - 1.2, 0.0, 1.0);
     return sqrt(factor) * opacity;
 }
@@ -619,8 +596,7 @@ fn calc_cloud_opacity(pos: vec3<f32>) -> f32 {
 // frames so the user can A/B-compare without per-frame jitter.
 fn cloud_dither(frag_xy: vec2<f32>) -> f32 {
     let v = frag_xy;
-    return textureSampleLevel(
-        noise_texture, noise_sampler, v / NOISE_TEXTURE_SIZE, 0.0).b;
+    return textureSampleLevel(noise_texture, noise_sampler, v / NOISE_TEXTURE_SIZE, 0.0).b;
 }
 
 // 32-step volumetric cloud raymarch — direct port of C++ `cloud()`.
@@ -637,14 +613,7 @@ fn cloud_dither(frag_xy: vec2<f32>) -> f32 {
 // * `quality` — step-size divisor. `1.0` for the primary view, `0.5`
 //   (= half the steps) for SSR reflection so the reflected raymarch is
 //   cheaper.
-fn cloud(
-    org: vec3<f32>,
-    dir: vec3<f32>,
-    max_dist: f32,
-    center: vec3<f32>,
-    quality: f32,
-    frag_xy: vec2<f32>,
-) -> vec4<f32> {
+fn cloud(org: vec3<f32>, dir: vec3<f32>, max_dist: f32, center: vec3<f32>, quality: f32, frag_xy: vec2<f32>,) -> vec4<f32> {
     let nd = normalize(dir);
     let to_sun = normalize(frame.sun_dir.xyz);
     var curr = org;
@@ -657,7 +626,8 @@ fn cloud(
             return vec4<f32>(0.0);
         }
         curr = curr + nd * (CLOUD_BOTTOM - curr.y) / nd.y;
-    } else if (curr.y > CLOUD_TOP) {
+    }
+    else if (curr.y > CLOUD_TOP) {
         if (nd.y >= 0.0) {
             return vec4<f32>(0.0);
         }
@@ -691,8 +661,7 @@ fn cloud(
         let walked = length(curr - org);
         let from_center = length(curr - center);
         var factor: f32 = 1.0;
-        factor = factor * (1.0 - smoothstep(
-            frame.render_distance * 0.8, frame.render_distance, from_center));
+        factor = factor * (1.0 - smoothstep(frame.render_distance * 0.8, frame.render_distance, from_center));
         factor = factor * (1.0 - smoothstep(max_dist * 0.8, max_dist, walked));
         let transmittance = pow(1.0 - factor * calc_cloud_opacity(curr), step_size);
         if (transmittance < 0.99) {
@@ -701,7 +670,7 @@ fn cloud(
             // directly so we add (toward sun) to walk into the lit
             // side.
             var scattering: f32 = 1.0;
-            scattering = scattering * pow(1.0 - calc_cloud_opacity(curr + to_sun *  8.0), 8.0);
+            scattering = scattering * pow(1.0 - calc_cloud_opacity(curr + to_sun * 8.0), 8.0);
             scattering = scattering * pow(1.0 - calc_cloud_opacity(curr + to_sun * 16.0), 8.0);
             let sun_col = vec3<f32>(3.5, 3.0, 2.9);
             let amb_col = vec3<f32>(0.18, 0.25, 0.5);
@@ -720,11 +689,7 @@ fn aces(x: vec3<f32>) -> vec3<f32> {
     let c = 2.43;
     let d = 0.59;
     let e = 0.14;
-    return clamp(
-        (x * (a * x + b)) / (x * (c * x + d) + e),
-        vec3<f32>(0.0),
-        vec3<f32>(1.0),
-    );
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), vec3<f32>(0.0), vec3<f32>(1.0),);
 }
 
 // Anchor the noise binding so wgpu pipeline reflection keeps it live
@@ -753,7 +718,8 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         // on) goes the full distance to the cloud layer.
         color = sky;
         dist = 65536.0;
-    } else {
+    }
+    else {
         // Chunk pixel — full lambert + shadow + ambient + fog +
         // texel-opacity-times-horizon-fade alpha via the shared helper
         // that's also called from `ssr()` so reflected pixels get the
@@ -787,14 +753,12 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             // sample point stays in a small numerical range — large
             // world coords kill the trig precision otherwise.
             if (material == WATER_ID && normal.y > 0.9) {
-                let surface_world = view_relative
-                    + vec3<f32>(frame.player_coord_mod.xyz)
-                    + frame.player_coord_frac.xyz;
+                let surface_world = view_relative + vec3<f32>(frame.player_coord_mod.xyz) + frame.player_coord_frac.xyz;
                 let wave_normal = calc_wave_normal(surface_world);
-                let to_camera = normalize(-view_relative);
+                let to_camera = normalize(- view_relative);
                 var cos_check = dot(to_camera, wave_normal);
                 if (inside_water) {
-                    cos_check = -cos_check;
+                    cos_check = - cos_check;
                 }
                 if (cos_check >= 0.0) {
                     normal = wave_normal;
@@ -804,9 +768,9 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             let reflect_dir = reflect(view_to_surface, normal);
             // C++ flips `cos_theta` when inside so the formula below
             // operates on the absolute angle to the surface normal.
-            var cos_theta = dot(-view_to_surface, normal);
+            var cos_theta = dot(- view_to_surface, normal);
             if (inside_water) {
-                cos_theta = -cos_theta;
+                cos_theta = - cos_theta;
             }
 
             // Reflection base colour. Above water: sky tint (with
@@ -818,7 +782,8 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             var reflection: vec3<f32>;
             if (inside_water) {
                 reflection = vec3<f32>(0.1);
-            } else {
+            }
+            else {
                 reflection = get_sky_color(reflect_dir);
                 if (volumetric_clouds) {
                     // Cloud raymarch in the reflection direction.
@@ -832,10 +797,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
                     // step count for cheaper reflection sampling
                     // (matches C++ `cloud(..., 0.5)`).
                     let surface_world = view_relative + frame.camera_pos.xyz;
-                    let refl_clouds = cloud(
-                        surface_world, reflect_dir, 65536.0,
-                        frame.camera_pos.xyz, 0.5,
-                        in.clip_position.xy);
+                    let refl_clouds = cloud(surface_world, reflect_dir, 65536.0, frame.camera_pos.xyz, 0.5, in.clip_position.xy);
                     reflection = mix(reflection, refl_clouds.rgb, refl_clouds.a);
                 }
             }
@@ -864,11 +826,14 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             var fresnel: f32 = 1.0;
             if (inside_water) {
                 fresnel = smoothstep(0.0, 1.0, 1.0 - cos_theta * cos_theta);
-            } else if (material == WATER_ID) {
+            }
+            else if (material == WATER_ID) {
                 fresnel = schlick(1.0, 1.33, cos_theta);
-            } else if (material == ICE_ID) {
+            }
+            else if (material == ICE_ID) {
                 fresnel = schlick(1.0, 2.42, cos_theta);
-            } else {
+            }
+            else {
                 reflection = reflection * albedo * 0.5;
             }
             color = mix(color, reflection, fresnel);
@@ -881,10 +846,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // and `center` are both the camera (consistent fade); `quality =
     // 1.0` for full step count.
     if (volumetric_clouds) {
-        let cloud_result = cloud(
-            frame.camera_pos.xyz, view_dir, dist,
-            frame.camera_pos.xyz, 1.0,
-            in.clip_position.xy);
+        let cloud_result = cloud(frame.camera_pos.xyz, view_dir, dist, frame.camera_pos.xyz, 1.0, in.clip_position.xy);
         color = mix(color, cloud_result.rgb, cloud_result.a);
     }
 

@@ -45,7 +45,9 @@ use std::time::Instant;
 
 use cgmath::{InnerSpace, Matrix4, Point3, SquareMatrix, Vector3};
 
-use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, register_base_blocks};
+use crate::blocks::{
+    BaseBlocks, BlockData, BlockRegistry, FaceMapping, State, register_base_blocks,
+};
 use crate::chunks::Chunk;
 use crate::commands::{CommandRegistry, register_base_commands};
 use crate::input::{InputState, Key, MouseButton};
@@ -1541,8 +1543,21 @@ impl Game {
         if existing != self.base_blocks.air && existing != self.base_blocks.water {
             return;
         }
-        // `set_block` handles all dirty-mesh marking — see `try_break`.
-        self.world.set_block(target, placed_id, true);
+        // For orientation-bearing blocks (logs etc.), pick the placement
+        // state from the clicked face's normal — Minecraft-style: the
+        // log's cap axis is whichever axis the normal lies along, and the
+        // sign distinguishes the two ends of that axis (the texture isn't
+        // necessarily symmetric, so we keep all 6 orientations rather
+        // than collapsing to 3).
+        let placed_info = self.registry.get(placed_id);
+        let placed_state = match placed_info.face_mapping {
+            FaceMapping::AxisAligned => state_from_face_normal(hit.normal),
+            FaceMapping::Static => State::default(),
+        };
+        // `set_block_with_state` handles all dirty-mesh marking — see
+        // `try_break`.
+        self.world
+            .set_block_with_state(target, placed_id, placed_state, true);
 
         // Decrement the hotbar stack. In creative we could keep the stack
         // full, but the C++ build always decrements — so we mirror that.
@@ -1567,6 +1582,40 @@ impl Game {
             .wrapping_add(1_442_695_040_888_963_407);
         // Take the high 53 bits and divide by 2^53.
         ((self.rng >> 11) as f64) / 9_007_199_254_740_992.0
+    }
+}
+
+/// Map a clicked-face normal to a state byte for `FaceMapping::AxisAligned`
+/// blocks (logs etc.): each unit axis direction picks one of six discrete
+/// states. Mirrors Minecraft log placement — the cap axis is whichever
+/// axis the normal lies along, and the sign distinguishes the two ends.
+///
+/// | normal       | state |
+/// |--------------|-------|
+/// | `(0,  1, 0)` | 0     |
+/// | `(0, -1, 0)` | 1     |
+/// | `(1,  0, 0)` | 2     |
+/// | `(-1, 0, 0)` | 3     |
+/// | `(0,  0, 1)` | 4     |
+/// | `(0,  0,-1)` | 5     |
+///
+/// Falls back to `State(0)` (vertical / +Y) for any non-axis-aligned
+/// input, including the zero vector (a ray-start-inside-solid hit).
+fn state_from_face_normal(normal: Vec3i) -> State {
+    if normal.y > 0 {
+        State(0)
+    } else if normal.y < 0 {
+        State(1)
+    } else if normal.x > 0 {
+        State(2)
+    } else if normal.x < 0 {
+        State(3)
+    } else if normal.z > 0 {
+        State(4)
+    } else if normal.z < 0 {
+        State(5)
+    } else {
+        State(0)
     }
 }
 
@@ -1772,5 +1821,25 @@ impl Game {
             .into_iter()
             .rev()
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_from_face_normal_covers_six_axis_directions() {
+        // ±Y caps map to states 0 / 1 (Y-axis log, default upright).
+        assert_eq!(state_from_face_normal(Vec3i::new(0, 1, 0)), State(0));
+        assert_eq!(state_from_face_normal(Vec3i::new(0, -1, 0)), State(1));
+        // ±X caps map to states 2 / 3.
+        assert_eq!(state_from_face_normal(Vec3i::new(1, 0, 0)), State(2));
+        assert_eq!(state_from_face_normal(Vec3i::new(-1, 0, 0)), State(3));
+        // ±Z caps map to states 4 / 5.
+        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, 1)), State(4));
+        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, -1)), State(5));
+        // Zero normal (ray started inside solid) falls back to vertical.
+        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, 0)), State(0));
     }
 }
