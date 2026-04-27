@@ -59,10 +59,6 @@ pub struct Player {
     running: bool,
     jumps: i32,
     game_mode: GameMode,
-    health: f64,
-    max_health: f64,
-    heal_speed: f64,
-    fall_damage: f64,
     inventory: [[ItemStack; 10]; 4],
     held_item_stack_index: usize,
 }
@@ -76,8 +72,6 @@ impl Player {
     pub const MAX_JUMPS: i32 = 3;
     /// Eye height above the player's foot coordinate.
     pub const LOOK_HEIGHT: f64 = 1.6;
-    /// Default and starting health.
-    pub const DEFAULT_HEALTH: f64 = 20.0;
 
     // ----- getters -----
 
@@ -157,16 +151,6 @@ impl Player {
     }
 
     #[must_use]
-    pub fn health(&self) -> f64 {
-        self.health
-    }
-
-    #[must_use]
-    pub fn max_health(&self) -> f64 {
-        self.max_health
-    }
-
-    #[must_use]
     pub fn held_item_stack_index(&self) -> usize {
         self.held_item_stack_index
     }
@@ -214,11 +198,6 @@ impl Player {
             GameMode::Survival => self.cross_wall = false,
             GameMode::Creative => self.cross_wall = value,
         }
-    }
-
-    /// Clamped to `0.0..=max_health`.
-    pub fn set_health(&mut self, value: f64) {
-        self.health = value.clamp(0.0, self.max_health);
     }
 
     /// Switches mode and applies the C++ side-effects: Creative forces
@@ -295,12 +274,6 @@ impl Player {
 
     // ----- spawn / movement events -----
 
-    /// Reset to spawn point at `(0, 128, 0)` with full health.
-    pub fn spawn(&mut self) {
-        self.set_coord(Vec3d::new(0.0, 128.0, 0.0));
-        self.health = self.max_health;
-    }
-
     /// Jump key handler. `just_pressed` distinguishes a fresh press from a
     /// held key (only fresh presses can consume a mid-air jump).
     pub fn on_jump(&mut self, just_pressed: bool) {
@@ -361,39 +334,15 @@ impl Player {
 
         // State flags.
         let vertical_hit = self.velocity.y != velocity_original.y;
-        self.near_wall = velocity_original.x != self.velocity.x
-            || velocity_original.z != self.velocity.z;
+        self.near_wall =
+            velocity_original.x != self.velocity.x || velocity_original.z != self.velocity.z;
 
-        if vertical_hit && velocity_original.y < 0.0 {
-            self.grounded = true;
-            if velocity_original.y < -0.4 && self.game_mode == GameMode::Survival {
-                self.health += velocity_original.y * self.fall_damage;
-            }
-        } else {
-            self.grounded = false;
-        }
+        self.grounded = vertical_hit && velocity_original.y < 0.0;
 
         self.in_water = view.in_water(player_aabb);
 
         if self.flying || self.cross_wall || self.grounded {
             self.jumps = 0;
-        }
-
-        // Health regen / void damage / respawn.
-        if self.game_mode == GameMode::Survival {
-            if self.health > 0.0 {
-                if self.coord.y < -100.0 {
-                    self.health -= (-100.0 - self.coord.y) / 100.0;
-                }
-                if self.health < self.max_health {
-                    self.health += self.heal_speed;
-                }
-                if self.health > self.max_health {
-                    self.health = self.max_health;
-                }
-            } else {
-                self.spawn();
-            }
         }
     }
 
@@ -444,10 +393,6 @@ impl Default for Player {
             running: false,
             jumps: 0,
             game_mode: GameMode::Survival,
-            health: Self::DEFAULT_HEALTH,
-            max_health: Self::DEFAULT_HEALTH,
-            heal_speed: 0.01,
-            fall_damage: 5.0,
             inventory: Default::default(),
             held_item_stack_index: 0,
         }
@@ -460,7 +405,7 @@ impl Default for Player {
 #[allow(clippy::float_cmp)] // exact constants and round-trips throughout
 mod tests {
     use super::*;
-    use crate::blocks::{register_base_blocks, BlockData, BlockRegistry};
+    use crate::blocks::{BlockData, BlockRegistry, register_base_blocks};
 
     /// `BlockView` returning a single block id everywhere — used by the
     /// `validate_block_placement` test that needs a non-air world. Defined
@@ -506,11 +451,9 @@ mod tests {
     }
 
     #[test]
-    fn default_player_is_at_spawn_with_full_health() {
+    fn default_player_is_at_spawn() {
         let p = Player::default();
         assert_eq!(p.coord(), Vec3d::new(0.0, 128.0, 0.0));
-        assert!((p.health() - Player::DEFAULT_HEALTH).abs() < 1e-12);
-        assert!((p.max_health() - Player::DEFAULT_HEALTH).abs() < 1e-12);
         assert_eq!(p.game_mode(), GameMode::Survival);
         assert!(!p.flying());
         assert!(!p.cross_wall());
@@ -532,17 +475,6 @@ mod tests {
         assert!(p.orientation().pitch.abs() <= std::f64::consts::FRAC_PI_2 + 1e-12);
         p.set_orientation(Eulerd::new(0.0, -std::f64::consts::PI, 0.0));
         assert!(p.orientation().pitch.abs() <= std::f64::consts::FRAC_PI_2 + 1e-12);
-    }
-
-    #[test]
-    fn set_health_clamps_to_zero_max_range() {
-        let mut p = Player::default();
-        p.set_health(-5.0);
-        assert!((p.health() - 0.0).abs() < 1e-12);
-        p.set_health(1000.0);
-        assert!((p.health() - p.max_health()).abs() < 1e-12);
-        p.set_health(7.5);
-        assert!((p.health() - 7.5).abs() < 1e-12);
     }
 
     #[test]
@@ -664,23 +596,19 @@ mod tests {
     }
 
     #[test]
-    fn spawn_resets_coord_and_health() {
-        let mut p = Player::default();
-        p.set_coord(Vec3d::new(50.0, 50.0, 50.0));
-        p.set_health(2.0);
-        p.spawn();
-        assert_eq!(p.coord(), Vec3d::new(0.0, 128.0, 0.0));
-        assert!((p.health() - p.max_health()).abs() < 1e-12);
-    }
-
-    #[test]
     fn validate_block_placement_allows_placement_into_air_far_from_player() {
         let mut registry = BlockRegistry::new();
         let base = register_base_blocks(&mut registry);
         let p = Player::default();
         let view = EmptyWorld;
         // Place rock 10 blocks below the player — air target, no hitbox overlap.
-        assert!(p.validate_block_placement(&view, Vec3i::new(0, 100, 0), base.rock, &base, &registry));
+        assert!(p.validate_block_placement(
+            &view,
+            Vec3i::new(0, 100, 0),
+            base.rock,
+            &base,
+            &registry
+        ));
     }
 
     #[test]
@@ -689,7 +617,13 @@ mod tests {
         let base = register_base_blocks(&mut registry);
         let p = Player::default();
         let view = ConstantWorld(base.stone);
-        assert!(!p.validate_block_placement(&view, Vec3i::new(0, 100, 0), base.rock, &base, &registry));
+        assert!(!p.validate_block_placement(
+            &view,
+            Vec3i::new(0, 100, 0),
+            base.rock,
+            &base,
+            &registry
+        ));
     }
 
     #[test]

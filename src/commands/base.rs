@@ -60,7 +60,7 @@ pub fn register_base_commands(
                 "          F7 = switch full screen mode, F8 = fast forward game time".to_owned(),
             );
             messages.push(
-                "Commands: /help | /clear | /kit | /give <id> <amount> | /tp <x> <y> <z> | /clearinventory | /suicide |"
+                "Commands: /help | /clear | /kit | /give <id> <amount> | /tp <x> <y> <z> | /clearinventory |"
                     .to_owned(),
             );
             messages.push(
@@ -154,18 +154,6 @@ pub fn register_base_commands(
                 return false;
             }
             world.player_mut().clear_inventory();
-            true
-        }),
-    );
-
-    // /suicide
-    registry.add(
-        "/suicide",
-        Command::new(|args, world, _messages| {
-            if args.len() != 1 {
-                return false;
-            }
-            world.player_mut().spawn();
             true
         }),
     );

@@ -28,6 +28,14 @@ pub struct Gfx {
     queue: wgpu::Queue,
     surface: wgpu::Surface<'static>,
     surface_config: wgpu::SurfaceConfiguration,
+    /// Linear (non-sRGB) view format created alongside the sRGB
+    /// surface. egui draws gamma-encoded colors and would land
+    /// double-corrected through an sRGB attachment (the GPU treats
+    /// store-side as sRGB and applies its own encode), so the egui
+    /// pass binds a [`Self::egui_view_format`] view of the same
+    /// surface texture instead — no extra encode, colors land verbatim.
+    /// Equals `surface_format` when the surface isn't sRGB.
+    egui_view_format: wgpu::TextureFormat,
 }
 
 impl Gfx {
@@ -116,6 +124,19 @@ impl Gfx {
             wgpu::TextureUsages::RENDER_ATTACHMENT
         };
 
+        // egui paints gamma-encoded colors. If we hand it the same sRGB
+        // view the world pass uses, the GPU re-encodes on store and the
+        // UI ends up too dark. Compute a linear (no-suffix) format that
+        // shares the same memory layout, declare it in `view_formats`,
+        // and the egui pass will create a view in this format. Equals
+        // `surface_format` when the surface isn't sRGB (rare path).
+        let egui_view_format = surface_format.remove_srgb_suffix();
+        let view_formats = if egui_view_format == surface_format {
+            vec![]
+        } else {
+            vec![egui_view_format]
+        };
+
         let surface_config = wgpu::SurfaceConfiguration {
             usage,
             format: surface_format,
@@ -124,7 +145,7 @@ impl Gfx {
             present_mode: wgpu::PresentMode::Fifo,
             desired_maximum_frame_latency: 2,
             alpha_mode,
-            view_formats: vec![],
+            view_formats,
         };
 
         surface.configure(&device, &surface_config);
@@ -133,6 +154,7 @@ impl Gfx {
             width,
             height,
             ?surface_format,
+            ?egui_view_format,
             ?alpha_mode,
             "wgpu surface configured"
         );
@@ -145,6 +167,7 @@ impl Gfx {
             queue,
             surface,
             surface_config,
+            egui_view_format,
         }
     }
 
@@ -205,6 +228,14 @@ impl Gfx {
     #[must_use]
     pub fn surface_format(&self) -> wgpu::TextureFormat {
         self.surface_config.format
+    }
+
+    /// The linear (non-sRGB) view format used by the egui pass. See
+    /// [`Self::egui_view_format`] field doc for why this differs from
+    /// [`Self::surface_format`].
+    #[must_use]
+    pub fn egui_view_format(&self) -> wgpu::TextureFormat {
+        self.egui_view_format
     }
 
     /// Surface dimensions (width, height) in physical pixels.

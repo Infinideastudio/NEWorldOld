@@ -12,8 +12,11 @@ use super::Player;
 
 /// Magic bytes for the player save file (`b"NEWP"` little-endian).
 const PLAYER_SAVE_MAGIC: u32 = 0x4E45_5750;
-/// Current player save format version.
-const PLAYER_SAVE_VERSION: u32 = 1;
+/// Current player save format version. Bumped to 2 when the health /
+/// fall-damage / heal-speed fields were removed — pre-bump saves no
+/// longer decode (no migration path; this codebase doesn't promise
+/// save-format stability mid-development).
+const PLAYER_SAVE_VERSION: u32 = 2;
 
 /// Errors returned by [`Player::save_to`] / [`Player::load_from`].
 #[derive(Debug, Error)]
@@ -152,7 +155,6 @@ mod tests {
         original.set_coord(Vec3d::new(1.5, 130.0, -2.5));
         original.set_orientation(Eulerd::new(0.3, 0.4, 0.0));
         original.set_game_mode(GameMode::Creative);
-        original.set_health(15.0);
         original.set_held_item_stack_index(4);
         *original.inventory_item_stack_mut(2, 3) = ItemStack::new(Id(7), 42);
 
@@ -162,7 +164,6 @@ mod tests {
         assert_eq!(loaded.coord(), original.coord());
         assert_eq!(loaded.orientation(), original.orientation());
         assert_eq!(loaded.game_mode(), original.game_mode());
-        assert!((loaded.health() - original.health()).abs() < 1e-12);
         assert_eq!(loaded.held_item_stack_index(), original.held_item_stack_index());
         assert_eq!(loaded.inventory_item_stack(2, 3).id, Id(7));
         assert_eq!(loaded.inventory_item_stack(2, 3).count, 42);

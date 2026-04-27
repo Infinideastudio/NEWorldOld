@@ -841,7 +841,7 @@ impl World {
     pub fn random_tick(&mut self) {
         let phase = self.random_tick_phase;
         self.random_tick_phase = self.random_tick_phase.wrapping_add(1);
-        if phase % RANDOM_TICK_PERIOD != 0 {
+        if !phase.is_multiple_of(RANDOM_TICK_PERIOD) {
             return;
         }
 

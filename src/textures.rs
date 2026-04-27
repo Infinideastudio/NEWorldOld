@@ -46,6 +46,15 @@ pub struct AtlasArray {
     /// be handed to egui (which only knows D2 textures). Includes every mip
     /// level so atlases with mipmaps still sample the full chain through
     /// these views.
+    ///
+    /// **Format note.** When the underlying texture is sRGB, these views
+    /// are created in the matching unorm format instead — egui paints
+    /// in gamma space, so a sample through an sRGB view would linearize
+    /// the texel and let egui's gamma-space blend over-brighten the
+    /// result. Unorm views hand the raw bytes back to the shader, which
+    /// is what egui expects. The chunk pipeline uses the sRGB-format
+    /// array `view` above for its lit math, so the two consumers see
+    /// the same memory through correctly-suited views.
     pub layer_views: Vec<wgpu::TextureView>,
     pub layers: u32,
     /// Number of mip levels uploaded. `1` for atlases without mipmaps;
@@ -431,6 +440,15 @@ fn load_strip_array(
         height: width,
         depth_or_array_layers: layers,
     };
+    // Per-layer egui views need a non-sRGB view format on sRGB
+    // textures — see `AtlasArray::layer_views` doc. Declare the alias
+    // here so the views can be created later.
+    let layer_view_format = format.remove_srgb_suffix();
+    let view_formats: &[wgpu::TextureFormat] = if layer_view_format == format {
+        &[]
+    } else {
+        std::slice::from_ref(&layer_view_format)
+    };
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label,
         size,
@@ -439,7 +457,7 @@ fn load_strip_array(
         dimension: wgpu::TextureDimension::D2,
         format,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        view_formats: &[],
+        view_formats,
     });
 
     // The C++ `render::load_png_image` Y-flips the PNG during decode (see
@@ -506,6 +524,10 @@ fn load_strip_array(
         let layer_label = label.map(|l| format!("{l}.layer{layer}"));
         layer_views.push(texture.create_view(&wgpu::TextureViewDescriptor {
             label: layer_label.as_deref(),
+            // Unorm view of an sRGB texture so egui's gamma-space
+            // shader sees raw bytes; chunk pipeline still samples
+            // through the sRGB `view` and gets hardware linearization.
+            format: Some(layer_view_format),
             dimension: Some(wgpu::TextureViewDimension::D2),
             base_array_layer: layer,
             array_layer_count: Some(1),

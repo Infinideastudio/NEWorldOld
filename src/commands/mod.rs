@@ -183,14 +183,14 @@ mod tests {
     }
 
     #[test]
-    fn register_base_commands_registers_exactly_twelve() {
+    fn register_base_commands_registers_exactly_eleven() {
         let mut br = BlockRegistry::new();
         let base = blocks::register_base_blocks(&mut br);
         let mut r = CommandRegistry::new();
         register_base_commands(&mut r, &base, Arc::new(br));
-        // /help, /clear, /kit, /give, /tp, /clearinventory, /suicide,
-        // /setblock, /tree, /explode, /time, /gamemode = 12.
-        assert_eq!(r.entries().count(), 12);
+        // /help, /clear, /kit, /give, /tp, /clearinventory, /setblock,
+        // /tree, /explode, /time, /gamemode = 11.
+        assert_eq!(r.entries().count(), 11);
     }
 
     #[test]

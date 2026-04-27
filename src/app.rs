@@ -68,6 +68,22 @@ struct AppState {
     input: InputState,
     last_tick: Instant,
     start_time: Instant,
+    /// Start of the current FPS sampling window. The displayed FPS is
+    /// `fps_accum_frames / (now - fps_accum_start).as_secs_f32()`,
+    /// computed once per second so the readout doesn't jitter on
+    /// individual frame-time spikes (which `1 / dt` would amplify).
+    fps_accum_start: Instant,
+    fps_accum_frames: u32,
+    /// Last computed FPS — sticky between window rollovers.
+    fps: f32,
+    /// Sim-tick counter window (mirrors fps machinery, but counts
+    /// `tick_sim` invocations instead of `frame` invocations). With the
+    /// fixed-step accumulator clamped at `MAX_TICKS_PER_FRAME`, ups
+    /// stays at `1 / TICK_DT = 30` in the steady state and dips when the
+    /// frame rate falls so far that the simulation can't keep up.
+    ups_accum_start: Instant,
+    ups_accum_ticks: u32,
+    ups: f32,
     /// Fixed-step accumulator. Drained in [`App::TICK_DT`] slices on every
     /// frame so the simulation runs at a fixed rate independent of render
     /// FPS — see `docs/rust_migration.md` §4.16.
@@ -304,11 +320,15 @@ impl App {
         ) {
             Ok(g) => {
                 state.game = Some(g);
-                state.game_screen = Some(GameScreen::new(
+                let mut gs = GameScreen::new(
                     Arc::clone(&state.config),
                     Arc::clone(&state.i18n),
                     Arc::clone(&state.world_actions),
-                ));
+                );
+                // Capture renderer backend once; the wgpu adapter info is
+                // immutable for the session, and the F3 panel surfaces it.
+                gs.backend = backend_label(state.gfx.adapter().get_info().backend);
+                state.game_screen = Some(gs);
                 state.screen_stack = ScreenStack::new();
                 state.game_loaded.store(true, Ordering::Relaxed);
                 state.tick_accumulator = 0.0;
@@ -430,6 +450,7 @@ impl App {
                 }
                 state.tick_accumulator -= Self::TICK_DT;
                 ticks += 1;
+                state.ups_accum_ticks += 1;
             }
             if state.tick_accumulator > Self::TICK_DT * Self::MAX_TICKS_PER_FRAME as f32 {
                 state.tick_accumulator = 0.0;
@@ -484,10 +505,30 @@ impl App {
         // ---------- consume per-frame input transients ----------
         state.input.begin_frame();
 
+        // ---------- FPS / UPS over a 1 s window ----------
+        // Accumulate frame and tick counts instead of computing 1/dt:
+        // averaging over a fixed window is steadier than per-frame
+        // reciprocals, which spike on any single slow frame. UPS rides
+        // the same window so the two readouts stay in lockstep.
+        state.fps_accum_frames += 1;
+        let elapsed = now.duration_since(state.fps_accum_start).as_secs_f32();
+        if elapsed >= 1.0 {
+            state.fps = state.fps_accum_frames as f32 / elapsed;
+            state.fps_accum_frames = 0;
+            state.fps_accum_start = now;
+        }
+        let ups_elapsed = now.duration_since(state.ups_accum_start).as_secs_f32();
+        if ups_elapsed >= 1.0 {
+            state.ups = state.ups_accum_ticks as f32 / ups_elapsed;
+            state.ups_accum_ticks = 0;
+            state.ups_accum_start = now;
+        }
+
         // ---------- update game screen with latest frame data ----------
         if let (Some(game), Some(game_screen)) = (state.game.as_ref(), state.game_screen.as_mut()) {
-            let fps = if dt > 0.0 { 1.0 / dt } else { 0.0 };
-            game_screen.fps = fps;
+            let player = game.world.player();
+            game_screen.fps = state.fps;
+            game_screen.ups = state.ups;
             game_screen.camera_pos = [
                 game.camera.position.x,
                 game.camera.position.y,
@@ -495,7 +536,26 @@ impl App {
             ];
             game_screen.yaw = game.camera.yaw;
             game_screen.pitch = game.camera.pitch;
-            game_screen.chunk_count = game.chunk_meshes.len();
+            game_screen.chunk_count = game.world.loaded_count();
+            game_screen.rendered_chunks = game.last_rendered_chunks;
+            game_screen.unloaded_chunks = game.world.unloaded_chunks;
+            game_screen.meshed_chunks = game.chunk_meshes.len();
+            game_screen.creative = matches!(
+                player.game_mode(),
+                crate::worlds::player::GameMode::Creative
+            );
+            game_screen.cross_wall = player.cross_wall();
+            game_screen.grounded = player.grounded();
+            game_screen.near_wall = player.near_wall();
+            game_screen.in_water = player.in_water();
+            game_screen.game_time = game.world.game_time();
+            game_screen.updated_blocks = game.world.updated_blocks;
+            game_screen.pending_block_updates = game.world.block_update_queue().len();
+            // Read advanced_render from Config — Game keeps a private
+            // mirror but the live truth is the config lock.
+            game_screen.advanced_render =
+                state.config.lock().map(|c| c.advanced_render).unwrap_or(false);
+            game_screen.show_shadow_map = game.show_shadow_map;
             game_screen.chat_history = game
                 .visible_chat_lines(chat_open)
                 .into_iter()
@@ -620,6 +680,16 @@ impl App {
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
+        // Linear-format alias of the same surface texture. Used by the
+        // egui pass so its gamma-encoded colors land verbatim instead
+        // of being silently double-corrected by the sRGB attachment's
+        // store-side encode. When the surface isn't sRGB, this format
+        // equals the default and the view degenerates to an alias.
+        let egui_view = frame.texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("neworld.egui_view"),
+            format: Some(state.gfx.egui_view_format()),
+            ..wgpu::TextureViewDescriptor::default()
+        });
 
         let mut encoder = state
             .gfx
@@ -671,7 +741,9 @@ impl App {
             let mut egui_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("neworld.egui_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    // Linear-format view of the surface — see comment
+                    // above where `egui_view` is created.
+                    view: &egui_view,
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -737,6 +809,21 @@ impl App {
         let _ = window.set_cursor_grab(CursorGrabMode::None);
         window.set_cursor_visible(true);
         *state = false;
+    }
+}
+
+/// Short human label for a wgpu backend, surfaced in the F3 debug
+/// panel. The C++ build prints `[GL {Major}.{Minor}]`; the Rust port
+/// prints `[Vulkan]` / `[DX12]` / etc. depending on what the adapter
+/// landed on.
+fn backend_label(backend: wgpu::Backend) -> &'static str {
+    match backend {
+        wgpu::Backend::Vulkan => "Vulkan",
+        wgpu::Backend::Metal => "Metal",
+        wgpu::Backend::Dx12 => "DX12",
+        wgpu::Backend::Gl => "OpenGL",
+        wgpu::Backend::BrowserWebGpu => "WebGPU",
+        wgpu::Backend::Noop => "noop",
     }
 }
 
@@ -868,9 +955,13 @@ impl ApplicationHandler for App {
 
         let text = TextRenderer::new(gfx.device(), gfx.queue(), gfx.surface_format());
 
+        // Egui uses the linear-format sibling view of the same surface
+        // texture. With an sRGB surface format the GPU's automatic
+        // store-side encode would gamma-correct egui's already-gamma
+        // pixels twice; the unorm view bypasses that.
         let mut egui_renderer = EguiRenderer::new(
             gfx.device(),
-            gfx.surface_format(),
+            gfx.egui_view_format(),
             &window,
             window.scale_factor() as f32,
         );
@@ -930,6 +1021,12 @@ impl ApplicationHandler for App {
             input: InputState::new(),
             last_tick: now,
             start_time: now,
+            fps_accum_start: now,
+            fps_accum_frames: 0,
+            fps: 0.0,
+            ups_accum_start: now,
+            ups_accum_ticks: 0,
+            ups: 0.0,
             tick_accumulator: 0.0,
             cursor_grabbed: false,
             egui_renderer,

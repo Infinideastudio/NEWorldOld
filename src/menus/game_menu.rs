@@ -40,10 +40,37 @@ use crate::worlds::Player;
 pub struct GameScreen {
     pub paused: bool,
     pub fps: f32,
+    pub ups: f32,
     pub camera_pos: [f64; 3],
     pub yaw: f64,
     pub pitch: f64,
+    /// Total chunks loaded in `World` (including empty sky chunks).
     pub chunk_count: usize,
+    /// Chunk meshes that survived camera frustum + distance culling on
+    /// the last drawn frame. ≤ `chunk_count` and ≤ `meshed_chunks`.
+    pub rendered_chunks: usize,
+    /// Wrapping count of chunks unloaded since world load — running tally,
+    /// not a current population.
+    pub unloaded_chunks: u32,
+    /// Chunks with an uploaded mesh. Mirrors `Game::chunk_meshes.len()`.
+    pub meshed_chunks: usize,
+    /// Player game-mode-driven flags surfaced in the F3 panel.
+    pub creative: bool,
+    pub cross_wall: bool,
+    pub grounded: bool,
+    pub near_wall: bool,
+    pub in_water: bool,
+    /// World tick counter (30 Hz). C++ formats as h:m:s plus the raw value.
+    pub game_time: u32,
+    /// Wrapping count of block updates resolved since world load.
+    pub updated_blocks: u32,
+    /// Pending entries in `World::block_update_queue`.
+    pub pending_block_updates: usize,
+    pub advanced_render: bool,
+    pub show_shadow_map: bool,
+    /// Renderer backend label (e.g. "Vulkan", "DX12"), pulled once at
+    /// startup. Mirrors the C++ `[GL {Major}.{Minor}]` annotation.
+    pub backend: &'static str,
     /// Visible chat history (most-recent last). Set by app each frame.
     pub chat_history: Vec<String>,
     pub hud: Hud,
@@ -69,10 +96,25 @@ impl GameScreen {
         Self {
             paused: false,
             fps: 0.0,
+            ups: 0.0,
             camera_pos: [0.0; 3],
             yaw: 0.0,
             pitch: 0.0,
             chunk_count: 0,
+            rendered_chunks: 0,
+            unloaded_chunks: 0,
+            meshed_chunks: 0,
+            creative: false,
+            cross_wall: false,
+            grounded: false,
+            near_wall: false,
+            in_water: false,
+            game_time: 0,
+            updated_blocks: 0,
+            pending_block_updates: 0,
+            advanced_render: false,
+            show_shadow_map: false,
+            backend: "wgpu",
             chat_history: Vec::new(),
             hud: Hud::default(),
             inventory: Inventory::default(),
@@ -125,18 +167,6 @@ impl GameScreen {
             }
         }
 
-        // Top status bar.
-        egui::Panel::top("game_hud").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.colored_label(egui::Color32::WHITE, format!("FPS: {:.0}", self.fps));
-                ui.separator();
-                ui.colored_label(
-                    egui::Color32::from_gray(200),
-                    "E: inventory   F3: debug   T: chat   F11: fullscreen   Esc: menu",
-                );
-            });
-        });
-
         // HUD elements: crosshair, debug panel, chat bar. The selection
         // wireframe runs as a real 3-D pass via `SelectionPipeline` — see
         // `Game::record_world_pass`.
@@ -146,14 +176,30 @@ impl GameScreen {
             yaw: self.yaw,
             pitch: self.pitch,
             fps: self.fps,
+            ups: self.ups,
             chunk_count: self.chunk_count,
+            rendered_chunks: self.rendered_chunks,
+            unloaded_chunks: self.unloaded_chunks,
+            meshed_chunks: self.meshed_chunks,
+            creative: self.creative,
+            cross_wall: self.cross_wall,
+            grounded: self.grounded,
+            near_wall: self.near_wall,
+            in_water: self.in_water,
+            game_time: self.game_time,
+            updated_blocks: self.updated_blocks,
+            pending_block_updates: self.pending_block_updates,
+            advanced_render: self.advanced_render,
+            show_shadow_map: self.show_shadow_map,
+            backend: self.backend,
             chat_history: &history,
         };
         self.hud.render(ctx, &frame);
 
         // Inventory overlay (always renders the hotbar; renders the full
         // grid only when `inventory_open`).
-        self.inventory.render(ctx, player, registry, air_id, block_icons);
+        self.inventory
+            .render(ctx, player, registry, air_id, block_icons);
 
         // Pause menu overlay — mirror of `old/src/menus/game_menu.cpp`.
         // Uses the same `caption_row` + `pair_row` chrome as every other

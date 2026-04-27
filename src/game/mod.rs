@@ -178,6 +178,13 @@ pub struct Game {
     /// Wireframe outline for the currently-selected block. Drawn as a real
     /// 3-D pass against the world depth buffer, so solid geometry occludes
     /// it correctly and UI elements (egui) sit on top.
+    /// Block-selection wireframe **and** the center-screen crosshair —
+    /// the two were originally separate pipelines but share enough state
+    /// (line-list topology, color-inversion blend, frame-uniform bind
+    /// group, depth-write off) that they live in one
+    /// [`SelectionPipeline`] now. Crosshair vertices use a screen-space
+    /// kind that emits clip-space `z = 1.0`, beating the cube's reverse-Z
+    /// `Greater` test against any geometry the world pass wrote.
     pub selection_pipeline: SelectionPipeline,
     /// Full-screen water-textured tint, drawn after the world pass when the
     /// player's eye is inside a water block (mirrors C++ behaviour). Toggle
@@ -197,6 +204,11 @@ pub struct Game {
     /// big win at high render distance, where the encoder's `finish` cost
     /// is dominated by the recorded draw count.
     camera_frustum: Frustumf,
+    /// Number of chunk meshes that survived camera frustum + distance
+    /// culling on the last frame. Surfaced in the F3 debug overlay as
+    /// "rendered" — distinct from `chunk_meshes.len()` which counts every
+    /// uploaded mesh, visible or not.
+    pub last_rendered_chunks: usize,
     /// Chat lines + the time they were posted.
     pub chat_messages: Vec<(String, Instant)>,
     /// `[F3]` — slash-command dispatch table.
@@ -394,6 +406,7 @@ impl Game {
             // it for culling. `Frustum::from_mvp(identity)` is the unit
             // cube and would falsely accept everything in the meantime.
             camera_frustum: Frustumf::from_mvp(&cgmath::Matrix4::identity()),
+            last_rendered_chunks: 0,
             chat_messages: Vec::new(),
             commands,
             registry: Arc::clone(registry),
@@ -1290,6 +1303,7 @@ impl Game {
                 self.camera_frustum.test(&Aabb3f::new(lo, hi))
             })
             .collect();
+        self.last_rendered_chunks = camera_visible.len();
         // Shadow pass uses a sun-POV ortho whose world-space footprint
         // is roughly `shadow_distance` chunks per side. A chunk visible
         // to the sun isn't necessarily visible to the camera (it can be
@@ -1369,12 +1383,20 @@ impl Game {
             self.particle_pipeline
                 .render(&mut pass, &self.particle_mesh);
             // Selection wireframe rides the same depth buffer so terrain
-            // occludes it correctly.
-            self.selection_pipeline.draw(&mut pass);
-            // Underwater tint goes last so a selected block visible from
-            // inside water still gets the water cast applied. No depth
-            // read; the draw is a flat full-screen quad.
+            // occludes it correctly. Pre-underwater so the water tint
+            // layers over it the same way the standalone selection
+            // pipeline did before the merge.
+            self.selection_pipeline.draw_cube(&mut pass);
+            // Underwater tint sits beneath the crosshair so the `+`
+            // stays readable through water. No depth read; the draw is
+            // a flat full-screen quad.
             self.underwater_pipeline.draw(&mut pass);
+            // Crosshair — drawn last (after all world overlays). The
+            // selection-pipeline merge keeps it on the same pipeline
+            // as the cube; the screen-space vertex kind emits clip
+            // `z = 1.0` so it beats the reverse-Z `Greater` test
+            // against any geometry the world pass wrote.
+            self.selection_pipeline.draw_crosshair(&mut pass);
 
             // F3+M shadow debug overlay sits on top of every world
             // overlay so the user can read its grayscale even when
