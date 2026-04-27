@@ -6,8 +6,8 @@
 
 The world, the blocks it contains and the block update functions together form an [abstract rewriting system](https://en.wikipedia.org/wiki/Abstract_rewriting_system). For such systems there are two desirable properties:
 
-* **Confluence (Church-Rosser):** if some world state $A$ might eventually turn into states $B$ or $C$ via zero or more block updates, there exists a world state $D$, such that both $B$ and $C$ might eventually turn into $D$ via zero or more block updates.
-* **Locality (semi-Thue):** the block update rules can be presented in the form of $s \rightarrow t$ where $s$ and $t$ are collections of blocks each associated with a relative coordinate, such that any occurrence of $s$ in the world can be replaced by $t$ in a block update.
+* **Confluence:** if some world state $A$ might eventually turn into states $B$ or $C$ via zero or more block updates, there exists a world state $D$, such that both $B$ and $C$ might eventually turn into $D$ via zero or more block updates.
+* **Locality:** the block update rules can be presented in the form of $s \rightarrow t$ where $s$ and $t$ are collections of blocks each associated with a relative coordinate, such that any occurrence of $s$ in the world can be replaced by $t$ in a block update.
 
 As an example, the vanilla Minecraft lighting system satisfies both properties:
 
@@ -24,6 +24,17 @@ Locality might be relatively less important, but they make block updates straigh
 
 ## Is satisfying these properties a severe limitation to what might be created?
 
-I am not too sure for now. At least [either](https://en.wikipedia.org/wiki/Lambda_calculus) [one](https://en.wikipedia.org/wiki/Semi-Thue_system) of them does not exclude the possibility of Turing completeness, and it seems possible that a $\lambda$-calculus defined using some notion of [explicit substitutions](https://en.wikipedia.org/wiki/Explicit_substitution) might satisfy both.
+The canonical computation model for these two properties is [asynchronous cellular automata](https://en.wikipedia.org/wiki/Asynchronous_cellular_automaton). It is known that asynchronous cellular automata can [simulate](https://arxiv.org/pdf/2502.05989) their synchronous counterparts, which are known to be Turing complete.
 
-As a note, structure generation (trees, villages etc.) can be implemented as expansion of special **structure blocks**, which are confluent and local block updates if we enforce a total order on blocks (e.g. ordered by hardness and then ID) such that in overlapping areas the blocks with higher precedence overwrite the lower. The world generator only needs to take care of the generation of initial structure blocks.
+## Example set of rules: the LCM3 circuits
+
+A possible design models synchronous digital circuits using per-block *local clock* and *data* states. Conceptually, *local clock* is a natural number that advances monotonically by block updates, and *data* is a boolean value representing the output signal of the block. We then have different update rules for logic gates and registers:
+
+* **Gates** (AND, OR, NOT, wires and forks): for a block at clock `t`, update rules are applicable iff all its inputs are at clock `t + 1` and all its outputs are either a gate at clock `t` or a register at clock `t + 1`. In this case, the block updates itself so that it carries data `f(inputs)` and has clock `t + 1`, where `f` is the boolean function corresponding to the logic gate (or identity if the block is a wire or fork).
+* **Registers** (flip-flops): for a block at clock `t`, update rules are applicable iff its input is at clock `t` and its output is either a gate at clock `t` or a register at clock `t + 1`. In this case, the block updates itself so that it carries data `input` and has clock `t + 1`.
+
+If in a circuit, all adjacent connected blocks have clock difference no more than one, then the rules maintain this invariant. Therefore, we can only store `clock % 3` at every block. This is why I call this design the "LCM3 (local clock mod 3) circuits".
+
+Apart from the orientation information (which faces are input/ouput interfaces), each block only has 2 × 3 = 6 possible states. The rewrite rules are clearly local. Also, note that for every adjacent connected pair, at most one of the two blocks can update next (by cases: \* → G, \* → R), and each update flips this ordering - so the system is a special case of [flip automata networks](https://arxiv.org/pdf/2502.05989) which is known to be confluent. Finally, note that the system simulates synchronous updates by having each node "progress at its own pace": *data* always represent the block state at *clock*, which is invariant under any particular update schedule.
+
+To drive LCM3 circuits, we need the inputs to clock on its own. This is simple: just connect a register back to itself so it keeps emitting clock signals with a constant data.
