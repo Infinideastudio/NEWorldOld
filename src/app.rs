@@ -554,6 +554,11 @@ impl App {
                 .into_iter()
                 .map(str::to_owned)
                 .collect();
+            // Selected block line for the F3 debug panel: coord + id +
+            // registry name, or `None` when the raycast missed.
+            game_screen.selected_block = game.selected_block_info().map(|(coord, id, name)| {
+                format!("({}, {}, {}) id {id} ({name})", coord.x, coord.y, coord.z)
+            });
         }
 
         // Belt-and-suspenders: any path that mutated `state.window`'s size

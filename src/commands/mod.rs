@@ -183,14 +183,14 @@ mod tests {
     }
 
     #[test]
-    fn register_base_commands_registers_exactly_eleven() {
+    fn register_base_commands_registers_all_entries() {
         let mut br = BlockRegistry::new();
         let base = blocks::register_base_blocks(&mut br);
         let mut r = CommandRegistry::new();
         register_base_commands(&mut r, &base, Arc::new(br));
-        // /help, /clear, /kit, /give, /tp, /clearinventory, /setblock,
-        // /tree, /explode, /time, /gamemode = 11.
-        assert_eq!(r.entries().count(), 11);
+        // 11 base-game commands + 2 LCM3 commands
+        // (/lcm3-clock-rate, /lcm3-reset) = 13.
+        assert_eq!(r.entries().count(), 13);
     }
 
     #[test]

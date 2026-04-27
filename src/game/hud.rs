@@ -35,6 +35,11 @@ pub struct HudFrame<'a> {
     pub show_shadow_map: bool,
     pub backend: &'a str,
     pub chat_history: &'a [&'a str],
+    /// Pre-formatted "Selected: …" line for the F3 debug panel — coord
+    /// + raw id + registry name of the cell the player is currently
+    /// aiming at, or `None` if the raycast missed. Set by the app each
+    /// frame from [`crate::game::Game::selected_block_info`].
+    pub selected_block: Option<&'a str>,
 }
 
 /// In-game HUD state.
@@ -206,6 +211,13 @@ impl Hud {
                             "{}/{} blocks updated",
                             f.updated_blocks, f.pending_block_updates
                         ),
+                    );
+                    line(
+                        ui,
+                        match f.selected_block {
+                            Some(s) => format!("Selected: {s}"),
+                            None => "Selected: none".to_owned(),
+                        },
                     );
                 });
             });

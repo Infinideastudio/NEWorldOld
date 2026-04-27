@@ -45,9 +45,7 @@ use std::time::Instant;
 
 use cgmath::{InnerSpace, Matrix4, Point3, SquareMatrix, Vector3};
 
-use crate::blocks::{
-    BaseBlocks, BlockData, BlockRegistry, FaceMapping, State, register_base_blocks,
-};
+use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, State, register_base_blocks};
 use crate::chunks::Chunk;
 use crate::commands::{CommandRegistry, register_base_commands};
 use crate::input::{InputState, Key, MouseButton};
@@ -107,7 +105,7 @@ fn default_sun_dir() -> Vector3<f32> {
 /// Maximum new mesh jobs to issue per frame. Caps the per-frame CPU spike
 /// when many chunks land at once (e.g. on the first frame, or after a fast
 /// teleport that invalidates everything in the load window).
-const MAX_MESH_DISPATCHES_PER_FRAME: usize = 8;
+const MAX_MESH_DISPATCHES_PER_FRAME: usize = 64;
 
 /// `sqrt(3)` to f32 precision. Used by `write_frame_uniforms` to scale the
 /// fog distance to the diagonal of the loaded chunk cube. `f32::sqrt` is
@@ -615,11 +613,17 @@ impl Game {
         // place). Suppressed while paused so a paused game stays perfectly
         // frozen.
         if !paused {
+            // `process_block_updates` now drives LCM3 circuits in
+            // addition to lighting — both rules are local and share
+            // the block-update queue (see
+            // `docs/block_updates.md`). The per-tick FF rate cap is
+            // enforced inside `process_block_updates` against
+            // `World::lcm3_clock_rate()`.
             self.world.process_block_updates();
-            // Random tick drives slow world dynamics: grass spread / smother
-            // and future tickable blocks. Cheap (per-chunk fixed sample
-            // count) but skipped while paused so a frozen world stays
-            // visually frozen.
+            // Random tick drives slow world dynamics: grass spread /
+            // smother and future tickable blocks. Cheap (per-chunk
+            // fixed sample count) but skipped while paused so a frozen
+            // world stays visually frozen.
             self.world.random_tick();
             // No drain into a separate dirty queue — `pump_meshing` walks
             // `World::drain_updated_chunks` directly each frame and
@@ -1543,17 +1547,19 @@ impl Game {
         if existing != self.base_blocks.air && existing != self.base_blocks.water {
             return;
         }
-        // For orientation-bearing blocks (logs etc.), pick the placement
-        // state from the clicked face's normal — Minecraft-style: the
-        // log's cap axis is whichever axis the normal lies along, and the
-        // sign distinguishes the two ends of that axis (the texture isn't
-        // necessarily symmetric, so we keep all 6 orientations rather
-        // than collapsing to 3).
+        // Derive a placement state via the block's `OrientationCodec`.
+        // For state-independent blocks the codec ignores the orientation
+        // index and returns `State::default()` (the `into` argument);
+        // for axis-aligned blocks (logs etc.) it packs the index into
+        // its orientation slot — Minecraft-style placement: the log's
+        // cap axis follows the clicked face normal, and the sign
+        // distinguishes the two ends of that axis (we keep all 6
+        // orientations because the bark / cap textures may be
+        // direction-asymmetric).
         let placed_info = self.registry.get(placed_id);
-        let placed_state = match placed_info.face_mapping {
-            FaceMapping::AxisAligned => state_from_face_normal(hit.normal),
-            FaceMapping::Static => State::default(),
-        };
+        let orientation_index = orientation_index_from_face_normal(hit.normal);
+        let placed_state =
+            (placed_info.orientation_codec.write)(orientation_index, State::default());
         // `set_block_with_state` handles all dirty-mesh marking — see
         // `try_break`.
         self.world
@@ -1585,12 +1591,13 @@ impl Game {
     }
 }
 
-/// Map a clicked-face normal to a state byte for `FaceMapping::AxisAligned`
-/// blocks (logs etc.): each unit axis direction picks one of six discrete
-/// states. Mirrors Minecraft log placement — the cap axis is whichever
-/// axis the normal lies along, and the sign distinguishes the two ends.
+/// Map a clicked-face normal to an axis-aligned orientation index in
+/// `0..=5` (the format consumed by [`Orientation::for_axis_aligned_index`]
+/// and by every [`OrientationCodec`]'s `write` function). Mirrors
+/// Minecraft log placement — the cap axis is whichever axis the normal
+/// lies along, and the sign distinguishes the two ends:
 ///
-/// | normal       | state |
+/// | normal       | index |
 /// |--------------|-------|
 /// | `(0,  1, 0)` | 0     |
 /// | `(0, -1, 0)` | 1     |
@@ -1599,23 +1606,26 @@ impl Game {
 /// | `(0,  0, 1)` | 4     |
 /// | `(0,  0,-1)` | 5     |
 ///
-/// Falls back to `State(0)` (vertical / +Y) for any non-axis-aligned
-/// input, including the zero vector (a ray-start-inside-solid hit).
-fn state_from_face_normal(normal: Vec3i) -> State {
+/// Falls back to `0` (vertical / +Y) for any non-axis-aligned input,
+/// including the zero vector (a ray-start-inside-solid hit). The
+/// per-block codec decides how to fold the index into a state byte —
+/// see `OrientationCodec::AXIS_ALIGNED` (lower 3 bits) vs a custom
+/// LCM3 codec (`(orientation * 2 + data) * 3 + clock`).
+fn orientation_index_from_face_normal(normal: Vec3i) -> u8 {
     if normal.y > 0 {
-        State(0)
+        0
     } else if normal.y < 0 {
-        State(1)
+        1
     } else if normal.x > 0 {
-        State(2)
+        2
     } else if normal.x < 0 {
-        State(3)
+        3
     } else if normal.z > 0 {
-        State(4)
+        4
     } else if normal.z < 0 {
-        State(5)
+        5
     } else {
-        State(0)
+        0
     }
 }
 
@@ -1804,6 +1814,18 @@ pub fn build_block_registry() -> (Arc<BlockRegistry>, BaseBlocks) {
 }
 
 impl Game {
+    /// Currently-selected block info for the F3 debug panel: world
+    /// coord, raw block id, and the registry-owned block name. Returns
+    /// `None` if the player isn't aiming at a block (raycast missed) or
+    /// the targeted chunk isn't loaded.
+    #[must_use]
+    pub fn selected_block_info(&self) -> Option<(Vec3i, u16, &str)> {
+        let hit = self.selected?;
+        let block = self.world.block(hit.coord)?;
+        let info = self.registry.get(block.id);
+        Some((hit.coord, block.id.0, info.name.as_ref()))
+    }
+
     /// Filter chat history to lines whose timestamp is within the recent
     /// decay window, plus everything when chat is open. Public for the HUD.
     #[must_use]
@@ -1829,17 +1851,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn state_from_face_normal_covers_six_axis_directions() {
-        // ±Y caps map to states 0 / 1 (Y-axis log, default upright).
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 1, 0)), State(0));
-        assert_eq!(state_from_face_normal(Vec3i::new(0, -1, 0)), State(1));
-        // ±X caps map to states 2 / 3.
-        assert_eq!(state_from_face_normal(Vec3i::new(1, 0, 0)), State(2));
-        assert_eq!(state_from_face_normal(Vec3i::new(-1, 0, 0)), State(3));
-        // ±Z caps map to states 4 / 5.
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, 1)), State(4));
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, -1)), State(5));
+    fn orientation_index_from_face_normal_covers_six_axis_directions() {
+        // ±Y caps map to index 0 / 1 (Y-axis log, default upright).
+        assert_eq!(orientation_index_from_face_normal(Vec3i::new(0, 1, 0)), 0);
+        assert_eq!(orientation_index_from_face_normal(Vec3i::new(0, -1, 0)), 1);
+        // ±X caps map to index 2 / 3.
+        assert_eq!(orientation_index_from_face_normal(Vec3i::new(1, 0, 0)), 2);
+        assert_eq!(orientation_index_from_face_normal(Vec3i::new(-1, 0, 0)), 3);
+        // ±Z caps map to index 4 / 5.
+        assert_eq!(orientation_index_from_face_normal(Vec3i::new(0, 0, 1)), 4);
+        assert_eq!(orientation_index_from_face_normal(Vec3i::new(0, 0, -1)), 5);
         // Zero normal (ray started inside solid) falls back to vertical.
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, 0)), State(0));
+        assert_eq!(orientation_index_from_face_normal(Vec3i::new(0, 0, 0)), 0);
+    }
+
+    #[test]
+    fn axis_aligned_codec_round_trips_through_placement() {
+        // The placement path is `index = orientation_index_from_face_normal(n)`
+        // followed by `state = (codec.write)(index, State::default())`. For
+        // wood (the AXIS_ALIGNED codec) the index lands directly in the
+        // lower 3 bits, and the codec's `read` recovers the matching
+        // axis-aligned `Orientation`.
+        use crate::blocks::OrientationCodec;
+        let codec = OrientationCodec::AXIS_ALIGNED;
+        for index in 0..=5_u8 {
+            let state = (codec.write)(index, State::default());
+            assert_eq!(state.orientation(), index);
+            let oriented = (codec.read)(state);
+            assert_eq!(
+                oriented,
+                crate::blocks::Orientation::for_axis_aligned_index(index)
+            );
+        }
     }
 }

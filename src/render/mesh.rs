@@ -587,10 +587,11 @@ struct Run {
     /// Per-corner base UVs at run start. Run extension also gates on
     /// `base_uv == cell.base_uv`, so two cells with different
     /// orientations only merge if they happen to produce identical UVs
-    /// on this face (which means they look identical on it). For
-    /// `FaceMapping::Static` blocks this is always true; for
-    /// `AxisAligned` blocks it filters out orientation-mismatched logs
-    /// without needing a separate state check.
+    /// on this face (which means they look identical on it). For blocks
+    /// using [`OrientationCodec::STATIC`](crate::blocks::OrientationCodec::STATIC)
+    /// this is always true; for axis-aligned blocks it filters out
+    /// orientation-mismatched logs without needing a separate state
+    /// check.
     base_uv: [[f32; 2]; 4],
     /// Per-corner UV delta per unit length along the merge axis. Replaces
     /// the legacy global `FACE_EXTEND_UV` lookup; folds the per-state
@@ -675,10 +676,11 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                     // `_merge_face_render_chunk` lookup.
                     //
                     // Default texture lookup is state-aware via
-                    // `face_for(face_id, state)` — logs use
-                    // `FaceMapping::AxisAligned` to pick cap vs bark from
-                    // the state byte; everything else uses the static
-                    // top/side/bottom layout.
+                    // `face_for(face_id, state)` — each block's
+                    // `OrientationCodec` decides how the state byte
+                    // maps to a placement orientation, and the lookup
+                    // rotates the world face direction back through
+                    // that orientation before indexing `faces[]`.
                     let tex_index_override = (opts.nice_grass
                         && opts.grass_id != Id(0)
                         && cell.id == opts.grass_id
@@ -704,7 +706,7 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                     // for axis-aligned blocks (logs) the bark grain
                     // follows the placement axis through the four lateral
                     // faces and the cap rotates with the log end.
-                    let orientation = Orientation::for_block(&cell_info.face_mapping, cell.state);
+                    let orientation = (cell_info.orientation_codec.read)(cell.state);
                     let canon_face =
                         face_id_from_dir_i(orientation.apply_dir_i(FACE_OFFSETS[face_id]));
                     let base_uv = corner_uvs(face_id, canon_face, &orientation);
@@ -1185,8 +1187,9 @@ mod tests {
 
     #[test]
     fn wood_state_drives_per_face_texture() {
-        // Wood is `FaceMapping::AxisAligned`: state.0 / 2 selects the cap
-        // axis. Faces parallel to that axis sample WOOD_TOP; the four
+        // Wood uses `OrientationCodec::AXIS_ALIGNED` (orientation in the
+        // lower 3 bits): `state.orientation() / 2` selects the cap axis.
+        // Faces parallel to that axis sample WOOD_TOP; the four
         // perpendicular faces sample WOOD_SIDE.
         let (registry, base) = registry_with_base();
         let top = u32::from(registry.get(base.wood).face(0).0); // WOOD_TOP
@@ -1402,7 +1405,7 @@ mod tests {
         // into one quad. We synthesise a tiny registry with `air` (id 0)
         // plus two solid blocks that both use `TextureIndex::ROCK` for
         // every face — distinct ids, identical art.
-        use crate::blocks::{BlockInfo, FaceMapping, TextureIndex};
+        use crate::blocks::{BlockInfo, OrientationCodec, TextureIndex, default_face_texture};
         use std::borrow::Cow;
         let mut r = BlockRegistry::new();
         r.add(BlockInfo {
@@ -1412,7 +1415,8 @@ mod tests {
             translucent: false,
             hardness: 0.0,
             faces: [TextureIndex::WHITE; 3],
-            face_mapping: FaceMapping::Static,
+            orientation_codec: OrientationCodec::STATIC,
+            face_texture: default_face_texture,
         });
         let id_a = r.add(BlockInfo {
             name: Cow::Borrowed("rock_a"),
@@ -1421,7 +1425,8 @@ mod tests {
             translucent: false,
             hardness: 1.0,
             faces: [TextureIndex::ROCK; 3],
-            face_mapping: FaceMapping::Static,
+            orientation_codec: OrientationCodec::STATIC,
+            face_texture: default_face_texture,
         });
         let id_b = r.add(BlockInfo {
             name: Cow::Borrowed("rock_b"),
@@ -1430,7 +1435,8 @@ mod tests {
             translucent: false,
             hardness: 1.0,
             faces: [TextureIndex::ROCK; 3],
-            face_mapping: FaceMapping::Static,
+            orientation_codec: OrientationCodec::STATIC,
+            face_texture: default_face_texture,
         });
         let input = padded_input(Vector3::new(0, 0, 0), |px, py, pz| {
             if py == 9 && px == 9 && pz == 9 {

@@ -8,6 +8,8 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use std::collections::{HashSet, VecDeque};
+
 use crate::blocks::{self, BaseBlocks, BlockRegistry};
 use crate::items::ItemStack;
 use crate::math::{Vec3d, Vec3i};
@@ -27,7 +29,8 @@ fn parse_float<T: FromStr>(s: &str) -> Option<T> {
 }
 
 /// Register the same set of slash-commands the C++ `register_base_commands`
-/// does (12 entries, same arity and argument shape).
+/// does, plus two LCM3 helpers (`/lcm3-clock-rate`, `/lcm3-reset`) that
+/// the Rust port adds for the in-progress LCM3 circuit subsystem.
 #[allow(clippy::needless_pass_by_value)] // Arc moved into the closures by clone.
 pub fn register_base_commands(
     registry: &mut CommandRegistry,
@@ -263,6 +266,105 @@ pub fn register_base_commands(
                 _ => return false,
             };
             world.player_mut().set_game_mode(mode);
+            true
+        }),
+    );
+
+    // /lcm3-clock-rate <number>
+    registry.add(
+        "/lcm3-clock-rate",
+        Command::new(|args, world, messages| {
+            if args.len() != 2 {
+                return false;
+            }
+            let Some(rate) = parse_int::<usize>(args[1]) else {
+                return false;
+            };
+            world.set_lcm3_clock_rate(rate);
+            messages.push(format!("LCM3 clock rate set to {rate}"));
+            true
+        }),
+    );
+
+    // /lcm3-reset <x> <y> <z>
+    //
+    // BFS the connected component of LCM3 blocks containing `(x, y, z)`
+    // (face-sharing only; non-LCM3 cells terminate propagation) and
+    // reset each cell's interior — data + clock → 0 — while preserving
+    // its placement orientation. Mirrors the LCM3 design in
+    // `docs/block_updates.md`: the reset gives the whole connected
+    // sub-circuit a clean slate without disturbing the wiring.
+    let registry_for_reset = Arc::clone(&block_registry);
+    registry.add(
+        "/lcm3-reset",
+        Command::new(move |args, world, messages| {
+            if args.len() != 4 {
+                return false;
+            }
+            let Some(x) = parse_int::<i32>(args[1]) else {
+                return false;
+            };
+            let Some(y) = parse_int::<i32>(args[2]) else {
+                return false;
+            };
+            let Some(z) = parse_int::<i32>(args[3]) else {
+                return false;
+            };
+            let start = Vec3i::new(x, y, z);
+            let base = world.base_blocks();
+            // Reject up front if the seed cell isn't a loaded LCM3
+            // block — avoids confusing "reset 0 blocks" output and
+            // surfaces typos.
+            let Some(seed) = world.block(start) else {
+                messages.push(format!(
+                    "/lcm3-reset: chunk at ({x}, {y}, {z}) is not loaded"
+                ));
+                return true;
+            };
+            if !base.is_lcm3(seed.id) {
+                messages.push(format!(
+                    "/lcm3-reset: block at ({x}, {y}, {z}) is not an LCM3 block"
+                ));
+                return true;
+            }
+
+            const NEIGHBOURS: [Vec3i; 6] = [
+                Vec3i::new(1, 0, 0),
+                Vec3i::new(-1, 0, 0),
+                Vec3i::new(0, 1, 0),
+                Vec3i::new(0, -1, 0),
+                Vec3i::new(0, 0, 1),
+                Vec3i::new(0, 0, -1),
+            ];
+            let mut visited: HashSet<Vec3i> = HashSet::new();
+            let mut queue: VecDeque<Vec3i> = VecDeque::new();
+            visited.insert(start);
+            queue.push_back(start);
+            let mut reset_count: usize = 0;
+            while let Some(coord) = queue.pop_front() {
+                let Some(cell) = world.block(coord) else {
+                    continue; // unloaded: stop propagation here.
+                };
+                if !base.is_lcm3(cell.id) {
+                    continue; // non-LCM3: stop propagation here.
+                }
+                let info = registry_for_reset.get(cell.id);
+                let new_state = info.orientation_codec.reset_to_base(cell.state);
+                if new_state != cell.state {
+                    world.set_block_with_state(coord, cell.id, new_state, true);
+                }
+                reset_count += 1;
+                for d in NEIGHBOURS {
+                    let nb = coord + d;
+                    if visited.insert(nb) {
+                        queue.push_back(nb);
+                    }
+                }
+            }
+            messages.push(format!(
+                "/lcm3-reset: reset {reset_count} LCM3 block{} starting at ({x}, {y}, {z})",
+                if reset_count == 1 { "" } else { "s" }
+            ));
             true
         }),
     );

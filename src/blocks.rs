@@ -80,6 +80,23 @@ impl Id {
 pub struct State(pub u8);
 
 impl State {
+    /// Number of low bits reserved for orientation under the standard
+    /// [`OrientationCodec::AXIS_ALIGNED`] encoding. With 3 bits, values
+    /// `0..=5` encode the six placement orientations and `6..=7` are
+    /// unused (fall back to identity in
+    /// [`Orientation::for_axis_aligned_index`]).
+    pub const ORIENTATION_BITS: u32 = 3;
+
+    /// Bitmask covering the orientation bits. Equal to
+    /// `(1 << ORIENTATION_BITS) - 1 = 0b0000_0111`.
+    pub const ORIENTATION_MASK: u8 = (1 << Self::ORIENTATION_BITS) - 1;
+
+    /// Bitmask covering the upper "interior" bits — the 5 bits a block
+    /// type may freely use for its own per-cell substate (LCM3 clock +
+    /// data, redstone power level, growth stage, etc.) without
+    /// disturbing orientation.
+    pub const INTERIOR_MASK: u8 = !Self::ORIENTATION_MASK;
+
     /// The "stored externally" sentinel value.
     #[must_use]
     pub const fn external() -> Self {
@@ -115,6 +132,46 @@ impl State {
         } else {
             Some(self.0)
         }
+    }
+
+    /// Extract the orientation portion (lower 3 bits). For blocks
+    /// using the standard [`OrientationCodec::AXIS_ALIGNED`] encoding
+    /// this picks one of the six rotations in
+    /// [`Orientation::for_axis_aligned_index`]; for other codecs it
+    /// may be ignored or interpreted differently.
+    #[must_use]
+    pub const fn orientation(self) -> u8 {
+        self.0 & Self::ORIENTATION_MASK
+    }
+
+    /// Replace just the orientation bits, keeping the interior bits
+    /// intact. Use this when placing an axis-aligned block — derive
+    /// the orientation from the clicked face normal, drop it into the
+    /// lower 3 bits, and let block-specific code fill the rest.
+    #[must_use]
+    pub const fn with_orientation(self, orientation: u8) -> Self {
+        Self((self.0 & Self::INTERIOR_MASK) | (orientation & Self::ORIENTATION_MASK))
+    }
+
+    /// Extract the interior bits (upper 5), shifted down to occupy
+    /// `0..=31`. Block-specific code uses this to read its own substate
+    /// (LCM3 clock + data, redstone power, etc.) without seeing the
+    /// orientation.
+    #[must_use]
+    pub const fn interior(self) -> u8 {
+        self.0 >> Self::ORIENTATION_BITS
+    }
+
+    /// Replace just the interior bits, keeping the orientation intact.
+    /// `interior` is interpreted as a 5-bit value; high bits are masked
+    /// off rather than panicking.
+    #[must_use]
+    pub const fn with_interior(self, interior: u8) -> Self {
+        let max_interior = u8::MAX >> Self::ORIENTATION_BITS;
+        Self(
+            (self.0 & Self::ORIENTATION_MASK)
+                | ((interior & max_interior) << Self::ORIENTATION_BITS),
+        )
     }
 }
 
@@ -232,53 +289,222 @@ impl TextureIndex {
     pub const COAL: TextureIndex = TextureIndex(27);
     pub const IRON: TextureIndex = TextureIndex(28);
     pub const TNT: TextureIndex = TextureIndex(29);
+    pub const LCM3_OUT_PORT: TextureIndex = TextureIndex(30);
+    pub const LCM3_IN_PORT: TextureIndex = TextureIndex(33);
+    pub const LCM3_WIRE: TextureIndex = TextureIndex(36);
+    pub const LCM3_WIRE_ON: TextureIndex = TextureIndex(39);
+    pub const LCM3_FF: TextureIndex = TextureIndex(42);
+    pub const LCM3_FF_ON: TextureIndex = TextureIndex(45);
+    pub const LCM3_NOT: TextureIndex = TextureIndex(48);
+    pub const LCM3_NOT_ON: TextureIndex = TextureIndex(51);
+    pub const LCM3_AND: TextureIndex = TextureIndex(54);
+    pub const LCM3_AND_ON: TextureIndex = TextureIndex(57);
+    pub const LCM3_OR: TextureIndex = TextureIndex(60);
+    pub const LCM3_OR_ON: TextureIndex = TextureIndex(63);
 }
 
-// ---------- FaceMapping ----------
+// ---------- OrientationCodec ----------
 
-/// How `BlockInfo::face_for` resolves a face direction (one of
-/// `[+X, -X, +Y, -Y, +Z, -Z]`) into a [`TextureIndex`] given a block's
-/// [`State`].
+/// Per-block-type accessor for a cell's placement orientation. Each
+/// block's stored [`State`] byte may pack orientation into different bit
+/// positions (or even different sub-fields, like LCM3 circuit blocks
+/// whose state is `(orientation * 2 + data) * 3 + clock`), so the
+/// encoding is parameterised on the block — not hard-coded to a fixed
+/// enum of layouts.
 ///
-/// Most blocks are state-independent — both `State(0)` and any other byte
-/// pick the same texture per face — and use [`FaceMapping::Static`]. Logs
-/// (`wood`) and other axis-oriented blocks use [`FaceMapping::AxisAligned`]
-/// to read 6 placement orientations out of the state byte.
-#[derive(Clone, Debug, PartialEq)]
-pub enum FaceMapping {
-    /// State-independent. Face `+Y` reads `faces[0]` (top), `-Y` reads
-    /// `faces[2]` (bottom), every other face reads `faces[1]` (side) —
-    /// the existing `Textures::indices` layout.
-    Static,
-    /// Block is "axis aligned": `state.0 / 2` selects the cap axis
-    /// (`0 = Y`, `1 = X`, `2 = Z`); state values `0..=5` therefore encode
-    /// six discrete orientations, two per axis (positive vs negative
-    /// pointing — visually identical for a symmetric log, kept distinct
-    /// so a future placement system can record direction). Faces parallel
-    /// to the cap axis read `faces[0]` (cap); the four perpendicular
-    /// faces read `faces[1]` (side). `faces[2]` is ignored.
-    AxisAligned,
+/// `read` decodes the cell's orientation into an [`Orientation`] for
+/// face-texture / mesh-UV computation.
+///
+/// `write` builds a state byte for placement: given a placement
+/// orientation index `0..6` (the "axis index" produced by
+/// `state_from_face_normal` / equivalent) and a base state `into`,
+/// return the new state with the orientation slot replaced. The `into`
+/// argument lets a block-specific codec preserve any *interior* state
+/// already in the byte — handy for blocks whose orientation can be
+/// changed independently of their data. For pure placement, callers
+/// pass [`State::default()`].
+///
+/// The pre-defined [`Self::STATIC`] and [`Self::AXIS_ALIGNED`] codecs
+/// cover the two encodings the base-game blocks use; new block kinds
+/// (LCM3 wires, gates, registers, …) declare their own codec at
+/// registration time.
+#[derive(Copy, Clone)]
+pub struct OrientationCodec {
+    /// State → orientation. Called by the chunk mesher once per visible
+    /// face per cell; should be branch-light. For state-independent
+    /// blocks, returns [`Orientation::IDENTITY`].
+    pub read: fn(State) -> Orientation,
+    /// Build a state byte for placement. `orientation_index` is in
+    /// `0..6` (axis-aligned slot index, see
+    /// [`Orientation::for_axis_aligned_index`]); `into` is the base
+    /// state (typically [`State::default()`] at fresh placement). State-
+    /// independent blocks ignore the index and return `into` unchanged.
+    pub write: fn(orientation_index: u8, into: State) -> State,
+    /// State → orientation index (`0..6`). Inverse of `write`'s first
+    /// argument. State-independent blocks return `0`. Used by
+    /// [`Self::reset_to_base`] and by future commands that need to read
+    /// orientation in a codec-agnostic way without going through a full
+    /// [`Orientation`] matrix.
+    pub orientation_index: fn(State) -> u8,
+}
+
+impl OrientationCodec {
+    /// Construct a codec from raw fn pointers.
+    #[must_use]
+    pub const fn new(
+        read: fn(State) -> Orientation,
+        write: fn(u8, State) -> State,
+        orientation_index: fn(State) -> u8,
+    ) -> Self {
+        Self {
+            read,
+            write,
+            orientation_index,
+        }
+    }
+
+    /// Codec for state-independent blocks (cobble, dirt, leaves, …).
+    /// `read` always returns identity; `write` ignores the orientation
+    /// index and returns its `into` argument unchanged;
+    /// `orientation_index` is always `0`.
+    pub const STATIC: OrientationCodec = OrientationCodec::new(
+        |_| Orientation::IDENTITY,
+        |_, into| into,
+        |_| 0,
+    );
+
+    /// Codec for the simplest 6-orientation layout: orientation lives in
+    /// the lower 3 bits of the state byte (see
+    /// [`State::ORIENTATION_BITS`]); upper 5 bits are reserved for a
+    /// block's own interior state. Used by `wood` and friends.
+    pub const AXIS_ALIGNED: OrientationCodec = OrientationCodec::new(
+        |s| Orientation::for_axis_aligned_index(s.orientation()),
+        |o, into| into.with_orientation(o),
+        |s| s.orientation(),
+    );
+
+    /// Codec for LCM3 circuit blocks (`wire`, `fork`, `ff`, `not`,
+    /// `and`, `or`). State packs `(orientation * 2 + data) * 3 + clock`
+    /// — i.e. clock in `state % 3`, data in `(state / 3) & 1`,
+    /// orientation in `state / 6`. `read` extracts the orientation slot;
+    /// `write` replaces it while preserving any data + clock interior
+    /// already in `into` (placement uses `State::default()` so interior
+    /// starts at 0); `orientation_index` is the `state / 6` projection.
+    pub const LCM3: OrientationCodec = OrientationCodec::new(
+        |s| Orientation::for_axis_aligned_index(s.0 / 6),
+        |orientation_index, into| {
+            let interior = into.0 % 6;
+            // Mask the orientation index so 6/7 don't wrap into a
+            // neighbouring orientation; for_axis_aligned_index treats
+            // anything `>= 6` as identity at the read side.
+            let safe_o = orientation_index % 8;
+            State(safe_o.wrapping_mul(6).wrapping_add(interior))
+        },
+        |s| s.0 / 6,
+    );
+
+    /// Build a state with the cell's current orientation preserved but
+    /// every interior bit cleared — i.e.
+    /// `write(orientation_index(s), State::default())`. For
+    /// [`Self::LCM3`] this drops data + clock to zero while keeping the
+    /// placement axis (`/lcm3-reset`'s "base state"); for
+    /// [`Self::AXIS_ALIGNED`] it clears the upper 5 bits; for
+    /// [`Self::STATIC`] it returns [`State::default()`].
+    #[must_use]
+    pub fn reset_to_base(&self, state: State) -> State {
+        let idx = (self.orientation_index)(state);
+        (self.write)(idx, State::default())
+    }
+}
+
+impl core::fmt::Debug for OrientationCodec {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        // Function pointers don't print usefully. Show the address as a
+        // best-effort fingerprint so registry diffs in tests aren't
+        // completely opaque.
+        f.debug_struct("OrientationCodec")
+            .field("read", &(self.read as usize))
+            .field("write", &(self.write as usize))
+            .field("orientation_index", &(self.orientation_index as usize))
+            .finish()
+    }
+}
+
+impl PartialEq for OrientationCodec {
+    fn eq(&self, other: &Self) -> bool {
+        // Function-pointer equality is "same code address" — fine for
+        // the registry's PartialEq impl, which is only used in tests.
+        (self.read as usize) == (other.read as usize)
+            && (self.write as usize) == (other.write as usize)
+            && (self.orientation_index as usize) == (other.orientation_index as usize)
+    }
 }
 
 // ---------- BlockInfo ----------
 
+/// Per-block-type face texture function. Given the block's `faces` array,
+/// a static face slot (`0 = top`, `1 = side`, `2 = bottom`) — already
+/// derived from world face direction + orientation by
+/// [`BlockInfo::face_for`] — and the cell's full [`State`], return the
+/// final atlas texture index.
+///
+/// The default implementation [`default_face_texture`] is just
+/// `faces[face_index]` (state ignored). LCM3 circuit blocks override
+/// with [`lcm3_face_texture_with_data`] / [`lcm3_face_texture_no_data`]
+/// to apply per-tick clock offsets and per-data on/off variants without
+/// touching the orientation pipeline.
+pub type FaceTextureFn =
+    fn(faces: &[TextureIndex; 3], face_index: usize, state: State) -> TextureIndex;
+
+/// Default [`FaceTextureFn`]: return `faces[face_index]`, falling back
+/// to `NULLBLOCK` for out-of-range slots. Ignores state.
+#[must_use]
+pub const fn default_face_texture(
+    faces: &[TextureIndex; 3],
+    face_index: usize,
+    _state: State,
+) -> TextureIndex {
+    if face_index < 3 {
+        faces[face_index]
+    } else {
+        TextureIndex::NULLBLOCK
+    }
+}
+
 /// Static, registry-owned properties of a block id. Includes the per-face
-/// texture mapping (`faces[0..3]` = top, side, bottom) — what was previously
-/// `Textures::getTextureIndex` in C++.
-#[derive(Clone, Debug, PartialEq)]
+/// texture array (`faces[0..3]` = top, side, bottom), a per-block
+/// [`OrientationCodec`] that decodes/encodes orientation in the cell's
+/// state byte, and a per-block [`FaceTextureFn`] that resolves
+/// state-dependent texture variants (data on/off, clock phase) on top of
+/// the orientation lookup.
+// Note: no `PartialEq` derive — `face_texture` is a raw fn pointer,
+// whose `==` is unpredictable across codegen units; nothing in the tree
+// compares two `BlockInfo` instances, so dropping it is the simplest
+// fix.
+#[derive(Clone, Debug)]
 pub struct BlockInfo {
     pub name: Cow<'static, str>,
     pub solid: bool,
     pub opaque: bool,
     pub translucent: bool,
     pub hardness: f32,
-    /// Texture for `[top, side, bottom]` faces (the order used by the C++
-    /// `Textures::indices` table). Replaces `Textures::getTextureIndex`.
+    /// Per-face texture indices in `[top, side, bottom]` order. Looked
+    /// up by [`Self::face_for`] after rotating the world face direction
+    /// back to canonical-block space through the cell's orientation —
+    /// so e.g. a state-2 wood log's `+X` world face reads
+    /// `faces[face_index_static(canonical +Y)] = faces[0]` (cap). For
+    /// blocks that pick texture by state (LCM3 circuits), this array
+    /// stores the *baseline* (data=0, clock=0) per-slot indices and
+    /// [`Self::face_texture`] applies the variants.
     pub faces: [TextureIndex; 3],
-    /// How [`Self::face_for`] resolves a face direction + state into a
-    /// slot of `faces`. Defaults to [`FaceMapping::Static`] in
-    /// `BlockInfo::new_static` / the helper `info(...)` constructor.
-    pub face_mapping: FaceMapping,
+    /// How this block reads / writes orientation into its state byte.
+    /// Defaults to [`OrientationCodec::STATIC`] via the `info(...)`
+    /// helper; oriented blocks override at registration.
+    pub orientation_codec: OrientationCodec,
+    /// Per-face texture-variant resolver. Defaults to
+    /// [`default_face_texture`] (= `faces[face_index]`); LCM3 blocks
+    /// install a clock + data-aware variant at registration.
+    pub face_texture: FaceTextureFn,
 }
 
 impl BlockInfo {
@@ -295,38 +521,31 @@ impl BlockInfo {
             .unwrap_or(TextureIndex::NULLBLOCK)
     }
 
-    /// Texture for a face *direction* (0..6, in the mesher's
-    /// `[+X, -X, +Y, -Y, +Z, -Z]` order) given the cell's [`State`]. The
-    /// state byte is consulted only when [`Self::face_mapping`] is
-    /// non-`Static`.
+    /// Texture for a face *direction* (`0..6`, in the mesher's
+    /// `[+X, -X, +Y, -Y, +Z, -Z]` order) given the cell's [`State`].
+    ///
+    /// Decodes the cell's orientation through the block's
+    /// [`OrientationCodec`], rotates the world face direction back to
+    /// the canonical (state-0) cube, then dispatches through the
+    /// block's [`FaceTextureFn`] keyed on the static face slot. For
+    /// static blocks this collapses to `faces[face_index_static(face_dir)]`
+    /// (the legacy behaviour); for axis-aligned blocks the cap follows
+    /// the placement axis; for LCM3 circuits the texture is further
+    /// modulated by data + clock interior bits.
     #[must_use]
     pub fn face_for(&self, face_dir: usize, state: State) -> TextureIndex {
-        match self.face_mapping {
-            FaceMapping::Static => self.face(face_index_static(face_dir)),
-            FaceMapping::AxisAligned => {
-                // state 0,1 → Y (default vertical, like the legacy
-                // state-0 log); 2,3 → X; 4,5 → Z. `>= 6` falls back to Y
-                // so an undefined state still renders a sensible log
-                // rather than `NULLBLOCK`.
-                let cap_axis: u8 = match (state.0 >> 1) % 3 {
-                    1 => 0, // X
-                    2 => 2, // Z
-                    _ => 1, // Y
-                };
-                if face_axis(face_dir) == cap_axis {
-                    self.face(0) // cap
-                } else {
-                    self.face(1) // side / bark
-                }
-            }
-        }
+        let orientation = (self.orientation_codec.read)(state);
+        let canon_face = canonical_face_id(orientation, face_dir);
+        let face_index = face_index_static(canon_face);
+        (self.face_texture)(&self.faces, face_index, state)
     }
 }
 
-/// Map a face direction (0..6, `[+X, -X, +Y, -Y, +Z, -Z]`) to a
+/// Map a face direction (`0..6`, `[+X, -X, +Y, -Y, +Z, -Z]`) to a
 /// `BlockInfo::faces` slot under the static layout: top = 0, side = 1,
 /// bottom = 2. Mirrors the switch in C++ `_merge_face_render_chunk`.
 #[inline]
+#[must_use]
 pub fn face_index_static(face_dir: usize) -> usize {
     match face_dir {
         2 => 0,
@@ -335,30 +554,115 @@ pub fn face_index_static(face_dir: usize) -> usize {
     }
 }
 
-/// Primary axis (0 = X, 1 = Y, 2 = Z) of a face direction (0..6).
+/// Rotate a world-space face direction (0..6) back to the canonical
+/// block frame via `orientation`, then identify the canonical face id
+/// it lands on. Used by [`BlockInfo::face_for`] and by the chunk mesher.
 #[inline]
-fn face_axis(face_dir: usize) -> u8 {
-    match face_dir {
-        0 | 1 => 0,
-        2 | 3 => 1,
-        _ => 2,
+#[must_use]
+pub fn canonical_face_id(orientation: Orientation, face_dir: usize) -> usize {
+    let world_normal = AXIS_DIRS[face_dir.min(5)];
+    let canon = orientation.apply_dir_i(world_normal);
+    if canon[0] > 0 {
+        0
+    } else if canon[0] < 0 {
+        1
+    } else if canon[1] > 0 {
+        2
+    } else if canon[1] < 0 {
+        3
+    } else if canon[2] > 0 {
+        4
+    } else {
+        5
     }
+}
+
+/// Unit-axis directions per face id, `[+X, -X, +Y, -Y, +Z, -Z]`.
+const AXIS_DIRS: [[i32; 3]; 6] = [
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
+    [0, 0, 1],
+    [0, 0, -1],
+];
+
+// ---------- LCM3 face textures ----------
+
+/// Atlas-index offset between an LCM3 texture's `off` slot and its `on`
+/// slot. The atlas reserves three sequential slots per "phase variant"
+/// (one per `clock % 3`), so the on/off pair is exactly one phase-block
+/// apart — `LCM3_WIRE_ON.0 - LCM3_WIRE.0 == 3`, ditto for FF/NOT/AND/OR.
+const LCM3_DATA_OFFSET: u16 = 3;
+
+/// Extract `(clock, data)` from an LCM3 cell's [`State`] under the
+/// `(orientation * 2 + data) * 3 + clock` encoding. Orientation is
+/// resolved separately by [`OrientationCodec::LCM3`].
+#[inline]
+const fn lcm3_clock_data(state: State) -> (u16, u16) {
+    let clock = (state.0 % 3) as u16;
+    let data = ((state.0 / 3) & 1) as u16;
+    (clock, data)
+}
+
+/// [`FaceTextureFn`] for LCM3 blocks **with** an on/off side variant
+/// (wire / ff / not / and / or). Top reads `faces[0]` (out port);
+/// bottom reads `faces[2]` (in port); side reads `faces[1]` for `data=0`
+/// and `faces[1] + LCM3_DATA_OFFSET` for `data=1`. All three slots are
+/// then offset by `clock` (0..2) so the texture animates with the local
+/// clock phase.
+#[must_use]
+pub fn lcm3_face_texture_with_data(
+    faces: &[TextureIndex; 3],
+    face_index: usize,
+    state: State,
+) -> TextureIndex {
+    let (clock, data) = lcm3_clock_data(state);
+    let base = match face_index {
+        0 => faces[0].0,
+        1 => faces[1].0 + data * LCM3_DATA_OFFSET,
+        2 => faces[2].0,
+        _ => return TextureIndex::NULLBLOCK,
+    };
+    TextureIndex(base + clock)
+}
+
+/// [`FaceTextureFn`] for LCM3 blocks **without** an on/off side variant
+/// — currently just `fork`, whose four side faces are all out ports.
+/// Each face reads `faces[face_index]` directly, then is offset by
+/// `clock` (0..2). Data bit has no visual effect on this block.
+#[must_use]
+pub fn lcm3_face_texture_no_data(
+    faces: &[TextureIndex; 3],
+    face_index: usize,
+    state: State,
+) -> TextureIndex {
+    let (clock, _data) = lcm3_clock_data(state);
+    let base = if face_index < 3 {
+        faces[face_index].0
+    } else {
+        return TextureIndex::NULLBLOCK;
+    };
+    TextureIndex(base + clock)
 }
 
 // ---------- Orientation ----------
 
 /// World↔canonical rotation for a block's stored state. Used by the chunk
 /// mesher to derive per-corner UVs that rotate consistently with the
-/// block: `state.0 % 6` selects one of six axis-aligned rotations of the
-/// unit cube about its centre, so a state-2 (X-axis) log places its bark
-/// grain along world X, a state-4 (Z-axis) log along Z, and so on.
+/// block: an orientation index `0..6` selects one of six axis-aligned
+/// rotations of the unit cube about its centre, so a state-2 (X-axis)
+/// log places its bark grain along world X, a state-4 (Z-axis) log along
+/// Z, and so on.
 ///
-/// For [`FaceMapping::Static`] blocks, the orientation is always the
-/// identity — state is ignored, and the mesher's UV computation collapses
-/// to the legacy `FACE_UVS` table. The state-byte→rotation mapping for
-/// [`FaceMapping::AxisAligned`] is:
+/// Translating a stored [`State`] into an `Orientation` is a per-block
+/// concern (different blocks may pack orientation into different bit
+/// positions, like LCM3 circuit blocks). The standard
+/// [`OrientationCodec::AXIS_ALIGNED`] codec extracts orientation from
+/// `state.orientation()` (the lower 3 bits) and maps it via
+/// [`Self::for_axis_aligned_index`]:
 ///
-/// | state | placement axis | derivation                     |
+/// | index | placement axis | derivation                     |
 /// |-------|----------------|--------------------------------|
 /// | 0     | +Y (default)   | identity                       |
 /// | 1     | -Y             | 180° around world X            |
@@ -366,6 +670,7 @@ fn face_axis(face_dir: usize) -> u8 {
 /// | 3     | -X             | +90° around world Z            |
 /// | 4     | +Z             | +90° around world X            |
 /// | 5     | -Z             | -90° around world X            |
+/// | 6, 7  | (undefined)    | identity fallback              |
 ///
 /// Each row encodes a `world→canonical` linear transform — i.e.
 /// `canonical[i] = m[i][0]·world[0] + m[i][1]·world[1] + m[i][2]·world[2]`.
@@ -382,14 +687,15 @@ impl Orientation {
         m: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
     };
 
-    /// Pick the `world→canonical` rotation for an axis-aligned block at
-    /// the given state. `state.0 % 6` keys into the table above; any
-    /// other byte (we treat `0..6` as defined and everything else as
-    /// undefined) falls back to identity so an unset state still
-    /// renders a sensible upright log.
+    /// Pick the `world→canonical` rotation for an axis-aligned
+    /// orientation slot `0..6`. Indices `>= 6` fall back to identity so
+    /// an undefined state still renders a sensible upright block.
+    /// Block-specific codecs use this after extracting their
+    /// orientation field (see [`OrientationCodec::AXIS_ALIGNED`] for
+    /// the lower-3-bit encoding the base game uses for wood).
     #[must_use]
-    pub fn for_axis_aligned(state: State) -> Orientation {
-        match state.0 % 6 {
+    pub const fn for_axis_aligned_index(orientation_index: u8) -> Orientation {
+        match orientation_index {
             0 => Self::IDENTITY,
             1 => Self {
                 m: [[1, 0, 0], [0, -1, 0], [0, 0, -1]],
@@ -407,17 +713,6 @@ impl Orientation {
                 m: [[1, 0, 0], [0, 0, -1], [0, 1, 0]],
             },
             _ => Self::IDENTITY,
-        }
-    }
-
-    /// Pick the orientation for any block: `Static` ignores state and
-    /// returns identity; `AxisAligned` dispatches to
-    /// [`Self::for_axis_aligned`].
-    #[must_use]
-    pub fn for_block(face_mapping: &FaceMapping, state: State) -> Orientation {
-        match face_mapping {
-            FaceMapping::Static => Self::IDENTITY,
-            FaceMapping::AxisAligned => Self::for_axis_aligned(state),
         }
     }
 
@@ -473,7 +768,8 @@ static DEFAULT_INFO: BlockInfo = BlockInfo {
         TextureIndex::NULLBLOCK,
         TextureIndex::NULLBLOCK,
     ],
-    face_mapping: FaceMapping::Static,
+    orientation_codec: OrientationCodec::STATIC,
+    face_texture: default_face_texture,
 };
 
 // ---------- BlockRegistry ----------
@@ -554,17 +850,46 @@ pub struct BaseBlocks {
     pub coal: Id,
     pub iron: Id,
     pub tnt: Id,
+    // LCM3 circuit blocks. Each uses [`OrientationCodec::LCM3`] (state
+    // packs `(orientation * 2 + data) * 3 + clock`) and applies a
+    // clock + data-aware face-texture resolver. See
+    // `docs/block_updates.md` for the rewrite-system design.
+    pub lcm3_wire: Id,
+    pub lcm3_fork: Id,
+    pub lcm3_ff: Id,
+    pub lcm3_not: Id,
+    pub lcm3_and: Id,
+    pub lcm3_or: Id,
 }
 
-/// Helper: build a state-independent `BlockInfo` with the `[top, side,
-/// bottom]` face mapping required by `BlockInfo::face`.
-fn info(
+impl BaseBlocks {
+    /// True iff `id` is one of the six LCM3 circuit-block ids
+    /// (`lcm3_wire`, `lcm3_fork`, `lcm3_ff`, `lcm3_not`, `lcm3_and`,
+    /// `lcm3_or`). Used by `/lcm3-reset`'s connected-component BFS to
+    /// gate which neighbours propagate.
+    #[must_use]
+    pub fn is_lcm3(&self, id: Id) -> bool {
+        id == self.lcm3_wire
+            || id == self.lcm3_fork
+            || id == self.lcm3_ff
+            || id == self.lcm3_not
+            || id == self.lcm3_and
+            || id == self.lcm3_or
+    }
+}
+
+/// Helper: build a `BlockInfo` with the `[top, side, bottom]` face array,
+/// orientation codec, and face-texture resolver. Most callers use the
+/// thinner [`info`] / [`info_axis`] / [`info_lcm3`] wrappers below.
+fn info_with(
     name: &'static str,
     solid: bool,
     opaque: bool,
     translucent: bool,
     hardness: f32,
     faces: [TextureIndex; 3],
+    orientation_codec: OrientationCodec,
+    face_texture: FaceTextureFn,
 ) -> BlockInfo {
     BlockInfo {
         name: Cow::Borrowed(name),
@@ -573,12 +898,36 @@ fn info(
         translucent,
         hardness,
         faces,
-        face_mapping: FaceMapping::Static,
+        orientation_codec,
+        face_texture,
     }
 }
 
-/// Same as [`info`] but with [`FaceMapping::AxisAligned`] — used for log
-/// blocks where state 0..=5 picks one of six placement orientations.
+/// Helper: state-independent block. Static codec + default face-texture
+/// resolver (= `faces[face_index]`).
+fn info(
+    name: &'static str,
+    solid: bool,
+    opaque: bool,
+    translucent: bool,
+    hardness: f32,
+    faces: [TextureIndex; 3],
+) -> BlockInfo {
+    info_with(
+        name,
+        solid,
+        opaque,
+        translucent,
+        hardness,
+        faces,
+        OrientationCodec::STATIC,
+        default_face_texture,
+    )
+}
+
+/// Helper: 6-orientation axis-aligned block (orientation in the lower 3
+/// bits of state). Default face-texture resolver — texture per slot is
+/// just `faces[face_index]`.
 fn info_axis(
     name: &'static str,
     solid: bool,
@@ -587,10 +936,39 @@ fn info_axis(
     hardness: f32,
     faces: [TextureIndex; 3],
 ) -> BlockInfo {
-    BlockInfo {
-        face_mapping: FaceMapping::AxisAligned,
-        ..info(name, solid, opaque, translucent, hardness, faces)
-    }
+    info_with(
+        name,
+        solid,
+        opaque,
+        translucent,
+        hardness,
+        faces,
+        OrientationCodec::AXIS_ALIGNED,
+        default_face_texture,
+    )
+}
+
+/// Helper: LCM3 circuit block. Uses [`OrientationCodec::LCM3`] (state
+/// `(orientation*2 + data)*3 + clock`) and the supplied face-texture
+/// resolver — typically [`lcm3_face_texture_with_data`] for blocks with
+/// on/off side variants (wire/ff/not/and/or) or
+/// [`lcm3_face_texture_no_data`] for fork (sides identical to top).
+fn info_lcm3(
+    name: &'static str,
+    hardness: f32,
+    faces: [TextureIndex; 3],
+    face_texture: FaceTextureFn,
+) -> BlockInfo {
+    info_with(
+        name,
+        true,  // solid
+        true,  // opaque
+        false, // translucent
+        hardness,
+        faces,
+        OrientationCodec::LCM3,
+        face_texture,
+    )
 }
 
 /// Register the base-game blocks in the same order, with the same physical
@@ -646,6 +1024,52 @@ pub fn register_base_blocks(registry: &mut BlockRegistry) -> BaseBlocks {
     let coal = registry.add(info("coal block", true, true, false, 0.2, [T::COAL; 3]));
     let iron = registry.add(info("iron block", true, true, false, 3.0, [T::IRON; 3]));
     let tnt = registry.add(info("tnt", true, true, false, 0.2, [T::TNT; 3]));
+
+    // LCM3 circuit blocks. Top = OUT_PORT, bottom = IN_PORT, sides per
+    // block type. State encoding: `(orientation * 2 + data) * 3 + clock`
+    // — see `docs/block_updates.md`. Hardness is uniform 1.0; behaviour
+    // (the rewrite rules from the doc) is not yet wired — only the
+    // visual / placement layer.
+    let lcm3_top = T::LCM3_OUT_PORT;
+    let lcm3_bot = T::LCM3_IN_PORT;
+    let lcm3_wire = registry.add(info_lcm3(
+        "lcm3 wire",
+        1.0,
+        [lcm3_top, T::LCM3_WIRE, lcm3_bot],
+        lcm3_face_texture_with_data,
+    ));
+    let lcm3_fork = registry.add(info_lcm3(
+        "lcm3 fork",
+        1.0,
+        // All four sides are out ports too — sides reuse `LCM3_OUT_PORT`.
+        [lcm3_top, T::LCM3_OUT_PORT, lcm3_bot],
+        lcm3_face_texture_no_data,
+    ));
+    let lcm3_ff = registry.add(info_lcm3(
+        "lcm3 flip-flop",
+        1.0,
+        [lcm3_top, T::LCM3_FF, lcm3_bot],
+        lcm3_face_texture_with_data,
+    ));
+    let lcm3_not = registry.add(info_lcm3(
+        "lcm3 not",
+        1.0,
+        [lcm3_top, T::LCM3_NOT, lcm3_bot],
+        lcm3_face_texture_with_data,
+    ));
+    let lcm3_and = registry.add(info_lcm3(
+        "lcm3 and",
+        1.0,
+        [lcm3_top, T::LCM3_AND, lcm3_bot],
+        lcm3_face_texture_with_data,
+    ));
+    let lcm3_or = registry.add(info_lcm3(
+        "lcm3 or",
+        1.0,
+        [lcm3_top, T::LCM3_OR, lcm3_bot],
+        lcm3_face_texture_with_data,
+    ));
+
     BaseBlocks {
         air,
         rock,
@@ -666,6 +1090,12 @@ pub fn register_base_blocks(registry: &mut BlockRegistry) -> BaseBlocks {
         coal,
         iron,
         tnt,
+        lcm3_wire,
+        lcm3_fork,
+        lcm3_ff,
+        lcm3_not,
+        lcm3_and,
+        lcm3_or,
     }
 }
 
@@ -736,13 +1166,89 @@ mod tests {
     }
 
     #[test]
-    fn register_base_blocks_populates_19_entries() {
+    fn register_base_blocks_populates_all_entries() {
         let mut r = BlockRegistry::new();
         let base = register_base_blocks(&mut r);
-        assert_eq!(r.len(), 19);
+        // 19 base-game blocks + 6 LCM3 circuit blocks (wire, fork, ff,
+        // not, and, or) = 25.
+        assert_eq!(r.len(), 25);
         // `rock` has the expected non-zero hardness from the C++ table.
         assert_eq!(r.get(base.rock).hardness, 2.0);
         assert_eq!(r.get(base.air).name, "air");
+        // LCM3 ids are non-zero and distinct from each other.
+        assert_ne!(base.lcm3_wire, Id(0));
+        assert_ne!(base.lcm3_wire, base.lcm3_fork);
+        assert_ne!(base.lcm3_and, base.lcm3_or);
+    }
+
+    #[test]
+    fn lcm3_face_textures_apply_clock_and_data() {
+        let mut r = BlockRegistry::new();
+        let base = register_base_blocks(&mut r);
+        let wire = r.get(base.lcm3_wire);
+
+        // State 0: orientation 0 (Y-axis), data 0, clock 0.
+        // +Y face → top OUT_PORT @ clock 0.
+        assert_eq!(wire.face_for(2, State(0)), TextureIndex::LCM3_OUT_PORT);
+        // -Y face → bottom IN_PORT @ clock 0.
+        assert_eq!(wire.face_for(3, State(0)), TextureIndex::LCM3_IN_PORT);
+        // ±X / ±Z (sides) → WIRE off @ clock 0.
+        assert_eq!(wire.face_for(0, State(0)), TextureIndex::LCM3_WIRE);
+
+        // Clock advances by adding 1 / 2 to all three slots.
+        // State 1: orientation 0, data 0, clock 1.
+        assert_eq!(
+            wire.face_for(2, State(1)),
+            TextureIndex(TextureIndex::LCM3_OUT_PORT.0 + 1)
+        );
+        assert_eq!(
+            wire.face_for(0, State(1)),
+            TextureIndex(TextureIndex::LCM3_WIRE.0 + 1)
+        );
+        // State 2: clock 2.
+        assert_eq!(
+            wire.face_for(0, State(2)),
+            TextureIndex(TextureIndex::LCM3_WIRE.0 + 2)
+        );
+
+        // State 3: orientation 0, data 1, clock 0 → side flips to WIRE_ON.
+        assert_eq!(wire.face_for(0, State(3)), TextureIndex::LCM3_WIRE_ON);
+        // State 5: orientation 0, data 1, clock 2.
+        assert_eq!(
+            wire.face_for(0, State(5)),
+            TextureIndex(TextureIndex::LCM3_WIRE_ON.0 + 2)
+        );
+        // Top / bottom never use the data variant.
+        assert_eq!(
+            wire.face_for(2, State(5)),
+            TextureIndex(TextureIndex::LCM3_OUT_PORT.0 + 2)
+        );
+
+        // Orientation rotates the cap: state 12 → orientation 2 (X-axis).
+        // Now world +X reads the top OUT_PORT and ±Y/±Z read sides.
+        assert_eq!(wire.face_for(0, State(12)), TextureIndex::LCM3_OUT_PORT);
+        assert_eq!(wire.face_for(1, State(12)), TextureIndex::LCM3_IN_PORT);
+        assert_eq!(wire.face_for(2, State(12)), TextureIndex::LCM3_WIRE);
+    }
+
+    #[test]
+    fn lcm3_fork_sides_ignore_data() {
+        // Fork has no on/off variant — its four sides are out ports.
+        let mut r = BlockRegistry::new();
+        let base = register_base_blocks(&mut r);
+        let fork = r.get(base.lcm3_fork);
+
+        // data=0 vs data=1 produces the same side texture (modulo clock).
+        for clock in 0..3_u8 {
+            let data0 = State(clock); // orientation 0, data 0, clock = clock
+            let data1 = State(3 + clock); // orientation 0, data 1, clock = clock
+            assert_eq!(fork.face_for(0, data0), fork.face_for(0, data1));
+            // Side reads the OUT_PORT slot directly.
+            assert_eq!(
+                fork.face_for(0, data0),
+                TextureIndex(TextureIndex::LCM3_OUT_PORT.0 + u16::from(clock))
+            );
+        }
     }
 
     #[test]
@@ -785,6 +1291,69 @@ mod tests {
                 assert_eq!(grass.face_for(face, s), TextureIndex::GRASS_SIDE);
             }
         }
+    }
+
+    #[test]
+    fn lcm3_style_custom_codec_decodes_orientation_field() {
+        // Demonstrates per-block-type extensibility: a hypothetical LCM3
+        // gate packs state as `(orientation * 2 + data) * 3 + clock` —
+        // orientation lives in bits "above" the data + clock fields, not
+        // in the lower 3 bits like wood. The codec encapsulates that
+        // encoding so `face_for` works without any changes to the mesher
+        // or registry.
+        const fn lcm3_read(s: State) -> Orientation {
+            // Extract orientation (state / 6) and clamp to the 6 valid slots.
+            Orientation::for_axis_aligned_index(s.0 / 6)
+        }
+        const fn lcm3_write(o: u8, into: State) -> State {
+            // Preserve the data + clock low fields; replace orientation only.
+            let interior = into.0 % 6;
+            State((o % 8).wrapping_mul(6).wrapping_add(interior))
+        }
+        const fn lcm3_orientation_index(s: State) -> u8 {
+            s.0 / 6
+        }
+        const LCM3_CODEC: OrientationCodec =
+            OrientationCodec::new(lcm3_read, lcm3_write, lcm3_orientation_index);
+
+        let mut r = BlockRegistry::new();
+        let lcm3_gate = r.add(BlockInfo {
+            name: Cow::Borrowed("lcm3_gate"),
+            solid: true,
+            opaque: true,
+            translucent: false,
+            hardness: 1.0,
+            // Distinct top vs side vs bottom textures so the test can
+            // tell which canonical face each world face mapped to.
+            faces: [
+                TextureIndex::WOOD_TOP,
+                TextureIndex::WOOD_SIDE,
+                TextureIndex::ROCK,
+            ],
+            orientation_codec: LCM3_CODEC,
+            face_texture: default_face_texture,
+        });
+        let info = r.get(lcm3_gate);
+
+        // State `4 = (0 * 2 + 1) * 3 + 1` → orientation 0 (Y-axis,
+        // identity), data 1, clock 1. Texture lookup should ignore the
+        // data + clock fields entirely.
+        assert_eq!(info.face_for(2, State(4)), TextureIndex::WOOD_TOP);
+        assert_eq!(info.face_for(3, State(4)), TextureIndex::ROCK);
+        assert_eq!(info.face_for(0, State(4)), TextureIndex::WOOD_SIDE);
+
+        // State `12 = (2 * 2 + 0) * 3 + 0` → orientation 2 (X-axis),
+        // data 0, clock 0. World +X should now read the cap.
+        assert_eq!(info.face_for(0, State(12)), TextureIndex::WOOD_TOP);
+        assert_eq!(info.face_for(2, State(12)), TextureIndex::WOOD_SIDE);
+
+        // Round-trip through the codec: write orientation 4 (+Z) into a
+        // state that already had data 1 + clock 2 (interior = 5),
+        // verify the new state still decodes data + clock correctly.
+        let placed = (info.orientation_codec.write)(4, State(5));
+        assert_eq!(placed.0, 4 * 6 + 5);
+        // And the read-side picks +Z orientation.
+        assert_eq!(info.face_for(4, placed), TextureIndex::WOOD_TOP);
     }
 
     #[test]

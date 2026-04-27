@@ -78,6 +78,10 @@ pub struct GameScreen {
     pub backend: &'static str,
     /// Visible chat history (most-recent last). Set by app each frame.
     pub chat_history: Vec<String>,
+    /// Pre-formatted "(x, y, z) id N (name)" line describing the
+    /// currently-selected block, or `None` if the raycast missed. Set
+    /// by the app each frame; rendered by the F3 debug panel.
+    pub selected_block: Option<String>,
     pub hud: Hud,
     pub inventory: Inventory,
     /// Shared with `App` and the menu screens. Forwarded into
@@ -121,6 +125,7 @@ impl GameScreen {
             show_shadow_map: false,
             backend: "wgpu",
             chat_history: Vec::new(),
+            selected_block: None,
             hud: Hud::default(),
             inventory: Inventory::default(),
             config,
@@ -198,6 +203,7 @@ impl GameScreen {
             show_shadow_map: self.show_shadow_map,
             backend: self.backend,
             chat_history: &history,
+            selected_block: self.selected_block.as_deref(),
         };
         self.hud.render(ctx, &frame);
 

@@ -227,6 +227,30 @@ pub struct World {
     /// only when `phase % RANDOM_TICK_PERIOD == 0`; intermediate calls
     /// are O(1) early-returns. See [`RANDOM_TICK_PERIOD`].
     random_tick_phase: u32,
+    /// LCM3 circuit clock rate — the per-tick fire cap on each LCM3
+    /// register (`ff`). Other gate types have no cap; they re-evaluate
+    /// freely as inputs change, since LCM3's confluence guarantees the
+    /// rewrite system terminates regardless of order. Default `1`.
+    /// Settable at runtime via the `/lcm3-clock-rate` chat command;
+    /// `0` freezes circuits entirely.
+    lcm3_clock_rate: usize,
+    /// Per-tick LCM3 register fire counter. Keyed by world coord, value
+    /// is "how many times has this `ff` actually advanced its clock in
+    /// the current `process_block_updates` call". Cleared at the start
+    /// of each call. The count caps each register at
+    /// [`Self::lcm3_clock_rate`] clock advances per tick. Pushes onto
+    /// the main update queue are *not* capped — only the actual rule
+    /// firing.
+    lcm3_ff_fires: HashMap<Vec3i, usize>,
+    /// Auxiliary update queue: registers whose firing was blocked by
+    /// the per-tick fire cap end up here. The queue is drained back
+    /// into [`Self::block_update_queue`] at the start of the next
+    /// `process_block_updates` call so the deferred register gets a
+    /// fresh chance to fire. Without this carry-over, a self-clocking
+    /// loop would advance `lcm3_clock_rate` clocks in one tick and
+    /// then halt — the cap-blocked register would be the only
+    /// remaining signal but it would have been silently dropped.
+    lcm3_aux_queue: VecDeque<Vec3i>,
     pub unloaded_chunks: u32,
     pub updated_blocks: u32,
 }
@@ -282,6 +306,9 @@ impl World {
             // creation to the next.
             rng: 0x9E37_79B9_7F4A_7C15_u64.wrapping_add(u64::from(seed)),
             random_tick_phase: 0,
+            lcm3_clock_rate: 1,
+            lcm3_ff_fires: HashMap::new(),
+            lcm3_aux_queue: VecDeque::new(),
             unloaded_chunks: 0,
             updated_blocks: 0,
         })
@@ -309,6 +336,19 @@ impl World {
     #[must_use]
     pub fn block_update_queue(&self) -> &VecDeque<Vec3i> {
         &self.block_update_queue
+    }
+
+    /// Read the configured LCM3 clock-advance rate (clocks per sim tick).
+    #[must_use]
+    pub fn lcm3_clock_rate(&self) -> usize {
+        self.lcm3_clock_rate
+    }
+
+    /// Set the LCM3 clock-advance rate. Settable from the
+    /// `/lcm3-clock-rate` chat command. `0` is allowed and means
+    /// "advance no clocks" (effectively pausing LCM3 circuits).
+    pub fn set_lcm3_clock_rate(&mut self, rate: usize) {
+        self.lcm3_clock_rate = rate;
     }
 
     #[must_use]
@@ -766,6 +806,17 @@ impl World {
             // taps reach diagonal neighbours.
             self.mark_block_neighbour_chunks_updated(coord);
         }
+        // LCM3 rewrite rule on this cell. Same locality as lighting
+        // (cell + 6 face neighbours) so it lives inline. Crucially,
+        // running the rule here means *every* `update_block` caller —
+        // queue drain in `process_block_updates`, the synchronous
+        // placement path through `set_block_with_state(_, _, _, true)`,
+        // and any future ad-hoc trigger — exercises the rule on the
+        // cell itself, not just on its neighbours. Without this hook,
+        // a freshly placed LCM3 block would only fire once a
+        // neighbour's own fire enqueued it, which never happens for an
+        // otherwise-static neighbourhood.
+        self.try_lcm3_update(coord);
         true
     }
 
@@ -986,13 +1037,69 @@ impl World {
 
     /// Drain up to [`MAX_BLOCK_UPDATES`] from the queue.
     pub fn process_block_updates(&mut self) {
+        // LCM3 register fire counts are scoped to one
+        // `process_block_updates` call — clear them up front so each
+        // tick gives every `ff` a fresh `lcm3_clock_rate` budget.
+        self.lcm3_ff_fires.clear();
+        // Drain the LCM3 auxiliary queue (registers deferred from the
+        // previous tick because they hit their fire cap) back into the
+        // main update queue. Doing this *before* the main drain loop
+        // means deferred registers get a fresh chance to fire this
+        // tick — without it, a self-clocking circuit advances
+        // `lcm3_clock_rate` clocks once and then halts.
+        while let Some(coord) = self.lcm3_aux_queue.pop_front() {
+            self.block_update_queue.push_back(coord);
+        }
         for _ in 0..MAX_BLOCK_UPDATES {
             let Some(coord) = self.block_update_queue.pop_front() else {
                 break;
             };
+            // `update_block` runs both the lighting recompute and the
+            // LCM3 rewrite-rule check, so we don't dispatch them
+            // separately here. A fire from the LCM3 rule writes the
+            // cell via `set_block_with_state` and enqueues neighbours
+            // through the same path lighting uses.
             self.update_block(coord, false);
             self.updated_blocks = self.updated_blocks.wrapping_add(1);
         }
+    }
+
+    /// LCM3 rewrite-rule check for a single coord. No-ops if the cell
+    /// isn't an LCM3 block, isn't loaded, or has no rule applicable
+    /// right now. Enforces the per-tick fire cap on registers: if a
+    /// register's rule applies but it has already fired
+    /// [`Self::lcm3_clock_rate`] times this tick, the coord is pushed
+    /// onto [`Self::lcm3_aux_queue`] instead of fired — preserving
+    /// the "this register wants to advance" signal across the tick
+    /// boundary. Called once per drained cell from
+    /// [`Self::process_block_updates`].
+    fn try_lcm3_update(&mut self, coord: Vec3i) {
+        let base = self.base_blocks;
+        let Some(cell) = self.block(coord) else {
+            return;
+        };
+        if !base.is_lcm3(cell.id) {
+            return;
+        }
+        let Some(new_state) = crate::lcm3::try_apply(self, coord, &base) else {
+            return;
+        };
+        if new_state == cell.state {
+            return;
+        }
+        // Fire-cap check for registers. The check fires the rule only
+        // if the cap hasn't been hit yet; otherwise we defer to the
+        // aux queue so the next tick re-enqueues this coord.
+        if cell.id == base.lcm3_ff {
+            let prev = self.lcm3_ff_fires.get(&coord).copied().unwrap_or(0);
+            if prev >= self.lcm3_clock_rate {
+                self.lcm3_aux_queue.push_back(coord);
+                return;
+            }
+            *self.lcm3_ff_fires.entry(coord).or_insert(0) += 1;
+        }
+        // Writes the cell and enqueues neighbours, kicking the chain.
+        self.set_block_with_state(coord, cell.id, new_state, true);
     }
 
     /// Slide the load center to `center` (a world coord). Updates the
