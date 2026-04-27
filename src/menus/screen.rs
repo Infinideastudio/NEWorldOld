@@ -33,7 +33,7 @@ pub trait Screen {
     /// The screen receives the full egui [`Context`] and should build
     /// its UI inside a `CentralPanel`, `Window`, or any other egui
     /// container.
-    fn ui(&mut self, ctx: &Context) -> Transition;
+    fn show(&mut self, ctx: &Context) -> Transition;
 }
 
 /// A stack of screens. The topmost screen receives input and is rendered.
@@ -90,7 +90,7 @@ impl ScreenStack {
         let Some(top) = self.screens.last_mut() else {
             return false;
         };
-        match top.ui(ctx) {
+        match top.show(ctx) {
             Transition::None => false,
             Transition::Push(s) => {
                 self.push(s);

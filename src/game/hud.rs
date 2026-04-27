@@ -161,7 +161,9 @@ impl Hud {
                     .fill(egui::Color32::from_black_alpha(140));
                 frame.show(ui, |ui| {
                     let line = |ui: &mut egui::Ui, s: String| {
-                        ui.colored_label(egui::Color32::from_gray(230), s);
+                        let rich = egui::RichText::new(s).color(egui::Color32::from_gray(230));
+                        let label = egui::Label::new(rich).wrap_mode(egui::TextWrapMode::Extend);
+                        ui.add(label);
                     };
                     line(ui, format!("v{version} [{}]", f.backend));
                     line(ui, format!("{:.0} fps, {:.0} ups", f.fps, f.ups));

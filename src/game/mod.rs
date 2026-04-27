@@ -34,6 +34,8 @@
 //!   (used by the HUD to draw a selection outline overlay).
 
 pub mod camera;
+pub mod hud;
+pub mod inventory;
 pub mod raycast;
 
 use std::collections::{BinaryHeap, HashMap, HashSet};

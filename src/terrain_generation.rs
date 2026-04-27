@@ -29,7 +29,11 @@ fn noise_2d(seed: u32, x: i32, y: i32) -> f64 {
     xx ^= u64::from(seed).wrapping_mul(SEED_MIX);
     xx = (xx >> 13) ^ xx;
     let v = xx
-        .wrapping_mul(xx.wrapping_mul(xx).wrapping_mul(15_731).wrapping_add(789_221))
+        .wrapping_mul(
+            xx.wrapping_mul(xx)
+                .wrapping_mul(15_731)
+                .wrapping_add(789_221),
+        )
         .wrapping_add(1_376_312_589)
         & 0x7fff_ffff;
     v as f64 / 16_777_216.0
@@ -91,7 +95,7 @@ impl Generator {
         let upper = fractal_noise_2d(s, xs + 0.125, zs + 0.125) as i32 / 8 + 96;
         let transition = fractal_noise_2d(s, xs + 34.0, zs + 4.0) as i32;
         let lower = fractal_noise_2d(s, xs + 0.125, zs + 0.125) as i32 / 8;
-        let base = fractal_noise_2d(s, xs / 16.0, zs / 16.0) as i32 * 2 - 320;
+        let base = (fractal_noise_2d(s, xs / 16.0, zs / 16.0) * 2.0) as i32 - 320;
         if transition > upper {
             if mountain > upper {
                 return mountain + base;

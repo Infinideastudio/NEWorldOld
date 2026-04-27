@@ -1,19 +1,25 @@
 //! Create world screen — direct mirror of `old/src/menus/create_world_menu.cpp`.
 //!
-//! Layout: caption row, single-line text-edit row for the world name, then a
-//! Back / OK pair row. The C++ build creates the world directory inline on
-//! "OK" and pops back; we do the same. Validation errors (empty name,
-//! illegal characters, name collision) appear above the form in red.
+//! Layout: caption row, optional error label (red), single-line text-edit
+//! row for the world name, then a Back / OK pair row. The C++ build
+//! creates the world directory inline on "OK" and pops back; we do the
+//! same. Validation errors (empty name, illegal characters, name
+//! collision) appear above the form in red.
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use egui::{Color32, Context};
 
-use super::{MENU_ROW_HEIGHT, MENU_ROW_SPACING, caption_row, menu_panel, pair_row, t};
+use super::action::WorldActionQueue;
+use super::screen::{Screen, Transition};
+use super::{MENU_COL_SPACING, MENU_MAX_WIDTH, MENU_PADDING, MENU_ROW_HEIGHT, MENU_ROW_SPACING, t};
 use crate::globalization::I18n;
-use crate::ui::action::WorldActionQueue;
-use crate::ui::screen::{Screen, Transition};
+use crate::ui;
+use crate::ui::widgets::{
+    Aligned, Alignment, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisSize, Padding, Sizer,
+    Spacer, TextEdit, TextEditOutput,
+};
 
 /// Create world form state.
 pub struct CreateWorldScreen {
@@ -56,8 +62,7 @@ impl CreateWorldScreen {
         }
         if !is_safe_world_name(name) {
             self.error = Some(
-                "Use only letters, numbers, dashes and underscores in the world name."
-                    .to_owned(),
+                "Use only letters, numbers, dashes and underscores in the world name.".to_owned(),
             );
             return false;
         }
@@ -83,56 +88,66 @@ impl Screen for CreateWorldScreen {
         "Create World"
     }
 
-    fn ui(&mut self, ctx: &Context) -> Transition {
+    fn show(&mut self, ctx: &Context) -> Transition {
         let caption = t(&self.i18n, "NEWorld.create.caption");
         let placeholder = t(&self.i18n, "NEWorld.create.inputname");
         let ok_label = t(&self.i18n, "NEWorld.create.ok");
         let back_label = t(&self.i18n, "NEWorld.create.back");
 
-        let mut transition = Transition::None;
         let mut create_clicked = false;
         let mut cancel_clicked = false;
+        let mut text_out = TextEditOutput::default();
 
-        menu_panel(ctx, "create_world", |ui| {
-            caption_row(ui, &caption);
-            ui.add_space(MENU_ROW_SPACING);
-
-            if let Some(msg) = &self.error {
-                ui.colored_label(Color32::LIGHT_RED, msg);
-                ui.add_space(MENU_ROW_SPACING);
-            }
-
-            // Single-line text edit row.
-            ui.allocate_ui_with_layout(
-                egui::vec2(ui.available_width(), MENU_ROW_HEIGHT),
-                egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
-                |ui| {
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.world_name)
-                            .hint_text(&placeholder)
-                            .desired_width(f32::INFINITY),
-                    );
-                },
-            );
-            ui.add_space(MENU_ROW_SPACING);
-
-            // Footer: Back / OK pair_row, sitting at the natural bottom
-            // of the centred body.
-            pair_row(ui, |cols| {
-                if cols[0].button(&back_label).clicked() {
-                    cancel_clicked = true;
-                }
-                if cols[1].button(&ok_label).clicked() {
-                    create_clicked = true;
-                }
-            });
-        });
-
-        if cancel_clicked || (create_clicked && self.try_create()) {
-            transition = Transition::Pop;
+        // Build the body. The error row is only present when an error is
+        // set; absent rows just don't appear in the column.
+        let mut body_items: Vec<FlexItem> = Vec::new();
+        body_items.push(FlexItem::new(Sizer::height(
+            MENU_ROW_HEIGHT,
+            Aligned::center(Label::new(caption)),
+        )));
+        body_items.push(FlexItem::new(Spacer::height(MENU_ROW_SPACING)));
+        if let Some(err) = self.error.clone() {
+            body_items.push(FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Aligned::center(Label::new(err).color(Color32::LIGHT_RED)),
+            )));
+            body_items.push(FlexItem::new(Spacer::height(MENU_ROW_SPACING)));
         }
+        body_items.push(FlexItem::new(Sizer::height(
+            MENU_ROW_HEIGHT,
+            TextEdit::singleline(&mut self.world_name, &mut text_out).hint(placeholder),
+        )));
+        body_items.push(FlexItem::new(Spacer::height(MENU_ROW_SPACING)));
+        body_items.push(FlexItem::new(Sizer::height(
+            MENU_ROW_HEIGHT,
+            Flex::row(vec![
+                FlexItem::flex(1.0, Button::new(back_label, &mut cancel_clicked)),
+                FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                FlexItem::flex(1.0, Button::new(ok_label, &mut create_clicked)),
+            ])
+            .main_size(MainAxisSize::Max)
+            .cross_size(CrossAxisSize::Max),
+        )));
 
-        transition
+        let body = Flex::column(body_items)
+            .main_size(MainAxisSize::Min)
+            .cross_size(CrossAxisSize::Max);
+
+        let root = Aligned::new(
+            Alignment::Center,
+            Padding::all(MENU_PADDING, Sizer::width(MENU_MAX_WIDTH, body)),
+        );
+
+        ui::show(ctx, root);
+
+        // Pressing Enter inside the text edit submits, same as clicking OK.
+        let submit = create_clicked || text_out.submitted;
+
+        if cancel_clicked || (submit && self.try_create()) {
+            Transition::Pop
+        } else {
+            Transition::None
+        }
     }
 }
 

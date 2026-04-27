@@ -10,21 +10,25 @@
 //!   * back
 //!
 //! Most of these settings persist into `Config` but don't yet affect the
-//! Rust renderer (smooth lighting, fancy grass, merge-face, MSAA — see the
-//! roadmap in `docs/rust_migration.md` §4 Tier 2/3). The toggles are still
-//! exposed so the layout matches C++ verbatim and the values survive the
-//! day a renderer feature lands.
+//! Rust renderer — the toggles are exposed so the layout matches C++
+//! verbatim and the values survive the day a renderer feature lands.
 
 use std::sync::{Arc, Mutex};
 
 use egui::Context;
 
+use super::screen::{Screen, Transition};
 use super::{
-    MENU_ROW_SPACING, ShaderOptionsScreen, caption_row, full_row_button, menu_panel, pair_row, t,
+    MENU_COL_SPACING, MENU_MAX_WIDTH, MENU_PADDING, MENU_ROW_HEIGHT, MENU_ROW_SPACING,
+    ShaderOptionsScreen, t,
 };
 use crate::config::Config;
 use crate::globalization::I18n;
-use crate::ui::screen::{Screen, Transition};
+use crate::ui;
+use crate::ui::widgets::{
+    Aligned, Alignment, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisAlignment,
+    MainAxisSize, Padding, Sizer, Slider, Spacer,
+};
 
 /// Render options sub-screen.
 pub struct RenderOptionsScreen {
@@ -44,7 +48,7 @@ impl Screen for RenderOptionsScreen {
         "Render Options"
     }
 
-    fn ui(&mut self, ctx: &Context) -> Transition {
+    fn show(&mut self, ctx: &Context) -> Transition {
         let caption = t(&self.i18n, "NEWorld.render.caption");
         let smooth_lbl = t(&self.i18n, "NEWorld.render.smooth");
         let grass_lbl = t(&self.i18n, "NEWorld.render.grasstex");
@@ -56,95 +60,142 @@ impl Screen for RenderOptionsScreen {
         let enabled_lbl = t(&self.i18n, "NEWorld.enabled");
         let disabled_lbl = t(&self.i18n, "NEWorld.disabled");
 
-        let mut transition = Transition::None;
         let mut want_back = false;
         let mut want_shaders = false;
+        let mut smooth_clicked = false;
+        let mut grass_clicked = false;
+        let mut merge_clicked = false;
+        let mut vsync_clicked = false;
+        let mut msaa_changed = false;
 
-        let mut cfg = self.config.lock().expect("config poisoned");
+        let mut guard = self.config.lock().expect("config poisoned");
+        let cfg: &mut Config = &mut guard;
 
-        menu_panel(ctx, "render_options", |ui| {
-            caption_row(ui, &caption);
-            ui.add_space(MENU_ROW_SPACING);
+        // Snapshot label texts for the toggles.
+        let smooth_text = format!(
+            "{smooth_lbl}{}",
+            bool_state(cfg.smooth_lighting, &enabled_lbl, &disabled_lbl)
+        );
+        let grass_text = format!(
+            "{grass_lbl}{}",
+            bool_state(cfg.nice_grass, &enabled_lbl, &disabled_lbl)
+        );
+        let merge_text = format!(
+            "{merge_lbl}{}",
+            bool_state(cfg.merge_face, &enabled_lbl, &disabled_lbl)
+        );
+        let vsync_text = format!(
+            "{vsync_lbl}{}",
+            bool_state(cfg.vertical_sync, &enabled_lbl, &disabled_lbl)
+        );
+        let msaa_value_text = if cfg.multisample == 0 {
+            disabled_lbl.clone()
+        } else {
+            format!("{}x", cfg.multisample)
+        };
+        let msaa_text = format!("{msaa_lbl}{msaa_value_text}");
+        // C++: log2 levels [0, 2, 4, 8] mapped to slider position [0, 0.33, 0.66, 1].
+        let mut msaa_pos = msaa_to_position(cfg.multisample);
 
+        let body = Flex::column(vec![
+            // Caption.
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Aligned::center(Label::new(caption)),
+            )),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
             // Row 1: smooth lighting | fancy grass
-            pair_row(ui, |cols| {
-                let smooth = format!(
-                    "{smooth_lbl}{}",
-                    bool_state(cfg.smooth_lighting, &enabled_lbl, &disabled_lbl)
-                );
-                if cols[0].button(smooth).clicked() {
-                    cfg.smooth_lighting = !cfg.smooth_lighting;
-                }
-                let grass = format!(
-                    "{grass_lbl}{}",
-                    bool_state(cfg.nice_grass, &enabled_lbl, &disabled_lbl)
-                );
-                if cols[1].button(grass).clicked() {
-                    cfg.nice_grass = !cfg.nice_grass;
-                }
-            });
-            ui.add_space(MENU_ROW_SPACING);
-
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Flex::row(vec![
+                    FlexItem::flex(1.0, Button::new(smooth_text, &mut smooth_clicked)),
+                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                    FlexItem::flex(1.0, Button::new(grass_text, &mut grass_clicked)),
+                ])
+                .main_size(MainAxisSize::Max)
+                .cross_size(CrossAxisSize::Max),
+            )),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
             // Row 2: merge face | MSAA slider
-            pair_row(ui, |cols| {
-                let merge = format!(
-                    "{merge_lbl}{}",
-                    bool_state(cfg.merge_face, &enabled_lbl, &disabled_lbl)
-                );
-                if cols[0].button(merge).clicked() {
-                    cfg.merge_face = !cfg.merge_face;
-                }
-                let value_text = if cfg.multisample == 0 {
-                    disabled_lbl.clone()
-                } else {
-                    format!("{}x", cfg.multisample)
-                };
-                cols[1].label(format!("{msaa_lbl}{value_text}"));
-                // C++: log2 levels [0, 2, 4, 8] mapped to slider position [0, 0.33, 0.66, 1].
-                let mut pos = msaa_to_position(cfg.multisample);
-                if cols[1]
-                    .add(egui::Slider::new(&mut pos, 0.0..=1.0).show_value(false))
-                    .changed()
-                {
-                    cfg.multisample = position_to_msaa(pos);
-                }
-            });
-            ui.add_space(MENU_ROW_SPACING);
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Flex::row(vec![
+                    FlexItem::flex(1.0, Button::new(merge_text, &mut merge_clicked)),
+                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                    FlexItem::flex(
+                        1.0,
+                        Flex::column(vec![
+                            FlexItem::new(Label::new(msaa_text)),
+                            FlexItem::flex(
+                                1.0,
+                                Slider::new(&mut msaa_pos, 0.0..=1.0, &mut msaa_changed),
+                            ),
+                        ])
+                        .cross_size(CrossAxisSize::Max),
+                    ),
+                ])
+                .main_size(MainAxisSize::Max)
+                .cross_size(CrossAxisSize::Max),
+            )),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+            // Row 3: vsync | shader sub-menu
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Flex::row(vec![
+                    FlexItem::flex(1.0, Button::new(vsync_text, &mut vsync_clicked)),
+                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                    FlexItem::flex(1.0, Button::new(shaders_lbl, &mut want_shaders)),
+                ])
+                .main_size(MainAxisSize::Max)
+                .cross_size(CrossAxisSize::Max),
+            )),
+            // Flex spacer pushes the back row to the bottom.
+            FlexItem::flex(1.0, Spacer::fill()),
+            // Footer: full-width Back.
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Button::new(back_lbl, &mut want_back),
+            )),
+        ])
+        .main_size(MainAxisSize::Max)
+        .main_align(MainAxisAlignment::Start)
+        .cross_size(CrossAxisSize::Max);
 
-            // Row 3: vsync | advanced rendering sub-menu
-            pair_row(ui, |cols| {
-                let vsync = format!(
-                    "{vsync_lbl}{}",
-                    bool_state(cfg.vertical_sync, &enabled_lbl, &disabled_lbl)
-                );
-                if cols[0].button(vsync).clicked() {
-                    cfg.vertical_sync = !cfg.vertical_sync;
-                }
-                if cols[1].button(&shaders_lbl).clicked() {
-                    want_shaders = true;
-                }
-            });
-            ui.add_space(MENU_ROW_SPACING);
+        let root = Aligned::new(
+            Alignment::TopCenter,
+            Padding::all(MENU_PADDING, Sizer::width(MENU_MAX_WIDTH, body)),
+        );
 
-            // Footer back button — sits at the natural bottom of the
-            // centred body.
-            if full_row_button(ui, &back_lbl) {
-                want_back = true;
-            }
-        });
+        ui::show(ctx, root);
 
-        drop(cfg);
-
-        if want_back {
-            transition = Transition::Pop;
-        } else if want_shaders {
-            transition = Transition::Push(Box::new(ShaderOptionsScreen::new(
-                Arc::clone(&self.config),
-                Arc::clone(&self.i18n),
-            )));
+        if smooth_clicked {
+            cfg.smooth_lighting = !cfg.smooth_lighting;
+        }
+        if grass_clicked {
+            cfg.nice_grass = !cfg.nice_grass;
+        }
+        if merge_clicked {
+            cfg.merge_face = !cfg.merge_face;
+        }
+        if vsync_clicked {
+            cfg.vertical_sync = !cfg.vertical_sync;
+        }
+        if msaa_changed {
+            cfg.multisample = position_to_msaa(msaa_pos);
         }
 
-        transition
+        drop(guard);
+
+        if want_back {
+            Transition::Pop
+        } else if want_shaders {
+            Transition::Push(Box::new(ShaderOptionsScreen::new(
+                Arc::clone(&self.config),
+                Arc::clone(&self.i18n),
+            )))
+        } else {
+            Transition::None
+        }
     }
 }
 

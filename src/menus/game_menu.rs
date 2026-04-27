@@ -19,16 +19,21 @@ use std::sync::{Arc, Mutex};
 
 use egui::Context;
 
+use super::action::{WorldAction, WorldActionQueue};
+use super::screen::Transition;
 use super::{
-    MENU_ROW_SPACING, OptionsScreen, caption_row, full_row_button, menu_overlay, pair_row, t,
+    MENU_COL_SPACING, MENU_MAX_WIDTH, MENU_PADDING, MENU_ROW_HEIGHT, MENU_ROW_SPACING,
+    OptionsScreen, t,
 };
 use crate::blocks::{BlockRegistry, Id};
 use crate::config::Config;
+use crate::game::hud::{Hud, HudFrame};
+use crate::game::inventory::Inventory;
 use crate::globalization::I18n;
-use crate::ui::action::{WorldAction, WorldActionQueue};
-use crate::ui::hud::{Hud, HudFrame};
-use crate::ui::inventory::Inventory;
-use crate::ui::screen::Transition;
+use crate::ui;
+use crate::ui::widgets::{
+    Aligned, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisSize, Padding, Sizer, Spacer,
+};
 use crate::worlds::Player;
 
 /// The in-game screen shown during gameplay.
@@ -201,14 +206,11 @@ impl GameScreen {
         self.inventory
             .render(ctx, player, registry, air_id, block_icons);
 
-        // Pause menu overlay — mirror of `old/src/menus/game_menu.cpp`.
-        // Uses the same `caption_row` + `pair_row` chrome as every other
-        // menu so button widths, row heights, and column gutters match
-        // exactly. The pause variant uses `menu_overlay` (no opaque
-        // background) so the live HUD / crosshair / inventory remain
-        // visible behind it — diverges from the C++ build, which
-        // takes a full screenshot of the gameplay frame and freezes
-        // it as a backdrop.
+        // Pause menu overlay — mirror of `old/src/menus/game_menu.cpp`,
+        // built against the layout engine. Uses [`l::run_overlay`] so the
+        // live HUD / crosshair / inventory remain visible behind a
+        // translucent scrim (diverges from the C++ build, which freezes a
+        // gameplay screenshot as the backdrop).
         if self.paused {
             let caption = t(&self.i18n, "NEWorld.pause.caption");
             let back_lbl = t(&self.i18n, "NEWorld.pause.back");
@@ -219,28 +221,40 @@ impl GameScreen {
             let mut want_options = false;
             let mut want_leave = false;
 
-            menu_overlay(ctx, "pause", |ui| {
-                caption_row(ui, &caption);
-                ui.add_space(MENU_ROW_SPACING);
+            // The overlay column auto-sizes to its natural height
+            // (`main_size = Min`) — we want a tight box centred on screen,
+            // not a full-height panel.
+            let body = Flex::column(vec![
+                FlexItem::new(Sizer::height(
+                    MENU_ROW_HEIGHT,
+                    Aligned::center(Label::new(caption)),
+                )),
+                FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+                FlexItem::new(Sizer::height(
+                    MENU_ROW_HEIGHT,
+                    Button::new(continue_lbl, &mut want_resume),
+                )),
+                FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+                FlexItem::new(Sizer::height(
+                    MENU_ROW_HEIGHT,
+                    Flex::row(vec![
+                        FlexItem::flex(1.0, Button::new(back_lbl, &mut want_leave)),
+                        FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                        FlexItem::flex(1.0, Button::new(options_lbl, &mut want_options)),
+                    ])
+                    .main_size(MainAxisSize::Max)
+                    .cross_size(CrossAxisSize::Max),
+                )),
+            ])
+            .main_size(MainAxisSize::Min)
+            .cross_size(CrossAxisSize::Max);
 
-                pair_row(ui, |cols| {
-                    if cols[0].button(&back_lbl).clicked() {
-                        want_leave = true;
-                    }
-                    if cols[1].button(&continue_lbl).clicked() {
-                        want_resume = true;
-                    }
-                });
-                ui.add_space(MENU_ROW_SPACING);
+            // No outer `Aligned::Center` — `show_modal` hosts the root in
+            // an `egui::Window` anchored to screen centre, so we just hand
+            // it a natural-sized tree (Padding around the width-capped body).
+            let root = Padding::all(MENU_PADDING, Sizer::width(MENU_MAX_WIDTH, body));
 
-                // Options is not in the C++ pause-menu DSL but is useful
-                // for tweaking sensitivity / FOV / language mid-game; the
-                // C++ build exposes it via the F1 key. Keep it as a
-                // full-width row below the matched pair.
-                if full_row_button(ui, &options_lbl) {
-                    want_options = true;
-                }
-            });
+            ui::show_modal(ctx, "pause", root);
 
             if want_resume {
                 self.paused = false;

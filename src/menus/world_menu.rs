@@ -1,30 +1,49 @@
 //! World selection screen — direct mirror of `old/src/menus/world_menu.cpp`.
 //!
-//! Layout: a centred caption row, a scrollable column of one button per
-//! world (the C++ build paints the world's `thumbnail.png` behind the name —
-//! we just show the name on a button until thumbnail loading is wired into
-//! egui), a "Create new world" button, a flex spacer, an Enter / Delete
-//! pair row, and a "Back to main menu" footer.
+//! First menu rebuilt against the in-house Flutter-style layout in
+//! [`crate::ui::widgets`]. Compared to the egui-immediate-mode version this
+//! replaces:
 //!
-//! Pressing "Enter" submits a [`WorldAction::Enter`] into the
-//! [`WorldActionQueue`]; the app drains and constructs the live `Game`. The
-//! list refreshes every frame (cheap directory scan; only happens while the
-//! user is on this screen) so a freshly-created world appears immediately
-//! after "Create" pops back to us.
+//! * `available_height - 3*ROW - 4*SPACING` arithmetic for the scroll
+//!   area's height with `FlexItem::flex(1.0, ScrollView::vertical(...))` —
+//!   the column distributes leftover space automatically.
+//! * `egui::ScrollArea::vertical().max_height(...)` with our own
+//!   [`ScrollView`](crate::ui::widgets::ScrollView): it bounds the cross
+//!   axis and gives the child unbounded constraint along the scroll axis,
+//!   then clips + offsets in `show`.
+//! * `pair_row` / `caption_row` / `full_row_button` chrome helpers with
+//!   plain `Row`/`Column`/`Sizer`/`Spacer` primitives.
+//!
+//! Atomic widgets (entries, Enter/Delete/Back, Create-new) are still real
+//! `egui::Button`s, hosted at our absolute rect via the
+//! [`Button`](crate::ui::widgets::Button) /
+//! [`SelectButton`](crate::ui::widgets::SelectButton) wrappers. Each takes
+//! a `&mut bool` (or small output struct) and writes the extracted event
+//! directly — no `egui::Response` storage, no Context-clone deadlock
+//! surface, just plain bools to inspect after `run()` returns.
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use egui::{Color32, Context};
+use egui::Context;
 
+use super::action::{WorldAction, WorldActionQueue};
+use super::screen::{Screen, Transition};
 use super::{
-    CreateWorldScreen, MENU_ROW_HEIGHT, MENU_ROW_SPACING, caption_row, full_row_button, menu_panel,
-    pair_row, t,
+    CreateWorldScreen, MENU_COL_SPACING, MENU_MAX_WIDTH, MENU_PADDING, MENU_ROW_HEIGHT,
+    MENU_ROW_SPACING, t,
 };
 use crate::globalization::I18n;
-use crate::ui::action::{WorldAction, WorldActionQueue};
-use crate::ui::screen::{Screen, Transition};
+use crate::ui;
+use crate::ui::widgets::{
+    Aligned, Alignment, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisSize, Padding,
+    ScrollView, SelectButton, SelectButtonOutput, Sizer, Spacer,
+};
 use crate::worlds::World;
+
+/// Height of a single world-list entry, in logical pixels — matches the
+/// C++ `Sizer({.max_height = 72})` from `old/src/menus/world_menu.cpp:46`.
+const ENTRY_ROW_HEIGHT: f32 = 72.0;
 
 /// World selection screen.
 pub struct WorldSelectScreen {
@@ -69,7 +88,7 @@ impl Screen for WorldSelectScreen {
         "Select World"
     }
 
-    fn ui(&mut self, ctx: &Context) -> Transition {
+    fn show(&mut self, ctx: &Context) -> Transition {
         // Cheap directory scan; only while this screen is on top.
         self.refresh();
 
@@ -79,109 +98,122 @@ impl Screen for WorldSelectScreen {
         let delete_label = t(&self.i18n, "NEWorld.worlds.delete");
         let back_label = t(&self.i18n, "NEWorld.worlds.back");
 
-        let mut transition = Transition::None;
+        // Output slots — every interactive widget below borrows one of
+        // these mutably for the duration of the build. Inspected after
+        // `run()` returns, when all widget borrows have dropped.
         let mut create_clicked = false;
+        let mut enter_clicked = false;
         let mut delete_clicked = false;
         let mut back_clicked = false;
-        let mut enter_clicked = false;
+        let mut entry_outs: Vec<SelectButtonOutput> =
+            vec![SelectButtonOutput::default(); self.entries.len()];
 
-        menu_panel(ctx, "worlds", |ui| {
-            caption_row(ui, &caption);
-            ui.add_space(MENU_ROW_SPACING);
+        let has_sel = !self.selected.is_empty();
+        let selected_name = self.selected.clone();
 
-            // Scrollable list of world entries. With vertical centring,
-            // `available_height` already reflects the half-spacer above
-            // the body, so reserving 3 rows + 4 gaps for the footer keeps
-            // the list from overlapping the new / enter / delete / back
-            // buttons.
-            let list_height = (ui.available_height()
-                - MENU_ROW_HEIGHT * 3.0
-                - MENU_ROW_SPACING * 4.0)
-                .max(MENU_ROW_HEIGHT);
-            egui::ScrollArea::vertical()
-                .max_height(list_height)
-                .show(ui, |ui| {
-                    if self.entries.is_empty() {
-                        ui.add_space(MENU_ROW_HEIGHT);
-                        ui.vertical_centered(|ui| {
-                            ui.colored_label(
-                                Color32::from_gray(180),
-                                "(no worlds yet — create one below)",
-                            );
-                        });
-                    } else {
-                        let entries = self.entries.clone();
-                        for name in &entries {
-                            let is_selected = self.selected == *name;
-                            // 72-px-tall row to match the C++ `Sizer({.max_height = 72})`.
-                            let resp = ui.add_sized(
-                                egui::vec2(ui.available_width(), 72.0),
-                                egui::Button::selectable(is_selected, name),
-                            );
-                            if resp.clicked() {
-                                self.selected = name.clone();
-                            }
-                            if resp.double_clicked() {
-                                self.selected = name.clone();
-                                enter_clicked = true;
-                            }
-                            ui.add_space(MENU_ROW_SPACING);
-                        }
-                    }
-                });
+        // ---- Build the entry list (vertical column, scrolled) ----
+        let mut entry_items: Vec<FlexItem> = Vec::new();
+        for (name, out_slot) in self.entries.iter().zip(entry_outs.iter_mut()) {
+            let is_sel = name == &selected_name;
+            entry_items.push(FlexItem::new(Sizer::height(
+                ENTRY_ROW_HEIGHT,
+                SelectButton::new(name.clone(), is_sel, out_slot),
+            )));
+            entry_items.push(FlexItem::new(Spacer::height(MENU_ROW_SPACING)));
+        }
+        entry_items.push(FlexItem::new(Sizer::height(
+            ENTRY_ROW_HEIGHT,
+            Button::new(new_label, &mut create_clicked),
+        )));
+        let entries_column = Flex::column(entry_items);
 
-            ui.add_space(MENU_ROW_SPACING);
-            if full_row_button(ui, &new_label) {
-                create_clicked = true;
+        // ---- Compose the body column ----
+        let body = Flex::column(vec![
+            // caption
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Aligned::center(Label::new(caption)),
+            )),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+            // scrollable entries — flex-grow consumes leftover height
+            FlexItem::flex(
+                1.0,
+                ScrollView::vertical(egui::Id::new("worlds.scroll"), entries_column),
+            ),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+            // Enter | Delete pair
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Flex::row(vec![
+                    FlexItem::flex(
+                        1.0,
+                        Button::new(enter_label, &mut enter_clicked).enabled(has_sel),
+                    ),
+                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                    FlexItem::flex(
+                        1.0,
+                        Button::new(delete_label, &mut delete_clicked).enabled(has_sel),
+                    ),
+                ])
+                .main_size(MainAxisSize::Max)
+                .cross_size(CrossAxisSize::Max),
+            )),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+            // Back to main menu
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Button::new(back_label, &mut back_clicked),
+            )),
+        ])
+        .main_size(MainAxisSize::Max)
+        .cross_size(CrossAxisSize::Max);
+
+        // Outer chrome: padding + max-width + horizontal centering.
+        // No boxing at the root — `run()` takes any `E: Element` by value
+        // and monomorphises per call site.
+        let root = Aligned::new(
+            Alignment::TopCenter,
+            Padding::all(MENU_PADDING, Sizer::width(MENU_MAX_WIDTH, body)),
+        );
+
+        // ---- Run one frame ----
+        ui::show(ctx, root);
+
+        // ---- Drain output slots into screen state / transitions ----
+        let mut want_enter = enter_clicked;
+        for (i, out) in entry_outs.iter().enumerate() {
+            if out.clicked {
+                self.selected = self.entries[i].clone();
             }
-            ui.add_space(MENU_ROW_SPACING);
-
-            // Enter / Delete pair, then full-width Back. These ride at the
-            // natural bottom of the centred body — `menu_panel` no longer
-            // pushes them to the absolute panel edge.
-            let has_sel = !self.selected.is_empty();
-            pair_row(ui, |cols| {
-                if cols[0]
-                    .add_enabled(has_sel, egui::Button::new(&enter_label))
-                    .clicked()
-                {
-                    enter_clicked = true;
-                }
-                if cols[1]
-                    .add_enabled(has_sel, egui::Button::new(&delete_label))
-                    .clicked()
-                {
-                    delete_clicked = true;
-                }
-            });
-            ui.add_space(MENU_ROW_SPACING);
-            if full_row_button(ui, &back_label) {
-                back_clicked = true;
+            if out.double_clicked {
+                self.selected = self.entries[i].clone();
+                want_enter = true;
             }
-        });
+        }
 
         if back_clicked {
-            transition = Transition::Pop;
+            Transition::Pop
         } else if create_clicked {
-            transition = Transition::Push(Box::new(CreateWorldScreen::new(
+            Transition::Push(Box::new(CreateWorldScreen::new(
                 self.worlds_root.clone(),
                 Arc::clone(&self.i18n),
                 Arc::clone(&self.actions),
-            )));
-        } else if delete_clicked {
+            )))
+        } else if delete_clicked && !self.selected.is_empty() {
             self.actions.submit(WorldAction::Delete {
                 name: self.selected.clone(),
             });
             self.refresh();
-        } else if enter_clicked && !self.selected.is_empty() {
+            Transition::None
+        } else if want_enter && !self.selected.is_empty() {
             self.actions.submit(WorldAction::Enter {
                 name: self.selected.clone(),
                 seed: derive_seed(&self.selected),
             });
-            transition = Transition::Pop;
+            Transition::Pop
+        } else {
+            Transition::None
         }
-
-        transition
     }
 }
 

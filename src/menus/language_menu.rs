@@ -1,10 +1,7 @@
 //! Language picker — direct mirror of `old/src/menus/language_menu.cpp`.
 //!
-//! Layout (top-down):
-//!   * caption row
-//!   * one full-row button per available language (label = native name)
-//!   * flex spacer
-//!   * back
+//! Caption row, one full-row button per available language (label = native
+//! name), then a Back button.
 //!
 //! On click the picker writes `lang_code` into `Config::language`; the App's
 //! per-frame `apply_config` sees the change and reloads the i18n table so
@@ -19,10 +16,15 @@ use std::sync::{Arc, Mutex};
 
 use egui::Context;
 
-use super::{caption_row, full_row_button, menu_panel, t, MENU_ROW_SPACING};
+use super::screen::{Screen, Transition};
+use super::{MENU_MAX_WIDTH, MENU_PADDING, MENU_ROW_HEIGHT, MENU_ROW_SPACING, t};
 use crate::config::Config;
 use crate::globalization::{I18n, LanguageEntry, list_languages};
-use crate::ui::screen::{Screen, Transition};
+use crate::ui;
+use crate::ui::widgets::{
+    Aligned, Alignment, Button, Flex, FlexItem, Label, MainAxisAlignment, MainAxisSize, Padding,
+    ScrollView, Sizer, Spacer,
+};
 
 /// Language picker sub-screen.
 pub struct LanguageScreen {
@@ -51,47 +53,68 @@ impl Screen for LanguageScreen {
         "Language"
     }
 
-    fn ui(&mut self, ctx: &Context) -> Transition {
+    fn show(&mut self, ctx: &Context) -> Transition {
         let caption = t(&self.i18n, "NEWorld.language.caption");
         let back_lbl = t(&self.i18n, "NEWorld.language.back");
 
-        let mut transition = Transition::None;
-        let mut chosen_code: Option<String> = None;
-        let mut want_back = false;
+        let mut entry_clicked: Vec<bool> = vec![false; self.entries.len()];
+        let mut back_clicked = false;
 
-        menu_panel(ctx, "language", |ui| {
-            caption_row(ui, &caption);
-            ui.add_space(MENU_ROW_SPACING);
-
-            for entry in &self.entries {
-                let label = if entry.native_name.is_empty() {
-                    entry.code.clone()
-                } else {
-                    entry.native_name.clone()
-                };
-                if full_row_button(ui, &label) {
-                    chosen_code = Some(entry.code.clone());
-                }
-                ui.add_space(MENU_ROW_SPACING);
-            }
-
-            if full_row_button(ui, &back_lbl) {
-                want_back = true;
-            }
-        });
-
-        if let Some(code) = chosen_code {
-            // Update the config; App::apply_config picks up the change next
-            // frame and reloads the i18n table.
-            if let Ok(mut cfg) = self.config.lock() {
-                cfg.language = code;
-            }
-            transition = Transition::Pop;
-        } else if want_back {
-            transition = Transition::Pop;
+        let mut entry_items: Vec<FlexItem> = Vec::new();
+        for (entry, slot) in self.entries.iter().zip(entry_clicked.iter_mut()) {
+            let label = if entry.native_name.is_empty() {
+                entry.code.clone()
+            } else {
+                entry.native_name.clone()
+            };
+            entry_items.push(FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Button::new(label, slot),
+            )));
+            entry_items.push(FlexItem::new(Spacer::height(MENU_ROW_SPACING)));
         }
+        let entries_column = Flex::column(entry_items);
 
-        transition
+        let body = Flex::column(vec![
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Aligned::center(Label::new(caption)),
+            )),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+            FlexItem::flex(
+                1.0,
+                ScrollView::vertical(egui::Id::new("language.scroll"), entries_column),
+            ),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Button::new(back_lbl, &mut back_clicked),
+            )),
+        ])
+        .main_size(MainAxisSize::Max)
+        .main_align(MainAxisAlignment::Start);
+
+        let root = Aligned::new(
+            Alignment::TopCenter,
+            Padding::all(MENU_PADDING, Sizer::width(MENU_MAX_WIDTH, body)),
+        );
+
+        ui::show(ctx, root);
+
+        // Drain entry clicks first — a click writes config + pops.
+        for (i, &clicked) in entry_clicked.iter().enumerate() {
+            if clicked {
+                if let Ok(mut cfg) = self.config.lock() {
+                    cfg.language = self.entries[i].code.clone();
+                }
+                return Transition::Pop;
+            }
+        }
+        if back_clicked {
+            Transition::Pop
+        } else {
+            Transition::None
+        }
     }
 }
 

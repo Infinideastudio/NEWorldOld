@@ -112,13 +112,14 @@ impl Inventory {
             .order(egui::Order::Background)
             .show(ctx, |ui| {
                 let rect = ctx.content_rect();
-                ui.painter().rect_filled(rect, 0.0, Color32::from_black_alpha(120));
+                ui.painter()
+                    .rect_filled(rect, 0.0, Color32::from_black_alpha(120));
             });
 
         egui::Window::new("Inventory")
             .collapsible(false)
             .resizable(false)
-            .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
+            .anchor(Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
             .show(ctx, |ui| {
                 // Rows 0..3 in inventory order (top to bottom). The hotbar
                 // is row 3 in the player's storage; we render it last with a
@@ -191,16 +192,7 @@ impl Inventory {
         row: usize,
         col: usize,
     ) {
-        self.handle_slot_with_highlight(
-            ui,
-            player,
-            registry,
-            air_id,
-            block_icons,
-            row,
-            col,
-            false,
-        );
+        self.handle_slot_with_highlight(ui, player, registry, air_id, block_icons, row, col, false);
     }
 
     /// Render one slot and react to clicks. Mutates the player's slot and
@@ -294,7 +286,11 @@ impl Inventory {
         highlighted: bool,
         interactive: bool,
     ) -> egui::Response {
-        let sense = if interactive { Sense::click() } else { Sense::hover() };
+        let sense = if interactive {
+            Sense::click()
+        } else {
+            Sense::hover()
+        };
         let (rect, response) = ui.allocate_exact_size(vec2(SLOT_SIZE, SLOT_SIZE), sense);
         let hovered = response.hovered();
         Self::paint_slot_into(
@@ -334,7 +330,12 @@ impl Inventory {
             Color32::from_gray(110)
         };
         painter.rect_filled(rect, 2.0, bg);
-        painter.rect_stroke(rect, 2.0, Stroke::new(1.0, border), egui::StrokeKind::Middle);
+        painter.rect_stroke(
+            rect,
+            2.0,
+            Stroke::new(1.0, border),
+            egui::StrokeKind::Middle,
+        );
 
         if stack.empty() || stack.id == air_id {
             return;

@@ -7,19 +7,20 @@
 //!     leaves the right column of the second row blank)
 //!   * flex spacer
 //!   * back
-//!
-//! Font size is live (App pushes the value into egui's pixel scale every
-//! frame). PPI stretch and background blur persist into `Config` but don't
-//! yet affect rendering — see `docs/rust_migration.md` Tier 3.
 
 use std::sync::{Arc, Mutex};
 
 use egui::Context;
 
-use super::{MENU_ROW_SPACING, caption_row, full_row_button, menu_panel, pair_row, t};
+use super::screen::{Screen, Transition};
+use super::{MENU_COL_SPACING, MENU_MAX_WIDTH, MENU_PADDING, MENU_ROW_HEIGHT, MENU_ROW_SPACING, t};
 use crate::config::Config;
 use crate::globalization::I18n;
-use crate::ui::screen::{Screen, Transition};
+use crate::ui;
+use crate::ui::widgets::{
+    Aligned, Alignment, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisAlignment,
+    MainAxisSize, Padding, Sizer, Slider, Spacer,
+};
 
 /// UI options sub-screen.
 pub struct UIOptionsScreen {
@@ -39,7 +40,7 @@ impl Screen for UIOptionsScreen {
         "UI Options"
     }
 
-    fn ui(&mut self, ctx: &Context) -> Transition {
+    fn show(&mut self, ctx: &Context) -> Transition {
         let caption = t(&self.i18n, "NEWorld.gui.caption");
         let font_lbl = t(&self.i18n, "NEWorld.gui.fontsize");
         let stretch_lbl = t(&self.i18n, "NEWorld.gui.stretch");
@@ -48,55 +49,102 @@ impl Screen for UIOptionsScreen {
         let enabled_lbl = t(&self.i18n, "NEWorld.enabled");
         let disabled_lbl = t(&self.i18n, "NEWorld.disabled");
 
-        let mut transition = Transition::None;
         let mut want_back = false;
+        let mut stretch_clicked = false;
+        let mut blur_clicked = false;
+        let mut font_changed = false;
 
-        let mut cfg = self.config.lock().expect("config poisoned");
+        let mut guard = self.config.lock().expect("config poisoned");
+        let cfg: &mut Config = &mut guard;
 
-        menu_panel(ctx, "ui_options", |ui| {
-            caption_row(ui, &caption);
-            ui.add_space(MENU_ROW_SPACING);
-
-            // Row 1: font size slider | PPI stretch toggle
-            pair_row(ui, |cols| {
-                cols[0].label(format!("{font_lbl}{:.1}x", cfg.font_scale));
-                cols[0].add(egui::Slider::new(&mut cfg.font_scale, 0.5..=2.0).show_value(false));
-                let stretch = format!(
-                    "{stretch_lbl}{}",
-                    if cfg.ui_auto_stretch { &enabled_lbl } else { &disabled_lbl }
-                );
-                if cols[1].button(stretch).clicked() {
-                    cfg.ui_auto_stretch = !cfg.ui_auto_stretch;
-                }
-            });
-            ui.add_space(MENU_ROW_SPACING);
-
-            // Row 2: background blur toggle | empty (matches C++ layout)
-            pair_row(ui, |cols| {
-                let blur = format!(
-                    "{blur_lbl}{}",
-                    if cfg.ui_background_blur { &enabled_lbl } else { &disabled_lbl }
-                );
-                if cols[0].button(blur).clicked() {
-                    cfg.ui_background_blur = !cfg.ui_background_blur;
-                }
-                // cols[1] left blank — matches the C++ layout.
-            });
-            ui.add_space(MENU_ROW_SPACING);
-
-            // Footer back button — natural bottom of the centred body.
-            if full_row_button(ui, &back_lbl) {
-                want_back = true;
+        let font_text = format!("{font_lbl}{:.1}x", cfg.font_scale);
+        let stretch_text = format!(
+            "{stretch_lbl}{}",
+            if cfg.ui_auto_stretch {
+                &enabled_lbl
+            } else {
+                &disabled_lbl
             }
+        );
+        let blur_text = format!(
+            "{blur_lbl}{}",
+            if cfg.ui_background_blur {
+                &enabled_lbl
+            } else {
+                &disabled_lbl
+            }
+        );
 
-            cfg.font_scale = cfg.font_scale.clamp(0.5, 2.0);
-        });
+        let body = Flex::column(vec![
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Aligned::center(Label::new(caption)),
+            )),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+            // Row 1: font size slider | stretch toggle
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Flex::row(vec![
+                    FlexItem::flex(
+                        1.0,
+                        Flex::column(vec![
+                            FlexItem::new(Label::new(font_text)),
+                            FlexItem::flex(
+                                1.0,
+                                Slider::new(&mut cfg.font_scale, 0.5..=2.0, &mut font_changed),
+                            ),
+                        ])
+                        .cross_size(CrossAxisSize::Max),
+                    ),
+                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                    FlexItem::flex(1.0, Button::new(stretch_text, &mut stretch_clicked)),
+                ])
+                .main_size(MainAxisSize::Max)
+                .cross_size(CrossAxisSize::Max),
+            )),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+            // Row 2: blur toggle | (left blank to match C++)
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Flex::row(vec![
+                    FlexItem::flex(1.0, Button::new(blur_text, &mut blur_clicked)),
+                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                    FlexItem::flex(1.0, Spacer::fill()),
+                ])
+                .main_size(MainAxisSize::Max)
+                .cross_size(CrossAxisSize::Max),
+            )),
+            FlexItem::flex(1.0, Spacer::fill()),
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Button::new(back_lbl, &mut want_back),
+            )),
+        ])
+        .main_size(MainAxisSize::Max)
+        .main_align(MainAxisAlignment::Start)
+        .cross_size(CrossAxisSize::Max);
 
-        drop(cfg);
+        let root = Aligned::new(
+            Alignment::TopCenter,
+            Padding::all(MENU_PADDING, Sizer::width(MENU_MAX_WIDTH, body)),
+        );
+
+        ui::show(ctx, root);
+
+        if stretch_clicked {
+            cfg.ui_auto_stretch = !cfg.ui_auto_stretch;
+        }
+        if blur_clicked {
+            cfg.ui_background_blur = !cfg.ui_background_blur;
+        }
+        cfg.font_scale = cfg.font_scale.clamp(0.5, 2.0);
+
+        drop(guard);
 
         if want_back {
-            transition = Transition::Pop;
+            Transition::Pop
+        } else {
+            Transition::None
         }
-        transition
     }
 }

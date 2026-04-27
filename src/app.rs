@@ -34,18 +34,17 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Fullscreen, Window, WindowAttributes, WindowId};
 
 use crate::config::Config;
-use crate::game::{build_block_registry, Game, SKY_COLOR};
+use crate::game::{Game, SKY_COLOR, build_block_registry};
 use crate::globalization::I18n;
 use crate::input::{InputState, Key, MouseButton};
 use crate::math::Vec2f;
-use crate::menus::GameScreen;
+use crate::menus::{
+    GameScreen, ScreenStack, Transition, WorldAction, WorldActionQueue, default_worlds_root,
+    initial_screen_stack,
+};
 use crate::render::{EguiRenderer, FrameUniforms, Gfx, Screenshot, UniformBuffer};
 use crate::text_rendering::TextRenderer;
 use crate::textures::Atlases;
-use crate::ui::{
-    ScreenStack, Transition, WorldAction, WorldActionQueue, default_worlds_root,
-    initial_screen_stack,
-};
 
 /// Per-window runtime state. Created on the first `resumed` event.
 struct AppState {
@@ -177,9 +176,7 @@ impl App {
     /// per-user XDG paths — the migration plan calls for a single TOML file.
     fn config_path() -> PathBuf {
         if let Some(dir) = option_env!("CARGO_MANIFEST_DIR") {
-            return PathBuf::from(dir)
-                .join("configs")
-                .join("options.toml");
+            return PathBuf::from(dir).join("configs").join("options.toml");
         }
         PathBuf::from(crate::config::DEFAULT_PATH)
     }
@@ -271,7 +268,8 @@ impl App {
                     Self::leave_world_to_title(state);
                 }
                 WorldAction::Delete { name } => {
-                    if let Err(err) = crate::worlds::World::delete_world_at(&state.worlds_root, &name)
+                    if let Err(err) =
+                        crate::worlds::World::delete_world_at(&state.worlds_root, &name)
                     {
                         tracing::warn!(error = %err, name, "failed to delete world directory");
                     } else {
@@ -294,11 +292,7 @@ impl App {
             Self::leave_world_to_title(state);
         }
 
-        let render_distance = state
-            .config
-            .lock()
-            .map(|c| c.render_distance)
-            .unwrap_or(8);
+        let render_distance = state.config.lock().map(|c| c.render_distance).unwrap_or(8);
 
         match Game::new(
             state.gfx.device(),
@@ -361,7 +355,6 @@ impl App {
             Arc::clone(&state.i18n),
             state.worlds_root.clone(),
             Arc::clone(&state.world_actions),
-            Arc::clone(&state.game_loaded),
         );
         state.tick_accumulator = 0.0;
     }
@@ -418,10 +411,7 @@ impl App {
             .game_screen
             .as_ref()
             .is_some_and(|gs| gs.inventory.open);
-        let game_paused = state
-            .game_screen
-            .as_ref()
-            .is_some_and(|gs| gs.paused)
+        let game_paused = state.game_screen.as_ref().is_some_and(|gs| gs.paused)
             || !state.screen_stack.is_empty();
 
         // ---------- per-frame render-rate tick ----------
@@ -553,8 +543,11 @@ impl App {
             game_screen.pending_block_updates = game.world.block_update_queue().len();
             // Read advanced_render from Config — Game keeps a private
             // mirror but the live truth is the config lock.
-            game_screen.advanced_render =
-                state.config.lock().map(|c| c.advanced_render).unwrap_or(false);
+            game_screen.advanced_render = state
+                .config
+                .lock()
+                .map(|c| c.advanced_render)
+                .unwrap_or(false);
             game_screen.show_shadow_map = game.show_shadow_map;
             game_screen.chat_history = game
                 .visible_chat_lines(chat_open)
@@ -691,19 +684,19 @@ impl App {
             ..wgpu::TextureViewDescriptor::default()
         });
 
-        let mut encoder = state
-            .gfx
-            .device()
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("neworld.frame_encoder"),
-            });
+        let mut encoder =
+            state
+                .gfx
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("neworld.frame_encoder"),
+                });
 
         // ---------- upload egui buffers into encoder ----------
-        let extra_cbs = state.egui_renderer.update_buffers(
-            state.gfx.device(),
-            state.gfx.queue(),
-            &mut encoder,
-        );
+        let extra_cbs =
+            state
+                .egui_renderer
+                .update_buffers(state.gfx.device(), state.gfx.queue(), &mut encoder);
 
         // ---------- world render pass (clears to sky) ----------
         if let Some(game) = state.game.as_mut() {
@@ -969,8 +962,8 @@ impl ApplicationHandler for App {
         // Register each layer of the block-diffuse atlas as an egui texture
         // so the inventory can paint real block art per slot. Built once at
         // startup; the ids stay valid for the renderer's lifetime.
-        let block_icons =
-            egui_renderer.register_native_textures(gfx.device(), &atlases.block_diffuse.layer_views);
+        let block_icons = egui_renderer
+            .register_native_textures(gfx.device(), &atlases.block_diffuse.layer_views);
         tracing::info!(count = block_icons.len(), "registered block icons");
 
         // Build registry + base blocks once for the world generator and the
@@ -1004,7 +997,6 @@ impl ApplicationHandler for App {
             Arc::clone(&i18n),
             worlds_root.clone(),
             Arc::clone(&world_actions),
-            Arc::clone(&game_loaded),
         );
 
         window.request_redraw();
