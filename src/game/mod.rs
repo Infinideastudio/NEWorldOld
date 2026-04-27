@@ -36,7 +36,7 @@
 pub mod camera;
 pub mod raycast;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
@@ -48,7 +48,7 @@ use crate::chunks::Chunk;
 use crate::commands::{CommandRegistry, register_base_commands};
 use crate::input::{InputState, Key, MouseButton};
 use crate::items::ItemStack;
-use crate::math::{Vec3d, Vec3i};
+use crate::math::{Aabb3f, Frustumf, Vec3d, Vec3i};
 use crate::particles::{Particle, ParticleSystem};
 use crate::render::{
     CompositionFeatures, CompositionPipeline, DebugShadowPipeline, FrameUniforms, GBuffer,
@@ -58,6 +58,7 @@ use crate::render::{
 };
 use crate::textures::Atlases;
 use crate::worlds::chunk_rendering::{ChunkMesh, ChunkPipeline};
+use crate::worlds::world::ByDist;
 use crate::worlds::{BlockView, GameMode, World, WorldError};
 
 pub use camera::Camera;
@@ -188,11 +189,14 @@ pub struct Game {
     pub selected: Option<Hit>,
     /// Off-thread mesher ([F6]). Drained per frame by [`Self::pump_meshing`].
     mesh_worker: MeshPipeline,
-    /// Set of chunk coords that need their mesh rebuilt. Walked per frame and
-    /// shipped to `mesh_worker` (throttled by [`MAX_MESH_DISPATCHES_PER_FRAME`]).
-    dirty_chunks: HashSet<Vec3i>,
     /// Coords currently in flight on the mesh worker.
     meshing_in_flight: HashSet<Vec3i>,
+    /// View frustum for the current camera, refreshed in
+    /// [`Self::write_frame_uniforms`]. Cached so [`Self::record_world_pass`]
+    /// can cull `chunk_meshes` before walking the per-pass draw loops —
+    /// big win at high render distance, where the encoder's `finish` cost
+    /// is dominated by the recorded draw count.
+    camera_frustum: Frustumf,
     /// Chat lines + the time they were posted.
     pub chat_messages: Vec<(String, Instant)>,
     /// `[F3]` — slash-command dispatch table.
@@ -293,8 +297,7 @@ impl Game {
         let gbuffer = GBuffer::new(device, surface_size.0.max(1), surface_size.1.max(1));
         let shadow_map = ShadowMap::new(device);
         let shadow_pipeline = ShadowPipeline::new(device, frame_uniforms, atlases);
-        let debug_shadow_pipeline =
-            DebugShadowPipeline::new(device, surface_format, &shadow_map);
+        let debug_shadow_pipeline = DebugShadowPipeline::new(device, surface_format, &shadow_map);
 
         // Chunk pipeline writes to the G-buffer (3 MRT targets) for the
         // opaque pass, and forwards translucent chunks to the surface
@@ -385,8 +388,12 @@ impl Game {
             sun_dir: default_sun_dir(),
             selected: None,
             mesh_worker,
-            dirty_chunks: HashSet::new(),
             meshing_in_flight: HashSet::new(),
+            // Identity placeholder — the first `write_frame_uniforms`
+            // overwrites this with the real frustum before any pass uses
+            // it for culling. `Frustum::from_mvp(identity)` is the unit
+            // cube and would falsely accept everything in the meantime.
+            camera_frustum: Frustumf::from_mvp(&cgmath::Matrix4::identity()),
             chat_messages: Vec::new(),
             commands,
             registry: Arc::clone(registry),
@@ -429,12 +436,10 @@ impl Game {
         self.mesh_options = desired;
         self.chunk_meshes.clear();
         self.meshing_in_flight.clear();
-        // Re-mark every loaded chunk dirty (empty chunks have no mesh, but
-        // marking them is a no-op once `pump_meshing` filters them).
-        self.dirty_chunks.clear();
-        for (coord, _) in self.world.loaded_chunks() {
-            self.dirty_chunks.insert(coord);
-        }
+        // Re-mark every loaded non-empty chunk's `updated` flag in
+        // World. The next `pump_meshing` will see them through
+        // `drain_updated_chunks` and rebuild against the new rules.
+        self.world.mark_all_loaded_for_remesh();
     }
 
     /// Render-rate per-frame update. `dt` is real elapsed seconds since the
@@ -521,10 +526,7 @@ impl Game {
             // debug-panel toggle in the C++ build, so we require F3 to
             // be HELD (not just pressed) so a debug-panel keypress
             // doesn't accidentally flip the overlay.
-            if self.advanced_render
-                && input.is_key_down(Key::F3)
-                && input.is_key_pressed(Key::M)
-            {
+            if self.advanced_render && input.is_key_down(Key::F3) && input.is_key_pressed(Key::M) {
                 self.show_shadow_map = !self.show_shadow_map;
             }
             // Mode toggles. F1 → game mode, F4 → cross-wall (creative only).
@@ -602,17 +604,9 @@ impl Game {
             // count) but skipped while paused so a frozen world stays
             // visually frozen.
             self.world.random_tick();
-            // Promote every world-internal mutation that ran this tick
-            // (break/place from `tick_render`, random-tick transitions,
-            // queued block updates) into a mesh rebuild. World marks
-            // each affected chunk's `updated` flag inside `set_block` /
-            // `update_block` / chunk-load completion — the parent
-            // chunks of the 26 block-neighbours of every changed cell,
-            // plus the 26 chunk-neighbours of every loaded chunk —
-            // so this drain captures the full fan-out automatically.
-            for coord in self.world.drain_updated_chunks() {
-                self.dirty_chunks.insert(coord);
-            }
+            // No drain into a separate dirty queue — `pump_meshing` walks
+            // `World::drain_updated_chunks` directly each frame and
+            // clears flags only on the chunks it actually meshed.
         }
 
         // Slide the chunk grid + height map to follow the player. Mirrors
@@ -650,13 +644,6 @@ impl Game {
         for c in stale {
             self.chunk_meshes.remove(&c);
         }
-        // Drop dirty entries for any coord that isn't loaded. World's
-        // chunk-load path marks the 26 neighbours, some of which lie
-        // outside the load radius. Phantoms are correctness-safe —
-        // `pump_meshing` already filters on `is_loaded` — but the
-        // O(dirty) sweep here keeps the set bounded by the load window
-        // as the player roams.
-        self.dirty_chunks.retain(|c| self.world.is_loaded(*c));
     }
 
     /// Process WSAD / Space / Shift / sprint detection and feed the player.
@@ -742,55 +729,65 @@ impl Game {
     /// the mesh worker, then drain finished meshes back into `chunk_meshes`.
     /// Call once per frame from `App::frame`, after [`Self::tick_sim`]. Splits
     /// from the simulation tick because the upload step needs `&wgpu::Device`.
+    ///
+    /// Source of truth for "needs re-mesh" is `Chunk::updated()` in
+    /// World. We walk the lazy [`World::drain_updated_chunks`] iterator,
+    /// heap-pick the [`MAX_MESH_DISPATCHES_PER_FRAME`] closest dirty
+    /// chunks (filtered on not-in-flight + neighbours-loaded), submit
+    /// them, and explicitly clear the world flag only on the ones that
+    /// actually entered the worker queue. Skipped or rejected chunks
+    /// stay marked and reappear in the next frame's iterator.
     pub fn pump_meshing(&mut self, device: &wgpu::Device) {
-        // Capture any chunks World marked `updated` since the last drain.
-        // `tick_sim` already drained at the end of its block-update loop,
-        // but break/place fire from `tick_render`, which runs every
-        // frame regardless of whether a sim tick fit in this frame's
-        // accumulator. Pulling once more here closes the gap so block
-        // changes re-mesh in the same frame.
-        for coord in self.world.drain_updated_chunks() {
-            self.dirty_chunks.insert(coord);
-        }
-
-        // ---- dispatch dirty meshes, closest first ----
-        // `dirty_chunks` is a `HashSet`, so iterating it directly produces
-        // hash-order which can leave nearby chunks unmeshed while distant
-        // ones get the budget — visible as fragmented pop-in at high
-        // render distance. Sort by squared chunk-distance to the player so
-        // the visible neighbourhood meshes first.
         let player_world = self.world.player().coord();
         let player_chunk = crate::worlds::chunk_coord(Vec3i::new(
             player_world.x.floor() as i32,
             player_world.y.floor() as i32,
             player_world.z.floor() as i32,
         ));
-        let mut candidates: Vec<(i32, Vec3i)> = self
-            .dirty_chunks
-            .iter()
-            .filter(|c| !self.meshing_in_flight.contains(c))
-            .filter(|c| self.world.is_loaded(**c))
-            // Mesher samples a 1-cell padded neighbourhood; gating on
-            // every axis neighbour being loaded prevents visible cracks
-            // at the render boundary while a chunk is still streaming
-            // its outer ring in. Coords that fail this stay in
-            // `dirty_chunks` and re-enter the candidate pool next frame.
-            .filter(|c| self.world.has_neighbours_loaded(**c))
-            .map(|&c| {
-                let d = c - player_chunk;
-                (d.x * d.x + d.y * d.y + d.z * d.z, c)
-            })
-            .collect();
-        candidates.sort_by_key(|(d, _)| *d);
-        candidates.truncate(MAX_MESH_DISPATCHES_PER_FRAME);
 
-        for (_, coord) in candidates {
+        // Bounded max-heap keeps the closest `MAX_MESH_DISPATCHES_PER_FRAME`
+        // dirty chunks. O(N log K) where N = dirty count, K = dispatch cap.
+        let mut heap: BinaryHeap<ByDist> =
+            BinaryHeap::with_capacity(MAX_MESH_DISPATCHES_PER_FRAME + 1);
+        for cc in self.world.drain_updated_chunks() {
+            if self.meshing_in_flight.contains(&cc) {
+                continue;
+            }
+            // Mesher samples a 1-cell padded neighbourhood; gating on
+            // every neighbour being loaded prevents visible cracks at
+            // the render boundary while a chunk is still streaming its
+            // outer ring in. Skipped chunks stay marked and re-enter
+            // next frame's iterator.
+            if !self.world.has_neighbours_loaded(cc) {
+                continue;
+            }
+            let d = cc - player_chunk;
+            let dist = d.x * d.x + d.y * d.y + d.z * d.z;
+            heap.push(ByDist { dist, coord: cc });
+            if heap.len() > MAX_MESH_DISPATCHES_PER_FRAME {
+                heap.pop();
+            }
+        }
+        // Closest-first iteration order so visible neighbourhood meshes
+        // before distant chunks under back-pressure.
+        let picked: Vec<Vec3i> = heap
+            .into_sorted_vec()
+            .into_iter()
+            .map(|e| e.coord)
+            .collect();
+
+        // Submit each picked coord. Only successful submits get cleared
+        // — a worker-queue-full rejection leaves the chunk marked so it
+        // retries next frame.
+        let mut submitted: Vec<Vec3i> = Vec::with_capacity(picked.len());
+        for &coord in &picked {
             let input = build_mesh_input(&self.world, coord, self.mesh_options);
             if self.mesh_worker.submit(input) {
                 self.meshing_in_flight.insert(coord);
-                self.dirty_chunks.remove(&coord);
+                submitted.push(coord);
             }
         }
+        self.world.clear_updated_chunks(&submitted);
 
         // ---- drain finished meshes ----
         for done in self.mesh_worker.drain() {
@@ -892,11 +889,7 @@ impl Game {
                 .rebuild_aux_bind_group(device, &self.shadow_map, atlases);
             self.debug_shadow_pipeline
                 .rebuild_shadow_bind_group(device, &self.shadow_map);
-            tracing::info!(
-                resolution = want_res,
-                advanced_render,
-                "shadow map resized"
-            );
+            tracing::info!(resolution = want_res, advanced_render, "shadow map resized");
         }
     }
 
@@ -934,6 +927,9 @@ impl Game {
         let view = self.camera.view_matrix();
         let proj = self.camera.proj_matrix(aspect);
         let view_proj = proj * view;
+        // Refresh the cached frustum — `record_world_pass` reads it to
+        // cull `chunk_meshes` before each per-pass draw loop.
+        self.camera_frustum = Frustumf::from_mvp(&view_proj);
 
         // Push the current selection to the wireframe pipeline. Doing it
         // here keeps the upload colocated with the per-frame uniform writes
@@ -998,8 +994,7 @@ impl Game {
         // shadows are off so the value is at least invertible if anything
         // tries to inverse-project it.
         let shadow_view_proj = if self.advanced_render {
-            let length =
-                (self.shadow_distance_chunks as f32) * (Chunk::SIZE as f32);
+            let length = (self.shadow_distance_chunks as f32) * (Chunk::SIZE as f32);
             shadow_matrix(self.camera.position, self.sun_dir, length)
         } else {
             Matrix4::identity()
@@ -1067,10 +1062,12 @@ impl Game {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         color_view: &wgpu::TextureView,
+        camera_visible: &[&ChunkMesh],
+        shadow_visible: &[&ChunkMesh],
     ) {
         // ---- 0. Shadow pass (sun-POV depth atlas) ----
         self.shadow_pipeline
-            .record(encoder, &self.shadow_map, self.chunk_meshes.values());
+            .record(encoder, &self.shadow_map, shadow_visible.iter().copied());
 
         // ---- 1. G-buffer pass (chunk MRT) ----
         // Clear all three color targets to zero on entry. The composition
@@ -1105,7 +1102,7 @@ impl Game {
             });
 
             self.chunk_pipeline.begin_opaque(&mut pass);
-            for cm in self.chunk_meshes.values() {
+            for cm in camera_visible {
                 cm.draw_opaque(&mut pass);
             }
         }
@@ -1136,7 +1133,7 @@ impl Game {
                 multiview_mask: None,
             });
             self.chunk_pipeline.begin_translucent_gbuffer(&mut pass);
-            for cm in self.chunk_meshes.values() {
+            for cm in camera_visible {
                 cm.draw_translucent(&mut pass);
             }
         }
@@ -1184,6 +1181,7 @@ impl Game {
         &self,
         encoder: &mut wgpu::CommandEncoder,
         color_view: &wgpu::TextureView,
+        camera_visible: &[&ChunkMesh],
     ) {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("game.basic_opaque_pass"),
@@ -1214,7 +1212,7 @@ impl Game {
         });
 
         self.chunk_pipeline.begin_opaque_forward(&mut pass);
-        for cm in self.chunk_meshes.values() {
+        for cm in camera_visible {
             cm.draw_opaque(&mut pass);
         }
     }
@@ -1245,7 +1243,8 @@ impl Game {
         // resizes; the write is a single u32×4 buffer copy so paying it
         // every frame is cheap.
         if self.advanced_render && self.show_shadow_map {
-            self.debug_shadow_pipeline.update_layout(queue, surface_size);
+            self.debug_shadow_pipeline
+                .update_layout(queue, surface_size);
         }
         // Particle vertex buffer — rebuild per-frame from the current
         // particle list (cheap when empty; a one-buffer write otherwise).
@@ -1254,6 +1253,64 @@ impl Game {
         self.particle_mesh
             .rebuild(device, self.particles.particles(), self.tick_alpha);
 
+        // Pre-cull `chunk_meshes` once per frame — every per-pass loop
+        // below iterates the filtered slices instead of the full map.
+        // Frustum culling alone typically drops 70-80% of recorded draws
+        // (a ~70° FOV camera covers ~1/4 of the sphere); the chebyshev
+        // distance filter trims the small ring of formerly-loaded meshes
+        // that briefly outlives the load window after a player slide.
+        // At rd=32 with all chunks meshed this directly cuts the
+        // per-frame `CommandEncoder::finish` cost, which scales with
+        // recorded command count.
+        let player_world = self.world.player().coord();
+        let player_chunk = crate::worlds::chunk_coord(Vec3i::new(
+            player_world.x.floor() as i32,
+            player_world.y.floor() as i32,
+            player_world.z.floor() as i32,
+        ));
+        let render_distance = self.world.render_distance();
+        let shadow_distance = self.shadow_distance_chunks;
+        let chunk_size = Chunk::SIZE as f32;
+        let camera_visible: Vec<&ChunkMesh> = self
+            .chunk_meshes
+            .values()
+            .filter(|cm| {
+                let d = cm.coord - player_chunk;
+                d.x.abs() <= render_distance
+                    && d.y.abs() <= render_distance
+                    && d.z.abs() <= render_distance
+            })
+            .filter(|cm| {
+                let lo = cgmath::Vector3::new(
+                    cm.coord.x as f32 * chunk_size,
+                    cm.coord.y as f32 * chunk_size,
+                    cm.coord.z as f32 * chunk_size,
+                );
+                let hi = lo + cgmath::Vector3::new(chunk_size, chunk_size, chunk_size);
+                self.camera_frustum.test(&Aabb3f::new(lo, hi))
+            })
+            .collect();
+        // Shadow pass uses a sun-POV ortho whose world-space footprint
+        // is roughly `shadow_distance` chunks per side. A chunk visible
+        // to the sun isn't necessarily visible to the camera (it can be
+        // behind the camera and still cast a shadow into view), so we
+        // can't reuse `camera_visible` here. A chebyshev cube around
+        // the player is conservative enough — the sun ortho is rotated
+        // but the world-space AABB of its footprint fits inside.
+        let shadow_visible: Vec<&ChunkMesh> = if self.advanced_render {
+            self.chunk_meshes
+                .values()
+                .filter(|cm| {
+                    let d = cm.coord - player_chunk;
+                    d.x.abs() <= shadow_distance
+                        && d.y.abs() <= shadow_distance
+                        && d.z.abs() <= shadow_distance
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+
         // The pre-overlay sub-passes — shadow + G-buffer + composition
         // for advanced rendering, a single forward opaque pass for
         // basic rendering — both end with the surface color attachment
@@ -1261,9 +1318,9 @@ impl Game {
         // forward overlay pass below loads from both regardless of which
         // path ran, so the rest of the function is shared.
         if self.advanced_render {
-            self.record_advanced_pre_overlay(encoder, color_view);
+            self.record_advanced_pre_overlay(encoder, color_view, &camera_visible, &shadow_visible);
         } else {
-            self.record_basic_pre_overlay(encoder, color_view);
+            self.record_basic_pre_overlay(encoder, color_view, &camera_visible);
         }
 
         // ---- Forward overlays (particles / selection / underwater) ----
@@ -1304,7 +1361,7 @@ impl Game {
             // second time here would double-darken the surface.
             if !self.advanced_render {
                 self.chunk_pipeline.begin_translucent_forward(&mut pass);
-                for cm in self.chunk_meshes.values() {
+                for cm in &camera_visible {
                     cm.draw_translucent(&mut pass);
                 }
             }
@@ -1554,9 +1611,18 @@ fn ortho_wgpu_rev(
     let tb = top - bottom;
     let fn_ = far - near;
     Matrix4::new(
-        2.0 / rl, 0.0, 0.0, 0.0, // column 0
-        0.0, 2.0 / tb, 0.0, 0.0, // column 1
-        0.0, 0.0, 1.0 / fn_, 0.0, // column 2
+        2.0 / rl,
+        0.0,
+        0.0,
+        0.0, // column 0
+        0.0,
+        2.0 / tb,
+        0.0,
+        0.0, // column 1
+        0.0,
+        0.0,
+        1.0 / fn_,
+        0.0, // column 2
         -(right + left) / rl,
         -(top + bottom) / tb,
         far / fn_,

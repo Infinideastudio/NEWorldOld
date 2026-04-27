@@ -201,7 +201,11 @@ mod tests {
 
     impl BlockView for OneBlock {
         fn block(&self, coord: Vec3i) -> Option<BlockData> {
-            let id = if coord == self.0 { Id::new(1) } else { Id::new(0) };
+            let id = if coord == self.0 {
+                Id::new(1)
+            } else {
+                Id::new(0)
+            };
             Some(BlockData {
                 id,
                 state: State::default(),

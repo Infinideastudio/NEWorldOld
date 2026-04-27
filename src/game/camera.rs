@@ -100,7 +100,6 @@ impl Camera {
     /// and a 0.0 depth clear at the render-pass level.
     #[must_use]
     pub fn proj_matrix(&self, aspect: f32) -> Matrix4<f32> {
-        OPENGL_TO_WGPU_REVERSED
-            * cgmath::perspective(Rad(self.fov_y), aspect, self.near, self.far)
+        OPENGL_TO_WGPU_REVERSED * cgmath::perspective(Rad(self.fov_y), aspect, self.near, self.far)
     }
 }

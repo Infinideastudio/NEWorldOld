@@ -130,58 +130,6 @@ fn world_set_center_does_not_unload_existing_chunks() {
 }
 
 #[test]
-fn world_non_empty_invariant_tracks_block_writes() {
-    // Setting a block in a chunk that has no allocated data flips it to
-    // non-empty; the world's `non_empty_coords` iterator must reflect the
-    // change immediately. Centred around y=160 so the load window includes
-    // obviously-empty sky chunks (the terrain for seed=0 peaks around y≈120).
-    let scratch = ScratchDir::new("non-empty");
-    let (mut w, base) = build_world(&scratch, "non-empty", 3);
-    w.set_center(Vec3i::new(0, 160, 0));
-    // rd=3 → 7³=343 chunks needed; loads cap at 64 per tick — drain the
-    // queue with a few iterations.
-    for _ in 0..16 {
-        w.tick_chunk_loading();
-    }
-
-    // Find a loaded chunk that's still empty. High-y "sky" chunks should
-    // qualify; the test fails meaningfully if every chunk in the window
-    // carries terrain content.
-    let target_cc = w
-        .loaded_chunks()
-        .filter(|(_, c)| c.empty())
-        .map(|(c, _)| c)
-        .next()
-        .expect("at least one loaded chunk should be empty above the terrain");
-
-    assert!(!w.non_empty_coords().any(|c| c == target_cc));
-    let before = w.non_empty_count();
-
-    let world_coord = target_cc * Chunk::SIZE + Vec3i::new(1, 1, 1);
-    w.set_block(world_coord, base.stone, false);
-
-    assert!(
-        w.non_empty_coords().any(|c| c == target_cc),
-        "set_block on an empty chunk should add it to non_empty"
-    );
-    assert_eq!(
-        w.non_empty_count(),
-        before + 1,
-        "exactly one chunk transitioned to non-empty"
-    );
-
-    // Unloading the chunk drops it from non_empty too. Slide far enough
-    // that the old window is fully outside the new one, then drain the
-    // unload queue — `tick_chunk_loading` caps at MAX_CHUNK_UNLOADS=64
-    // per call, so multiple ticks are needed to reap a 343-chunk window.
-    w.set_center(Vec3i::new(10_000, 0, 0) * Chunk::SIZE);
-    for _ in 0..16 {
-        w.tick_chunk_loading();
-    }
-    assert!(!w.non_empty_coords().any(|c| c == target_cc));
-}
-
-#[test]
 fn world_update_block_skips_when_neighbours_unloaded() {
     let scratch = ScratchDir::new("update-skip");
     // `render_distance = 0` + the load buffer (1) loads chunks at chunk
