@@ -363,52 +363,54 @@ fn lcm3_register_rule_advances_with_input() {
 }
 
 #[test]
-fn lcm3_not_gate_inverts_input() {
+fn lcm3_nand_single_input_inverts() {
+    // 1-input NAND collapses to NOT — `nand(a) = 1 - a`. Bottom face
+    // is the only connected input; the four sides have no neighbours
+    // so they don't contribute.
+    //
     // Wire (cap +Y, data 0, clock 1) at (0, 0, 0).
-    // NOT  (cap +Y, data 0, clock 0) at (0, 1, 0).
-    // Gate rule requires input at NOT's clock+1 = 1; wire is at 1. ✓
-    // After tick, NOT should hold `1 - wire.data = 1` at clock 1.
-    let (_scratch, mut world, base) = lcm3_world("not-rule");
+    // NAND (cap +Y, data 0, clock 0) at (0, 1, 0).
+    let (_scratch, mut world, base) = lcm3_world("nand-1in");
     let wire_coord = Vec3i::new(0, 0, 0);
-    let not_coord = Vec3i::new(0, 1, 0);
+    let nand_coord = Vec3i::new(0, 1, 0);
     world.set_block_with_state(wire_coord, base.lcm3_wire, lcm3_state(0, 0, 1), true);
-    world.set_block_with_state(not_coord, base.lcm3_not, lcm3_state(0, 0, 0), true);
+    world.set_block_with_state(nand_coord, base.lcm3_nand, lcm3_state(0, 0, 0), true);
 
     world.process_block_updates();
 
-    let not = world.block(not_coord).expect("loaded");
-    assert_eq!(lcm3_data(not.state), 1, "NOT data = !wire.data");
-    assert_eq!(lcm3_clock(not.state), 1, "NOT clock advanced");
+    let nand = world.block(nand_coord).expect("loaded");
+    assert_eq!(lcm3_data(nand.state), 1, "nand(0) = 1");
+    assert_eq!(lcm3_clock(nand.state), 1, "NAND clock advanced");
 }
 
 #[test]
-fn lcm3_and_gate_takes_all_side_inputs() {
-    // AND (cap +Y) at (0, 0, 0). Two side inputs:
+fn lcm3_nand_multi_input_folds_via_not_and() {
+    // NAND (cap +Y) at (0, 0, 0). Two side inputs:
     //   - Wire E (cap -X, data 1, clock 1) at (1, 0, 0) — outputs west.
     //   - Wire W (cap +X, data 1, clock 1) at (-1, 0, 0) — outputs east.
-    // Both feed AND's east + west side faces (which are IN ports).
-    // AND fires with data = 1 AND 1 = 1.
-    let (_scratch, mut world, base) = lcm3_world("and-rule");
-    let and_coord = Vec3i::new(0, 0, 0);
+    // Both feed NAND's east + west side faces (which are IN ports
+    // under the NAND role table). nand(1, 1) = !AND(1,1) = !1 = 0.
+    let (_scratch, mut world, base) = lcm3_world("nand-2in");
+    let nand_coord = Vec3i::new(0, 0, 0);
     let east_wire_coord = Vec3i::new(1, 0, 0);
     let west_wire_coord = Vec3i::new(-1, 0, 0);
     // Orientation index: 2 = +X, 3 = -X (see `Orientation::for_axis_aligned_index`).
     world.set_block_with_state(east_wire_coord, base.lcm3_wire, lcm3_state(3, 1, 1), true);
     world.set_block_with_state(west_wire_coord, base.lcm3_wire, lcm3_state(2, 1, 1), true);
-    world.set_block_with_state(and_coord, base.lcm3_and, lcm3_state(0, 0, 0), true);
+    world.set_block_with_state(nand_coord, base.lcm3_nand, lcm3_state(0, 0, 0), true);
 
     world.process_block_updates();
 
-    let and = world.block(and_coord).expect("loaded");
-    assert_eq!(lcm3_data(and.state), 1, "AND(1, 1) = 1");
-    assert_eq!(lcm3_clock(and.state), 1);
+    let nand = world.block(nand_coord).expect("loaded");
+    assert_eq!(lcm3_data(nand.state), 0, "nand(1, 1) = 0");
+    assert_eq!(lcm3_clock(nand.state), 1);
 
-    // Second test: flip one input to data=0 → AND should produce 0.
+    // Flip one input to data=0 → nand(0, 1) = !AND = !0 = 1.
     world.set_block_with_state(east_wire_coord, base.lcm3_wire, lcm3_state(3, 0, 1), true);
-    world.set_block_with_state(and_coord, base.lcm3_and, lcm3_state(0, 0, 0), true);
+    world.set_block_with_state(nand_coord, base.lcm3_nand, lcm3_state(0, 0, 0), true);
     world.process_block_updates();
-    let and = world.block(and_coord).expect("loaded");
-    assert_eq!(lcm3_data(and.state), 0, "AND(0, 1) = 0");
+    let nand = world.block(nand_coord).expect("loaded");
+    assert_eq!(lcm3_data(nand.state), 1, "nand(0, 1) = 1");
 }
 
 #[test]

@@ -70,10 +70,13 @@ fn canonical_roles(id: Id, base: &BaseBlocks) -> [Role; 6] {
     // All LCM3 blocks: top (canonical +Y) = Out, bottom (canonical -Y) = In.
     let side_role = if id == base.lcm3_fork {
         Role::Out
-    } else if id == base.lcm3_and || id == base.lcm3_or {
+    } else if id == base.lcm3_nand {
+        // NAND has variable arity (1..=5): bottom + every connected
+        // side counts as an input. The 1-input case `nand(a) = NOT(a)`
+        // recovers plain inversion when only the bottom is connected.
         Role::In
     } else {
-        // wire / ff / not — sides are decorative only.
+        // wire / ff — sides are decorative only.
         Role::Neutral
     };
     let mut roles = [side_role; 6];
@@ -139,19 +142,20 @@ const fn pack_state(orientation_index: u8, data: u8, clock: u8) -> State {
 // ---------- Gate function ----------
 
 /// `f(inputs)` — the boolean function the gate carries. Wires and forks
-/// are identity (single input expected); NOT inverts; AND / OR fold.
+/// are identity (single input expected); NAND folds with NOT-AND
+/// semantics, with the 1-input case collapsing to plain inversion
+/// (`nand(a) = NOT(a)`).
 fn gate_function(id: Id, inputs: &[u8], base: &BaseBlocks) -> u8 {
     if id == base.lcm3_wire || id == base.lcm3_fork || id == base.lcm3_ff {
         // FF takes the same identity-of-input function — the FF rule
         // dispatch in `try_apply` handles its different precondition,
         // not a different `f`.
         inputs.first().copied().unwrap_or(0)
-    } else if id == base.lcm3_not {
-        1 - inputs.first().copied().unwrap_or(0)
-    } else if id == base.lcm3_and {
-        inputs.iter().fold(1, |a, &b| a & b)
-    } else if id == base.lcm3_or {
-        inputs.iter().fold(0, |a, &b| a | b)
+    } else if id == base.lcm3_nand {
+        // NAND of empty inputs would be NOT(1) = 0, but the caller
+        // already gates on `inputs.len() > 0` (quiescence rule), so
+        // we never see the empty case here.
+        1 - inputs.iter().fold(1, |a, &b| a & b)
     } else {
         0
     }
@@ -264,12 +268,12 @@ mod tests {
                 "fork face {face}"
             );
         }
-        let and_roles = canonical_roles(base.lcm3_and, &base);
+        let nand_roles = canonical_roles(base.lcm3_nand, &base);
         for face in 0..6 {
             assert_eq!(
-                and_roles[face],
+                nand_roles[face],
                 if face == 2 { Role::Out } else { Role::In },
-                "and face {face}"
+                "nand face {face}"
             );
         }
     }
@@ -332,15 +336,13 @@ mod tests {
             assert_eq!(gate_function(id, &[0], &base), 0);
             assert_eq!(gate_function(id, &[1], &base), 1);
         }
-        // NOT
-        assert_eq!(gate_function(base.lcm3_not, &[0], &base), 1);
-        assert_eq!(gate_function(base.lcm3_not, &[1], &base), 0);
-        // AND
-        assert_eq!(gate_function(base.lcm3_and, &[1, 1, 1], &base), 1);
-        assert_eq!(gate_function(base.lcm3_and, &[1, 0, 1], &base), 0);
-        // OR
-        assert_eq!(gate_function(base.lcm3_or, &[0, 0, 0], &base), 0);
-        assert_eq!(gate_function(base.lcm3_or, &[0, 0, 1], &base), 1);
+        // NAND, 1 input → NOT(a).
+        assert_eq!(gate_function(base.lcm3_nand, &[0], &base), 1);
+        assert_eq!(gate_function(base.lcm3_nand, &[1], &base), 0);
+        // NAND, multi-input → NOT(AND(...)).
+        assert_eq!(gate_function(base.lcm3_nand, &[1, 1, 1], &base), 0);
+        assert_eq!(gate_function(base.lcm3_nand, &[1, 0, 1], &base), 1);
+        assert_eq!(gate_function(base.lcm3_nand, &[0, 0], &base), 1);
     }
 
     /// Quick sanity check on `Orientation::for_axis_aligned_index`'s

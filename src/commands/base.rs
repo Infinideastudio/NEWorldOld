@@ -351,7 +351,12 @@ pub fn register_base_commands(
                 let info = registry_for_reset.get(cell.id);
                 let new_state = info.orientation_codec.reset_to_base(cell.state);
                 if new_state != cell.state {
-                    world.set_block_with_state(coord, cell.id, new_state, true);
+                    // `queue_update = false` — resetting a circuit
+                    // shouldn't trigger an LCM3 / lighting cascade off
+                    // the modified cells. The mesh-dirty flag still
+                    // gets set inside `set_block_with_state` so the
+                    // texture refreshes.
+                    world.set_block_with_state(coord, cell.id, new_state, false);
                 }
                 reset_count += 1;
                 for d in NEIGHBOURS {

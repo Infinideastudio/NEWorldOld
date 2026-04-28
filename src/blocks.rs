@@ -295,12 +295,8 @@ impl TextureIndex {
     pub const LCM3_WIRE_ON: TextureIndex = TextureIndex(39);
     pub const LCM3_FF: TextureIndex = TextureIndex(42);
     pub const LCM3_FF_ON: TextureIndex = TextureIndex(45);
-    pub const LCM3_NOT: TextureIndex = TextureIndex(48);
-    pub const LCM3_NOT_ON: TextureIndex = TextureIndex(51);
-    pub const LCM3_AND: TextureIndex = TextureIndex(54);
-    pub const LCM3_AND_ON: TextureIndex = TextureIndex(57);
-    pub const LCM3_OR: TextureIndex = TextureIndex(60);
-    pub const LCM3_OR_ON: TextureIndex = TextureIndex(63);
+    pub const LCM3_NAND: TextureIndex = TextureIndex(48);
+    pub const LCM3_NAND_ON: TextureIndex = TextureIndex(51);
 }
 
 // ---------- OrientationCodec ----------
@@ -367,11 +363,8 @@ impl OrientationCodec {
     /// `read` always returns identity; `write` ignores the orientation
     /// index and returns its `into` argument unchanged;
     /// `orientation_index` is always `0`.
-    pub const STATIC: OrientationCodec = OrientationCodec::new(
-        |_| Orientation::IDENTITY,
-        |_, into| into,
-        |_| 0,
-    );
+    pub const STATIC: OrientationCodec =
+        OrientationCodec::new(|_| Orientation::IDENTITY, |_, into| into, |_| 0);
 
     /// Codec for the simplest 6-orientation layout: orientation lives in
     /// the lower 3 bits of the state byte (see
@@ -857,24 +850,22 @@ pub struct BaseBlocks {
     pub lcm3_wire: Id,
     pub lcm3_fork: Id,
     pub lcm3_ff: Id,
-    pub lcm3_not: Id,
-    pub lcm3_and: Id,
-    pub lcm3_or: Id,
+    /// Universal Boolean primitive: `nand(inputs) = NOT(AND(inputs))`.
+    /// Arity is the number of side faces with a connected input port,
+    /// 1..=5. The 1-input case `nand(a) = NOT(a)` collapses to plain
+    /// inversion, so a single `nand` block subsumes the legacy
+    /// `not` / `and` / `or` triple — see "minimal LCM3 set" discussion.
+    pub lcm3_nand: Id,
 }
 
 impl BaseBlocks {
-    /// True iff `id` is one of the six LCM3 circuit-block ids
-    /// (`lcm3_wire`, `lcm3_fork`, `lcm3_ff`, `lcm3_not`, `lcm3_and`,
-    /// `lcm3_or`). Used by `/lcm3-reset`'s connected-component BFS to
-    /// gate which neighbours propagate.
+    /// True iff `id` is one of the four LCM3 circuit-block ids
+    /// (`lcm3_wire`, `lcm3_fork`, `lcm3_ff`, `lcm3_nand`). Used by
+    /// `/lcm3-reset`'s connected-component BFS to gate which neighbours
+    /// propagate.
     #[must_use]
     pub fn is_lcm3(&self, id: Id) -> bool {
-        id == self.lcm3_wire
-            || id == self.lcm3_fork
-            || id == self.lcm3_ff
-            || id == self.lcm3_not
-            || id == self.lcm3_and
-            || id == self.lcm3_or
+        id == self.lcm3_wire || id == self.lcm3_fork || id == self.lcm3_ff || id == self.lcm3_nand
     }
 }
 
@@ -1051,22 +1042,15 @@ pub fn register_base_blocks(registry: &mut BlockRegistry) -> BaseBlocks {
         [lcm3_top, T::LCM3_FF, lcm3_bot],
         lcm3_face_texture_with_data,
     ));
-    let lcm3_not = registry.add(info_lcm3(
-        "lcm3 not",
+    // Universal Boolean primitive — replaces the former NOT / AND / OR
+    // triple. Arity is the number of side faces with connected inputs;
+    // the 1-input case `nand(a) = NOT(a)` recovers plain inversion.
+    // Visual: same atlas slot the legacy NOT used (`LCM3_NAND` is just
+    // the renamed constant at index 48).
+    let lcm3_nand = registry.add(info_lcm3(
+        "lcm3 nand",
         1.0,
-        [lcm3_top, T::LCM3_NOT, lcm3_bot],
-        lcm3_face_texture_with_data,
-    ));
-    let lcm3_and = registry.add(info_lcm3(
-        "lcm3 and",
-        1.0,
-        [lcm3_top, T::LCM3_AND, lcm3_bot],
-        lcm3_face_texture_with_data,
-    ));
-    let lcm3_or = registry.add(info_lcm3(
-        "lcm3 or",
-        1.0,
-        [lcm3_top, T::LCM3_OR, lcm3_bot],
+        [lcm3_top, T::LCM3_NAND, lcm3_bot],
         lcm3_face_texture_with_data,
     ));
 
@@ -1093,9 +1077,7 @@ pub fn register_base_blocks(registry: &mut BlockRegistry) -> BaseBlocks {
         lcm3_wire,
         lcm3_fork,
         lcm3_ff,
-        lcm3_not,
-        lcm3_and,
-        lcm3_or,
+        lcm3_nand,
     }
 }
 
@@ -1169,16 +1151,16 @@ mod tests {
     fn register_base_blocks_populates_all_entries() {
         let mut r = BlockRegistry::new();
         let base = register_base_blocks(&mut r);
-        // 19 base-game blocks + 6 LCM3 circuit blocks (wire, fork, ff,
-        // not, and, or) = 25.
-        assert_eq!(r.len(), 25);
+        // 19 base-game blocks + 4 LCM3 circuit blocks (wire, fork, ff,
+        // nand) = 23.
+        assert_eq!(r.len(), 23);
         // `rock` has the expected non-zero hardness from the C++ table.
         assert_eq!(r.get(base.rock).hardness, 2.0);
         assert_eq!(r.get(base.air).name, "air");
         // LCM3 ids are non-zero and distinct from each other.
         assert_ne!(base.lcm3_wire, Id(0));
         assert_ne!(base.lcm3_wire, base.lcm3_fork);
-        assert_ne!(base.lcm3_and, base.lcm3_or);
+        assert_ne!(base.lcm3_ff, base.lcm3_nand);
     }
 
     #[test]
