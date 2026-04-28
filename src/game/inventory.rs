@@ -342,12 +342,15 @@ impl Inventory {
         }
 
         let info = registry.get(stack.id);
-        // Block icon — face(0) is the front-facing texture index in the
-        // block-diffuse atlas. Fall back to a centred letter abbreviation
-        // when the icon would be out of range (registries with more block
-        // ids than texture layers, or block_icons not yet populated in the
-        // unit tests).
-        let layer = info.face(0).0 as usize;
+        // Block icon — `face(1)` is the side texture, which is what we
+        // want for the inventory: the side is the most distinctive face
+        // for blocks like wood / grass / LCM2 gates (the cap textures
+        // are generic OUT_PORT / WOOD_TOP and look the same across
+        // gate types). Fall back to a centred letter abbreviation when
+        // the icon would be out of range (registries with more block
+        // ids than texture layers, or `block_icons` not yet populated
+        // in the unit tests).
+        let layer = info.face(1).0 as usize;
         if let Some(tex_id) = block_icons.get(layer) {
             // Inset by 2 px so the slot border stays visible around the icon.
             let icon_rect = rect.shrink(2.0);

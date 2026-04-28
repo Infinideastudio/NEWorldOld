@@ -1,4 +1,9 @@
-//! LCM3 circuit update rules.
+//! LCM2 circuit update rules. (Module name retained as `lcm2` for now;
+//! the rename is queued separately. The encoding is `mod 2` per the
+//! current `docs/block_updates.md` — switching from `mod 3` collapses
+//! "input ahead by 1" and "input behind by 1" into the same firing
+//! predicate, which removes the stuck configurations the old `mod 3`
+//! rules admitted.)
 //!
 //! Implements the rewrite system described in `docs/block_updates.md`:
 //!
@@ -12,7 +17,7 @@
 //!   and clock `t + 1`.
 //!
 //! Each cell's state byte packs `(orientation * 2 + data) * 3 + clock`
-//! (see [`crate::blocks::OrientationCodec::LCM3`]). Connection between
+//! (see [`crate::blocks::OrientationCodec::LCM2`]). Connection between
 //! two adjacent cells is symmetric: cell `A`'s face role at direction
 //! `d` and cell `B = A + d`'s face role at direction `−d` must be a
 //! `(Out, In)` pair for `A → B` (i.e. `A` outputs to `B`, `B` reads `A`
@@ -24,22 +29,22 @@
 //! | `fork`            | `Out`     (5 outputs total — top + 4 sides) |
 //! | `and`/`or`        | `In`      (5 inputs total — bottom + 4 sides) |
 //!
-//! All LCM3 blocks have `Out` on canonical `+Y` (the cap, drawn as the
+//! All LCM2 blocks have `Out` on canonical `+Y` (the cap, drawn as the
 //! `OUT_PORT` texture) and `In` on canonical `-Y` (drawn as
 //! `IN_PORT`). Orientation rotates these world-side.
 //!
 //! ## Driving the rewrite from the block-update queue
 //!
-//! LCM3 rules are local: they consult only the firing cell and its six
+//! LCM2 rules are local: they consult only the firing cell and its six
 //! face neighbours. The same machinery that drives lighting updates
-//! works here too — every change to an LCM3 cell or one of its
+//! works here too — every change to an LCM2 cell or one of its
 //! neighbours enqueues those neighbours for re-evaluation, and
-//! [`World::process_block_updates`] runs the LCM3 rule check on each
+//! [`World::process_block_updates`] runs the LCM2 rule check on each
 //! drained cell. There's no full-world scan; we never look at a cell
 //! that hasn't been touched.
 //!
 //! The per-tick rate cap on registers is enforced by a parallel
-//! `HashMap<Vec3i, usize>` on `World` (`lcm3_ff_fires`) that counts how
+//! `HashMap<Vec3i, usize>` on `World` (`lcm2_ff_fires`) that counts how
 //! many times each `ff` has fired in the current
 //! `process_block_updates` call. The map is cleared at the start of
 //! each call. Gates have no cap — they re-evaluate freely as inputs
@@ -48,7 +53,7 @@
 //!
 //! [`try_apply`] is the entry point `World` calls per drained cell:
 //! pure `&World` access, returns `Some(new_state)` if the rule applies
-//! (or `None` if the cell isn't LCM3, has no inputs, or fails a
+//! (or `None` if the cell isn't LCM2, has no inputs, or fails a
 //! precondition).
 
 use crate::blocks::{BaseBlocks, Id, OrientationCodec, State, canonical_face_id};
@@ -64,13 +69,13 @@ enum Role {
     Neutral,
 }
 
-/// Per-canonical-face role for an LCM3 block id. Canonical face indices
+/// Per-canonical-face role for an LCM2 block id. Canonical face indices
 /// follow the mesher's order `[+X, -X, +Y, -Y, +Z, -Z]`.
 fn canonical_roles(id: Id, base: &BaseBlocks) -> [Role; 6] {
-    // All LCM3 blocks: top (canonical +Y) = Out, bottom (canonical -Y) = In.
-    let side_role = if id == base.lcm3_fork {
+    // All LCM2 blocks: top (canonical +Y) = Out, bottom (canonical -Y) = In.
+    let side_role = if id == base.lcm2_fork {
         Role::Out
-    } else if id == base.lcm3_nand {
+    } else if id == base.lcm2_nand {
         // NAND has variable arity (1..=5): bottom + every connected
         // side counts as an input. The 1-input case `nand(a) = NOT(a)`
         // recovers plain inversion when only the bottom is connected.
@@ -81,9 +86,9 @@ fn canonical_roles(id: Id, base: &BaseBlocks) -> [Role; 6] {
     };
     let mut roles = [side_role; 6];
     // face_index_static maps canonical face id 2 / 3 to the top / bottom
-    // slots; we set those explicitly. (Non-LCM3 ids fall through to
+    // slots; we set those explicitly. (Non-LCM2 ids fall through to
     // Neutral sides + Out/In top/bottom — harmless because callers gate
-    // on `is_lcm3`.)
+    // on `is_lcm2`.)
     roles[2] = Role::Out;
     roles[3] = Role::In;
     roles
@@ -92,7 +97,7 @@ fn canonical_roles(id: Id, base: &BaseBlocks) -> [Role; 6] {
 /// Per-world-face role: the canonical role for whichever canonical face
 /// the world face direction maps back to under the cell's orientation.
 fn world_roles(id: Id, state: State, base: &BaseBlocks) -> [Role; 6] {
-    let orientation = (OrientationCodec::LCM3.read)(state);
+    let orientation = (OrientationCodec::LCM2.read)(state);
     let canon = canonical_roles(id, base);
     let mut world = [Role::Neutral; 6];
     let mut face_dir = 0;
@@ -120,23 +125,23 @@ const fn opposite_face(face_dir: usize) -> usize {
     face_dir ^ 1
 }
 
-// ---------- LCM3 state field accessors ----------
+// ---------- LCM2 state field accessors ----------
 
 #[inline]
 const fn state_clock(s: State) -> u8 {
-    s.0 % 3
+    s.0 % 2
 }
 
 #[inline]
 const fn state_data(s: State) -> u8 {
-    (s.0 / 3) & 1
+    (s.0 / 2) & 1
 }
 
-/// Build an LCM3 state from `(orientation_index, data, clock)` per the
-/// codec's `(orientation * 2 + data) * 3 + clock` packing.
+/// Build an LCM2 state from `(orientation_index, data, clock)` per the
+/// codec's `(orientation * 2 + data) * 2 + clock` packing.
 #[inline]
 const fn pack_state(orientation_index: u8, data: u8, clock: u8) -> State {
-    State((orientation_index % 8).wrapping_mul(6) + (data & 1) * 3 + (clock % 3))
+    State((orientation_index % 8).wrapping_mul(4) + (data & 1) * 2 + (clock % 2))
 }
 
 // ---------- Gate function ----------
@@ -146,12 +151,12 @@ const fn pack_state(orientation_index: u8, data: u8, clock: u8) -> State {
 /// semantics, with the 1-input case collapsing to plain inversion
 /// (`nand(a) = NOT(a)`).
 fn gate_function(id: Id, inputs: &[u8], base: &BaseBlocks) -> u8 {
-    if id == base.lcm3_wire || id == base.lcm3_fork || id == base.lcm3_ff {
+    if id == base.lcm2_wire || id == base.lcm2_fork || id == base.lcm2_ff {
         // FF takes the same identity-of-input function — the FF rule
         // dispatch in `try_apply` handles its different precondition,
         // not a different `f`.
         inputs.first().copied().unwrap_or(0)
-    } else if id == base.lcm3_nand {
+    } else if id == base.lcm2_nand {
         // NAND of empty inputs would be NOT(1) = 0, but the caller
         // already gates on `inputs.len() > 0` (quiescence rule), so
         // we never see the empty case here.
@@ -163,7 +168,7 @@ fn gate_function(id: Id, inputs: &[u8], base: &BaseBlocks) -> u8 {
 
 // ---------- Rule dispatch ----------
 
-/// Try to apply the LCM3 rewrite rule at `coord`. Returns `Some(new_state)`
+/// Try to apply the LCM2 rewrite rule at `coord`. Returns `Some(new_state)`
 /// if every precondition holds, `None` otherwise. State-modifying side
 /// effects are deferred to the caller; this keeps `try_apply` borrow-safe
 /// against `&World` and lets [`World::process_block_updates`] pick what
@@ -171,13 +176,13 @@ fn gate_function(id: Id, inputs: &[u8], base: &BaseBlocks) -> u8 {
 /// advance the queue).
 pub fn try_apply(world: &World, coord: Vec3i, base: &BaseBlocks) -> Option<State> {
     let cell = world.block(coord)?;
-    if !base.is_lcm3(cell.id) {
+    if !base.is_lcm2(cell.id) {
         return None;
     }
 
     let t = state_clock(cell.state);
-    let t_plus_1 = (t + 1) % 3;
-    let is_register = cell.id == base.lcm3_ff;
+    let t_plus_1 = (t + 1) % 2;
+    let is_register = cell.id == base.lcm2_ff;
     // Gates require their inputs at t+1; registers require theirs at t.
     let required_input_clock = if is_register { t } else { t_plus_1 };
     let roles = world_roles(cell.id, cell.state, base);
@@ -196,8 +201,8 @@ pub fn try_apply(world: &World, coord: Vec3i, base: &BaseBlocks) -> Option<State
             // applicability checks hold for those).
             continue;
         };
-        if !base.is_lcm3(nb.id) {
-            continue; // non-LCM3 neighbour — no port-port connection.
+        if !base.is_lcm2(nb.id) {
+            continue; // non-LCM2 neighbour — no port-port connection.
         }
         let nb_roles = world_roles(nb.id, nb.state, base);
         let nb_role = nb_roles[opposite_face(face_dir)];
@@ -211,7 +216,7 @@ pub fn try_apply(world: &World, coord: Vec3i, base: &BaseBlocks) -> Option<State
             }
             (Role::Out, Role::In) => {
                 // Output: must be a gate at t or a register at t+1.
-                let expected = if nb.id == base.lcm3_ff { t_plus_1 } else { t };
+                let expected = if nb.id == base.lcm2_ff { t_plus_1 } else { t };
                 if state_clock(nb.state) != expected {
                     return None;
                 }
@@ -231,7 +236,7 @@ pub fn try_apply(world: &World, coord: Vec3i, base: &BaseBlocks) -> Option<State
     }
 
     let new_data = gate_function(cell.id, &input_data, base);
-    let orientation_index = (OrientationCodec::LCM3.orientation_index)(cell.state);
+    let orientation_index = (OrientationCodec::LCM2.orientation_index)(cell.state);
     Some(pack_state(orientation_index, new_data, t_plus_1))
 }
 
@@ -243,7 +248,7 @@ mod tests {
     use crate::blocks::{BlockRegistry, Orientation, face_index_static, register_base_blocks};
 
     /// `face_index_static` maps canonical face id `2`/`3` to top/bottom
-    /// slots — the same place LCM3 blocks register `OUT_PORT` /
+    /// slots — the same place LCM2 blocks register `OUT_PORT` /
     /// `IN_PORT`. Verifies the role table aligns with the texture
     /// table.
     #[test]
@@ -254,13 +259,13 @@ mod tests {
         // `BlockInfo::faces`.
         assert_eq!(face_index_static(2), 0); // top
         assert_eq!(face_index_static(3), 2); // bottom
-        let wire_roles = canonical_roles(base.lcm3_wire, &base);
+        let wire_roles = canonical_roles(base.lcm2_wire, &base);
         assert_eq!(wire_roles[2], Role::Out);
         assert_eq!(wire_roles[3], Role::In);
         for &side in &[wire_roles[0], wire_roles[1], wire_roles[4], wire_roles[5]] {
             assert_eq!(side, Role::Neutral);
         }
-        let fork_roles = canonical_roles(base.lcm3_fork, &base);
+        let fork_roles = canonical_roles(base.lcm2_fork, &base);
         for face in 0..6 {
             assert_eq!(
                 fork_roles[face],
@@ -268,7 +273,7 @@ mod tests {
                 "fork face {face}"
             );
         }
-        let nand_roles = canonical_roles(base.lcm3_nand, &base);
+        let nand_roles = canonical_roles(base.lcm2_nand, &base);
         for face in 0..6 {
             assert_eq!(
                 nand_roles[face],
@@ -284,13 +289,14 @@ mod tests {
         let base = register_base_blocks(&mut r);
         // Wire with default orientation (state 0 → orientation 0 →
         // identity): OUT on world +Y, IN on world -Y.
-        let id = base.lcm3_wire;
+        let id = base.lcm2_wire;
         let roles = world_roles(id, State(0), &base);
         assert_eq!(roles[2], Role::Out);
         assert_eq!(roles[3], Role::In);
         // Wire with orientation 2 (+X cap): OUT on world +X, IN on world -X.
-        // State `12` packs orientation 2, data 0, clock 0.
-        let roles_x = world_roles(id, State(12), &base);
+        // State `8` packs orientation 2, data 0, clock 0 under the LCM2
+        // encoding (orientation * 4 + data * 2 + clock).
+        let roles_x = world_roles(id, State(8), &base);
         assert_eq!(roles_x[0], Role::Out);
         assert_eq!(roles_x[1], Role::In);
         // Y / Z faces are sides — Neutral for wire.
@@ -303,14 +309,14 @@ mod tests {
         // own `write` for sample (orientation, data, clock) triples.
         for orientation in 0..6_u8 {
             for data in 0..2_u8 {
-                for clock in 0..3_u8 {
+                for clock in 0..2_u8 {
                     let packed = pack_state(orientation, data, clock);
                     assert_eq!(state_clock(packed), clock);
                     assert_eq!(state_data(packed), data);
-                    assert_eq!(packed.0 / 6, orientation);
+                    assert_eq!(packed.0 / 4, orientation);
                     // Codec round-trip: write(orientation, packed_with_interior_kept)
                     // should equal `packed` (preserves interior).
-                    let from_codec = (OrientationCodec::LCM3.write)(orientation, packed);
+                    let from_codec = (OrientationCodec::LCM2.write)(orientation, packed);
                     assert_eq!(from_codec, packed);
                 }
             }
@@ -332,17 +338,17 @@ mod tests {
         let mut r = BlockRegistry::new();
         let base = register_base_blocks(&mut r);
         // Wire / fork / ff: identity.
-        for id in [base.lcm3_wire, base.lcm3_fork, base.lcm3_ff] {
+        for id in [base.lcm2_wire, base.lcm2_fork, base.lcm2_ff] {
             assert_eq!(gate_function(id, &[0], &base), 0);
             assert_eq!(gate_function(id, &[1], &base), 1);
         }
         // NAND, 1 input → NOT(a).
-        assert_eq!(gate_function(base.lcm3_nand, &[0], &base), 1);
-        assert_eq!(gate_function(base.lcm3_nand, &[1], &base), 0);
+        assert_eq!(gate_function(base.lcm2_nand, &[0], &base), 1);
+        assert_eq!(gate_function(base.lcm2_nand, &[1], &base), 0);
         // NAND, multi-input → NOT(AND(...)).
-        assert_eq!(gate_function(base.lcm3_nand, &[1, 1, 1], &base), 0);
-        assert_eq!(gate_function(base.lcm3_nand, &[1, 0, 1], &base), 1);
-        assert_eq!(gate_function(base.lcm3_nand, &[0, 0], &base), 1);
+        assert_eq!(gate_function(base.lcm2_nand, &[1, 1, 1], &base), 0);
+        assert_eq!(gate_function(base.lcm2_nand, &[1, 0, 1], &base), 1);
+        assert_eq!(gate_function(base.lcm2_nand, &[0, 0], &base), 1);
     }
 
     /// Quick sanity check on `Orientation::for_axis_aligned_index`'s

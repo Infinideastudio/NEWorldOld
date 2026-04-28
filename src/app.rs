@@ -119,9 +119,10 @@ struct AppState {
     /// when constructing a new `Game`.
     base_blocks: crate::blocks::BaseBlocks,
     /// Egui texture id for each layer of the block-diffuse atlas. Indexed by
-    /// `BlockInfo::face(0).0` so the inventory can paint the front-face art
-    /// of each block. Built once at startup, after both `egui_renderer` and
-    /// `atlases` exist.
+    /// `BlockInfo::face(1).0` (the side texture) so the inventory can paint
+    /// the most distinctive face of each block — the cap is often a generic
+    /// OUT_PORT / WOOD_TOP that doesn't disambiguate gate vs log vs fork.
+    /// Built once at startup, after both `egui_renderer` and `atlases` exist.
     block_icons: Vec<egui::TextureId>,
     /// Active language table. Mirrors the C++ `Globalization::LoadLang` /
     /// `GetStrbyKey` singleton, but locally owned so menus take it via a

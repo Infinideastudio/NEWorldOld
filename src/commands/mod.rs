@@ -22,8 +22,7 @@ use crate::worlds::world::World;
 
 /// Boxed closure type for [`Command::run`]. Pulled out as a type alias so the
 /// `dyn Fn(...)` is named once and clippy `type_complexity` is happy.
-pub type CommandFn =
-    Box<dyn Fn(&[&str], &mut World, &mut Vec<String>) -> bool + Send + Sync>;
+pub type CommandFn = Box<dyn Fn(&[&str], &mut World, &mut Vec<String>) -> bool + Send + Sync>;
 
 /// A single chat command. The closure receives the **whole** token list
 /// (`args[0]` is the command name, including the leading `/`), a mutable
@@ -102,12 +101,7 @@ impl CommandRegistry {
     /// command returning `false`, emits `tracing::warn!` and pushes
     /// `"Fail to execute the command: <line>"` to `messages`, then returns
     /// `false`.
-    pub fn execute_on(
-        &self,
-        line: &str,
-        world: &mut World,
-        messages: &mut Vec<String>,
-    ) -> bool {
+    pub fn execute_on(&self, line: &str, world: &mut World, messages: &mut Vec<String>) -> bool {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if let Some(name) = parts.first()
             && let Some(cmd) = self.entries.get(*name)
@@ -188,8 +182,8 @@ mod tests {
         let base = blocks::register_base_blocks(&mut br);
         let mut r = CommandRegistry::new();
         register_base_commands(&mut r, &base, Arc::new(br));
-        // 11 base-game commands + 2 LCM3 commands
-        // (/lcm3-clock-rate, /lcm3-reset) = 13.
+        // 11 base-game commands + 2 LCM2 commands
+        // (/lcm2-clock-rate, /lcm2-reset) = 13.
         assert_eq!(r.entries().count(), 13);
     }
 

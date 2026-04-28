@@ -613,12 +613,12 @@ impl Game {
         // place). Suppressed while paused so a paused game stays perfectly
         // frozen.
         if !paused {
-            // `process_block_updates` now drives LCM3 circuits in
+            // `process_block_updates` now drives LCM2 circuits in
             // addition to lighting — both rules are local and share
             // the block-update queue (see
             // `docs/block_updates.md`). The per-tick FF rate cap is
             // enforced inside `process_block_updates` against
-            // `World::lcm3_clock_rate()`.
+            // `World::lcm2_clock_rate()`.
             self.world.process_block_updates();
             // Random tick drives slow world dynamics: grass spread /
             // smother and future tickable blocks. Cheap (per-chunk
@@ -1610,7 +1610,7 @@ impl Game {
 /// including the zero vector (a ray-start-inside-solid hit). The
 /// per-block codec decides how to fold the index into a state byte —
 /// see `OrientationCodec::AXIS_ALIGNED` (lower 3 bits) vs a custom
-/// LCM3 codec (`(orientation * 2 + data) * 3 + clock`).
+/// LCM2 codec (`(orientation * 2 + data) * 3 + clock`).
 fn orientation_index_from_face_normal(normal: Vec3i) -> u8 {
     if normal.y > 0 {
         0

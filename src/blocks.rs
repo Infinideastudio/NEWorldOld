@@ -92,7 +92,7 @@ impl State {
     pub const ORIENTATION_MASK: u8 = (1 << Self::ORIENTATION_BITS) - 1;
 
     /// Bitmask covering the upper "interior" bits — the 5 bits a block
-    /// type may freely use for its own per-cell substate (LCM3 clock +
+    /// type may freely use for its own per-cell substate (LCM2 clock +
     /// data, redstone power level, growth stage, etc.) without
     /// disturbing orientation.
     pub const INTERIOR_MASK: u8 = !Self::ORIENTATION_MASK;
@@ -155,7 +155,7 @@ impl State {
 
     /// Extract the interior bits (upper 5), shifted down to occupy
     /// `0..=31`. Block-specific code uses this to read its own substate
-    /// (LCM3 clock + data, redstone power, etc.) without seeing the
+    /// (LCM2 clock + data, redstone power, etc.) without seeing the
     /// orientation.
     #[must_use]
     pub const fn interior(self) -> u8 {
@@ -289,21 +289,21 @@ impl TextureIndex {
     pub const COAL: TextureIndex = TextureIndex(27);
     pub const IRON: TextureIndex = TextureIndex(28);
     pub const TNT: TextureIndex = TextureIndex(29);
-    pub const LCM3_OUT_PORT: TextureIndex = TextureIndex(30);
-    pub const LCM3_IN_PORT: TextureIndex = TextureIndex(33);
-    pub const LCM3_WIRE: TextureIndex = TextureIndex(36);
-    pub const LCM3_WIRE_ON: TextureIndex = TextureIndex(39);
-    pub const LCM3_FF: TextureIndex = TextureIndex(42);
-    pub const LCM3_FF_ON: TextureIndex = TextureIndex(45);
-    pub const LCM3_NAND: TextureIndex = TextureIndex(48);
-    pub const LCM3_NAND_ON: TextureIndex = TextureIndex(51);
+    pub const LCM2_OUT_PORT: TextureIndex = TextureIndex(30);
+    pub const LCM2_IN_PORT: TextureIndex = TextureIndex(32);
+    pub const LCM2_WIRE: TextureIndex = TextureIndex(34);
+    pub const LCM2_WIRE_ON: TextureIndex = TextureIndex(36);
+    pub const LCM2_FF: TextureIndex = TextureIndex(38);
+    pub const LCM2_FF_ON: TextureIndex = TextureIndex(40);
+    pub const LCM2_NAND: TextureIndex = TextureIndex(42);
+    pub const LCM2_NAND_ON: TextureIndex = TextureIndex(44);
 }
 
 // ---------- OrientationCodec ----------
 
 /// Per-block-type accessor for a cell's placement orientation. Each
 /// block's stored [`State`] byte may pack orientation into different bit
-/// positions (or even different sub-fields, like LCM3 circuit blocks
+/// positions (or even different sub-fields, like LCM2 circuit blocks
 /// whose state is `(orientation * 2 + data) * 3 + clock`), so the
 /// encoding is parameterised on the block — not hard-coded to a fixed
 /// enum of layouts.
@@ -322,7 +322,7 @@ impl TextureIndex {
 ///
 /// The pre-defined [`Self::STATIC`] and [`Self::AXIS_ALIGNED`] codecs
 /// cover the two encodings the base-game blocks use; new block kinds
-/// (LCM3 wires, gates, registers, …) declare their own codec at
+/// (LCM2 wires, gates, registers, …) declare their own codec at
 /// registration time.
 #[derive(Copy, Clone)]
 pub struct OrientationCodec {
@@ -376,31 +376,34 @@ impl OrientationCodec {
         |s| s.orientation(),
     );
 
-    /// Codec for LCM3 circuit blocks (`wire`, `fork`, `ff`, `not`,
-    /// `and`, `or`). State packs `(orientation * 2 + data) * 3 + clock`
-    /// — i.e. clock in `state % 3`, data in `(state / 3) & 1`,
-    /// orientation in `state / 6`. `read` extracts the orientation slot;
-    /// `write` replaces it while preserving any data + clock interior
-    /// already in `into` (placement uses `State::default()` so interior
-    /// starts at 0); `orientation_index` is the `state / 6` projection.
-    pub const LCM3: OrientationCodec = OrientationCodec::new(
-        |s| Orientation::for_axis_aligned_index(s.0 / 6),
+    /// Codec for LCM2 circuit blocks (`wire`, `fork`, `ff`, `nand`).
+    /// State packs `(orientation * 2 + data) * 2 + clock` — i.e. clock
+    /// in `state % 2`, data in `(state / 2) & 1`, orientation in
+    /// `state / 4`. The mod-2 clock space is what makes the rewrite
+    /// rules stuck-configuration-free (see `docs/block_updates.md` —
+    /// "behind by 1" and "ahead by 1" collapse to the same predicate).
+    /// `read` extracts the orientation slot; `write` replaces it while
+    /// preserving any data + clock interior already in `into`
+    /// (placement uses `State::default()` so interior starts at 0);
+    /// `orientation_index` is the `state / 4` projection.
+    pub const LCM2: OrientationCodec = OrientationCodec::new(
+        |s| Orientation::for_axis_aligned_index(s.0 / 4),
         |orientation_index, into| {
-            let interior = into.0 % 6;
+            let interior = into.0 % 4;
             // Mask the orientation index so 6/7 don't wrap into a
             // neighbouring orientation; for_axis_aligned_index treats
             // anything `>= 6` as identity at the read side.
             let safe_o = orientation_index % 8;
-            State(safe_o.wrapping_mul(6).wrapping_add(interior))
+            State(safe_o.wrapping_mul(4).wrapping_add(interior))
         },
-        |s| s.0 / 6,
+        |s| s.0 / 4,
     );
 
     /// Build a state with the cell's current orientation preserved but
     /// every interior bit cleared — i.e.
     /// `write(orientation_index(s), State::default())`. For
-    /// [`Self::LCM3`] this drops data + clock to zero while keeping the
-    /// placement axis (`/lcm3-reset`'s "base state"); for
+    /// [`Self::LCM2`] this drops data + clock to zero while keeping the
+    /// placement axis (`/lcm2-reset`'s "base state"); for
     /// [`Self::AXIS_ALIGNED`] it clears the upper 5 bits; for
     /// [`Self::STATIC`] it returns [`State::default()`].
     #[must_use]
@@ -442,8 +445,8 @@ impl PartialEq for OrientationCodec {
 /// final atlas texture index.
 ///
 /// The default implementation [`default_face_texture`] is just
-/// `faces[face_index]` (state ignored). LCM3 circuit blocks override
-/// with [`lcm3_face_texture_with_data`] / [`lcm3_face_texture_no_data`]
+/// `faces[face_index]` (state ignored). LCM2 circuit blocks override
+/// with [`lcm2_face_texture_with_data`] / [`lcm2_face_texture_no_data`]
 /// to apply per-tick clock offsets and per-data on/off variants without
 /// touching the orientation pipeline.
 pub type FaceTextureFn =
@@ -486,7 +489,7 @@ pub struct BlockInfo {
     /// back to canonical-block space through the cell's orientation —
     /// so e.g. a state-2 wood log's `+X` world face reads
     /// `faces[face_index_static(canonical +Y)] = faces[0]` (cap). For
-    /// blocks that pick texture by state (LCM3 circuits), this array
+    /// blocks that pick texture by state (LCM2 circuits), this array
     /// stores the *baseline* (data=0, clock=0) per-slot indices and
     /// [`Self::face_texture`] applies the variants.
     pub faces: [TextureIndex; 3],
@@ -495,7 +498,7 @@ pub struct BlockInfo {
     /// helper; oriented blocks override at registration.
     pub orientation_codec: OrientationCodec,
     /// Per-face texture-variant resolver. Defaults to
-    /// [`default_face_texture`] (= `faces[face_index]`); LCM3 blocks
+    /// [`default_face_texture`] (= `faces[face_index]`); LCM2 blocks
     /// install a clock + data-aware variant at registration.
     pub face_texture: FaceTextureFn,
 }
@@ -523,7 +526,7 @@ impl BlockInfo {
     /// block's [`FaceTextureFn`] keyed on the static face slot. For
     /// static blocks this collapses to `faces[face_index_static(face_dir)]`
     /// (the legacy behaviour); for axis-aligned blocks the cap follows
-    /// the placement axis; for LCM3 circuits the texture is further
+    /// the placement axis; for LCM2 circuits the texture is further
     /// modulated by data + clock interior bits.
     #[must_use]
     pub fn face_for(&self, face_dir: usize, state: State) -> TextureIndex {
@@ -580,57 +583,57 @@ const AXIS_DIRS: [[i32; 3]; 6] = [
     [0, 0, -1],
 ];
 
-// ---------- LCM3 face textures ----------
+// ---------- LCM2 face textures ----------
 
-/// Atlas-index offset between an LCM3 texture's `off` slot and its `on`
-/// slot. The atlas reserves three sequential slots per "phase variant"
-/// (one per `clock % 3`), so the on/off pair is exactly one phase-block
-/// apart — `LCM3_WIRE_ON.0 - LCM3_WIRE.0 == 3`, ditto for FF/NOT/AND/OR.
-const LCM3_DATA_OFFSET: u16 = 3;
+/// Atlas-index offset between an LCM2 texture's `off` slot and its `on`
+/// slot. The atlas reserves two sequential slots per data variant
+/// (one per `clock % 2`), so the on/off pair is exactly one phase-block
+/// apart — `LCM2_WIRE_ON.0 - LCM2_WIRE.0 == 2`, ditto for FF / NAND.
+const LCM2_DATA_OFFSET: u16 = 2;
 
-/// Extract `(clock, data)` from an LCM3 cell's [`State`] under the
-/// `(orientation * 2 + data) * 3 + clock` encoding. Orientation is
-/// resolved separately by [`OrientationCodec::LCM3`].
+/// Extract `(clock, data)` from an LCM2 cell's [`State`] under the
+/// `(orientation * 2 + data) * 2 + clock` encoding. Orientation is
+/// resolved separately by [`OrientationCodec::LCM2`].
 #[inline]
-const fn lcm3_clock_data(state: State) -> (u16, u16) {
-    let clock = (state.0 % 3) as u16;
-    let data = ((state.0 / 3) & 1) as u16;
+const fn lcm2_clock_data(state: State) -> (u16, u16) {
+    let clock = (state.0 % 2) as u16;
+    let data = ((state.0 / 2) & 1) as u16;
     (clock, data)
 }
 
-/// [`FaceTextureFn`] for LCM3 blocks **with** an on/off side variant
+/// [`FaceTextureFn`] for LCM2 blocks **with** an on/off side variant
 /// (wire / ff / not / and / or). Top reads `faces[0]` (out port);
 /// bottom reads `faces[2]` (in port); side reads `faces[1]` for `data=0`
-/// and `faces[1] + LCM3_DATA_OFFSET` for `data=1`. All three slots are
+/// and `faces[1] + LCM2_DATA_OFFSET` for `data=1`. All three slots are
 /// then offset by `clock` (0..2) so the texture animates with the local
 /// clock phase.
 #[must_use]
-pub fn lcm3_face_texture_with_data(
+pub fn lcm2_face_texture_with_data(
     faces: &[TextureIndex; 3],
     face_index: usize,
     state: State,
 ) -> TextureIndex {
-    let (clock, data) = lcm3_clock_data(state);
+    let (clock, data) = lcm2_clock_data(state);
     let base = match face_index {
         0 => faces[0].0,
-        1 => faces[1].0 + data * LCM3_DATA_OFFSET,
+        1 => faces[1].0 + data * LCM2_DATA_OFFSET,
         2 => faces[2].0,
         _ => return TextureIndex::NULLBLOCK,
     };
     TextureIndex(base + clock)
 }
 
-/// [`FaceTextureFn`] for LCM3 blocks **without** an on/off side variant
+/// [`FaceTextureFn`] for LCM2 blocks **without** an on/off side variant
 /// — currently just `fork`, whose four side faces are all out ports.
 /// Each face reads `faces[face_index]` directly, then is offset by
 /// `clock` (0..2). Data bit has no visual effect on this block.
 #[must_use]
-pub fn lcm3_face_texture_no_data(
+pub fn lcm2_face_texture_no_data(
     faces: &[TextureIndex; 3],
     face_index: usize,
     state: State,
 ) -> TextureIndex {
-    let (clock, _data) = lcm3_clock_data(state);
+    let (clock, _data) = lcm2_clock_data(state);
     let base = if face_index < 3 {
         faces[face_index].0
     } else {
@@ -650,7 +653,7 @@ pub fn lcm3_face_texture_no_data(
 ///
 /// Translating a stored [`State`] into an `Orientation` is a per-block
 /// concern (different blocks may pack orientation into different bit
-/// positions, like LCM3 circuit blocks). The standard
+/// positions, like LCM2 circuit blocks). The standard
 /// [`OrientationCodec::AXIS_ALIGNED`] codec extracts orientation from
 /// `state.orientation()` (the lower 3 bits) and maps it via
 /// [`Self::for_axis_aligned_index`]:
@@ -843,35 +846,35 @@ pub struct BaseBlocks {
     pub coal: Id,
     pub iron: Id,
     pub tnt: Id,
-    // LCM3 circuit blocks. Each uses [`OrientationCodec::LCM3`] (state
+    // LCM2 circuit blocks. Each uses [`OrientationCodec::LCM2`] (state
     // packs `(orientation * 2 + data) * 3 + clock`) and applies a
     // clock + data-aware face-texture resolver. See
     // `docs/block_updates.md` for the rewrite-system design.
-    pub lcm3_wire: Id,
-    pub lcm3_fork: Id,
-    pub lcm3_ff: Id,
+    pub lcm2_wire: Id,
+    pub lcm2_fork: Id,
+    pub lcm2_ff: Id,
     /// Universal Boolean primitive: `nand(inputs) = NOT(AND(inputs))`.
     /// Arity is the number of side faces with a connected input port,
     /// 1..=5. The 1-input case `nand(a) = NOT(a)` collapses to plain
     /// inversion, so a single `nand` block subsumes the legacy
-    /// `not` / `and` / `or` triple — see "minimal LCM3 set" discussion.
-    pub lcm3_nand: Id,
+    /// `not` / `and` / `or` triple — see "minimal LCM2 set" discussion.
+    pub lcm2_nand: Id,
 }
 
 impl BaseBlocks {
-    /// True iff `id` is one of the four LCM3 circuit-block ids
-    /// (`lcm3_wire`, `lcm3_fork`, `lcm3_ff`, `lcm3_nand`). Used by
-    /// `/lcm3-reset`'s connected-component BFS to gate which neighbours
+    /// True iff `id` is one of the four LCM2 circuit-block ids
+    /// (`lcm2_wire`, `lcm2_fork`, `lcm2_ff`, `lcm2_nand`). Used by
+    /// `/lcm2-reset`'s connected-component BFS to gate which neighbours
     /// propagate.
     #[must_use]
-    pub fn is_lcm3(&self, id: Id) -> bool {
-        id == self.lcm3_wire || id == self.lcm3_fork || id == self.lcm3_ff || id == self.lcm3_nand
+    pub fn is_lcm2(&self, id: Id) -> bool {
+        id == self.lcm2_wire || id == self.lcm2_fork || id == self.lcm2_ff || id == self.lcm2_nand
     }
 }
 
 /// Helper: build a `BlockInfo` with the `[top, side, bottom]` face array,
 /// orientation codec, and face-texture resolver. Most callers use the
-/// thinner [`info`] / [`info_axis`] / [`info_lcm3`] wrappers below.
+/// thinner [`info`] / [`info_axis`] / [`info_lcm2`] wrappers below.
 fn info_with(
     name: &'static str,
     solid: bool,
@@ -939,12 +942,12 @@ fn info_axis(
     )
 }
 
-/// Helper: LCM3 circuit block. Uses [`OrientationCodec::LCM3`] (state
+/// Helper: LCM2 circuit block. Uses [`OrientationCodec::LCM2`] (state
 /// `(orientation*2 + data)*3 + clock`) and the supplied face-texture
-/// resolver — typically [`lcm3_face_texture_with_data`] for blocks with
+/// resolver — typically [`lcm2_face_texture_with_data`] for blocks with
 /// on/off side variants (wire/ff/not/and/or) or
-/// [`lcm3_face_texture_no_data`] for fork (sides identical to top).
-fn info_lcm3(
+/// [`lcm2_face_texture_no_data`] for fork (sides identical to top).
+fn info_lcm2(
     name: &'static str,
     hardness: f32,
     faces: [TextureIndex; 3],
@@ -957,7 +960,7 @@ fn info_lcm3(
         false, // translucent
         hardness,
         faces,
-        OrientationCodec::LCM3,
+        OrientationCodec::LCM2,
         face_texture,
     )
 }
@@ -1016,42 +1019,42 @@ pub fn register_base_blocks(registry: &mut BlockRegistry) -> BaseBlocks {
     let iron = registry.add(info("iron block", true, true, false, 3.0, [T::IRON; 3]));
     let tnt = registry.add(info("tnt", true, true, false, 0.2, [T::TNT; 3]));
 
-    // LCM3 circuit blocks. Top = OUT_PORT, bottom = IN_PORT, sides per
+    // LCM2 circuit blocks. Top = OUT_PORT, bottom = IN_PORT, sides per
     // block type. State encoding: `(orientation * 2 + data) * 3 + clock`
     // — see `docs/block_updates.md`. Hardness is uniform 1.0; behaviour
     // (the rewrite rules from the doc) is not yet wired — only the
     // visual / placement layer.
-    let lcm3_top = T::LCM3_OUT_PORT;
-    let lcm3_bot = T::LCM3_IN_PORT;
-    let lcm3_wire = registry.add(info_lcm3(
-        "lcm3 wire",
+    let lcm2_top = T::LCM2_OUT_PORT;
+    let lcm2_bot = T::LCM2_IN_PORT;
+    let lcm2_wire = registry.add(info_lcm2(
+        "lcm2 wire",
         1.0,
-        [lcm3_top, T::LCM3_WIRE, lcm3_bot],
-        lcm3_face_texture_with_data,
+        [lcm2_top, T::LCM2_WIRE, lcm2_bot],
+        lcm2_face_texture_with_data,
     ));
-    let lcm3_fork = registry.add(info_lcm3(
-        "lcm3 fork",
+    let lcm2_fork = registry.add(info_lcm2(
+        "lcm2 fork",
         1.0,
-        // All four sides are out ports too — sides reuse `LCM3_OUT_PORT`.
-        [lcm3_top, T::LCM3_OUT_PORT, lcm3_bot],
-        lcm3_face_texture_no_data,
+        // All four sides are out ports too — sides reuse `LCM2_OUT_PORT`.
+        [lcm2_top, T::LCM2_OUT_PORT, lcm2_bot],
+        lcm2_face_texture_no_data,
     ));
-    let lcm3_ff = registry.add(info_lcm3(
-        "lcm3 flip-flop",
+    let lcm2_ff = registry.add(info_lcm2(
+        "lcm2 flip-flop",
         1.0,
-        [lcm3_top, T::LCM3_FF, lcm3_bot],
-        lcm3_face_texture_with_data,
+        [lcm2_top, T::LCM2_FF, lcm2_bot],
+        lcm2_face_texture_with_data,
     ));
     // Universal Boolean primitive — replaces the former NOT / AND / OR
     // triple. Arity is the number of side faces with connected inputs;
     // the 1-input case `nand(a) = NOT(a)` recovers plain inversion.
-    // Visual: same atlas slot the legacy NOT used (`LCM3_NAND` is just
+    // Visual: same atlas slot the legacy NOT used (`LCM2_NAND` is just
     // the renamed constant at index 48).
-    let lcm3_nand = registry.add(info_lcm3(
-        "lcm3 nand",
+    let lcm2_nand = registry.add(info_lcm2(
+        "lcm2 nand",
         1.0,
-        [lcm3_top, T::LCM3_NAND, lcm3_bot],
-        lcm3_face_texture_with_data,
+        [lcm2_top, T::LCM2_NAND, lcm2_bot],
+        lcm2_face_texture_with_data,
     ));
 
     BaseBlocks {
@@ -1074,10 +1077,10 @@ pub fn register_base_blocks(registry: &mut BlockRegistry) -> BaseBlocks {
         coal,
         iron,
         tnt,
-        lcm3_wire,
-        lcm3_fork,
-        lcm3_ff,
-        lcm3_nand,
+        lcm2_wire,
+        lcm2_fork,
+        lcm2_ff,
+        lcm2_nand,
     }
 }
 
@@ -1151,84 +1154,84 @@ mod tests {
     fn register_base_blocks_populates_all_entries() {
         let mut r = BlockRegistry::new();
         let base = register_base_blocks(&mut r);
-        // 19 base-game blocks + 4 LCM3 circuit blocks (wire, fork, ff,
+        // 19 base-game blocks + 4 LCM2 circuit blocks (wire, fork, ff,
         // nand) = 23.
         assert_eq!(r.len(), 23);
         // `rock` has the expected non-zero hardness from the C++ table.
         assert_eq!(r.get(base.rock).hardness, 2.0);
         assert_eq!(r.get(base.air).name, "air");
-        // LCM3 ids are non-zero and distinct from each other.
-        assert_ne!(base.lcm3_wire, Id(0));
-        assert_ne!(base.lcm3_wire, base.lcm3_fork);
-        assert_ne!(base.lcm3_ff, base.lcm3_nand);
+        // LCM2 ids are non-zero and distinct from each other.
+        assert_ne!(base.lcm2_wire, Id(0));
+        assert_ne!(base.lcm2_wire, base.lcm2_fork);
+        assert_ne!(base.lcm2_ff, base.lcm2_nand);
     }
 
     #[test]
-    fn lcm3_face_textures_apply_clock_and_data() {
+    fn lcm2_face_textures_apply_clock_and_data() {
         let mut r = BlockRegistry::new();
         let base = register_base_blocks(&mut r);
-        let wire = r.get(base.lcm3_wire);
+        let wire = r.get(base.lcm2_wire);
 
         // State 0: orientation 0 (Y-axis), data 0, clock 0.
         // +Y face → top OUT_PORT @ clock 0.
-        assert_eq!(wire.face_for(2, State(0)), TextureIndex::LCM3_OUT_PORT);
+        assert_eq!(wire.face_for(2, State(0)), TextureIndex::LCM2_OUT_PORT);
         // -Y face → bottom IN_PORT @ clock 0.
-        assert_eq!(wire.face_for(3, State(0)), TextureIndex::LCM3_IN_PORT);
+        assert_eq!(wire.face_for(3, State(0)), TextureIndex::LCM2_IN_PORT);
         // ±X / ±Z (sides) → WIRE off @ clock 0.
-        assert_eq!(wire.face_for(0, State(0)), TextureIndex::LCM3_WIRE);
+        assert_eq!(wire.face_for(0, State(0)), TextureIndex::LCM2_WIRE);
 
-        // Clock advances by adding 1 / 2 to all three slots.
+        // Clock advances by +1 to every slot. Under LCM2 there are
+        // only two clock values (0, 1); the atlas's third clock slot
+        // is unused.
         // State 1: orientation 0, data 0, clock 1.
         assert_eq!(
             wire.face_for(2, State(1)),
-            TextureIndex(TextureIndex::LCM3_OUT_PORT.0 + 1)
+            TextureIndex(TextureIndex::LCM2_OUT_PORT.0 + 1)
         );
         assert_eq!(
             wire.face_for(0, State(1)),
-            TextureIndex(TextureIndex::LCM3_WIRE.0 + 1)
-        );
-        // State 2: clock 2.
-        assert_eq!(
-            wire.face_for(0, State(2)),
-            TextureIndex(TextureIndex::LCM3_WIRE.0 + 2)
+            TextureIndex(TextureIndex::LCM2_WIRE.0 + 1)
         );
 
-        // State 3: orientation 0, data 1, clock 0 → side flips to WIRE_ON.
-        assert_eq!(wire.face_for(0, State(3)), TextureIndex::LCM3_WIRE_ON);
-        // State 5: orientation 0, data 1, clock 2.
+        // State 2: orientation 0, data 1, clock 0 → side flips to WIRE_ON.
+        assert_eq!(wire.face_for(0, State(2)), TextureIndex::LCM2_WIRE_ON);
+        // State 3: orientation 0, data 1, clock 1.
         assert_eq!(
-            wire.face_for(0, State(5)),
-            TextureIndex(TextureIndex::LCM3_WIRE_ON.0 + 2)
+            wire.face_for(0, State(3)),
+            TextureIndex(TextureIndex::LCM2_WIRE_ON.0 + 1)
         );
         // Top / bottom never use the data variant.
         assert_eq!(
-            wire.face_for(2, State(5)),
-            TextureIndex(TextureIndex::LCM3_OUT_PORT.0 + 2)
+            wire.face_for(2, State(3)),
+            TextureIndex(TextureIndex::LCM2_OUT_PORT.0 + 1)
         );
 
-        // Orientation rotates the cap: state 12 → orientation 2 (X-axis).
-        // Now world +X reads the top OUT_PORT and ±Y/±Z read sides.
-        assert_eq!(wire.face_for(0, State(12)), TextureIndex::LCM3_OUT_PORT);
-        assert_eq!(wire.face_for(1, State(12)), TextureIndex::LCM3_IN_PORT);
-        assert_eq!(wire.face_for(2, State(12)), TextureIndex::LCM3_WIRE);
+        // Orientation rotates the cap: state 8 → orientation 2 (X-axis)
+        // under LCM2's `orientation * 4 + ...` packing. Now world +X
+        // reads the top OUT_PORT and ±Y/±Z read sides.
+        assert_eq!(wire.face_for(0, State(8)), TextureIndex::LCM2_OUT_PORT);
+        assert_eq!(wire.face_for(1, State(8)), TextureIndex::LCM2_IN_PORT);
+        assert_eq!(wire.face_for(2, State(8)), TextureIndex::LCM2_WIRE);
     }
 
     #[test]
-    fn lcm3_fork_sides_ignore_data() {
+    fn lcm2_fork_sides_ignore_data() {
         // Fork has no on/off variant — its four sides are out ports.
         let mut r = BlockRegistry::new();
         let base = register_base_blocks(&mut r);
-        let fork = r.get(base.lcm3_fork);
+        let fork = r.get(base.lcm2_fork);
 
-        // data=0 vs data=1 produces the same side texture (modulo clock).
-        for clock in 0..3_u8 {
+        // data=0 vs data=1 produces the same side texture (modulo
+        // clock) under LCM2's `orientation * 4 + data * 2 + clock`
+        // packing.
+        for clock in 0..2_u8 {
             let data0 = State(clock); // orientation 0, data 0, clock = clock
-            let data1 = State(3 + clock); // orientation 0, data 1, clock = clock
+            let data1 = State(2 + clock); // orientation 0, data 1, clock = clock
             assert_eq!(fork.face_for(0, data0), fork.face_for(0, data1));
             // Side reads the OUT_PORT slot directly.
             assert_eq!(
                 fork.face_for(0, data0),
-                TextureIndex(TextureIndex::LCM3_OUT_PORT.0 + u16::from(clock))
+                TextureIndex(TextureIndex::LCM2_OUT_PORT.0 + u16::from(clock))
             );
         }
     }
@@ -1276,31 +1279,31 @@ mod tests {
     }
 
     #[test]
-    fn lcm3_style_custom_codec_decodes_orientation_field() {
-        // Demonstrates per-block-type extensibility: a hypothetical LCM3
+    fn lcm2_style_custom_codec_decodes_orientation_field() {
+        // Demonstrates per-block-type extensibility: a hypothetical LCM2
         // gate packs state as `(orientation * 2 + data) * 3 + clock` —
         // orientation lives in bits "above" the data + clock fields, not
         // in the lower 3 bits like wood. The codec encapsulates that
         // encoding so `face_for` works without any changes to the mesher
         // or registry.
-        const fn lcm3_read(s: State) -> Orientation {
+        const fn lcm2_read(s: State) -> Orientation {
             // Extract orientation (state / 6) and clamp to the 6 valid slots.
             Orientation::for_axis_aligned_index(s.0 / 6)
         }
-        const fn lcm3_write(o: u8, into: State) -> State {
+        const fn lcm2_write(o: u8, into: State) -> State {
             // Preserve the data + clock low fields; replace orientation only.
             let interior = into.0 % 6;
             State((o % 8).wrapping_mul(6).wrapping_add(interior))
         }
-        const fn lcm3_orientation_index(s: State) -> u8 {
+        const fn lcm2_orientation_index(s: State) -> u8 {
             s.0 / 6
         }
-        const LCM3_CODEC: OrientationCodec =
-            OrientationCodec::new(lcm3_read, lcm3_write, lcm3_orientation_index);
+        const LCM2_CODEC: OrientationCodec =
+            OrientationCodec::new(lcm2_read, lcm2_write, lcm2_orientation_index);
 
         let mut r = BlockRegistry::new();
-        let lcm3_gate = r.add(BlockInfo {
-            name: Cow::Borrowed("lcm3_gate"),
+        let lcm2_gate = r.add(BlockInfo {
+            name: Cow::Borrowed("lcm2_gate"),
             solid: true,
             opaque: true,
             translucent: false,
@@ -1312,10 +1315,10 @@ mod tests {
                 TextureIndex::WOOD_SIDE,
                 TextureIndex::ROCK,
             ],
-            orientation_codec: LCM3_CODEC,
+            orientation_codec: LCM2_CODEC,
             face_texture: default_face_texture,
         });
-        let info = r.get(lcm3_gate);
+        let info = r.get(lcm2_gate);
 
         // State `4 = (0 * 2 + 1) * 3 + 1` → orientation 0 (Y-axis,
         // identity), data 1, clock 1. Texture lookup should ignore the

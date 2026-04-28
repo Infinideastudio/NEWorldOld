@@ -40,7 +40,7 @@ pub mod globalization;
 pub mod height_maps;
 pub mod input;
 pub mod items;
-pub mod lcm3;
+pub mod lcm2;
 pub mod math;
 pub mod menus;
 pub mod particles;

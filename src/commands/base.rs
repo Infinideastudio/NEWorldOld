@@ -29,8 +29,8 @@ fn parse_float<T: FromStr>(s: &str) -> Option<T> {
 }
 
 /// Register the same set of slash-commands the C++ `register_base_commands`
-/// does, plus two LCM3 helpers (`/lcm3-clock-rate`, `/lcm3-reset`) that
-/// the Rust port adds for the in-progress LCM3 circuit subsystem.
+/// does, plus two LCM2 helpers (`/lcm2-clock-rate`, `/lcm2-reset`) that
+/// the Rust port adds for the in-progress LCM2 circuit subsystem.
 #[allow(clippy::needless_pass_by_value)] // Arc moved into the closures by clone.
 pub fn register_base_commands(
     registry: &mut CommandRegistry,
@@ -270,9 +270,9 @@ pub fn register_base_commands(
         }),
     );
 
-    // /lcm3-clock-rate <number>
+    // /lcm2-clock-rate <number>
     registry.add(
-        "/lcm3-clock-rate",
+        "/lcm2-clock-rate",
         Command::new(|args, world, messages| {
             if args.len() != 2 {
                 return false;
@@ -280,23 +280,23 @@ pub fn register_base_commands(
             let Some(rate) = parse_int::<usize>(args[1]) else {
                 return false;
             };
-            world.set_lcm3_clock_rate(rate);
-            messages.push(format!("LCM3 clock rate set to {rate}"));
+            world.set_lcm2_clock_rate(rate);
+            messages.push(format!("LCM2 clock rate set to {rate}"));
             true
         }),
     );
 
-    // /lcm3-reset <x> <y> <z>
+    // /lcm2-reset <x> <y> <z>
     //
-    // BFS the connected component of LCM3 blocks containing `(x, y, z)`
-    // (face-sharing only; non-LCM3 cells terminate propagation) and
+    // BFS the connected component of LCM2 blocks containing `(x, y, z)`
+    // (face-sharing only; non-LCM2 cells terminate propagation) and
     // reset each cell's interior — data + clock → 0 — while preserving
-    // its placement orientation. Mirrors the LCM3 design in
+    // its placement orientation. Mirrors the LCM2 design in
     // `docs/block_updates.md`: the reset gives the whole connected
     // sub-circuit a clean slate without disturbing the wiring.
     let registry_for_reset = Arc::clone(&block_registry);
     registry.add(
-        "/lcm3-reset",
+        "/lcm2-reset",
         Command::new(move |args, world, messages| {
             if args.len() != 4 {
                 return false;
@@ -312,18 +312,18 @@ pub fn register_base_commands(
             };
             let start = Vec3i::new(x, y, z);
             let base = world.base_blocks();
-            // Reject up front if the seed cell isn't a loaded LCM3
+            // Reject up front if the seed cell isn't a loaded LCM2
             // block — avoids confusing "reset 0 blocks" output and
             // surfaces typos.
             let Some(seed) = world.block(start) else {
                 messages.push(format!(
-                    "/lcm3-reset: chunk at ({x}, {y}, {z}) is not loaded"
+                    "/lcm2-reset: chunk at ({x}, {y}, {z}) is not loaded"
                 ));
                 return true;
             };
-            if !base.is_lcm3(seed.id) {
+            if !base.is_lcm2(seed.id) {
                 messages.push(format!(
-                    "/lcm3-reset: block at ({x}, {y}, {z}) is not an LCM3 block"
+                    "/lcm2-reset: block at ({x}, {y}, {z}) is not an LCM2 block"
                 ));
                 return true;
             }
@@ -345,18 +345,27 @@ pub fn register_base_commands(
                 let Some(cell) = world.block(coord) else {
                     continue; // unloaded: stop propagation here.
                 };
-                if !base.is_lcm3(cell.id) {
-                    continue; // non-LCM3: stop propagation here.
+                if !base.is_lcm2(cell.id) {
+                    continue; // non-LCM2: stop propagation here.
                 }
                 let info = registry_for_reset.get(cell.id);
                 let new_state = info.orientation_codec.reset_to_base(cell.state);
                 if new_state != cell.state {
                     // `queue_update = false` — resetting a circuit
-                    // shouldn't trigger an LCM3 / lighting cascade off
+                    // shouldn't trigger an LCM2 / lighting cascade off
                     // the modified cells. The mesh-dirty flag still
                     // gets set inside `set_block_with_state` so the
                     // texture refreshes.
                     world.set_block_with_state(coord, cell.id, new_state, false);
+                }
+                // Schedule every register in the reset component for
+                // re-evaluation on the next tick. Without this the
+                // freshly reset circuit would sit dormant — the
+                // component's only "clock source" is the registers,
+                // and we just zeroed their state without leaving any
+                // queue entry that would wake them up.
+                if cell.id == base.lcm2_ff {
+                    world.enqueue_lcm2_aux(coord);
                 }
                 reset_count += 1;
                 for d in NEIGHBOURS {
@@ -367,7 +376,7 @@ pub fn register_base_commands(
                 }
             }
             messages.push(format!(
-                "/lcm3-reset: reset {reset_count} LCM3 block{} starting at ({x}, {y}, {z})",
+                "/lcm2-reset: reset {reset_count} LCM2 block{} starting at ({x}, {y}, {z})",
                 if reset_count == 1 { "" } else { "s" }
             ));
             true
