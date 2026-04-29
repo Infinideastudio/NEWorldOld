@@ -57,10 +57,17 @@ impl EguiRenderer {
         scale_factor: f32,
     ) -> Self {
         let context = egui::Context::default();
-        // Force the dark theme for every widget — the menus draw their own
-        // dark backgrounds and would look out of place against egui's
-        // light-mode defaults.
-        context.set_visuals(egui::Visuals::dark());
+        // Seed the context's pixels-per-point so the very first frame's
+        // layout matches what the renderer will composite. Subsequent
+        // changes flow through [`Self::set_pixels_per_point`].
+        context.set_pixels_per_point(scale_factor.max(0.1));
+        // Default to light visuals — out-of-game menus sit on top of the
+        // bright sky-cube background where dark widget chrome blends in
+        // poorly. The user-facing toggle lives in `Config::dark_theme`
+        // and `App::apply_config` re-applies the live setting each
+        // frame, so this initial value only affects the very first
+        // pre-config-load frame.
+        context.set_visuals(egui::Visuals::light());
         // Disable text selection on `Label` widgets. Static menu text has
         // no reason to be selectable, and egui's drag-selection (left-down
         // starts; mouse-up should end) misbehaves in our event flow —
@@ -147,6 +154,10 @@ impl EguiRenderer {
     /// End the egui frame — runs layout, handles platform output
     /// (clipboard, cursor), tessellates draw data, and stores the paint
     /// jobs for later upload.
+    ///
+    /// `screen_descriptor.pixels_per_point` is read from the egui context
+    /// (not the OS scale factor) so any [`Self::set_pixels_per_point`]
+    /// override stays in effect across frames.
     pub fn end_frame(&mut self, window: &winit::window::Window) {
         let full_output = self.context.end_pass();
 
@@ -162,7 +173,7 @@ impl EguiRenderer {
         let size = window.inner_size();
         self.screen_descriptor = ScreenDescriptor {
             size_in_pixels: [size.width, size.height],
-            pixels_per_point: window.scale_factor() as f32,
+            pixels_per_point: self.context.pixels_per_point(),
         };
     }
 
@@ -217,9 +228,15 @@ impl EguiRenderer {
         );
     }
 
-    /// Handle a DPI scale change.
-    pub fn set_scale_factor(&mut self, scale_factor: f32) {
-        self.screen_descriptor.pixels_per_point = scale_factor;
+    /// Set the effective egui pixels-per-point used for both layout and
+    /// rendering. The caller should pass the OS DPI scale factor multiplied
+    /// by any user font-scale preference. Updates both the wgpu screen
+    /// descriptor and the egui context so widget layout (font sizes,
+    /// padding, hit-testing) sees the same scale that the renderer uses.
+    pub fn set_pixels_per_point(&mut self, pixels_per_point: f32) {
+        let clamped = pixels_per_point.max(0.1);
+        self.screen_descriptor.pixels_per_point = clamped;
+        self.context.set_pixels_per_point(clamped);
     }
 
     /// Register each of `views` as an egui [`TextureId`], returning the ids
@@ -241,6 +258,20 @@ impl EguiRenderer {
                     .register_native_texture(device, v, wgpu::FilterMode::Nearest)
             })
             .collect()
+    }
+
+    /// Register a single texture view with the supplied [`wgpu::FilterMode`].
+    /// Use [`wgpu::FilterMode::Linear`] for high-resolution UI artwork
+    /// (title splash, splash screen) so it stays smooth when scaled;
+    /// use [`wgpu::FilterMode::Nearest`] for voxel pixel art (matches the
+    /// in-world atlas sampler).
+    pub fn register_native_texture(
+        &mut self,
+        device: &wgpu::Device,
+        view: &wgpu::TextureView,
+        filter: wgpu::FilterMode,
+    ) -> egui::TextureId {
+        self.renderer.register_native_texture(device, view, filter)
     }
 }
 

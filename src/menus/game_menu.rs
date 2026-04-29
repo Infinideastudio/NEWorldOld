@@ -8,10 +8,18 @@
 //! the player's stacks on click.
 //!
 //! The pause overlay mirrors `old/src/menus/game_menu.cpp`: a centred column
-//! holding the caption, then a Back-to-title / Continue pair row. It sits
-//! inside an `egui::Window` so the player can still see the live world
-//! behind it. "Save & Quit to Title" submits a [`WorldAction::LeaveToTitle`]
-//! rather than pushing a `TitleScreen` directly — the app needs to save the
+//! holding the caption, then Continue and a Back-to-title / Options row.
+//! It uses [`crate::ui::show`] — the same path every out-of-game menu
+//! takes — so the layout chrome (scrim, padding, max-width, theme-aware
+//! widget colours) matches the rest of the menus exactly. Like the main
+//! menu, the column is centred vertically (`MainAxisAlignment::Center`).
+//! The live world keeps rendering behind because the world pass runs in
+//! `app.rs` regardless of menu state. HUD + inventory are suppressed
+//! while paused so they don't fight the pause widgets for screen real
+//! estate.
+//!
+//! "Save & Quit to Title" submits a [`WorldAction::LeaveToTitle`] rather
+//! than pushing a `TitleScreen` directly — the app needs to save the
 //! world and drop the live `Game`. The `OptionsScreen` is still pushed
 //! inline because it doesn't need to interact with the world.
 
@@ -32,7 +40,8 @@ use crate::game::inventory::Inventory;
 use crate::globalization::I18n;
 use crate::ui;
 use crate::ui::widgets::{
-    Aligned, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisSize, Padding, Sizer, Spacer,
+    Aligned, Alignment, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisAlignment,
+    MainAxisSize, Padding, Sizer, Spacer,
 };
 use crate::worlds::Player;
 
@@ -172,46 +181,15 @@ impl GameScreen {
             }
         }
 
-        // HUD elements: crosshair, debug panel, chat bar. The selection
-        // wireframe runs as a real 3-D pass via `SelectionPipeline` — see
-        // `Game::record_world_pass`.
-        let history: Vec<&str> = self.chat_history.iter().map(String::as_str).collect();
-        let frame = HudFrame {
-            camera_pos: self.camera_pos,
-            yaw: self.yaw,
-            pitch: self.pitch,
-            fps: self.fps,
-            ups: self.ups,
-            chunk_count: self.chunk_count,
-            rendered_chunks: self.rendered_chunks,
-            unloaded_chunks: self.unloaded_chunks,
-            meshed_chunks: self.meshed_chunks,
-            creative: self.creative,
-            cross_wall: self.cross_wall,
-            grounded: self.grounded,
-            near_wall: self.near_wall,
-            in_water: self.in_water,
-            game_time: self.game_time,
-            updated_blocks: self.updated_blocks,
-            pending_block_updates: self.pending_block_updates,
-            advanced_render: self.advanced_render,
-            show_shadow_map: self.show_shadow_map,
-            backend: self.backend,
-            chat_history: &history,
-        };
-        self.hud.render(ctx, &frame);
-
-        // Inventory overlay (always renders the hotbar; renders the full
-        // grid only when `inventory_open`).
-        self.inventory
-            .render(ctx, player, registry, air_id, block_icons);
-
-        // Pause menu overlay — mirror of `old/src/menus/game_menu.cpp`,
-        // built against the layout engine. Uses [`l::run_overlay`] so the
-        // live HUD / crosshair / inventory remain visible behind a
-        // translucent scrim (diverges from the C++ build, which freezes a
-        // gameplay screenshot as the backdrop).
         if self.paused {
+            // Pause overlay — same render path as every other menu
+            // (`ui::show` → transparent CentralPanel + theme scrim), so
+            // chrome and theming match the title / options / language
+            // screens exactly. Buttons are vertically centred via
+            // `MainAxisAlignment::Center`, mirroring the main menu.
+            // HUD and inventory are intentionally suppressed below so
+            // they don't compete with the pause widgets; the live
+            // world is still drawn behind us by `Game::record_world_pass`.
             let caption = t(&self.i18n, "NEWorld.pause.caption");
             let back_lbl = t(&self.i18n, "NEWorld.pause.back");
             let continue_lbl = t(&self.i18n, "NEWorld.pause.continue");
@@ -221,9 +199,6 @@ impl GameScreen {
             let mut want_options = false;
             let mut want_leave = false;
 
-            // The overlay column auto-sizes to its natural height
-            // (`main_size = Min`) — we want a tight box centred on screen,
-            // not a full-height panel.
             let body = Flex::column(vec![
                 FlexItem::new(Sizer::height(
                     MENU_ROW_HEIGHT,
@@ -246,15 +221,16 @@ impl GameScreen {
                     .cross_size(CrossAxisSize::Max),
                 )),
             ])
-            .main_size(MainAxisSize::Min)
+            .main_size(MainAxisSize::Max)
+            .main_align(MainAxisAlignment::Center)
             .cross_size(CrossAxisSize::Max);
 
-            // No outer `Aligned::Center` — `show_modal` hosts the root in
-            // an `egui::Window` anchored to screen centre, so we just hand
-            // it a natural-sized tree (Padding around the width-capped body).
-            let root = Padding::all(MENU_PADDING, Sizer::width(MENU_MAX_WIDTH, body));
+            let root = Aligned::new(
+                Alignment::TopCenter,
+                Padding::all(MENU_PADDING, Sizer::width(MENU_MAX_WIDTH, body)),
+            );
 
-            ui::show_modal(ctx, "pause", root);
+            ui::show(ctx, root);
 
             if want_resume {
                 self.paused = false;
@@ -267,6 +243,38 @@ impl GameScreen {
                 self.paused = false;
                 self.actions.submit(WorldAction::LeaveToTitle);
             }
+        } else {
+            // Live HUD path — crosshair, debug panel, chat bar, hotbar,
+            // and (when open) the full inventory. The selection
+            // wireframe runs as a real 3-D pass via `SelectionPipeline`
+            // — see `Game::record_world_pass`.
+            let history: Vec<&str> = self.chat_history.iter().map(String::as_str).collect();
+            let frame = HudFrame {
+                camera_pos: self.camera_pos,
+                yaw: self.yaw,
+                pitch: self.pitch,
+                fps: self.fps,
+                ups: self.ups,
+                chunk_count: self.chunk_count,
+                rendered_chunks: self.rendered_chunks,
+                unloaded_chunks: self.unloaded_chunks,
+                meshed_chunks: self.meshed_chunks,
+                creative: self.creative,
+                cross_wall: self.cross_wall,
+                grounded: self.grounded,
+                near_wall: self.near_wall,
+                in_water: self.in_water,
+                game_time: self.game_time,
+                updated_blocks: self.updated_blocks,
+                pending_block_updates: self.pending_block_updates,
+                advanced_render: self.advanced_render,
+                show_shadow_map: self.show_shadow_map,
+                backend: self.backend,
+                chat_history: &history,
+            };
+            self.hud.render(ctx, &frame);
+            self.inventory
+                .render(ctx, player, registry, air_id, block_icons);
         }
 
         transition

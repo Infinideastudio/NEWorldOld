@@ -4,7 +4,8 @@
 //!   * caption row
 //!   * FOV slider | mouse-sensitivity slider
 //!   * render-distance slider | "render options" sub-menu button
-//!   * "UI options" sub-menu button | "language menu" sub-menu button
+//!   * "language menu" sub-menu button | UI-scale slider
+//!   * theme toggle | (filler)
 //!   * flex spacer
 //!   * back | save
 //!
@@ -20,7 +21,7 @@ use egui::Context;
 use super::screen::{Screen, Transition};
 use super::{
     LanguageScreen, MENU_COL_SPACING, MENU_MAX_WIDTH, MENU_PADDING, MENU_ROW_HEIGHT,
-    MENU_ROW_SPACING, RenderOptionsScreen, UIOptionsScreen, t,
+    MENU_ROW_SPACING, RenderOptionsScreen, t,
 };
 use crate::config::Config;
 use crate::globalization::I18n;
@@ -31,15 +32,26 @@ use crate::ui::widgets::{
 };
 
 /// Top-level options screen.
+///
+/// `pending_ui_scale` mirrors `Config::ui_scale` and is what the slider
+/// actually mutates. The change is committed back into `Config` only
+/// when the user leaves this screen (via Back or Save) — otherwise the
+/// whole UI would re-layout on every drag tick, which is jarring.
 pub struct OptionsScreen {
     config: Arc<Mutex<Config>>,
     i18n: Arc<Mutex<I18n>>,
+    pending_ui_scale: f32,
 }
 
 impl OptionsScreen {
     #[must_use]
     pub fn new(config: Arc<Mutex<Config>>, i18n: Arc<Mutex<I18n>>) -> Self {
-        Self { config, i18n }
+        let pending_ui_scale = config.lock().map_or(1.0, |c| c.ui_scale);
+        Self {
+            config,
+            i18n,
+            pending_ui_scale,
+        }
     }
 }
 
@@ -54,21 +66,26 @@ impl Screen for OptionsScreen {
         let sens_lbl = t(&self.i18n, "NEWorld.options.sensitivity");
         let dist_lbl = t(&self.i18n, "NEWorld.options.distance");
         let render_lbl = t(&self.i18n, "NEWorld.options.rendermenu");
-        let gui_lbl = t(&self.i18n, "NEWorld.options.guimenu");
         let lang_lbl = t(&self.i18n, "NEWorld.options.languagemenu");
+        let scale_lbl = t(&self.i18n, "NEWorld.options.ui_scale");
+        let theme_lbl = t(&self.i18n, "NEWorld.options.theme");
+        let theme_dark_lbl = t(&self.i18n, "NEWorld.options.theme_dark");
+        let theme_light_lbl = t(&self.i18n, "NEWorld.options.theme_light");
         let back_lbl = t(&self.i18n, "NEWorld.options.back");
         let save_lbl = t(&self.i18n, "NEWorld.options.save");
 
         let mut want_save = false;
         let mut want_back = false;
         let mut want_render = false;
-        let mut want_gui = false;
         let mut want_lang = false;
-        // Sliders mutate cfg in place; the `_changed` flags are unused —
-        // we don't currently need to react to slider changes mid-frame.
+        let mut theme_clicked = false;
+        // Sliders mutate cfg / pending state in place; the `_changed`
+        // flags are unused — we don't currently need to react to slider
+        // changes mid-frame.
         let mut fov_changed = false;
         let mut sens_changed = false;
         let mut dist_changed = false;
+        let mut ui_scale_changed = false;
 
         let mut guard = self.config.lock().expect("config poisoned");
         // Reborrow to `&mut Config` so the multiple slider widgets below
@@ -83,6 +100,18 @@ impl Screen for OptionsScreen {
         let fov_text = format!("{fov_lbl}{:.0}", cfg.fov_y_normal);
         let sens_text = format!("{sens_lbl}{:.2}", cfg.mouse_speed);
         let dist_text = format!("{dist_lbl}{}", cfg.render_distance);
+        // The UI-scale label reflects the pending value (what the slider
+        // currently shows), not the live `cfg.ui_scale` — which will
+        // only catch up when the user leaves the screen.
+        let scale_text = format!("{scale_lbl}{:.2}x", self.pending_ui_scale);
+        let theme_text = format!(
+            "{theme_lbl}{}",
+            if cfg.dark_theme {
+                &theme_dark_lbl
+            } else {
+                &theme_light_lbl
+            }
+        );
 
         let body = Flex::column(vec![
             // Caption.
@@ -145,13 +174,39 @@ impl Screen for OptionsScreen {
                 .cross_size(CrossAxisSize::Max),
             )),
             FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
-            // Row 3: UI options | language sub-menu
+            // Row 3: language sub-menu | font scale slider
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(gui_lbl, &mut want_gui)),
-                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
                     FlexItem::flex(1.0, Button::new(lang_lbl, &mut want_lang)),
+                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                    FlexItem::flex(
+                        1.0,
+                        Flex::column(vec![
+                            FlexItem::new(Label::new(scale_text)),
+                            FlexItem::flex(
+                                1.0,
+                                Slider::new(
+                                    &mut self.pending_ui_scale,
+                                    0.5..=2.0,
+                                    &mut ui_scale_changed,
+                                ),
+                            ),
+                        ])
+                        .cross_size(CrossAxisSize::Max),
+                    ),
+                ])
+                .main_size(MainAxisSize::Max)
+                .cross_size(CrossAxisSize::Max),
+            )),
+            FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
+            // Row 4: theme toggle | (filler)
+            FlexItem::new(Sizer::height(
+                MENU_ROW_HEIGHT,
+                Flex::row(vec![
+                    FlexItem::flex(1.0, Button::new(theme_text, &mut theme_clicked)),
+                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                    FlexItem::flex(1.0, Spacer::fill()),
                 ])
                 .main_size(MainAxisSize::Max)
                 .cross_size(CrossAxisSize::Max),
@@ -186,6 +241,25 @@ impl Screen for OptionsScreen {
         cfg.fov_y_normal = cfg.fov_y_normal.clamp(60.0, 120.0);
         cfg.mouse_speed = cfg.mouse_speed.clamp(0.01, 0.5);
         cfg.render_distance = cfg.render_distance.clamp(4, 48);
+        // `pending_ui_scale` lives outside `cfg` until the user leaves
+        // the screen; only clamp the local value here.
+        self.pending_ui_scale = self.pending_ui_scale.clamp(0.5, 2.0);
+
+        // The theme toggle takes effect immediately — `App::apply_config`
+        // re-reads `cfg.dark_theme` every frame and pushes the matching
+        // `Visuals` into the egui context.
+        if theme_clicked {
+            cfg.dark_theme = !cfg.dark_theme;
+        }
+
+        // Commit the pending UI scale to the live config when the user
+        // leaves the screen (via Back or Save). Going into a sub-screen
+        // (Push) does NOT commit — the slider position is preserved on
+        // the OptionsScreen instance and the user can keep tweaking it
+        // when they return.
+        if want_back || want_save {
+            cfg.ui_scale = self.pending_ui_scale;
+        }
 
         // Snapshot the config we'll need for "Save"; release the lock before
         // we touch i18n / push transitions / write to disk.
@@ -205,11 +279,6 @@ impl Screen for OptionsScreen {
             Transition::Pop
         } else if want_render {
             Transition::Push(Box::new(RenderOptionsScreen::new(
-                Arc::clone(&self.config),
-                Arc::clone(&self.i18n),
-            )))
-        } else if want_gui {
-            Transition::Push(Box::new(UIOptionsScreen::new(
                 Arc::clone(&self.config),
                 Arc::clone(&self.i18n),
             )))

@@ -40,7 +40,13 @@ impl Element for SelectButton<'_> {
 
     fn show(&mut self, ui: &mut Ui, origin: Point) {
         let rect = rect_at(origin, self.size);
-        let resp = ui.put(rect, egui::Button::selectable(self.selected, &self.text));
+        // Always paint the full button frame (background + border) — the
+        // C++ `Button::selectable` factory paints text-only in the
+        // unselected state, which makes list rows hard to spot against
+        // the menu background. `Button::new(...).selected(bool)` keeps
+        // the chrome and just tints the fill when selected.
+        let widget = egui::Button::new(&self.text).selected(self.selected);
+        let resp = ui.put(rect, widget);
         self.out.clicked = resp.clicked();
         self.out.double_clicked = resp.double_clicked();
     }

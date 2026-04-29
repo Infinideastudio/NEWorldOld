@@ -19,8 +19,11 @@
 "NEWorld.options.sensitivity" = "Mouse sensitivity: "
 "NEWorld.options.distance" = "Render distance: "
 "NEWorld.options.rendermenu" = ">> Render options..."
-"NEWorld.options.guimenu" = ">> UI options..."
 "NEWorld.options.languagemenu" = ">> Select language..."
+"NEWorld.options.ui_scale" = "UI scale: "
+"NEWorld.options.theme" = "Theme: "
+"NEWorld.options.theme_dark" = "Dark"
+"NEWorld.options.theme_light" = "Light"
 "NEWorld.options.back" = "<< Back to main menu"
 "NEWorld.options.save" = "Save options"
 
@@ -28,7 +31,6 @@
 "NEWorld.render.smooth" = "Smooth lighting: "
 "NEWorld.render.grasstex" = "Connect grass texture: "
 "NEWorld.render.merge" = "Merge face rendering: "
-"NEWorld.render.multisample" = "Multi-sample AA: "
 "NEWorld.render.shaders" = ">> Advanced rendering ..."
 "NEWorld.render.vsync" = "Vertical sync: "
 "NEWorld.render.back" = "<< Back to options menu"
@@ -41,12 +43,6 @@
 "NEWorld.shaders.clouds" = "Volumetric clouds: "
 "NEWorld.shaders.ssao" = "Ambient occlusion: "
 "NEWorld.shaders.back" = "<< Back to render options"
-
-"NEWorld.gui.caption" = "< UI OPTIONS >"
-"NEWorld.gui.fontsize" = "Font size: "
-"NEWorld.gui.blur" = "Background blur: "
-"NEWorld.gui.stretch" = "PPI stretch: "
-"NEWorld.gui.back" = "<< Back to options menu"
 
 "NEWorld.worlds.caption" = "< SELECT WORLD >"
 "NEWorld.worlds.enter" = "Enter this world"

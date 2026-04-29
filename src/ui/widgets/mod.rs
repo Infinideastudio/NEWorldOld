@@ -27,6 +27,7 @@
 mod button;
 mod containers;
 mod flex;
+mod image;
 mod label;
 mod scroll;
 mod select_button;
@@ -39,6 +40,7 @@ pub use flex::{
     CrossAxisAlignment, CrossAxisSize, Flex, FlexDirection, FlexItem, MainAxisAlignment,
     MainAxisSize,
 };
+pub use image::{BoxFit, Image, apply_box_fit};
 pub use label::Label;
 pub use scroll::{ScrollDirection, ScrollView};
 pub use select_button::{SelectButton, SelectButtonOutput};

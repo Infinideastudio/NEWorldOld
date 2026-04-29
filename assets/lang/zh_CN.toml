@@ -19,8 +19,11 @@
 "NEWorld.options.sensitivity" = "鼠标灵敏度："
 "NEWorld.options.distance" = "渲染距离："
 "NEWorld.options.rendermenu" = ">> 渲染选项 ..."
-"NEWorld.options.guimenu" = ">> 界面选项 ..."
 "NEWorld.options.languagemenu" = ">> 选择语言 ..."
+"NEWorld.options.ui_scale" = "界面缩放："
+"NEWorld.options.theme" = "界面主题："
+"NEWorld.options.theme_dark" = "深色"
+"NEWorld.options.theme_light" = "浅色"
 "NEWorld.options.back" = "<< 返回主菜单"
 "NEWorld.options.save" = "保存设置"
 
@@ -28,7 +31,6 @@
 "NEWorld.render.smooth" = "平滑光照："
 "NEWorld.render.grasstex" = "草方块材质连接："
 "NEWorld.render.merge" = "合并面渲染："
-"NEWorld.render.multisample" = "多重采样抗锯齿："
 "NEWorld.render.shaders" = ">> 光影选项 ..."
 "NEWorld.render.vsync" = "垂直同步："
 "NEWorld.render.back" = "<< 返回选项菜单"
@@ -41,12 +43,6 @@
 "NEWorld.shaders.clouds" = "体积云："
 "NEWorld.shaders.ssao" = "环境光遮蔽："
 "NEWorld.shaders.back" = "<< 返回渲染选项"
-
-"NEWorld.gui.caption" = "< 界 面 选 项 >"
-"NEWorld.gui.fontsize" = "字体大小："
-"NEWorld.gui.blur" = "背景模糊："
-"NEWorld.gui.stretch" = "PPI缩放："
-"NEWorld.gui.back" = "<< 返回选项菜单"
 
 "NEWorld.worlds.caption" = "< 选 择 世 界 >"
 "NEWorld.worlds.enter" = "进入选定的世界"

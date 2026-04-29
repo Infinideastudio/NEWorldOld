@@ -34,6 +34,7 @@ pub mod debug_shadow_pipeline;
 pub mod depth;
 pub mod egui_renderer;
 pub mod gbuffer;
+pub mod menu_background;
 pub mod mesh;
 pub mod mesh_pipeline;
 pub mod particle_render;
@@ -51,6 +52,7 @@ pub use self::debug_shadow_pipeline::DebugShadowPipeline;
 pub use self::depth::DepthTarget;
 pub use self::egui_renderer::EguiRenderer;
 pub use self::gbuffer::GBuffer;
+pub use self::menu_background::MenuBackground;
 pub use self::mesh::{
     CHUNK_SIZE, ChunkVertex, MeshInput, MeshOptions, MeshOutput, PADDED_SIZE, PADDED_VOLUME,
     mesh_chunk, padded_index,

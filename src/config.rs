@@ -26,7 +26,6 @@ pub struct Config {
     pub smooth_lighting: bool,
     pub nice_grass: bool,
     pub merge_face: bool,
-    pub multisample: i32,
     pub advanced_render: bool,
     pub shadow_res: i32,
     pub max_shadow_distance: i32,
@@ -34,9 +33,14 @@ pub struct Config {
     pub volumetric_clouds: bool,
     pub ambient_occlusion: bool,
     pub vertical_sync: bool,
-    pub font_scale: f64,
-    pub ui_auto_stretch: bool,
-    pub ui_background_blur: bool,
+    /// Multiplier on the effective egui pixels-per-point. Combined with the
+    /// window's DPI scale factor to drive both layout and font rendering;
+    /// 1.0 means follow the OS DPI exactly.
+    pub ui_scale: f32,
+    /// `true` selects the dark egui theme; `false` selects the light theme.
+    /// Defaults to light because the menu screens sit on top of the bright
+    /// sky-cube panorama where dark widget chrome blends in poorly.
+    pub dark_theme: bool,
 }
 
 impl Default for Config {
@@ -49,7 +53,6 @@ impl Default for Config {
             smooth_lighting: true,
             nice_grass: true,
             merge_face: false,
-            multisample: 4,
             advanced_render: false,
             shadow_res: 2048,
             max_shadow_distance: 16,
@@ -57,9 +60,8 @@ impl Default for Config {
             volumetric_clouds: false,
             ambient_occlusion: false,
             vertical_sync: false,
-            font_scale: 1.0,
-            ui_auto_stretch: true,
-            ui_background_blur: true,
+            ui_scale: 1.0,
+            dark_theme: false,
         }
     }
 }
@@ -211,10 +213,7 @@ mod tests {
             loaded.fov_y_normal.to_bits(),
             Config::default().fov_y_normal.to_bits()
         );
-        assert_eq!(
-            loaded.ui_background_blur,
-            Config::default().ui_background_blur
-        );
+        assert_eq!(loaded.vertical_sync, Config::default().vertical_sync);
         let _ = fs::remove_dir_all(&dir);
     }
 }

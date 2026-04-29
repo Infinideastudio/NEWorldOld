@@ -725,15 +725,28 @@ impl World {
         // Top neighbour at SKY_LIGHT propagates skylight without falloff.
         let skylit = coord.y >= 0 && neighbours[2].light.sky() == Light::SKY.sky();
 
-        let curr_solid = self.registry.get(curr.id).solid;
-        if curr.id == base.air {
+        // Light-passthrough classification:
+        // * `!opaque && !translucent` → air-like (air, glass, leaf): full
+        //   skylight column passthrough plus a `-1` falloff for diffuse
+        //   light. Glass and leaf join air here so a window or canopy
+        //   doesn't black out the cells below it.
+        // * `!opaque && translucent` → water-like (water, lava, ice):
+        //   `-1` falloff with no skylight fast-path — water in
+        //   particular dims sunlight as you go deeper, which the
+        //   current behaviour already encoded for non-solid translucent
+        //   blocks; we preserve that and extend it to ice.
+        // * `opaque` → block all light.
+        let curr_info = self.registry.get(curr.id);
+        let curr_opaque = curr_info.opaque;
+        let curr_translucent = curr_info.translucent;
+        if !curr_opaque && !curr_translucent {
             sky_light = if skylit {
                 Light::SKY.sky()
             } else {
                 sky_light.saturating_sub(1)
             };
             block_light = block_light.saturating_sub(1);
-        } else if !curr_solid {
+        } else if !curr_opaque {
             sky_light = sky_light.saturating_sub(1);
             block_light = block_light.saturating_sub(1);
         } else {
