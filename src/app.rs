@@ -34,7 +34,7 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Fullscreen, Window, WindowAttributes, WindowId};
 
 use crate::config::Config;
-use crate::game::{Game, SKY_COLOR, build_block_registry};
+use crate::game::{Game, build_block_registry};
 use crate::globalization::I18n;
 use crate::input::{InputState, Key, MouseButton};
 use crate::math::Vec2f;
@@ -42,7 +42,7 @@ use crate::menus::{
     GameScreen, ScreenStack, Transition, WorldAction, WorldActionQueue, default_worlds_root,
     initial_screen_stack,
 };
-use crate::render::{EguiRenderer, FrameUniforms, Gfx, Screenshot, UniformBuffer};
+use crate::render::{EguiRenderer, FrameUniforms, Gfx, MenuBackground, Screenshot, UniformBuffer};
 use crate::text_rendering::TextRenderer;
 use crate::textures::Atlases;
 
@@ -133,6 +133,14 @@ struct AppState {
     /// `i18n.reload` reads from. Cached so we don't recompute the path
     /// every frame.
     lang_dir: PathBuf,
+    /// Out-of-game menu background — rotating sky cube + Gaussian blur.
+    /// Drawn under the screen stack whenever `game.is_none()`.
+    menu_background: MenuBackground,
+    /// Egui texture id for `assets/textures/ui/title.png` and its source
+    /// pixel size. Threaded into the title screen so it can paint the
+    /// rendered logo in place of a "NEWorld" text label.
+    title_icon: egui::TextureId,
+    title_icon_size: (u32, u32),
 }
 
 /// Application root. Implements [`winit::application::ApplicationHandler`].
@@ -209,7 +217,6 @@ impl App {
                 merge_face: cfg.merge_face,
                 nice_grass: cfg.nice_grass,
                 grass_id: state.base_blocks.grass,
-                advanced_render: cfg.advanced_render,
             });
             // Shadow toggle + resolution + composition feature flags.
             // Resizes the shadow map (and rebuilds composition's aux
@@ -241,11 +248,34 @@ impl App {
             }
         }
 
-        // egui font scale.
-        let logical = state.window.scale_factor() as f32;
-        state
-            .egui_renderer
-            .set_scale_factor(logical * cfg.font_scale as f32);
+        // Effective egui pixels-per-point: OS DPI × user UI scale.
+        // Drives both layout (widget sizes, hit tests) and rendering
+        // (font rasterisation), so a 1.5× ui_scale grows the whole UI
+        // uniformly — `egui::Context::set_pixels_per_point` is the
+        // single knob that controls both.
+        let effective_ppp = state.window.scale_factor() as f32 * cfg.ui_scale.max(0.1);
+        state.egui_renderer.set_pixels_per_point(effective_ppp);
+
+        // Live theme switch — re-applying every frame is cheap (egui
+        // diffs internally) and keeps us from caching a separate
+        // "applied theme" flag.
+        //
+        // `override_text_color` is forced to the button-text colour
+        // (`widgets.inactive.fg_stroke.color`) so every text widget —
+        // labels, slider value displays, window content, our own
+        // `Label` element — renders at the same brightness as button
+        // labels. Without this, egui's default `text_color()` falls
+        // back to `widgets.noninteractive.fg_stroke.color`, which is
+        // visibly dimmer under the dark theme and causes slider /
+        // banner labels to read as washed-out gray next to the
+        // brighter button text.
+        let mut visuals = if cfg.dark_theme {
+            egui::Visuals::dark()
+        } else {
+            egui::Visuals::light()
+        };
+        visuals.override_text_color = Some(visuals.widgets.inactive.fg_stroke.color);
+        state.egui_renderer.context().set_visuals(visuals);
 
         // VSync — only reconfigure the surface on actual change, since
         // `Surface::configure` is not free.
@@ -356,6 +386,8 @@ impl App {
             Arc::clone(&state.i18n),
             state.worlds_root.clone(),
             Arc::clone(&state.world_actions),
+            state.title_icon,
+            state.title_icon_size,
         );
         state.tick_accumulator = 0.0;
     }
@@ -382,6 +414,9 @@ impl App {
         if let Some(game) = state.game.as_mut() {
             game.resize(state.gfx.device(), win.width, win.height);
         }
+        state
+            .menu_background
+            .resize(state.gfx.device(), state.gfx.queue(), win.width, win.height);
     }
 
     /// Tick + render one frame. Returns `true` if the app should exit.
@@ -714,25 +749,22 @@ impl App {
                 surface_size,
             );
         } else {
-            // No game — clear the surface to the sky color so the menu sits
-            // on a neutral background instead of garbage from the previous
-            // world.
-            let _ = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("neworld.menu_clear_pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(SKY_COLOR),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
+            // No game — draw the rotating sky cube background, blurred,
+            // under the menu screens.
+            let (sw, sh) = surface_size;
+            // `elapsed` is shadowed by the FPS-window timer further up in
+            // this function; recompute the wall-clock elapsed seconds for
+            // the cube rotation so the bg motion is independent of the
+            // FPS sample window.
+            let bg_time = (now - state.start_time).as_secs_f32();
+            state.menu_background.render(
+                state.gfx.queue(),
+                &mut encoder,
+                &view,
+                sw,
+                sh,
+                bg_time,
+            );
         }
 
         // ---------- egui render pass (on top of the world) ----------
@@ -952,6 +984,15 @@ impl ApplicationHandler for App {
         let frame_uniforms =
             UniformBuffer::<FrameUniforms>::new(gfx.device(), "neworld.frame_uniforms");
 
+        let (surf_w, surf_h) = gfx.surface_size();
+        let menu_background = MenuBackground::new(
+            gfx.device(),
+            &atlases,
+            gfx.surface_format(),
+            surf_w,
+            surf_h,
+        );
+
         let text = TextRenderer::new(gfx.device(), gfx.queue(), gfx.surface_format());
 
         // Egui uses the linear-format sibling view of the same surface
@@ -971,6 +1012,17 @@ impl ApplicationHandler for App {
         let block_icons = egui_renderer
             .register_native_textures(gfx.device(), &atlases.block_diffuse.layer_views);
         tracing::info!(count = block_icons.len(), "registered block icons");
+
+        // The title screen paints `title.png` in place of a "NEWorld" label.
+        // Linear filtering — the title PNG is a hand-drawn high-res asset,
+        // not voxel pixel art, so bilinear sampling keeps it smooth when
+        // scaled to fit the banner row.
+        let title_icon = egui_renderer.register_native_texture(
+            gfx.device(),
+            &atlases.title.view,
+            wgpu::FilterMode::Linear,
+        );
+        let (title_icon_w, title_icon_h) = atlases.title.size;
 
         // Build registry + base blocks once for the world generator and the
         // mesher (which both consume the same registry). Reused across world
@@ -1003,6 +1055,8 @@ impl ApplicationHandler for App {
             Arc::clone(&i18n),
             worlds_root.clone(),
             Arc::clone(&world_actions),
+            title_icon,
+            (title_icon_w, title_icon_h),
         );
 
         window.request_redraw();
@@ -1041,6 +1095,9 @@ impl ApplicationHandler for App {
             block_icons,
             i18n,
             lang_dir,
+            menu_background,
+            title_icon,
+            title_icon_size: (title_icon_w, title_icon_h),
         });
         tracing::info!("app ready");
     }
@@ -1077,9 +1134,21 @@ impl ApplicationHandler for App {
                 if let Some(game) = state.game.as_mut() {
                     game.resize(state.gfx.device(), size.width, size.height);
                 }
-                state
-                    .egui_renderer
-                    .set_scale_factor(state.window.scale_factor() as f32);
+                state.menu_background.resize(
+                    state.gfx.device(),
+                    state.gfx.queue(),
+                    size.width,
+                    size.height,
+                );
+                // Re-apply the combined OS DPI × ui_scale so the
+                // post-resize layout uses the user's preferred scale.
+                let ui_scale = state
+                    .config
+                    .lock()
+                    .map_or(1.0, |c| c.ui_scale)
+                    .max(0.1);
+                let effective_ppp = state.window.scale_factor() as f32 * ui_scale;
+                state.egui_renderer.set_pixels_per_point(effective_ppp);
                 state.window.request_redraw();
             }
             WindowEvent::RedrawRequested => {

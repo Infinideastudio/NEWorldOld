@@ -41,13 +41,15 @@ struct FrameUniforms {
     fog_end: f32,
     render_distance: f32,
     _pad_scalars: vec2<f32>,
+    material_layers: vec4<u32>,
     shadow_params: vec4<f32>,
     player_coord_int: vec4<i32>,
     player_coord_mod: vec4<i32>,
     player_coord_frac: vec4<f32>,
-};
+}
 
-@group(0) @binding(0) var<uniform> frame: FrameUniforms;
+@group(0) @binding(0)
+var<uniform> frame: FrameUniforms;
 
 const KIND_WORLD: u32 = 0u;
 const KIND_SCREEN: u32 = 1u;
@@ -65,14 +67,9 @@ const CORNER_B_PLUS: u32 = 2u;
 const CORNER_B_MINUS: u32 = 3u;
 
 @vertex
-fn vs_main(
-    @location(0) a: vec3<f32>,
-    @location(1) b: vec3<f32>,
-    @location(2) corner: u32,
-    @location(3) kind: u32,
-) -> @builtin(position) vec4<f32> {
+fn vs_main(@location(0) a: vec3<f32>, @location(1) b: vec3<f32>, @location(2) corner: u32, @location(3) kind: u32,) -> @builtin(position) vec4<f32> {
     let is_b = (corner == CORNER_B_PLUS) || (corner == CORNER_B_MINUS);
-    let side = select(-1.0, 1.0, (corner == CORNER_A_PLUS) || (corner == CORNER_B_PLUS));
+    let side = select(- 1.0, 1.0, (corner == CORNER_A_PLUS) || (corner == CORNER_B_PLUS));
 
     if (kind == KIND_SCREEN) {
         // Endpoints in pixel offsets from screen centre.
@@ -83,33 +80,34 @@ fn vs_main(
         // regardless of viewport size.
         let dir_ndc = b_ndc - a_ndc;
         let dir_pixel = dir_ndc * frame.screen_size * 0.5;
-        let perp_pixel = normalize(vec2<f32>(-dir_pixel.y, dir_pixel.x));
+        let perp_pixel = normalize(vec2<f32>(- dir_pixel.y, dir_pixel.x));
         let extrude_ndc = perp_pixel * (HALF_WIDTH_PX * side) * 2.0 / frame.screen_size;
         return vec4<f32>(endpoint_ndc + extrude_ndc, 1.0, 1.0);
     }
+    else {
+        // World-space line. Both endpoints go through the projection so we
+        // can compute the screen-space direction; the extrude is then
+        // applied to the chosen endpoint in NDC.
+        let clip_a = frame.view_proj * vec4<f32>(a, 1.0);
+        let clip_b = frame.view_proj * vec4<f32>(b, 1.0);
+        let ndc_a = clip_a.xy / clip_a.w;
+        let ndc_b = clip_b.xy / clip_b.w;
+        let endpoint_clip = select(clip_a, clip_b, is_b);
+        let endpoint_ndc = endpoint_clip.xy / endpoint_clip.w;
 
-    // World-space line. Both endpoints go through the projection so we
-    // can compute the screen-space direction; the extrude is then
-    // applied to the chosen endpoint in NDC.
-    let clip_a = frame.view_proj * vec4<f32>(a, 1.0);
-    let clip_b = frame.view_proj * vec4<f32>(b, 1.0);
-    let ndc_a = clip_a.xy / clip_a.w;
-    let ndc_b = clip_b.xy / clip_b.w;
-    let endpoint_clip = select(clip_a, clip_b, is_b);
-    let endpoint_ndc = endpoint_clip.xy / endpoint_clip.w;
+        let dir_pixel = (ndc_b - ndc_a) * frame.screen_size * 0.5;
+        let perp_pixel = normalize(vec2<f32>(- dir_pixel.y, dir_pixel.x));
+        let extrude_ndc = perp_pixel * (HALF_WIDTH_PX * side) * 2.0 / frame.screen_size;
+        let final_ndc = endpoint_ndc + extrude_ndc;
 
-    let dir_pixel = (ndc_b - ndc_a) * frame.screen_size * 0.5;
-    let perp_pixel = normalize(vec2<f32>(-dir_pixel.y, dir_pixel.x));
-    let extrude_ndc = perp_pixel * (HALF_WIDTH_PX * side) * 2.0 / frame.screen_size;
-    let final_ndc = endpoint_ndc + extrude_ndc;
-
-    // Re-multiply by the endpoint's clip w so post-divide x/y land at
-    // `final_ndc`. z and w come from the original projection so depth
-    // interpolates correctly across the quad — extruding in screen
-    // space doesn't shift z, which is the visually correct behavior
-    // (a 1-px-wide line at distance D should depth-test as if it were
-    // exactly at D, not at D ± thickness/2).
-    return vec4<f32>(final_ndc * endpoint_clip.w, endpoint_clip.z, endpoint_clip.w);
+        // Re-multiply by the endpoint's clip w so post-divide x/y land at
+        // `final_ndc`. z and w come from the original projection so depth
+        // interpolates correctly across the quad — extruding in screen
+        // space doesn't shift z, which is the visually correct behavior
+        // (a 1-px-wide line at distance D should depth-test as if it were
+        // exactly at D, not at D ± thickness/2).
+        return vec4<f32>(final_ndc * endpoint_clip.w, endpoint_clip.z + 1e-4 * endpoint_clip.w, endpoint_clip.w);
+    }
 }
 
 @fragment

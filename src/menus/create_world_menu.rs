@@ -18,7 +18,7 @@ use crate::globalization::I18n;
 use crate::ui;
 use crate::ui::widgets::{
     Aligned, Alignment, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisSize, Padding, Sizer,
-    Spacer, TextEdit, TextEditOutput,
+    Spacer, TextEdit,
 };
 
 /// Create world form state.
@@ -96,17 +96,17 @@ impl Screen for CreateWorldScreen {
 
         let mut create_clicked = false;
         let mut cancel_clicked = false;
-        let mut text_out = TextEditOutput::default();
+        let mut text_submitted = false;
 
         // Build the body. The error row is only present when an error is
         // set; absent rows just don't appear in the column.
         let mut body_items: Vec<FlexItem> = Vec::new();
         body_items.push(FlexItem::new(Sizer::height(
             MENU_ROW_HEIGHT,
-            Aligned::center(Label::new(caption)),
+            Aligned::center(Label::new(&caption)),
         )));
         body_items.push(FlexItem::new(Spacer::height(MENU_ROW_SPACING)));
-        if let Some(err) = self.error.clone() {
+        if let Some(err) = &self.error {
             body_items.push(FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Aligned::center(Label::new(err).color(Color32::LIGHT_RED)),
@@ -115,15 +115,17 @@ impl Screen for CreateWorldScreen {
         }
         body_items.push(FlexItem::new(Sizer::height(
             MENU_ROW_HEIGHT,
-            TextEdit::singleline(&mut self.world_name, &mut text_out).hint(placeholder),
+            TextEdit::singleline(&mut self.world_name)
+                .hint(placeholder)
+                .submitted(&mut text_submitted),
         )));
         body_items.push(FlexItem::new(Spacer::height(MENU_ROW_SPACING)));
         body_items.push(FlexItem::new(Sizer::height(
             MENU_ROW_HEIGHT,
             Flex::row(vec![
-                FlexItem::flex(1.0, Button::new(back_label, &mut cancel_clicked)),
+                FlexItem::flex(1.0, Button::new(&back_label).clicked(&mut cancel_clicked)),
                 FlexItem::new(Spacer::width(MENU_COL_SPACING)),
-                FlexItem::flex(1.0, Button::new(ok_label, &mut create_clicked)),
+                FlexItem::flex(1.0, Button::new(&ok_label).clicked(&mut create_clicked)),
             ])
             .main_size(MainAxisSize::Max)
             .cross_size(CrossAxisSize::Max),
@@ -141,7 +143,7 @@ impl Screen for CreateWorldScreen {
         ui::show(ctx, root);
 
         // Pressing Enter inside the text edit submits, same as clicking OK.
-        let submit = create_clicked || text_out.submitted;
+        let submit = create_clicked || text_submitted;
 
         if cancel_clicked || (submit && self.try_create()) {
             Transition::Pop

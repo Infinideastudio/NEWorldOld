@@ -11,7 +11,6 @@
 //! | `options_menu.cpp`             | [`options_menu`]          |
 //! | `render_options_menu.cpp`      | [`render_options_menu`]   |
 //! | `shader_options_menu.cpp`      | [`shader_options_menu`]   |
-//! | `ui_options_menu.cpp`          | [`ui_options_menu`]       |
 //! | `language_menu.cpp`            | [`language_menu`]         |
 //! | `game_menu.cpp` (pause)        | [`game_menu`]             |
 //!
@@ -45,7 +44,6 @@ pub mod options_menu;
 pub mod render_options_menu;
 pub mod screen;
 pub mod shader_options_menu;
-pub mod ui_options_menu;
 pub mod world_menu;
 
 pub use action::{WorldAction, WorldActionQueue, default_worlds_root};
@@ -57,7 +55,6 @@ pub use options_menu::OptionsScreen;
 pub use render_options_menu::RenderOptionsScreen;
 pub use screen::{Screen, ScreenStack, Transition};
 pub use shader_options_menu::ShaderOptionsScreen;
-pub use ui_options_menu::UIOptionsScreen;
 pub use world_menu::WorldSelectScreen;
 
 use std::path::PathBuf;
@@ -75,6 +72,8 @@ pub fn initial_screen_stack(
     i18n: Arc<Mutex<I18n>>,
     worlds_root: PathBuf,
     actions: Arc<WorldActionQueue>,
+    title_icon: egui::TextureId,
+    title_icon_size: (u32, u32),
 ) -> ScreenStack {
     let mut stack = ScreenStack::new();
     stack.push(Box::new(TitleScreen::new(
@@ -82,6 +81,8 @@ pub fn initial_screen_stack(
         i18n,
         worlds_root,
         actions,
+        title_icon,
+        title_icon_size,
     )));
     stack
 }

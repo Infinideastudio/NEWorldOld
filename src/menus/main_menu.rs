@@ -12,7 +12,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use egui::{Align2, Color32, Context, FontId, RichText, vec2};
+use egui::{Align2, Color32, Context, RichText, TextureId, vec2};
 
 use super::action::WorldActionQueue;
 use super::screen::{Screen, Transition};
@@ -24,16 +24,14 @@ use crate::config::Config;
 use crate::globalization::I18n;
 use crate::ui;
 use crate::ui::widgets::{
-    Aligned, Alignment, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisAlignment,
+    Aligned, Alignment, BoxFit, Button, CrossAxisSize, Flex, FlexItem, Image, MainAxisAlignment,
     MainAxisSize, Padding, Sizer, Spacer,
 };
 
-/// Title-screen banner height in logical pixels — placeholder for the C++
-/// `TitleTexture` ImageBox until the title PNG is bridged to egui.
-const BANNER_HEIGHT: f32 = 128.0;
-
-/// Banner font size in logical pixels.
-const BANNER_FONT: f32 = 64.0;
+/// Title-screen banner height in logical pixels — matches the C++
+/// `Sizer({.max_height = 256})` row that hosts the C++ `TitleTexture`
+/// `ImageBox` (see `old/src/menus/main_menu.cpp:18`).
+const BANNER_HEIGHT: f32 = 256.0;
 
 /// The main title screen. Always sits at the bottom of the screen stack
 /// when no world is loaded; pushed back on top from the in-game pause menu
@@ -52,6 +50,12 @@ pub struct TitleScreen {
     /// Mailbox for cross-screen world-lifecycle requests (open / leave /
     /// delete). The world-select screen sends `Enter`; the app drains.
     actions: Arc<WorldActionQueue>,
+    /// `egui::TextureId` for the rendered `assets/textures/ui/title.png`.
+    /// Painted by an [`Image`] widget on the banner row.
+    title_icon: TextureId,
+    /// Source PNG dimensions of the title texture, used by the [`Image`]
+    /// widget for aspect-ratio fit math.
+    title_icon_size: (u32, u32),
 }
 
 impl TitleScreen {
@@ -61,12 +65,16 @@ impl TitleScreen {
         i18n: Arc<Mutex<I18n>>,
         worlds_root: PathBuf,
         actions: Arc<WorldActionQueue>,
+        title_icon: TextureId,
+        title_icon_size: (u32, u32),
     ) -> Self {
         Self {
             config,
             i18n,
             worlds_root,
             actions,
+            title_icon,
+            title_icon_size,
         }
     }
 }
@@ -89,24 +97,26 @@ impl Screen for TitleScreen {
         let body = Flex::column(vec![
             (FlexItem::new(Sizer::height(
                 BANNER_HEIGHT,
-                Aligned::center(
-                    Label::new("NEWorld")
-                        .font(FontId::proportional(BANNER_FONT))
-                        .color(Color32::from_gray(230)),
-                ),
+                Image::new(
+                    self.title_icon,
+                    self.title_icon_size.0 as f32,
+                    self.title_icon_size.1 as f32,
+                )
+                .fit(BoxFit::Contain)
+                .alignment(Alignment::Center),
             ))),
             (FlexItem::new(Spacer::height(MENU_ROW_SPACING))),
             (FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Button::new(start_label, &mut start_clicked),
+                Button::new(&start_label).clicked(&mut start_clicked),
             ))),
             (FlexItem::new(Spacer::height(MENU_ROW_SPACING))),
             (FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(options_label, &mut options_clicked)),
+                    FlexItem::flex(1.0, Button::new(&options_label).clicked(&mut options_clicked)),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
-                    FlexItem::flex(1.0, Button::new(exit_label, &mut exit_clicked)),
+                    FlexItem::flex(1.0, Button::new(&exit_label).clicked(&mut exit_clicked)),
                 ])
                 .main_size(MainAxisSize::Max)
                 .cross_size(CrossAxisSize::Max),

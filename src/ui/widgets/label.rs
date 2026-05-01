@@ -9,17 +9,17 @@ use egui::{Color32, Context, FontId, Pos2, Ui};
 
 use crate::ui::layout::{Constraint, Element, Point, Size, default_body_font};
 
-pub struct Label {
-    text: String,
+pub struct Label<'a> {
+    text: &'a str,
     font_id: Option<FontId>,
     color: Option<Color32>,
     galley: Option<Arc<Galley>>,
 }
 
-impl Label {
-    pub fn new(text: impl Into<String>) -> Self {
+impl<'a> Label<'a> {
+    pub fn new(text: &'a str) -> Self {
         Self {
-            text: text.into(),
+            text,
             font_id: None,
             color: None,
             galley: None,
@@ -37,7 +37,7 @@ impl Label {
     }
 }
 
-impl Element for Label {
+impl<'a> Element for Label<'a> {
     fn layout(&mut self, ctx: &Context, c: Constraint) -> Size {
         let font = self
             .font_id
@@ -49,7 +49,7 @@ impl Element for Label {
         // `layout_no_wrap` is a `&mut` method on FontsView (it memoizes
         // galleys), so we go through `fonts_mut`. The returned Arc is
         // cheap to keep around for the show pass.
-        let galley = ctx.fonts_mut(|f| f.layout_no_wrap(self.text.clone(), font, color));
+        let galley = ctx.fonts_mut(|f| f.layout_no_wrap(self.text.into(), font, color));
         let s = galley.size();
         let size = Size::new(s.x.min(c.max_width), s.y.min(c.max_height));
         self.galley = Some(galley);

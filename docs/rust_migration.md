@@ -8,9 +8,10 @@ C++23 original (preserved under [`old/`](../old/) for diffing). It covers:
 3. A module-by-module feature-parity report.
 4. A roadmap to close the remaining gaps.
 
-The migration is well past the bring-up phase — all seven of the original
+The migration is well past the bring-up phase — all six of the original
 implementation groups (`[A]`–`[F]`) have shipped and the binary is end-to-end
-playable. What remains is renderer polish and a few small wiring tasks.
+playable. The remaining gap with C++ is cosmetic: a Cook-Torrance BRDF
+(needs metallic/roughness in the G-buffer).
 
 ---
 
@@ -68,9 +69,9 @@ header-only vcpkg ports.
 
 ## 2. Rust design (under repo root)
 
-Single Cargo crate, edition 2024, Rust 1.95+. ~14 K LoC of Rust + 242 lines of
-WGSL. All graphics / windowing / audio deps are pure-Rust crates; no external
-system libraries. License: CC0-1.0.
+Single Cargo crate, edition 2024, Rust 1.95+. ~21 K LoC of Rust + ~1.9 K lines
+of WGSL. All graphics / windowing / audio deps are pure-Rust crates; no
+external system libraries. License: CC0-1.0.
 
 ### Layout
 
@@ -92,52 +93,80 @@ src/
 ├── textures.rs                    ↔ textures.ixx
 │
 ├── chunks/{mod,generate}.rs       ↔ chunks.ixx
-├── commands/{mod,base}.rs         ↔ commands.ixx (12 base commands)
+├── commands/{mod,base}.rs         ↔ commands.ixx (11 base commands; the C++
+│                                  /suicide is gone since player health was
+│                                  removed)
 ├── math/{mod,aabb,euler,frustum}.rs   ↔ math/*.ixx
 │
 ├── game/                          in-process game orchestrator
 │   ├── mod.rs                     tick_render / tick_sim / pump_meshing /
 │   │                              break / place / chat dispatch
 │   ├── camera.rs                  passive view; mirrors player
-│   └── raycast.rs                 Amanatides–Woo voxel DDA
+│   ├── raycast.rs                 Amanatides–Woo voxel DDA
+│   ├── hud.rs                     crosshair / debug / chat / selection
+│   └── inventory.rs               4×10 grid + always-on hotbar + mouse pickup
 │
 ├── menus/                         ↔ menus/*.cpp
 │   ├── main_menu.rs / world_menu.rs / create_world_menu.rs
 │   ├── options_menu.rs            consolidated; see §3
-│   └── game_menu.rs               composes HUD + inventory + pause
+│   ├── game_menu.rs               composes HUD + inventory + pause
+│   ├── action.rs                  WorldActionQueue (cross-screen lifecycle)
+│   └── screen.rs                  Screen trait + ScreenStack
 │
 ├── render/                        wgpu replacement for old/src/render/
 │   ├── context.rs                 Gfx (instance/adapter/device/queue/surface)
 │   ├── basic_pipeline.rs          bring-up scaffold
-│   ├── depth.rs                   DepthTarget
+│   ├── depth.rs                   DepthTarget (reversed-Z Depth32Float)
 │   ├── egui_renderer.rs           egui ↔ wgpu bridge
 │   ├── mesh.rs                    CPU per-face culled meshing
 │   ├── mesh_pipeline.rs           off-thread mesh worker
 │   ├── particle_render.rs         billboard particle pipeline
 │   ├── screenshot.rs              surface readback → PNG
+│   ├── selection.rs               wireframe-outline pipeline
+│   ├── underwater.rs              underwater overlay pipeline
+│   ├── gbuffer.rs                 deferred G-buffer (diffuse / normal /
+│   │                              material / depth)
+│   ├── composition.rs             composition pipeline (final.fsh port)
+│   ├── shadow.rs                  shadow map (Depth32Float + comparison)
+│   ├── shadow_pipeline.rs         sun-POV depth fill pipeline
+│   ├── debug_shadow_pipeline.rs   F3+M shadow-atlas overlay
 │   └── uniforms.rs                FrameUniforms / ModelUniforms / FilterUniforms
 │
-├── ui/                            Rust-specific UI infra
-│   ├── action.rs                  WorldActionQueue (cross-screen lifecycle)
-│   ├── hud.rs                     crosshair / debug / chat / selection
-│   ├── inventory.rs               4×10 grid + always-on hotbar + mouse pickup
-│   └── screen.rs                  Screen trait + ScreenStack
+├── ui/                            Bespoke Flutter-style layout engine
+│   │                              (atop egui's painting layer)
+│   ├── layout.rs                  Element trait + Constraint / Size / Point
+│   ├── mod.rs                     `show` entry point — every menu including
+│   │                              the in-game pause overlay goes through it
+│   │                              (transparent CentralPanel + theme-aware
+│   │                              dimmer scrim, painted under the widgets)
+│   └── widgets/                   Aligned, Padding, Sizer, Spacer, Flex,
+│                                  ScrollView, Label, Button, SelectButton,
+│                                  Slider, TextEdit, Image (with `BoxFit`)
 │
 └── worlds/
     ├── chunk_rendering.rs         ↔ worlds/chunk_rendering.cpp (ChunkMesh
     │                              + ChunkPipeline)
     ├── player/{mod,save}.rs       ↔ player.ixx + player_impl.cpp
     └── world/                     ↔ worlds.ixx
-        ├── mod.rs
+        ├── mod.rs                 incl. LoadedCore concentric ring cache
         ├── error.rs               WorldError (thiserror)
         ├── pipeline.rs            async chunk load/save worker
         └── store.rs               TilesStore (sled)
 
 shaders/
-├── basic.wgsl                     bring-up
-├── chunk.wgsl                     opaque + translucent (shared); fog +
-│                                  ambient sky baked in
-└── particle.wgsl                  billboards
+├── basic.wgsl                     bring-up scaffold
+├── chunk.wgsl                     opaque + translucent G-buffer +
+│                                  basic-mode forward (shared shader)
+├── default.wgsl                   reference port of the C++ default.fsh
+├── shadow.wgsl                    sun-POV depth fill (leaf wave + fisheye)
+├── debug_shadow.wgsl              F3+M overlay (8-step binary search)
+├── composition.wgsl               final.fsh port (lambert + PCF + SSR +
+│                                  Gerstner waves + clouds + ACES)
+├── filter.wgsl                    separable Gaussian (drives menu blur)
+├── menu_background.wgsl           rotating sky-cube backdrop for menus
+├── particle.wgsl                  billboards
+├── selection.wgsl                 wireframe-outline (color-inversion blend)
+└── underwater.wgsl                underwater tint quad
 ```
 
 ### Key properties of the Rust side
@@ -177,14 +206,34 @@ shaders/
 - **Persistence.** `sled` K/V (replaces LevelDB; pure-Rust, no C++ ABI dep).
   Chunk cells are `bytemuck::cast_slice`'d behind a `NEWC` magic + version
   header. Player save is `bincode` v2 behind `NEWP` magic + version.
-- **UI is `egui`.** No bespoke widget DSL; menus are direct `egui` calls.
-  `ui::screen` provides a `Screen` trait + `ScreenStack` with `Push / Pop /
-  Stay / Exit` transitions.
+- **UI is a bespoke Flutter-style layout engine on top of egui.** The
+  `egui::Context` is still the painting + input host, but `src/ui/`
+  defines its own `Element` trait, `Constraint` / `Size` / `Point`
+  geometry, and a widget set (Padding, Sizer, Spacer, Aligned, Flex,
+  ScrollView, Label, Button, SelectButton, Slider, TextEdit, `Image`
+  with the C++ `BoxFit` shape ported via `apply_box_fit`). Menus build
+  trees of these widgets; egui draws them through a single entry point
+  (`ui::show` — transparent CentralPanel + theme-aware dimmer scrim
+  painted under the widgets) used by every menu including the in-game
+  pause overlay. `menus::screen` provides a `Screen` trait + `ScreenStack`
+  with `Push / Pop / Stay / Exit` transitions.
+- **Theme is a live `Config::dark_theme` toggle**, defaulting to light
+  so the menus read against the bright sky-cube panorama. `App::apply_config`
+  re-applies `Visuals::dark()` / `Visuals::light()` to the egui context
+  every frame and forces `override_text_color = widgets.inactive.fg_stroke.color`
+  so labels, slider value displays, and button text all match.
+- **`Config::ui_scale`** drives `egui::Context::set_pixels_per_point`
+  (combined with the OS DPI) so layout + font rendering scale uniformly.
+  The slider lives in the options menu and only commits to `Config` on
+  Back/Save (no re-layout while dragging).
 - **Renderer.** `wgpu` 29.0.1, no separate `Renderer` singleton. Two
-  pipelines (opaque + translucent) share `chunk.wgsl`; `Bgra8UnormSrgb`
-  surface, `Depth32Float` standard-Z, `Fifo` vsync. Fog and ambient sky
-  tint are folded into the chunk shader; there is no deferred G-buffer
-  composition pass.
+  modes share `chunk.wgsl`: a basic forward path (`fs_main_forward`) and
+  a deferred G-buffer path (`fs_main` MRT). `Bgra8UnormSrgb` surface,
+  `Depth32Float` reversed-Z (near=1, far=0, `CompareFunction::Greater`,
+  depth clear 0.0). Vsync is a live `Config` toggle, not hardcoded.
+  Advanced mode runs shadow → G-buffer → composition (`final.fsh`
+  port); basic mode runs a single forward opaque pass with fog and
+  ambient sky tint folded into the chunk shader.
 - **Crate dependencies (high-signal).** `wgpu`, `winit` (0.30
   ApplicationHandler), `egui` 0.34 + `egui-winit` + `egui-wgpu`, `cgmath`,
   `glyphon`, `image`, `tracing`, `serde` + `bincode` + `toml`, `sled`,
@@ -208,27 +257,27 @@ shaders/
 | `worlds/worlds.ixx` | `src/worlds/world/{mod,error,pipeline,store}.rs` | ✅ Full + simplified | C++'s `_chunks` + `_renders` + `chunk_pointer_arrays` collapse into `HashMap<Vec3i, Chunk>` + `HashSet<Vec3i> non_empty`. Async load/save uses `crossbeam-channel` + `sled`. `process_block_updates` runs every sim tick. |
 | `worlds/chunk_rendering.cpp` | `src/render/mesh.rs` (CPU) + `src/worlds/chunk_rendering.rs` (GPU) | ✅ Full | 1-D greedy run merging, per-vertex smooth lighting / soft AO, "nice grass" side-face swap, per-fragment **normal mapping** via `block_normal` atlas + face-derived TBN. All toggleable behaviours gated on live `MeshOptions`; opaque + translucent G-buffer pipelines + opaque/translucent forward (basic) pipelines, reversed-Z depth. |
 | `worlds/world_rendering.cpp` | `src/game/mod.rs` (`pump_meshing` / draw dispatch) | ✅ Functional | Per-frame draw dispatch over `Game::chunk_meshes`; selection wireframe drawn before egui. `Game::record_world_pass` branches on `Config::advanced_render`: advanced path runs shadow → G-buffer → composition; basic path runs a single forward opaque pass via `ChunkPipeline::begin_opaque_forward`. |
-| `commands.ixx` | `src/commands/{mod,base}.rs` | ✅ Full | All 12 base slash-commands ported; deterministic tab-complete. |
+| `commands.ixx` | `src/commands/{mod,base}.rs` | ✅ Full | 11 of 12 C++ slash-commands ported; deterministic tab-complete. `/suicide` is gone since the player-health system was removed. |
 | `globalization.ixx` + `lang/*.lang` | `src/globalization.rs` + `assets/lang/<code>.toml` | ✅ Full | One TOML per language; `get` returns `""` on miss. |
 | `particles.ixx` | `src/particles.rs` (sim) + `src/render/particle_render.rs` (GPU) | ✅ Full | Gravity, drag, AABB-collision; billboard pipeline. Per-particle `prev_coord` lerp for smooth sub-tick motion + random `tex_size × tex_size` UV sub-rect per fleck (matches C++ `tcx/tcy = rnd() * (1 - psize)`). |
 | `text_rendering.ixx` | `src/text_rendering.rs` | ✅ Functional | Replaced FreeType + hand-rolled atlas with `glyphon`; same call shape from HUD. |
-| `textures.ixx` | `src/textures.rs` | ✅ Full | `Atlases::{block_diffuse, block_normal, block_noise, ui_*}` D2-array + 2D textures. `block_diffuse` ships a CPU-generated mipmap chain (full pyramid down to 1×1) so distant chunks anti-alias cleanly. |
+| `textures.ixx` | `src/textures.rs` | ✅ Full | `Atlases::{block_diffuse, block_normal, block_noise, splash, title, background_cube}` D2-array / 2D / cube textures. `block_diffuse` ships a CPU-generated mipmap chain (full pyramid down to 1×1) so distant chunks anti-alias cleanly. The 6 `background_*.png` faces stack into a real cubemap consumed by the menu-background pipeline. The unused `select.png` / `unselect.png` C++ atlases were dropped. |
 | `globals.ixx` (options part) | `src/config.rs` | ✅ Full | Serde TOML at `configs/options.toml`; live-edited by options menu. |
 | `globals.ixx` (input/window/runtime) | `src/input.rs` + `src/app.rs` | ✅ Full | Pure-data `InputState`; window state lives on `App`. The ~50 free `export` mutables of `globals.ixx` are intentionally gone. |
 | `setup.ixx` | `src/app.rs` (winit wiring) + `src/setup.rs` (tracing init) | ✅ Full | Window/surface bring-up + F11 borderless-fullscreen toggle. |
 | `neworld.ixx` (god file) | `src/app.rs` + `src/game/mod.rs` + `src/ui/{hud,inventory}.rs` | ✅ Full + split | Fixed-step 30 Hz accumulator, raycast/break/place, chat, screenshots all present. |
-| `menus/main_menu.cpp` | `src/menus/main_menu.rs` | ✅ Full | |
+| `menus/main_menu.cpp` | `src/menus/main_menu.rs` | ✅ Full | The 256-px banner row paints the `title.png` atlas through the new `Image` widget (bilinear-filtered, `BoxFit::Contain`) instead of a "NEWorld" text label. |
 | `menus/world_menu.cpp` | `src/menus/world_menu.rs` | ✅ Full | Refreshes entries every frame. |
 | `menus/create_world_menu.cpp` | `src/menus/create_world_menu.rs` | ✅ Full | |
-| `menus/game_menu.cpp` | `src/menus/game_menu.rs` | ✅ Full + composes HUD/inventory | |
-| `menus/options_menu.cpp` | `src/menus/options_menu.rs` | ✅ Full | FOV / render distance / mouse sens; pushes to render-options / UI-options / language sub-screens like C++. |
-| `menus/render_options_menu.cpp` | `src/menus/render_options_menu.rs` | ✅ Full | Smooth lighting + fancy grass + merge-face all wired live (mesh-config change drops every cached chunk mesh and re-marks the loaded set dirty). MSAA picker stored but not yet applied to the wgpu surface. |
-| `menus/shader_options_menu.cpp` | `src/menus/shader_options_menu.rs` | 🟡 Stored only | Shadow res / distance / soft shadow / volumetric clouds — values persist into `Config` but Rust has no shadow / volumetric pipelines (Tier 4). |
-| `menus/ui_options_menu.cpp` | `src/menus/ui_options_menu.rs` | 🟡 Subset | Font scale yes; `ui_stretch` + `ui_background_blur` stored but not yet applied. |
+| `menus/game_menu.cpp` | `src/menus/game_menu.rs` | ✅ Full + composes HUD/inventory | When unpaused the screen draws HUD + inventory overlays; when paused it renders the pause column through `ui::show` (same chrome as every other menu — the C++-style modal `Window` was retired) with HUD/inventory suppressed. The live world keeps rendering behind because the world pass runs in `app.rs` regardless of menu state. |
+| `menus/options_menu.cpp` | `src/menus/options_menu.rs` | ✅ Full | FOV / render distance / mouse sens / UI scale slider / dark-theme toggle; pushes to render-options / language sub-screens. UI scale only commits on Back/Save so dragging doesn't re-layout the whole menu in real time; theme commits immediately. (The C++ UI-options sub-screen was dropped — see below.) |
+| `menus/render_options_menu.cpp` | `src/menus/render_options_menu.rs` | ✅ Full | Smooth lighting + fancy grass + merge-face all wired live (mesh-config change drops every cached chunk mesh and re-marks the loaded set dirty). MSAA picker dropped — every wgpu pipeline is single-sampled. |
+| `menus/shader_options_menu.cpp` | `src/menus/shader_options_menu.rs` | ✅ Full | Every toggle is live: advanced rendering / shadow res / shadow distance drive `Game::apply_shadow_config`; soft shadow / volumetric clouds / ambient occlusion drive composition `override` constants and rebuild only on actual change. |
+| `menus/ui_options_menu.cpp` | — (removed) | 🟢 By design | The standalone sub-menu is gone. PPI stretch and background blur were never wired and have no Rust counterpart. UI scale survived the cull and reappears as a slider on the top-level options menu (`Config::ui_scale`); a `Config::dark_theme` toggle replaces the C++ "background blur" row in the same column. |
 | `menus/language_menu.cpp` | `src/menus/language_menu.rs` | ✅ Full | Lists every `assets/lang/*.toml` dynamically. |
-| `ui/{context,element,layout,render,controls/*}.ixx` | — (replaced by `egui`) | 🟢 By design | Wholesale replacement; `src/ui/{action,hud,inventory,screen}.rs` is Rust-specific glue, not a port. |
+| `ui/{context,element,layout,render,controls/*}.ixx` | `src/ui/` (Flutter-style layout engine on egui) | 🟢 By design | The C++ `View/Element/Builder` + `Row/Column/Stack/Sizer/Padding` + `Button/Slider/TextBox/ImageBox/ScrollView` shape was rebuilt natively in Rust on top of egui's painting + input. HUD / inventory / screen-stack glue lives in `src/game/` and `src/menus/`. |
 | `render/{buffer,texture,framebuffer,program,vertex_array,attrib_*,block_*,image}.ixx` | `src/render/*` | 🟢 By design | Wholesale replacement of the GL RAII layer with `wgpu`. |
-| `rendering.ixx` (`Renderer` namespace) | `src/render/{gbuffer,composition,shadow,shadow_pipeline}.rs` + `src/game/mod.rs` | 🟡 Partial | C++ pass-coordinator singleton split: G-buffer + composition pipeline + shadow map + sun-POV depth pipeline all live in the `render` module; per-pass dispatch is direct in `Game::record_world_pass`. Advanced-mode `final.fsh` deliberately not ported (Tier 4 follow-on). |
+| `rendering.ixx` (`Renderer` namespace) | `src/render/{gbuffer,composition,shadow,shadow_pipeline,debug_shadow_pipeline,selection,underwater,menu_background}.rs` + `src/game/mod.rs` | ✅ Full | C++ pass-coordinator singleton split across the `render` module; per-pass dispatch is direct in `Game::record_world_pass`. Advanced-mode `final.fsh` is fully ported (composition.wgsl). Out-of-game menu background runs a slowly-rotating sky cube (Minecraft-style yaw + sinusoidal pitch, math in WGSL) plus a 2-pass Gaussian blur via `menu_background.rs`; the in-game pause menu re-uses the same `ui::show` chrome but draws over the live world instead of the cube. |
 
 ### Shader parity
 
@@ -240,11 +289,12 @@ shaders/
 | `final.fsh` (composition, fog, sky, volumetric clouds, SSR, shadow filter) | `shaders/composition.wgsl` | ✅ Ported. Sun lambert + ambient, 4-tap shadow PCF, distance fog into directional sky, **screen-space reflection + Schlick fresnel** for water / ice / iron, **7-octave Gerstner water waves**, **inside-water TIR heuristic** (`smoothstep(0,1,sin²θ)` per the C++ heuristic), ACES tonemap. Reflected pixels go through the same `shade_world_pixel` helper the primary view uses, so SSR fragments get full lambert + shadow + fog + horizon-fade-alpha. Optional features (SOFT_SHADOW / VOLUMETRIC_CLOUDS / AMBIENT_OCCLUSION) gate on WGSL `override` constants — naga folds them and DCEs disabled branches. Skipped: full Cook-Torrance BRDF (collapsed to Lambert since the G-buffer doesn't carry metallic / roughness). |
 | `shadow.{vsh,fsh}` | `shaders/shadow.wgsl` | ✅ Ported + live pipeline. Includes leaf wave + fisheye warp; depth-only output (wgpu allows depth-only render passes, so the C++ debug color attachment was dropped). Driven by `src/render/shadow_pipeline.rs`. |
 | `debug_shadow.{vsh,fsh}` | `shaders/debug_shadow.wgsl` | ✅ Ported + live pipeline. Mirrors the C++ 8-step binary-search of `textureSampleCompare` to recover the stored depth. Driven by `src/render/debug_shadow_pipeline.rs`; toggled by **F3+M** while advanced rendering is on. |
-| `filter.{vsh,fsh}` | `shaders/filter.wgsl` | ✅ Ported (standalone, no pipeline yet). Separable Gaussian blur with the C++ `FilterUniformBlock` layout. |
+| `filter.{vsh,fsh}` | `shaders/filter.wgsl` | ✅ Ported + live pipeline. Separable Gaussian blur with the C++ `FilterUniformBlock` layout. Driven by `src/render/menu_background.rs` for the out-of-game menu background blur (horizontal then vertical pass). |
 | (none) | `shaders/basic.wgsl` | Bring-up scaffold. |
 | (none) | `shaders/particle.wgsl` | Billboard particles (replaces inline GL particle code). |
 | (none) | `shaders/selection.wgsl` | Selection-wireframe pass — line list, reversed-Z `Greater`, color-inversion blend (`OneMinusDst` × white = `1 - dst`) so the outline is high-contrast against any backdrop. |
 | (none) | `shaders/underwater.wgsl` | Underwater overlay tint (full-screen quad). |
+| (none) | `shaders/menu_background.wgsl` | Slowly-rotating skybox cube sampled from `Atlases::background_cube`. Yaw + sinusoidal pitch math runs in the vertex stage from a `time_secs` uniform; the cube vertices project rotated to screen but sample the cubemap by their *un-rotated* direction (otherwise every screen pixel normalises to the same camera ray and the panorama freezes). Output is fed through `filter.wgsl` to produce the blurred out-of-game menu background. |
 
 ### Bottom line
 
@@ -261,7 +311,7 @@ optional features gate on WGSL `override` constants — naga folds them
 and DCEs disabled branches, the same zero-cost-when-off semantics as
 C++ `#ifdef`. Remaining gaps are cosmetic / architectural:
 Cook-Torrance BRDF (G-buffer would need metallic/roughness channels),
-filter pipeline (menu blur), and MSAA wiring.
+that's it.
 
 ---
 
@@ -306,9 +356,15 @@ can be picked up in any order.
   a `block_update_queue` entry; `process_block_updates` drains the queue
   every sim tick, recomputing each cell's light as `max(neighbours) - 1`
   (with the `+Y sky=15 → no falloff` special case and the glowstone /
-  lava emit-15 override). Removing a source converges over a few ticks
-  rather than instantly; deliberate, since a future block-update
-  rewrite-system rework will subsume this pass.
+  lava emit-15 override). The transmission rule keys on the
+  `opaque` / `translucent` flags rather than `solid`: non-opaque
+  non-translucent blocks (air, **glass, leaf**) take the air path
+  (skylight column passthrough plus `-1` diffuse falloff) while
+  non-opaque translucent blocks (water, lava, ice) keep the `-1`
+  falloff with no skylight fast-path — so a glass roof or leaf canopy
+  no longer black-shadows the cells below it. Removing a source
+  converges over a few ticks rather than instantly; deliberate, since
+  a future block-update rewrite-system rework will subsume this pass.
 - ✅ **Random tick.** `World::random_tick` samples
   `RANDOM_TICKS_PER_CHUNK = 3` cells per non-empty chunk per simulation
   tick, with rules for grass smother (opaque block above → dirt) and
@@ -346,22 +402,31 @@ can be picked up in any order.
 
 ### Tier 3 — sub-options menus + their backing features
 
-All four sub-menus exist as Rust screens (`render_options_menu.rs`,
-`shader_options_menu.rs`, `ui_options_menu.rs`, `language_menu.rs`).
-Toggle wiring varies:
+The C++ build had four sub-menus; the Rust port has three
+(`render_options_menu.rs`, `shader_options_menu.rs`,
+`language_menu.rs`). The C++ UI options sub-menu was dropped — PPI
+stretch and background blur have no Rust counterpart; UI scale and a
+new dark / light theme toggle survived the cull and live on the
+top-level options menu instead (`Config::ui_scale` and
+`Config::dark_theme`).
 
 - ✅ **Render options menu.** Smooth lighting / fancy grass / merge-face
-  drive the live `MeshOptions` snapshot. MSAA picker stored only — the
-  surface is single-sampled for now.
+  drive the live `MeshOptions` snapshot. MSAA was dropped from `Config`
+  — every wgpu pipeline is single-sampled.
 - ✅ **Shader options menu.** Every toggle is now live: shadow res /
   shadow distance / advanced rendering drive
   `Game::apply_shadow_config`; soft shadow / volumetric clouds /
   ambient occlusion drive composition `override` constants, with the
   pipeline rebuilt only on actual change.
-- 🟡 **UI options menu.** Font scale yes; `ui_stretch` + `ui_background_blur`
-  stored only.
 - ✅ **Language menu.** Dynamic list of `assets/lang/*.toml`; switching
   reloads the i18n table on the next frame.
+- ✅ **Top-level options additions.** `Config::ui_scale` slider (commits
+  on Back/Save so dragging doesn't re-layout in real time) drives
+  `egui::Context::set_pixels_per_point` for both layout and font
+  rendering. `Config::dark_theme` toggle commits immediately and pushes
+  fresh `Visuals::dark()` / `Visuals::light()` into the context;
+  `override_text_color` is forced to the button-text colour so labels
+  and slider values match button text on either theme.
 
 ### Tier 4 — deferred renderer (✅ shipped)
 
@@ -452,8 +517,8 @@ composition (advanced mode).
 - ✅ **All shaders ported.** `default.wgsl`, `chunk.wgsl` (= opaque +
   translucent + opaque-forward + translucent-forward), `composition.wgsl`,
   `shadow.wgsl`, `debug_shadow.wgsl`, `filter.wgsl`, `particle.wgsl`,
-  `selection.wgsl`, `underwater.wgsl`. Every shader except `filter.wgsl`
-  has a live pipeline.
+  `selection.wgsl`, `underwater.wgsl`, `menu_background.wgsl`. Every
+  shader has a live pipeline.
 
 ### Remaining gaps (cosmetic / architectural)
 
@@ -463,17 +528,11 @@ composition (advanced mode).
   term is negligible at roughness 1. A real BRDF needs metallic /
   roughness channels in the G-buffer (currently only `block_id` is
   encoded into `material`).
-- **Filter pipeline.** `filter.wgsl` is ported standalone but no host
-  pipeline drives it. C++ uses it for menu background blur and post-
-  effect chains.
-- **MSAA picker.** Persists into `Config` but isn't applied to the
-  wgpu surface yet.
 
 ### WGSL ↔ GLSL / wgpu ↔ OpenGL mismatch report
 
-Issues encountered during the Tier 4 shader ports. Future advanced-mode
-work (shadow PCF, SSR, volumetric clouds) will hit most of these again,
-so the catalog lives here for reference.
+Issues encountered during the Tier 4 shader ports. Kept here as a
+reference catalog for any future shader work.
 
 #### Texture / sampler model
 
@@ -499,8 +558,8 @@ so the catalog lives here for reference.
 
 5. **NDC depth range.** GLSL `[-1, 1]`, wgpu/Vulkan/D3D `[0, 1]`.
    Patched at the camera level via `OPENGL_TO_WGPU_REVERSED`
-   (`src/game/camera.rs`). The shadow pass's projection matrix needs
-   the same correction when wired.
+   (`src/game/camera.rs`). The shadow pass's `shadow_view_proj` applies
+   the same correction.
 6. **NDC Y direction is +Y up in both,** but **texture-space Y
    differs**: GLSL `t = 0` is at the bottom of the texture, WGSL
    `t = 0` is at the top. Already handled in `mesh.rs` (`FACE_UVS` is
@@ -594,11 +653,9 @@ so the catalog lives here for reference.
     reversed-Z shadow. With `sampler_comparison` +
     `GreaterEqual`, `textureSampleCompare(tex, samp, uv, ref)`
     returns `1.0` when the stored depth is `≥ ref` (the test point
-    is at or in front of the closest occluder, i.e. lit). The
-    `debug_shadow.wgsl` binary search comments call out that the
-    direction may need a flip when the shadow pass starts emitting
-    real data — flagged here so it isn't a surprise in the next
-    Tier 4 step.
+    is at or in front of the closest occluder, i.e. lit). This is
+    what the live shadow pass and `debug_shadow.wgsl` binary search
+    use.
 23. **Fisheye warp commutes through the perspective divide only
     because xy is divided post-w-divide.** `shadow.vsh` does the
     divide explicitly before warping. Standard rasterization

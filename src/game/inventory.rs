@@ -317,18 +317,15 @@ impl Inventory {
         highlighted: bool,
         hovered: bool,
     ) {
-        let bg = if highlighted {
-            Color32::from_rgb(80, 80, 110)
-        } else {
-            Color32::from_gray(50)
-        };
-        let border = if hovered {
-            Color32::from_gray(220)
-        } else if highlighted {
-            Color32::from_rgb(180, 180, 220)
-        } else {
-            Color32::from_gray(110)
-        };
+        // Source the theme from the painter's context so the inventory
+        // tracks the live `Config::dark_theme` setting without each call
+        // site having to thread the bool through.
+        let dark = painter.ctx().global_style().visuals.dark_mode;
+        let (bg, border, fallback_text, count_text, count_shadow) = slot_palette(
+            dark,
+            highlighted,
+            hovered,
+        );
         painter.rect_filled(rect, 2.0, bg);
         painter.rect_stroke(
             rect,
@@ -367,11 +364,12 @@ impl Inventory {
                 Align2::CENTER_CENTER,
                 label,
                 FontId::proportional(13.0),
-                Color32::from_rgb(240, 240, 240),
+                fallback_text,
             );
         }
         // Count in the bottom-right corner. Drawn over the icon with a
-        // small dark shadow so it stays readable against any block art.
+        // small contrasting drop-shadow so it stays readable against any
+        // block art on either theme.
         if stack.count > 1 {
             let text = format!("{}", stack.count);
             let pos = rect.right_bottom() + vec2(-3.0, -2.0);
@@ -380,16 +378,66 @@ impl Inventory {
                 Align2::RIGHT_BOTTOM,
                 &text,
                 FontId::proportional(11.0),
-                Color32::from_black_alpha(180),
+                count_shadow,
             );
             painter.text(
                 pos,
                 Align2::RIGHT_BOTTOM,
                 text,
                 FontId::proportional(11.0),
-                Color32::WHITE,
+                count_text,
             );
         }
+    }
+}
+
+/// Pick the per-slot palette for a given theme + state combo. Returns
+/// `(background, border, fallback_text, count_text, count_shadow)`.
+fn slot_palette(
+    dark: bool,
+    highlighted: bool,
+    hovered: bool,
+) -> (Color32, Color32, Color32, Color32, Color32) {
+    if dark {
+        let bg = if highlighted {
+            Color32::from_rgb(80, 80, 110)
+        } else {
+            Color32::from_gray(50)
+        };
+        let border = if hovered {
+            Color32::from_gray(220)
+        } else if highlighted {
+            Color32::from_rgb(180, 180, 220)
+        } else {
+            Color32::from_gray(110)
+        };
+        (
+            bg,
+            border,
+            Color32::from_rgb(240, 240, 240),
+            Color32::WHITE,
+            Color32::from_black_alpha(180),
+        )
+    } else {
+        let bg = if highlighted {
+            Color32::from_rgb(200, 215, 245)
+        } else {
+            Color32::from_gray(225)
+        };
+        let border = if hovered {
+            Color32::from_gray(60)
+        } else if highlighted {
+            Color32::from_rgb(80, 110, 180)
+        } else {
+            Color32::from_gray(150)
+        };
+        (
+            bg,
+            border,
+            Color32::from_rgb(40, 40, 40),
+            Color32::BLACK,
+            Color32::from_white_alpha(180),
+        )
     }
 }
 

@@ -7,8 +7,8 @@
 //!   sub-textures (width `W`, height `W * N`); they upload to a `D2Array`
 //!   texture with `N` layers.
 //! * `block_noise` is a single 2D noise texture.
-//! * UI atlases (splash, title, select, unselect, six backgrounds) are
-//!   single 2D textures.
+//! * UI atlases (splash, title, six backgrounds) are single 2D / cube
+//!   textures.
 //!
 //! Format choices follow the migration plan (§4.10):
 //!
@@ -71,6 +71,19 @@ pub struct Atlas2d {
     pub size: (u32, u32),
 }
 
+/// A cubemap texture (6 square PNGs → one cube texture).
+///
+/// Layer order matches wgpu's cubemap face convention:
+/// `[+X, -X, +Y, -Y, +Z, -Z]`. The `view` is created with
+/// [`wgpu::TextureViewDimension::Cube`] so a `texture_cube<f32>`
+/// binding samples it via a 3-component direction vector.
+#[derive(Debug)]
+pub struct AtlasCube {
+    pub texture: wgpu::Texture,
+    pub view: wgpu::TextureView,
+    pub size: u32,
+}
+
 /// All texture atlases used by the renderer, plus the shared samplers.
 ///
 /// Two distinct samplers, one for the voxel pixel-art atlases and one for
@@ -93,9 +106,10 @@ pub struct Atlases {
     pub block_noise: Atlas2d,
     pub splash: Atlas2d,
     pub title: Atlas2d,
-    pub select: Atlas2d,
-    pub unselect: Atlas2d,
-    pub backgrounds: [Atlas2d; BACKGROUND_COUNT],
+    /// 6-face skybox sampled by the out-of-game menu background pass. Layers
+    /// are loaded from `background_0..5.png` in wgpu's `[+X, -X, +Y, -Y, +Z,
+    /// -Z]` face order.
+    pub background_cube: AtlasCube,
     sampler: wgpu::Sampler,
     noise_sampler: wgpu::Sampler,
 }
@@ -129,6 +143,19 @@ pub enum AtlasError {
         path: PathBuf,
         width: u32,
         height: u32,
+    },
+
+    /// A cubemap face was not square, or its size did not match the rest of
+    /// the cube.
+    #[error(
+        "cubemap face {path} has size {width}x{height} but expected square \
+         {expected}x{expected}"
+    )]
+    InvalidCubeFace {
+        path: PathBuf,
+        width: u32,
+        height: u32,
+        expected: u32,
     },
 }
 
@@ -192,36 +219,24 @@ impl Atlases {
             wgpu::TextureFormat::Rgba8UnormSrgb,
             Some("ui_title"),
         )?;
-        let select = load_2d(
-            device,
-            queue,
-            &ui.join("select.png"),
-            wgpu::TextureFormat::Rgba8UnormSrgb,
-            Some("ui_select"),
-        )?;
-        let unselect = load_2d(
-            device,
-            queue,
-            &ui.join("unselect.png"),
-            wgpu::TextureFormat::Rgba8UnormSrgb,
-            Some("ui_unselect"),
-        )?;
 
-        // Six fixed backgrounds. The const-generic `[T; N]::try_from` dance
-        // would require `Atlas2d: Copy`, which it is not (it owns `wgpu`
-        // resources). Build the array explicitly via individual `?` calls.
-        let bg = |i: usize| -> Result<Atlas2d, AtlasError> {
-            let label = format!("ui_background_{i}");
-            load_2d(
-                device,
-                queue,
-                &ui.join(format!("background_{i}.png")),
-                wgpu::TextureFormat::Rgba8UnormSrgb,
-                Some(&label),
-            )
-        };
-        let backgrounds: [Atlas2d; BACKGROUND_COUNT] =
-            [bg(0)?, bg(1)?, bg(2)?, bg(3)?, bg(4)?, bg(5)?];
+        // 6-face skybox. Stack the PNGs into one cubemap texture so the
+        // menu-background pass can sample by direction rather than per-face.
+        let background_paths: [PathBuf; BACKGROUND_COUNT] = [
+            ui.join("background_0.png"),
+            ui.join("background_1.png"),
+            ui.join("background_2.png"),
+            ui.join("background_3.png"),
+            ui.join("background_4.png"),
+            ui.join("background_5.png"),
+        ];
+        let background_cube = load_cube(
+            device,
+            queue,
+            &background_paths,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            Some("ui_background_cube"),
+        )?;
 
         // U/V wrap so the greedy chunk mesher can tile a single block-art
         // square across a merged quad's UV span (`length + 1` repetitions).
@@ -268,9 +283,7 @@ impl Atlases {
             block_noise,
             splash,
             title,
-            select,
-            unselect,
-            backgrounds,
+            background_cube,
             sampler,
             noise_sampler,
         })
@@ -582,6 +595,107 @@ fn downsample_2x_rgba8(src: &[u8], width: u32, height: u32) -> Vec<u8> {
         }
     }
     out
+}
+
+/// Load 6 square PNGs into a single cubemap texture.
+///
+/// Faces are uploaded in wgpu's `[+X, -X, +Y, -Y, +Z, -Z]` order — the array
+/// `paths` is indexed identically. Every face must be the same square size;
+/// the first face's width sets the expected size and any later face that
+/// disagrees raises [`AtlasError::InvalidCubeFace`].
+///
+/// The view is created with [`wgpu::TextureViewDimension::Cube`] so a
+/// `texture_cube<f32>` binding samples it via a 3-component direction vector.
+fn load_cube(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    paths: &[PathBuf; BACKGROUND_COUNT],
+    format: wgpu::TextureFormat,
+    label: Option<&str>,
+) -> Result<AtlasCube, AtlasError> {
+    let mut faces: [Option<(u32, u32, Vec<u8>)>; BACKGROUND_COUNT] =
+        [const { None }; BACKGROUND_COUNT];
+    let mut size: Option<u32> = None;
+    for (i, path) in paths.iter().enumerate() {
+        let (w, h, bytes) = decode_rgba(path)?;
+        if w != h {
+            return Err(AtlasError::InvalidCubeFace {
+                path: path.clone(),
+                width: w,
+                height: h,
+                expected: size.unwrap_or(w),
+            });
+        }
+        match size {
+            None => size = Some(w),
+            Some(s) if s != w => {
+                return Err(AtlasError::InvalidCubeFace {
+                    path: path.clone(),
+                    width: w,
+                    height: h,
+                    expected: s,
+                });
+            }
+            _ => {}
+        }
+        faces[i] = Some((w, h, bytes));
+    }
+    let size = size.expect("BACKGROUND_COUNT is non-zero so at least one face was decoded");
+
+    let extent = wgpu::Extent3d {
+        width: size,
+        height: size,
+        depth_or_array_layers: BACKGROUND_COUNT as u32,
+    };
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label,
+        size: extent,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+
+    for (layer, face) in faces.into_iter().enumerate() {
+        let (_, _, bytes) = face.expect("every face was populated above");
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: 0,
+                    y: 0,
+                    z: layer as u32,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            &bytes,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(size * RGBA_BPP),
+                rows_per_image: Some(size),
+            },
+            wgpu::Extent3d {
+                width: size,
+                height: size,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    let view = texture.create_view(&wgpu::TextureViewDescriptor {
+        label,
+        dimension: Some(wgpu::TextureViewDimension::Cube),
+        ..Default::default()
+    });
+
+    Ok(AtlasCube {
+        texture,
+        view,
+        size,
+    })
 }
 
 #[cfg(test)]

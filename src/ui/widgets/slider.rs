@@ -9,20 +9,34 @@ use crate::ui::layout::{Constraint, Element, Point, Size, rect_at};
 /// Continuous numeric slider — hosts `egui::Slider`. Value mutates in
 /// place via `&mut T`; the `changed` slot is set when the user moves it.
 pub struct Slider<'a, T: egui::emath::Numeric> {
+    text: &'a str,
     value: &'a mut T,
     range: RangeInclusive<T>,
-    changed: &'a mut bool,
+    changed: Option<&'a mut bool>,
+    logarithmic: bool,
     size: Size,
 }
 
 impl<'a, T: egui::emath::Numeric> Slider<'a, T> {
-    pub fn new(value: &'a mut T, range: RangeInclusive<T>, changed: &'a mut bool) -> Self {
+    pub fn new(text: &'a str, value: &'a mut T, range: RangeInclusive<T>) -> Self {
         Self {
+            text,
             value,
             range,
-            changed,
+            changed: None,
+            logarithmic: false,
             size: Size::ZERO,
         }
+    }
+
+    pub fn changed(mut self, changed: &'a mut bool) -> Self {
+        self.changed = Some(changed);
+        self
+    }
+
+    pub fn logarithmic(mut self, logarithmic: bool) -> Self {
+        self.logarithmic = logarithmic;
+        self
     }
 }
 
@@ -34,15 +48,14 @@ impl<T: egui::emath::Numeric> Element for Slider<'_, T> {
 
     fn show(&mut self, ui: &mut Ui, origin: Point) {
         let rect = rect_at(origin, self.size);
-        // Force the slider track to fill our rect width — egui::Slider
-        // reads `slider_width` from spacing; restore on the way out.
-        let prev_w = ui.spacing().slider_width;
-        ui.spacing_mut().slider_width = self.size.width;
         let resp = ui.put(
             rect,
-            egui::Slider::new(self.value, self.range.clone()).show_value(false),
+            egui::Slider::new(self.value, self.range.clone())
+                .text(self.text)
+                .logarithmic(self.logarithmic),
         );
-        ui.spacing_mut().slider_width = prev_w;
-        *self.changed = resp.changed();
+        if let Some(changed) = &mut self.changed {
+            **changed = resp.changed();
+        }
     }
 }

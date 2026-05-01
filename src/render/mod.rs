@@ -27,13 +27,13 @@
 //! * [`screenshot`] — surface readback to PNG (F4).
 //! * [`egui_renderer`] — egui ↔ wgpu bridge for the UI layer.
 
-pub mod basic_pipeline;
 pub mod composition;
 pub mod context;
 pub mod debug_shadow_pipeline;
 pub mod depth;
 pub mod egui_renderer;
 pub mod gbuffer;
+pub mod menu_background;
 pub mod mesh;
 pub mod mesh_pipeline;
 pub mod particle_render;
@@ -44,13 +44,13 @@ pub mod shadow_pipeline;
 pub mod underwater;
 pub mod uniforms;
 
-pub use self::basic_pipeline::BasicPipeline;
 pub use self::composition::{CompositionFeatures, CompositionPipeline};
 pub use self::context::Gfx;
 pub use self::debug_shadow_pipeline::DebugShadowPipeline;
 pub use self::depth::DepthTarget;
 pub use self::egui_renderer::EguiRenderer;
-pub use self::gbuffer::GBuffer;
+pub use self::gbuffer::{GBuffer, GBufferLayer};
+pub use self::menu_background::MenuBackground;
 pub use self::mesh::{
     CHUNK_SIZE, ChunkVertex, MeshInput, MeshOptions, MeshOutput, PADDED_SIZE, PADDED_VOLUME,
     mesh_chunk, padded_index,

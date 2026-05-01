@@ -150,12 +150,13 @@ impl Hud {
         let heading_deg = f.yaw.to_degrees();
         let pitch_deg = f.pitch.to_degrees();
 
-        // World clock — same arithmetic as C++ `neworld.ixx:1137-1140`:
-        // 30 ticks/sec game day = 24 in-game hours. h:m:s + raw tick.
+        // World clock — raw tick count and day-cycle position. One day
+        // is `World::DAY_TICKS` (20 in-game minutes at 30 tps); F8 held
+        // multiplies the per-tick step. `time_of_day` consumes this to
+        // derive sun direction + sky-light multiplier.
         let game_time = f.game_time;
-        let h = (game_time / 30 / 60) % 24;
-        let m = (game_time / 30) % 60;
-        let s = (game_time % 30) * 2;
+        let day_ticks = crate::worlds::World::DAY_TICKS;
+        let day_pct = 100.0 * (game_time % day_ticks) as f32 / day_ticks as f32;
 
         egui::Area::new("debug_panel".into())
             .anchor(egui::Align2::LEFT_TOP, egui::vec2(8.0, 8.0))
@@ -197,7 +198,7 @@ impl Hud {
                             bool_str(f.in_water)
                         ),
                     );
-                    line(ui, format!("time: {h:02}:{m:02}:{s:02} ({game_time})"));
+                    line(ui, format!("time: {game_time} ({day_pct:.1}% of day)"));
                     line(
                         ui,
                         format!(

@@ -67,52 +67,39 @@ impl Screen for ShaderOptionsScreen {
         let cfg: &mut Config = &mut guard;
 
         let enable_text = format!(
-            "{enable_lbl}{}",
+            "{enable_lbl}: {}",
             yes_no(cfg.advanced_render, &yes_lbl, &no_lbl)
         );
-        let res_text = format!("{res_lbl}{}x", cfg.shadow_res);
-        let dist_text = format!("{dist_lbl}{}", cfg.max_shadow_distance);
         let soft_text = format!(
-            "{soft_lbl}{}",
+            "{soft_lbl}: {}",
             enabled_disabled(cfg.soft_shadow, &enabled_lbl, &disabled_lbl)
         );
         let clouds_text = format!(
-            "{clouds_lbl}{}",
+            "{clouds_lbl}: {}",
             enabled_disabled(cfg.volumetric_clouds, &enabled_lbl, &disabled_lbl)
         );
         let ssao_text = format!(
-            "{ssao_lbl}{}",
+            "{ssao_lbl}: {}",
             enabled_disabled(cfg.ambient_occlusion, &enabled_lbl, &disabled_lbl)
         );
-
-        let mut shadow_res_pos = shadow_res_to_position(cfg.shadow_res);
 
         let body = Flex::column(vec![
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Aligned::center(Label::new(caption)),
+                Aligned::center(Label::new(&caption)),
             )),
             FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
             // Row 1: advanced render toggle | shadow resolution slider
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(enable_text, &mut enable_clicked)),
+                    FlexItem::flex(1.0, Button::new(&enable_text).clicked(&mut enable_clicked)),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
                     FlexItem::flex(
                         1.0,
-                        Flex::column(vec![
-                            FlexItem::new(Label::new(res_text)),
-                            FlexItem::flex(
-                                1.0,
-                                Slider::new(
-                                    &mut shadow_res_pos,
-                                    0.0..=1.0,
-                                    &mut shadow_res_changed,
-                                ),
-                            ),
-                        ])
-                        .cross_size(CrossAxisSize::Max),
+                        Slider::new(&res_lbl, &mut cfg.shadow_res, 1024..=8192)
+                            .changed(&mut shadow_res_changed)
+                            .logarithmic(true),
                     ),
                 ])
                 .main_size(MainAxisSize::Max)
@@ -125,21 +112,11 @@ impl Screen for ShaderOptionsScreen {
                 Flex::row(vec![
                     FlexItem::flex(
                         1.0,
-                        Flex::column(vec![
-                            FlexItem::new(Label::new(dist_text)),
-                            FlexItem::flex(
-                                1.0,
-                                Slider::new(
-                                    &mut cfg.max_shadow_distance,
-                                    4..=32,
-                                    &mut shadow_dist_changed,
-                                ),
-                            ),
-                        ])
-                        .cross_size(CrossAxisSize::Max),
+                        Slider::new(&dist_lbl, &mut cfg.max_shadow_distance, 4..=32)
+                            .changed(&mut shadow_dist_changed),
                     ),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
-                    FlexItem::flex(1.0, Button::new(soft_text, &mut soft_clicked)),
+                    FlexItem::flex(1.0, Button::new(&soft_text).clicked(&mut soft_clicked)),
                 ])
                 .main_size(MainAxisSize::Max)
                 .cross_size(CrossAxisSize::Max),
@@ -149,9 +126,9 @@ impl Screen for ShaderOptionsScreen {
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(clouds_text, &mut clouds_clicked)),
+                    FlexItem::flex(1.0, Button::new(&clouds_text).clicked(&mut clouds_clicked)),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
-                    FlexItem::flex(1.0, Button::new(ssao_text, &mut ssao_clicked)),
+                    FlexItem::flex(1.0, Button::new(&ssao_text).clicked(&mut ssao_clicked)),
                 ])
                 .main_size(MainAxisSize::Max)
                 .cross_size(CrossAxisSize::Max),
@@ -159,7 +136,7 @@ impl Screen for ShaderOptionsScreen {
             FlexItem::flex(1.0, Spacer::fill()),
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Button::new(back_lbl, &mut want_back),
+                Button::new(&back_lbl).clicked(&mut want_back),
             )),
         ])
         .main_size(MainAxisSize::Max)
@@ -186,7 +163,7 @@ impl Screen for ShaderOptionsScreen {
             cfg.ambient_occlusion = !cfg.ambient_occlusion;
         }
         if shadow_res_changed {
-            cfg.shadow_res = position_to_shadow_res(shadow_res_pos);
+            cfg.shadow_res = 1 << ((cfg.shadow_res as f32).log2().round() as i32);
         }
 
         drop(guard);
@@ -209,14 +186,4 @@ fn enabled_disabled(value: bool, enabled: &str, disabled: &str) -> String {
     } else {
         disabled.to_owned()
     }
-}
-
-/// C++ `_shadow_resolution_to_position`: `(log2(res) - 10) / 3`.
-fn shadow_res_to_position(res: i32) -> f32 {
-    ((res as f32).log2() - 10.0) / 3.0
-}
-
-/// C++ `_position_to_shadow_resolution`: round to {1024, 2048, 4096, 8192}.
-fn position_to_shadow_res(position: f32) -> i32 {
-    2_f32.powf((position * 3.0).round() + 10.0) as i32
 }

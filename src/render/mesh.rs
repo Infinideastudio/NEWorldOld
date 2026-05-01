@@ -55,13 +55,16 @@ pub const PADDED_VOLUME: usize = PADDED_SIZE * PADDED_SIZE * PADDED_SIZE;
 
 /// Vertex format consumed by the chunk pipeline (see [D2]).
 ///
-/// Layout: 12 (position) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light) +
-/// 4 (material_id) = 36 bytes, alignment 4, no trailing padding — `Pod`-safe.
+/// Layout: 12 (position) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light)
+/// = 32 bytes, alignment 4, no trailing padding — `Pod`-safe.
 ///
-/// `material_id` was added for the deferred renderer (Tier 4): the chunk
-/// fragment shader writes it into the G-buffer's `material` target so the
-/// composition pass can special-case water reflections / leaf foliage /
-/// glowstone emission per pixel.
+/// The atlas `layer` doubles as the per-fragment "material" identifier:
+/// the chunk fragment shader writes it into the G-buffer's material
+/// target (R16Uint) so composition can branch on texture index for
+/// per-material effects (water refraction, foliage shading, etc.).
+/// We don't carry a separate `material_id` field because
+/// `face_for(face_id, state)` already produces the right per-face
+/// texture index — exactly what composition needs.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct ChunkVertex {
@@ -69,19 +72,22 @@ pub struct ChunkVertex {
     pub position: [f32; 3],
     /// `0..1` within the atlas layer's face square.
     pub uv: [f32; 2],
-    /// Atlas array layer index for sampling `block_diffuse` / `block_normal`.
+    /// Atlas array layer index for sampling `block_diffuse` /
+    /// `block_normal`. Doubles as the texture-index "material" written
+    /// into the G-buffer's material target by the fragment shader.
     pub layer: u32,
     /// Face direction id `0..6` — order: `[+X, -X, +Y, -Y, +Z, -Z]`.
     pub face: u32,
-    /// Per-vertex smooth-light brightness. Bottom byte is the AO-averaged
-    /// `[0..255]` luminance — bilinearly interpolated by the rasterizer
-    /// across the four corners of the face. Upper bytes are reserved.
+    /// Packed per-vertex smooth-light *intensities*. Bottom two bytes
+    /// hold `sky_byte | (block_byte << 8)`, each in `0..=255`. Each
+    /// byte is the AO-averaged 4-cell intensity for its channel —
+    /// per-cell levels are mapped through inverse-square falloff
+    /// **before** the 4-cell average (see [`block_level_to_intensity`]
+    /// / [`sky_level_to_intensity`]), then quantized to a byte. The
+    /// rasterizer interpolates the bytes linearly; the fragment
+    /// shader treats them as the final intensity. Upper two bytes
+    /// are reserved.
     pub light: u32,
-    /// Material id (0..65535). Written into the G-buffer material target so
-    /// the composition pass / SSR / volumetric clouds can branch on the
-    /// material at the surface point. Stored as `u32` for vertex-attribute
-    /// alignment; truncated to `u16` on G-buffer write.
-    pub material_id: u32,
 }
 
 /// Owned snapshot of a chunk + its 26 neighbors, copied into a single padded
@@ -126,14 +132,6 @@ pub struct MeshOptions {
     /// if the flag is on" — the registry stripped down for tests doesn't
     /// have grass; this stays out of the way.
     pub grass_id: Id,
-    /// `Config::advanced_render`. When true, the per-face directional
-    /// dimming (`apply_face_dim`) is skipped — the deferred lighting
-    /// pass derives directional shading from real sun lambert + shadow
-    /// PCF, and the baked dimming would otherwise double-darken side
-    /// faces. When false (basic mode), the dimming is applied so the
-    /// forward chunk shader produces the iconic Minecraft look without
-    /// needing any extra lighting math.
-    pub advanced_render: bool,
 }
 
 impl Default for MeshOptions {
@@ -143,7 +141,6 @@ impl Default for MeshOptions {
             merge_face: true,
             nice_grass: true,
             grass_id: Id(0),
-            advanced_render: false,
         }
     }
 }
@@ -428,55 +425,48 @@ const FACE_PERP_AXES: [(usize, usize); 6] = [
     (0, 1), // -Z
 ];
 
-/// Per-face directional dimming factors. Mirrors C++ basic rendering mode
-/// (`if (!AdvancedRender) col = col * N / 10` blocks in
-/// `chunk_rendering.cpp::_render_chunk` and `_render_primitive`):
-///
-/// * ±X (left/right): 5/10  → 0.5
-/// * ±Y (top/bottom): 10/10 → 1.0
-/// * ±Z (front/back): 2/10  → 0.2
-///
-/// Stored as numerator-out-of-10 so the fixed-point math in
-/// [`apply_face_dim`] stays in `u32` and matches the C++ integer
-/// arithmetic exactly. The advanced-mode `final.fsh` path multiplies
-/// the lit color by directional radiance from the sun, so it deliberately
-/// skips this baked-in dimming (col stays unscaled when `AdvancedRender`
-/// is true).
-const FACE_DIM_NUMER: [u32; 6] = [
-    5,  // +X
-    5,  // -X
-    10, // +Y
-    10, // -Y
-    2,  // +Z
-    2,  // -Z
-];
+/// Constant factor `K` in the per-cell block-light inverse-square
+/// mapping `intensity = min(1, K / (16 - level)²)`. Tweakable knob —
+/// raising it brightens far-from-source cells (longer reach), lowering
+/// it tightens the falloff near sources.
+const BLOCK_LIGHT_INTENSITY_K: f32 = 16.0;
 
-/// Apply the basic-mode per-face directional dimming to a brightness
-/// value in `0..=255`. Returns the dimmed brightness clamped to the same
-/// range. Integer math matches the C++ `col * N / 10` formula exactly.
+/// Map a raw block-light level (`0..=15`, treated as inverse distance
+/// to a source) to a normalized intensity in `[0, 1]` via
+/// inverse-square falloff. Applied **per cell** during meshing,
+/// before the smooth-lighting 4-cell average — averaging intensities
+/// (rather than levels) avoids the "average a level then crush
+/// through inverse-square" trap that turned soft AO bites into
+/// near-black holes.
 #[inline]
-fn apply_face_dim(brightness: u8, face_id: usize) -> u8 {
-    let n = FACE_DIM_NUMER[face_id];
-    ((u32::from(brightness) * n) / 10).min(255) as u8
+fn block_level_to_intensity(level: u8) -> f32 {
+    let dist = 16.0 - f32::from(level);
+    (BLOCK_LIGHT_INTENSITY_K / (dist * dist)).min(1.0)
 }
 
-/// Per-cell brightness `0..=255`. Mirrors C++ `BlockRenderData::_color`:
-/// opaque blocks are `0` (they shouldn't contribute to the AO average since
-/// they block light); non-opaque blocks return `max(sky_brightness,
-/// block_brightness)` with the C++ falloff curves baked in.
+/// Map a raw sky-light level (`0..=15`) to a normalized intensity in
+/// `[0, 1]` linearly. Sky light is treated as a uniform overhead
+/// illuminance rather than a point source, so the inverse-square
+/// curve doesn't apply — a cell's sky level is the fraction of the
+/// hemisphere that reaches it, which is already a linear quantity.
 #[inline]
-fn cell_color(block: BlockData, info: &BlockInfo) -> u8 {
+fn sky_level_to_intensity(level: u8) -> f32 {
+    f32::from(level) / 15.0
+}
+
+/// Per-cell `(sky_intensity, block_intensity)` for the smooth-lighting
+/// tap, both in `[0, 1]`. Opaque blocks contribute `(0, 0)` so they
+/// don't drag light through solid geometry — they're always the dark
+/// cell in the 4-tap average around an exposed face corner.
+#[inline]
+fn cell_intensities(block: BlockData, info: &BlockInfo) -> (f32, f32) {
     if info.opaque {
-        return 0;
+        return (0.0, 0.0);
     }
-    let sky = f32::from(block.light.sky());
-    let blk = f32::from(block.light.block());
-    // Sky: exponential falloff `255 * 0.8^(15 - sky)` (C++).
-    let sl = (255.0 * 0.8_f32.powf(15.0 - sky)).clamp(0.0, 255.0) as u32;
-    // Block: inverse-quadratic `255 / max(1, (16 - blk)² / 10)` (C++).
-    let denom = (((16.0 - blk) * (16.0 - blk)) / 10.0).max(1.0);
-    let bl = (255.0 / denom).clamp(0.0, 255.0) as u32;
-    sl.max(bl).min(255) as u8
+    (
+        sky_level_to_intensity(block.light.sky()),
+        block_level_to_intensity(block.light.block()),
+    )
 }
 
 /// Read a padded cell by signed offsets. `pcx, pcy, pcz` are the *padded*
@@ -494,12 +484,31 @@ fn padded_at(padded: &[BlockData; PADDED_VOLUME], pcx: i32, pcy: i32, pcz: i32) 
     padded[padded_index(pcx as usize, pcy as usize, pcz as usize)]
 }
 
+/// Quantize a `[0, 1]` intensity to a `u8` for packing into the
+/// vertex `light` field. Rounds half-up — `(intensity * 255).round()`.
+#[inline]
+fn intensity_to_byte(intensity: f32) -> u8 {
+    (intensity.clamp(0.0, 1.0) * 255.0 + 0.5) as u8
+}
+
+/// Pack two intensity bytes into one `u16` for the vertex pipeline.
+/// Bottom byte = sky, top byte = block (matches the unpack in
+/// `chunk.wgsl::vs_main`).
+#[inline]
+const fn pack_light_bytes(sky: u8, block: u8) -> u16 {
+    (block as u16) << 8 | (sky as u16)
+}
+
 /// 4-corner smooth-lighting tap for the face on cell at padded coord
-/// `(pcx, pcy, pcz)` facing direction `face_id`. Each corner averages the
-/// brightness of 4 cells around the in-front (face-normal-direction)
-/// neighbor — the in-front itself, two perpendicular-axis neighbors, and
-/// the diagonal corner. Output is one `u8` brightness per corner in the
-/// same order as [`FACE_CORNERS`].
+/// `(pcx, pcy, pcz)` facing direction `face_id`. Each corner averages
+/// the sky and block light *intensities* (already mapped through
+/// inverse-square per cell — see [`cell_intensities`]) of 4 cells
+/// around the in-front (face-normal-direction) neighbor — the in-front
+/// itself, two perpendicular-axis neighbors, and the diagonal corner.
+/// Sky and block channels are averaged independently and quantized to
+/// `u8` per channel, packed into a `u16` (sky low byte, block high
+/// byte). Output is one packed value per corner in the same order as
+/// [`FACE_CORNERS`].
 fn corner_lights(
     padded: &[BlockData; PADDED_VOLUME],
     registry: &BlockRegistry,
@@ -507,8 +516,7 @@ fn corner_lights(
     pcy: i32,
     pcz: i32,
     face_id: usize,
-    apply_dim: bool,
-) -> [u8; 4] {
+) -> [u16; 4] {
     let off = FACE_OFFSETS[face_id];
     let ix = pcx + off[0];
     let iy = pcy + off[1];
@@ -519,7 +527,7 @@ fn corner_lights(
     step_a[axis_a] = 1;
     step_b[axis_b] = 1;
 
-    let mut out = [0u8; 4];
+    let mut out = [0u16; 4];
     for c in 0..4 {
         let (sa, sb) = CORNER_PERP_SIGNS[face_id][c];
         let a_ofs = [step_a[0] * sa, step_a[1] * sa, step_a[2] * sa];
@@ -534,23 +542,17 @@ fn corner_lights(
                 iz + a_ofs[2] + b_ofs[2],
             ),
         ];
-        let mut sum = 0u32;
+        let mut sky_sum = 0.0_f32;
+        let mut block_sum = 0.0_f32;
         for (cx, cy, cz) in cells {
             let b = padded_at(padded, cx, cy, cz);
-            sum += u32::from(cell_color(b, registry.get(b.id)));
+            let (s, k) = cell_intensities(b, registry.get(b.id));
+            sky_sum += s;
+            block_sum += k;
         }
-        // Average the 4-cell smooth-light tap, then apply the basic-mode
-        // per-face dimming (matches the C++ `col / 4` followed by
-        // `col * N / 10` for ±X / ±Z faces). Skipped under
-        // advanced rendering — the deferred composition pass derives
-        // directional shading from real sun lambert + shadow PCF, and
-        // baked face dimming would double-darken side faces.
-        let avg = (sum / 4) as u8;
-        out[c] = if apply_dim {
-            apply_face_dim(avg, face_id)
-        } else {
-            avg
-        };
+        let sky_byte = intensity_to_byte(sky_sum * 0.25);
+        let block_byte = intensity_to_byte(block_sum * 0.25);
+        out[c] = pack_light_bytes(sky_byte, block_byte);
     }
     out
 }
@@ -575,23 +577,34 @@ struct Run {
     /// True when the cell is `BlockInfo::translucent`. Picks the output
     /// vertex bucket on flush.
     translucent: bool,
-    /// 4-corner smooth-light brightnesses (`u8`-per-corner). The run only
-    /// extends if subsequent cells produce identical lights — otherwise the
-    /// rasterizer would interpolate across a discontinuity.
-    lights: [u8; 4],
-    /// True iff `lights[..]` aren't all equal — i.e. this cell has a real
-    /// light gradient across its corners. Cells with non-uniform lighting
-    /// can never extend (or be extended into); they always emit a single
-    /// quad, matching the C++ `once` flag in `_merge_face_render_chunk`.
-    once: bool,
+    /// 4-corner packed smooth-light intensities (`sky_byte |
+    /// (block_byte << 8)`, one `u16` per corner). The run only
+    /// extends if subsequent cells produce *identical* per-corner
+    /// values.
+    ///
+    /// Naively this isn't sufficient: if the cells carried independent
+    /// gradients along the merge axis, normal (per-cell) rendering
+    /// would emit `N` short gradients while a merged run would emit
+    /// one long gradient interpolated end-to-end, which is visibly
+    /// different in the middle. We can still merge here because of an
+    /// invariant of the smooth-lighting algorithm: a corner's light
+    /// is the 4-cell average around the *vertex* (the corner shared
+    /// between adjacent cells), not around the cell itself. Adjacent
+    /// cells therefore necessarily agree on the brightness of their
+    /// shared corner. So when corner 1 of cell A equals corner 0 of
+    /// cell B AND the run-extension check (`r.lights == lights`)
+    /// passes, the two cells' shared corner bytes already match the
+    /// continuation of the gradient — extending the run produces the
+    /// exact same interpolated brightness at every point as `N`
+    /// independent quads would have.
+    lights: [u16; 4],
     /// Per-corner base UVs at run start. Run extension also gates on
     /// `base_uv == cell.base_uv`, so two cells with different
     /// orientations only merge if they happen to produce identical UVs
-    /// on this face (which means they look identical on it). For blocks
-    /// using [`OrientationCodec::STATIC`](crate::blocks::OrientationCodec::STATIC)
-    /// this is always true; for axis-aligned blocks it filters out
-    /// orientation-mismatched logs without needing a separate state
-    /// check.
+    /// on this face (which means they look identical on it). For
+    /// `FaceMapping::Static` blocks this is always true; for
+    /// `AxisAligned` blocks it filters out orientation-mismatched logs
+    /// without needing a separate state check.
     base_uv: [[f32; 2]; 4],
     /// Per-corner UV delta per unit length along the merge axis. Replaces
     /// the legacy global `FACE_EXTEND_UV` lookup; folds the per-state
@@ -676,11 +689,10 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                     // `_merge_face_render_chunk` lookup.
                     //
                     // Default texture lookup is state-aware via
-                    // `face_for(face_id, state)` — each block's
-                    // `OrientationCodec` decides how the state byte
-                    // maps to a placement orientation, and the lookup
-                    // rotates the world face direction back through
-                    // that orientation before indexing `faces[]`.
+                    // `face_for(face_id, state)` — logs use
+                    // `FaceMapping::AxisAligned` to pick cap vs bark from
+                    // the state byte; everything else uses the static
+                    // top/side/bottom layout.
                     let tex_index_override = (opts.nice_grass
                         && opts.grass_id != Id(0)
                         && cell.id == opts.grass_id
@@ -712,54 +724,38 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                     let base_uv = corner_uvs(face_id, canon_face, &orientation);
                     let extend_uv = corner_uv_extends(face_id, canon_face, &orientation);
                     let translucent_cell = cell_info.translucent;
-                    let apply_dim = !opts.advanced_render;
                     let lights = if opts.smooth_lighting {
-                        corner_lights(
-                            &input.padded,
-                            registry,
-                            x + 1,
-                            y + 1,
-                            z + 1,
-                            face_id,
-                            apply_dim,
-                        )
+                        corner_lights(&input.padded, registry, x + 1, y + 1, z + 1, face_id)
                     } else {
                         // Flat lighting: every corner gets the in-front
-                        // cell's brightness, so the rasterizer interpolates
-                        // a uniform value (no gradient).
-                        let flat = flat_face_light(
-                            &input.padded,
-                            registry,
-                            x + 1,
-                            y + 1,
-                            z + 1,
-                            face_id,
-                            apply_dim,
-                        );
+                        // cell's packed light byte, so the rasterizer
+                        // interpolates a uniform value (no gradient).
+                        let flat =
+                            flat_face_light(&input.padded, registry, x + 1, y + 1, z + 1, face_id);
                         [flat; 4]
                     };
-                    let once =
-                        lights[0] != lights[1] || lights[1] != lights[2] || lights[2] != lights[3];
 
                     // Run extension is gated on `merge_face`: with the flag
                     // off, force a flush after every cell so each face
                     // emits its own quad. With it on, two cells merge
                     // iff their visual output on this face is identical
-                    // — same atlas layer, same per-corner UVs (base +
-                    // extend), same lighting, same translucent bucket.
-                    // Block id and state are deliberately not gated on:
-                    // two distinct blocks that happen to share the same
-                    // texture art (e.g. an alias block) tile correctly,
-                    // and two states whose base/extend UVs collapse to
-                    // the same numbers (e.g. wood states 0 and 1, whose
-                    // caps are visually identical with our symmetric
+                    // — same atlas layer, same per-corner light bytes,
+                    // same per-corner UVs (base + extend), same
+                    // translucent bucket. Block id and state are
+                    // deliberately not gated on: two distinct blocks
+                    // that share the same texture art (e.g. an alias
+                    // block) tile correctly, and two states whose
+                    // base/extend UVs collapse to the same numbers
+                    // (e.g. wood states 0 and 1, with our symmetric
                     // ring texture) merge harmlessly.
+                    //
+                    // The `lights` equality is *sufficient* even when
+                    // a face carries a smooth-lighting gradient — see
+                    // the `Run::lights` doc comment for why.
                     let can_extend = opts.merge_face
                         && match run.as_ref() {
                             Some(r) => {
-                                !r.once
-                                    && !once
-                                    && r.layer == tex_layer
+                                r.layer == tex_layer
                                     && r.translucent == translucent_cell
                                     && r.lights == lights
                                     && r.base_uv == base_uv
@@ -778,7 +774,6 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
                             layer: tex_layer,
                             translucent: translucent_cell,
                             lights,
-                            once,
                             base_uv,
                             extend_uv,
                         });
@@ -796,11 +791,10 @@ pub fn mesh_chunk(input: &MeshInput, registry: &BlockRegistry) -> MeshOutput {
     }
 }
 
-/// Single-cell brightness for the face's in-front neighbor — used as the
-/// flat-lighting fallback when `MeshOptions::smooth_lighting` is off.
-/// Applies the same per-face dimming as [`corner_lights`] so basic-mode
-/// directional shading is consistent across smooth / flat lighting.
-/// `apply_dim = false` skips the dimming for the advanced-rendering path.
+/// Single-cell packed light intensities for the face's in-front
+/// neighbor — used as the flat-lighting fallback when
+/// `MeshOptions::smooth_lighting` is off. Returns the same `u16`
+/// packing as [`corner_lights`].
 fn flat_face_light(
     padded: &[BlockData; PADDED_VOLUME],
     registry: &BlockRegistry,
@@ -808,19 +802,14 @@ fn flat_face_light(
     pcy: i32,
     pcz: i32,
     face_id: usize,
-    apply_dim: bool,
-) -> u8 {
+) -> u16 {
     let off = FACE_OFFSETS[face_id];
     let ix = pcx + off[0];
     let iy = pcy + off[1];
     let iz = pcz + off[2];
     let in_front = padded_at(padded, ix, iy, iz);
-    let raw = cell_color(in_front, registry.get(in_front.id));
-    if apply_dim {
-        apply_face_dim(raw, face_id)
-    } else {
-        raw
-    }
+    let (s, k) = cell_intensities(in_front, registry.get(in_front.id));
+    pack_light_bytes(intensity_to_byte(s), intensity_to_byte(k))
 }
 
 /// Emit the 6 vertices of `run` (after extension along the merge axis) into
@@ -851,7 +840,6 @@ fn emit_run(out: &mut Vec<ChunkVertex>, run: Run) {
         layer: run.layer,
         face: face_u32,
         light: 0,
-        material_id: run.layer,
     }; 4];
     for c in 0..4 {
         v[c].position = [
@@ -1075,13 +1063,14 @@ mod tests {
     }
 
     #[test]
-    fn chunk_vertex_layout_is_36_bytes() {
-        // The pipeline (D2) assumes 36-byte vertices with no padding —
-        // 12 (pos) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light) + 4 (material_id).
-        // The trailing material_id was added for the deferred renderer (Tier 4)
-        // so the chunk fragment shader can write a per-pixel material into
-        // the G-buffer.
-        assert_eq!(core::mem::size_of::<ChunkVertex>(), 36);
+    fn chunk_vertex_layout_is_32_bytes() {
+        // The pipeline (D2) assumes 32-byte vertices with no padding —
+        // 12 (pos) + 8 (uv) + 4 (layer) + 4 (face) + 4 (light). The
+        // atlas `layer` doubles as the per-pixel "material" (texture
+        // index) the chunk fragment shader writes into the G-buffer's
+        // material attachment, so no separate material_id field is
+        // needed.
+        assert_eq!(core::mem::size_of::<ChunkVertex>(), 32);
         assert_eq!(core::mem::align_of::<ChunkVertex>(), 4);
     }
 
@@ -1187,9 +1176,8 @@ mod tests {
 
     #[test]
     fn wood_state_drives_per_face_texture() {
-        // Wood uses `OrientationCodec::AXIS_ALIGNED` (orientation in the
-        // lower 3 bits): `state.orientation() / 2` selects the cap axis.
-        // Faces parallel to that axis sample WOOD_TOP; the four
+        // Wood is `FaceMapping::AxisAligned`: state.0 / 2 selects the cap
+        // axis. Faces parallel to that axis sample WOOD_TOP; the four
         // perpendicular faces sample WOOD_SIDE.
         let (registry, base) = registry_with_base();
         let top = u32::from(registry.get(base.wood).face(0).0); // WOOD_TOP
@@ -1405,7 +1393,7 @@ mod tests {
         // into one quad. We synthesise a tiny registry with `air` (id 0)
         // plus two solid blocks that both use `TextureIndex::ROCK` for
         // every face — distinct ids, identical art.
-        use crate::blocks::{BlockInfo, OrientationCodec, TextureIndex, default_face_texture};
+        use crate::blocks::{BlockInfo, TextureIndex};
         use std::borrow::Cow;
         let mut r = BlockRegistry::new();
         r.add(BlockInfo {
@@ -1415,8 +1403,8 @@ mod tests {
             translucent: false,
             hardness: 0.0,
             faces: [TextureIndex::WHITE; 3],
-            orientation_codec: OrientationCodec::STATIC,
-            face_texture: default_face_texture,
+            orientation_codec: crate::blocks::OrientationCodec::STATIC,
+            face_texture: crate::blocks::default_face_texture,
         });
         let id_a = r.add(BlockInfo {
             name: Cow::Borrowed("rock_a"),
@@ -1425,8 +1413,8 @@ mod tests {
             translucent: false,
             hardness: 1.0,
             faces: [TextureIndex::ROCK; 3],
-            orientation_codec: OrientationCodec::STATIC,
-            face_texture: default_face_texture,
+            orientation_codec: crate::blocks::OrientationCodec::STATIC,
+            face_texture: crate::blocks::default_face_texture,
         });
         let id_b = r.add(BlockInfo {
             name: Cow::Borrowed("rock_b"),
@@ -1435,8 +1423,8 @@ mod tests {
             translucent: false,
             hardness: 1.0,
             faces: [TextureIndex::ROCK; 3],
-            orientation_codec: OrientationCodec::STATIC,
-            face_texture: default_face_texture,
+            orientation_codec: crate::blocks::OrientationCodec::STATIC,
+            face_texture: crate::blocks::default_face_texture,
         });
         let input = padded_input(Vector3::new(0, 0, 0), |px, py, pz| {
             if py == 9 && px == 9 && pz == 9 {

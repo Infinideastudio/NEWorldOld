@@ -382,6 +382,18 @@ impl World {
         self.game_time = t;
     }
 
+    /// Advance the in-game clock by `ticks`. Wraps at [`Self::DAY_TICKS`]
+    /// so the clock remains comparable across a long-running world. Called
+    /// once per sim tick from [`crate::game::Game::tick_sim`] (with an
+    /// extra multiplier while F8 is held).
+    pub fn advance_game_time(&mut self, ticks: u32) {
+        self.game_time = self.game_time.wrapping_add(ticks) % Self::DAY_TICKS;
+    }
+
+    /// Length of one in-game day in sim ticks. 30 ticks/sec × 60 s × 20 min
+    /// → 36000. Sun-direction and sky-light multiplier wrap on this period.
+    pub const DAY_TICKS: u32 = 30 * 60 * 20;
+
     /// Current chunk coord the load window is centered on. Used by `Game` to
     /// detect when the player has crossed a chunk boundary so it can call
     /// [`Self::set_center`] only on transitions instead of every frame.
@@ -526,7 +538,13 @@ impl World {
     /// face/direction lands in the cell's state immediately. Existing
     /// callers that don't care about state should keep using
     /// [`Self::set_block`], which forwards here with `State::default()`.
-    pub fn set_block_with_state(&mut self, coord: Vec3i, id: Id, state: State, queue_update: bool) {
+    pub fn set_block_with_state(
+        &mut self,
+        coord: Vec3i,
+        id: Id,
+        state: State,
+        queue_update: bool,
+    ) {
         let cc = chunk_coord(coord);
         let bc = block_coord(coord);
         let base = self.base_blocks;
@@ -772,15 +790,28 @@ impl World {
         // Top neighbour at SKY_LIGHT propagates skylight without falloff.
         let skylit = coord.y >= 0 && neighbours[2].light.sky() == Light::SKY.sky();
 
-        let curr_solid = self.registry.get(curr.id).solid;
-        if curr.id == base.air {
+        // Light-passthrough classification:
+        // * `!opaque && !translucent` → air-like (air, glass, leaf): full
+        //   skylight column passthrough plus a `-1` falloff for diffuse
+        //   light. Glass and leaf join air here so a window or canopy
+        //   doesn't black out the cells below it.
+        // * `!opaque && translucent` → water-like (water, lava, ice):
+        //   `-1` falloff with no skylight fast-path — water in
+        //   particular dims sunlight as you go deeper, which the
+        //   current behaviour already encoded for non-solid translucent
+        //   blocks; we preserve that and extend it to ice.
+        // * `opaque` → block all light.
+        let curr_info = self.registry.get(curr.id);
+        let curr_opaque = curr_info.opaque;
+        let curr_translucent = curr_info.translucent;
+        if !curr_opaque && !curr_translucent {
             sky_light = if skylit {
                 Light::SKY.sky()
             } else {
                 sky_light.saturating_sub(1)
             };
             block_light = block_light.saturating_sub(1);
-        } else if !curr_solid {
+        } else if !curr_opaque {
             sky_light = sky_light.saturating_sub(1);
             block_light = block_light.saturating_sub(1);
         } else {

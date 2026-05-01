@@ -5,23 +5,29 @@ use egui::{Context, Ui};
 use crate::ui::layout::{Constraint, Element, Point, Size, rect_at};
 
 /// Plain push-button. Fills the rect the parent passes; hosts an
-/// `egui::Button`. The `clicked` slot is set to `true` for one frame
-/// after the user releases the mouse over the button.
+/// `egui::Button`. Attach a `&mut bool` via [`Self::clicked`] to learn
+/// whether the user released the mouse over the button this frame —
+/// callers that don't care about the click can omit it.
 pub struct Button<'a> {
-    text: String,
+    text: &'a str,
     enabled: bool,
-    clicked: &'a mut bool,
+    clicked: Option<&'a mut bool>,
     size: Size,
 }
 
 impl<'a> Button<'a> {
-    pub fn new(text: impl Into<String>, clicked: &'a mut bool) -> Self {
+    pub fn new(text: &'a str) -> Self {
         Self {
-            text: text.into(),
+            text,
             enabled: true,
-            clicked,
+            clicked: None,
             size: Size::ZERO,
         }
+    }
+
+    pub fn clicked(mut self, clicked: &'a mut bool) -> Self {
+        self.clicked = Some(clicked);
+        self
     }
 
     pub fn enabled(mut self, v: bool) -> Self {
@@ -38,7 +44,7 @@ impl Element for Button<'_> {
 
     fn show(&mut self, ui: &mut Ui, origin: Point) {
         let rect = rect_at(origin, self.size);
-        let widget = egui::Button::new(&self.text);
+        let widget = egui::Button::new(self.text);
         let resp = if self.enabled {
             ui.put(rect, widget)
         } else {
@@ -46,6 +52,8 @@ impl Element for Button<'_> {
             child.disable();
             child.put(rect, widget)
         };
-        *self.clicked = resp.clicked();
+        if let Some(clicked) = &mut self.clicked {
+            **clicked = resp.clicked();
+        }
     }
 }

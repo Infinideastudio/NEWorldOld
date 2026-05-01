@@ -1,36 +1,38 @@
-// Deferred chunk shader — port of C++ `opaque.{vsh,fsh}` /
-// `translucent.{vsh,fsh}` adapted to our `ChunkVertex` layout.
+// Deferred chunk shader.
 //
-// Vertex layout (stride 36 B, matches `gfx::mesh::ChunkVertex`):
+// Vertex layout (stride 32 B, matches `gfx::mesh::ChunkVertex`):
 //   @location(0) position : vec3<f32>  // offset  0
 //   @location(1) uv       : vec2<f32>  // offset 12
-//   @location(2) layer    : u32        // offset 20
+//   @location(2) layer    : u32        // offset 20 — atlas layer +
+//                                      // doubles as material/texture id
 //   @location(3) face     : u32        // offset 24
-//   @location(4) light    : u32        // offset 28 — bottom byte = 0..255
-//                                      // smooth-light brightness
-//   @location(5) material_id : u32     // offset 32 — 16-bit material id
+//   @location(4) light    : u32        // offset 28 — packed sky / block
+//                                      // light intensity bytes
 //
-// Per-chunk world origin: baked into `position` at upload time on the CPU
-// (`ChunkMesh::upload` adds `coord * CHUNK_SIZE` to every vertex's position).
-// That keeps the shader free of per-chunk uniforms; only the camera's
-// view-projection is consumed here.
+// Per-chunk world origin: baked into `position` at upload time on the
+// CPU (`ChunkMesh::upload` adds `coord * CHUNK_SIZE` to every vertex's
+// position). Shader stays free of per-chunk uniforms.
 //
-// Lighting model: matches the C++ basic rendering mode (`default.fsh`).
-// Vertex pass exposes the per-vertex AO-averaged smooth-light brightness;
-// fragment pass writes `albedo * brightness` straight into the G-buffer
-// diffuse target. No lambert, no fog, no ambient sky — those belong to
-// the advanced-mode `final.fsh` which the migration plan deliberately
-// leaves unported.
-//
-// The fragment writes three G-buffer targets — diffuse / normal / material —
-// the composition pass (`shaders/composition.wgsl`) consumes. Composition
-// today is just a blit (basic-mode equivalent); future advanced-mode work
-// (shadow PCF, SSR, volumetric clouds) plugs into the same G-buffer.
+// G-buffer layout (advanced; basic skips normal + material):
+//   @location(0) diffuse  : vec4<f32>  → Rgba16Float
+//                                       rgb = albedo (advanced) /
+//                                             pre-lit color (basic),
+//                                       a   = emissive intensity (opaque)
+//                                             / texel α (translucent)
+//   @location(1) normal   : vec2<f32>  → Rg8Unorm  (octahedral encoded)
+//   @location(2) material : u32        → R16Uint   (atlas-layer index)
 //
 // Bind groups:
 //   group 0 binding 0 : FrameUniforms (uniform buffer)
 //   group 1 binding 0 : block_diffuse texture_2d_array<f32>
 //   group 1 binding 1 : block_sampler sampler
+//   group 1 binding 2 : block_normal  texture_2d_array<f32>
+//   group 2 binding 0 : g_opaque_depth texture_depth_2d  (translucent
+//                                                         pipelines only —
+//                                                         shader-side
+//                                                         "discard if
+//                                                         behind opaque"
+//                                                         test)
 
 struct FrameUniforms {
     view: mat4x4<f32>,
@@ -46,13 +48,12 @@ struct FrameUniforms {
     fog_end: f32,
     render_distance: f32,
     _pad_scalars: vec2<f32>,
+    material_layers: vec4<u32>,
     shadow_params: vec4<f32>,
     player_coord_int: vec4<i32>,
     player_coord_mod: vec4<i32>,
     player_coord_frac: vec4<f32>,
 }
-
-;
 
 @group(0) @binding(0)
 var<uniform> frame: FrameUniforms;
@@ -67,16 +68,20 @@ var block_sampler: sampler;
 @group(1) @binding(2)
 var block_normal: texture_2d_array<f32>;
 
+// Opaque-depth texture, attached only to translucent pipelines. The
+// translucent fragment uses it for shader-side occlusion: a fragment
+// strictly behind the front-most opaque is discarded so it doesn't
+// pollute the translucent G-buffer. Reversed-Z: larger value = closer.
+@group(2) @binding(0)
+var g_opaque_depth: texture_depth_2d;
+
 struct VsIn {
     @location(0) position: vec3<f32>,
     @location(1) uv: vec2<f32>,
     @location(2) layer: u32,
     @location(3) face: u32,
     @location(4) light: u32,
-    @location(5) material_id: u32,
 }
-
-;
 
 struct VsOut {
     @builtin(position) clip_position: vec4<f32>,
@@ -84,11 +89,15 @@ struct VsOut {
     @location(1) @interpolate(flat) layer: i32,
     @location(2) @interpolate(flat) face: u32,
     @location(3) world_pos: vec3<f32>,
-    @location(4) light: f32,
-    @location(5) @interpolate(flat) material_id: u32,
+    // x = sky-light intensity in [0, 1] (raw byte / 255)
+    // y = block-light intensity in [0, 1] (raw byte / 255)
+    // The CPU mesher applies inverse-square falloff per cell and
+    // averages intensities (not levels) across the 4 cells around
+    // each face corner — the rasterizer just interpolates the
+    // averaged bytes, so we get correct soft AO without re-running
+    // the curve here.
+    @location(4) light: vec2<f32>,
 }
-
-;
 
 @vertex
 fn vs_main(in: VsIn) -> VsOut {
@@ -100,12 +109,51 @@ fn vs_main(in: VsIn) -> VsOut {
     out.uv = in.uv;
     out.layer = i32(in.layer);
     out.face = in.face;
-    // Bottom byte of `in.light` is 0..255 brightness; the rasterizer
-    // interpolates this linearly across the four corners of each face,
-    // giving smooth lighting / soft AO falloff.
-    out.light = f32(in.light & 0xFFu) / 255.0;
-    out.material_id = in.material_id;
+    // Bottom two bytes of `in.light` carry the AO-averaged
+    // sky / block intensities (each 0..255). Unpack to [0, 1].
+    let sky_intensity = f32(in.light & 0xFFu) / 255.0;
+    let block_intensity = f32((in.light >> 8u) & 0xFFu) / 255.0;
+    out.light = vec2<f32>(sky_intensity, block_intensity);
     return out;
+}
+
+// Pack a unit normal into two channels via octahedral mapping. Returns
+// values in `[-1, 1]`; the caller stores them as `[0, 1]` Rg8Unorm via
+// `oct_encode_unorm`.
+fn oct_encode_signed(n: vec3<f32>) -> vec2<f32> {
+    let p = n.xy / (abs(n.x) + abs(n.y) + abs(n.z));
+    if (n.z < 0.0) {
+        let s = vec2<f32>(select(- 1.0, 1.0, p.x >= 0.0), select(- 1.0, 1.0, p.y >= 0.0));
+        return (1.0 - abs(p.yx)) * s;
+    }
+    return p;
+}
+
+fn oct_encode_unorm(n: vec3<f32>) -> vec2<f32> {
+    return oct_encode_signed(n) * 0.5 + vec2<f32>(0.5);
+}
+
+// Warm white for block-emissive sources (torches, glowstone). Slightly
+// orange-shifted so block-lit corners read as "firelight" against a
+// neutral / cool sky.
+const BLOCK_LIGHT_TINT: vec3<f32> = vec3<f32>(1.0, 0.85, 0.65);
+// Cool white for sky-derived light. Slightly blue-shifted so daylight
+// reads as overcast-sky rather than warm interior.
+const SKY_LIGHT_TINT: vec3<f32> = vec3<f32>(0.75, 0.85, 1.0);
+
+// Basic-mode per-face dimming derived from the (interpolated) world
+// normal. Selecting on the largest |component| picks the dominant
+// face axis: x → 0.5, y → 1.0, z → 0.2. This matches the C++ basic
+// rendering values previously baked into the vertex by the mesher.
+fn face_dim_factor(n: vec3<f32>) -> f32 {
+    let a = abs(n);
+    if (a.y >= a.x && a.y >= a.z) {
+        return 1.0;
+    }
+    if (a.x >= a.z) {
+        return 0.5;
+    }
+    return 0.2;
 }
 
 // Face-id → world-space normal. Index order matches `chunk_rendering.cpp`:
@@ -200,129 +248,147 @@ fn sample_world_normal(face: u32, uv: vec2<f32>, layer: i32) -> vec3<f32> {
     return normalize(tbn * local);
 }
 
-// Three MRT outputs into the deferred G-buffer (matching C++ formats):
+// Three MRT outputs into the advanced G-buffer:
 //
-//   @location(0) diffuse  : rgba32_float
-//                            rgb = pre-modulated albedo * smooth-light brightness
-//                            a   = translucency hint (1.0 opaque, < 1.0 see-through)
-//   @location(1) normal   : rgba8_unorm
-//                            rgb = (n + 1) * 0.5  (encoded world-space normal)
-//   @location(2) material : rgba8_unorm
-//                            rg  = encode_u16(material_id) — high byte / low byte
-//                            ba  = (0, 1) — composition decodes via hi*256 + lo
-//                            (material_id == 0 reserved for "no fragment / sky")
+//   @location(0) diffuse  : Rgba16Float
+//                            rgb = raw albedo (composition shades it)
+//                            a   = emissive intensity (opaque) /
+//                                  texel α (translucent)
+//   @location(1) normal   : Rgba8Unorm
+//                            rg  = octahedral-encoded world-space
+//                                  normal mapped to [0, 1]
+//                            b   = per-vertex sky-light intensity
+//                                  (0..1) — composition multiplies
+//                                  direct sunlight by this so cave /
+//                                  overhang occlusion the shadow map
+//                                  misses still attenuates lambert
+//                            a   = reserved (1.0)
+//   @location(2) material : R16Uint
+//                                = atlas-layer index (texture id)
 struct GBufferOut {
     @location(0) diffuse: vec4<f32>,
     @location(1) normal: vec4<f32>,
-    @location(2) material: vec4<f32>,
+    @location(2) material: u32,
 }
 
-;
-
-// Mirrors the C++ `encode_u16` helper from `opaque.fsh` — splits a u16
-// across the R and G channels of an Rgba8Unorm texel. Composition pairs
-// this with `decode_u16(rg) = hi*256 + lo` to recover the block id.
-fn encode_u16(v: u32) -> vec2<f32> {
-    let hi = (v >> 8u) & 0xFFu;
-    let lo = v & 0xFFu;
-    return vec2<f32>(f32(hi) / 255.0, f32(lo) / 255.0);
-}
-
-// Forward fragment for translucent chunks — basic-mode equivalent.
-//
-// Translucent water / leaves can't go through the deferred path because
-// `Rgba32Float` G-buffer targets aren't blendable in wgpu without the
-// `Float32Blendable` feature. So translucent chunks render forward to
-// the surface (Bgra8UnormSrgb) AFTER composition, with standard
-// `SrcAlpha / OneMinusSrcAlpha` blending — matches the C++ basic-mode
-// translucent pass which writes through `default.fsh` to the swap chain
-// with `glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)` enabled.
-//
-// Reads the same vertex/uniform/sampler bindings as `fs_main`.
-@fragment
-fn fs_main_forward(in: VsOut) -> @location(0) vec4<f32> {
+// Basic-mode fragment shading — single-target output into the
+// G-buffer's diffuse attachment (`Rgba16Float`). The composition
+// shader's basic entry samples this attachment as the final colour
+// for chunk pixels (no sun lambert / shadow / SSR — basic mode
+// skips all of that). Two thin entry points (`_opaque` and
+// `_translucent`) share this body so the two basic-mode pipelines
+// each have their own entry — symmetric with the advanced mode's
+// `fs_main_advanced_opaque` / `fs_main_advanced_translucent`.
+fn shade_basic(in: VsOut) -> vec4<f32> {
     let sample = textureSample(block_diffuse, block_sampler, in.uv, in.layer);
     if (sample.a <= 0.0) {
         discard;
     }
-    // C++ default.fsh: `o_frag_color = vec4(color, 1.0) * texel`. Our
-    // smooth-light brightness already carries the per-face dimming
-    // baked in by `mesh::apply_face_dim`, so the lit color is just
-    // `texel.rgb * brightness` and the alpha pass-through preserves
-    // water / glass / ice translucency.
-    let brightness = in.light;
-    return vec4<f32>(sample.rgb * brightness, sample.a);
+    // Basic shading model:
+    //   sky_visibility  = smoothstep(-0.2, 0.2, sun_dir.y) — daylight
+    //                     ramp around the horizon (no separate uniform).
+    //   sky_intensity   = sky_level * sky_visibility
+    //   block_intensity = block_level
+    //   vertex_color    = max(block_intensity * BLOCK_TINT,
+    //                         sky_intensity   * SKY_TINT)
+    // then apply a per-face directional dimming derived from the
+    // world-space normal so side faces read darker than tops.
+    let sky_intensity = in.light.x * smoothstep(- 0.2, 0.2, frame.sun_dir.y);
+    let block_intensity = in.light.y;
+    let block_lit = block_intensity * BLOCK_LIGHT_TINT;
+    let sky_lit = sky_intensity * SKY_LIGHT_TINT;
+    let lit = max(block_lit, sky_lit);
+    let dim = face_dim_factor(face_normal(in.face));
+    return vec4<f32>(sample.rgb * lit * dim, sample.a);
+}
+
+// Basic-mode opaque + translucent entry points — both delegate to
+// `shade_basic`. The two pipelines differ only in blend state (REPLACE
+// vs ALPHA_BLENDING), not shading, so the bodies are intentionally
+// identical. Two entry points kept for symmetry with advanced mode.
+@fragment
+fn fs_main_basic_opaque(in: VsOut) -> @location(0) vec4<f32> {
+    return shade_basic(in);
 }
 
 @fragment
-fn fs_main(in: VsOut) -> GBufferOut {
+fn fs_main_basic_translucent(in: VsOut) -> @location(0) vec4<f32> {
+    // Same opaque-depth discard the advanced translucent uses — the
+    // translucent pass owns its own depth attachment so we can't
+    // depth-test against opaque via the fixed-function pipeline.
+    let pixel = vec2<i32>(in.clip_position.xy);
+    let opaque_d = textureLoad(g_opaque_depth, pixel, 0);
+    if (in.clip_position.z <= opaque_d) {
+        discard;
+    }
+    return shade_basic(in);
+}
+
+// Advanced-mode opaque entry — writes the full opaque-layer G-buffer
+// MRT (diffuse + normal + material). Composition runs sun lambert +
+// shadow PCF + SSR + emissive against these targets.
+@fragment
+fn fs_main_advanced_opaque(in: VsOut) -> GBufferOut {
     let sample = textureSample(block_diffuse, block_sampler, in.uv, in.layer);
 
-    // Alpha test — discard fully-transparent texels only. Mirrors the C++
-    // `opaque.fsh` (`if (texel.a <= 0.0) discard;`); a stricter `< 0.5`
-    // throws away translucent surfaces like water that we still want to
-    // blend through the translucent pipeline.
+    // Alpha test — drop fully-transparent texels. Anything else
+    // belongs to the opaque layer (translucent water / ice / leaves
+    // route to the translucent pipeline / entry point instead).
     if (sample.a <= 0.0) {
         discard;
     }
 
     let normal = sample_world_normal(in.face, in.uv, in.layer);
-    // Smooth-light brightness — same value the C++ build packs into the
-    // chunk vertex's `a_color` attribute. `default.fsh` then does
-    // `vec4(color, 1.0) * texel`, giving the texel color scaled by the
-    // per-vertex AO-averaged sky+block-light brightness. We preserve
-    // that exact behavior — no 0.35 floor, no lambert, no fog. Cells
-    // with zero light go fully dark, matching basic mode.
-    let brightness = in.light;
-    let albedo_lit = sample.rgb * brightness;
+    // Advanced rendering: ignore the per-vertex sky light entirely.
+    // Composition derives sun + ambient via shadow PCF against the
+    // encoded normal; anything we baked here would just double-light.
+    // No face dim either — the shadow-map / lambert math handles
+    // directional shading correctly.
+    let albedo = sample.rgb;
+    // Block-light intensity rides into the diffuse alpha as the
+    // emissive signal — composition tints it warm and adds it on top
+    // so emissive blocks glow even in shadow. (Translucent surfaces
+    // never emit, so they use diffuse.a for texel α instead.)
+    let emissive = clamp(in.light.y, 0.0, 1.0);
 
     var out: GBufferOut;
-    // The albedo is already lit by smooth lighting (vertex-interpolated),
-    // which the composition pass keeps so per-vertex AO survives unchanged
-    // through the deferred path. Sun directional lighting is applied in the
-    // composition pass against the encoded world-space normal.
-    out.diffuse = vec4<f32>(albedo_lit, sample.a);
-    out.normal = vec4<f32>(normal * 0.5 + vec3<f32>(0.5), 1.0);
-    // Block id (16-bit) encoded as two bytes (R = high, G = low) — same
-    // as C++ `opaque.fsh` / `translucent.fsh` so the composition shader
-    // is a direct port. `material_id == 0` reads as `(0, 0)` and signals
-    // "no fragment / sky" to composition (cleared material texels also
-    // read as zero — air never produces a fragment, so the convention
-    // is unambiguous).
-    out.material = vec4<f32>(encode_u16(in.material_id), 0.0, 1.0);
+    out.diffuse = vec4<f32>(albedo, emissive);
+    out.normal = vec4<f32>(oct_encode_unorm(normal), in.light.x, 1.0);
+    out.material = u32(in.layer);
     return out;
 }
 
-// Translucent G-buffer entry point — used by `translucent_gbuffer_pipeline`.
-// Differs from `fs_main` only in forcing alpha to `0.02` for water / ice
-// blocks, mirroring C++ `translucent.fsh`. Composition's SSR + Schlick
-// fresnel relies on this near-transparent base so the reflected sky /
-// SSR sample dominates the visible water surface colour. Alpha-blended
-// against the opaque diffuse already in the G-buffer; depth-writes the
-// water surface so composition's SSR raymarch can hit opaque geometry
-// behind the water.
-const SSR_WATER_ID: u32 = 21u;
-const SSR_ICE_ID: u32 = 26u;
-
+// Advanced-mode translucent entry — writes the translucent layer's
+// G-buffer (diffuse + normal + material). The translucent pass uses
+// its own depth attachment so the front-most translucent fragment
+// wins; we additionally `discard` here whenever the fragment lies
+// behind the opaque depth buffer to avoid stamping translucent
+// pixels onto otherwise-occluded geometry.
 @fragment
-fn fs_main_translucent(in: VsOut) -> GBufferOut {
+fn fs_main_advanced_translucent(in: VsOut) -> GBufferOut {
+    let pixel = vec2<i32>(in.clip_position.xy);
+    let opaque_d = textureLoad(g_opaque_depth, pixel, 0);
+    // Reversed-Z: bigger value = closer. If we are at-or-behind the
+    // front-most opaque fragment, drop.
+    if (in.clip_position.z <= opaque_d) {
+        discard;
+    }
+
     let sample = textureSample(block_diffuse, block_sampler, in.uv, in.layer);
     if (sample.a <= 0.0) {
         discard;
     }
 
     let normal = sample_world_normal(in.face, in.uv, in.layer);
-    let brightness = in.light;
-    let albedo_lit = sample.rgb * brightness;
-
-    var alpha = sample.a;
-    if (in.material_id == SSR_WATER_ID || in.material_id == SSR_ICE_ID) {
-        alpha = 0.02;
-    }
+    let albedo = sample.rgb;
 
     var out: GBufferOut;
-    out.diffuse = vec4<f32>(albedo_lit, alpha);
-    out.normal = vec4<f32>(normal * 0.5 + vec3<f32>(0.5), 1.0);
-    out.material = vec4<f32>(encode_u16(in.material_id), 0.0, 1.0);
+    // diffuse.a stores the texel alpha verbatim — composition
+    // manually mixes the translucent surface over the opaque /
+    // sky background. No 0.02 hack; that was a workaround for an
+    // alpha-blended G-buffer we no longer use.
+    out.diffuse = vec4<f32>(albedo, sample.a);
+    out.normal = vec4<f32>(oct_encode_unorm(normal), in.light.x, 1.0);
+    out.material = u32(in.layer);
     return out;
 }
