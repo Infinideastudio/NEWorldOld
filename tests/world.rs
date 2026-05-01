@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use neworld::blocks::{BaseBlocks, BlockRegistry, register_base_blocks};
 use neworld::chunks::Chunk;
-use neworld::math::{Aabb3d, Vec3, Vec3d, Vec3i};
+use neworld::math::{Aabbd, Vec3d, Vec3i, Vec3u};
 use neworld::worlds::{BlockView, World, block_coord, chunk_coord};
 
 use common::ScratchDir;
@@ -46,24 +46,24 @@ fn chunk_coord_negative_arithmetic_shift() {
     assert_eq!(chunk_coord(Vec3i::new(15, 15, 15)), Vec3i::new(0, 0, 0));
     assert_eq!(chunk_coord(Vec3i::new(16, 16, 16)), Vec3i::new(1, 1, 1));
     assert_eq!(chunk_coord(Vec3i::new(-1, -1, -1)), Vec3i::new(-1, -1, -1));
-    assert_eq!(chunk_coord(Vec3i::new(-16, -16, -16)), Vec3i::new(-1, -1, -1));
-    assert_eq!(chunk_coord(Vec3i::new(-17, -17, -17)), Vec3i::new(-2, -2, -2));
+    assert_eq!(
+        chunk_coord(Vec3i::new(-16, -16, -16)),
+        Vec3i::new(-1, -1, -1)
+    );
+    assert_eq!(
+        chunk_coord(Vec3i::new(-17, -17, -17)),
+        Vec3i::new(-2, -2, -2)
+    );
 }
 
 #[test]
 fn block_coord_modulo_bitmask() {
-    assert_eq!(block_coord(Vec3i::new(0, 0, 0)), Vec3::<u32>::new(0, 0, 0));
-    assert_eq!(block_coord(Vec3i::new(15, 7, 3)), Vec3::<u32>::new(15, 7, 3));
-    assert_eq!(block_coord(Vec3i::new(16, 16, 16)), Vec3::<u32>::new(0, 0, 0));
+    assert_eq!(block_coord(Vec3i::new(0, 0, 0)), Vec3u::new(0, 0, 0));
+    assert_eq!(block_coord(Vec3i::new(15, 7, 3)), Vec3u::new(15, 7, 3));
+    assert_eq!(block_coord(Vec3i::new(16, 16, 16)), Vec3u::new(0, 0, 0));
     // -1 in two's-complement is ...11111111 → low 4 bits = 15.
-    assert_eq!(
-        block_coord(Vec3i::new(-1, -1, -1)),
-        Vec3::<u32>::new(15, 15, 15)
-    );
-    assert_eq!(
-        block_coord(Vec3i::new(-16, -16, -16)),
-        Vec3::<u32>::new(0, 0, 0)
-    );
+    assert_eq!(block_coord(Vec3i::new(-1, -1, -1)), Vec3u::new(15, 15, 15));
+    assert_eq!(block_coord(Vec3i::new(-16, -16, -16)), Vec3u::new(0, 0, 0));
 }
 
 // ---------- World ----------
@@ -193,9 +193,7 @@ fn async_pipeline_round_trip_matches_sync_load() {
         let (mut w, _base) = build_world(&scratch, "async-roundtrip-ref", 1);
         w.set_center(Vec3i::new(0, 0, 0));
         w.tick_chunk_loading();
-        let chunk = w
-            .chunk(target)
-            .expect("sync load should produce chunk");
+        let chunk = w.chunk(target).expect("sync load should produce chunk");
         chunk.package_to()
     };
     assert!(
@@ -221,9 +219,7 @@ fn async_pipeline_round_trip_matches_sync_load() {
         inserted.contains(&target),
         "async load should have emitted target coord"
     );
-    let chunk = w
-        .chunk(target)
-        .expect("async load should install chunk");
+    let chunk = w.chunk(target).expect("async load should install chunk");
     assert_eq!(chunk.package_to(), reference_bytes);
 }
 
@@ -240,7 +236,7 @@ fn block_view_for_world_forwards_to_inherent_methods() {
     let inherent = World::block_or_air(&w, coord);
     let via_trait = <World as BlockView>::block_or_air(&w, coord);
     assert_eq!(inherent, via_trait);
-    let aabb = Aabb3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(1.0, 1.0, 1.0));
+    let aabb = Aabbd::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(1.0, 1.0, 1.0));
     let inherent = World::hitboxes(&w, aabb);
     let via_trait = <World as BlockView>::hitboxes(&w, aabb);
     assert_eq!(inherent.len(), via_trait.len());

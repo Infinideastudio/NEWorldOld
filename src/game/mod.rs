@@ -52,7 +52,7 @@ use crate::chunks::Chunk;
 use crate::commands::{CommandRegistry, register_base_commands};
 use crate::input::{InputState, Key, MouseButton};
 use crate::items::ItemStack;
-use crate::math::{Aabb3f, Frustumf, Vec3d, Vec3i};
+use crate::math::{Aabbf, Frustumf, Vec3d, Vec3i};
 use crate::particles::{Particle, ParticleSystem};
 use crate::render::{
     CompositionFeatures, CompositionPipeline, DebugShadowPipeline, FrameUniforms, GBuffer,
@@ -67,7 +67,6 @@ use crate::worlds::{BlockView, GameMode, World, WorldError};
 
 pub use camera::Camera;
 pub use raycast::{Hit, RAYCAST_MAX};
-
 
 /// Half-extent of the player-collision rejection box used by `try_place`.
 /// Matches the C++ `Player::aabb` x/z half-width — placements that would
@@ -340,12 +339,7 @@ impl Game {
         // first `apply_shadow_config` call after construction reads the
         // saved `Config::advanced_render` and switches to the full MRT
         // shape if needed.
-        let gbuffer = GBuffer::new(
-            device,
-            surface_size.0.max(1),
-            surface_size.1.max(1),
-            false,
-        );
+        let gbuffer = GBuffer::new(device, surface_size.0.max(1), surface_size.1.max(1), false);
         let shadow_map = ShadowMap::new(device);
         let shadow_pipeline = ShadowPipeline::new(device, frame_uniforms, atlases);
         let debug_shadow_pipeline = DebugShadowPipeline::new(device, surface_format, &shadow_map);
@@ -962,8 +956,11 @@ impl Game {
             // The shadow texture view changed — rebind both consumers
             // (composition + the F3+M debug overlay) so they sample the
             // fresh view, not a dropped one.
-            self.composition_pipeline
-                .rebuild_advanced_aux_bind_group(device, &self.shadow_map, atlases);
+            self.composition_pipeline.rebuild_advanced_aux_bind_group(
+                device,
+                &self.shadow_map,
+                atlases,
+            );
             self.debug_shadow_pipeline
                 .rebuild_shadow_bind_group(device, &self.shadow_map);
             tracing::info!(resolution = want_res, advanced_render, "shadow map resized");
@@ -1328,7 +1325,7 @@ impl Game {
                     cm.coord.z as f32 * chunk_size,
                 );
                 let hi = lo + cgmath::Vector3::new(chunk_size, chunk_size, chunk_size);
-                self.camera_frustum.test(&Aabb3f::new(lo, hi))
+                self.camera_frustum.test(&Aabbf::new(lo, hi))
             })
             .collect();
         self.last_rendered_chunks = camera_visible.len();
@@ -1763,10 +1760,10 @@ impl BlockView for BlockViewRef<'_> {
     fn block_or_air(&self, coord: Vec3i) -> BlockData {
         self.0.block_or_air(coord)
     }
-    fn hitboxes(&self, box_: crate::math::Aabb3d) -> Vec<crate::math::Aabb3d> {
+    fn hitboxes(&self, box_: crate::math::Aabbd) -> Vec<crate::math::Aabbd> {
         self.0.hitboxes(box_)
     }
-    fn in_water(&self, box_: crate::math::Aabb3d) -> bool {
+    fn in_water(&self, box_: crate::math::Aabbd) -> bool {
         self.0.in_water(box_)
     }
 }

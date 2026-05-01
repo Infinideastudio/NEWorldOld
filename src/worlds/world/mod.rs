@@ -24,7 +24,7 @@ use std::sync::Arc;
 use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, Id, Light, State};
 use crate::chunks::Chunk;
 use crate::height_maps::HeightMap;
-use crate::math::{Aabb3d, Vec3, Vec3d, Vec3i};
+use crate::math::{Aabbd, Vec3d, Vec3i, Vec3u};
 use crate::terrain_generation::Generator;
 use crate::worlds::player::Player;
 
@@ -81,9 +81,9 @@ pub fn chunk_coord(coord: Vec3i) -> Vec3i {
 /// Matches the C++ "signed-to-unsigned conversion implements modulo" trick
 /// in `worlds.ixx::block_coord`.
 #[must_use]
-pub fn block_coord(coord: Vec3i) -> Vec3<u32> {
+pub fn block_coord(coord: Vec3i) -> Vec3u {
     let mask = (Chunk::SIZE - 1) as u32;
-    Vec3::<u32>::new(
+    Vec3u::new(
         (coord.x as u32) & mask,
         (coord.y as u32) & mask,
         (coord.z as u32) & mask,
@@ -100,8 +100,8 @@ pub fn block_coord(coord: Vec3i) -> Vec3<u32> {
 pub trait BlockView {
     fn block(&self, coord: Vec3i) -> Option<BlockData>;
     fn block_or_air(&self, coord: Vec3i) -> BlockData;
-    fn hitboxes(&self, box_: Aabb3d) -> Vec<Aabb3d>;
-    fn in_water(&self, box_: Aabb3d) -> bool;
+    fn hitboxes(&self, box_: Aabbd) -> Vec<Aabbd>;
+    fn in_water(&self, box_: Aabbd) -> bool;
 }
 
 // ----------------------------------------------------------------------
@@ -485,13 +485,7 @@ impl World {
     /// face/direction lands in the cell's state immediately. Existing
     /// callers that don't care about state should keep using
     /// [`Self::set_block`], which forwards here with `State::default()`.
-    pub fn set_block_with_state(
-        &mut self,
-        coord: Vec3i,
-        id: Id,
-        state: State,
-        queue_update: bool,
-    ) {
+    pub fn set_block_with_state(&mut self, coord: Vec3i, id: Id, state: State, queue_update: bool) {
         let cc = chunk_coord(coord);
         let bc = block_coord(coord);
         let base = self.base_blocks;
@@ -525,7 +519,7 @@ impl World {
     /// the void; the chunk-sized hitbox keeps physics safe until the
     /// real chunk lands and the per-cell probe takes over.
     #[must_use]
-    pub fn hitboxes(&self, box_: Aabb3d) -> Vec<Aabb3d> {
+    pub fn hitboxes(&self, box_: Aabbd) -> Vec<Aabbd> {
         let mut res = Vec::new();
         let lo_x = box_.min.x.round() as i32 - 2;
         let hi_x = box_.max.x.round() as i32 + 2;
@@ -563,7 +557,7 @@ impl World {
                         f64::from(origin_y + s),
                         f64::from(origin_z + s),
                     );
-                    res.push(Aabb3d::new(lo, hi));
+                    res.push(Aabbd::new(lo, hi));
                 }
             }
         }
@@ -583,7 +577,7 @@ impl World {
                     if info.solid {
                         let lo = Vec3d::new(f64::from(a), f64::from(b), f64::from(c));
                         let hi = Vec3d::new(f64::from(a + 1), f64::from(b + 1), f64::from(c + 1));
-                        res.push(Aabb3d::new(lo, hi));
+                        res.push(Aabbd::new(lo, hi));
                     }
                 }
             }
@@ -594,7 +588,7 @@ impl World {
     /// True iff `box_` overlaps any water or lava block. Port of
     /// C++ `World::in_water`.
     #[must_use]
-    pub fn in_water(&self, box_: Aabb3d) -> bool {
+    pub fn in_water(&self, box_: Aabbd) -> bool {
         let lo_x = box_.min.x.round() as i32 - 1;
         let hi_x = box_.max.x.round() as i32 + 1;
         let lo_y = box_.min.y.round() as i32 - 1;
@@ -609,7 +603,7 @@ impl World {
                     if id == self.base_blocks.water || id == self.base_blocks.lava {
                         let lo = Vec3d::new(f64::from(a), f64::from(b), f64::from(c));
                         let hi = Vec3d::new(f64::from(a + 1), f64::from(b + 1), f64::from(c + 1));
-                        let block_aabb = Aabb3d::new(lo, hi);
+                        let block_aabb = Aabbd::new(lo, hi);
                         if box_.intersects(&block_aabb, 0.0) {
                             return true;
                         }
@@ -1413,11 +1407,11 @@ impl BlockView for World {
         World::block_or_air(self, coord)
     }
 
-    fn hitboxes(&self, box_: Aabb3d) -> Vec<Aabb3d> {
+    fn hitboxes(&self, box_: Aabbd) -> Vec<Aabbd> {
         World::hitboxes(self, box_)
     }
 
-    fn in_water(&self, box_: Aabb3d) -> bool {
+    fn in_water(&self, box_: Aabbd) -> bool {
         World::in_water(self, box_)
     }
 }

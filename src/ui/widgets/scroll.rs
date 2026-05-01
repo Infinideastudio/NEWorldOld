@@ -27,8 +27,8 @@ impl<E: Element> ScrollView<E> {
             direction: ScrollDirection::Vertical,
             child,
             id,
-            outer: Size::ZERO,
-            inner: Size::ZERO,
+            outer: Size::default(),
+            inner: Size::default(),
         }
     }
 }
@@ -40,7 +40,7 @@ struct ScrollState {
 
 impl<E: Element> Element for ScrollView<E> {
     fn layout(&mut self, ctx: &Context, c: Constraint) -> Size {
-        self.outer = c.into_size();
+        self.outer = c.max_size();
         let inner_c = match self.direction {
             ScrollDirection::Vertical => Constraint::new(self.outer.width, f32::INFINITY),
             ScrollDirection::Horizontal => Constraint::new(f32::INFINITY, self.outer.height),

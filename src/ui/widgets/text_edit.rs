@@ -16,13 +16,13 @@ pub struct TextEdit<'a> {
 }
 
 impl<'a> TextEdit<'a> {
-    pub fn singleline(text: &'a mut String) -> Self {
+    pub fn new(text: &'a mut String) -> Self {
         Self {
             text,
             hint: String::new(),
             changed: None,
             submitted: None,
-            size: Size::ZERO,
+            size: Size::default(),
         }
     }
 
@@ -44,7 +44,7 @@ impl<'a> TextEdit<'a> {
 
 impl Element for TextEdit<'_> {
     fn layout(&mut self, _ctx: &Context, c: Constraint) -> Size {
-        self.size = c.into_size();
+        self.size = c.max_size();
         self.size
     }
 
@@ -60,8 +60,7 @@ impl Element for TextEdit<'_> {
             **changed = resp.changed();
         }
         if let Some(submitted) = &mut self.submitted {
-            **submitted =
-                resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+            **submitted = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
         }
     }
 }

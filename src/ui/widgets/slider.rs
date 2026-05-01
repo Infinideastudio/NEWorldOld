@@ -25,7 +25,7 @@ impl<'a, T: egui::emath::Numeric> Slider<'a, T> {
             range,
             changed: None,
             logarithmic: false,
-            size: Size::ZERO,
+            size: Size::default(),
         }
     }
 
@@ -42,7 +42,7 @@ impl<'a, T: egui::emath::Numeric> Slider<'a, T> {
 
 impl<T: egui::emath::Numeric> Element for Slider<'_, T> {
     fn layout(&mut self, _ctx: &Context, c: Constraint) -> Size {
-        self.size = c.into_size();
+        self.size = c.max_size();
         self.size
     }
 

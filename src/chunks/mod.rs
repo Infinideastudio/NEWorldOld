@@ -15,7 +15,7 @@ use bytemuck::{Pod, Zeroable};
 use thiserror::Error;
 
 use crate::blocks::{BaseBlocks, BlockData, Light, State};
-use crate::math::{Aabb3d, Vec3d, Vec3i, Vec3u};
+use crate::math::{Aabbd, Vec3d, Vec3i, Vec3u};
 
 mod generate;
 
@@ -148,10 +148,10 @@ impl Chunk {
 
     /// Axis-aligned world-space bounding box `[coord*SIZE, coord*SIZE+SIZE]`.
     #[must_use]
-    pub fn aabb(&self) -> Aabb3d {
+    pub fn aabb(&self) -> Aabbd {
         let lo = self.coord * Self::SIZE;
         let hi = lo + Vec3i::new(Self::SIZE, Self::SIZE, Self::SIZE);
-        Aabb3d::new(
+        Aabbd::new(
             Vec3d::new(f64::from(lo.x), f64::from(lo.y), f64::from(lo.z)),
             Vec3d::new(f64::from(hi.x), f64::from(hi.y), f64::from(hi.z)),
         )

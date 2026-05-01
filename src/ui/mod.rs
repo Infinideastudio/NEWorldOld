@@ -39,25 +39,12 @@ pub mod widgets;
 /// painter after the `rect_filled` call. Used by every menu screen
 /// including the in-game pause menu.
 pub fn show<E: Element>(ctx: &Context, mut root: E) {
-    // Layout the root against the whole screen - same as the content rect
-    // of the CentralPanel we'll show it in.
-    let rect = ctx.content_rect();
-    let _size = root.layout(ctx, Constraint::new(rect.width(), rect.height()));
-
-    let scrim = scrim_color(ctx);
-
-    // CentralPanel::show is the standard top-level entry; show_inside requires an existing Ui we don't have.
-    #[allow(deprecated)]
-    egui::CentralPanel::default()
-        .frame(egui::Frame::default().fill(Color32::TRANSPARENT))
-        .show(ctx, |ui| {
-            let panel_rect = ui.content_rect();
-            // Scrim first — paint into the CentralPanel's own layer so
-            // subsequent widget draws in this same closure land on top
-            // automatically.
-            ui.painter().rect_filled(panel_rect, 0.0, scrim);
-            root.show(ui, Point::new(panel_rect.min.x, panel_rect.min.y));
-        });
+    egui::Area::new(egui::Id::new("root")).show(ctx, |ui| {
+        let rect = ui.content_rect();
+        ui.painter().rect_filled(rect, 0.0, scrim_color(ctx));
+        root.layout(ctx, Constraint::new(rect.width(), rect.height()));
+        root.show(ui, Point::new(rect.min.x, rect.min.y));
+    });
 }
 
 /// Theme-dependent scrim colour. Dark theme → black-alpha (dim toward

@@ -55,8 +55,8 @@ impl<'a> FlexItem<'a> {
         Self {
             child: Box::new(child),
             flex_grow: 0.0,
-            position: Point::ZERO,
-            size: Size::ZERO,
+            position: Point::default(),
+            size: Size::default(),
         }
     }
 
@@ -64,12 +64,16 @@ impl<'a> FlexItem<'a> {
         Self {
             child: Box::new(child),
             flex_grow: grow,
-            position: Point::ZERO,
-            size: Size::ZERO,
+            position: Point::default(),
+            size: Size::default(),
         }
     }
 }
 
+/// Flexible-box container. Hosts heterogeneous children, which can be flexing
+/// or non-flexing. Non-flexing children get an unbounded main-axis constraint
+/// and are laid out first. The remaining main-axis space is then distributed
+/// among the flexing children according to their `flex_grow` values.
 pub struct Flex<'a> {
     pub direction: FlexDirection,
     pub main_size: MainAxisSize,
@@ -132,7 +136,7 @@ impl Element for Flex<'_> {
         let mut sum_main = 0.0_f32;
         let mut max_cross_seen = 0.0_f32;
         let mut sum_grow = 0.0_f32;
-        let mut sizes = vec![Size::ZERO; self.items.len()];
+        let mut sizes = vec![Size::default(); self.items.len()];
 
         // Pass 1: non-flexing children get unbounded main-axis constraint.
         for (i, item) in self.items.iter_mut().enumerate() {

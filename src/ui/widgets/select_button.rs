@@ -24,7 +24,7 @@ impl<'a> SelectButton<'a> {
             selected,
             clicked: None,
             double_clicked: None,
-            size: Size::ZERO,
+            size: Size::default(),
         }
     }
 
@@ -41,7 +41,7 @@ impl<'a> SelectButton<'a> {
 
 impl Element for SelectButton<'_> {
     fn layout(&mut self, _ctx: &Context, c: Constraint) -> Size {
-        self.size = c.into_size();
+        self.size = c.max_size();
         self.size
     }
 

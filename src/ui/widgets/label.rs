@@ -5,13 +5,13 @@
 use std::sync::Arc;
 
 use egui::epaint::text::Galley;
-use egui::{Color32, Context, FontId, Pos2, Ui};
+use egui::{Color32, Context, FontId, Pos2, TextStyle, Ui};
 
-use crate::ui::layout::{Constraint, Element, Point, Size, default_body_font};
+use crate::ui::layout::{Constraint, Element, Point, Size};
 
 pub struct Label<'a> {
     text: &'a str,
-    font_id: Option<FontId>,
+    font: Option<FontId>,
     color: Option<Color32>,
     galley: Option<Arc<Galley>>,
 }
@@ -20,14 +20,14 @@ impl<'a> Label<'a> {
     pub fn new(text: &'a str) -> Self {
         Self {
             text,
-            font_id: None,
+            font: None,
             color: None,
             galley: None,
         }
     }
 
     pub fn font(mut self, id: FontId) -> Self {
-        self.font_id = Some(id);
+        self.font = Some(id);
         self
     }
 
@@ -39,10 +39,7 @@ impl<'a> Label<'a> {
 
 impl<'a> Element for Label<'a> {
     fn layout(&mut self, ctx: &Context, c: Constraint) -> Size {
-        let font = self
-            .font_id
-            .clone()
-            .unwrap_or_else(|| default_body_font(ctx));
+        let font = self.font.clone().unwrap_or_else(|| default_body_font(ctx));
         let color = self
             .color
             .unwrap_or_else(|| ctx.global_style().visuals.text_color());
@@ -65,4 +62,10 @@ impl<'a> Element for Label<'a> {
                 .galley(Pos2::new(origin.x, origin.y), g.clone(), color);
         }
     }
+}
+
+/// Resolve the default body font from the context's global style. Used by
+/// every widget that needs to draw text but doesn't specify a font explicitly.
+fn default_body_font(ctx: &Context) -> FontId {
+    TextStyle::Body.resolve(&ctx.global_style())
 }

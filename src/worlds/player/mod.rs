@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::blocks::{BaseBlocks, BlockRegistry, Id};
 use crate::items::ItemStack;
-use crate::math::{Aabb3d, Eulerd, Vec3d, Vec3i};
+use crate::math::{Aabbd, Eulerd, Vec3d, Vec3i};
 use crate::worlds::world::BlockView;
 
 /// Serde adapter for `Eulerd` (which doesn't derive Serialize / Deserialize
@@ -88,8 +88,8 @@ impl Player {
 
     /// Player hitbox: 0.6 wide, 1.7 tall, centred on the foot x/z.
     #[must_use]
-    pub fn aabb(&self) -> Aabb3d {
-        Aabb3d::new(
+    pub fn aabb(&self) -> Aabbd {
+        Aabbd::new(
             self.coord - Vec3d::new(0.3, 0.0, 0.3),
             self.coord + Vec3d::new(0.3, 1.7, 0.3),
         )
@@ -185,7 +185,9 @@ impl Player {
 
     /// Normalises and clamps pitch to `±π/2` via `Eulerd::normalize_player`.
     pub fn set_orientation(&mut self, value: Eulerd) {
-        self.orientation = value.normalize_player();
+        let half_pi = std::f64::consts::FRAC_PI_2;
+        self.orientation = value.normalize();
+        self.orientation.pitch = self.orientation.pitch.clamp(-half_pi, half_pi);
     }
 
     pub fn set_running(&mut self, value: bool) {
@@ -370,7 +372,7 @@ impl Player {
             f64::from(coord.y + 1),
             f64::from(coord.z + 1),
         );
-        let block_aabb = Aabb3d::new(block_min, block_max);
+        let block_aabb = Aabbd::new(block_min, block_max);
         let placed_solid = registry.get(id).solid;
         let target_solid = registry.get(view.block_or_air(coord).id).solid;
         let player_clear =
@@ -424,10 +426,10 @@ mod tests {
                 ..Default::default()
             }
         }
-        fn hitboxes(&self, _box_: Aabb3d) -> Vec<Aabb3d> {
+        fn hitboxes(&self, _box_: Aabbd) -> Vec<Aabbd> {
             Vec::new()
         }
-        fn in_water(&self, _box_: Aabb3d) -> bool {
+        fn in_water(&self, _box_: Aabbd) -> bool {
             false
         }
     }
@@ -442,10 +444,10 @@ mod tests {
         fn block_or_air(&self, _coord: Vec3i) -> BlockData {
             BlockData::default()
         }
-        fn hitboxes(&self, _box_: Aabb3d) -> Vec<Aabb3d> {
+        fn hitboxes(&self, _box_: Aabbd) -> Vec<Aabbd> {
             Vec::new()
         }
-        fn in_water(&self, _box_: Aabb3d) -> bool {
+        fn in_water(&self, _box_: Aabbd) -> bool {
             false
         }
     }

@@ -171,7 +171,7 @@ where
 mod tests {
     use super::*;
     use crate::blocks::{BlockData, Id, Light, State};
-    use crate::math::Aabb3d;
+    use crate::math::Aabbd;
 
     /// Test view: every cell with `y < 0` is solid (id 1); above is air (id 0).
     struct GroundFloor;
@@ -188,10 +188,10 @@ mod tests {
         fn block_or_air(&self, coord: Vec3i) -> BlockData {
             self.block(coord).unwrap()
         }
-        fn hitboxes(&self, _box_: Aabb3d) -> Vec<Aabb3d> {
+        fn hitboxes(&self, _box_: Aabbd) -> Vec<Aabbd> {
             Vec::new()
         }
-        fn in_water(&self, _box_: Aabb3d) -> bool {
+        fn in_water(&self, _box_: Aabbd) -> bool {
             false
         }
     }
@@ -215,10 +215,10 @@ mod tests {
         fn block_or_air(&self, coord: Vec3i) -> BlockData {
             self.block(coord).unwrap()
         }
-        fn hitboxes(&self, _: Aabb3d) -> Vec<Aabb3d> {
+        fn hitboxes(&self, _: Aabbd) -> Vec<Aabbd> {
             Vec::new()
         }
-        fn in_water(&self, _: Aabb3d) -> bool {
+        fn in_water(&self, _: Aabbd) -> bool {
             false
         }
     }

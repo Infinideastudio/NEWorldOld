@@ -3,32 +3,20 @@
 use cgmath::{BaseFloat, Matrix, Matrix4, Quaternion, Rad, Rotation3, Vector3};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Euler<S> {
-    pub heading: S,
-    pub pitch: S,
-    pub roll: S,
+pub struct Euler<T> {
+    pub heading: T,
+    pub pitch: T,
+    pub roll: T,
 }
 
-impl<S: BaseFloat> Default for Euler<S> {
+impl<T: BaseFloat> Default for Euler<T> {
     fn default() -> Self {
         Self::identity()
     }
 }
 
-impl<S: BaseFloat> Euler<S> {
-    /// Zero rotation. Provided as a constructor (not a `const`) because
-    /// `S::zero()` is a trait method, not a const expression.
-    #[must_use]
-    pub fn identity() -> Self {
-        Self {
-            heading: S::zero(),
-            pitch: S::zero(),
-            roll: S::zero(),
-        }
-    }
-
-    #[must_use]
-    pub fn new(heading: S, pitch: S, roll: S) -> Self {
+impl<T: BaseFloat> Euler<T> {
+    pub fn new(heading: T, pitch: T, roll: T) -> Self {
         Self {
             heading,
             pitch,
@@ -36,11 +24,18 @@ impl<S: BaseFloat> Euler<S> {
         }
     }
 
-    /// Wrap each angle into `[-pi, pi]` (modulo `2*pi`, like the C++ version).
-    #[must_use]
+    pub fn identity() -> Self {
+        Self {
+            heading: T::zero(),
+            pitch: T::zero(),
+            roll: T::zero(),
+        }
+    }
+
+    /// Wrap each angle into `[-pi, pi]`.
     pub fn normalize(self) -> Self {
-        let two_pi = S::from(std::f64::consts::TAU).unwrap();
-        let wrap = |a: S| a - (a / two_pi).round() * two_pi;
+        let two_pi = T::from(std::f64::consts::TAU).unwrap();
+        let wrap = |a: T| a - (a / two_pi).round() * two_pi;
         Self {
             heading: wrap(self.heading),
             pitch: wrap(self.pitch),
@@ -48,65 +43,32 @@ impl<S: BaseFloat> Euler<S> {
         }
     }
 
-    /// Player-orientation clamp: pitch saturates at `+/-pi/2` so the camera
-    /// can't flip past straight up/down. Heading and roll are wrapped.
-    #[must_use]
-    pub fn normalize_player(self) -> Self {
-        let half_pi = S::from(std::f64::consts::FRAC_PI_2).unwrap();
-        let mut n = self.normalize();
-        n.pitch = n.pitch.max(-half_pi).min(half_pi);
-        n
-    }
-
-    /// Forward unit vector. Matches the C++ direction so `direction()` of
-    /// the identity orientation looks down `-Z`.
-    #[must_use]
-    pub fn direction(&self) -> Vector3<S> {
+    /// Forward unit vector. The identity orientation looks north `-Z`.
+    pub fn direction(&self) -> Vector3<T> {
         let (sh, ch) = self.heading.sin_cos();
         let (sp, cp) = self.pitch.sin_cos();
         Vector3::new(-sh * cp, sp, -ch * cp)
     }
 
     /// Body-to-world rotation: roll (Z), then pitch (X), then heading (Y).
-    #[must_use]
-    pub fn matrix(&self) -> Matrix4<S> {
+    pub fn matrix(&self) -> Matrix4<T> {
         let r_roll = Matrix4::from_axis_angle(Vector3::unit_z(), Rad(self.roll));
         let r_pitch = Matrix4::from_axis_angle(Vector3::unit_x(), Rad(self.pitch));
         let r_head = Matrix4::from_axis_angle(Vector3::unit_y(), Rad(self.heading));
         r_head * r_pitch * r_roll
     }
 
-    /// World-to-camera matrix — inverse of `matrix()`. For pure rotations
-    /// the inverse is the transpose, matching the C++ `view_matrix`.
-    #[must_use]
-    pub fn view_matrix(&self) -> Matrix4<S> {
+    /// World-to-camera matrix — inverse of `matrix()`.
+    /// For pure rotations the inverse is the transpose.
+    pub fn view_matrix(&self) -> Matrix4<T> {
         self.matrix().transpose()
     }
 
-    #[must_use]
-    pub fn to_quat(&self) -> Quaternion<S> {
+    pub fn to_quat(&self) -> Quaternion<T> {
         let q_roll = Quaternion::from_axis_angle(Vector3::unit_z(), Rad(self.roll));
         let q_pitch = Quaternion::from_axis_angle(Vector3::unit_x(), Rad(self.pitch));
         let q_head = Quaternion::from_axis_angle(Vector3::unit_y(), Rad(self.heading));
         q_head * q_pitch * q_roll
-    }
-}
-
-impl Euler<f32> {
-    #[must_use]
-    pub fn to_f64(&self) -> Euler<f64> {
-        Euler::new(
-            f64::from(self.heading),
-            f64::from(self.pitch),
-            f64::from(self.roll),
-        )
-    }
-}
-
-impl Euler<f64> {
-    #[must_use]
-    pub fn to_f32(&self) -> Euler<f32> {
-        Euler::new(self.heading as f32, self.pitch as f32, self.roll as f32)
     }
 }
 
@@ -168,12 +130,6 @@ mod tests {
         assert!(e.heading.abs() < PI + 1e-12);
         assert!(e.pitch.abs() < PI + 1e-12);
         assert!((e.roll - 0.5).abs() < 1e-12);
-    }
-
-    #[test]
-    fn normalize_player_clamps_pitch() {
-        let e = Euler::<f64>::new(0.0, PI, 0.0).normalize_player();
-        assert!(e.pitch.abs() <= FRAC_PI_2 + 1e-12);
     }
 
     #[test]

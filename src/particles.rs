@@ -18,7 +18,7 @@
 
 use cgmath::Vector3;
 
-use crate::math::{Aabb3d, Vec3d};
+use crate::math::{Aabbd, Vec3d};
 use crate::worlds::BlockView;
 
 // ----------------------------------------------------------------------
@@ -125,9 +125,9 @@ impl Particle {
 
     /// World-space AABB of this particle.
     #[must_use]
-    pub fn aabb(&self) -> Aabb3d {
+    pub fn aabb(&self) -> Aabbd {
         let half = Vec3d::new(self.extent, self.extent, self.extent);
-        Aabb3d::new(self.coord - half, self.coord + half)
+        Aabbd::new(self.coord - half, self.coord + half)
     }
 }
 
@@ -247,7 +247,7 @@ mod tests {
     use cgmath::Zero;
 
     use crate::blocks::{BlockData, Id, Light, State};
-    use crate::math::{Aabb3d, Vec3d, Vec3i};
+    use crate::math::{Aabbd, Vec3d, Vec3i};
 
     /// A minimal in-memory `BlockView` for unit tests. Reports `solid_floor`
     /// as the only solid block — every cell with `y < 0` is solid, every
@@ -272,7 +272,7 @@ mod tests {
             }
         }
 
-        fn hitboxes(&self, box_: Aabb3d) -> Vec<Aabb3d> {
+        fn hitboxes(&self, box_: Aabbd) -> Vec<Aabbd> {
             // Generate one 1×1×1 hitbox per integer cell with `y < 0` that
             // overlaps `box_`. This mimics what `World::hitboxes` does for a
             // ground-only world.
@@ -289,7 +289,7 @@ mod tests {
                 }
                 for x in lo_x..=hi_x {
                     for z in lo_z..=hi_z {
-                        out.push(Aabb3d::new(
+                        out.push(Aabbd::new(
                             Vec3d::new(f64::from(x), f64::from(y), f64::from(z)),
                             Vec3d::new(f64::from(x + 1), f64::from(y + 1), f64::from(z + 1)),
                         ));
@@ -299,7 +299,7 @@ mod tests {
             out
         }
 
-        fn in_water(&self, _box_: Aabb3d) -> bool {
+        fn in_water(&self, _box_: Aabbd) -> bool {
             false
         }
     }
@@ -326,11 +326,11 @@ mod tests {
             }
         }
 
-        fn hitboxes(&self, _box_: Aabb3d) -> Vec<Aabb3d> {
+        fn hitboxes(&self, _box_: Aabbd) -> Vec<Aabbd> {
             Vec::new()
         }
 
-        fn in_water(&self, _box_: Aabb3d) -> bool {
+        fn in_water(&self, _box_: Aabbd) -> bool {
             false
         }
     }

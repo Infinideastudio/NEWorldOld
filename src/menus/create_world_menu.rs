@@ -115,7 +115,7 @@ impl Screen for CreateWorldScreen {
         }
         body_items.push(FlexItem::new(Sizer::height(
             MENU_ROW_HEIGHT,
-            TextEdit::singleline(&mut self.world_name)
+            TextEdit::new(&mut self.world_name)
                 .hint(placeholder)
                 .submitted(&mut text_submitted),
         )));

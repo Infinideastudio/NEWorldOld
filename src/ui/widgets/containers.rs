@@ -27,8 +27,13 @@ impl Spacer {
         Self { width, height: 0.0 }
     }
 
-    /// Greedy spacer — collapses to whatever the parent gives. Useful as
-    /// the body of a flex-grown FlexItem to push siblings apart.
+    pub fn empty() -> Self {
+        Self {
+            width: 0.0,
+            height: 0.0,
+        }
+    }
+
     pub fn fill() -> Self {
         Self {
             width: f32::INFINITY,
@@ -107,6 +112,16 @@ pub struct Padding<E: Element> {
 }
 
 impl<E: Element> Padding<E> {
+    pub fn new(left: f32, top: f32, right: f32, bottom: f32, child: E) -> Self {
+        Self {
+            left,
+            top,
+            right,
+            bottom,
+            child,
+        }
+    }
+
     pub fn all(p: f32, child: E) -> Self {
         Self {
             left: p,
@@ -156,8 +171,8 @@ impl<E: Element> Aligned<E> {
         Self {
             alignment,
             child,
-            inner: Size::ZERO,
-            outer: Size::ZERO,
+            inner: Size::default(),
+            outer: Size::default(),
         }
     }
 
@@ -168,7 +183,7 @@ impl<E: Element> Aligned<E> {
 
 impl<E: Element> Element for Aligned<E> {
     fn layout(&mut self, ctx: &Context, c: Constraint) -> Size {
-        self.outer = c.into_size();
+        self.outer = c.max_size();
         // Pass the same constraint to the child so it can pick its own
         // natural size up to the limit; we re-position based on the gap.
         self.inner = self.child.layout(ctx, c);
