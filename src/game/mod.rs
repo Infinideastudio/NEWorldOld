@@ -43,7 +43,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use cgmath::{InnerSpace, Matrix4, Point3, SquareMatrix, Vector3};
+use cgmath::{Matrix4, Point3, SquareMatrix, Vector3};
 
 use crate::blocks::{
     BaseBlocks, BlockData, BlockRegistry, FaceMapping, State, register_base_blocks,
@@ -68,14 +68,6 @@ use crate::worlds::{BlockView, GameMode, World, WorldError};
 pub use camera::Camera;
 pub use raycast::{Hit, RAYCAST_MAX};
 
-/// Sky / surface clear color. Matches `chunk.wgsl`'s `SKY_COLOR` so distant
-/// fog blends seamlessly into the cleared background.
-pub const SKY_COLOR: wgpu::Color = wgpu::Color {
-    r: 0.55,
-    g: 0.72,
-    b: 0.92,
-    a: 1.0,
-};
 
 /// Half-extent of the player-collision rejection box used by `try_place`.
 /// Matches the C++ `Player::aabb` x/z half-width — placements that would
@@ -99,15 +91,49 @@ const SPRINT_DOUBLE_TAP_SECS: f64 = 0.5;
 /// C++ formula `MouseSpeed * π / 180 * Δpx` evaluated for a 1° step.
 const MOUSE_LOOK_RAD_PER_PIXEL: f64 = std::f64::consts::PI / 180.0;
 
-/// Default sun direction (normalized at write-time).
-fn default_sun_dir() -> Vector3<f32> {
-    Vector3::new(0.4, 0.8, 0.5).normalize()
+/// Tilt of the sun's daily great circle, in radians, away from the
+/// vertical XY plane. Positive values tilt the noon position toward
+/// `+Z` — a mid-latitude site where the sun rides the southern sky
+/// rather than passing directly overhead. ~20° (`0.35` rad) is a
+/// modest amount that gives noticeable directional shadows without
+/// looking like winter sun.
+const SUN_TILT_RAD: f32 = 0.35;
+
+/// Compute the current sun direction (TO the sun, world space) from
+/// the integer game-tick clock. The sun's daily great circle is the
+/// unit XY circle rotated around the X axis by [`SUN_TILT_RAD`], so:
+///
+/// * tick 0 → sun at `+X` horizon (sunrise),
+/// * mid-day → sun near `+Y` zenith but offset by the tilt toward `+Z`
+///   (mid-latitude "southern sky" position),
+/// * sunset → `-X` horizon,
+/// * midnight → mirrored beneath.
+///
+/// All time-of-day shading scalars (sun radiance ramp, ambient sky
+/// colour, sky-light multiplier for basic mode) are derived from the
+/// `y` component of the returned direction directly in the shaders —
+/// no separate scalars need to ride in `FrameUniforms`.
+///
+/// `game_time` is interpreted modulo [`World::DAY_TICKS`].
+fn time_of_day(game_time: u32) -> Vector3<f32> {
+    let day = crate::worlds::World::DAY_TICKS as f32;
+    let angle = std::f32::consts::TAU * (game_time as f32) / day;
+    // Tilt the great circle around the X (sunrise/sunset) axis so the
+    // sun's noon position sits a bit toward +Z instead of straight
+    // overhead — gives directional shadows that aren't perfectly
+    // axis-aligned with the world grid.
+    let s = angle.sin();
+    Vector3::new(angle.cos(), s * SUN_TILT_RAD.cos(), s * SUN_TILT_RAD.sin())
 }
 
 /// Maximum new mesh jobs to issue per frame. Caps the per-frame CPU spike
 /// when many chunks land at once (e.g. on the first frame, or after a fast
 /// teleport that invalidates everything in the load window).
 const MAX_MESH_DISPATCHES_PER_FRAME: usize = 8;
+
+/// Game-clock step per sim tick while F8 is held. 100× normal speed scrubs
+/// a 20-minute day in ~12 seconds.
+const FAST_FORWARD_TICKS_PER_SIM_TICK: u32 = 100;
 
 /// `sqrt(3)` to f32 precision. Used by `write_frame_uniforms` to scale the
 /// fog distance to the diagonal of the loaded chunk cube. `f32::sqrt` is
@@ -310,17 +336,27 @@ impl Game {
         // frame 1. Meshes follow once load results arrive (see `tick`).
         world.tick_chunk_loading_async();
 
-        let gbuffer = GBuffer::new(device, surface_size.0.max(1), surface_size.1.max(1));
+        // Start in basic G-buffer shape (diffuse + depth only). The
+        // first `apply_shadow_config` call after construction reads the
+        // saved `Config::advanced_render` and switches to the full MRT
+        // shape if needed.
+        let gbuffer = GBuffer::new(
+            device,
+            surface_size.0.max(1),
+            surface_size.1.max(1),
+            false,
+        );
         let shadow_map = ShadowMap::new(device);
         let shadow_pipeline = ShadowPipeline::new(device, frame_uniforms, atlases);
         let debug_shadow_pipeline = DebugShadowPipeline::new(device, surface_format, &shadow_map);
 
-        // Chunk pipeline writes to the G-buffer (3 MRT targets) for the
-        // opaque pass, and forwards translucent chunks to the surface
-        // (`surface_format`) with alpha blending — see `ChunkPipeline`
-        // docs for why translucent can't ride the same Rgba32Float
-        // G-buffer.
-        let chunk_pipeline = ChunkPipeline::new(device, surface_format, frame_uniforms, atlases);
+        // Deferred chunk pipelines for both modes — basic + advanced
+        // share the vertex format / bind groups, only fragment entry +
+        // color targets differ. Always built; the right pair is bound
+        // each frame based on `advanced_render`. Takes the gbuffer
+        // because translucent pipelines bind opaque depth as a sampled
+        // texture for shader-side discard.
+        let chunk_pipeline = ChunkPipeline::new(device, frame_uniforms, atlases, &gbuffer);
         // Composition features start fully off — `apply_shadow_config`
         // pushes the live `Config` values on the first frame and rebuilds
         // the pipeline if any flag is on.
@@ -401,7 +437,7 @@ impl Game {
             particle_pipeline,
             selection_pipeline,
             underwater_pipeline,
-            sun_dir: default_sun_dir(),
+            sun_dir: time_of_day(0),
             selected: None,
             mesh_worker,
             meshing_in_flight: HashSet::new(),
@@ -439,7 +475,6 @@ impl Game {
             && self.mesh_options.merge_face == desired.merge_face
             && self.mesh_options.nice_grass == desired.nice_grass
             && self.mesh_options.grass_id == desired.grass_id
-            && self.mesh_options.advanced_render == desired.advanced_render
         {
             return;
         }
@@ -447,7 +482,6 @@ impl Game {
             smooth_lighting = desired.smooth_lighting,
             merge_face = desired.merge_face,
             nice_grass = desired.nice_grass,
-            advanced_render = desired.advanced_render,
             "mesh options changed; rebuilding all chunk meshes"
         );
         self.mesh_options = desired;
@@ -621,6 +655,14 @@ impl Game {
             // count) but skipped while paused so a frozen world stays
             // visually frozen.
             self.world.random_tick();
+            // Advance the in-game clock. F8 (held) multiplies the
+            // per-tick step so the user can scrub day/night quickly.
+            let step = if input.is_key_down(Key::F8) {
+                FAST_FORWARD_TICKS_PER_SIM_TICK
+            } else {
+                1
+            };
+            self.world.advance_game_time(step);
             // No drain into a separate dirty queue — `pump_meshing` walks
             // `World::drain_updated_chunks` directly each frame and
             // clears flags only on the chunks it actually meshed.
@@ -825,12 +867,16 @@ impl Game {
         }
     }
 
-    /// React to a window resize: recreate every G-buffer attachment and
-    /// rebuild the composition bind group so it points at the fresh views.
+    /// React to a window resize: recreate every G-buffer attachment
+    /// and rebuild the composition + chunk-pipeline bind groups that
+    /// reference the fresh views (composition reads both layers; the
+    /// translucent chunk pipeline samples opaque depth).
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         self.gbuffer.resize(device, width.max(1), height.max(1));
         self.composition_pipeline
-            .rebuild_gbuffer_bind_group(device, &self.gbuffer);
+            .rebuild_gbuffer_bind_groups(device, &self.gbuffer);
+        self.chunk_pipeline
+            .rebuild_opaque_depth_bind_group(device, &self.gbuffer);
     }
 
     /// Reconcile the shadow-map resolution + enable flag with `Config`.
@@ -875,6 +921,20 @@ impl Game {
         };
         self.composition_pipeline
             .rebuild_with_features(device, comp_features);
+        // Toggle the G-buffer between basic (diffuse + depth) and
+        // advanced (full MRT) shapes. Idempotent when the mode hasn't
+        // changed; reallocates the optional normal/material attachments
+        // and rebuilds the composition's gbuffer bind groups otherwise.
+        let mode_changed = self.gbuffer.is_advanced() != advanced_render;
+        if mode_changed {
+            self.gbuffer.set_advanced(device, advanced_render);
+            self.composition_pipeline
+                .rebuild_gbuffer_bind_groups(device, &self.gbuffer);
+            // Translucent chunk pipeline samples opaque depth; the
+            // gbuffer reallocation replaced the underlying texture.
+            self.chunk_pipeline
+                .rebuild_opaque_depth_bind_group(device, &self.gbuffer);
+        }
         self.advanced_render = advanced_render;
         // Force-clear the debug overlay when shadows are off so a stale
         // toggle doesn't paint the placeholder 1×1 texture into the
@@ -903,7 +963,7 @@ impl Game {
             // (composition + the F3+M debug overlay) so they sample the
             // fresh view, not a dropped one.
             self.composition_pipeline
-                .rebuild_aux_bind_group(device, &self.shadow_map, atlases);
+                .rebuild_advanced_aux_bind_group(device, &self.shadow_map, atlases);
             self.debug_shadow_pipeline
                 .rebuild_shadow_bind_group(device, &self.shadow_map);
             tracing::info!(resolution = want_res, advanced_render, "shadow map resized");
@@ -1010,6 +1070,11 @@ impl Game {
         // `rendering.ixx::229` modulo that delta. Skipped (identity) when
         // shadows are off so the value is at least invertible if anything
         // tries to inverse-project it.
+        // Refresh the cached sun direction + sky-light multiplier from
+        // the in-game clock. Stored on `Game` so the shadow matrix and
+        // the uniform write below see the same vector.
+        self.sun_dir = time_of_day(self.world.game_time());
+
         let shadow_view_proj = if self.advanced_render {
             let length = (self.shadow_distance_chunks as f32) * (Chunk::SIZE as f32);
             shadow_matrix(self.camera.position, self.sun_dir, length)
@@ -1063,51 +1128,71 @@ impl Game {
         } else {
             [0.0, 0.0, 0.8, inside_water_flag]
         };
+        // Atlas-layer indices for materials composition needs to detect
+        // per-pixel — currently water (slot 0) and ice (slot 1). The
+        // chunk shader writes the per-face atlas layer to the
+        // G-buffer's material attachment, so composition can compare
+        // these against `material` to apply screen-space reflection
+        // on water / ice without per-block-id constants in the
+        // shader. `face(0)` is the surface (top) face's texture index
+        // — water/ice use the same texture across all faces.
+        let water_layer = u32::from(self.registry.get(self.base_blocks.water).face(0).0);
+        let ice_layer = u32::from(self.registry.get(self.base_blocks.ice).face(0).0);
+        u.material_layers = [water_layer, ice_layer, 0, 0];
         u.player_coord_int = coord_int;
         u.player_coord_mod = coord_mod;
         u.player_coord_frac = coord_frac;
         frame_uniforms.write(queue, &u);
     }
 
-    /// Advanced-mode pre-overlay path: sun-POV shadow → G-buffer MRT →
-    /// composition into the surface. Mirrors C++ `AdvancedRender == true`
-    /// in `rendering.ixx` — shadow pass populates the depth atlas, the
-    /// chunk pipeline writes per-pixel albedo / normal / material into
-    /// the G-buffer, the composition pipeline samples them and emits
-    /// the lit surface color.
-    fn record_advanced_pre_overlay(
+    /// Unified deferred pre-overlay path for both basic and advanced
+    /// modes:
+    ///
+    /// 1. (advanced only) shadow pass populates the sun-POV depth atlas.
+    /// 2. Opaque G-buffer pass — clears the gbuffer (1 color target in
+    ///    basic mode, 3 in advanced) + depth, then dispatches the
+    ///    mode-specific opaque chunk pipeline.
+    /// 3. Translucent G-buffer pass — loads the gbuffer and alpha-blends
+    ///    water / ice / leaves into the diffuse target via the
+    ///    mode-specific translucent chunk pipeline; depth-writes the
+    ///    water surface so SSR raymarches in advanced mode find it.
+    /// 4. Composition pass — manually blends the two layers (front-most
+    ///    translucent over opaque, sky behind any missing layer).
+    ///    Basic copies linearly + tonemaps the sky; advanced runs full
+    ///    lambert + shadow PCF + ambient + emissive + ACES on each
+    ///    layer.
+    ///
+    /// All four steps run in both modes; the only branches are the
+    /// shadow skip in basic mode and the per-pipeline mode flag.
+    fn record_pre_overlay(
         &self,
         encoder: &mut wgpu::CommandEncoder,
         color_view: &wgpu::TextureView,
         camera_visible: &[&ChunkMesh],
         shadow_visible: &[&ChunkMesh],
     ) {
-        // ---- 0. Shadow pass (sun-POV depth atlas) ----
-        self.shadow_pipeline
-            .record(encoder, &self.shadow_map, shadow_visible.iter().copied());
+        let advanced = self.advanced_render;
+        let clear_color = wgpu::Color::TRANSPARENT;
 
-        // ---- 1. G-buffer pass (chunk MRT) ----
-        // Clear all three color targets to zero on entry. The composition
-        // pass uses material == 0 as "no fragment / sky", so the cleared
-        // areas naturally fall through to the gradient sky.
-        let clear_color = wgpu::Color {
-            r: 0.0,
-            g: 0.0,
-            b: 0.0,
-            a: 0.0,
-        };
-        let gbuffer_color = self
-            .gbuffer
-            .color_attachments(wgpu::LoadOp::Clear(clear_color), wgpu::StoreOp::Store);
+        // ---- 0. Shadow pass (advanced only) ----
+        if advanced {
+            self.shadow_pipeline
+                .record(encoder, &self.shadow_map, shadow_visible.iter().copied());
+        }
+
+        // ---- 1. Opaque G-buffer pass — opaque layer attachments + opaque depth.
         {
+            let opaque_color = self
+                .gbuffer
+                .opaque
+                .color_attachments(wgpu::LoadOp::Clear(clear_color), wgpu::StoreOp::Store);
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("game.gbuffer_pass"),
-                color_attachments: &gbuffer_color,
+                label: Some("game.gbuffer_opaque_pass"),
+                color_attachments: &opaque_color,
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: self.gbuffer.depth_view(),
+                    view: self.gbuffer.opaque_depth_view(),
                     depth_ops: Some(wgpu::Operations {
-                        // Reversed-Z: clear to 0.0 (= "far plane"); the
-                        // chunk pipelines use `CompareFunction::Greater`.
+                        // Reversed-Z far-plane clear.
                         load: wgpu::LoadOp::Clear(0.0),
                         store: wgpu::StoreOp::Store,
                     }),
@@ -1117,30 +1202,30 @@ impl Game {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-
-            self.chunk_pipeline.begin_opaque(&mut pass);
+            self.chunk_pipeline.begin_opaque(&mut pass, advanced);
             for cm in camera_visible {
                 cm.draw_opaque(&mut pass);
             }
         }
 
-        // ---- 1b. Translucent G-buffer pass ----
-        // Loads the G-buffer attachments (no clear) and alpha-blends
-        // water / ice / leaves into the existing opaque diffuse. Mirrors
-        // C++ where the deferred translucent pass writes into the same
-        // MRT with `glEnable(GL_BLEND)`. Depth-writes water surface so
-        // composition's SSR raymarch can find opaque geometry behind it.
-        let gbuffer_color_load = self
-            .gbuffer
-            .color_attachments(wgpu::LoadOp::Load, wgpu::StoreOp::Store);
+        // ---- 2. Translucent G-buffer pass — translucent layer
+        // attachments + translucent depth (its own buffer, cleared
+        // each frame so the front-most translucent fragment wins).
+        // The fragment shader additionally samples the opaque depth
+        // (bound as group 2 in the chunk pipeline) and discards
+        // fragments behind opaque.
         {
+            let translucent_color = self
+                .gbuffer
+                .translucent
+                .color_attachments(wgpu::LoadOp::Clear(clear_color), wgpu::StoreOp::Store);
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("game.translucent_gbuffer_pass"),
-                color_attachments: &gbuffer_color_load,
+                label: Some("game.gbuffer_translucent_pass"),
+                color_attachments: &translucent_color,
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: self.gbuffer.depth_view(),
+                    view: self.gbuffer.translucent_depth_view(),
                     depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
+                        load: wgpu::LoadOp::Clear(0.0),
                         store: wgpu::StoreOp::Store,
                     }),
                     stencil_ops: None,
@@ -1149,13 +1234,13 @@ impl Game {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            self.chunk_pipeline.begin_translucent_gbuffer(&mut pass);
+            self.chunk_pipeline.begin_translucent(&mut pass, advanced);
             for cm in camera_visible {
                 cm.draw_translucent(&mut pass);
             }
         }
 
-        // ---- 2. Composition pass (G-buffer → surface) ----
+        // ---- 3. Composition pass (G-buffer → surface) ----
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("game.composition_pass"),
@@ -1164,12 +1249,10 @@ impl Game {
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        // Composition writes every pixel via its full-screen
-                        // quad, but we still clear so pixels outside the
-                        // viewport (after a fullscreen resize race) don't
-                        // show garbage. The sky color matches the App's
-                        // menu-clear color — far chunks fade into it.
-                        load: wgpu::LoadOp::Clear(SKY_COLOR),
+                        // Composition writes every pixel; clear to
+                        // transparent black as a safety net for
+                        // fullscreen-resize races.
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -1178,75 +1261,16 @@ impl Game {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            self.composition_pipeline.record(&mut pass);
-        }
-    }
-
-    /// Basic-mode pre-overlay path: a single forward opaque pass that
-    /// writes the surface AND the G-buffer's depth attachment. The
-    /// shadow pass is skipped (no shadow map data), the G-buffer's
-    /// color targets are skipped (composition isn't run), and the
-    /// composition pass is skipped entirely. Mirrors C++
-    /// `AdvancedRender == false` — `DefaultShader` writes diffuse-lit
-    /// fragments straight to the swapchain via `default.fsh`.
-    ///
-    /// The depth attachment is the same `gbuffer.depth_view()` the
-    /// forward overlay pass reads from, so particles / selection /
-    /// underwater all depth-test against the basic-mode opaque world
-    /// without any extra plumbing.
-    fn record_basic_pre_overlay(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        color_view: &wgpu::TextureView,
-        camera_visible: &[&ChunkMesh],
-    ) {
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("game.basic_opaque_pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: color_view,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    // Sky-color clear — matches the C++ basic-mode pass
-                    // which clears the swapchain color before drawing.
-                    load: wgpu::LoadOp::Clear(SKY_COLOR),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: self.gbuffer.depth_view(),
-                depth_ops: Some(wgpu::Operations {
-                    // Reversed-Z far-plane clear; shared with the forward
-                    // overlay pass which loads (not clears) the same view.
-                    load: wgpu::LoadOp::Clear(0.0),
-                    store: wgpu::StoreOp::Store,
-                }),
-                stencil_ops: None,
-            }),
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
-
-        self.chunk_pipeline.begin_opaque_forward(&mut pass);
-        for cm in camera_visible {
-            cm.draw_opaque(&mut pass);
+            self.composition_pipeline.record(&mut pass, advanced);
         }
     }
 
     /// Record the world render into `encoder`, writing into `color_view`.
-    /// Branches on [`Self::advanced_render`]:
-    ///
-    /// * Advanced — shadow pass, then opaque G-buffer pass, then
-    ///   composition pass, then the shared forward overlay pass.
-    /// * Basic — a single forward opaque pass, then the shared forward
-    ///   overlay pass. No shadow / G-buffer / composition.
-    ///
-    /// Both paths leave `gbuffer.depth_view()` populated with reversed-Z
-    /// world depth, so the forward overlay pass (particles / selection /
-    /// underwater / translucent) reads from the same attachment in
-    /// either mode. The egui pass that follows in `App::frame` lays UI
-    /// on top of the surface.
+    /// Both modes follow the same shape: optional shadow pass + opaque
+    /// G-buffer + translucent G-buffer + composition + forward
+    /// overlays. Mode differences live entirely in the mode-aware
+    /// pipelines and the gbuffer's attachment count — see
+    /// [`Self::record_pre_overlay`].
     pub fn record_world_pass(
         &mut self,
         device: &wgpu::Device,
@@ -1335,11 +1359,7 @@ impl Game {
         // populated and the G-buffer depth attachment populated. The
         // forward overlay pass below loads from both regardless of which
         // path ran, so the rest of the function is shared.
-        if self.advanced_render {
-            self.record_advanced_pre_overlay(encoder, color_view, &camera_visible, &shadow_visible);
-        } else {
-            self.record_basic_pre_overlay(encoder, color_view, &camera_visible);
-        }
+        self.record_pre_overlay(encoder, color_view, &camera_visible, &shadow_visible);
 
         // ---- Forward overlays (particles / selection / underwater) ----
         {
@@ -1354,12 +1374,15 @@ impl Game {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                // Re-attach the G-buffer depth so particles + selection
-                // depth-test against world geometry. Depth is loaded (not
-                // cleared) — same buffer the chunk pass just populated.
-                // No depth-write here; everything reads.
+                // Re-attach the opaque-layer G-buffer depth so
+                // particles + selection depth-test against world
+                // geometry. Depth is loaded (not cleared) — same
+                // buffer the opaque chunk pass just populated. No
+                // depth-write here; everything reads. The translucent
+                // depth attachment isn't used by overlays — water
+                // shouldn't occlude particles / selection.
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: self.gbuffer.depth_view(),
+                    view: self.gbuffer.opaque_depth_view(),
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
@@ -1371,18 +1394,11 @@ impl Game {
                 multiview_mask: None,
             });
 
-            // Translucent chunks (water, leaves, glass, ice) — forward
-            // pass with `SrcAlpha / OneMinusSrcAlpha` blending, but ONLY
-            // in basic rendering mode. Advanced mode runs translucent
-            // through its own G-buffer pass before composition so the
-            // SSR raymarch can detect water material; rendering them a
-            // second time here would double-darken the surface.
-            if !self.advanced_render {
-                self.chunk_pipeline.begin_translucent_forward(&mut pass);
-                for cm in &camera_visible {
-                    cm.draw_translucent(&mut pass);
-                }
-            }
+            // Translucent chunks now go through the deferred path in
+            // both modes — they were drawn by the chunk-translucent
+            // pipeline into the G-buffer's diffuse, and the composition
+            // pass already presented the blended result to the surface.
+            // No forward translucent overlay required.
 
             self.particle_pipeline
                 .render(&mut pass, &self.particle_mesh);

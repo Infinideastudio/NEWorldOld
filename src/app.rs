@@ -216,7 +216,6 @@ impl App {
                 merge_face: cfg.merge_face,
                 nice_grass: cfg.nice_grass,
                 grass_id: state.base_blocks.grass,
-                advanced_render: cfg.advanced_render,
             });
             // Shadow toggle + resolution + composition feature flags.
             // Resizes the shadow map (and rebuilds composition's aux

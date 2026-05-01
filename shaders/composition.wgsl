@@ -1,37 +1,50 @@
-// Advanced-mode deferred composition pass — port of `final.fsh`.
+// Deferred composition pass — reads the two-layer G-buffer (opaque +
+// translucent) and writes the surface.
 //
-// Reads the G-buffer, applies sun lambert + ambient with optional SSAO
-// and shadow PCF, blends through distance fog into a directional sky
-// tint, optionally raymarches volumetric clouds, and tonemaps with ACES.
+// Both fragment entries (`fs_main_basic` and `fs_main_advanced`) sample
+// both layers and manually compose: front-most translucent over
+// shaded opaque over sky. Translucent's own depth attachment kept the
+// front-most translucent fragment; the chunk shader's "discard if
+// behind opaque" guard ensures translucent.depth > 0 only where the
+// translucent fragment is in front of opaque (or where there is no
+// opaque). Composition therefore reduces to:
 //
-// Optional features (selected at pipeline-creation time via WGSL
-// `override` constants — naga folds the constants and DCEs disabled
-// branches, same zero-cost-when-off semantics as C++ `#ifdef`):
+//   if neither layer drew → sky
+//   else if only opaque   → opaque shaded
+//   else if only translucent → translucent shaded over sky
+//   else                   → translucent shaded over opaque shaded
+//
+// Optional advanced features (selected at pipeline-creation time via
+// WGSL `override` constants — naga folds the values and DCEs disabled
+// branches, so an off feature has ~zero runtime cost):
 //   * `soft_shadow`       — full-precision shadow coord vs. 32-unit
-//                           grid-snapped (the C++ default for hard
-//                           shadows). Mirrors `SOFT_SHADOW`.
+//                           grid-snapped (the default for hard shadows).
 //   * `volumetric_clouds` — 32-iteration cloud raymarch with sun
-//                           scattering. Mirrors `VOLUMETRIC_CLOUDS`.
-//   * `ambient_occlusion` — 16-sample screen-space SSAO. Mirrors
-//                           `AMBIENT_OCCLUSION`.
+//                           scattering.
+//   * `ambient_occlusion` — 16-sample screen-space SSAO.
 //
-// Skipped vs. the C++ reference (deferred):
-//   * Water SSR + wave normals — water alpha-blends in our forward
-//     overlay pass and never enters the G-buffer, so the C++ SSR block
-//     in `main()` has no equivalent to translate yet.
-//   * Cook-Torrance BRDF — the G-buffer doesn't carry metallic /
-//     roughness; collapses to Lambert + ambient.
+// Bind groups (advanced):
+//   group 0 binding 0 : FrameUniforms                    (uniform buffer)
+//   group 1           : opaque G-buffer
+//     binding 0       : g_o_diffuse  : texture_2d<f32>     (Rgba16Float)
+//     binding 1       : g_o_normal   : texture_2d<f32>     (Rg8Unorm — octahedral)
+//     binding 2       : g_o_material : texture_2d<u32>     (R16Uint — atlas layer)
+//     binding 3       : g_o_depth    : texture_depth_2d    (Depth32Float)
+//   group 2           : translucent G-buffer (same layout as opaque)
+//     binding 0       : g_t_diffuse  : texture_2d<f32>
+//     binding 1       : g_t_normal   : texture_2d<f32>
+//     binding 2       : g_t_material : texture_2d<u32>
+//     binding 3       : g_t_depth    : texture_depth_2d
+//   group 3           : aux (advanced only)
+//     binding 0       : shadow_texture : texture_depth_2d
+//     binding 1       : shadow_sampler : sampler_comparison
+//     binding 2       : noise_texture  : texture_2d<f32>
+//     binding 3       : noise_sampler  : sampler
 //
-// Bind groups:
-//   group 0 binding 0 : FrameUniforms                   (uniform buffer)
-//   group 1 binding 0 : g_diffuse  : texture_2d<f32>    (Rgba32Float — pre-lit albedo)
-//   group 1 binding 1 : g_normal   : texture_2d<f32>    (Rgba8Unorm — encoded normal)
-//   group 1 binding 2 : g_material : texture_2d<f32>    (Rgba8Unorm — R/G hold u16 block id)
-//   group 1 binding 3 : g_depth    : texture_depth_2d   (Depth32Float — reversed-Z)
-//   group 2 binding 0 : shadow_texture : texture_depth_2d
-//   group 2 binding 1 : shadow_sampler : sampler_comparison (GreaterEqual)
-//   group 2 binding 2 : noise_texture  : texture_2d<f32>
-//   group 2 binding 3 : noise_sampler  : sampler
+// Bind groups (basic): same group 1 / group 2 layouts but only
+// `binding 0` and `binding 3` per group (diffuse + depth) are
+// declared in the host-side bind-group layout — `fs_main_basic`
+// references only those.
 
 struct FrameUniforms {
     view: mat4x4<f32>,
@@ -47,6 +60,7 @@ struct FrameUniforms {
     fog_end: f32,
     render_distance: f32,
     _pad_scalars: vec2<f32>,
+    material_layers: vec4<u32>,
     shadow_params: vec4<f32>,
     player_coord_int: vec4<i32>,
     player_coord_mod: vec4<i32>,
@@ -56,72 +70,69 @@ struct FrameUniforms {
 @group(0) @binding(0)
 var<uniform> frame: FrameUniforms;
 
+// --- group 1 : opaque layer ---
 @group(1) @binding(0)
-var g_diffuse: texture_2d<f32>;
+var g_o_diffuse: texture_2d<f32>;
 @group(1) @binding(1)
-var g_normal: texture_2d<f32>;
+var g_o_normal: texture_2d<f32>;
 @group(1) @binding(2)
-var g_material: texture_2d<f32>;
+var g_o_material: texture_2d<u32>;
 @group(1) @binding(3)
-var g_depth: texture_depth_2d;
+var g_o_depth: texture_depth_2d;
 
+// --- group 2 : translucent layer ---
 @group(2) @binding(0)
-var shadow_texture: texture_depth_2d;
+var g_t_diffuse: texture_2d<f32>;
 @group(2) @binding(1)
-var shadow_sampler: sampler_comparison;
+var g_t_normal: texture_2d<f32>;
 @group(2) @binding(2)
-var noise_texture: texture_2d<f32>;
+var g_t_material: texture_2d<u32>;
 @group(2) @binding(3)
+var g_t_depth: texture_depth_2d;
+
+// --- group 3 : advanced aux ---
+@group(3) @binding(0)
+var shadow_texture: texture_depth_2d;
+@group(3) @binding(1)
+var shadow_sampler: sampler_comparison;
+@group(3) @binding(2)
+var noise_texture: texture_2d<f32>;
+@group(3) @binding(3)
 var noise_sampler: sampler;
 
-// ---- pipeline-creation feature flags ----
-//
-// Set via `wgpu::PipelineCompilationOptions::constants` when building
-// the composition pipeline. naga folds these and dead-code-strips the
-// disabled branches, so the cost of an off feature is ~zero at runtime.
 override soft_shadow: bool = false;
 override volumetric_clouds: bool = false;
 override ambient_occlusion: bool = false;
 
 const PI: f32 = 3.141593;
 
-// Sky tint constants — port of C++ `final.fsh::get_sky_color`.
-const SKY_HIGH: vec3<f32> = vec3<f32>(0.3, 0.5, 1.2);
-const SKY_LOW: vec3<f32> = vec3<f32>(1.2, 1.6, 2.0);
+// Time-of-day sky palette — three keyframes (day, dusk, night). See
+// `sky_palette()` for the elevation lerp.
+const DAY_HIGH: vec3<f32> = vec3<f32>(0.3, 0.5, 1.2);
+const DAY_LOW: vec3<f32> = vec3<f32>(1.2, 1.6, 2.0);
+const DUSK_HIGH: vec3<f32> = vec3<f32>(0.25, 0.18, 0.45);
+const DUSK_LOW: vec3<f32> = vec3<f32>(2.4, 1.0, 0.35);
+const NIGHT_HIGH: vec3<f32> = vec3<f32>(0.015, 0.025, 0.06);
+const NIGHT_LOW: vec3<f32> = vec3<f32>(0.04, 0.06, 0.12);
 const SUN_RADIANCE: vec3<f32> = vec3<f32>(7.0, 6.0, 5.8);
-// = vec3(3.5, 3.0, 2.9) * 2.0
-const AMBIENT_RADIANCE: vec3<f32> = vec3<f32>(0.18, 0.25, 0.5);
 const EXPOSURE: f32 = 0.6;
 
-// Shadow constants.
-const SHADOW_UNITS: f32 = 32.0;
+// Warm white for emissive (block-light) sources.
+const BLOCK_LIGHT_TINT: vec3<f32> = vec3<f32>(1.0, 0.85, 0.65);
 
-// SSAO constants — match C++ `final.fsh`.
+const SHADOW_UNITS: f32 = 32.0;
 const SSAO_RADIUS: f32 = 1.0;
 const SSAO_SAMPLES: i32 = 16;
 
-// Reflective material ids — must match `BaseBlocks` registration order
-// in `src/blocks.rs::register_base_blocks`. C++ pins these in
-// `final.fsh` lines 38–39 with the same numeric values.
-const WATER_ID: u32 = 21u;
-const ICE_ID: u32 = 26u;
-const IRON_ID: u32 = 28u;
-
-// SSR raymarch constants — match C++ `final.fsh`.
-const REFL_ITERATIONS: i32 = 32;
-const REFL_STEP_SCALE: f32 = 2.0 / 32.0;
-
-// Water wave constants — match C++ `final.fsh`.
+// Water wave constants — direct port of `final.fsh`.
 const WAVE_OCTAVES: i32 = 7;
 const WAVE_LEVEL: f32 = - 0.5;
 const WAVE_SCALE: f32 = 0.01;
 const WAVE_MIN_LENGTH: f32 = 4.0;
 const WAVE_MAX_LENGTH: f32 = 12.0;
 const WAVE_DIRECTION_RANGE: f32 = 0.1;
-// Gravity (m/s²) — drives the dispersion relation `c = sqrt(g/k)`.
 const WAVE_GRAVITY: f32 = 9.81;
 
-// Volumetric cloud constants — match C++ `final.fsh`.
 const NOISE_TEXTURE_SIZE: f32 = 128.0;
 const NOISE_TEXTURE_OFFSET: vec2<f32> = vec2<f32>(37.0, 17.0);
 const CLOUD_SCALE: vec3<f32> = vec3<f32>(100.0, 80.0, 100.0);
@@ -136,7 +147,6 @@ struct VsOut {
     @location(0) uv: vec2<f32>,
 }
 
-// Full-screen triangle / quad — six vertices over two triangles.
 @vertex
 fn vs_main(@builtin(vertex_index) vid: u32) -> VsOut {
     let positions = array<vec2<f32>, 6>(vec2<f32>(- 1.0, - 1.0), vec2<f32>(1.0, - 1.0), vec2<f32>(1.0, 1.0), vec2<f32>(- 1.0, - 1.0), vec2<f32>(1.0, 1.0), vec2<f32>(- 1.0, 1.0),);
@@ -147,27 +157,96 @@ fn vs_main(@builtin(vertex_index) vid: u32) -> VsOut {
     return out;
 }
 
-// ---- helpers shared by every path ----
+// ---- shared helpers ----
 
-fn decode_u16(v: vec2<f32>) -> u32 {
-    let hi = u32(v.x * 255.0 + 0.5);
-    let lo = u32(v.y * 255.0 + 0.5);
-    return hi * 256u + lo;
-}
-
-// Hash → `[0, 1)` pseudo-random scalar. Direct port of C++ `rand`.
 fn rand2(v: vec2<f32>) -> f32 {
     return fract(sin(dot(v, vec2<f32>(12.9898, 78.233))) * 43758.5453);
 }
 
-// Distance from `uv` to the nearest screen edge in `[0, 0.5]`. Used by
-// SSAO / SSR to mask out artifacts at viewport boundaries.
 fn distance_to_edge(uv: vec2<f32>) -> f32 {
     return min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
 }
 
-// Directional sky colour. C++ `frame.sun_dir` would be the direction
-// rays travel; our `frame.sun_dir` points TO the sun, hence no negation.
+fn reconstruct_view_relative(uv: vec2<f32>, depth: f32) -> vec3<f32> {
+    let ndc = vec3<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, depth);
+    let h = frame.inv_view_proj * vec4<f32>(ndc, 1.0);
+    let world_pos = h.xyz / h.w;
+    return world_pos - frame.camera_pos.xyz;
+}
+
+// Octahedral decode — inverse of `oct_encode_unorm` in chunk.wgsl.
+fn oct_decode(stored: vec2<f32>) -> vec3<f32> {
+    let p = stored * 2.0 - vec2<f32>(1.0);
+    var n = vec3<f32>(p.x, p.y, 1.0 - abs(p.x) - abs(p.y));
+    if (n.z < 0.0) {
+        let s = vec2<f32>(select(- 1.0, 1.0, n.x >= 0.0), select(- 1.0, 1.0, n.y >= 0.0));
+        let v = (1.0 - abs(vec2<f32>(n.y, n.x))) * s;
+        n.x = v.x;
+        n.y = v.y;
+    }
+    return normalize(n);
+}
+
+// ---- sky ----
+
+struct SkyPalette {
+    high: vec3<f32>,
+    low: vec3<f32>,
+}
+
+fn sky_palette() -> SkyPalette {
+    let elevation = frame.sun_dir.y;
+    var p: SkyPalette;
+    if (elevation >= 0.3) {
+        p.high = DAY_HIGH;
+        p.low = DAY_LOW;
+    }
+    else if (elevation >= 0.0) {
+        let t = elevation / 0.3;
+        p.high = mix(DUSK_HIGH, DAY_HIGH, t);
+        p.low = mix(DUSK_LOW, DAY_LOW, t);
+    }
+    else if (elevation >= - 0.2) {
+        let t = (elevation + 0.2) / 0.2;
+        p.high = mix(NIGHT_HIGH, DUSK_HIGH, t);
+        p.low = mix(NIGHT_LOW, DUSK_LOW, t);
+    }
+    else {
+        p.high = NIGHT_HIGH;
+        p.low = NIGHT_LOW;
+    }
+    return p;
+}
+
+fn sky_gradient_color(dir: vec3<f32>) -> vec3<f32> {
+    let nd = normalize(dir);
+    let p = sky_palette();
+    return mix(p.low, p.high, smoothstep(0.0, 1.0, nd.y * 2.0));
+}
+
+// Time-of-day scalars used by the lambert / ambient / cloud paths.
+//
+// * `sun_radiance` — `SUN_RADIANCE` ramped by sun elevation through
+//   a thin smoothstep band centred on `sun_dir.y == 0`. Direct
+//   sunlight is "all or nothing": once the sun is up surfaces
+//   receive the full irradiance regardless of elevation; the
+//   smoothstep just avoids a hard cutoff that would pop at sunrise
+//   / sunset.
+// * `ambient_radiance` — the world's diffuse skylight, derived from
+//   the current sky palette so it transitions in lockstep with the
+//   day → dusk → night sky colour. Returns `sky_palette().high *
+//   0.75` — three-quarters of the zenith colour. At dusk it warms;
+//   at night it sinks to the night palette's zenith × 0.75 so
+//   caves stay faintly tinted instead of going black.
+
+fn sun_radiance() -> vec3<f32> {
+    return smoothstep(- 0.2, 0.2, frame.sun_dir.y) * SUN_RADIANCE;
+}
+
+fn ambient_radiance() -> vec3<f32> {
+    return sky_palette().high * 0.75;
+}
+
 fn get_sky_color(dir: vec3<f32>) -> vec3<f32> {
     let nd = normalize(dir);
     let to_sun = normalize(frame.sun_dir.xyz);
@@ -177,28 +256,46 @@ fn get_sky_color(dir: vec3<f32>) -> vec3<f32> {
     if (abs(local.x) < 0.03 && abs(local.y) < 0.03 && local.z > 0.0) {
         return SUN_RADIANCE;
     }
-    return mix(SKY_LOW, SKY_HIGH, smoothstep(0.0, 1.0, nd.y * 2.0));
+    return sky_gradient_color(nd);
 }
 
-// Reconstruct the camera-relative world-space position from a UV + the
-// G-buffer depth at that pixel. wgpu NDC y has +Y up, but our `uv`
-// follows texture-space (+Y down), so we flip.
-//
-// `view_proj = proj * view_matrix` (camera-to-origin), so the inverse
-// gives ABSOLUTE world position; subtract `camera_pos` to land in
-// camera-relative space, which is what the lambert / fog / shadow math
-// wants.
-fn reconstruct_view_relative(uv: vec2<f32>, depth: f32) -> vec3<f32> {
-    let ndc = vec3<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, depth);
-    let h = frame.inv_view_proj * vec4<f32>(ndc, 1.0);
-    let world_pos = h.xyz / h.w;
-    return world_pos - frame.camera_pos.xyz;
+// ---- water wave normals ----
+
+// 7-octave Gerstner-wave perturbation — direct port of
+// `final.fsh::calc_wave_normal`. Three-tap height pattern (`hs.x`,
+// `hs.y`, `hs.z`) samples three points around `pos.xz` to recover
+// ∂h/∂x and ∂h/∂z by finite difference, then crosses them to get
+// the normal. The fixed-point iteration solves the parametric →
+// height mapping for each Gerstner wave; three iterations are
+// enough for `WAVE_LEVEL = -0.5`.
+fn calc_wave_normal(pos: vec3<f32>) -> vec3<f32> {
+    var hs = vec3<f32>(0.0);
+    for (var i: i32 = 0; i < WAVE_OCTAVES; i = i + 1) {
+        let ratio = f32(i) / f32(WAVE_OCTAVES);
+        let lambda = WAVE_MIN_LENGTH + rand2(vec2<f32>(ratio, ratio)) * (WAVE_MAX_LENGTH - WAVE_MIN_LENGTH);
+        let k = 2.0 * PI / lambda;
+        let a = exp(k * WAVE_LEVEL) / k;
+        let c = sqrt(WAVE_GRAVITY / k);
+        let angle = 2.0 * PI * ratio * WAVE_DIRECTION_RANGE;
+        let direction = vec2<f32>(cos(angle), sin(angle));
+        let ps = vec3<f32>(dot(pos.xz + vec2<f32>(0.1, 0.0), direction), dot(pos.xz, direction), dot(pos.xz + vec2<f32>(0.0, 0.1), direction),);
+        // `frame.time` is already in seconds; the C++ shader divides
+        // its 30 Hz tick counter by 30 for the same effect.
+        let t = frame.time;
+        var ps0 = ps;
+        ps0 = ps - a * sin(k * (ps0 + c * t));
+        ps0 = ps - a * sin(k * (ps0 + c * t));
+        ps0 = ps - a * sin(k * (ps0 + c * t));
+        hs = hs + (- a) * cos(k * (ps0 + c * t));
+    }
+    hs = hs * WAVE_SCALE;
+    let xx = vec3<f32>(0.1, hs.x - hs.y, 0.0);
+    let zz = vec3<f32>(0.0, hs.z - hs.y, 0.1);
+    return normalize(cross(zz, xx));
 }
 
-// ---- shadow PCF ----
+// ---- shadow PCF (advanced only) ----
 
-// Project the player's world position into shadow clip space — the
-// fisheye warp's anchor (matches `shadow.wgsl::fisheye_origin`).
 fn fisheye_origin() -> vec2<f32> {
     let p = frame.shadow_view_proj * vec4<f32>(frame.camera_pos.xyz, 1.0);
     return p.xy / p.w;
@@ -213,9 +310,6 @@ fn fisheye_project(p: vec2<f32>) -> vec2<f32> {
     return local / distort + origin;
 }
 
-// 4-tap PCF shadow sample. `textureSampleCompareLevel` (LOD = 0) avoids
-// the uniform-control-flow requirement of `textureSampleCompare` —
-// callers can branch around this freely.
 fn get_shadow_quad(uv: vec2<f32>, ref_d: f32) -> f32 {
     let resolution = max(frame.shadow_params.x, 1.0);
     let texel = 1.0 / resolution;
@@ -227,13 +321,6 @@ fn get_shadow_quad(uv: vec2<f32>, ref_d: f32) -> f32 {
     return res * 0.25;
 }
 
-// Sun lighting attenuation factor in `[0, 1]`. Mirrors C++
-// `calc_sunlight_radiance_factor`. Branches on `soft_shadow`:
-//   * on  — full-precision world coord, normal-bias offset (smooth PCF
-//           edge between texels).
-//   * off — quantize world coord to a 32-unit grid + normal-bias half a
-//           grid cell (eliminates per-fragment shadow noise; a tile of
-//           fragments samples the same texel).
 fn calc_sunlight_factor(view_relative: vec3<f32>, normal: vec3<f32>) -> f32 {
     let to_sun = normalize(frame.sun_dir.xyz);
     let world_pos = view_relative + frame.camera_pos.xyz;
@@ -244,10 +331,6 @@ fn calc_sunlight_factor(view_relative: vec3<f32>, normal: vec3<f32>) -> f32 {
         biased = world_pos + to_sun * 0.1 + normal * normal_bias;
     }
     else {
-        // Snap to a SHADOW_UNITS grid; mirrors C++ `floor(coord *
-        // SHADOW_UNITS + normal * 0.5) / SHADOW_UNITS`. The biased-by-
-        // normal half-grid offset keeps the sample a hair off the
-        // surface.
         biased = floor(world_pos * SHADOW_UNITS + normal * 0.5) / SHADOW_UNITS + to_sun * 0.1;
     }
 
@@ -272,17 +355,13 @@ fn calc_sunlight_factor(view_relative: vec3<f32>, normal: vec3<f32>) -> f32 {
     return pcf_with_fade * facing;
 }
 
-// ---- ambient occlusion ----
+// ---- SSAO (advanced only) ----
 
-// 16-sample hemisphere SSAO — direct port of C++ `calc_ambient_factor`.
-// Returns ambient attenuation in `[0, 1]` (1 = unoccluded). DCE'd to
-// `return 1.0` when `ambient_occlusion` is false.
 fn calc_ambient_factor(view_relative: vec3<f32>, normal: vec3<f32>, frag_xy: vec2<f32>) -> f32 {
     if (!ambient_occlusion) {
         return 1.0;
     }
     let world_pos = view_relative + frame.camera_pos.xyz;
-    // Build a tangent frame around the surface normal.
     let tangent = normalize(cross(normal, vec3<f32>(1.0, 1.0, 1.0)));
     let bitangent = cross(normal, tangent);
 
@@ -292,7 +371,6 @@ fn calc_ambient_factor(view_relative: vec3<f32>, normal: vec3<f32>, frag_xy: vec
         let raw_offset = vec3<f32>(rand2(frag_xy + vec2<f32>(r, 0.0)) * 2.0 - 1.0, rand2(frag_xy + vec2<f32>(0.0, r)) * 2.0 - 1.0, rand2(frag_xy + vec2<f32>(r, r)),) * SSAO_RADIUS;
         let sample_world = world_pos + tangent * raw_offset.x + bitangent * raw_offset.y + normal * raw_offset.z;
         let sample_clip = frame.view_proj * vec4<f32>(sample_world, 1.0);
-        // Reject samples behind the camera (would project to garbage).
         if (sample_clip.w <= 0.0) {
             res += 1.0;
             continue;
@@ -304,13 +382,9 @@ fn calc_ambient_factor(view_relative: vec3<f32>, normal: vec3<f32>, frag_xy: vec
             res += 1.0;
             continue;
         }
-        let dim = vec2<f32>(textureDimensions(g_depth));
+        let dim = vec2<f32>(textureDimensions(g_o_depth));
         let sample_pixel = vec2<i32>(sample_uv * dim);
-        let scene_depth = textureLoad(g_depth, sample_pixel, 0);
-        // Reversed-Z: larger depth = closer to camera. If the scene at
-        // this pixel is closer than the sample point, the sample is
-        // BEHIND geometry → occluded. C++ adds a screen-edge fade so
-        // SSAO doesn't darken the viewport border.
+        let scene_depth = textureLoad(g_o_depth, sample_pixel, 0);
         if (scene_depth > sample_ndc.z) {
             res += smoothstep(0.8, 1.0, 1.0 - distance_to_edge(sample_uv) * 2.0);
         }
@@ -321,247 +395,8 @@ fn calc_ambient_factor(view_relative: vec3<f32>, normal: vec3<f32>, frag_xy: vec
     return res / f32(SSAO_SAMPLES);
 }
 
-// ---- water wave normals ----
+// ---- volumetric clouds (advanced only) ----
 
-// Sum of 7 Gerstner waves over the water surface — direct port of C++
-// `final.fsh::calc_wave_normal`. Returns a perturbed surface normal at
-// world-space `pos`. The 3-tap height pattern (`hs.x`, `hs.y`, `hs.z`)
-// samples three points around `pos.xz` to recover ∂h/∂x and ∂h/∂z by
-// finite difference, then crosses them to get the normal.
-//
-// The fixed-point iteration (`ps0 = ps - a*sin(k*(ps0 + c*t))`) is the
-// standard Gerstner-wave inverse-mapping trick — it converts the
-// parametric wave displacement back to a height field. Three iterations
-// give plenty of precision for `WAVE_LEVEL = -0.5`.
-fn calc_wave_normal(pos: vec3<f32>) -> vec3<f32> {
-    var hs = vec3<f32>(0.0);
-    for (var i: i32 = 0; i < WAVE_OCTAVES; i = i + 1) {
-        let ratio = f32(i) / f32(WAVE_OCTAVES);
-        let lambda = WAVE_MIN_LENGTH + rand2(vec2<f32>(ratio, ratio)) * (WAVE_MAX_LENGTH - WAVE_MIN_LENGTH);
-        let k = 2.0 * PI / lambda;
-        let a = exp(k * WAVE_LEVEL) / k;
-        let c = sqrt(WAVE_GRAVITY / k);
-        let angle = 2.0 * PI * ratio * WAVE_DIRECTION_RANGE;
-        let direction = vec2<f32>(cos(angle), sin(angle));
-        let ps = vec3<f32>(dot(pos.xz + vec2<f32>(0.1, 0.0), direction), dot(pos.xz, direction), dot(pos.xz + vec2<f32>(0.0, 0.1), direction),);
-        // C++ writes `u_game_time / 30.0` to convert its tick counter
-        // (30 Hz integer) into seconds. Our `frame.time` is already in
-        // seconds, so we use it directly — the C++ /30 was a unit
-        // conversion, not a speed scale. Skipping it brings the wave
-        // period for an 8-block swell down to ~2.3 s (`λ/c` with
-        // `c = √(g·λ/2π)`), close to a real-world ocean swell.
-        let t = frame.time;
-        var ps0 = ps;
-        ps0 = ps - a * sin(k * (ps0 + c * t));
-        ps0 = ps - a * sin(k * (ps0 + c * t));
-        ps0 = ps - a * sin(k * (ps0 + c * t));
-        hs = hs + (- a) * cos(k * (ps0 + c * t));
-    }
-    hs = hs * WAVE_SCALE;
-    let xx = vec3<f32>(0.1, hs.x - hs.y, 0.0);
-    let zz = vec3<f32>(0.0, hs.z - hs.y, 0.1);
-    return normalize(cross(zz, xx));
-}
-
-// ---- screen-space reflections ----
-
-// Schlick Fresnel approximation for a dielectric interface — `n1 / n2`
-// are the refractive indices on either side of the surface. Direct port
-// of C++ `final.fsh::schlick`. Returns the reflectance fraction in
-// `[0, 1]`; the rest is transmitted.
-fn schlick(n: f32, m: f32, cos_theta: f32) -> f32 {
-    if (cos_theta < 0.0) {
-        return 1.0;
-    }
-    let r0 = pow((n - m) / (n + m), 2.0);
-    return r0 + (1.0 - r0) * pow(1.0 - cos_theta, 5.0);
-}
-
-// NDC `[-1, 1]` xy → texture UV `[0, 1]` with WGSL +Y down.
-fn ndc_to_uv(ndc_xy: vec2<f32>) -> vec2<f32> {
-    return vec2<f32>(ndc_xy.x * 0.5 + 0.5, 0.5 - ndc_xy.y * 0.5);
-}
-
-// G-buffer texture-load helpers used by the SSR raymarch. Bilinear
-// filtering doesn't make sense here (we'd average across material
-// boundaries) — use `textureLoad` for unfiltered fetches.
-fn scene_depth_at(uv: vec2<f32>) -> f32 {
-    let dim = vec2<f32>(textureDimensions(g_depth));
-    let pixel = vec2<i32>(clamp(uv, vec2<f32>(0.0), vec2<f32>(0.999)) * dim);
-    return textureLoad(g_depth, pixel, 0);
-}
-
-fn scene_material_at(uv: vec2<f32>) -> u32 {
-    let dim = vec2<f32>(textureDimensions(g_material));
-    let pixel = vec2<i32>(clamp(uv, vec2<f32>(0.0), vec2<f32>(0.999)) * dim);
-    return decode_u16(textureLoad(g_material, pixel, 0).rg);
-}
-
-fn scene_normal_at(uv: vec2<f32>) -> vec3<f32> {
-    let dim = vec2<f32>(textureDimensions(g_normal));
-    let pixel = vec2<i32>(clamp(uv, vec2<f32>(0.0), vec2<f32>(0.999)) * dim);
-    return normalize(textureLoad(g_normal, pixel, 0).rgb * 2.0 - vec3<f32>(1.0));
-}
-
-fn scene_diffuse_at(uv: vec2<f32>) -> vec3<f32> {
-    let dim = vec2<f32>(textureDimensions(g_diffuse));
-    let pixel = vec2<i32>(clamp(uv, vec2<f32>(0.0), vec2<f32>(0.999)) * dim);
-    return textureLoad(g_diffuse, pixel, 0).rgb;
-}
-
-// Unproject a wgpu NDC point (z is reversed-Z `[0, 1]`) back to
-// camera-relative world space.
-fn unproject_ndc(ndc: vec3<f32>) -> vec3<f32> {
-    let h = frame.inv_view_proj * vec4<f32>(ndc, 1.0);
-    let world_pos = h.xyz / h.w;
-    return world_pos - frame.camera_pos.xyz;
-}
-
-// Compute the lit world-space colour AND fog-faded alpha at a UV —
-// Lambert + ambient + AO + shadow PCF + distance fog. Direct port of
-// C++ `final.fsh::diffuse_with_fog`. The returned alpha bakes in both
-// the texel's own opacity (`diffuse.a` — opaque blocks read 1.0,
-// water/ice 0.02) and the render-distance horizon fade
-// (`clamp((render_dist - dist) / 32, 0, 1)`); callers blend with the
-// directional sky via `mix(sky, result.rgb, result.a)`.
-//
-// Used by both the primary fragment path AND the SSR raymarch's "found"
-// hit so reflected pixels get the same shading the camera-direct view
-// gets. NOT recursive — skips SSR and the alpha-blend-with-sky step.
-// Clouds are applied by callers since they depend on the view direction.
-fn shade_world_pixel(uv: vec2<f32>, frag_xy: vec2<f32>) -> vec4<f32> {
-    let dim = vec2<f32>(textureDimensions(g_diffuse));
-    let pixel = vec2<i32>(clamp(uv, vec2<f32>(0.0), vec2<f32>(0.999)) * dim);
-    let depth = textureLoad(g_depth, pixel, 0);
-    let view_relative = reconstruct_view_relative(uv, depth);
-    let diffuse = textureLoad(g_diffuse, pixel, 0);
-    let normal = normalize(textureLoad(g_normal, pixel, 0).rgb * 2.0 - vec3<f32>(1.0));
-    let material = decode_u16(textureLoad(g_material, pixel, 0).rg);
-    let albedo = diffuse.rgb;
-
-    let to_sun = normalize(frame.sun_dir.xyz);
-    let ao = calc_ambient_factor(view_relative, normal, frag_xy);
-    let ambient = AMBIENT_RADIANCE * ao;
-
-    var color: vec3<f32>;
-    if (material == WATER_ID) {
-        color = albedo * ambient;
-    }
-    else {
-        let sun_factor = calc_sunlight_factor(view_relative, normal);
-        let cos_n_s = max(dot(normal, to_sun), 0.0);
-        let direct = SUN_RADIANCE * (sun_factor * cos_n_s / PI);
-        color = albedo * (ambient + direct);
-    }
-
-    // Distance fog — fade lit colour toward `SKY_LOW`.
-    let dist = length(view_relative);
-    let visibility = exp(log(0.9) * dist / max(frame.render_distance, 1.0));
-    color = mix(SKY_LOW, color, visibility);
-    // Alpha — texel opacity × horizon fade. Mirrors C++
-    // `color.a *= clamp((u_render_distance - dist) / 32.0, 0.0, 1.0);`.
-    let alpha_fade = clamp((frame.render_distance - dist) / 32.0, 0.0, 1.0);
-    let alpha = clamp(diffuse.a * alpha_fade, 0.0, 1.0);
-    return vec4<f32>(color, alpha);
-}
-
-// Screen-space reflection raymarch — port of C++ `final.fsh::ssr`.
-//
-// Inputs are clip-space points: `org_clip` is the surface fragment, and
-// `dir_clip` is the reflect direction transformed to clip-space (with
-// `w = 0` so it's a direction vector, not a point). The raymarch steps
-// in NDC, halving the step on first hit to refine, and bails when the
-// step shrinks below one pixel.
-//
-// Returns `(reflected_rgb, valid_alpha)`. Caller blends via
-// `mix(sky_reflection, return.rgb, return.a)`.
-fn ssr(org_clip: vec4<f32>, dir_clip: vec4<f32>, frag_xy: vec2<f32>) -> vec4<f32> {
-    let org3 = org_clip.xyz / org_clip.w;
-    let endpoint = org_clip + dir_clip;
-    let dir3_unnorm = (endpoint.xyz / endpoint.w) - org3;
-    var dir3 = normalize(dir3_unnorm);
-    // Normalize so each step covers the same NDC xy distance regardless
-    // of the angle to the screen — matches C++ `dir3 /= length(dir3.xy)`.
-    let xy_len = length(dir3.xy);
-    if (xy_len > 0.0001) {
-        dir3 = dir3 / xy_len;
-    }
-
-    var step_mult: f32 = 1.0;
-    var curr3 = org3;
-    var best: vec2<f32> = ndc_to_uv(curr3.xy);
-    var found: bool = false;
-    var found_ratio: f32 = 1.0;
-
-    let buf_w = max(frame.screen_size.x, 1.0);
-    let buf_h = max(frame.screen_size.y, 1.0);
-
-    for (var i: i32 = 0; i < REFL_ITERATIONS; i = i + 1) {
-        let ratio = f32(i) / f32(REFL_ITERATIONS);
-        var jitter: f32 = 1.0;
-        if (i == 0) {
-            jitter = 0.5 + cloud_dither(frag_xy);
-        }
-        let step = step_mult * REFL_STEP_SCALE * jitter;
-
-        // Bail when the refined step is sub-pixel — further iterations
-        // can't resolve any new detail.
-        if (step_mult * REFL_STEP_SCALE < 2.0 / max(buf_w, buf_h)) {
-            break;
-        }
-
-        let next3 = curr3 + dir3 * step;
-        if (next3.x < - 1.0 || next3.x > 1.0 || next3.y < - 1.0 || next3.y > 1.0) {
-            break;
-        }
-
-        let tex_coord = ndc_to_uv(next3.xy);
-        let z = scene_depth_at(tex_coord);
-        // Reversed-Z: `z >= next3.z` ⇔ scene at-or-closer-to-camera than
-        // the ray sample → potential intersection. C++ uses the same
-        // condition with standard-Z `>=` (sign flips for reversed-Z
-        // because both sides flip).
-        if (z >= next3.z) {
-            if (scene_material_at(tex_coord) != 0u) {
-                let sample_ws = unproject_ndc(vec3<f32>(next3.xy, z));
-                let curr_ws = unproject_ndc(curr3);
-                let surface_normal = scene_normal_at(tex_coord);
-                // Reject near-tangent intersections — the dot product is
-                // almost zero when the ray grazes a surface, which
-                // produces visible streaks.
-                if (dot(curr_ws - sample_ws, surface_normal) >= - 0.1) {
-                    if (!found) {
-                        found_ratio = ratio;
-                    }
-                    found = true;
-                    best = tex_coord;
-                }
-            }
-            step_mult = step_mult * 0.5;
-        }
-        else {
-            curr3 = next3;
-        }
-    }
-
-    if (!found) {
-        return vec4<f32>(0.0);
-    }
-    // Full lighting + fog + horizon-fade-alpha on the reflected pixel.
-    // C++ uses `diffuse_with_fog(best)` here, then multiplies its alpha
-    // by an edge-fade factor so the SSR result tapers near screen
-    // edges / at the iteration limit. We do the same.
-    let lit = shade_world_pixel(best, frag_xy);
-    let edge_fade = 1.0 - smoothstep(0.8, 1.0, max(1.0 - distance_to_edge(best) * 2.0, found_ratio),);
-    return vec4<f32>(lit.rgb, lit.a * edge_fade);
-}
-
-// ---- volumetric clouds ----
-
-// 3D-style noise. C++ does this by indexing the 2D noise atlas with a
-// vertical offset to fake a third dimension and lerping between two
-// adjacent y-slices. Identical math here, but `Repeat` wrap on
-// `noise_sampler` saves us the explicit `mod(uv, NOISE_TEXTURE_SIZE)`.
 fn interpolated_noise(x: vec3<f32>) -> f32 {
     let ix = floor(x);
     let fx = fract(x);
@@ -587,40 +422,17 @@ fn calc_cloud_opacity(pos: vec3<f32>) -> f32 {
     return sqrt(factor) * opacity;
 }
 
-// Per-fragment dither tap into the noise atlas — used to break up the
-// cloud raymarch's first-sample stepping artifact. Mirrors C++ `dither`.
-//
-// The time-dependent offset (C++ `mod(u_game_time, 30.0) *
-// NOISE_TEXTURE_OFFSET`) is intentionally suppressed for visual
-// debugging — without it the cloud noise pattern is stable across
-// frames so the user can A/B-compare without per-frame jitter.
 fn cloud_dither(frag_xy: vec2<f32>) -> f32 {
-    let v = frag_xy;
-    return textureSampleLevel(noise_texture, noise_sampler, v / NOISE_TEXTURE_SIZE, 0.0).b;
+    return textureSampleLevel(noise_texture, noise_sampler, frag_xy / NOISE_TEXTURE_SIZE, 0.0).b;
 }
 
-// 32-step volumetric cloud raymarch — direct port of C++ `cloud()`.
-// Returns `(rgb, alpha)` — caller blends via `mix(color, rgb, alpha)`.
-//
-// * `org` — where the ray starts. Camera position for the primary view,
-//   water surface for SSR reflection.
-// * `dir` — ray direction (any length; normalized inside).
-// * `max_dist` — bail when the ray has walked further than this.
-// * `center` — reference point for the render-distance horizon fade.
-//   Always the camera position (so reflected clouds dim relative to
-//   the player, not relative to the water surface). C++ accepts this
-//   as a separate parameter for the same reason.
-// * `quality` — step-size divisor. `1.0` for the primary view, `0.5`
-//   (= half the steps) for SSR reflection so the reflected raymarch is
-//   cheaper.
-fn cloud(org: vec3<f32>, dir: vec3<f32>, max_dist: f32, center: vec3<f32>, quality: f32, frag_xy: vec2<f32>,) -> vec4<f32> {
+fn cloud(org: vec3<f32>, dir: vec3<f32>, max_dist: f32, frag_xy: vec2<f32>) -> vec4<f32> {
     let nd = normalize(dir);
     let to_sun = normalize(frame.sun_dir.xyz);
     var curr = org;
     var res = vec3<f32>(0.0);
     var remaining: f32 = 1.0;
 
-    // Step the start point onto the cloud layer slab if outside it.
     if (curr.y < CLOUD_BOTTOM) {
         if (nd.y <= 0.0) {
             return vec4<f32>(0.0);
@@ -634,7 +446,7 @@ fn cloud(org: vec3<f32>, dir: vec3<f32>, max_dist: f32, center: vec3<f32>, quali
         curr = curr + nd * (CLOUD_TOP - curr.y) / nd.y;
     }
 
-    let step_base = CLOUD_STEP_SCALE / max(quality, 0.0001);
+    let step_base = CLOUD_STEP_SCALE;
     for (var i: i32 = 0; i < CLOUD_ITERATIONS; i = i + 1) {
         var step_size = step_base;
         if (i == 0) {
@@ -652,208 +464,538 @@ fn cloud(org: vec3<f32>, dir: vec3<f32>, max_dist: f32, center: vec3<f32>, quali
             break;
         }
 
-        // Two edge fades:
-        //   - distance from `center` (camera) vs render distance — keeps
-        //     the cloud field dimming consistently regardless of where
-        //     the ray started.
-        //   - distance from `org` (ray origin) vs `max_dist` — tapers
-        //     the raymarch's tail so it doesn't pop hard at its end.
         let walked = length(curr - org);
-        let from_center = length(curr - center);
         var factor: f32 = 1.0;
-        factor = factor * (1.0 - smoothstep(frame.render_distance * 0.8, frame.render_distance, from_center));
+        factor = factor * (1.0 - smoothstep(frame.render_distance * 0.8, frame.render_distance, walked));
         factor = factor * (1.0 - smoothstep(max_dist * 0.8, max_dist, walked));
         let transmittance = pow(1.0 - factor * calc_cloud_opacity(curr), step_size);
         if (transmittance < 0.99) {
-            // Self-shadow against two sun-direction taps. C++ uses
-            // `-u_sunlight_dir` (away from sun); we have `to_sun`
-            // directly so we add (toward sun) to walk into the lit
-            // side.
-            var scattering: f32 = 1.0;
-            scattering = scattering * pow(1.0 - calc_cloud_opacity(curr + to_sun * 8.0), 8.0);
-            scattering = scattering * pow(1.0 - calc_cloud_opacity(curr + to_sun * 16.0), 8.0);
-            let sun_col = vec3<f32>(3.5, 3.0, 2.9);
-            let amb_col = vec3<f32>(0.18, 0.25, 0.5);
-            let lit = sun_col * scattering + amb_col * (1.0 - scattering);
-            res = res + remaining * (1.0 - transmittance) * lit;
+            // Self-shadow against two sun-direction taps. Direct port
+            // of `final.fsh`: scattering = ∏ pow(1 - opacity, 8) at
+            // (curr + to_sun · 8) and (curr + to_sun · 16). Cloud
+            // colour is sun radiance when scattering ≈ 1, ambient
+            // when scattering ≈ 0.
+            let s1 = pow(1.0 - calc_cloud_opacity(curr + to_sun * 8.0), 8.0);
+            let s2 = pow(1.0 - calc_cloud_opacity(curr + to_sun * 16.0), 8.0);
+            let scattering = s1 * s2;
+            // Time-of-day-aware cloud colour: sun-scattered side fades
+            // to 0 at night; ambient-shadowed side fades less so dark
+            // clouds remain faintly visible against the night sky.
+            let cloud_color = sun_radiance() * scattering * 0.5 + ambient_radiance();
+            res = res + cloud_color * (1.0 - transmittance) * remaining;
             remaining = remaining * transmittance;
         }
     }
     return vec4<f32>(res, 1.0 - remaining);
 }
 
-// ACES filmic tonemap.
 fn aces(x: vec3<f32>) -> vec3<f32> {
-    let a = 2.51;
-    let b = 0.03;
-    let c = 2.43;
-    let d = 0.59;
-    let e = 0.14;
-    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), vec3<f32>(0.0), vec3<f32>(1.0),);
+    return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
-// Anchor the noise binding so wgpu pipeline reflection keeps it live
-// when both `volumetric_clouds` and `ambient_occlusion` are off (and
-// neither calls into `noise_texture`). Multiplied by 0.0 — visual no-op.
 fn anchor_noise_binding(uv: vec2<f32>) -> f32 {
-    let n = textureSampleLevel(noise_texture, noise_sampler, uv, 0.0).r;
-    return n * 0.0;
+    return textureSampleLevel(noise_texture, noise_sampler, uv, 0.0).r * 0.0;
+}
+
+// ---- per-layer shading (advanced) ----
+
+// Shade an opaque-layer pixel — full lambert + shadow PCF + ambient
+// (with optional SSAO) + emissive (from diffuse.a) + distance fog
+// into the sky gradient. Returns the un-tonemapped HDR colour.
+// `skip_direct` zeroes the lambert sun term — used by SSR-refraction
+// hits, where the opaque "underwater terrain" geometry shouldn't
+// receive any direct sun (water absorbs it before it reaches the
+// bottom). Ambient + emissive still apply; the result reads as
+// terrain lit by skylight only.
+fn shade_opaque_advanced(pixel: vec2<i32>, frag_xy: vec2<f32>, skip_direct: bool) -> vec3<f32> {
+    let depth = textureLoad(g_o_depth, pixel, 0);
+    // Reconstruct the centered-pixel UV from the integer pixel
+    // coordinate. (Used only by `reconstruct_view_relative` — every
+    // other texture access already takes `pixel` directly.)
+    let dim = vec2<f32>(textureDimensions(g_o_depth));
+    let uv = (vec2<f32>(pixel) + vec2<f32>(0.5)) / dim;
+    let view_relative = reconstruct_view_relative(uv, depth);
+    let diffuse = textureLoad(g_o_diffuse, pixel, 0);
+    let albedo = diffuse.rgb;
+    let emissive_intensity = diffuse.a;
+    let normal_texel = textureLoad(g_o_normal, pixel, 0);
+    let normal = oct_decode(normal_texel.rg);
+    // Per-vertex sky-light intensity packed in normal.b — used to
+    // attenuate albedo.
+    let sky_visibility = normal_texel.b;
+
+    let to_sun = normalize(frame.sun_dir.xyz);
+    let ao = calc_ambient_factor(view_relative, normal, frag_xy);
+    let ambient = ambient_radiance() * ao;
+
+    var direct = vec3<f32>(0.0);
+    if (!skip_direct) {
+        let sun_factor = calc_sunlight_factor(view_relative, normal);
+        let cos_n_s = max(dot(normal, to_sun), 0.0);
+        direct = sun_radiance() * (sun_factor * cos_n_s / PI);
+    }
+    let emissive = albedo * emissive_intensity * BLOCK_LIGHT_TINT;
+
+    var color = albedo * (ambient + direct) * sky_visibility + emissive;
+
+    let dist = length(view_relative);
+    let visibility = exp(log(0.9) * dist / max(frame.render_distance, 1.0));
+    let sky_at_pixel = sky_gradient_color(normalize(view_relative));
+    color = mix(sky_at_pixel, color, visibility);
+    return color;
+}
+
+// Shade a translucent-layer pixel. Same lambert + shadow + ambient
+// path as opaque but no emissive (translucent surfaces don't emit
+// per the G-buffer contract). Only called for non-SSR translucents
+// (leaves, glass) — water and ice take the energy-conserving R/T
+// path in `fs_main_advanced` and bypass this function entirely.
+// Returns un-tonemapped HDR colour with the texel alpha for compositing.
+fn shade_translucent_advanced(pixel: vec2<i32>, frag_xy: vec2<f32>) -> vec4<f32> {
+    let depth = textureLoad(g_t_depth, pixel, 0);
+    let dim = vec2<f32>(textureDimensions(g_t_depth));
+    let uv = (vec2<f32>(pixel) + vec2<f32>(0.5)) / dim;
+    let view_relative = reconstruct_view_relative(uv, depth);
+    let diffuse = textureLoad(g_t_diffuse, pixel, 0);
+    let albedo = diffuse.rgb;
+    let alpha = diffuse.a;
+    let normal_texel = textureLoad(g_t_normal, pixel, 0);
+    let normal = oct_decode(normal_texel.rg);
+    let sky_visibility = normal_texel.b;
+
+    let to_sun = normalize(frame.sun_dir.xyz);
+    let ao = calc_ambient_factor(view_relative, normal, frag_xy);
+    let ambient = ambient_radiance() * ao;
+
+    let sun_factor = calc_sunlight_factor(view_relative, normal);
+    let cos_n_s = max(dot(normal, to_sun), 0.0);
+    let direct = sun_radiance() * (sun_factor * cos_n_s / PI) * sky_visibility;
+
+    var color = albedo * (ambient + direct);
+
+    let dist = length(view_relative);
+    let visibility = exp(log(0.9) * dist / max(frame.render_distance, 1.0));
+    let sky_at_pixel = sky_gradient_color(normalize(view_relative));
+    color = mix(sky_at_pixel, color, visibility);
+    return vec4<f32>(color, alpha);
+}
+
+// ---- screen-space reflection (advanced only) ----
+
+const REFL_ITERATIONS: i32 = 32;
+const REFL_STEP_SCALE: f32 = 2.0 / 32.0;
+
+// Schlick Fresnel approximation for a dielectric interface — `n` /
+// `m` are the indices of refraction on either side of the surface.
+// Returns the reflectance fraction in `[0, 1]`. Below grazing
+// (`cos_theta < 0`, viewing from behind) returns 1 to avoid spurious
+// negative powers.
+fn schlick(n: f32, m: f32, cos_theta: f32) -> f32 {
+    if (cos_theta < 0.0) {
+        return 1.0;
+    }
+    let r0 = pow((n - m) / (n + m), 2.0);
+    return r0 + (1.0 - r0) * pow(1.0 - cos_theta, 5.0);
+}
+
+fn ndc_to_uv(ndc_xy: vec2<f32>) -> vec2<f32> {
+    return vec2<f32>(ndc_xy.x * 0.5 + 0.5, 0.5 - ndc_xy.y * 0.5);
+}
+
+// Screen-space reflection raymarch — direct port of `final.fsh::ssr`.
+// Returns `vec4(rgb, valid)`:
+// * `rgb`   — fully shaded opaque colour at the hit pixel (run through
+//             the same lambert + shadow + ambient + emissive + fog
+//             path the primary view uses).
+// * `valid` — `1` near the hit, fading to `0` toward screen edges +
+//             early hits along the ray (matches the C++ edge-fade so
+//             SSR misses don't pop hard at the viewport border or
+//             where the raymarch ran out of refinement budget).
+//
+// On miss returns `vec4(0.0)`; the caller blends this against a base
+// reflection (sky outside / dim grey when underwater).
+//
+// `frag_xy` is used (a) as the SSAO/shadow seed at the hit pixel and
+// (b) as the dither seed for the first-iteration step jitter.
+fn unproject_ndc(ndc: vec3<f32>) -> vec3<f32> {
+    let h = frame.inv_view_proj * vec4<f32>(ndc, 1.0);
+    let world_pos = h.xyz / h.w;
+    return world_pos - frame.camera_pos.xyz;
+}
+
+// `skip_direct_at_hit` is forwarded to `shade_opaque_advanced` for
+// the hit pixel. False for reflection rays (the reflected geometry
+// is dry land seen via the water surface — sun applies). True for
+// refraction rays (the hit is underwater terrain — sun absorbed by
+// the water column).
+//
+// `normal_reject` toggles the false-positive filter:
+// * **true** (reflections) — discards candidate hits where the ray
+//   hit the surface at ~grazing tangency (the C++ filter via
+//   `dot(curr - sample, hit_normal) >= -0.1`). Reflections look
+//   wrong if a tangent hit is taken as the bounce point.
+// * **false** (refractions) — accept any depth-passing hit. Stricter
+//   filtering for refraction creates *holes* in the underwater image
+//   wherever foreground geometry occludes the bent ray; the
+//   cascade-into-reflection behaviour means these holes register as
+//   "the surface looks reflective" instead of "the surface returns
+//   refracted terrain", which reads as a fake mirror patch in the
+//   middle of the water. With `normal_reject = false` the refracted
+//   ray returns whatever it hit, giving a continuous underwater
+//   image; the only true miss is the ray exiting NDC, which the
+//   `break` handles and the edge_fade smooths.
+fn ssr(org_clip: vec4<f32>, dir_clip: vec4<f32>, frag_xy: vec2<f32>, skip_direct_at_hit: bool, normal_reject: bool,) -> vec4<f32> {
+    let org3 = org_clip.xyz / org_clip.w;
+    let endpoint = org_clip + dir_clip;
+    let dir3_unnorm = (endpoint.xyz / endpoint.w) - org3;
+    var dir3 = normalize(dir3_unnorm);
+    // Normalize so each step covers the same NDC xy distance regardless
+    // of the angle to the screen — matches `final.fsh::dir3 /=
+    // length(dir3.xy)`.
+    let xy_len = length(dir3.xy);
+    if (xy_len > 0.0001) {
+        dir3 = dir3 / xy_len;
+    }
+
+    var step_mult: f32 = 1.0;
+    var curr3 = org3;
+    var found: bool = false;
+    var found_ratio: f32 = 1.0;
+    var hit_pixel: vec2<i32> = vec2<i32>(0, 0);
+
+    let buf_w = max(frame.screen_size.x, 1.0);
+    let buf_h = max(frame.screen_size.y, 1.0);
+    let dim = vec2<f32>(textureDimensions(g_o_depth));
+
+    // `prev_pixel` tracks the most recent **no-hit** screen pixel
+    // along the ray. When a hit is registered we use `prev_pixel`
+    // (NOT the just-hit pixel) as the shading sample. Rationale:
+    // the hit step's pixel is whatever opaque fragment the ray
+    // bumped into — for refraction that's often a foreground
+    // occluder (e.g. on-shore terrain whose depth is far closer
+    // to the camera than the underwater target the refracted ray
+    // was aiming for). The previous-step pixel is the one the ray
+    // walked through cleanly just before being intercepted, which
+    // for refraction is far more likely to be the actual underwater
+    // target. Initialised to the surface (ray-origin) pixel so a
+    // first-iteration hit still has something sensible to shade.
+    let initial_uv = ndc_to_uv(org3.xy);
+    var prev_pixel: vec2<i32> = vec2<i32>(clamp(initial_uv, vec2<f32>(0.0), vec2<f32>(1.0 - 1e-4)) * dim);
+
+    for (var i: i32 = 0; i < REFL_ITERATIONS; i = i + 1) {
+        // Bail when refined step is sub-pixel — further iterations
+        // can't resolve any new detail.
+        if (step_mult * REFL_STEP_SCALE < 2.0 / max(buf_w, buf_h)) {
+            break;
+        }
+        let ratio = f32(i) / f32(REFL_ITERATIONS);
+        var jitter: f32 = 1.0;
+        if (i == 0) {
+            jitter = 0.5 + cloud_dither(frag_xy);
+        }
+        let step = step_mult * REFL_STEP_SCALE * jitter;
+        let next3 = curr3 + dir3 * step;
+        let uv = ndc_to_uv(next3.xy);
+        let pixel = vec2<i32>(clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0 - 1e-4)) * dim);
+
+        var accept = false;
+        if (next3.x >= - 1.0 && next3.x <= 1.0 && next3.y >= - 1.0 && next3.y <= 1.0) {
+            let z = textureLoad(g_o_depth, pixel, 0);
+            if (z >= next3.z && z > 0.0) {
+                // Normal-rejection filter (reflections only): when
+                // the ray grazes a surface tangentially, the
+                // reported hit's normal points roughly along the
+                // ray direction and the pixel reflection is bogus.
+                // Reject hits where the angle between (curr→sample)
+                // and the hit normal is larger than ~95° (cos <
+                // -0.1). Direct port of the C++ check. Refractions
+                // skip this so foreground occluders don't carve
+                // holes in the underwater image.
+                if (normal_reject) {
+                    let sample_ws = unproject_ndc(vec3<f32>(next3.xy, z));
+                    let curr_ws = unproject_ndc(curr3);
+                    let surface_normal = oct_decode(textureLoad(g_o_normal, pixel, 0).rg);
+                    accept = dot(curr_ws - sample_ws, surface_normal) >= - 0.1;
+                }
+                else {
+                    accept = true;
+                }
+            }
+        }
+        else {
+            // NDC-out-of-bounds-rejection filter.
+            if (normal_reject) {
+                break;
+            }
+            else {
+                accept = true;
+            }
+        }
+
+        if (accept) {
+            if (!found) {
+                found = true;
+                found_ratio = ratio;
+            }
+            step_mult = step_mult * 0.5;
+            // Use the previous (pre-hit) pixel for shading
+            // — see `prev_pixel`'s declaration comment.
+            hit_pixel = prev_pixel;
+        }
+        else {
+            curr3 = next3;
+            // Walked past this pixel without a hit — record it so
+            // the next iteration's hit can sample here instead of
+            // the obstructing fragment that caused the hit.
+            prev_pixel = pixel;
+        }
+    }
+
+    if (!found) {
+        return vec4<f32>(0.0);
+    }
+
+    // Edge fade: reduce contribution near the screen border + when
+    // the hit was in the early (under-refined) iterations.
+    var edge_fade = 1.0;
+    if (normal_reject) {
+        let hit_uv = (vec2<f32>(hit_pixel) + vec2<f32>(0.5)) / dim;
+        edge_fade = 1.0 - smoothstep(0.8, 1.0, max(1.0 - distance_to_edge(hit_uv) * 2.0, found_ratio),);
+    }
+    let lit = shade_opaque_advanced(hit_pixel, frag_xy, skip_direct_at_hit);
+    return vec4<f32>(lit, edge_fade);
+}
+
+// ---- entry points ----
+
+@fragment
+fn fs_main_basic(in: VsOut) -> @location(0) vec4<f32> {
+    let pixel = vec2<i32>(in.clip_position.xy);
+    let opaque_d = textureLoad(g_o_depth, pixel, 0);
+    let translucent_d = textureLoad(g_t_depth, pixel, 0);
+
+    // View ray for sky lookup.
+    let ndc_far = vec3<f32>(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0, 0.0);
+    let world_h = frame.inv_view_proj * vec4<f32>(ndc_far, 1.0);
+    let view_dir = normalize((world_h.xyz / world_h.w) - frame.camera_pos.xyz);
+    let sky_full_tm = aces(get_sky_color(view_dir) * EXPOSURE);
+
+    // Background = opaque (with fog into sky gradient) or sky if no opaque.
+    var background = sky_full_tm;
+    if (opaque_d > 0.0) {
+        let view_relative = reconstruct_view_relative(in.uv, opaque_d);
+        let diffuse = textureLoad(g_o_diffuse, pixel, 0).rgb;
+        let dist = length(view_relative);
+        let visibility = exp(log(0.9) * dist / max(frame.render_distance, 1.0));
+        let sky_gradient_tm = aces(sky_gradient_color(normalize(view_relative)) * EXPOSURE);
+        background = mix(sky_gradient_tm, diffuse, visibility);
+    }
+
+    // Translucent layer over background.
+    if (translucent_d > 0.0) {
+        let view_relative = reconstruct_view_relative(in.uv, translucent_d);
+        let t_diffuse = textureLoad(g_t_diffuse, pixel, 0);
+        let dist = length(view_relative);
+        let visibility = exp(log(0.9) * dist / max(frame.render_distance, 1.0));
+        let sky_gradient_tm = aces(sky_gradient_color(normalize(view_relative)) * EXPOSURE);
+        let t_with_fog = mix(sky_gradient_tm, t_diffuse.rgb, visibility);
+        return vec4<f32>(mix(background, t_with_fog, t_diffuse.a), 1.0);
+    }
+    return vec4<f32>(background, 1.0);
 }
 
 @fragment
-fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+fn fs_main_advanced(in: VsOut) -> @location(0) vec4<f32> {
     let pixel = vec2<i32>(in.clip_position.xy);
-    let material = decode_u16(textureLoad(g_material, pixel, 0).rg);
+    let opaque_d = textureLoad(g_o_depth, pixel, 0);
+    let translucent_d = textureLoad(g_t_depth, pixel, 0);
 
-    let depth = textureLoad(g_depth, pixel, 0);
-    let view_relative = reconstruct_view_relative(in.uv, depth);
-    let view_dir = normalize(view_relative);
-    let sky = get_sky_color(view_dir);
+    let ndc_far = vec3<f32>(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0, 0.0);
+    let world_h = frame.inv_view_proj * vec4<f32>(ndc_far, 1.0);
+    let view_dir = normalize((world_h.xyz / world_h.w) - frame.camera_pos.xyz);
 
-    var color: vec3<f32>;
-    var dist: f32;
-
-    if (material == 0u) {
-        // Sky pixel — no fragment was drawn here. Cloud raymarch (if
-        // on) goes the full distance to the cloud layer.
-        color = sky;
-        dist = 65536.0;
+    // Background HDR colour: opaque shaded, or sky if no opaque.
+    var background = get_sky_color(view_dir);
+    if (opaque_d > 0.0) {
+        background = shade_opaque_advanced(pixel, in.clip_position.xy, false);
     }
-    else {
-        // Chunk pixel — full lambert + shadow + ambient + fog +
-        // texel-opacity-times-horizon-fade alpha via the shared helper
-        // that's also called from `ssr()` so reflected pixels get the
-        // same shading.
-        let lit = shade_world_pixel(in.uv, in.clip_position.xy);
-        dist = length(view_relative);
 
-        // Alpha-blend lit chunk colour into the sky tint based on the
-        // shaded alpha. Opaque blocks: `lit.a ≈ 1` near camera → no sky;
-        // water/ice: `lit.a ≈ 0.02` → mostly sky. Mirrors C++
-        // `color = blend(diffuse_with_fog(tex), sky_color)`.
-        color = mix(sky, lit.rgb, lit.a);
-
-        // Screen-space reflection on water / ice / iron. Mirrors C++
-        // `final.fsh` lines 575–616. Runs even when the player is
-        // underwater — only the reflection-base colour and fresnel
-        // formula change.
-        if (material == WATER_ID || material == ICE_ID || material == IRON_ID) {
-            let inside_water = frame.shadow_params.w > 0.5;
-            var normal = normalize(textureLoad(g_normal, pixel, 0).rgb * 2.0 - vec3<f32>(1.0));
-            let diffuse = textureLoad(g_diffuse, pixel, 0);
-            let albedo = diffuse.rgb;
+    // Translucent layer in front. Two paths:
+    //
+    // * **Water / ice** — energy-conserving Fresnel split between
+    //   reflection and refraction. Both rays raymarch the opaque
+    //   layer in screen space (`ssr()` with the appropriate
+    //   reflected / refracted direction); reflection misses the sky,
+    //   refraction misses fall back to the original background. The
+    //   final colour is `R · reflection + (1 − R) · refraction`,
+    //   with `R` from Schlick's approximation (and `R = 1` when the
+    //   refract direction would total-internally-reflect).
+    // * **Other translucents** (leaves, glass) — straight alpha-mix
+    //   of the lit colour over the background. No refraction.
+    //
+    // The C++ `bg_with_water = mix(bg, water_lit, 0.02)` heuristic
+    // and the chunk-side water-α-0.02 hack are both gone. The
+    // surface contribution now comes from a real refraction lookup,
+    // optionally tinted by the water albedo (heuristic Beer's law).
+    var color = background;
+    if (translucent_d > 0.0) {
+        let mat = textureLoad(g_t_material, pixel, 0).r;
+        let water_layer = frame.material_layers.x;
+        let ice_layer = frame.material_layers.y;
+        let is_water = mat == water_layer;
+        let is_ice = mat == ice_layer;
+        if (is_water || is_ice) {
+            let view_relative = reconstruct_view_relative(in.uv, translucent_d);
             let view_to_surface = normalize(view_relative);
+            var t_normal = oct_decode(textureLoad(g_t_normal, pixel, 0).rg);
+            // `inside = surface normal points away from camera`.
+            let inside = dot(view_relative, t_normal) > 0.0;
 
-            // Water wave normal — replace the flat face normal with a
-            // 7-octave Gerstner wave perturbation when the surface is
-            // mostly horizontal (top of water column). Time-dependent
-            // (`frame.time` drives the wave phase). Mirrors C++
-            // `final.fsh` lines 580–587. We use `player_coord_mod +
-            // player_coord_frac` instead of raw camera_pos so the wave
-            // sample point stays in a small numerical range — large
-            // world coords kill the trig precision otherwise.
-            if (material == WATER_ID && normal.y > 0.9) {
+            // Water-wave normal perturbation — only on top-of-water-
+            // column surfaces (`normal.y > 0.9`) and only when the
+            // perturbed normal doesn't flip the surface's relative
+            // orientation. World-space sample uses the
+            // `player_coord_mod + frac` trick so the wave coords
+            // don't lose precision far from the world origin.
+            if (is_water && t_normal.y > 0.9) {
                 let surface_world = view_relative + vec3<f32>(frame.player_coord_mod.xyz) + frame.player_coord_frac.xyz;
-                let wave_normal = calc_wave_normal(surface_world);
-                let to_camera = normalize(- view_relative);
-                var cos_check = dot(to_camera, wave_normal);
-                if (inside_water) {
+                let wave_n = calc_wave_normal(surface_world);
+                var cos_check = dot(- view_to_surface, wave_n);
+                if (inside) {
                     cos_check = - cos_check;
                 }
                 if (cos_check >= 0.0) {
-                    normal = wave_normal;
+                    t_normal = wave_n;
                 }
             }
 
-            let reflect_dir = reflect(view_to_surface, normal);
-            // C++ flips `cos_theta` when inside so the formula below
-            // operates on the absolute angle to the surface normal.
-            var cos_theta = dot(- view_to_surface, normal);
-            if (inside_water) {
-                cos_theta = - cos_theta;
-            }
+            // Geometric normal facing the camera — needed for
+            // `refract()` (WGSL expects N to point against the
+            // incident ray) and for a clean `cos_theta`.
+            let n_geom = select(t_normal, - t_normal, inside);
 
-            // Reflection base colour. Above water: sky tint (with
-            // optional volumetric clouds restored from the C++ TODO).
-            // Underwater: a dim grey — C++ `vec3(0.1)` — because the
-            // reflection direction points further into the underwater
-            // scene and the sky isn't directly visible through that
-            // ray.
+            // IORs in the order the ray crosses them. eta = n_from /
+            // n_to. Outside view: air → water (η < 1, ray bends
+            // toward normal). Underwater view: water → air (η > 1,
+            // ray bends away — TIR at grazing angles).
+            let ior = select(1.31, 1.33, is_water);
+            let n_from = select(1.0, ior, inside);
+            let n_to = select(ior, 1.0, inside);
+            let eta = n_from / n_to;
+
+            let reflect_dir = reflect(view_to_surface, n_geom);
+            let refract_dir = refract(view_to_surface, n_geom, eta);
+            // WGSL `refract` returns the zero vector on total
+            // internal reflection.
+            let tir = dot(refract_dir, refract_dir) < 0.0001;
+
+            let cos_theta = max(0.0, dot(- view_to_surface, n_geom));
+            var R = schlick(n_from, n_to, cos_theta);
+            if (tir) {
+                R = 1.0;
+            }
+            let T = 1.0 - R;
+
+            // Common ray origin in clip space for both raymarches.
+            let chunk_ndc = vec3<f32>(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0, translucent_d);
+            let org_clip = vec4<f32>(chunk_ndc, 1.0);
+
+            // ---- Reflection ----
+            // Base colour: sky outside, dim grey underwater (no sky
+            // visible through a downward reflect ray). SSR overlays
+            // the opaque hit when it lands.
             var reflection: vec3<f32>;
-            if (inside_water) {
+            if (inside) {
                 reflection = vec3<f32>(0.1);
             }
             else {
                 reflection = get_sky_color(reflect_dir);
-                if (volumetric_clouds) {
-                    // Cloud raymarch in the reflection direction.
-                    // `org` is the WATER SURFACE (the ray's true start
-                    // point), not the camera — otherwise the raymarch
-                    // would walk through clouds between camera and
-                    // water before bouncing, producing wrong cloud
-                    // distances. `center` stays at the camera so the
-                    // render-distance horizon fade is consistent with
-                    // the primary view. `quality = 0.5` halves the
-                    // step count for cheaper reflection sampling
-                    // (matches C++ `cloud(..., 0.5)`).
-                    let surface_world = view_relative + frame.camera_pos.xyz;
-                    let refl_clouds = cloud(surface_world, reflect_dir, 65536.0, frame.camera_pos.xyz, 0.5, in.clip_position.xy);
-                    reflection = mix(reflection, refl_clouds.rgb, refl_clouds.a);
-                }
             }
+            let reflect_dir_clip = frame.view_proj * vec4<f32>(reflect_dir, 0.0);
+            // Underwater reflection rays bounce off the surface back
+            // into the underwater scene, so they should: (a) skip
+            // direct sun at the hit (the water column has absorbed
+            // it), and (b) accept any hit without normal-rejection
+            // — same reasoning as the refraction path, foreground
+            // occluders along the bent ray would otherwise punch
+            // mirror-holes into the underwater reflection.
+            let ssr_reflect = ssr(org_clip, reflect_dir_clip, in.clip_position.xy, inside, !inside);
+            reflection = mix(reflection, ssr_reflect.rgb, ssr_reflect.a);
 
-            // SSR raymarch in clip space.
-            let chunk_ndc = vec3<f32>(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0, depth);
-            let org_clip = vec4<f32>(chunk_ndc, 1.0);
-            let dir_clip = frame.view_proj * vec4<f32>(reflect_dir, 0.0);
-            let ssr_result = ssr(org_clip, dir_clip, in.clip_position.xy);
-            reflection = mix(reflection, ssr_result.rgb, ssr_result.a);
-
-            // Fresnel / heuristic mix factor.
-            //   Above water: physically-based Schlick on water/ice IORs.
-            //   Underwater:  `smoothstep(0, 1, sin²θ)` — C++'s heuristic
-            //                stand-in for total internal reflection. At
-            //                normal incidence (looking straight up) →
-            //                near 0 (transparent); at grazing angles →
-            //                near 1 (full TIR).
-            //                TODO: replace with a better TIR
-            //                approximation if available — the
-            //                smoothstep makes distant horizontal views
-            //                opaque, which hides terrain at grazing
-            //                angles.
-            //   Iron: fully reflective (fresnel = 1) tinted by surface
-            //         diffuse — matches C++.
-            var fresnel: f32 = 1.0;
-            if (inside_water) {
-                fresnel = smoothstep(0.0, 1.0, 1.0 - cos_theta * cos_theta);
+            // ---- Refraction ----
+            // TIR → no refraction (T = 0 anyway, value doesn't
+            // matter). Underwater → ray exits into air, sample sky
+            // directly (raymarching air for opaque is pointless;
+            // sky lookup is always valid → confidence = 1).
+            // Above water → SSR-refract: the bent ray hits opaque
+            // geometry beneath the surface. Hit confidence is the
+            // SSR alpha (with edge fade); on miss, the refraction's
+            // energy weight is donated to the reflection branch,
+            // which has its own coherent sky fallback. The result is
+            // a smooth fade from "refractive water" toward "mirror
+            // water" wherever SSR-refract can't see the bottom —
+            // physically defensible and avoids the jarring boundary
+            // a constant deep-water fallback would produce. Hits
+            // get a subtle Beer's-law tint by water albedo.
+            var refraction: vec3<f32>;
+            var refraction_confidence: f32 = 1.0;
+            if (tir) {
+                refraction = vec3<f32>(0.0);
+                refraction_confidence = 0.0;
             }
-            else if (material == WATER_ID) {
-                fresnel = schlick(1.0, 1.33, cos_theta);
-            }
-            else if (material == ICE_ID) {
-                fresnel = schlick(1.0, 2.42, cos_theta);
+            else if (inside) {
+                refraction = get_sky_color(refract_dir);
             }
             else {
-                reflection = reflection * albedo * 0.5;
+                let refract_dir_clip = frame.view_proj * vec4<f32>(refract_dir, 0.0);
+                let ssr_refract = ssr(org_clip, refract_dir_clip, in.clip_position.xy, true, false);
+                let water_albedo = textureLoad(g_t_diffuse, pixel, 0).rgb;
+                let tint = mix(vec3<f32>(1.0), water_albedo, 0.3);
+                refraction = ssr_refract.rgb * tint;
+                refraction_confidence = ssr_refract.a;
             }
-            color = mix(color, reflection, fresnel);
+
+            // Energy-conserving combine. The refraction term's
+            // weight is scaled by hit confidence; the missing
+            // weight cascades to reflection, which is itself a
+            // cascade (SSR-reflect → sky). Net: every pixel
+            // produces a coherent colour with no hard boundaries
+            // even when SSR-refract finds nothing.
+            //
+            //   effective_T = T · confidence
+            //   effective_R = 1 - effective_T  (= R + T·(1-confidence))
+            //   color       = effective_R · reflection + effective_T · refraction
+            let effective_T = T * refraction_confidence;
+            let effective_R = 1.0 - effective_T;
+            color = effective_R * reflection + effective_T * refraction;
+        }
+        else {
+            let lit = shade_translucent_advanced(pixel, in.clip_position.xy);
+            color = mix(background, lit.rgb, lit.a);
         }
     }
 
-    // Volumetric clouds — blend over both sky and chunk paths so cloud
-    // shadows on the world land in the same compositing step. Skipped
-    // (DCE'd) when the override is off. Primary-view raymarch: `org`
-    // and `center` are both the camera (consistent fade); `quality =
-    // 1.0` for full step count.
+    // Volumetric clouds — layer on top of `color`, but cap the
+    // raymarch at the closest chunk surface so opaque / translucent
+    // geometry occludes clouds beyond it. With reversed-Z, the
+    // closer surface has the larger depth value; we take `max` of
+    // the two layer depths and unproject to a world-space distance.
+    // When neither layer drew (sky pixel) the cloud raymarch goes
+    // its full extent (limited by `render_distance` inside `cloud`).
     if (volumetric_clouds) {
-        let cloud_result = cloud(frame.camera_pos.xyz, view_dir, dist, frame.camera_pos.xyz, 1.0, in.clip_position.xy);
+        var max_dist = 65536.0;
+        let closest_depth = max(opaque_d, translucent_d);
+        if (closest_depth > 0.0) {
+            max_dist = length(reconstruct_view_relative(in.uv, closest_depth));
+        }
+        let cloud_result = cloud(frame.camera_pos.xyz, view_dir, max_dist, in.clip_position.xy);
         color = mix(color, cloud_result.rgb, cloud_result.a);
     }
 
-    // Anchor noise binding when both cloud + AO are off so wgpu doesn't
-    // dead-strip the binding from the shader's reflection (the
-    // composition pipeline layout always includes noise).
+    // Anchor the noise binding for the case both `volumetric_clouds`
+    // and `ambient_occlusion` are off — wgpu pipeline reflection
+    // would otherwise drop the noise binding from the shader and the
+    // pipeline-layout entry would be unused.
     color = color + vec3<f32>(anchor_noise_binding(in.uv));
-
     return vec4<f32>(aces(color * EXPOSURE), 1.0);
 }

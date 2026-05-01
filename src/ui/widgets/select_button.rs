@@ -6,29 +6,36 @@ use egui::{Context, Ui};
 
 use crate::ui::layout::{Constraint, Element, Point, Size, rect_at};
 
-/// Output slot for [`SelectButton`]. Single and double clicks come through
-/// the same widget so we keep them together.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct SelectButtonOutput {
-    pub clicked: bool,
-    pub double_clicked: bool,
-}
-
+/// Selectable button — list-row entry. Reports single and double clicks
+/// independently; attach `&mut bool` slots only for whichever events
+/// the caller cares about via [`Self::clicked`] / [`Self::double_clicked`].
 pub struct SelectButton<'a> {
-    text: String,
+    text: &'a str,
     selected: bool,
-    out: &'a mut SelectButtonOutput,
+    clicked: Option<&'a mut bool>,
+    double_clicked: Option<&'a mut bool>,
     size: Size,
 }
 
 impl<'a> SelectButton<'a> {
-    pub fn new(text: impl Into<String>, selected: bool, out: &'a mut SelectButtonOutput) -> Self {
+    pub fn new(text: &'a str, selected: bool) -> Self {
         Self {
-            text: text.into(),
+            text,
             selected,
-            out,
+            clicked: None,
+            double_clicked: None,
             size: Size::ZERO,
         }
+    }
+
+    pub fn clicked(mut self, clicked: &'a mut bool) -> Self {
+        self.clicked = Some(clicked);
+        self
+    }
+
+    pub fn double_clicked(mut self, double_clicked: &'a mut bool) -> Self {
+        self.double_clicked = Some(double_clicked);
+        self
     }
 }
 
@@ -45,9 +52,13 @@ impl Element for SelectButton<'_> {
         // unselected state, which makes list rows hard to spot against
         // the menu background. `Button::new(...).selected(bool)` keeps
         // the chrome and just tints the fill when selected.
-        let widget = egui::Button::new(&self.text).selected(self.selected);
+        let widget = egui::Button::new(self.text).selected(self.selected);
         let resp = ui.put(rect, widget);
-        self.out.clicked = resp.clicked();
-        self.out.double_clicked = resp.double_clicked();
+        if let Some(clicked) = &mut self.clicked {
+            **clicked = resp.clicked();
+        }
+        if let Some(double_clicked) = &mut self.double_clicked {
+            **double_clicked = resp.double_clicked();
+        }
     }
 }

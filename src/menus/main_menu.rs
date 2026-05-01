@@ -108,15 +108,15 @@ impl Screen for TitleScreen {
             (FlexItem::new(Spacer::height(MENU_ROW_SPACING))),
             (FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Button::new(start_label, &mut start_clicked),
+                Button::new(&start_label).clicked(&mut start_clicked),
             ))),
             (FlexItem::new(Spacer::height(MENU_ROW_SPACING))),
             (FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(options_label, &mut options_clicked)),
+                    FlexItem::flex(1.0, Button::new(&options_label).clicked(&mut options_clicked)),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
-                    FlexItem::flex(1.0, Button::new(exit_label, &mut exit_clicked)),
+                    FlexItem::flex(1.0, Button::new(&exit_label).clicked(&mut exit_clicked)),
                 ])
                 .main_size(MainAxisSize::Max)
                 .cross_size(CrossAxisSize::Max),

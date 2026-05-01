@@ -35,27 +35,23 @@ struct FilterUniforms {
     gaussian_blur_sigma: f32,
     _pad0: f32,
     _pad1: f32,
-};
+}
 
-@group(0) @binding(0) var<uniform> filter_uniforms: FilterUniforms;
-@group(1) @binding(0) var input_texture: texture_2d<f32>;
-@group(1) @binding(1) var input_sampler: sampler;
+@group(0) @binding(0)
+var<uniform> filter_uniforms: FilterUniforms;
+@group(1) @binding(0)
+var input_texture: texture_2d<f32>;
+@group(1) @binding(1)
+var input_sampler: sampler;
 
 struct VsOut {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) uv: vec2<f32>,
-};
+}
 
 @vertex
 fn vs_main(@builtin(vertex_index) vid: u32) -> VsOut {
-    let positions = array<vec2<f32>, 6>(
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 1.0, -1.0),
-        vec2<f32>( 1.0,  1.0),
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 1.0,  1.0),
-        vec2<f32>(-1.0,  1.0),
-    );
+    let positions = array<vec2<f32>, 6>(vec2<f32>(- 1.0, - 1.0), vec2<f32>(1.0, - 1.0), vec2<f32>(1.0, 1.0), vec2<f32>(- 1.0, - 1.0), vec2<f32>(1.0, 1.0), vec2<f32>(- 1.0, 1.0),);
     let p = positions[vid];
     var out: VsOut;
     out.clip_position = vec4<f32>(p, 0.0, 1.0);
@@ -82,14 +78,17 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         var total: f32 = 0.0;
         // Runtime-bounded loop. WGSL accepts non-constant bounds —
         // performance scales with `radius`, same as the GLSL original.
-        var x: f32 = -radius;
+        var x: f32 = - radius;
         loop {
-            if (x > radius) { break; }
-            let weight = (1.0 / sqrt(2.0 * PI * sigma2)) * exp(-(x * x) / (2.0 * sigma2));
+            if (x > radius) {
+                break;
+            }
+            let weight = (1.0 / sqrt(2.0 * PI * sigma2)) * exp(- (x * x) / (2.0 * sigma2));
             var sample_uv = in.uv;
             if (horizontal) {
                 sample_uv.x += x / filter_uniforms.buffer_width;
-            } else {
+            }
+            else {
                 sample_uv.y += x / filter_uniforms.buffer_height;
             }
             sum += weight * sample_color(sample_uv);

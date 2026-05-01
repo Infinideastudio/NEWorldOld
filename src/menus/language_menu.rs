@@ -63,13 +63,13 @@ impl Screen for LanguageScreen {
         let mut entry_items: Vec<FlexItem> = Vec::new();
         for (entry, slot) in self.entries.iter().zip(entry_clicked.iter_mut()) {
             let label = if entry.native_name.is_empty() {
-                entry.code.clone()
+                &entry.code
             } else {
-                entry.native_name.clone()
+                &entry.native_name
             };
             entry_items.push(FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Button::new(label, slot),
+                Button::new(label).clicked(slot),
             )));
             entry_items.push(FlexItem::new(Spacer::height(MENU_ROW_SPACING)));
         }
@@ -78,7 +78,7 @@ impl Screen for LanguageScreen {
         let body = Flex::column(vec![
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Aligned::center(Label::new(caption)),
+                Aligned::center(Label::new(&caption)),
             )),
             FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
             FlexItem::flex(
@@ -88,7 +88,7 @@ impl Screen for LanguageScreen {
             FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Button::new(back_lbl, &mut back_clicked),
+                Button::new(&back_lbl).clicked(&mut back_clicked),
             )),
         ])
         .main_size(MainAxisSize::Max)

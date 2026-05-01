@@ -37,7 +37,7 @@ use crate::globalization::I18n;
 use crate::ui;
 use crate::ui::widgets::{
     Aligned, Alignment, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisSize, Padding,
-    ScrollView, SelectButton, SelectButtonOutput, Sizer, Spacer,
+    ScrollView, SelectButton, Sizer, Spacer,
 };
 use crate::worlds::World;
 
@@ -105,25 +105,32 @@ impl Screen for WorldSelectScreen {
         let mut enter_clicked = false;
         let mut delete_clicked = false;
         let mut back_clicked = false;
-        let mut entry_outs: Vec<SelectButtonOutput> =
-            vec![SelectButtonOutput::default(); self.entries.len()];
+        // Per-entry click + double-click slots — parallel vecs so each
+        // `SelectButton` can borrow its own pair of `&mut bool`s.
+        let mut entry_clicked: Vec<bool> = vec![false; self.entries.len()];
+        let mut entry_double_clicked: Vec<bool> = vec![false; self.entries.len()];
 
         let has_sel = !self.selected.is_empty();
         let selected_name = self.selected.clone();
 
         // ---- Build the entry list (vertical column, scrolled) ----
         let mut entry_items: Vec<FlexItem> = Vec::new();
-        for (name, out_slot) in self.entries.iter().zip(entry_outs.iter_mut()) {
+        let entry_slots = entry_clicked
+            .iter_mut()
+            .zip(entry_double_clicked.iter_mut());
+        for (name, (clicked_slot, double_slot)) in self.entries.iter().zip(entry_slots) {
             let is_sel = name == &selected_name;
             entry_items.push(FlexItem::new(Sizer::height(
                 ENTRY_ROW_HEIGHT,
-                SelectButton::new(name.clone(), is_sel, out_slot),
+                SelectButton::new(name, is_sel)
+                    .clicked(clicked_slot)
+                    .double_clicked(double_slot),
             )));
             entry_items.push(FlexItem::new(Spacer::height(MENU_ROW_SPACING)));
         }
         entry_items.push(FlexItem::new(Sizer::height(
             ENTRY_ROW_HEIGHT,
-            Button::new(new_label, &mut create_clicked),
+            Button::new(&new_label).clicked(&mut create_clicked),
         )));
         let entries_column = Flex::column(entry_items);
 
@@ -132,7 +139,7 @@ impl Screen for WorldSelectScreen {
             // caption
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Aligned::center(Label::new(caption)),
+                Aligned::center(Label::new(&caption)),
             )),
             FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
             // scrollable entries — flex-grow consumes leftover height
@@ -147,12 +154,16 @@ impl Screen for WorldSelectScreen {
                 Flex::row(vec![
                     FlexItem::flex(
                         1.0,
-                        Button::new(enter_label, &mut enter_clicked).enabled(has_sel),
+                        Button::new(&enter_label)
+                            .clicked(&mut enter_clicked)
+                            .enabled(has_sel),
                     ),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
                     FlexItem::flex(
                         1.0,
-                        Button::new(delete_label, &mut delete_clicked).enabled(has_sel),
+                        Button::new(&delete_label)
+                            .clicked(&mut delete_clicked)
+                            .enabled(has_sel),
                     ),
                 ])
                 .main_size(MainAxisSize::Max)
@@ -162,7 +173,7 @@ impl Screen for WorldSelectScreen {
             // Back to main menu
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Button::new(back_label, &mut back_clicked),
+                Button::new(&back_label).clicked(&mut back_clicked),
             )),
         ])
         .main_size(MainAxisSize::Max)
@@ -181,11 +192,15 @@ impl Screen for WorldSelectScreen {
 
         // ---- Drain output slots into screen state / transitions ----
         let mut want_enter = enter_clicked;
-        for (i, out) in entry_outs.iter().enumerate() {
-            if out.clicked {
+        for (i, (&clicked, &double_clicked)) in entry_clicked
+            .iter()
+            .zip(entry_double_clicked.iter())
+            .enumerate()
+        {
+            if clicked {
                 self.selected = self.entries[i].clone();
             }
-            if out.double_clicked {
+            if double_clicked {
                 self.selected = self.entries[i].clone();
                 want_enter = true;
             }

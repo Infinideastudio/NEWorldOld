@@ -95,17 +95,8 @@ impl Screen for OptionsScreen {
         // borrow checker see the fields as disjoint.
         let cfg: &mut Config = &mut guard;
 
-        // Snapshot the live values for the labels, then build slider cells
-        // that mutate cfg directly.
-        let fov_text = format!("{fov_lbl}{:.0}", cfg.fov_y_normal);
-        let sens_text = format!("{sens_lbl}{:.2}", cfg.mouse_speed);
-        let dist_text = format!("{dist_lbl}{}", cfg.render_distance);
-        // The UI-scale label reflects the pending value (what the slider
-        // currently shows), not the live `cfg.ui_scale` — which will
-        // only catch up when the user leaves the screen.
-        let scale_text = format!("{scale_lbl}{:.2}x", self.pending_ui_scale);
         let theme_text = format!(
-            "{theme_lbl}{}",
+            "{theme_lbl}: {}",
             if cfg.dark_theme {
                 &theme_dark_lbl
             } else {
@@ -117,7 +108,7 @@ impl Screen for OptionsScreen {
             // Caption.
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Aligned::center(Label::new(caption)),
+                Aligned::center(Label::new(&caption)),
             )),
             FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
             // Row 1: FOV | mouse sensitivity
@@ -126,26 +117,14 @@ impl Screen for OptionsScreen {
                 Flex::row(vec![
                     FlexItem::flex(
                         1.0,
-                        Flex::column(vec![
-                            FlexItem::new(Label::new(fov_text)),
-                            FlexItem::flex(
-                                1.0,
-                                Slider::new(&mut cfg.fov_y_normal, 60.0..=120.0, &mut fov_changed),
-                            ),
-                        ])
-                        .cross_size(CrossAxisSize::Max),
+                        Slider::new(&fov_lbl, &mut cfg.fov_y_normal, 60.0..=120.0)
+                            .changed(&mut fov_changed),
                     ),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
                     FlexItem::flex(
                         1.0,
-                        Flex::column(vec![
-                            FlexItem::new(Label::new(sens_text)),
-                            FlexItem::flex(
-                                1.0,
-                                Slider::new(&mut cfg.mouse_speed, 0.01..=0.5, &mut sens_changed),
-                            ),
-                        ])
-                        .cross_size(CrossAxisSize::Max),
+                        Slider::new(&sens_lbl, &mut cfg.mouse_speed, 0.01..=0.5)
+                            .changed(&mut sens_changed),
                     ),
                 ])
                 .main_size(MainAxisSize::Max)
@@ -158,17 +137,11 @@ impl Screen for OptionsScreen {
                 Flex::row(vec![
                     FlexItem::flex(
                         1.0,
-                        Flex::column(vec![
-                            FlexItem::new(Label::new(dist_text)),
-                            FlexItem::flex(
-                                1.0,
-                                Slider::new(&mut cfg.render_distance, 4..=48, &mut dist_changed),
-                            ),
-                        ])
-                        .cross_size(CrossAxisSize::Max),
+                        Slider::new(&dist_lbl, &mut cfg.render_distance, 4..=48)
+                            .changed(&mut dist_changed),
                     ),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
-                    FlexItem::flex(1.0, Button::new(render_lbl, &mut want_render)),
+                    FlexItem::flex(1.0, Button::new(&render_lbl).clicked(&mut want_render)),
                 ])
                 .main_size(MainAxisSize::Max)
                 .cross_size(CrossAxisSize::Max),
@@ -178,23 +151,13 @@ impl Screen for OptionsScreen {
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(lang_lbl, &mut want_lang)),
-                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
                     FlexItem::flex(
                         1.0,
-                        Flex::column(vec![
-                            FlexItem::new(Label::new(scale_text)),
-                            FlexItem::flex(
-                                1.0,
-                                Slider::new(
-                                    &mut self.pending_ui_scale,
-                                    0.5..=2.0,
-                                    &mut ui_scale_changed,
-                                ),
-                            ),
-                        ])
-                        .cross_size(CrossAxisSize::Max),
+                        Slider::new(&scale_lbl, &mut self.pending_ui_scale, 0.5..=2.0)
+                            .changed(&mut ui_scale_changed),
                     ),
+                    FlexItem::new(Spacer::width(MENU_COL_SPACING)),
+                    FlexItem::flex(1.0, Button::new(&lang_lbl).clicked(&mut want_lang)),
                 ])
                 .main_size(MainAxisSize::Max)
                 .cross_size(CrossAxisSize::Max),
@@ -204,7 +167,7 @@ impl Screen for OptionsScreen {
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(theme_text, &mut theme_clicked)),
+                    FlexItem::flex(1.0, Button::new(&theme_text).clicked(&mut theme_clicked)),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
                     FlexItem::flex(1.0, Spacer::fill()),
                 ])
@@ -217,9 +180,9 @@ impl Screen for OptionsScreen {
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(back_lbl, &mut want_back)),
+                    FlexItem::flex(1.0, Button::new(&back_lbl).clicked(&mut want_back)),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
-                    FlexItem::flex(1.0, Button::new(save_lbl, &mut want_save)),
+                    FlexItem::flex(1.0, Button::new(&save_lbl).clicked(&mut want_save)),
                 ])
                 .main_size(MainAxisSize::Max)
                 .cross_size(CrossAxisSize::Max),

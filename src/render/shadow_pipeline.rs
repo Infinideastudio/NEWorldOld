@@ -133,9 +133,10 @@ impl ShadowPipeline {
             immediate_size: 0,
         });
 
-        // Vertex layout — must match `ChunkVertex` byte-for-byte. Same six
-        // attributes as the chunk pipeline; the shadow shader ignores
-        // `face` / `light` but the host layout must still describe them.
+        // Vertex layout — must match `ChunkVertex` byte-for-byte. Same
+        // five attributes as the chunk pipeline; the shadow shader
+        // ignores `face` / `light` but the host layout must still
+        // describe them.
         let vertex_attributes = [
             wgpu::VertexAttribute {
                 format: wgpu::VertexFormat::Float32x3,
@@ -161,11 +162,6 @@ impl ShadowPipeline {
                 format: wgpu::VertexFormat::Uint32,
                 offset: 28,
                 shader_location: 4,
-            },
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Uint32,
-                offset: 32,
-                shader_location: 5,
             },
         ];
 

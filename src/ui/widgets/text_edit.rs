@@ -1,38 +1,43 @@
 //! Single-line text input — hosts `egui::TextEdit::singleline`. Mutates
-//! the supplied `&mut String` in place; the output slot reports per-frame
-//! events.
+//! the supplied `&mut String` in place; per-frame events (per-keystroke
+//! `changed`, on-Enter `submitted`) are reported via optional
+//! builder-attached `&mut bool` slots.
 
 use egui::{Context, Ui};
 
 use crate::ui::layout::{Constraint, Element, Point, Size, rect_at};
 
-/// Output slot for [`TextEdit`]. `changed` fires per keystroke; `submitted`
-/// fires on Enter (or the platform's submission gesture).
-#[derive(Copy, Clone, Default, Debug)]
-pub struct TextEditOutput {
-    pub changed: bool,
-    pub submitted: bool,
-}
-
 pub struct TextEdit<'a> {
     text: &'a mut String,
     hint: String,
-    out: &'a mut TextEditOutput,
+    changed: Option<&'a mut bool>,
+    submitted: Option<&'a mut bool>,
     size: Size,
 }
 
 impl<'a> TextEdit<'a> {
-    pub fn singleline(text: &'a mut String, out: &'a mut TextEditOutput) -> Self {
+    pub fn singleline(text: &'a mut String) -> Self {
         Self {
             text,
             hint: String::new(),
-            out,
+            changed: None,
+            submitted: None,
             size: Size::ZERO,
         }
     }
 
     pub fn hint(mut self, hint: impl Into<String>) -> Self {
         self.hint = hint.into();
+        self
+    }
+
+    pub fn changed(mut self, changed: &'a mut bool) -> Self {
+        self.changed = Some(changed);
+        self
+    }
+
+    pub fn submitted(mut self, submitted: &'a mut bool) -> Self {
+        self.submitted = Some(submitted);
         self
     }
 }
@@ -51,7 +56,12 @@ impl Element for TextEdit<'_> {
                 .hint_text(&self.hint)
                 .desired_width(f32::INFINITY),
         );
-        self.out.changed = resp.changed();
-        self.out.submitted = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+        if let Some(changed) = &mut self.changed {
+            **changed = resp.changed();
+        }
+        if let Some(submitted) = &mut self.submitted {
+            **submitted =
+                resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+        }
     }
 }

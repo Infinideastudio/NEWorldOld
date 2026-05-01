@@ -74,9 +74,16 @@ pub struct FrameUniforms {
     /// World-space render distance in blocks (`render_distance * 16`). Used
     /// by SSR / volumetric clouds for early-out distance limits.
     pub render_distance: f32,
-    /// Padding so the next field (`shadow_params`) lands on a 16-byte
-    /// boundary, matching the WGSL `vec4<f32>` alignment requirement.
+    /// Padding so the next field lands on a 16-byte boundary, matching
+    /// the WGSL `vec4<f32>` alignment requirement.
     _pad_scalars: [f32; 2],
+    /// Atlas-layer indices for materials composition needs to detect
+    /// per-pixel — `[water, ice, _, _]`. The G-buffer's material
+    /// attachment stores the atlas-layer index (texture id) of the
+    /// fragment's diffuse texture; composition compares against this
+    /// vec4 to apply screen-space reflection on water / ice without
+    /// needing per-block-id constants in the shader.
+    pub material_layers: [u32; 4],
     /// `(shadow_resolution, shadow_distance, shadow_fisheye, _)`. Composition
     /// treats `x <= 0` as "no shadow map yet"; the shadow pipeline writes a
     /// non-zero resolution when it lands.

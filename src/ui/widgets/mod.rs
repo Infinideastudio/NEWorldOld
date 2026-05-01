@@ -12,13 +12,15 @@
 //!   supplies all theming via its [`Style`](egui::Style) — we don't
 //!   carry a separate theme.
 //!
-//! Interactive leaves don't take callbacks; they take `&mut bool` (or a
-//! small output struct) and write the extracted event flag(s) — clicked,
-//! changed, etc. — directly into the slot. We deliberately avoid storing
-//! `egui::Response` because Response holds a `Context` clone whose
-//! interaction methods lock the context; calling them later inside another
-//! context-locking closure (e.g. `ctx.input`) can deadlock. Extracting
-//! bools at the call site eliminates that surface entirely.
+//! Interactive leaves don't take callbacks; they expose each event flag
+//! — clicked, double-clicked, changed, submitted — as a builder method
+//! that takes a `&mut bool`. Callers attach a slot only for whichever
+//! events they care about; unset events are dropped silently. We
+//! deliberately avoid storing `egui::Response` because Response holds a
+//! `Context` clone whose interaction methods lock the context; calling
+//! them later inside another context-locking closure (e.g. `ctx.input`)
+//! can deadlock. Extracting bools at the call site eliminates that
+//! surface entirely.
 //!
 //! The core types ([`Element`], [`Constraint`], [`Point`], [`Size`],
 //! [`Alignment`]) are re-exported from [`crate::ui::layout`] so callers
@@ -43,9 +45,9 @@ pub use flex::{
 pub use image::{BoxFit, Image, apply_box_fit};
 pub use label::Label;
 pub use scroll::{ScrollDirection, ScrollView};
-pub use select_button::{SelectButton, SelectButtonOutput};
+pub use select_button::SelectButton;
 pub use slider::Slider;
-pub use text_edit::{TextEdit, TextEditOutput};
+pub use text_edit::TextEdit;
 
 // Re-export the layout core so menu authors only have to import from
 // `crate::ui::widgets::*` to get everything.

@@ -4,11 +4,9 @@
 // shadow depth attachment. The fragment is mostly a no-op (just an
 // alpha test on the diffuse atlas); only the depth write matters.
 //
-// **Adapted vertex layout.** Same `ChunkVertex` layout as `chunk.wgsl`
-// — the C++ build uses `Color: Vec3u8` / `TexCoord: Vec3f` while we
-// pack equivalents into `light` / `(uv, layer)`. The shadow pass only
-// reads `position`, `uv`, `layer`, `material_id`; `light` and `face` are
-// ignored (no lighting in this pass).
+// **Adapted vertex layout.** Same `ChunkVertex` layout as `chunk.wgsl`.
+// The shadow pass only reads `position`, `uv`, and `layer`; `light` and
+// `face` are ignored (no lighting in this pass).
 //
 // Fisheye projection: the C++ build warps the post-perspective xy by
 //   p' = p / ((1 - k) + |p| * k)
@@ -37,6 +35,7 @@ struct FrameUniforms {
     fog_end: f32,
     render_distance: f32,
     _pad_scalars: vec2<f32>,
+    material_layers: vec4<u32>,
     shadow_params: vec4<f32>,
     player_coord_int: vec4<i32>,
     player_coord_mod: vec4<i32>,
@@ -58,7 +57,6 @@ struct VsIn {
     @location(2) layer: u32,
     @location(3) face: u32,
     @location(4) light: u32,
-    @location(5) material_id: u32,
 }
 
 struct VsOut {

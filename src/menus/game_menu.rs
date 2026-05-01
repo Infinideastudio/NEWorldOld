@@ -202,20 +202,20 @@ impl GameScreen {
             let body = Flex::column(vec![
                 FlexItem::new(Sizer::height(
                     MENU_ROW_HEIGHT,
-                    Aligned::center(Label::new(caption)),
+                    Aligned::center(Label::new(&caption)),
                 )),
                 FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
                 FlexItem::new(Sizer::height(
                     MENU_ROW_HEIGHT,
-                    Button::new(continue_lbl, &mut want_resume),
+                    Button::new(&continue_lbl).clicked(&mut want_resume),
                 )),
                 FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
                 FlexItem::new(Sizer::height(
                     MENU_ROW_HEIGHT,
                     Flex::row(vec![
-                        FlexItem::flex(1.0, Button::new(back_lbl, &mut want_leave)),
+                        FlexItem::flex(1.0, Button::new(&back_lbl).clicked(&mut want_leave)),
                         FlexItem::new(Spacer::width(MENU_COL_SPACING)),
-                        FlexItem::flex(1.0, Button::new(options_lbl, &mut want_options)),
+                        FlexItem::flex(1.0, Button::new(&options_lbl).clicked(&mut want_options)),
                     ])
                     .main_size(MainAxisSize::Max)
                     .cross_size(CrossAxisSize::Max),

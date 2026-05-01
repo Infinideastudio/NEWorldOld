@@ -329,6 +329,18 @@ impl World {
         self.game_time = t;
     }
 
+    /// Advance the in-game clock by `ticks`. Wraps at [`Self::DAY_TICKS`]
+    /// so the clock remains comparable across a long-running world. Called
+    /// once per sim tick from [`crate::game::Game::tick_sim`] (with an
+    /// extra multiplier while F8 is held).
+    pub fn advance_game_time(&mut self, ticks: u32) {
+        self.game_time = self.game_time.wrapping_add(ticks) % Self::DAY_TICKS;
+    }
+
+    /// Length of one in-game day in sim ticks. 30 ticks/sec × 60 s × 20 min
+    /// → 36000. Sun-direction and sky-light multiplier wrap on this period.
+    pub const DAY_TICKS: u32 = 30 * 60 * 20;
+
     /// Current chunk coord the load window is centered on. Used by `Game` to
     /// detect when the player has crossed a chunk boundary so it can call
     /// [`Self::set_center`] only on transitions instead of every frame.

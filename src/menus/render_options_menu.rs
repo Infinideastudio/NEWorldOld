@@ -67,19 +67,19 @@ impl Screen for RenderOptionsScreen {
 
         // Snapshot label texts for the toggles.
         let smooth_text = format!(
-            "{smooth_lbl}{}",
+            "{smooth_lbl}: {}",
             bool_state(cfg.smooth_lighting, &enabled_lbl, &disabled_lbl)
         );
         let grass_text = format!(
-            "{grass_lbl}{}",
+            "{grass_lbl}: {}",
             bool_state(cfg.nice_grass, &enabled_lbl, &disabled_lbl)
         );
         let merge_text = format!(
-            "{merge_lbl}{}",
+            "{merge_lbl}: {}",
             bool_state(cfg.merge_face, &enabled_lbl, &disabled_lbl)
         );
         let vsync_text = format!(
-            "{vsync_lbl}{}",
+            "{vsync_lbl}: {}",
             bool_state(cfg.vertical_sync, &enabled_lbl, &disabled_lbl)
         );
 
@@ -87,16 +87,16 @@ impl Screen for RenderOptionsScreen {
             // Caption.
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Aligned::center(Label::new(caption)),
+                Aligned::center(Label::new(&caption)),
             )),
             FlexItem::new(Spacer::height(MENU_ROW_SPACING)),
             // Row 1: smooth lighting | fancy grass
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(smooth_text, &mut smooth_clicked)),
+                    FlexItem::flex(1.0, Button::new(&smooth_text).clicked(&mut smooth_clicked)),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
-                    FlexItem::flex(1.0, Button::new(grass_text, &mut grass_clicked)),
+                    FlexItem::flex(1.0, Button::new(&grass_text).clicked(&mut grass_clicked)),
                 ])
                 .main_size(MainAxisSize::Max)
                 .cross_size(CrossAxisSize::Max),
@@ -106,9 +106,9 @@ impl Screen for RenderOptionsScreen {
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(merge_text, &mut merge_clicked)),
+                    FlexItem::flex(1.0, Button::new(&merge_text).clicked(&mut merge_clicked)),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
-                    FlexItem::flex(1.0, Button::new(vsync_text, &mut vsync_clicked)),
+                    FlexItem::flex(1.0, Button::new(&vsync_text).clicked(&mut vsync_clicked)),
                 ])
                 .main_size(MainAxisSize::Max)
                 .cross_size(CrossAxisSize::Max),
@@ -118,7 +118,7 @@ impl Screen for RenderOptionsScreen {
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(shaders_lbl, &mut want_shaders)),
+                    FlexItem::flex(1.0, Button::new(&shaders_lbl).clicked(&mut want_shaders)),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
                     FlexItem::flex(1.0, Spacer::fill()),
                 ])
@@ -130,7 +130,7 @@ impl Screen for RenderOptionsScreen {
             // Footer: full-width Back.
             FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
-                Button::new(back_lbl, &mut want_back),
+                Button::new(&back_lbl).clicked(&mut want_back),
             )),
         ])
         .main_size(MainAxisSize::Max)
