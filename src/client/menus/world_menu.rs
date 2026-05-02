@@ -33,13 +33,13 @@ use super::{
     CreateWorldScreen, MENU_COL_SPACING, MENU_MAX_WIDTH, MENU_PADDING, MENU_ROW_HEIGHT,
     MENU_ROW_SPACING, t,
 };
+use crate::core::world::World;
 use crate::globalization::I18n;
 use crate::ui;
 use crate::ui::widgets::{
     Aligned, Alignment, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisSize, Padding,
     ScrollView, SelectButton, Sizer, Spacer,
 };
-use crate::core::world::list_worlds_at;
 
 /// Height of a single world-list entry, in logical pixels — matches the
 /// C++ `Sizer({.max_height = 72})` from `old/src/menus/world_menu.cpp:46`.
@@ -59,13 +59,12 @@ pub struct WorldSelectScreen {
 }
 
 impl WorldSelectScreen {
-    
     pub fn new(
         worlds_root: PathBuf,
         i18n: Arc<Mutex<I18n>>,
         actions: Arc<WorldActionQueue>,
     ) -> Self {
-        let entries = list_worlds_at(&worlds_root);
+        let entries = World::list_at(&worlds_root);
         Self {
             worlds_root,
             i18n,
@@ -76,7 +75,7 @@ impl WorldSelectScreen {
     }
 
     fn refresh(&mut self) {
-        self.entries = list_worlds_at(&self.worlds_root);
+        self.entries = World::list_at(&self.worlds_root);
         if !self.entries.iter().any(|n| n == &self.selected) {
             self.selected.clear();
         }

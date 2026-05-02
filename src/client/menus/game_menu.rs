@@ -33,18 +33,18 @@ use super::{
     MENU_COL_SPACING, MENU_MAX_WIDTH, MENU_PADDING, MENU_ROW_HEIGHT, MENU_ROW_SPACING,
     OptionsScreen, t,
 };
-use crate::blocks::{BlockRegistry, Id};
 use crate::client::blocks::BlockRenderRegistry;
+use crate::client::game::hud::{Hud, HudFrame};
+use crate::client::game::inventory::Inventory;
 use crate::config::Config;
-use crate::game::hud::{Hud, HudFrame};
-use crate::game::inventory::Inventory;
+use crate::core::blocks::BlockRegistry;
+use crate::core::game::player::Player;
 use crate::globalization::I18n;
 use crate::ui;
 use crate::ui::widgets::{
     Aligned, Alignment, Button, CrossAxisSize, Flex, FlexItem, Label, MainAxisAlignment,
     MainAxisSize, Padding, Sizer, Spacer,
 };
-use crate::worlds::Player;
 
 /// The in-game screen shown during gameplay.
 ///
@@ -102,7 +102,6 @@ pub struct GameScreen {
 }
 
 impl GameScreen {
-    
     pub fn new(
         config: Arc<Mutex<Config>>,
         i18n: Arc<Mutex<I18n>>,
@@ -145,10 +144,9 @@ impl GameScreen {
     ///
     /// Takes `&mut Player` and `&BlockRegistry` so the inventory can move
     /// stacks around on click and so each slot can show the block's name.
-    /// `air_id` lets the inventory paint empty slots without consulting the
-    /// `BaseBlocks` table directly. `block_icons` indexes the egui texture id
-    /// for each layer of the block-diffuse atlas (built by `App::resumed`),
-    /// passed through so each inventory slot can paint its block art.
+    /// `block_icons` indexes the egui texture id for each layer of the
+    /// block-diffuse atlas (built by `App::resumed`), passed through so
+    /// each inventory slot can paint its block art.
     #[allow(deprecated)] // Panel::show
     pub fn tick(
         &mut self,
@@ -156,7 +154,6 @@ impl GameScreen {
         player: &mut Player,
         registry: &BlockRegistry,
         render_registry: &BlockRenderRegistry,
-        air_id: Id,
         block_icons: &[egui::TextureId],
     ) -> Transition {
         let mut transition = Transition::None;
@@ -276,7 +273,7 @@ impl GameScreen {
             };
             self.hud.render(ctx, &frame);
             self.inventory
-                .render(ctx, player, registry, render_registry, air_id, block_icons);
+                .render(ctx, player, registry, render_registry, block_icons);
         }
 
         transition

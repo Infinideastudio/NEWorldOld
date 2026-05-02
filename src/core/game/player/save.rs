@@ -85,10 +85,11 @@ impl Player {
             source,
         })?;
         let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes).map_err(|source| PlayerError::Io {
-            path: path.to_path_buf(),
-            source,
-        })?;
+        file.read_to_end(&mut bytes)
+            .map_err(|source| PlayerError::Io {
+                path: path.to_path_buf(),
+                source,
+            })?;
         if bytes.len() < 8 {
             return Err(PlayerError::BadMagic);
         }
@@ -110,10 +111,10 @@ impl Player {
 #[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
-    use crate::blocks::Id;
+    use crate::core::blocks::BlockId;
+    use crate::core::game::player::GameMode;
+    use crate::core::math::{Eulerd, Vec3d};
     use crate::items::ItemStack;
-    use crate::math::{Eulerd, Vec3d};
-    use crate::worlds::player::GameMode;
     use std::sync::atomic::{AtomicU64, Ordering};
 
     /// Minimal scratch directory under `std::env::temp_dir()` — same shape as
@@ -128,8 +129,7 @@ mod tests {
             static COUNTER: AtomicU64 = AtomicU64::new(0);
             let n = COUNTER.fetch_add(1, Ordering::Relaxed);
             let pid = std::process::id();
-            let path =
-                std::env::temp_dir().join(format!("neworld-player-{tag}-{pid}-{n}"));
+            let path = std::env::temp_dir().join(format!("neworld-player-{tag}-{pid}-{n}"));
             let _ = fs::remove_dir_all(&path);
             fs::create_dir_all(&path).expect("create scratch dir");
             Self { path }
@@ -156,7 +156,7 @@ mod tests {
         original.set_orientation(Eulerd::new(0.3, 0.4, 0.0));
         original.set_game_mode(GameMode::Creative);
         original.set_held_item_stack_index(4);
-        *original.inventory_item_stack_mut(2, 3) = ItemStack::new(Id(7), 42);
+        *original.inventory_item_stack_mut(2, 3) = ItemStack::new(BlockId(7), 42);
 
         original.save_to(&path).expect("save");
         let loaded = Player::load_from(&path).expect("load");
@@ -164,8 +164,11 @@ mod tests {
         assert_eq!(loaded.coord(), original.coord());
         assert_eq!(loaded.orientation(), original.orientation());
         assert_eq!(loaded.game_mode(), original.game_mode());
-        assert_eq!(loaded.held_item_stack_index(), original.held_item_stack_index());
-        assert_eq!(loaded.inventory_item_stack(2, 3).id, Id(7));
+        assert_eq!(
+            loaded.held_item_stack_index(),
+            original.held_item_stack_index()
+        );
+        assert_eq!(loaded.inventory_item_stack(2, 3).id, BlockId(7));
         assert_eq!(loaded.inventory_item_stack(2, 3).count, 42);
         assert!(loaded.flying());
     }

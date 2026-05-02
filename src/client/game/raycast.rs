@@ -8,8 +8,8 @@
 
 use cgmath::InnerSpace;
 
-use crate::math::{Vec3d, Vec3i};
-use crate::worlds::player::BlockView;
+use crate::core::game::player::BlockView;
+use crate::core::math::{Vec3d, Vec3i};
 
 /// Maximum raycast distance, in blocks. Mirrors C++ `selectDistance`.
 pub const RAYCAST_MAX: f64 = 5.0;
@@ -169,19 +169,23 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::{BlockData, Id, Light, State};
-    use crate::math::Aabbd;
+    use crate::core::blocks::{BlockData, BlockId, BlockLight, BlockState};
+    use crate::core::math::Aabbd;
 
     /// Test view: every cell with `y < 0` is solid (id 1); above is air (id 0).
     struct GroundFloor;
 
     impl BlockView for GroundFloor {
         fn block(&self, coord: Vec3i) -> Option<BlockData> {
-            let id = if coord.y < 0 { Id::new(1) } else { Id::new(0) };
+            let id = if coord.y < 0 {
+                BlockId::new(1)
+            } else {
+                BlockId::new(0)
+            };
             Some(BlockData {
                 id,
-                state: State::default(),
-                light: Light::NONE,
+                state: BlockState::default(),
+                light: BlockLight::NONE,
             })
         }
         fn block_or_air(&self, coord: Vec3i) -> BlockData {
@@ -201,14 +205,14 @@ mod tests {
     impl BlockView for OneBlock {
         fn block(&self, coord: Vec3i) -> Option<BlockData> {
             let id = if coord == self.0 {
-                Id::new(1)
+                BlockId::new(1)
             } else {
-                Id::new(0)
+                BlockId::new(0)
             };
             Some(BlockData {
                 id,
-                state: State::default(),
-                light: Light::NONE,
+                state: BlockState::default(),
+                light: BlockLight::NONE,
             })
         }
         fn block_or_air(&self, coord: Vec3i) -> BlockData {
@@ -223,7 +227,7 @@ mod tests {
     }
 
     fn solid_predicate<V: BlockView>(view: &V, coord: Vec3i) -> bool {
-        view.block_or_air(coord).id != Id::new(0)
+        view.block_or_air(coord).id != BlockId::new(0)
     }
 
     #[test]

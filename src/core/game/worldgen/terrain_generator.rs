@@ -11,9 +11,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, Light, State};
+use crate::core::blocks::{BaseBlocks, BlockData, BlockLight, BlockRegistry, BlockState};
+use crate::core::math::{Vec3i, Vec3u};
 use crate::core::world::{Chunk, ChunkData, Metadata, WorldError, WorldTables};
-use crate::math::{Vec3i, Vec3u};
 
 use super::noise::{HeightNoise, WATER_LEVEL};
 
@@ -77,7 +77,11 @@ impl TerrainGenerator {
     /// calls the closure on a disk miss, so this never runs for
     /// chunks already on disk.
     pub fn build_blocks(&self, coord: Vec3i) -> ChunkData {
-        let default_light = if coord.y < 0 { Light::NONE } else { Light::SKY };
+        let default_light = if coord.y < 0 {
+            BlockLight::NONE
+        } else {
+            BlockLight::SKY
+        };
         let mut blocks = ChunkData::air_filled(default_light);
         init_generate(&mut blocks, coord, &self.noise, &self.base);
         blocks
@@ -111,8 +115,8 @@ pub(super) fn init_generate(
     if coord.y < low {
         let rock = BlockData {
             id: base.rock,
-            state: State(0),
-            light: Light::NONE,
+            state: BlockState(0),
+            light: BlockLight::NONE,
         };
         for cell in blocks.iter_mut() {
             *cell = rock;
@@ -130,8 +134,8 @@ pub(super) fn init_generate(
     // Normal generation: mixed terrain + water + air column-by-column.
     let air_no_light = BlockData {
         id: base.air,
-        state: State(0),
-        light: Light::NONE,
+        state: BlockState(0),
+        light: BlockLight::NONE,
     };
     for cell in blocks.iter_mut() {
         *cell = air_no_light;
@@ -167,7 +171,7 @@ pub(super) fn init_generate(
                 }
                 let minh = (h + 1).max(0).min(size);
                 let maxh = (wh + 1).max(0).min(size);
-                let mut sky = (i32::from(Light::SKY.sky())
+                let mut sky = (i32::from(BlockLight::SKY.sky())
                     - (WATER_LEVEL - (maxh - 1 + (coord.y * size))))
                     .max(0);
                 let mut y = maxh - 1;
@@ -175,7 +179,7 @@ pub(super) fn init_generate(
                     sky = (sky - 1).max(0);
                     let cell = blocks.block_mut(Vec3u::new(x as u32, y as u32, z as u32));
                     cell.id = base.water;
-                    cell.light = Light::new(sky as u8, Light::SKY.block());
+                    cell.light = BlockLight::new(sky as u8, BlockLight::SKY.block());
                     y -= 1;
                 }
             }
@@ -191,7 +195,7 @@ pub(super) fn init_generate(
             for y in air_lo..Chunk::SIZE {
                 let cell = blocks.block_mut(Vec3u::new(x as u32, y as u32, z as u32));
                 cell.id = base.air;
-                cell.light = Light::SKY;
+                cell.light = BlockLight::SKY;
             }
 
             if coord.y == 0 {

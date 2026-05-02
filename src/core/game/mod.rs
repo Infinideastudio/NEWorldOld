@@ -6,6 +6,7 @@
 //! engine that a future headless server build links against.
 
 pub mod block_update;
+pub mod commands;
 pub mod daylight_cycle;
 pub mod player;
 pub mod range_loader;

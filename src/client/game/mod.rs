@@ -13,7 +13,7 @@
 //!   they arrive (see [`Self::pump_meshing`]).
 //!
 //! Player / camera split:
-//! * The [`crate::worlds::Player`] owns the simulation state — position,
+//! * The [`crate::core::game::player::Player`] owns the simulation state — position,
 //!   velocity, orientation, gravity, hitbox collision, jump bookkeeping. Its
 //!   `update(world)` runs in [`Self::tick_sim`] at 30 Hz.
 //! * The [`Camera`] is a passive view: every frame, [`Self::tick_render`]
@@ -45,28 +45,27 @@ use std::time::Instant;
 
 use cgmath::{Matrix4, Point3, SquareMatrix, Vector3};
 
-use crate::blocks::{
-    BaseBlocks, BlockData, BlockRegistry, FaceMapping, State, register_base_blocks,
-};
 use crate::client::blocks::{
     BlockRenderRegistry, BlockTextureRegistry, register_base_block_visuals,
 };
-use crate::commands::{CommandRegistry, register_base_commands};
-use crate::core::game::player::BlockView;
-use crate::core::world::Chunk;
+use crate::core::blocks::{
+    BaseBlocks, BlockData, BlockFaceMapping, BlockRegistry, BlockState, register_base_blocks,
+};
+use crate::core::game::commands::{CommandRegistry, register_base_commands};
+use crate::core::game::player::{BlockView, GameMode};
+use crate::core::math::{Aabbd, Aabbf, Frustumf, Vec3d, Vec3i};
+use crate::core::world::{Chunk, World, WorldError, chunk_coord};
 use crate::input::{InputState, Key, MouseButton};
 use crate::items::ItemStack;
-use crate::math::{Aabbf, Frustumf, Vec3d, Vec3i};
 use crate::particles::{Particle, ParticleSystem};
-use crate::render::{
+use crate::client::render::chunk_rendering::{ChunkMesh, ChunkPipeline};
+use crate::client::render::{
     CompositionFeatures, CompositionPipeline, DebugShadowPipeline, FrameUniforms, GBuffer,
     MeshInput, MeshOptions, MeshPipeline, PADDED_SIZE, PADDED_VOLUME, ParticleMesh,
     ParticlePipeline, SelectionPipeline, ShadowMap, ShadowPipeline, UnderwaterPipeline,
     UniformBuffer, mat4_to_array, padded_index,
 };
 use crate::textures::Atlases;
-use crate::worlds::chunk_rendering::{ChunkMesh, ChunkPipeline};
-use crate::worlds::{GameMode, World, WorldError};
 
 /// Bounded-heap entry for the mesh-dispatch ordering. Local to game
 /// because the mesher's heap is ordering on a different distance metric
@@ -355,7 +354,7 @@ impl Game {
         let mut player = crate::core::game::player::Player::default();
         let player_path = world.dir().join("player.bin");
         if player_path.exists() {
-            match crate::worlds::Player::load_from(&player_path) {
+            match crate::core::game::player::Player::load_from(&player_path) {
                 Ok(p) => {
                     player = p;
                     tracing::info!(?player_path, "player restored");
@@ -707,7 +706,7 @@ impl Game {
             // and future tickable blocks. Cheap (per-chunk fixed sample
             // count) but skipped while paused so a frozen world stays
             // visually frozen.
-            crate::core::game::block_update::random_tick(
+            crate::core::game::block_update::random_update(
                 &mut self.world,
                 &mut self.block_update_queue,
             );
@@ -733,7 +732,7 @@ impl Game {
             player_world.y.floor() as i32,
             player_world.z.floor() as i32,
         );
-        let player_chunk = crate::worlds::chunk_coord(player_block);
+        let player_chunk = chunk_coord(player_block);
         if self.range_loader.center_ccoord() != player_chunk {
             self.range_loader.set_center(player_block);
         }
@@ -859,7 +858,7 @@ impl Game {
     /// stay marked and reappear in the next frame's iterator.
     pub fn pump_meshing(&mut self, device: &wgpu::Device) {
         let player_world = self.player.coord();
-        let player_chunk = crate::worlds::chunk_coord(Vec3i::new(
+        let player_chunk = chunk_coord(Vec3i::new(
             player_world.x.floor() as i32,
             player_world.y.floor() as i32,
             player_world.z.floor() as i32,
@@ -1365,7 +1364,7 @@ impl Game {
         // per-frame `CommandEncoder::finish` cost, which scales with
         // recorded command count.
         let player_world = self.player.coord();
-        let player_chunk = crate::worlds::chunk_coord(Vec3i::new(
+        let player_chunk = chunk_coord(Vec3i::new(
             player_world.x.floor() as i32,
             player_world.y.floor() as i32,
             player_world.z.floor() as i32,
@@ -1631,8 +1630,8 @@ impl Game {
         // than collapsing to 3).
         let placed_info = self.registry.get(placed_id);
         let placed_state = match placed_info.face_mapping {
-            FaceMapping::AxisAligned => state_from_face_normal(hit.normal),
-            FaceMapping::Static => State::default(),
+            BlockFaceMapping::AxisAligned => state_from_face_normal(hit.normal),
+            BlockFaceMapping::Static => BlockState::default(),
         };
         // `set_block_with_state` handles all dirty-mesh marking — see
         // `try_break`.
@@ -1687,21 +1686,21 @@ impl Game {
 ///
 /// Falls back to `State(0)` (vertical / +Y) for any non-axis-aligned
 /// input, including the zero vector (a ray-start-inside-solid hit).
-fn state_from_face_normal(normal: Vec3i) -> State {
+fn state_from_face_normal(normal: Vec3i) -> BlockState {
     if normal.y > 0 {
-        State(0)
+        BlockState(0)
     } else if normal.y < 0 {
-        State(1)
+        BlockState(1)
     } else if normal.x > 0 {
-        State(2)
+        BlockState(2)
     } else if normal.x < 0 {
-        State(3)
+        BlockState(3)
     } else if normal.z > 0 {
-        State(4)
+        BlockState(4)
     } else if normal.z < 0 {
-        State(5)
+        BlockState(5)
     } else {
-        State(0)
+        BlockState(0)
     }
 }
 
@@ -1831,10 +1830,10 @@ impl BlockView for World {
     fn block_or_air(&self, coord: Vec3i) -> BlockData {
         World::block_or_air(self, coord)
     }
-    fn hitboxes(&self, _box_: crate::math::Aabbd) -> Vec<crate::math::Aabbd> {
+    fn hitboxes(&self, _box_: Aabbd) -> Vec<Aabbd> {
         Vec::new()
     }
-    fn in_water(&self, _box_: crate::math::Aabbd) -> bool {
+    fn in_water(&self, _box_: Aabbd) -> bool {
         false
     }
 }
@@ -1850,10 +1849,10 @@ impl BlockView for BlockViewRef<'_> {
     fn block_or_air(&self, coord: Vec3i) -> BlockData {
         self.0.block_or_air(coord)
     }
-    fn hitboxes(&self, box_: crate::math::Aabbd) -> Vec<crate::math::Aabbd> {
+    fn hitboxes(&self, box_: Aabbd) -> Vec<Aabbd> {
         self.0.hitboxes(box_)
     }
-    fn in_water(&self, box_: crate::math::Aabbd) -> bool {
+    fn in_water(&self, box_: Aabbd) -> bool {
         self.0.in_water(box_)
     }
 }
@@ -1864,7 +1863,7 @@ impl BlockView for BlockViewRef<'_> {
 /// view; menu toggles take effect by re-issuing every dirty chunk
 /// (see [`Game::apply_mesh_config`]).
 fn build_mesh_input(world: &World, ccoord: Vec3i, options: MeshOptions) -> Option<MeshInput> {
-    use crate::worlds::WorkingSet;
+    use crate::core::world::WorkingSet;
 
     let air = BlockData::default();
     // Heap-allocate without putting the array on the stack first.
@@ -1970,15 +1969,15 @@ mod tests {
     #[test]
     fn state_from_face_normal_covers_six_axis_directions() {
         // ±Y caps map to states 0 / 1 (Y-axis log, default upright).
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 1, 0)), State(0));
-        assert_eq!(state_from_face_normal(Vec3i::new(0, -1, 0)), State(1));
+        assert_eq!(state_from_face_normal(Vec3i::new(0, 1, 0)), BlockState(0));
+        assert_eq!(state_from_face_normal(Vec3i::new(0, -1, 0)), BlockState(1));
         // ±X caps map to states 2 / 3.
-        assert_eq!(state_from_face_normal(Vec3i::new(1, 0, 0)), State(2));
-        assert_eq!(state_from_face_normal(Vec3i::new(-1, 0, 0)), State(3));
+        assert_eq!(state_from_face_normal(Vec3i::new(1, 0, 0)), BlockState(2));
+        assert_eq!(state_from_face_normal(Vec3i::new(-1, 0, 0)), BlockState(3));
         // ±Z caps map to states 4 / 5.
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, 1)), State(4));
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, -1)), State(5));
+        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, 1)), BlockState(4));
+        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, -1)), BlockState(5));
         // Zero normal (ray started inside solid) falls back to vertical.
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, 0)), State(0));
+        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, 0)), BlockState(0));
     }
 }

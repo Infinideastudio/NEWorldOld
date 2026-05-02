@@ -11,7 +11,7 @@ use wgpu::util::DeviceExt;
 
 use crate::textures::Atlases;
 
-const SHADER_SRC: &str = include_str!("../../shaders/underwater.wgsl");
+const SHADER_SRC: &str = include_str!("../../../shaders/underwater.wgsl");
 
 /// Uniform pushed once per frame: the water atlas layer + an enable
 /// toggle. The shader collapses the quad to a degenerate point when

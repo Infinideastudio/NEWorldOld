@@ -8,5 +8,7 @@
 //! one way.
 
 pub mod blocks;
+pub mod game;
 pub mod menus;
+pub mod render;
 pub mod ui;

@@ -11,9 +11,9 @@
 
 use std::collections::VecDeque;
 
-use crate::blocks::{Id, State};
+use crate::core::blocks::{BlockId, BlockState};
+use crate::core::math::Vec3i;
 use crate::core::world::World;
-use crate::math::Vec3i;
 
 // ----------------------------------------------------------------------
 //   Tuning constants
@@ -22,9 +22,9 @@ use crate::math::Vec3i;
 /// Maximum entries drained from the queue per tick.
 pub const MAX_BLOCK_UPDATES: usize = 65536;
 /// Random ticks fired per loaded chunk per random-tick pass.
-pub const RANDOM_TICKS_PER_CHUNK: usize = 3;
+pub const RANDOM_UPDATES_PER_CHUNK: usize = 3;
 /// Random-tick pass period in sim ticks (one pass every N ticks).
-pub const RANDOM_TICK_PERIOD: u32 = 30;
+pub const RANDOM_UPDATE_PERIOD: u32 = 30;
 
 /// FIFO of block coords whose neighbourhood needs an update pass. The
 /// relaxation step ([`process_block_updates`]) drains this each tick.
@@ -59,7 +59,7 @@ pub fn set_block(
     _world: &mut World,
     _queue: &mut BlockUpdateQueue,
     _coord: Vec3i,
-    _id: Id,
+    _id: BlockId,
     _queue_update: bool,
 ) {
 }
@@ -69,8 +69,8 @@ pub fn set_block_with_state(
     _world: &mut World,
     _queue: &mut BlockUpdateQueue,
     _coord: Vec3i,
-    _id: Id,
-    _state: State,
+    _id: BlockId,
+    _state: BlockState,
     _queue_update: bool,
 ) {
 }
@@ -93,11 +93,8 @@ pub fn update_block(
 pub fn process_block_updates(_world: &mut World, _queue: &mut BlockUpdateQueue) {}
 
 /// Stub — fire one random-tick pass over every loaded chunk. Throttled
-/// internally to [`RANDOM_TICK_PERIOD`].
-pub fn random_tick(_world: &mut World, _queue: &mut BlockUpdateQueue) {}
-
-/// Stub — plant a tree at `coord`. Used by `/build_tree`.
-pub fn build_tree(_world: &mut World, _coord: Vec3i) {}
+/// internally to [`RANDOM_UPDATE_PERIOD`].
+pub fn random_update(_world: &mut World, _queue: &mut BlockUpdateQueue) {}
 
 /// Stub — explode a sphere of radius `radius` around `center`. Used by
 /// `/explode`.

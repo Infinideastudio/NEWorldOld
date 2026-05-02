@@ -10,12 +10,12 @@ mod common;
 
 use std::sync::Arc;
 
-use neworld::blocks::{BlockRegistry, register_base_blocks};
-use neworld::commands::{CommandRegistry, register_base_commands};
+use neworld::core::blocks::{BlockRegistry, register_base_blocks};
+use neworld::core::game::commands::{CommandRegistry, register_base_commands};
 use neworld::core::game::range_loader::RangeLoader;
 use neworld::core::game::worldgen::{TerrainGenerator, world_tables_for};
-use neworld::math::Vec3i;
-use neworld::worlds::World;
+use neworld::core::math::Vec3i;
+use neworld::core::world::World;
 
 use common::ScratchDir;
 
@@ -65,8 +65,7 @@ fn round_trip_world_through_set_block_save_reopen() {
         let tables = world_tables_for(scratch.path(), &world_name, &registry).expect("tables");
         let mut world =
             World::new_at(scratch.path(), world_name.clone(), tables).expect("World::new_at");
-        let mut terrain =
-            TerrainGenerator::new(Arc::clone(&registry), base, seed);
+        let mut terrain = TerrainGenerator::new(Arc::clone(&registry), base, seed);
         let mut loader = RangeLoader::new(render_distance);
         loader.set_center(Vec3i::new(0, 0, 0));
         pump_until_loaded(&mut world, &mut terrain, &mut loader, target_chunks);
@@ -105,8 +104,7 @@ fn round_trip_world_through_set_block_save_reopen() {
         let tables = world_tables_for(scratch.path(), &world_name, &registry).expect("tables");
         let mut world =
             World::new_at(scratch.path(), world_name.clone(), tables).expect("World::new_at");
-        let mut terrain =
-            TerrainGenerator::new(Arc::clone(&registry), base, seed);
+        let mut terrain = TerrainGenerator::new(Arc::clone(&registry), base, seed);
         let mut loader = RangeLoader::new(render_distance);
         loader.set_center(Vec3i::new(0, 0, 0));
         pump_until_loaded(&mut world, &mut terrain, &mut loader, target_chunks);
@@ -147,7 +145,10 @@ fn slash_command_dispatch_through_full_stack() {
     let mut messages = Vec::<String>::new();
     let ok = commands.execute_on(&line, &mut world, &mut messages);
     assert!(ok, "/setblock should succeed: {messages:?}");
-    assert_eq!(world.block(Vec3i::new(4, 6, 8)).expect("loaded").id, base.stone);
+    assert_eq!(
+        world.block(Vec3i::new(4, 6, 8)).expect("loaded").id,
+        base.stone
+    );
 
     // `/help` — read-only, should always succeed and push at least one line.
     messages.clear();

@@ -33,16 +33,18 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Fullscreen, Window, WindowAttributes, WindowId};
 
-use crate::config::Config;
-use crate::game::{Game, build_block_registry};
-use crate::globalization::I18n;
-use crate::input::{InputState, Key, MouseButton};
-use crate::math::Vec2f;
+use crate::client::game::{Game, build_block_registry};
 use crate::client::menus::{
     GameScreen, ScreenStack, Transition, WorldAction, WorldActionQueue, default_worlds_root,
     initial_screen_stack,
 };
-use crate::render::{EguiRenderer, FrameUniforms, Gfx, MenuBackground, Screenshot, UniformBuffer};
+use crate::client::render::{
+    EguiRenderer, FrameUniforms, Gfx, MenuBackground, Screenshot, UniformBuffer,
+};
+use crate::config::Config;
+use crate::core::math::Vec2f;
+use crate::globalization::I18n;
+use crate::input::{InputState, Key, MouseButton};
 use crate::text_rendering::TextRenderer;
 use crate::textures::Atlases;
 
@@ -114,14 +116,14 @@ struct AppState {
     worlds_root: PathBuf,
     /// Block registry (shared with `Game`). Built once at startup; reused
     /// across world loads.
-    registry: Arc<crate::blocks::BlockRegistry>,
+    registry: Arc<crate::core::blocks::BlockRegistry>,
     /// Per-block face-texture lookup (client-only). Built once at startup
     /// alongside `registry`. Threaded into `Game` and the in-game inventory
     /// for atlas-layer resolution.
     render_registry: Arc<crate::client::blocks::BlockRenderRegistry>,
     /// Base block ids resolved from `registry`. `Copy`, so cheap to clone
     /// when constructing a new `Game`.
-    base_blocks: crate::blocks::BaseBlocks,
+    base_blocks: crate::core::blocks::BaseBlocks,
     /// Egui texture id for each layer of the block-diffuse atlas. Indexed by
     /// `BlockInfo::face(0).0` so the inventory can paint the front-face art
     /// of each block. Built once at startup, after both `egui_renderer` and
@@ -215,7 +217,7 @@ impl App {
             // Mesh-options live-update. Drops every cached `ChunkMesh` and
             // re-marks the loaded set dirty when any of the three flags
             // changes; no-op otherwise.
-            game.apply_mesh_config(crate::render::MeshOptions {
+            game.apply_mesh_config(crate::client::render::MeshOptions {
                 smooth_lighting: cfg.smooth_lighting,
                 merge_face: cfg.merge_face,
                 nice_grass: cfg.nice_grass,
@@ -303,7 +305,7 @@ impl App {
                 }
                 WorldAction::Delete { name } => {
                     if let Err(err) =
-                        crate::core::world::delete_world_at(&state.worlds_root, &name)
+                        crate::core::world::World::delete_at(&state.worlds_root, &name)
                     {
                         tracing::warn!(error = %err, name, "failed to delete world directory");
                     } else {
@@ -572,7 +574,7 @@ impl App {
             game_screen.meshed_chunks = game.chunk_meshes.len();
             game_screen.creative = matches!(
                 player.game_mode(),
-                crate::worlds::player::GameMode::Creative
+                crate::core::game::player::GameMode::Creative
             );
             game_screen.cross_wall = player.cross_wall();
             game_screen.grounded = player.grounded();
@@ -615,13 +617,11 @@ impl App {
             if let (Some(game), Some(game_screen)) =
                 (state.game.as_mut(), state.game_screen.as_mut())
             {
-                let air = state.base_blocks.air;
                 match game_screen.tick(
                     ctx,
                     &mut game.player,
                     &state.registry,
                     &state.render_registry,
-                    air,
                     &state.block_icons,
                 ) {
                     Transition::Push(s) => state.screen_stack.push(s),
@@ -759,14 +759,9 @@ impl App {
             // the cube rotation so the bg motion is independent of the
             // FPS sample window.
             let bg_time = (now - state.start_time).as_secs_f32();
-            state.menu_background.render(
-                state.gfx.queue(),
-                &mut encoder,
-                &view,
-                sw,
-                sh,
-                bg_time,
-            );
+            state
+                .menu_background
+                .render(state.gfx.queue(), &mut encoder, &view, sw, sh, bg_time);
         }
 
         // ---------- egui render pass (on top of the world) ----------
@@ -995,13 +990,8 @@ impl ApplicationHandler for App {
             UniformBuffer::<FrameUniforms>::new(gfx.device(), "neworld.frame_uniforms");
 
         let (surf_w, surf_h) = gfx.surface_size();
-        let menu_background = MenuBackground::new(
-            gfx.device(),
-            &atlases,
-            gfx.surface_format(),
-            surf_w,
-            surf_h,
-        );
+        let menu_background =
+            MenuBackground::new(gfx.device(), &atlases, gfx.surface_format(), surf_w, surf_h);
 
         let text = TextRenderer::new(gfx.device(), gfx.queue(), gfx.surface_format());
 
@@ -1154,11 +1144,7 @@ impl ApplicationHandler for App {
                 );
                 // Re-apply the combined OS DPI × ui_scale so the
                 // post-resize layout uses the user's preferred scale.
-                let ui_scale = state
-                    .config
-                    .lock()
-                    .map_or(1.0, |c| c.ui_scale)
-                    .max(0.1);
+                let ui_scale = state.config.lock().map_or(1.0, |c| c.ui_scale).max(0.1);
                 let effective_ppp = state.window.scale_factor() as f32 * ui_scale;
                 state.egui_renderer.set_pixels_per_point(effective_ppp);
                 state.window.request_redraw();

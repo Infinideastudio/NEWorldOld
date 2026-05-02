@@ -27,6 +27,7 @@
 //! * [`screenshot`] — surface readback to PNG (F4).
 //! * [`egui_renderer`] — egui ↔ wgpu bridge for the UI layer.
 
+pub mod chunk_rendering;
 pub mod composition;
 pub mod context;
 pub mod debug_shadow_pipeline;

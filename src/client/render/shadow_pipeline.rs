@@ -26,12 +26,12 @@
 //!   `StartShadowPass`. Letting both faces write depth keeps thin sloped
 //!   geometry from acne'ing under reversed-Z PCF.
 
-use crate::render::shadow::ShadowMap;
-use crate::render::uniforms::{FrameUniforms, UniformBuffer};
+use super::chunk_rendering::{ChunkMesh, vertex_stride};
+use crate::client::render::shadow::ShadowMap;
+use crate::client::render::uniforms::{FrameUniforms, UniformBuffer};
 use crate::textures::Atlases;
-use crate::worlds::chunk_rendering::{ChunkMesh, vertex_stride};
 
-const SHADER_SRC: &str = include_str!("../../shaders/shadow.wgsl");
+const SHADER_SRC: &str = include_str!("../../../shaders/shadow.wgsl");
 
 /// Depth-only chunk pipeline for the shadow pass.
 ///

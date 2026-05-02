@@ -23,8 +23,8 @@ use std::collections::{BinaryHeap, HashMap};
 use std::sync::Arc;
 
 use crate::core::game::worldgen::TerrainGenerator;
+use crate::core::math::Vec3i;
 use crate::core::world::{Chunk, World, chunk_coord};
-use crate::math::Vec3i;
 
 // ----------------------------------------------------------------------
 //   Tuning constants
@@ -62,28 +62,6 @@ impl PartialOrd for ByDist {
 }
 
 // ----------------------------------------------------------------------
-//   LoadedCore
-// ----------------------------------------------------------------------
-
-/// Concentric region known to be fully loaded (or in-flight). Lets the
-/// shell scan skip the inner ball; only the outermost shell needs
-/// scanning per call once the window stabilises.
-///
-/// Invariant: every chunk coord with chebyshev distance ≤ `radius` from
-/// `RangeLoader::center` is either present in `World` or has a pending
-/// in-flight load. `radius == -1` ⇒ "nothing known yet".
-#[derive(Clone, Copy)]
-struct LoadedCore {
-    radius: i32,
-}
-
-impl Default for LoadedCore {
-    fn default() -> Self {
-        Self { radius: -1 }
-    }
-}
-
-// ----------------------------------------------------------------------
 //   RangeLoader
 // ----------------------------------------------------------------------
 
@@ -93,7 +71,7 @@ pub struct RangeLoader {
     /// Render distance in chunks. The load window is
     /// `render_distance + LOAD_RADIUS_BUFFER`.
     render_distance: i32,
-    loaded_core: LoadedCore,
+    loaded_distance: i32,
     pins: HashMap<Vec3i, Arc<Chunk>>,
     /// HUD counter — wraps on overflow; only ever read for display.
     unloaded_chunks: u32,
@@ -104,7 +82,7 @@ impl RangeLoader {
         Self {
             center: Vec3i::new(0, 0, 0),
             render_distance,
-            loaded_core: LoadedCore::default(),
+            loaded_distance: -1,
             pins: HashMap::new(),
             unloaded_chunks: 0,
         }
@@ -135,7 +113,7 @@ impl RangeLoader {
         let center_chunk = chunk_coord(center_block);
         let mv = center_chunk - self.center;
         let mv_cheb = mv.x.abs().max(mv.y.abs()).max(mv.z.abs());
-        self.loaded_core.radius = (self.loaded_core.radius - mv_cheb).max(-1);
+        self.loaded_distance = (self.loaded_distance - mv_cheb).max(-1);
         self.center = center_chunk;
     }
 
@@ -146,7 +124,7 @@ impl RangeLoader {
             if world.is_loaded(cc) {
                 continue;
             }
-            world.install_chunk(cc, || terrain_gen.build_blocks(cc));
+            world.load_chunk(cc, || terrain_gen.build_blocks(cc));
             world.mark_neighbour_chunks_updated(cc);
             if let Some(arc) = world.chunk(cc) {
                 self.pins.insert(cc, arc);
@@ -157,15 +135,14 @@ impl RangeLoader {
         }
     }
 
-
     // ---- internal ----
 
     fn collect_load_candidates(&mut self, world: &World) -> Vec<Vec3i> {
         let center = self.center;
         let load_dist = self.render_distance + LOAD_RADIUS_BUFFER;
-        let start = self.loaded_core.radius + 1;
+        let start = self.loaded_distance + 1;
         let mut heap: BinaryHeap<ByDist> = BinaryHeap::with_capacity(MAX_CHUNK_LOADS + 1);
-        let mut new_radius = self.loaded_core.radius;
+        let mut new_radius = self.loaded_distance;
 
         'shells: for r in start..=load_dist {
             for dx in -r..=r {
@@ -200,7 +177,7 @@ impl RangeLoader {
             }
         }
 
-        self.loaded_core.radius = new_radius;
+        self.loaded_distance = new_radius;
         heap.into_sorted_vec()
             .into_iter()
             .map(|e| e.coord)
@@ -252,17 +229,17 @@ impl RangeLoader {
         // we're about to remove. `World::evict` persists any dirty
         // bytes synchronously before dropping the slot.
         self.pins.remove(&cc);
-        world.evict(cc);
+        world.unload_chunk(cc);
         self.unloaded_chunks = self.unloaded_chunks.wrapping_add(1);
-        self.shrink_loaded_core_for_unload(cc);
+        self.shrink_loaded_distance_for_unload(cc);
     }
 
-    fn shrink_loaded_core_for_unload(&mut self, cc: Vec3i) {
-        if self.loaded_core.radius < 0 {
+    fn shrink_loaded_distance_for_unload(&mut self, cc: Vec3i) {
+        if self.loaded_distance < 0 {
             return;
         }
         let d = cc - self.center;
         let dist = d.x.abs().max(d.y.abs()).max(d.z.abs());
-        self.loaded_core.radius = self.loaded_core.radius.min(dist - 1);
+        self.loaded_distance = self.loaded_distance.min(dist - 1);
     }
 }

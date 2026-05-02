@@ -15,12 +15,10 @@ pub struct DaylightCycle {
 }
 
 impl DaylightCycle {
-    
     pub fn new() -> Self {
         Self::default()
     }
 
-    
     pub fn game_time(&self) -> u32 {
         self.game_time
     }

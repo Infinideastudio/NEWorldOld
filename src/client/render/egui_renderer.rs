@@ -13,7 +13,7 @@ use egui_wgpu::ScreenDescriptor;
 /// rendered as missing-glyph boxes. Same TTF the glyphon HUD uses, kept
 /// in-binary via `include_bytes!` so the runtime doesn't depend on the
 /// file's presence on disk.
-const UNICODE_FONT_BYTES: &[u8] = include_bytes!("../../assets/fonts/unicode.ttf");
+const UNICODE_FONT_BYTES: &[u8] = include_bytes!("../../../assets/fonts/unicode.ttf");
 
 /// Wgpu `RenderPass` lifetime-forget helper.
 ///

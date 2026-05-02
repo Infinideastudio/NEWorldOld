@@ -10,18 +10,18 @@
 //! **Storage encapsulation.** The sled-backed [`Store`] is a private
 //! implementation detail of `World`; nothing outside this module can
 //! reach it. Disk-load on chunk install, dirty-flush on eviction,
-//! the periodic [`Self::sweep_dirty`] sweep, and the `save_to_disk`
+//! the periodic [`World::sweep_dirty`] sweep, and the `save_to_disk`
 //! fence all run through `World`.
 //!
 //! **Save policy.**
-//! - [`Self::install_chunk`] tries to load the chunk from disk first;
+//! - [`World::load_chunk`] tries to load the chunk from disk first;
 //!   only on miss does it call the caller-supplied generator closure.
-//! - [`Self::evict`] drops a chunk from memory; persists it first if
-//!   it has uncommitted changes.
-//! - [`Self::sweep_dirty`] flushes up to a budget of dirty chunks
+//! - [`World::unload_chunk`] drops a chunk from memory; persists it
+//!   if it has uncommitted changes.
+//! - [`World::sweep_dirty`] flushes up to a budget of dirty chunks
 //!   each call; intended to be called periodically so on-quit save
 //!   has little remaining work.
-//! - [`Self::save_to_disk`] is the durability fence used by autosave
+//! - [`World::save_to_disk`] is the durability fence used by autosave
 //!   and on-quit.
 //!
 //! Renderer-side mesh-dirty hooks (`mark_neighbour_chunks_updated`,
@@ -47,8 +47,8 @@ use std::sync::Arc;
 
 use dashmap::DashMap;
 
-use crate::blocks::{BlockData, BlockId, Light, State};
-use crate::math::{Vec3i, Vec3u};
+use crate::core::blocks::{BlockData, BlockId, BlockLight, BlockState};
+use crate::core::math::{Vec3i, Vec3u};
 
 // ----------------------------------------------------------------------
 //   Coord helpers
@@ -111,8 +111,6 @@ pub struct World {
 }
 
 impl World {
-    // ---- construction ---------------------------------------------------
-
     /// Create or open the world named `name` rooted at
     /// `<root>/worlds/<name>/`. The caller (registry-aware) provides
     /// pre-built [`WorldTables`] — see
@@ -132,14 +130,37 @@ impl World {
         })
     }
 
+    /// List the names of every directory under `<root>/worlds/`.
+    pub fn list_at(root: &Path) -> Vec<String> {
+        let worlds_dir = root.join("worlds");
+        let Ok(entries) = std::fs::read_dir(&worlds_dir) else {
+            return Vec::new();
+        };
+        let mut names: Vec<String> = entries
+            .filter_map(Result::ok)
+            .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+            .filter_map(|e| e.file_name().into_string().ok())
+            .collect();
+        names.sort();
+        names
+    }
+
+    /// Recursively delete `<root>/worlds/<name>/`. No-op if the directory
+    /// doesn't exist.
+    pub fn delete_at(root: &Path, name: &str) -> Result<(), std::io::Error> {
+        let dir = root.join("worlds").join(name);
+        if !dir.exists() {
+            return Ok(());
+        }
+        std::fs::remove_dir_all(&dir)
+    }
+
     // ---- identity -------------------------------------------------------
 
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    /// World directory on disk. Callers that need per-world auxiliary
-    /// files (player save, etc.) build paths off this.
     pub fn dir(&self) -> &Path {
         &self.dir
     }
@@ -154,18 +175,13 @@ impl World {
         self.chunks.len()
     }
 
-    /// Snapshot of every loaded chunk coord. Walks the DashMap once,
-    /// briefly locking each shard to copy keys out — no long-held
-    /// shard guards are returned to the caller.
     pub fn loaded_coords(&self) -> Vec<Vec3i> {
         self.chunks.iter().map(|r| *r.key()).collect()
     }
 
     /// Look up the chunk at `ccoord`. Holding the returned Arc pins
-    /// the chunk against eviction. Crate-private: the [`Chunk`] type
-    /// has no public methods, so external code can only use this
-    /// handle as a pin.
-    pub(crate) fn chunk(&self, ccoord: Vec3i) -> Option<Arc<Chunk>> {
+    /// the chunk against eviction.
+    pub(super) fn chunk(&self, ccoord: Vec3i) -> Option<Arc<Chunk>> {
         self.chunks.get(&ccoord).map(|r| Arc::clone(r.value()))
     }
 
@@ -207,66 +223,21 @@ impl World {
     pub fn block_or_air(&self, coord: Vec3i) -> BlockData {
         self.block(coord).unwrap_or(BlockData {
             id: BlockId::EMPTY,
-            state: State::default(),
-            light: Light::NONE,
+            state: BlockState::default(),
+            light: BlockLight::NONE,
         })
     }
 
-    // ---- mesh-dirty tracking (renderer hooks) ---------------------------
+    // ---- chunk load / unload --------------------------------------------
 
-    /// Renderer hook: snapshot of coords whose mesh-dirty atomic is set.
-    pub fn drain_updated_chunks(&self) -> Vec<Vec3i> {
-        self.chunks
-            .iter()
-            .filter(|r| r.value().updated())
-            .map(|r| *r.key())
-            .collect()
-    }
-
-    /// Renderer hook: clear the mesh-dirty atomic on `coords` (called
-    /// by the renderer after it dispatches a remesh for each).
-    pub fn clear_updated_chunks(&self, coords: &[Vec3i]) {
-        for &cc in coords {
-            if let Some(p) = self.chunk(cc) {
-                p.clear_updated();
-            }
-        }
-    }
-
-    /// Renderer hook: mark every loaded chunk's mesh-dirty atomic.
-    /// Used to force a full re-mesh after meshing rules flip.
-    pub fn mark_all_loaded_for_remesh(&self) {
-        for r in self.chunks.iter() {
-            r.value().mark_updated();
-        }
-    }
-
-    /// Renderer hook: mark every chunk in the 3×3×3 cube around
-    /// `ccoord` as needing a re-mesh. Called after a chunk lands so
-    /// neighbouring chunks re-mesh against the real blocks.
-    pub fn mark_neighbour_chunks_updated(&self, ccoord: Vec3i) {
-        for dz in -1..=1 {
-            for dy in -1..=1 {
-                for dx in -1..=1 {
-                    let target = ccoord + Vec3i::new(dx, dy, dz);
-                    if let Some(p) = self.chunk(target) {
-                        p.mark_updated();
-                    }
-                }
-            }
-        }
-    }
-
-    // ---- chunk install / evict ------------------------------------------
-
-    /// Install the chunk at `ccoord`. World tries its on-disk store
-    /// first; on miss, calls `gen_blocks` to produce a fresh chunk.
+    /// Loads the chunk at `ccoord`. World tries its on-disk store
+    /// first; on miss, calls `init` to produce a fresh chunk.
     /// The closure is consumed only on disk-miss, so callers can
     /// hand in pre-generated blocks (e.g. from an async worker)
     /// without wasting them on hits.
     ///
     /// No-op if a chunk is already loaded at `ccoord` (race-safe).
-    pub fn install_chunk<F>(&mut self, ccoord: Vec3i, gen_blocks: F)
+    pub fn load_chunk<F>(&mut self, ccoord: Vec3i, init: F)
     where
         F: FnOnce() -> ChunkData,
     {
@@ -275,10 +246,10 @@ impl World {
         }
         let chunk = match self.try_load_from_disk(ccoord) {
             Ok(Some(blocks)) => Chunk::from_disk(blocks),
-            Ok(None) => Chunk::from_gen(gen_blocks()),
+            Ok(None) => Chunk::from_gen(init()),
             Err(err) => {
                 tracing::warn!(?ccoord, error = %err, "chunk disk load failed; regenerating");
-                Chunk::from_gen(gen_blocks())
+                Chunk::from_gen(init())
             }
         };
         match self.chunks.entry(ccoord) {
@@ -291,29 +262,12 @@ impl World {
         }
     }
 
-    /// Try to deserialize the chunk at `coord` from sled. `Ok(None)`
-    /// means there is no on-disk copy.
-    fn try_load_from_disk(&self, coord: Vec3i) -> Result<Option<ChunkData>, WorldError> {
-        let Some(bytes) = self.store.load(coord)? else {
-            return Ok(None);
-        };
-        let default_light = if coord.y < 0 { Light::NONE } else { Light::SKY };
-        let mut blocks = ChunkData::air_filled(default_light);
-        match blocks.unpackage_from(&bytes, &self.chunk_load_table) {
-            Ok(()) => Ok(Some(blocks)),
-            Err(err) => {
-                tracing::warn!(?coord, error = %err, "chunk unpackage failed; regenerating");
-                Ok(None)
-            }
-        }
-    }
-
     /// Drop the chunk at `ccoord` from the map. If the chunk has
     /// uncommitted changes, persists them synchronously first; on
     /// I/O failure the chunk is still removed and the error is
     /// logged. The Arc may stay alive in callers' clones; the slot
     /// just becomes unreachable for future lookups.
-    pub fn evict(&mut self, ccoord: Vec3i) {
+    pub fn unload_chunk(&mut self, ccoord: Vec3i) {
         if let Err(err) = self.flush_chunk(ccoord) {
             tracing::warn!(?ccoord, error = %err, "chunk save on eviction failed");
         }
@@ -364,6 +318,29 @@ impl World {
         Ok(())
     }
 
+    // ---- private helpers ------------------------------------------------
+
+    /// Try to deserialize the chunk at `coord` from sled. `Ok(None)`
+    /// means there is no on-disk copy.
+    fn try_load_from_disk(&self, coord: Vec3i) -> Result<Option<ChunkData>, WorldError> {
+        let Some(bytes) = self.store.load(coord)? else {
+            return Ok(None);
+        };
+        let default_light = if coord.y < 0 {
+            BlockLight::NONE
+        } else {
+            BlockLight::SKY
+        };
+        let mut blocks = ChunkData::air_filled(default_light);
+        match blocks.unpackage_from(&bytes, &self.chunk_load_table) {
+            Ok(()) => Ok(Some(blocks)),
+            Err(err) => {
+                tracing::warn!(?coord, error = %err, "chunk unpackage failed; regenerating");
+                Ok(None)
+            }
+        }
+    }
+
     /// Snapshot the chunk at `ccoord`, write it to sled if dirty, and
     /// advance its persisted-state counter. No-op if the chunk isn't
     /// loaded or isn't dirty.
@@ -388,33 +365,49 @@ impl World {
         chunk.advance_save_gen(captured_gen);
         Ok(())
     }
-}
 
-// ----------------------------------------------------------------------
-//   World-directory helpers (don't need a `World` instance)
-// ----------------------------------------------------------------------
+    // ---- mesh-dirty tracking (TODO: factor out to render) ---------------
 
-/// List the names of every directory under `<root>/worlds/`.
-pub fn list_worlds_at(root: &Path) -> Vec<String> {
-    let worlds_dir = root.join("worlds");
-    let Ok(entries) = std::fs::read_dir(&worlds_dir) else {
-        return Vec::new();
-    };
-    let mut names: Vec<String> = entries
-        .filter_map(Result::ok)
-        .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
-        .filter_map(|e| e.file_name().into_string().ok())
-        .collect();
-    names.sort();
-    names
-}
-
-/// Recursively delete `<root>/worlds/<name>/`. No-op if the directory
-/// doesn't exist.
-pub fn delete_world_at(root: &Path, name: &str) -> Result<(), std::io::Error> {
-    let dir = root.join("worlds").join(name);
-    if !dir.exists() {
-        return Ok(());
+    /// Renderer hook: snapshot of coords whose mesh-dirty atomic is set.
+    pub fn drain_updated_chunks(&self) -> Vec<Vec3i> {
+        self.chunks
+            .iter()
+            .filter(|r| r.value().updated())
+            .map(|r| *r.key())
+            .collect()
     }
-    std::fs::remove_dir_all(&dir)
+
+    /// Renderer hook: clear the mesh-dirty atomic on `coords` (called
+    /// by the renderer after it dispatches a remesh for each).
+    pub fn clear_updated_chunks(&self, coords: &[Vec3i]) {
+        for &cc in coords {
+            if let Some(p) = self.chunk(cc) {
+                p.clear_updated();
+            }
+        }
+    }
+
+    /// Renderer hook: mark every loaded chunk's mesh-dirty atomic.
+    /// Used to force a full re-mesh after meshing rules flip.
+    pub fn mark_all_loaded_for_remesh(&self) {
+        for r in self.chunks.iter() {
+            r.value().mark_updated();
+        }
+    }
+
+    /// Renderer hook: mark every chunk in the 3×3×3 cube around
+    /// `ccoord` as needing a re-mesh. Called after a chunk lands so
+    /// neighbouring chunks re-mesh against the real blocks.
+    pub fn mark_neighbour_chunks_updated(&self, ccoord: Vec3i) {
+        for dz in -1..=1 {
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    let target = ccoord + Vec3i::new(dx, dy, dz);
+                    if let Some(p) = self.chunk(target) {
+                        p.mark_updated();
+                    }
+                }
+            }
+        }
+    }
 }

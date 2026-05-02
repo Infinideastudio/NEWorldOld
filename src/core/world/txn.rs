@@ -19,8 +19,8 @@ use std::sync::Arc;
 use dashmap::DashMap;
 use parking_lot::{ArcRwLockReadGuard, ArcRwLockWriteGuard, RawRwLock};
 
-use crate::blocks::BlockData;
-use crate::math::{Vec3i, Vec3u};
+use crate::core::blocks::BlockData;
+use crate::core::math::{Vec3i, Vec3u};
 
 use super::chunk::{Chunk, ChunkData};
 use super::{World, block_coord, chunk_coord};
@@ -280,7 +280,7 @@ fn resolve_chunks_in(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::{BaseBlocks, BlockRegistry, Light, register_base_blocks};
+    use crate::core::blocks::{BaseBlocks, BlockLight, BlockRegistry, register_base_blocks};
 
     fn make_base() -> BaseBlocks {
         let mut reg = BlockRegistry::new();
@@ -291,7 +291,7 @@ mod tests {
         for c in coords {
             chunks.insert(
                 *c,
-                Arc::new(Chunk::from_gen(ChunkData::air_filled(Light::SKY))),
+                Arc::new(Chunk::from_gen(ChunkData::air_filled(BlockLight::SKY))),
             );
         }
     }

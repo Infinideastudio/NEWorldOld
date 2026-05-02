@@ -41,8 +41,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use parking_lot::{ArcRwLockReadGuard, ArcRwLockWriteGuard, RawRwLock, RwLock};
 use thiserror::Error;
 
-use crate::blocks::{BlockData, BlockId, Light, State};
-use crate::math::Vec3u;
+use crate::core::blocks::{BlockData, BlockId, BlockLight, BlockState};
+use crate::core::math::Vec3u;
 
 // ----------------------------------------------------------------------
 //   Chunk
@@ -137,7 +137,7 @@ impl Chunk {
         save < commit
     }
 
-    // ----- updated -----
+    // ----- updated (TODO: factor out to render) -----
 
     pub(super) fn mark_updated(&self) {
         self.updated.store(true, Ordering::Release);
@@ -182,10 +182,10 @@ impl ChunkData {
     pub const COMPRESSION_LEVEL: i32 = 3;
 
     /// Air-filled blocks at the given default light.
-    pub fn air_filled(default_light: Light) -> Self {
+    pub fn air_filled(default_light: BlockLight) -> Self {
         let fill = BlockData {
             id: BlockId::EMPTY,
-            state: State::default(),
+            state: BlockState::default(),
             light: default_light,
         };
         Self([fill; Chunk::SIZE * Chunk::SIZE * Chunk::SIZE])
@@ -332,7 +332,7 @@ pub enum ChunkError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::{BaseBlocks, BlockRegistry, register_base_blocks};
+    use crate::core::blocks::{BaseBlocks, BlockRegistry, register_base_blocks};
 
     fn make_base() -> BaseBlocks {
         let mut reg = BlockRegistry::new();
@@ -342,16 +342,16 @@ mod tests {
     #[test]
     fn air_filled_blocks_default_light() {
         let base = make_base();
-        let blocks = ChunkData::air_filled(Light::SKY);
+        let blocks = ChunkData::air_filled(BlockLight::SKY);
         let b = blocks.block(Vec3u::new(0, 0, 0));
         assert_eq!(b.id, base.air);
-        assert_eq!(b.light, Light::SKY);
+        assert_eq!(b.light, BlockLight::SKY);
     }
 
     #[test]
     fn block_mut_writes_value() {
         let base = make_base();
-        let mut blocks = ChunkData::air_filled(Light::SKY);
+        let mut blocks = ChunkData::air_filled(BlockLight::SKY);
         blocks.block_mut(Vec3u::new(2, 3, 4)).id = base.rock;
         assert_eq!(blocks.block(Vec3u::new(2, 3, 4)).id, base.rock);
         assert_eq!(blocks.block(Vec3u::new(0, 0, 0)).id, base.air);
@@ -360,11 +360,11 @@ mod tests {
     #[test]
     fn package_round_trips_through_unpackage() {
         let base = make_base();
-        let mut original = ChunkData::air_filled(Light::SKY);
+        let mut original = ChunkData::air_filled(BlockLight::SKY);
         original.block_mut(Vec3u::new(0, 0, 0)).id = base.rock;
         original.block_mut(Vec3u::new(15, 15, 15)).id = base.bedrock;
         original.block_mut(Vec3u::new(8, 4, 2)).id = base.water;
-        original.block_mut(Vec3u::new(1, 2, 3)).light = Light::new(7, 11);
+        original.block_mut(Vec3u::new(1, 2, 3)).light = BlockLight::new(7, 11);
 
         let bytes = original.package_to(&[]);
         // After zstd compression a near-uniform chunk is much
@@ -372,12 +372,15 @@ mod tests {
         assert!(bytes.len() >= ChunkData::HEADER_SIZE);
         assert!(bytes.len() < ChunkData::HEADER_SIZE + ChunkData::DATA_SIZE);
 
-        let mut loaded = ChunkData::air_filled(Light::SKY);
+        let mut loaded = ChunkData::air_filled(BlockLight::SKY);
         loaded.unpackage_from(&bytes, &[]).expect("unpackage");
         assert_eq!(loaded.block(Vec3u::new(0, 0, 0)).id, base.rock);
         assert_eq!(loaded.block(Vec3u::new(15, 15, 15)).id, base.bedrock);
         assert_eq!(loaded.block(Vec3u::new(8, 4, 2)).id, base.water);
-        assert_eq!(loaded.block(Vec3u::new(1, 2, 3)).light, Light::new(7, 11));
+        assert_eq!(
+            loaded.block(Vec3u::new(1, 2, 3)).light,
+            BlockLight::new(7, 11)
+        );
     }
 
     #[test]
@@ -385,7 +388,7 @@ mod tests {
         // Pure-air chunk: zstd should knock the body down to a
         // handful of bytes. Lock in the win so a future codec
         // regression doesn't silently bloat the database.
-        let original = ChunkData::air_filled(Light::SKY);
+        let original = ChunkData::air_filled(BlockLight::SKY);
         let bytes = original.package_to(&[]);
         assert!(
             bytes.len() < ChunkData::HEADER_SIZE + 64,
@@ -396,14 +399,14 @@ mod tests {
 
     #[test]
     fn unpackage_rejects_bad_magic() {
-        let mut blocks = ChunkData::air_filled(Light::SKY);
+        let mut blocks = ChunkData::air_filled(BlockLight::SKY);
         let bytes = vec![0_u8; ChunkData::HEADER_SIZE + ChunkData::DATA_SIZE];
         assert_eq!(blocks.unpackage_from(&bytes, &[]), Err(ChunkError::Magic));
     }
 
     #[test]
     fn unpackage_rejects_bad_version() {
-        let mut blocks = ChunkData::air_filled(Light::SKY);
+        let mut blocks = ChunkData::air_filled(BlockLight::SKY);
         let mut bytes = vec![0_u8; ChunkData::HEADER_SIZE + ChunkData::DATA_SIZE];
         bytes[0..4].copy_from_slice(&ChunkData::MAGIC.to_le_bytes());
         bytes[4..8].copy_from_slice(&999_u32.to_le_bytes());
@@ -415,7 +418,7 @@ mod tests {
 
     #[test]
     fn from_disk_starts_clean() {
-        let p = Chunk::from_disk(ChunkData::air_filled(Light::SKY));
+        let p = Chunk::from_disk(ChunkData::air_filled(BlockLight::SKY));
         assert_eq!(p.save_gen(), 1);
         assert_eq!(p.commit_gen(), 1);
         assert!(!p.dirty());
@@ -423,7 +426,7 @@ mod tests {
 
     #[test]
     fn from_gen_starts_dirty() {
-        let p = Chunk::from_gen(ChunkData::air_filled(Light::SKY));
+        let p = Chunk::from_gen(ChunkData::air_filled(BlockLight::SKY));
         assert_eq!(p.save_gen(), 0);
         assert_eq!(p.commit_gen(), 1);
         assert!(p.dirty());
@@ -431,7 +434,7 @@ mod tests {
 
     #[test]
     fn commit_then_save() {
-        let p = Chunk::from_disk(ChunkData::air_filled(Light::SKY));
+        let p = Chunk::from_disk(ChunkData::air_filled(BlockLight::SKY));
         p.bump_commit_gen();
         assert!(p.dirty());
         let captured = p.commit_gen();
@@ -441,7 +444,7 @@ mod tests {
 
     #[test]
     fn second_commit_during_save_keeps_dirty() {
-        let p = Chunk::from_disk(ChunkData::air_filled(Light::SKY));
+        let p = Chunk::from_disk(ChunkData::air_filled(BlockLight::SKY));
         p.bump_commit_gen();
         let captured = p.commit_gen();
         p.bump_commit_gen();
@@ -451,7 +454,7 @@ mod tests {
 
     #[test]
     fn updated_default_false_set_and_clear() {
-        let p = Chunk::from_disk(ChunkData::air_filled(Light::SKY));
+        let p = Chunk::from_disk(ChunkData::air_filled(BlockLight::SKY));
         assert!(!p.updated());
         p.mark_updated();
         assert!(p.updated());

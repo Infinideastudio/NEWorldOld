@@ -8,9 +8,9 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::blocks::{self, BaseBlocks, BlockRegistry};
-use crate::math::Vec3i;
-use crate::worlds::player::GameMode;
+use crate::core::blocks::{self, BaseBlocks, BlockRegistry};
+use crate::core::game::player::GameMode;
+use crate::core::math::Vec3i;
 
 use super::{Command, CommandRegistry};
 
@@ -63,7 +63,7 @@ pub fn register_base_commands(
                     .to_owned(),
             );
             messages.push(
-                "          /setblock <x> <y> <z> <id> | /tree <x> <y> <z> | /explode <x> <y> <z> <radius> | /time <time>"
+                "          /setblock <x> <y> <z> <id> | /explode <x> <y> <z> <radius> | /time <time>"
                     .to_owned(),
             );
             true
@@ -152,30 +152,9 @@ pub fn register_base_commands(
                 world,
                 &mut q,
                 Vec3i::new(x, y, z),
-                blocks::Id(id),
+                blocks::BlockId(id),
                 true,
             );
-            true
-        }),
-    );
-
-    // /tree <x> <y> <z>
-    registry.add(
-        "/tree",
-        Command::new(|args, world, _messages| {
-            if args.len() != 4 {
-                return false;
-            }
-            let Some(x) = parse_int::<i32>(args[1]) else {
-                return false;
-            };
-            let Some(y) = parse_int::<i32>(args[2]) else {
-                return false;
-            };
-            let Some(z) = parse_int::<i32>(args[3]) else {
-                return false;
-            };
-            crate::core::game::block_update::build_tree(world, Vec3i::new(x, y, z));
             true
         }),
     );

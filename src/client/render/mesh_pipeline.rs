@@ -20,9 +20,9 @@ use std::thread::JoinHandle;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
 
-use crate::blocks::BlockRegistry;
 use crate::client::blocks::BlockRenderRegistry;
-use crate::render::mesh::{MeshInput, MeshOutput, mesh_chunk};
+use crate::client::render::mesh::{MeshInput, MeshOutput, mesh_chunk};
+use crate::core::blocks::BlockRegistry;
 
 /// A meshing job. The main thread owns the `MeshInput` (an 18×18×18 padded
 /// `BlockData` snapshot) and ships it to the worker via the request channel.
@@ -106,9 +106,9 @@ fn worker_loop(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::{BlockData, register_base_blocks};
     use crate::client::blocks::{BlockTextureRegistry, register_base_block_visuals};
-    use crate::render::mesh::{PADDED_VOLUME, padded_index};
+    use crate::client::render::mesh::{PADDED_VOLUME, padded_index};
+    use crate::core::blocks::{BlockData, register_base_blocks};
     use cgmath::Vector3;
 
     /// Build a `MeshInput` that places one stone block at the chunk-local
@@ -134,7 +134,7 @@ mod tests {
         let input = MeshInput {
             coord: Vector3::new(0, 0, 0),
             padded,
-            options: crate::render::mesh::MeshOptions::default(),
+            options: crate::client::render::mesh::MeshOptions::default(),
         };
         (input, registry, render)
     }

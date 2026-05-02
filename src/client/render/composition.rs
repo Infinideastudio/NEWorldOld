@@ -16,12 +16,12 @@
 //! targets), so the per-layer bind groups are rebuilt together
 //! whenever the G-buffer is recreated by resize / mode toggle.
 
-use crate::render::gbuffer::GBuffer;
-use crate::render::shadow::ShadowMap;
-use crate::render::uniforms::{FrameUniforms, UniformBuffer};
+use crate::client::render::gbuffer::GBuffer;
+use crate::client::render::shadow::ShadowMap;
+use crate::client::render::uniforms::{FrameUniforms, UniformBuffer};
 use crate::textures::Atlases;
 
-const SHADER_SRC: &str = include_str!("../../shaders/composition.wgsl");
+const SHADER_SRC: &str = include_str!("../../../shaders/composition.wgsl");
 
 /// Boolean feature flags for the advanced composition shader. naga
 /// folds them at pipeline build-time and DCEs the disabled branches.
@@ -78,7 +78,6 @@ pub struct CompositionPipeline {
 }
 
 impl CompositionPipeline {
-    
     pub fn new(
         device: &wgpu::Device,
         surface_format: wgpu::TextureFormat,
@@ -148,22 +147,19 @@ impl CompositionPipeline {
         };
 
         let advanced_aux_layout = build_advanced_aux_layout(device);
-        let advanced_aux_bind_group = build_advanced_aux_bind_group(
-            device,
-            &advanced_aux_layout,
-            shadow_map,
-            atlases,
-        );
+        let advanced_aux_bind_group =
+            build_advanced_aux_bind_group(device, &advanced_aux_layout, shadow_map, atlases);
 
-        let basic_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("gfx::composition.basic_pipeline_layout"),
-            bind_group_layouts: &[
-                Some(&frame_layout),
-                Some(&basic_layer_layout),
-                Some(&basic_layer_layout),
-            ],
-            immediate_size: 0,
-        });
+        let basic_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("gfx::composition.basic_pipeline_layout"),
+                bind_group_layouts: &[
+                    Some(&frame_layout),
+                    Some(&basic_layer_layout),
+                    Some(&basic_layer_layout),
+                ],
+                immediate_size: 0,
+            });
         let advanced_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("gfx::composition.advanced_pipeline_layout"),
@@ -216,11 +212,7 @@ impl CompositionPipeline {
         }
     }
 
-    pub fn rebuild_with_features(
-        &mut self,
-        device: &wgpu::Device,
-        features: CompositionFeatures,
-    ) {
+    pub fn rebuild_with_features(&mut self, device: &wgpu::Device, features: CompositionFeatures) {
         if self.features == features {
             return;
         }
@@ -280,12 +272,8 @@ impl CompositionPipeline {
         shadow_map: &ShadowMap,
         atlases: &Atlases,
     ) {
-        self.advanced_aux_bind_group = build_advanced_aux_bind_group(
-            device,
-            &self.advanced_aux_layout,
-            shadow_map,
-            atlases,
-        );
+        self.advanced_aux_bind_group =
+            build_advanced_aux_bind_group(device, &self.advanced_aux_layout, shadow_map, atlases);
     }
 
     /// Record the composition pass for the requested mode. Caller
@@ -314,12 +302,10 @@ impl CompositionPipeline {
         pass.draw(0..6, 0..1);
     }
 
-    
     pub fn frame_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
         &self.frame_layout
     }
 
-    
     pub fn advanced_aux_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
         &self.advanced_aux_layout
     }
@@ -412,7 +398,7 @@ fn build_advanced_layer_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
 fn build_basic_layer_bg(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
-    layer: &crate::render::gbuffer::GBufferLayer,
+    layer: &crate::client::render::gbuffer::GBufferLayer,
     label: &str,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -434,7 +420,7 @@ fn build_basic_layer_bg(
 fn build_advanced_layer_bg(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
-    layer: &crate::render::gbuffer::GBufferLayer,
+    layer: &crate::client::render::gbuffer::GBufferLayer,
     label: &str,
 ) -> wgpu::BindGroup {
     let normal = layer

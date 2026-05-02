@@ -35,7 +35,6 @@ impl ScratchDir {
     }
 
     /// Absolute path to the scratch directory.
-    
     pub fn path(&self) -> &std::path::Path {
         &self.path
     }

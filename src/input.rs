@@ -8,7 +8,7 @@
 
 use std::ops::{BitAnd, BitOr, BitOrAssign};
 
-use crate::math::Vec2f;
+use crate::core::math::Vec2f;
 
 /// Mouse buttons. The discriminants match the bit positions used by
 /// [`MouseButtons`].

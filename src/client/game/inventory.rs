@@ -18,10 +18,10 @@
 
 use egui::{Align2, Color32, Context, FontId, Pos2, Rect, Sense, Stroke, TextureId, Ui, vec2};
 
-use crate::blocks::{BlockRegistry, Id};
 use crate::client::blocks::BlockRenderRegistry;
+use crate::core::blocks::{BlockId, BlockRegistry};
+use crate::core::game::player::Player;
 use crate::items::ItemStack;
-use crate::worlds::Player;
 
 /// Slot size in pixels (matches the C++ 32×32).
 const SLOT_SIZE: f32 = 32.0;
@@ -45,13 +45,12 @@ impl Inventory {
         player: &mut Player,
         registry: &BlockRegistry,
         render_registry: &BlockRenderRegistry,
-        air_id: Id,
         block_icons: &[TextureId],
     ) {
-        self.render_hotbar(ctx, player, registry, render_registry, air_id, block_icons);
+        self.render_hotbar(ctx, player, registry, render_registry, block_icons);
 
         if self.open {
-            self.render_full(ctx, player, registry, render_registry, air_id, block_icons);
+            self.render_full(ctx, player, registry, render_registry, block_icons);
         }
         // If the inventory is closed while `self.held` is non-empty, the
         // stack stays cached on the cursor and reappears the next time the
@@ -67,7 +66,6 @@ impl Inventory {
         player: &mut Player,
         registry: &BlockRegistry,
         render_registry: &BlockRenderRegistry,
-        air_id: Id,
         block_icons: &[TextureId],
     ) {
         let row = 3;
@@ -88,7 +86,6 @@ impl Inventory {
                             slot,
                             registry,
                             render_registry,
-                            air_id,
                             block_icons,
                             highlighted,
                             false,
@@ -107,7 +104,6 @@ impl Inventory {
         player: &mut Player,
         registry: &BlockRegistry,
         render_registry: &BlockRenderRegistry,
-        air_id: Id,
         block_icons: &[TextureId],
     ) {
         // Background dimmer behind the window so the world is muted.
@@ -133,7 +129,15 @@ impl Inventory {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = 2.0;
                         for col in 0..10 {
-                            self.handle_slot(ui, player, registry, render_registry, air_id, block_icons, row, col);
+                            self.handle_slot(
+                                ui,
+                                player,
+                                registry,
+                                render_registry,
+                                block_icons,
+                                row,
+                                col,
+                            );
                         }
                     });
                     ui.add_space(2.0);
@@ -149,7 +153,6 @@ impl Inventory {
                             player,
                             registry,
                             render_registry,
-                            air_id,
                             block_icons,
                             3,
                             col,
@@ -178,7 +181,6 @@ impl Inventory {
                 self.held,
                 registry,
                 render_registry,
-                air_id,
                 block_icons,
                 false,
                 true,
@@ -195,12 +197,20 @@ impl Inventory {
         player: &mut Player,
         registry: &BlockRegistry,
         render_registry: &BlockRenderRegistry,
-        air_id: Id,
         block_icons: &[TextureId],
         row: usize,
         col: usize,
     ) {
-        self.handle_slot_with_highlight(ui, player, registry, render_registry, air_id, block_icons, row, col, false);
+        self.handle_slot_with_highlight(
+            ui,
+            player,
+            registry,
+            render_registry,
+            block_icons,
+            row,
+            col,
+            false,
+        );
     }
 
     /// Render one slot and react to clicks. Mutates the player's slot and
@@ -218,14 +228,21 @@ impl Inventory {
         player: &mut Player,
         registry: &BlockRegistry,
         render_registry: &BlockRenderRegistry,
-        air_id: Id,
         block_icons: &[TextureId],
         row: usize,
         col: usize,
         highlighted: bool,
     ) {
         let slot = *player.inventory_item_stack(row, col);
-        let response = Self::draw_slot(ui, slot, registry, render_registry, air_id, block_icons, highlighted, true);
+        let response = Self::draw_slot(
+            ui,
+            slot,
+            registry,
+            render_registry,
+            block_icons,
+            highlighted,
+            true,
+        );
 
         if response.clicked() {
             self.left_click_slot(player, row, col);
@@ -292,7 +309,6 @@ impl Inventory {
         stack: ItemStack,
         registry: &BlockRegistry,
         render_registry: &BlockRenderRegistry,
-        air_id: Id,
         block_icons: &[TextureId],
         highlighted: bool,
         interactive: bool,
@@ -310,7 +326,6 @@ impl Inventory {
             stack,
             registry,
             render_registry,
-            air_id,
             block_icons,
             highlighted,
             hovered,
@@ -325,7 +340,6 @@ impl Inventory {
         stack: ItemStack,
         registry: &BlockRegistry,
         render_registry: &BlockRenderRegistry,
-        air_id: Id,
         block_icons: &[TextureId],
         highlighted: bool,
         hovered: bool,
@@ -334,11 +348,8 @@ impl Inventory {
         // tracks the live `Config::dark_theme` setting without each call
         // site having to thread the bool through.
         let dark = painter.ctx().global_style().visuals.dark_mode;
-        let (bg, border, fallback_text, count_text, count_shadow) = slot_palette(
-            dark,
-            highlighted,
-            hovered,
-        );
+        let (bg, border, fallback_text, count_text, count_shadow) =
+            slot_palette(dark, highlighted, hovered);
         painter.rect_filled(rect, 2.0, bg);
         painter.rect_stroke(
             rect,
@@ -347,7 +358,7 @@ impl Inventory {
             egui::StrokeKind::Middle,
         );
 
-        if stack.empty() || stack.id == air_id {
+        if stack.empty() || stack.id == BlockId::default() {
             return;
         }
 

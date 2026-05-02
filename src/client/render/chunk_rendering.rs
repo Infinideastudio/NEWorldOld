@@ -23,12 +23,12 @@
 
 use wgpu::util::DeviceExt;
 
-use crate::render::gbuffer::GBuffer;
-use crate::render::mesh::{CHUNK_SIZE, ChunkVertex, MeshOutput};
-use crate::render::uniforms::{FrameUniforms, UniformBuffer};
+use crate::client::render::gbuffer::GBuffer;
+use crate::client::render::mesh::{CHUNK_SIZE, ChunkVertex, MeshOutput};
+use crate::client::render::uniforms::{FrameUniforms, UniformBuffer};
 use crate::textures::Atlases;
 
-const SHADER_SRC: &str = include_str!("../../shaders/chunk.wgsl");
+const SHADER_SRC: &str = include_str!("../../../shaders/chunk.wgsl");
 
 /// Vertex stride in bytes — must match the WGSL header in `chunk.wgsl`.
 const VERTEX_STRIDE: wgpu::BufferAddress =
@@ -582,7 +582,7 @@ pub const fn vertex_stride() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{VERTEX_STRIDE, vertex_stride};
-    use crate::render::mesh::ChunkVertex;
+    use crate::client::render::mesh::ChunkVertex;
 
     #[test]
     fn chunk_vertex_is_32_bytes() {

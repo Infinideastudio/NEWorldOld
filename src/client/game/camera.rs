@@ -8,7 +8,7 @@
 
 use cgmath::{InnerSpace, Matrix4, Point3, Rad, Vector3};
 
-use crate::math::{Eulerd, Vec3d};
+use crate::core::math::{Eulerd, Vec3d};
 
 /// `Matrix4` that maps GL clip space `Z in [-1, 1]` into wgpu's `[0, 1]`
 /// **with the depth axis reversed** — near maps to 1, far maps to 0. Combined

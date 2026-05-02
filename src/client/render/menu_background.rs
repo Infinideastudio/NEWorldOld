@@ -25,12 +25,12 @@ use bytemuck::{Pod, Zeroable};
 use cgmath::{Deg, Matrix4, SquareMatrix, perspective};
 use wgpu::util::DeviceExt;
 
-use crate::game::camera::OPENGL_TO_WGPU_REVERSED;
-use crate::render::uniforms::FilterUniforms;
+use crate::client::render::uniforms::FilterUniforms;
+use crate::client::game::camera::OPENGL_TO_WGPU_REVERSED;
 use crate::textures::Atlases;
 
-const SKY_SHADER_SRC: &str = include_str!("../../shaders/menu_background.wgsl");
-const FILTER_SHADER_SRC: &str = include_str!("../../shaders/filter.wgsl");
+const SKY_SHADER_SRC: &str = include_str!("../../../shaders/menu_background.wgsl");
+const FILTER_SHADER_SRC: &str = include_str!("../../../shaders/filter.wgsl");
 
 /// Filter ids — must match `shaders/filter.wgsl` (`fs_main` branches on
 /// these values; anything else is treated as a black clear).

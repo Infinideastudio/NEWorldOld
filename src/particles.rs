@@ -18,8 +18,8 @@
 
 use cgmath::Vector3;
 
-use crate::math::{Aabbd, Vec3d};
-use crate::worlds::player::BlockView;
+use crate::core::game::player::BlockView;
+use crate::core::math::{Aabbd, Vec3d};
 
 // ----------------------------------------------------------------------
 //   Simulation constants (mirrored from `src/particles.ixx`)
@@ -238,8 +238,8 @@ mod tests {
     use super::*;
     use cgmath::Zero;
 
-    use crate::blocks::{BlockData, Id, Light, State};
-    use crate::math::{Aabbd, Vec3d, Vec3i};
+    use crate::core::blocks::{BlockData, BlockId, BlockLight, BlockState};
+    use crate::core::math::{Aabbd, Vec3d, Vec3i};
 
     /// A minimal in-memory `BlockView` for unit tests. Reports `solid_floor`
     /// as the only solid block — every cell with `y < 0` is solid, every
@@ -250,17 +250,17 @@ mod tests {
     impl BlockView for GroundFloor {
         fn block(&self, _coord: Vec3i) -> Option<BlockData> {
             Some(BlockData {
-                id: Id::new(0),
-                state: State::default(),
-                light: Light::NONE,
+                id: BlockId::new(0),
+                state: BlockState::default(),
+                light: BlockLight::NONE,
             })
         }
 
         fn block_or_air(&self, _coord: Vec3i) -> BlockData {
             BlockData {
-                id: Id::new(0),
-                state: State::default(),
-                light: Light::NONE,
+                id: BlockId::new(0),
+                state: BlockState::default(),
+                light: BlockLight::NONE,
             }
         }
 
@@ -304,17 +304,17 @@ mod tests {
     impl BlockView for EmptyWorld {
         fn block(&self, _coord: Vec3i) -> Option<BlockData> {
             Some(BlockData {
-                id: Id::new(0),
-                state: State::default(),
-                light: Light::NONE,
+                id: BlockId::new(0),
+                state: BlockState::default(),
+                light: BlockLight::NONE,
             })
         }
 
         fn block_or_air(&self, _coord: Vec3i) -> BlockData {
             BlockData {
-                id: Id::new(0),
-                state: State::default(),
-                light: Light::NONE,
+                id: BlockId::new(0),
+                state: BlockState::default(),
+                light: BlockLight::NONE,
             }
         }
 

@@ -18,7 +18,7 @@ use std::collections::HashMap;
 
 use tracing::warn;
 
-use crate::worlds::world::World;
+use crate::core::world::World;
 
 /// Boxed closure type for [`Command::run`]. Pulled out as a type alias so the
 /// `dyn Fn(...)` is named once and clippy `type_complexity` is happy.
@@ -148,7 +148,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::blocks::{self, BlockRegistry};
+    use crate::core::blocks::{self, BlockRegistry};
 
     #[test]
     fn try_auto_complete_returns_first_match_or_none() {

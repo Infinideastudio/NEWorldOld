@@ -21,11 +21,11 @@
 
 use bytemuck::{Pod, Zeroable};
 
-use crate::render::gbuffer::GBuffer;
-use crate::render::shadow::ShadowMap;
-use crate::render::uniforms::UniformBuffer;
+use crate::client::render::gbuffer::GBuffer;
+use crate::client::render::shadow::ShadowMap;
+use crate::client::render::uniforms::UniformBuffer;
 
-const SHADER_SRC: &str = include_str!("../../shaders/debug_shadow.wgsl");
+const SHADER_SRC: &str = include_str!("../../../shaders/debug_shadow.wgsl");
 
 /// Mirrors `DebugShadowUniforms` in `debug_shadow.wgsl`.
 ///

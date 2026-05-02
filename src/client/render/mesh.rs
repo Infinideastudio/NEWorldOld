@@ -42,11 +42,12 @@
 use bytemuck::{Pod, Zeroable};
 use cgmath::Vector3;
 
-use crate::blocks::{BlockData, BlockInfo, BlockRegistry, Id, Orientation};
 use crate::client::blocks::BlockRenderRegistry;
+use crate::core::blocks::{BlockData, BlockId, BlockInfo, BlockOrientation, BlockRegistry};
+use crate::core::world::Chunk;
 
 /// Side length of a chunk in blocks. Mirrors `chunks::Chunk::SIZE` from C++.
-pub const CHUNK_SIZE: usize = 16;
+pub const CHUNK_SIZE: usize = Chunk::SIZE;
 
 /// Padded side length: chunk size plus a one-block border on every side.
 pub const PADDED_SIZE: usize = CHUNK_SIZE + 2;
@@ -132,7 +133,7 @@ pub struct MeshOptions {
     /// `BaseBlocks::grass`. Sentinel-zero means "nice grass disabled even
     /// if the flag is on" — the registry stripped down for tests doesn't
     /// have grass; this stays out of the way.
-    pub grass_id: Id,
+    pub grass_id: BlockId,
 }
 
 impl Default for MeshOptions {
@@ -141,7 +142,7 @@ impl Default for MeshOptions {
             smooth_lighting: true,
             merge_face: true,
             nice_grass: true,
-            grass_id: Id(0),
+            grass_id: BlockId(0),
         }
     }
 }
@@ -341,7 +342,7 @@ fn project_canon_face_dir(face_id: usize, d: [f32; 3]) -> [f32; 2] {
 /// axis-aligned blocks it rotates the per-block art to follow the
 /// placement axis (so e.g. a state-2 log shows its bark grain along
 /// world X instead of world Y).
-fn corner_uvs(face_id: usize, canon_face: usize, orientation: &Orientation) -> [[f32; 2]; 4] {
+fn corner_uvs(face_id: usize, canon_face: usize, orientation: &BlockOrientation) -> [[f32; 2]; 4] {
     let mut out = [[0.0_f32; 2]; 4];
     for c in 0..4 {
         let p_canon = orientation.apply_point(FACE_CORNERS[face_id][c]);
@@ -358,7 +359,7 @@ fn corner_uvs(face_id: usize, canon_face: usize, orientation: &Orientation) -> [
 fn corner_uv_extends(
     face_id: usize,
     canon_face: usize,
-    orientation: &Orientation,
+    orientation: &BlockOrientation,
 ) -> [[f32; 2]; 4] {
     let mut out = [[0.0_f32; 2]; 4];
     for c in 0..4 {
@@ -377,14 +378,9 @@ fn corner_uv_extends(
 /// faces still emit; we look it up by namespaced internal name so this
 /// routine doesn't need a `BaseBlocks` parameter (and returns `None` for
 /// stripped-down test registries that haven't registered leaf).
-fn find_leaf_id(registry: &BlockRegistry) -> Option<Id> {
+fn find_leaf_id(registry: &BlockRegistry) -> Option<BlockId> {
     registry.id_of("neworld.leaf")
 }
-
-/// `air` id. `register_base_blocks` always assigns it id 0, and an empty
-/// `BlockData::default()` likewise has id 0; we hard-code that here so the
-/// air check can be a single integer compare rather than a registry lookup.
-const AIR_ID: Id = Id(0);
 
 /// Per-corner sign on the two perpendicular axes of each face direction.
 /// Used to address the 4 AO sample blocks around the in-front cell. Indexed
@@ -648,7 +644,7 @@ pub fn mesh_chunk(
                     let (x, y, z) = project_axes(face_id, i, j, k);
                     let cell = input.padded
                         [padded_index((x + 1) as usize, (y + 1) as usize, (z + 1) as usize)];
-                    if cell.id == AIR_ID {
+                    if cell.id == BlockId::default() {
                         flush_run(&mut opaque, &mut translucent, run.take());
                         continue;
                     }
@@ -682,7 +678,7 @@ pub fn mesh_chunk(
                     // the state byte; everything else uses the static
                     // top/side/bottom layout.
                     let tex_index_override = (opts.nice_grass
-                        && opts.grass_id != Id(0)
+                        && opts.grass_id != BlockId::default()
                         && cell.id == opts.grass_id
                         && (face_id == 0 || face_id == 1 || face_id == 4 || face_id == 5))
                         .then(|| {
@@ -710,7 +706,8 @@ pub fn mesh_chunk(
                     // for axis-aligned blocks (logs) the bark grain
                     // follows the placement axis through the four lateral
                     // faces and the cap rotates with the log end.
-                    let orientation = Orientation::for_block(&cell_info.face_mapping, cell.state);
+                    let orientation =
+                        BlockOrientation::for_block(&cell_info.face_mapping, cell.state);
                     let canon_face =
                         face_id_from_dir_i(orientation.apply_dir_i(FACE_OFFSETS[face_id]));
                     let base_uv = corner_uvs(face_id, canon_face, &orientation);
@@ -855,10 +852,10 @@ fn emit_run(out: &mut Vec<ChunkVertex>, run: Run) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::{BaseBlocks, State, register_base_blocks};
     use crate::client::blocks::{
         BlockRenderRegistry, BlockTextureRegistry, register_base_block_visuals,
     };
+    use crate::core::blocks::{BaseBlocks, BlockState, register_base_blocks};
 
     /// Build a fresh registry populated with the base game's 19 blocks, plus
     /// the matching `BaseBlocks` ids and the client-side render registry
@@ -898,7 +895,7 @@ mod tests {
         }
     }
 
-    fn block(id: Id) -> BlockData {
+    fn block(id: BlockId) -> BlockData {
         BlockData {
             id,
             ..BlockData::default()
@@ -1145,7 +1142,7 @@ mod tests {
     /// Build a `MeshInput` with one wood block at padded coord (9,9,9), the
     /// given state, surrounded by air. Returns `(layers_by_face)` — index 0
     /// holds the layer of the +X face vertex, index 1 the -X face, etc.
-    fn wood_face_layers(base: &BaseBlocks, state: State) -> [u32; 6] {
+    fn wood_face_layers(base: &BaseBlocks, state: BlockState) -> [u32; 6] {
         let mut input = padded_input(Vector3::new(0, 0, 0), |px, py, pz| {
             if (px, py, pz) == (9, 9, 9) {
                 BlockData {
@@ -1185,17 +1182,17 @@ mod tests {
         let _ = render; // borrow only used above
 
         // Y-axis (state 0 or 1).
-        for s in [State(0), State(1)] {
+        for s in [BlockState(0), BlockState(1)] {
             let l = wood_face_layers(&base, s);
             assert_eq!(l, [side, side, top, top, side, side], "state {:?}", s);
         }
         // X-axis (state 2 or 3).
-        for s in [State(2), State(3)] {
+        for s in [BlockState(2), BlockState(3)] {
             let l = wood_face_layers(&base, s);
             assert_eq!(l, [top, top, side, side, side, side], "state {:?}", s);
         }
         // Z-axis (state 4 or 5).
-        for s in [State(4), State(5)] {
+        for s in [BlockState(4), BlockState(5)] {
             let l = wood_face_layers(&base, s);
             assert_eq!(l, [side, side, side, side, top, top], "state {:?}", s);
         }
@@ -1222,7 +1219,7 @@ mod tests {
         base: &BaseBlocks,
         registry: &BlockRegistry,
         render: &BlockRenderRegistry,
-        state: State,
+        state: BlockState,
     ) -> MeshOutput {
         let mut input = padded_input(Vector3::new(0, 0, 0), |px, py, pz| {
             if (px, py, pz) == (9, 9, 9) {
@@ -1247,7 +1244,7 @@ mod tests {
         // anchor that says "introducing the canonical-projection
         // pipeline doesn't shift state-0 blocks."
         let (registry, render, base) = registry_with_base();
-        let out = solo_wood_mesh(&base, &registry, &render, State(0));
+        let out = solo_wood_mesh(&base, &registry, &render, BlockState(0));
         let expected = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
         for face in 0..6_u32 {
             let uvs = face_quad_uvs(&out, face);
@@ -1273,12 +1270,12 @@ mod tests {
         let (registry, render, base) = registry_with_base();
         // (state, cap_axis_index) — 0 = X, 1 = Y, 2 = Z.
         let cases = [
-            (State(0), 1usize),
-            (State(1), 1),
-            (State(2), 0),
-            (State(3), 0),
-            (State(4), 2),
-            (State(5), 2),
+            (BlockState(0), 1usize),
+            (BlockState(1), 1),
+            (BlockState(2), 0),
+            (BlockState(3), 0),
+            (BlockState(4), 2),
+            (BlockState(5), 2),
         ];
         for (state, cap_axis) in cases {
             let out = solo_wood_mesh(&base, &registry, &render, state);
@@ -1344,7 +1341,7 @@ mod tests {
         //   our symmetric ring texture): identical layer / UVs → merge.
         let (registry, render, base) = registry_with_base();
 
-        let make = |state_a: State, state_b: State| {
+        let make = |state_a: BlockState, state_b: BlockState| {
             padded_input(Vector3::new(0, 0, 0), move |px, py, pz| {
                 // Two blocks at (9,9,9) and (9,9,10) — adjacent along +Z,
                 // which is the +Y face's merge axis.
@@ -1370,14 +1367,22 @@ mod tests {
 
         // Same state → +Y faces merge into one quad (6 verts).
         assert_eq!(
-            plus_y(&mesh_chunk(&make(State(2), State(2)), &registry, &render)),
+            plus_y(&mesh_chunk(
+                &make(BlockState(2), BlockState(2)),
+                &registry,
+                &render
+            )),
             6,
             "same-state logs should merge along +Y"
         );
 
         // Y-axis (cap) meets X-axis (bark) → different layer, no merge.
         assert_eq!(
-            plus_y(&mesh_chunk(&make(State(0), State(2)), &registry, &render)),
+            plus_y(&mesh_chunk(
+                &make(BlockState(0), BlockState(2)),
+                &registry,
+                &render
+            )),
             12,
             "cap-vs-bark on +Y should not merge"
         );
@@ -1386,7 +1391,11 @@ mod tests {
         // base/extend UVs → merge. This is the visually-identical case
         // the new predicate is meant to allow through.
         assert_eq!(
-            plus_y(&mesh_chunk(&make(State(0), State(1)), &registry, &render)),
+            plus_y(&mesh_chunk(
+                &make(BlockState(0), BlockState(1)),
+                &registry,
+                &render
+            )),
             6,
             "visually identical Y-axis logs should merge across state byte"
         );
@@ -1398,8 +1407,8 @@ mod tests {
         // entries that happen to share a face texture tile into one quad.
         // Core info carries the gameplay flags; client `BlockRenderInfo`
         // carries the texture indices the mesher actually compares.
-        use crate::blocks::BlockInfo;
         use crate::client::blocks::{BlockRenderInfo, BlockTextureIndex};
+        use crate::core::blocks::BlockInfo;
         const SHARED: BlockTextureIndex = BlockTextureIndex(10);
         let mut r = BlockRegistry::new();
         let id_a = r.add(BlockInfo::new("rock_a", "Rock A").solid(true));

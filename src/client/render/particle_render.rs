@@ -15,8 +15,8 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
+use crate::client::render::{FrameUniforms, UniformBuffer};
 use crate::particles::Particle;
-use crate::render::{FrameUniforms, UniformBuffer};
 use crate::textures::Atlases;
 
 // ----------------------------------------------------------------------
@@ -181,7 +181,7 @@ impl ParticleMesh {
 //   Pipeline
 // ----------------------------------------------------------------------
 
-const SHADER_SRC: &str = include_str!("../../shaders/particle.wgsl");
+const SHADER_SRC: &str = include_str!("../../../shaders/particle.wgsl");
 
 /// Render pipeline + bind groups for drawing [`ParticleMesh`].
 ///
@@ -354,7 +354,7 @@ impl ParticlePipeline {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::math::Vec3d;
+    use crate::core::math::Vec3d;
     use cgmath::Zero;
 
     #[test]

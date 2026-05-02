@@ -9,12 +9,11 @@ mod common;
 
 use std::sync::Arc;
 
-use neworld::blocks::{BaseBlocks, BlockRegistry, register_base_blocks};
+use neworld::core::blocks::{BaseBlocks, BlockRegistry, register_base_blocks};
 use neworld::core::game::range_loader::RangeLoader;
 use neworld::core::game::worldgen::{TerrainGenerator, world_tables_for};
-use neworld::core::world::Chunk;
-use neworld::math::{Vec3i, Vec3u};
-use neworld::worlds::{World, block_coord, chunk_coord};
+use neworld::core::math::{Vec3i, Vec3u};
+use neworld::core::world::{Chunk, World, block_coord, chunk_coord};
 
 use common::ScratchDir;
 
@@ -97,7 +96,7 @@ fn world_block_or_air_returns_air_for_unloaded_coord() {
 
 #[test]
 fn world_loads_chunk_visible_via_read_txn() {
-    use neworld::worlds::WorkingSet;
+    use neworld::core::world::WorkingSet;
     let scratch = ScratchDir::new("chunk-lookup");
     let (mut w, mut terrain, mut loader, _base) = build_world(&scratch, "chunk-lookup", 1);
     loader.set_center(Vec3i::new(0, 0, 0));
@@ -197,7 +196,7 @@ fn world_tick_chunk_loading_is_idempotent() {
 
 #[test]
 fn tiles_store_round_trips_raw_bytes() {
-    use neworld::worlds::Store;
+    use neworld::core::world::Store;
     let scratch = ScratchDir::new("tiles");
     let store = Store::open_at(&scratch.path().join("chunks.db")).expect("TilesStore::open_at");
     let coord = Vec3i::new(-2, 3, 17);

@@ -39,10 +39,10 @@ use bytemuck::{Pod, Zeroable};
 use cgmath::Vector3;
 use wgpu::util::DeviceExt;
 
-use crate::render::depth::DepthTarget;
-use crate::render::uniforms::{FrameUniforms, UniformBuffer};
+use crate::client::render::depth::DepthTarget;
+use crate::client::render::uniforms::{FrameUniforms, UniformBuffer};
 
-const SHADER_SRC: &str = include_str!("../../shaders/selection.wgsl");
+const SHADER_SRC: &str = include_str!("../../../shaders/selection.wgsl");
 
 /// Half-length of each crosshair arm in screen pixels.
 const CROSSHAIR_HALF_LEN_PX: f32 = 12.0;

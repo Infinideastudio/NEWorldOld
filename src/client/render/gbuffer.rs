@@ -31,7 +31,7 @@
 //! is `R16Uint` — `texture_2d<u32>` on the shader side, `textureLoad`
 //! returns the u16 directly with no encode/decode dance.
 
-use crate::render::depth::DepthTarget;
+use crate::client::render::depth::DepthTarget;
 
 pub struct GBufferAttachment {
     pub texture: wgpu::Texture,

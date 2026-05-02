@@ -10,7 +10,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::math::Vec3i;
+use crate::core::math::Vec3i;
 
 use super::error::WorldError;
 
