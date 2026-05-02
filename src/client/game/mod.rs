@@ -48,6 +48,13 @@ use cgmath::{Matrix4, Point3, SquareMatrix, Vector3};
 use crate::client::blocks::{
     BlockRenderRegistry, BlockTextureRegistry, register_base_block_visuals,
 };
+use crate::client::render::chunk_rendering::{ChunkMesh, ChunkPipeline};
+use crate::client::render::{
+    CompositionFeatures, CompositionPipeline, DebugShadowPipeline, FrameUniforms, GBuffer,
+    MeshInput, MeshOptions, MeshPipeline, PADDED_SIZE, PADDED_VOLUME, ParticleMesh,
+    ParticlePipeline, SelectionPipeline, ShadowMap, ShadowPipeline, UnderwaterPipeline,
+    UniformBuffer, mat4_to_array, padded_index,
+};
 use crate::core::blocks::{
     BaseBlocks, BlockData, BlockFaceMapping, BlockRegistry, BlockState, register_base_blocks,
 };
@@ -58,13 +65,6 @@ use crate::core::world::{Chunk, World, WorldError, chunk_coord};
 use crate::input::{InputState, Key, MouseButton};
 use crate::items::ItemStack;
 use crate::particles::{Particle, ParticleSystem};
-use crate::client::render::chunk_rendering::{ChunkMesh, ChunkPipeline};
-use crate::client::render::{
-    CompositionFeatures, CompositionPipeline, DebugShadowPipeline, FrameUniforms, GBuffer,
-    MeshInput, MeshOptions, MeshPipeline, PADDED_SIZE, PADDED_VOLUME, ParticleMesh,
-    ParticlePipeline, SelectionPipeline, ShadowMap, ShadowPipeline, UnderwaterPipeline,
-    UniformBuffer, mat4_to_array, padded_index,
-};
 use crate::textures::Atlases;
 
 /// Bounded-heap entry for the mesh-dispatch ordering. Local to game
@@ -459,7 +459,7 @@ impl Game {
         let mesh_worker = MeshPipeline::spawn(Arc::clone(registry), Arc::clone(render_registry));
 
         let mut commands = CommandRegistry::new();
-        register_base_commands(&mut commands, &base_blocks, Arc::clone(registry));
+        register_base_commands(&mut commands);
 
         Ok(Self {
             world,
@@ -667,11 +667,8 @@ impl Game {
         // Particle physics — gravity / drag / lifetime. Field-disjoint
         // borrow so the simulation can read world blocks via BlockView.
         {
-            let Self {
-                world, particles, ..
-            } = self;
-            let view: &dyn BlockView = world;
-            particles.tick(dt, &BlockViewRef(view));
+            let view = WorldHitView::new(&self.world, &self.registry, &self.base_blocks);
+            self.particles.tick(dt, &view);
         }
 
         // Player input + physics. Mirrors the C++ `game_update` flow:
@@ -688,9 +685,11 @@ impl Game {
             self.last_w_press = None;
         }
         // Physics runs unconditionally — gravity should keep applying while
-        // a menu is open, just like the C++ build. `World::update_player`
-        // hides the player/world borrow split internally (see its docs).
-        // Player physics off this round; previously: self.world.update_player();
+        // a menu is open, just like the C++ build.
+        {
+            let view = WorldHitView::new(&self.world, &self.registry, &self.base_blocks);
+            self.player.update(&view);
+        }
 
         // Drain the block-update queue. Mirrors the C++ `update_thread` loop
         // calling `process_block_updates()` once per tick. Drives the BFS
@@ -699,16 +698,20 @@ impl Game {
         // frozen.
         if !paused {
             crate::core::game::block_update::process_block_updates(
-                &mut self.world,
+                &self.world,
                 &mut self.block_update_queue,
+                &self.base_blocks,
+                &self.registry,
             );
             // Random tick drives slow world dynamics: grass spread / smother
             // and future tickable blocks. Cheap (per-chunk fixed sample
             // count) but skipped while paused so a frozen world stays
             // visually frozen.
             crate::core::game::block_update::random_update(
-                &mut self.world,
+                &self.world,
                 &mut self.block_update_queue,
+                &self.base_blocks,
+                &self.registry,
             );
             // Advance the in-game clock. F8 (held) multiplies the
             // per-tick step so the user can scrub day/night quickly.
@@ -1497,7 +1500,15 @@ impl Game {
         }
         if line.starts_with('/') {
             let mut out = Vec::<String>::new();
-            self.commands.execute_on(&line, &mut self.world, &mut out);
+            let mut ctx = crate::core::game::commands::CommandContext {
+                world: &self.world,
+                player: &mut self.player,
+                queue: &mut self.block_update_queue,
+                daylight: &mut self.daylight_cycle,
+                base: &self.base_blocks,
+                registry: &self.registry,
+            };
+            self.commands.execute_on(&line, &mut ctx, &mut out);
             for s in out {
                 self.push_chat(s);
             }
@@ -1526,7 +1537,8 @@ impl Game {
         let dir = self.camera.forward();
         let air = self.base_blocks.air;
         let water = self.base_blocks.water;
-        self.selected = raycast::raycast(&self.world, origin, dir, RAYCAST_MAX, |w, c| {
+        let view = WorldHitView::new(&self.world, &self.registry, &self.base_blocks);
+        self.selected = raycast::raycast(&view, origin, dir, RAYCAST_MAX, |w, c| {
             let id = w.block_or_air(c).id;
             id != air && id != water
         });
@@ -1552,8 +1564,10 @@ impl Game {
         // 26 block-neighbours as `updated`; `pump_meshing` picks them up
         // via `World::drain_updated_chunks`.
         crate::core::game::block_update::set_block(
-            &mut self.world,
+            &self.world,
             &mut self.block_update_queue,
+            &self.base_blocks,
+            &self.registry,
             coord,
             self.base_blocks.air,
             true,
@@ -1636,8 +1650,10 @@ impl Game {
         // `set_block_with_state` handles all dirty-mesh marking — see
         // `try_break`.
         crate::core::game::block_update::set_block_with_state(
-            &mut self.world,
+            &self.world,
             &mut self.block_update_queue,
+            &self.base_blocks,
+            &self.registry,
             target,
             placed_id,
             placed_state,
@@ -1820,40 +1836,39 @@ fn player_overlaps_block(player: &crate::core::game::player::Player, block: Vec3
         && p_hi.z > lo.z
 }
 
-/// `BlockView` impl for the bare `World`. Hitbox / water queries are
-/// gameplay-collision concerns the database doesn't track; stub them
-/// to "no obstacles, not in water" until those caches reactivate.
-impl BlockView for World {
-    fn block(&self, coord: Vec3i) -> Option<BlockData> {
-        World::block(self, coord)
-    }
-    fn block_or_air(&self, coord: Vec3i) -> BlockData {
-        World::block_or_air(self, coord)
-    }
-    fn hitboxes(&self, _box_: Aabbd) -> Vec<Aabbd> {
-        Vec::new()
-    }
-    fn in_water(&self, _box_: Aabbd) -> bool {
-        false
+/// `BlockView` adapter pairing a [`World`] with the [`BlockRegistry`]
+/// and [`BaseBlocks`] it lacks awareness of. Player physics, particle
+/// collision, and the raycaster all read the world through this
+/// wrapper — the bare `World` doesn't know which ids count as solid
+/// or which one is water/lava.
+pub struct WorldHitView<'a> {
+    world: &'a World,
+    registry: &'a BlockRegistry,
+    base: &'a BaseBlocks,
+}
+
+impl<'a> WorldHitView<'a> {
+    pub fn new(world: &'a World, registry: &'a BlockRegistry, base: &'a BaseBlocks) -> Self {
+        Self {
+            world,
+            registry,
+            base,
+        }
     }
 }
 
-/// Newtype that lets us pass a `&dyn BlockView` through `&impl BlockView`
-/// constraints (needed by `ParticleSystem::tick`'s generic parameter).
-struct BlockViewRef<'a>(&'a dyn BlockView);
-
-impl BlockView for BlockViewRef<'_> {
+impl BlockView for WorldHitView<'_> {
     fn block(&self, coord: Vec3i) -> Option<BlockData> {
-        self.0.block(coord)
+        self.world.block(coord)
     }
     fn block_or_air(&self, coord: Vec3i) -> BlockData {
-        self.0.block_or_air(coord)
+        self.world.block_or_air(coord)
     }
-    fn hitboxes(&self, box_: Aabbd) -> Vec<Aabbd> {
-        self.0.hitboxes(box_)
+    fn hitboxes(&self, box_: Aabbd) -> Option<Vec<Aabbd>> {
+        crate::core::game::hit_test::hitboxes(self.world, self.registry, box_)
     }
-    fn in_water(&self, box_: Aabbd) -> bool {
-        self.0.in_water(box_)
+    fn in_water(&self, box_: Aabbd) -> Option<bool> {
+        crate::core::game::hit_test::in_water(self.world, self.base, box_)
     }
 }
 
@@ -1889,7 +1904,7 @@ fn build_mesh_input(world: &World, ccoord: Vec3i, options: MeshOptions) -> Optio
             }
         }
     }
-    let txn = world.begin_read_txn_sync(WorkingSet::Coords(coords)).ok()?;
+    let txn = world.begin_read_txn_sync(WorkingSet::List(coords)).ok()?;
 
     let chunk_origin = Vec3i::new(
         ccoord.x * Chunk::SIZE as i32,

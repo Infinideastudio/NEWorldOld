@@ -28,13 +28,19 @@ fn build_world(
     scratch: &ScratchDir,
     name: &str,
     render_distance: i32,
-) -> (World, TerrainGenerator, RangeLoader, BaseBlocks) {
+) -> (
+    World,
+    TerrainGenerator,
+    RangeLoader,
+    BaseBlocks,
+    Arc<BlockRegistry>,
+) {
     let (registry, base) = make_registry();
     let tables = world_tables_for(scratch.path(), name, &registry).expect("world_tables_for");
     let world = World::new_at(scratch.path(), name.to_owned(), tables).expect("World::new_at");
-    let terrain = TerrainGenerator::new(registry, base, 0);
+    let terrain = TerrainGenerator::new(Arc::clone(&registry), base, 0);
     let loader = RangeLoader::new(render_distance);
-    (world, terrain, loader, base)
+    (world, terrain, loader, base, registry)
 }
 
 // ---------- coord helpers ----------
@@ -69,15 +75,22 @@ fn block_coord_modulo_bitmask() {
 // ---------- World ----------
 
 #[test]
-#[ignore = "block_update::set_block is stubbed during the page-store migration"]
 fn world_set_block_then_block_round_trips() {
     let scratch = ScratchDir::new("set-block");
-    let (mut w, mut terrain, mut loader, base) = build_world(&scratch, "set-block", 1);
+    let (mut w, mut terrain, mut loader, base, registry) = build_world(&scratch, "set-block", 1);
     let mut q = neworld::core::game::block_update::BlockUpdateQueue::new();
     loader.set_center(Vec3i::new(0, 0, 0));
     loader.tick_chunk_loading(&mut w, &mut terrain);
     let coord = Vec3i::new(1, 2, 3);
-    neworld::core::game::block_update::set_block(&mut w, &mut q, coord, base.stone, false);
+    neworld::core::game::block_update::set_block(
+        &w,
+        &mut q,
+        &base,
+        &registry,
+        coord,
+        base.stone,
+        false,
+    );
     let got = w.block(coord).expect("loaded");
     assert_eq!(got.id, base.stone);
     let cc = chunk_coord(coord);
@@ -87,7 +100,7 @@ fn world_set_block_then_block_round_trips() {
 #[test]
 fn world_block_or_air_returns_air_for_unloaded_coord() {
     let scratch = ScratchDir::new("air");
-    let (w, _terrain, _loader, base) = build_world(&scratch, "air", 1);
+    let (w, _terrain, _loader, base, _registry) = build_world(&scratch, "air", 1);
     let far_off = Vec3i::new(100_000, 100_000, 100_000);
     let b = w.block_or_air(far_off);
     assert_eq!(b.id, base.air);
@@ -98,7 +111,7 @@ fn world_block_or_air_returns_air_for_unloaded_coord() {
 fn world_loads_chunk_visible_via_read_txn() {
     use neworld::core::world::WorkingSet;
     let scratch = ScratchDir::new("chunk-lookup");
-    let (mut w, mut terrain, mut loader, _base) = build_world(&scratch, "chunk-lookup", 1);
+    let (mut w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "chunk-lookup", 1);
     loader.set_center(Vec3i::new(0, 0, 0));
     loader.tick_chunk_loading(&mut w, &mut terrain);
     let cc = Vec3i::new(0, 0, 0);
@@ -117,7 +130,7 @@ fn world_set_center_does_not_unload_existing_chunks() {
     // old chunk, the chunk must still be reachable until the next
     // `tick_chunk_loading` reaps it.
     let scratch = ScratchDir::new("set-center");
-    let (mut w, mut terrain, mut loader, _base) = build_world(&scratch, "set-center", 1);
+    let (mut w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "set-center", 1);
     loader.set_center(Vec3i::new(0, 0, 0));
     loader.tick_chunk_loading(&mut w, &mut terrain);
     let cc = Vec3i::new(0, 0, 0);
@@ -135,35 +148,35 @@ fn world_set_center_does_not_unload_existing_chunks() {
 }
 
 #[test]
-#[ignore = "block_update::update_block is stubbed during the page-store migration"]
 fn world_update_block_skips_when_neighbours_unloaded() {
     let scratch = ScratchDir::new("update-skip");
     // `render_distance = 0` + the load buffer (1) loads chunks at chunk
     // coords `-1..=1` on every axis. Block coord (31, 5, 5) sits in chunk
     // (1, 0, 0) — its +x neighbour at (32, 5, 5) is in chunk (2, 0, 0)
     // which stays unloaded, so `update_block` must bail.
-    let (mut w, mut terrain, mut loader, _base) = build_world(&scratch, "update-skip", 0);
+    let (mut w, mut terrain, mut loader, base, registry) = build_world(&scratch, "update-skip", 0);
     let mut q = neworld::core::game::block_update::BlockUpdateQueue::new();
     loader.set_center(Vec3i::new(0, 0, 0));
     loader.tick_chunk_loading(&mut w, &mut terrain);
     let coord = Vec3i::new(31, 5, 5);
     assert!(!neworld::core::game::block_update::update_block(
-        &mut w, &mut q, coord, true,
+        &w, &mut q, &base, &registry, coord, true,
     ));
     assert!(q.is_empty());
 }
 
 #[test]
-#[ignore = "block_update::update_block is stubbed during the page-store migration"]
 fn world_update_block_queues_neighbour_updates_when_all_loaded() {
     let scratch = ScratchDir::new("update-queue");
-    let (mut w, mut terrain, mut loader, _base) = build_world(&scratch, "update-queue", 1);
+    let (mut w, mut terrain, mut loader, base, registry) =
+        build_world(&scratch, "update-queue", 1);
     let mut q = neworld::core::game::block_update::BlockUpdateQueue::new();
     loader.set_center(Vec3i::new(0, 0, 0));
     loader.tick_chunk_loading(&mut w, &mut terrain);
     let coord = Vec3i::new(2, 3, 4);
     let drained_before = q.len();
-    let ok = neworld::core::game::block_update::update_block(&mut w, &mut q, coord, true);
+    let ok =
+        neworld::core::game::block_update::update_block(&w, &mut q, &base, &registry, coord, true);
     assert!(ok, "neighbours should be loaded");
     assert_eq!(
         q.len() - drained_before,
@@ -178,7 +191,7 @@ fn world_tick_chunk_loading_is_idempotent() {
     // beyond `MAX_CHUNK_LOADS = 64` per tick. Drain to a steady state, then
     // assert one more tick adds nothing.
     let scratch = ScratchDir::new("idempotent");
-    let (mut w, mut terrain, mut loader, _base) = build_world(&scratch, "idempotent", 1);
+    let (mut w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "idempotent", 1);
     loader.set_center(Vec3i::new(0, 0, 0));
     let mut prev = 0;
     for _ in 0..16 {

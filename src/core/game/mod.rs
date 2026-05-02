@@ -8,6 +8,7 @@
 pub mod block_update;
 pub mod commands;
 pub mod daylight_cycle;
+pub mod hit_test;
 pub mod player;
 pub mod range_loader;
 pub mod worldgen;

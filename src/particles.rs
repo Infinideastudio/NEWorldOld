@@ -195,8 +195,22 @@ impl ParticleSystem {
 
             // AABB-vs-block collision. Mirrors C++:
             //   particle_box.clip_displacement(world.hitboxes(particle_box.extend(velocity)), velocity)
+            //
+            // Freeze the particle for this tick if the swept region
+            // straddles unloaded chunks — same rationale as the player
+            // pre-flight check: phasing through ungenerated terrain looks
+            // worse than a momentary hover.
             let aabb = p.aabb();
-            let boxes = view.hitboxes(aabb.extend(p.velocity));
+            let Some(boxes) = view.hitboxes(aabb.extend(p.velocity)) else {
+                p.age += dt;
+                if p.age >= p.max_age {
+                    self.particles.swap_remove(i);
+                } else {
+                    self.particles[i] = p;
+                    i += 1;
+                }
+                continue;
+            };
             let clipped = aabb.clip_displacement(&boxes, p.velocity, COLLISION_EPS);
 
             // Apply (scaled) displacement. The clipped vector is in C++ "per
@@ -264,7 +278,7 @@ mod tests {
             }
         }
 
-        fn hitboxes(&self, box_: Aabbd) -> Vec<Aabbd> {
+        fn hitboxes(&self, box_: Aabbd) -> Option<Vec<Aabbd>> {
             // Generate one 1×1×1 hitbox per integer cell with `y < 0` that
             // overlaps `box_`. This mimics what `World::hitboxes` does for a
             // ground-only world.
@@ -288,11 +302,11 @@ mod tests {
                     }
                 }
             }
-            out
+            Some(out)
         }
 
-        fn in_water(&self, _box_: Aabbd) -> bool {
-            false
+        fn in_water(&self, _box_: Aabbd) -> Option<bool> {
+            Some(false)
         }
     }
 
@@ -318,12 +332,12 @@ mod tests {
             }
         }
 
-        fn hitboxes(&self, _box_: Aabbd) -> Vec<Aabbd> {
-            Vec::new()
+        fn hitboxes(&self, _box_: Aabbd) -> Option<Vec<Aabbd>> {
+            Some(Vec::new())
         }
 
-        fn in_water(&self, _box_: Aabbd) -> bool {
-            false
+        fn in_water(&self, _box_: Aabbd) -> Option<bool> {
+            Some(false)
         }
     }
 

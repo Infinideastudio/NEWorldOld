@@ -2,9 +2,11 @@
 //!
 //! Port of `src/commands.ixx` per `docs/rust_migration.md` §4.7.
 //!
-//! `Command` wraps a `Box<dyn Fn(&[&str], &mut World, &mut Vec<String>) -> bool +
-//! Send + Sync>`. The registry is a `HashMap<String, Command>` plus a couple
-//! of convenience methods (`execute_on`, `try_auto_complete`).
+//! `Command` wraps a closure that receives a [`CommandContext`] (the
+//! gameplay-state bundle commands need: world, player, block-update
+//! queue, daylight clock, block registry) plus the chat message
+//! buffer. The registry is a `HashMap<String, Command>` plus
+//! `execute_on` / `try_auto_complete` helpers.
 //!
 //! `try_auto_complete(prefix)`: among names starting with `prefix`, returns
 //! the lexicographically smallest match for determinism. The C++ version uses
@@ -18,17 +20,41 @@ use std::collections::HashMap;
 
 use tracing::warn;
 
+use crate::core::blocks::{BaseBlocks, BlockRegistry};
+use crate::core::game::block_update::BlockUpdateQueue;
+use crate::core::game::daylight_cycle::DaylightCycle;
+use crate::core::game::player::Player;
 use crate::core::world::World;
+
+/// Gameplay state a slash-command needs access to. Built fresh for
+/// each `execute_on` call by whoever owns the simulation (`Game` in
+/// the client; the test harness for integration tests).
+///
+/// `world` is a shared ref — `World`'s mutating ops (`set_block`,
+/// `mark_neighbour_chunks_updated`, …) all take `&self` and route
+/// through interior locks. The other fields are mutable because the
+/// owning `Game` keeps them in disjoint slots and commands genuinely
+/// mutate them.
+pub struct CommandContext<'a> {
+    pub world: &'a World,
+    pub player: &'a mut Player,
+    pub queue: &'a mut BlockUpdateQueue,
+    pub daylight: &'a mut DaylightCycle,
+    pub base: &'a BaseBlocks,
+    pub registry: &'a BlockRegistry,
+}
 
 /// Boxed closure type for [`Command::run`]. Pulled out as a type alias so the
 /// `dyn Fn(...)` is named once and clippy `type_complexity` is happy.
-pub type CommandFn = Box<dyn Fn(&[&str], &mut World, &mut Vec<String>) -> bool + Send + Sync>;
+pub type CommandFn =
+    Box<dyn Fn(&[&str], &mut CommandContext<'_>, &mut Vec<String>) -> bool + Send + Sync>;
 
 /// A single chat command. The closure receives the **whole** token list
 /// (`args[0]` is the command name, including the leading `/`), a mutable
-/// `World`, and the chat message buffer; it returns `false` if the args are
-/// malformed for this command. The registry treats a `false` return as a
-/// failure and writes a `Fail to execute the command: …` line into `messages`.
+/// [`CommandContext`], and the chat message buffer; it returns `false` if
+/// the args are malformed for this command. The registry treats a `false`
+/// return as a failure and writes a `Fail to execute the command: …` line
+/// into `messages`.
 ///
 /// `Send + Sync` so the registry can be wrapped in `Arc` later if commands
 /// cross threads.
@@ -45,7 +71,7 @@ impl Command {
     /// Build a command from any `Fn` closure with the right signature.
     pub fn new<F>(run: F) -> Self
     where
-        F: Fn(&[&str], &mut World, &mut Vec<String>) -> bool + Send + Sync + 'static,
+        F: Fn(&[&str], &mut CommandContext<'_>, &mut Vec<String>) -> bool + Send + Sync + 'static,
     {
         Self { run: Box::new(run) }
     }
@@ -100,11 +126,16 @@ impl CommandRegistry {
     /// command returning `false`, emits `tracing::warn!` and pushes
     /// `"Fail to execute the command: <line>"` to `messages`, then returns
     /// `false`.
-    pub fn execute_on(&self, line: &str, world: &mut World, messages: &mut Vec<String>) -> bool {
+    pub fn execute_on(
+        &self,
+        line: &str,
+        ctx: &mut CommandContext<'_>,
+        messages: &mut Vec<String>,
+    ) -> bool {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if let Some(name) = parts.first()
             && let Some(cmd) = self.entries.get(*name)
-            && (cmd.run)(&parts, world, messages)
+            && (cmd.run)(&parts, ctx, messages)
         {
             return true;
         }
@@ -145,27 +176,20 @@ impl CommandRegistry {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use super::*;
-    use crate::core::blocks::{self, BlockRegistry};
 
     #[test]
     fn try_auto_complete_returns_first_match_or_none() {
-        let mut br = BlockRegistry::new();
-        let base = blocks::register_base_blocks(&mut br);
         let mut r = CommandRegistry::new();
-        register_base_commands(&mut r, &base, Arc::new(br));
+        register_base_commands(&mut r);
         assert_eq!(r.try_auto_complete("/he"), Some("/help".to_owned()));
         assert_eq!(r.try_auto_complete("/zzz"), None);
     }
 
     #[test]
     fn try_auto_complete_is_deterministic_across_calls() {
-        let mut br = BlockRegistry::new();
-        let base = blocks::register_base_blocks(&mut br);
         let mut r = CommandRegistry::new();
-        register_base_commands(&mut r, &base, Arc::new(br));
+        register_base_commands(&mut r);
         // `/c` matches both "/clear" and "/clearinventory"; the deterministic
         // (lexicographically smallest) answer is "/clear".
         let first = r.try_auto_complete("/c");
@@ -176,12 +200,11 @@ mod tests {
 
     #[test]
     fn register_base_commands_registers_exactly_eleven() {
-        let mut br = BlockRegistry::new();
-        let base = blocks::register_base_blocks(&mut br);
         let mut r = CommandRegistry::new();
-        register_base_commands(&mut r, &base, Arc::new(br));
-        // /help, /clear, /kit, /give, /tp, /clearinventory, /setblock,
-        // /tree, /explode, /time, /gamemode = 11.
+        register_base_commands(&mut r);
+        // /help, /clear, /kit, /give, /tp, /clearinventory, /suicide,
+        // /setblock, /explode, /time, /gamemode = 11. (C++ also has /tree;
+        // not ported in this round.)
         assert_eq!(r.entries().count(), 11);
     }
 

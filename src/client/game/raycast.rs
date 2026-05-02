@@ -191,11 +191,11 @@ mod tests {
         fn block_or_air(&self, coord: Vec3i) -> BlockData {
             self.block(coord).unwrap()
         }
-        fn hitboxes(&self, _box_: Aabbd) -> Vec<Aabbd> {
-            Vec::new()
+        fn hitboxes(&self, _box_: Aabbd) -> Option<Vec<Aabbd>> {
+            Some(Vec::new())
         }
-        fn in_water(&self, _box_: Aabbd) -> bool {
-            false
+        fn in_water(&self, _box_: Aabbd) -> Option<bool> {
+            Some(false)
         }
     }
 
@@ -218,11 +218,11 @@ mod tests {
         fn block_or_air(&self, coord: Vec3i) -> BlockData {
             self.block(coord).unwrap()
         }
-        fn hitboxes(&self, _: Aabbd) -> Vec<Aabbd> {
-            Vec::new()
+        fn hitboxes(&self, _: Aabbd) -> Option<Vec<Aabbd>> {
+            Some(Vec::new())
         }
-        fn in_water(&self, _: Aabbd) -> bool {
-            false
+        fn in_water(&self, _: Aabbd) -> Option<bool> {
+            Some(false)
         }
     }
 

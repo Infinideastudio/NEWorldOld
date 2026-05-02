@@ -16,11 +16,17 @@ use crate::items::ItemStack;
 /// Read-only block lookup used by player physics. Implemented by the
 /// `Game` (which routes through `World` + future hitbox cache); tests
 /// implement it inline against fixed contents.
+///
+/// `hitboxes` and `in_water` return `None` when the scan region
+/// straddles unloaded chunks — there isn't enough data to safely
+/// resolve collision, and the caller (player physics, particles)
+/// should freeze for that step rather than fall back to "no obstacle"
+/// (which would let entities phase through ungenerated terrain).
 pub trait BlockView {
     fn block(&self, coord: Vec3i) -> Option<BlockData>;
     fn block_or_air(&self, coord: Vec3i) -> BlockData;
-    fn hitboxes(&self, box_: Aabbd) -> Vec<Aabbd>;
-    fn in_water(&self, box_: Aabbd) -> bool;
+    fn hitboxes(&self, box_: Aabbd) -> Option<Vec<Aabbd>>;
+    fn in_water(&self, box_: Aabbd) -> Option<bool>;
 }
 
 /// Gameplay mode — survival enforces fall damage and disables flying;
@@ -148,6 +154,13 @@ impl Player {
     pub fn set_coord(&mut self, value: Vec3d) {
         self.coord = value;
         self.velocity = Vec3d::new(0.0, 0.0, 0.0);
+    }
+
+    /// Reset to the world spawn coord `(0, 128, 0)` and zero velocity.
+    /// Port of C++ `Player::spawn` — used by `/suicide` and on initial
+    /// player creation.
+    pub fn spawn(&mut self) {
+        self.set_coord(Vec3d::new(0.0, 128.0, 0.0));
     }
 
     pub fn set_velocity(&mut self, value: Vec3d) {
@@ -284,6 +297,17 @@ impl Player {
     pub fn update(&mut self, view: &impl BlockView) {
         let player_aabb = self.aabb();
 
+        // Pre-flight: if any chunk in the swept-AABB region isn't loaded,
+        // freeze the player for this tick. Skipping the velocity damp /
+        // gravity step too (rather than only the position update) keeps
+        // gravity from accumulating into a launch when chunks finally
+        // stream in. This case fires during initial load and any time
+        // the player's load window outpaces the streamer.
+        let probe = player_aabb.extend(self.velocity);
+        if !self.cross_wall && view.hitboxes(probe).is_none() {
+            return;
+        }
+
         // Velocity damping + gravity.
         if self.flying || self.cross_wall {
             self.velocity *= 0.8;
@@ -298,7 +322,13 @@ impl Player {
 
         let velocity_original = self.velocity;
         if !self.cross_wall {
-            let boxes = view.hitboxes(player_aabb.extend(self.velocity));
+            // Re-query: damping changed the velocity, so the swept region
+            // is different. Still bail if it now straddles unloaded
+            // chunks (rare, but possible at the load-window edge).
+            let Some(boxes) = view.hitboxes(player_aabb.extend(self.velocity)) else {
+                self.velocity = velocity_original;
+                return;
+            };
             self.velocity = player_aabb.clip_displacement(&boxes, self.velocity, 1e-8);
         }
 
@@ -312,7 +342,12 @@ impl Player {
 
         self.grounded = vertical_hit && velocity_original.y < 0.0;
 
-        self.in_water = view.in_water(player_aabb);
+        // The hitbox region (pad 2 + sweep) is a strict superset of the
+        // in-water region (pad 1 around the static AABB), so this query
+        // always succeeds when the pre-flight check above passed.
+        if let Some(in_water) = view.in_water(player_aabb) {
+            self.in_water = in_water;
+        }
 
         if self.flying || self.cross_wall || self.grounded {
             self.jumps = 0;
@@ -397,11 +432,11 @@ mod tests {
                 ..Default::default()
             }
         }
-        fn hitboxes(&self, _box_: Aabbd) -> Vec<Aabbd> {
-            Vec::new()
+        fn hitboxes(&self, _box_: Aabbd) -> Option<Vec<Aabbd>> {
+            Some(Vec::new())
         }
-        fn in_water(&self, _box_: Aabbd) -> bool {
-            false
+        fn in_water(&self, _box_: Aabbd) -> Option<bool> {
+            Some(false)
         }
     }
 
@@ -415,11 +450,11 @@ mod tests {
         fn block_or_air(&self, _coord: Vec3i) -> BlockData {
             BlockData::default()
         }
-        fn hitboxes(&self, _box_: Aabbd) -> Vec<Aabbd> {
-            Vec::new()
+        fn hitboxes(&self, _box_: Aabbd) -> Option<Vec<Aabbd>> {
+            Some(Vec::new())
         }
-        fn in_water(&self, _box_: Aabbd) -> bool {
-            false
+        fn in_water(&self, _box_: Aabbd) -> Option<bool> {
+            Some(false)
         }
     }
 

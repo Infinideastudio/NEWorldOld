@@ -11,7 +11,10 @@ mod common;
 use std::sync::Arc;
 
 use neworld::core::blocks::{BlockRegistry, register_base_blocks};
-use neworld::core::game::commands::{CommandRegistry, register_base_commands};
+use neworld::core::game::block_update::BlockUpdateQueue;
+use neworld::core::game::commands::{CommandContext, CommandRegistry, register_base_commands};
+use neworld::core::game::daylight_cycle::DaylightCycle;
+use neworld::core::game::player::Player;
 use neworld::core::game::range_loader::RangeLoader;
 use neworld::core::game::worldgen::{TerrainGenerator, world_tables_for};
 use neworld::core::math::Vec3i;
@@ -40,7 +43,6 @@ fn pump_until_loaded(
 }
 
 #[test]
-#[ignore = "World::set_block is stubbed during the page-store migration"]
 fn round_trip_world_through_set_block_save_reopen() {
     let scratch = ScratchDir::new("rt");
 
@@ -83,7 +85,15 @@ fn round_trip_world_through_set_block_save_reopen() {
         );
 
         let mut q = neworld::core::game::block_update::BlockUpdateQueue::new();
-        neworld::core::game::block_update::set_block(&mut world, &mut q, coord, stone_id, false);
+        neworld::core::game::block_update::set_block(
+            &world,
+            &mut q,
+            &base,
+            &registry,
+            coord,
+            stone_id,
+            false,
+        );
         assert_eq!(
             world.block(coord).expect("block still loaded").id,
             stone_id,
@@ -118,7 +128,6 @@ fn round_trip_world_through_set_block_save_reopen() {
 }
 
 #[test]
-#[ignore = "World::set_block (and the /setblock command) is stubbed during the page-store migration"]
 fn slash_command_dispatch_through_full_stack() {
     let scratch = ScratchDir::new("cmd");
 
@@ -135,7 +144,14 @@ fn slash_command_dispatch_through_full_stack() {
     pump_until_loaded(&mut world, &mut terrain, &mut loader, 27);
 
     let mut commands = CommandRegistry::new();
-    register_base_commands(&mut commands, &base, Arc::clone(&registry));
+    register_base_commands(&mut commands);
+
+    // Build the gameplay-state bundle the new commands consume. The
+    // smoke test owns its own player / queue / clock since it runs
+    // outside `Game`.
+    let mut player = Player::default();
+    let mut queue = BlockUpdateQueue::new();
+    let mut daylight = DaylightCycle::new();
 
     // `/setblock <x> <y> <z> <id>` — exercises argument parsing, world
     // mutation, and the registry dispatch path. The C++ command takes a
@@ -143,8 +159,18 @@ fn slash_command_dispatch_through_full_stack() {
     let stone_id_int: u16 = base.stone.0;
     let line = format!("/setblock 4 6 8 {stone_id_int}");
     let mut messages = Vec::<String>::new();
-    let ok = commands.execute_on(&line, &mut world, &mut messages);
-    assert!(ok, "/setblock should succeed: {messages:?}");
+    {
+        let mut ctx = CommandContext {
+            world: &world,
+            player: &mut player,
+            queue: &mut queue,
+            daylight: &mut daylight,
+            base: &base,
+            registry: &registry,
+        };
+        let ok = commands.execute_on(&line, &mut ctx, &mut messages);
+        assert!(ok, "/setblock should succeed: {messages:?}");
+    }
     assert_eq!(
         world.block(Vec3i::new(4, 6, 8)).expect("loaded").id,
         base.stone
@@ -152,7 +178,17 @@ fn slash_command_dispatch_through_full_stack() {
 
     // `/help` — read-only, should always succeed and push at least one line.
     messages.clear();
-    let ok = commands.execute_on("/help", &mut world, &mut messages);
-    assert!(ok, "/help should succeed: {messages:?}");
+    {
+        let mut ctx = CommandContext {
+            world: &world,
+            player: &mut player,
+            queue: &mut queue,
+            daylight: &mut daylight,
+            base: &base,
+            registry: &registry,
+        };
+        let ok = commands.execute_on("/help", &mut ctx, &mut messages);
+        assert!(ok, "/help should succeed: {messages:?}");
+    }
     assert!(!messages.is_empty(), "/help should produce output");
 }

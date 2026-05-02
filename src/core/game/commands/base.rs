@@ -1,16 +1,21 @@
-//! `register_base_commands` — registers the 12 base-game slash commands.
+//! `register_base_commands` — registers the 11 base-game slash commands.
 //!
-//! Mirrors C++ `commands.ixx::register_base_commands`. `_base` is currently
-//! unused but kept on the signature for future commands that need named-block
-//! lookups; `block_registry` is `Arc`'d so the closures can capture it cheaply
-//! and stay `Send + Sync`.
+//! Mirrors C++ `commands.ixx::register_base_commands` (12 commands)
+//! minus `/tree`, which is not ported in this round.
+//!
+//! Each command closure receives a [`CommandContext`] with mutable
+//! references to the player, the block-update queue, the daylight
+//! clock, plus the read-only block registry and `BaseBlocks`. Block
+//! mutations route through `block_update::set_block` so light
+//! propagation kicks off automatically.
 
 use std::str::FromStr;
-use std::sync::Arc;
 
-use crate::core::blocks::{self, BaseBlocks, BlockRegistry};
+use crate::core::blocks::BlockId;
+use crate::core::game::block_update;
 use crate::core::game::player::GameMode;
-use crate::core::math::Vec3i;
+use crate::core::math::{Vec3d, Vec3i};
+use crate::items::ItemStack;
 
 use super::{Command, CommandRegistry};
 
@@ -25,18 +30,13 @@ fn parse_float<T: FromStr>(s: &str) -> Option<T> {
     s.parse::<T>().ok()
 }
 
-/// Register the same set of slash-commands the C++ `register_base_commands`
-/// does (12 entries, same arity and argument shape).
-#[allow(clippy::needless_pass_by_value)] // Arc moved into the closures by clone.
-pub fn register_base_commands(
-    registry: &mut CommandRegistry,
-    _base: &BaseBlocks,
-    block_registry: Arc<BlockRegistry>,
-) {
+/// Register the 11 base-game commands (C++ `register_base_commands`
+/// minus `/tree`).
+pub fn register_base_commands(registry: &mut CommandRegistry) {
     // /help
     registry.add(
         "/help",
-        Command::new(|args, _world, messages| {
+        Command::new(|args, _ctx, messages| {
             if args.len() != 1 {
                 return false;
             }
@@ -59,11 +59,11 @@ pub fn register_base_commands(
                 "          F7 = switch full screen mode, F8 = fast forward game time".to_owned(),
             );
             messages.push(
-                "Commands: /help | /clear | /kit | /give <id> <amount> | /tp <x> <y> <z> | /clearinventory |"
+                "Commands: /help | /clear | /kit | /give <id> <amount> | /tp <x> <y> <z> | /clearinventory | /suicide |"
                     .to_owned(),
             );
             messages.push(
-                "          /setblock <x> <y> <z> <id> | /explode <x> <y> <z> <radius> | /time <time>"
+                "          /setblock <x> <y> <z> <id> | /explode <x> <y> <z> <radius> | /time <time> | /gamemode <mode>"
                     .to_owned(),
             );
             true
@@ -73,7 +73,7 @@ pub fn register_base_commands(
     // /clear
     registry.add(
         "/clear",
-        Command::new(|args, _world, messages| {
+        Command::new(|args, _ctx, messages| {
             if args.len() != 1 {
                 return false;
             }
@@ -82,53 +82,94 @@ pub fn register_base_commands(
         }),
     );
 
-    // /kit
-    //
-    // STUB: Player no longer lives on World — moved to `Game::player`
-    // alongside the move of game_time, terrain gen, etc., out of the
-    // database. The command system threads only `&mut World`, so
-    // commands can't reach the player. Reactivating these commands
-    // requires changing the Command signature to take a context
-    // bundle (World + Player + DaylightCycle + BlockUpdateQueue).
-    {
-        let _ = block_registry;
-        registry.add(
-            "/kit",
-            Command::new(move |args, _world, _messages| args.len() == 1),
-        );
-    }
+    // /kit — give the player a stack of every registered block.
+    registry.add(
+        "/kit",
+        Command::new(|args, ctx, _messages| {
+            if args.len() != 1 {
+                return false;
+            }
+            for i in 0..ctx.registry.len() {
+                let id = BlockId(i as u16);
+                ctx.player
+                    .add_item(ItemStack::new(id, ItemStack::MAX_COUNT));
+            }
+            true
+        }),
+    );
 
-    // /give <id> <amount> — STUB; see /kit.
+    // /give <id> <amount>
     registry.add(
         "/give",
-        Command::new(|args, _world, _messages| {
-            args.len() == 3
-                && parse_int::<u16>(args[1]).is_some()
-                && parse_int::<u32>(args[2]).is_some()
+        Command::new(|args, ctx, _messages| {
+            if args.len() != 3 {
+                return false;
+            }
+            let Some(id) = parse_int::<u16>(args[1]) else {
+                return false;
+            };
+            let Some(amount) = parse_int::<u32>(args[2]) else {
+                return false;
+            };
+            // C++ takes `size_t` and lets `add_item` cap; `ItemStack::count`
+            // is `u8`. Saturating cast keeps oversized requests tidy and
+            // matches the C++-equivalent end state (one MAX_COUNT stack
+            // takes the slot; any overflow is silently lost).
+            let count = u8::try_from(amount).unwrap_or(u8::MAX);
+            ctx.player.add_item(ItemStack::new(BlockId(id), count));
+            true
         }),
     );
 
-    // /tp <x> <y> <z> — STUB; see /kit.
+    // /tp <x> <y> <z>
     registry.add(
         "/tp",
-        Command::new(|args, _world, _messages| {
-            args.len() == 4
-                && parse_float::<f64>(args[1]).is_some()
-                && parse_float::<f64>(args[2]).is_some()
-                && parse_float::<f64>(args[3]).is_some()
+        Command::new(|args, ctx, _messages| {
+            if args.len() != 4 {
+                return false;
+            }
+            let Some(x) = parse_float::<f64>(args[1]) else {
+                return false;
+            };
+            let Some(y) = parse_float::<f64>(args[2]) else {
+                return false;
+            };
+            let Some(z) = parse_float::<f64>(args[3]) else {
+                return false;
+            };
+            ctx.player.set_coord(Vec3d::new(x, y, z));
+            true
         }),
     );
 
-    // /clearinventory — STUB; see /kit.
+    // /clearinventory
     registry.add(
         "/clearinventory",
-        Command::new(|args, _world, _messages| args.len() == 1),
+        Command::new(|args, ctx, _messages| {
+            if args.len() != 1 {
+                return false;
+            }
+            ctx.player.clear_inventory();
+            true
+        }),
+    );
+
+    // /suicide — respawn at the world spawn coord.
+    registry.add(
+        "/suicide",
+        Command::new(|args, ctx, _messages| {
+            if args.len() != 1 {
+                return false;
+            }
+            ctx.player.spawn();
+            true
+        }),
     );
 
     // /setblock <x> <y> <z> <id>
     registry.add(
         "/setblock",
-        Command::new(|args, world, _messages| {
+        Command::new(|args, ctx, _messages| {
             if args.len() != 5 {
                 return false;
             }
@@ -144,15 +185,13 @@ pub fn register_base_commands(
             let Some(id) = parse_int::<u16>(args[4]) else {
                 return false;
             };
-            // The command system threads `&mut World` only; stub the
-            // queue here. Real block-update routing reactivates when
-            // commands grow access to `Game`'s `BlockUpdateQueue`.
-            let mut q = crate::core::game::block_update::BlockUpdateQueue::new();
-            crate::core::game::block_update::set_block(
-                world,
-                &mut q,
+            block_update::set_block(
+                ctx.world,
+                ctx.queue,
+                ctx.base,
+                ctx.registry,
                 Vec3i::new(x, y, z),
-                blocks::BlockId(id),
+                BlockId(id),
                 true,
             );
             true
@@ -162,7 +201,7 @@ pub fn register_base_commands(
     // /explode <x> <y> <z> <radius>
     registry.add(
         "/explode",
-        Command::new(|args, world, _messages| {
+        Command::new(|args, ctx, _messages| {
             if args.len() != 5 {
                 return false;
             }
@@ -178,35 +217,54 @@ pub fn register_base_commands(
             let Some(r) = parse_int::<i32>(args[4]) else {
                 return false;
             };
-            crate::core::game::block_update::explode(world, Vec3i::new(x, y, z), r);
+            block_update::explode(
+                ctx.world,
+                ctx.queue,
+                ctx.base,
+                ctx.registry,
+                Vec3i::new(x, y, z),
+                r,
+            );
             true
         }),
     );
 
-    // /time <time> — STUB; game_time moved to `Game::daylight_cycle`.
+    // /time <time>
     registry.add(
         "/time",
-        Command::new(|args, _world, _messages| {
-            args.len() == 2 && parse_int::<u32>(args[1]).is_some()
+        Command::new(|args, ctx, _messages| {
+            if args.len() != 2 {
+                return false;
+            }
+            let Some(t) = parse_int::<i32>(args[1]) else {
+                return false;
+            };
+            if t < 0 {
+                return false;
+            }
+            ctx.daylight.set_game_time(t as u32);
+            true
         }),
     );
 
-    // /gamemode <mode> — STUB; player moved to `Game::player`.
+    // /gamemode <mode>
     registry.add(
         "/gamemode",
-        Command::new(|args, _world, _messages| {
+        Command::new(|args, ctx, _messages| {
             if args.len() != 2 {
                 return false;
             }
             let Some(raw) = parse_int::<u32>(args[1]) else {
                 return false;
             };
-            let _: GameMode = match raw {
+            let mode = match raw {
                 0 => GameMode::Survival,
                 1 => GameMode::Creative,
                 _ => return false,
             };
+            ctx.player.set_game_mode(mode);
             true
         }),
     );
+
 }
