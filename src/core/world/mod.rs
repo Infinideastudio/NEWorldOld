@@ -241,22 +241,17 @@ impl World {
     where
         F: FnOnce() -> ChunkData,
     {
-        if self.chunks.contains_key(&ccoord) {
-            return;
-        }
-        let chunk = match self.try_load_from_disk(ccoord) {
-            Ok(Some(blocks)) => Chunk::from_disk(blocks),
-            Ok(None) => Chunk::from_gen(init()),
-            Err(err) => {
-                tracing::warn!(?ccoord, error = %err, "chunk disk load failed; regenerating");
-                Chunk::from_gen(init())
-            }
-        };
         match self.chunks.entry(ccoord) {
-            dashmap::mapref::entry::Entry::Occupied(_) => {
-                // Race lost; discard the new chunk, keep the existing.
-            }
+            dashmap::mapref::entry::Entry::Occupied(_) => {}
             dashmap::mapref::entry::Entry::Vacant(slot) => {
+                let chunk = match self.try_load_from_disk(ccoord) {
+                    Ok(Some(blocks)) => Chunk::from_disk(blocks),
+                    Ok(None) => Chunk::from_gen(init()),
+                    Err(err) => {
+                        tracing::warn!(?ccoord, error = %err, "chunk disk load failed; regenerating");
+                        Chunk::from_gen(init())
+                    }
+                };
                 slot.insert(Arc::new(chunk));
             }
         }
@@ -269,7 +264,7 @@ impl World {
     /// just becomes unreachable for future lookups.
     pub fn unload_chunk(&mut self, ccoord: Vec3i) {
         if let Err(err) = self.flush_chunk(ccoord) {
-            tracing::warn!(?ccoord, error = %err, "chunk save on eviction failed");
+            tracing::warn!(?ccoord, error = %err, "chunk save on unloading failed");
         }
         self.chunks.remove(&ccoord);
     }

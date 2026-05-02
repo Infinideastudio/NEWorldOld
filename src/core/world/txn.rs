@@ -32,17 +32,17 @@ use super::{World, block_coord, chunk_coord};
 #[derive(Debug, Clone)]
 pub enum WorkingSet {
     Single(Vec3i),
-    Coords(Vec<Vec3i>),
+    List(Vec<Vec3i>),
     /// Inclusive lower, exclusive upper bounds in chunk-coord space.
-    Aabb(Vec3i, Vec3i),
+    Range(Vec3i, Vec3i),
 }
 
 impl WorkingSet {
     fn collect_sorted(&self) -> Vec<Vec3i> {
         let mut out: Vec<Vec3i> = match self {
             Self::Single(c) => vec![*c],
-            Self::Coords(v) => v.clone(),
-            Self::Aabb(lo, hi) => {
+            Self::List(v) => v.clone(),
+            Self::Range(lo, hi) => {
                 let mut v = Vec::new();
                 for x in lo.x..hi.x {
                     for y in lo.y..hi.y {
@@ -67,12 +67,12 @@ impl From<Vec3i> for WorkingSet {
 }
 impl From<Vec<Vec3i>> for WorkingSet {
     fn from(v: Vec<Vec3i>) -> Self {
-        Self::Coords(v)
+        Self::List(v)
     }
 }
 impl From<&[Vec3i]> for WorkingSet {
     fn from(s: &[Vec3i]) -> Self {
-        Self::Coords(s.to_vec())
+        Self::List(s.to_vec())
     }
 }
 
@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn working_set_collect_sorted_dedups_and_orders() {
-        let s = WorkingSet::Coords(vec![
+        let s = WorkingSet::List(vec![
             Vec3i::new(2, 0, 0),
             Vec3i::new(0, 0, 0),
             Vec3i::new(0, 0, 0),
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn working_set_aabb_iterates_inclusive_lo_exclusive_hi() {
-        let s = WorkingSet::Aabb(Vec3i::new(0, 0, 0), Vec3i::new(2, 2, 1));
+        let s = WorkingSet::Range(Vec3i::new(0, 0, 0), Vec3i::new(2, 2, 1));
         let coords = s.collect_sorted();
         assert_eq!(coords.len(), 4);
         assert!(coords.contains(&Vec3i::new(0, 0, 0)));
