@@ -115,6 +115,10 @@ struct AppState {
     /// Block registry (shared with `Game`). Built once at startup; reused
     /// across world loads.
     registry: Arc<crate::blocks::BlockRegistry>,
+    /// Per-block face-texture lookup (client-only). Built once at startup
+    /// alongside `registry`. Threaded into `Game` and the in-game inventory
+    /// for atlas-layer resolution.
+    render_registry: Arc<crate::client::blocks::BlockRenderRegistry>,
     /// Base block ids resolved from `registry`. `Copy`, so cheap to clone
     /// when constructing a new `Game`.
     base_blocks: crate::blocks::BaseBlocks,
@@ -330,6 +334,7 @@ impl App {
             state.gfx.surface_format(),
             state.gfx.surface_size(),
             &state.registry,
+            &state.render_registry,
             state.base_blocks,
             &state.frame_uniforms,
             // SAFETY of construction order: `Game` borrows the bind-group
@@ -613,6 +618,7 @@ impl App {
                     ctx,
                     game.world.player_mut(),
                     &state.registry,
+                    &state.render_registry,
                     air,
                     &state.block_icons,
                 ) {
@@ -959,7 +965,15 @@ impl ApplicationHandler for App {
         }
 
         let assets = Self::assets_root();
-        let atlases = match Atlases::load(gfx.device(), gfx.queue(), &assets) {
+
+        // Build the block, render, and texture registries before loading
+        // atlases: `Atlases::load` walks the texture registry's names in
+        // registration order to build the D2Array layers, so the registries
+        // must be populated first. Reused across world loads so each
+        // `Game::new` doesn't have to rebuild them.
+        let (registry, render_registry, block_textures, base) = build_block_registry();
+
+        let atlases = match Atlases::load(gfx.device(), gfx.queue(), &assets, &block_textures) {
             Ok(a) => {
                 tracing::info!(
                     diffuse_layers = a.block_diffuse.layers,
@@ -1018,10 +1032,11 @@ impl ApplicationHandler for App {
         );
         let (title_icon_w, title_icon_h) = atlases.title.size;
 
-        // Build registry + base blocks once for the world generator and the
-        // mesher (which both consume the same registry). Reused across world
-        // loads so each Game::new doesn't have to rebuild it.
-        let (registry, base) = build_block_registry();
+        // `block_textures` (the texture-name registry) is no longer needed
+        // past atlas load — drop it here. The block registry stays alive
+        // for the world simulator and the render registry stays alive for
+        // the mesher and inventory.
+        let _ = block_textures;
 
         let world_actions = WorldActionQueue::new();
         let game_loaded = Arc::new(AtomicBool::new(false));
@@ -1085,6 +1100,7 @@ impl ApplicationHandler for App {
             game_loaded,
             worlds_root,
             registry,
+            render_registry,
             base_blocks: base,
             block_icons,
             i18n,

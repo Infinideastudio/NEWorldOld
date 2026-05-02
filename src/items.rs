@@ -3,28 +3,19 @@
 //! Port of the C++ `items.ixx::ItemStack`. The C++ original uses `size_t` for
 //! `count`, but the inventory math in `src/neworld.ixx::draw_inventory` caps at
 //! 255 — so `u8` is the right type here (per `docs/rust_migration.md` §4.17).
-//! Because the player inventory is saved as a contiguous block, `ItemStack` is
-//! `#[repr(C)]` and `bytemuck::Pod`.
+//! The player inventory is saved through bincode (see
+//! `worlds::player::save`), so `ItemStack` only needs `Serialize`/`Deserialize`.
 
-use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 
 use crate::blocks;
 
 /// A stack of `count` items of block id `id`. `Default` is the empty stack
 /// (`Id::default()`, count 0), matching the C++ `ItemStack()` default.
-///
-/// Layout note: `#[repr(C)]` with an `Id` (`u16`) and a `u8` would normally
-/// leave a trailing pad byte, which `bytemuck::Pod` forbids. The explicit
-/// `_pad` field makes the padding addressable so `Pod` can be derived; serde
-/// skips it so the field never appears in serialized output.
-#[repr(C)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Default, Pod, Zeroable, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default, Serialize, Deserialize)]
 pub struct ItemStack {
     pub id: blocks::Id,
     pub count: u8,
-    #[serde(skip, default)]
-    _pad: u8,
 }
 
 impl ItemStack {
@@ -35,7 +26,7 @@ impl ItemStack {
     /// Construct a stack of `count` items of the given block id.
     #[must_use]
     pub const fn new(id: blocks::Id, count: u8) -> Self {
-        Self { id, count, _pad: 0 }
+        Self { id, count }
     }
 
     /// True iff `count == 0` (mirrors C++ `bool empty() const noexcept`).
@@ -65,13 +56,6 @@ impl ItemStack {
         other.count -= moved;
     }
 }
-
-// Compile-time confirmation that `ItemStack` is `Pod` — the player save
-// layer relies on this for the inventory blob.
-const _: () = {
-    const fn assert_pod<T: bytemuck::Pod>() {}
-    assert_pod::<ItemStack>();
-};
 
 #[cfg(test)]
 mod tests {

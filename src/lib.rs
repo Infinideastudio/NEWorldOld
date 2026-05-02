@@ -33,6 +33,8 @@
 pub mod app;
 pub mod blocks;
 pub mod chunks;
+pub mod client;
+pub mod core;
 pub mod commands;
 pub mod config;
 pub mod game;

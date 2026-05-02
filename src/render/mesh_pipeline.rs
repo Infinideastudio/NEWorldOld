@@ -21,6 +21,7 @@ use std::thread::JoinHandle;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 
 use crate::blocks::BlockRegistry;
+use crate::client::blocks::BlockRenderRegistry;
 use crate::render::mesh::{MeshInput, MeshOutput, mesh_chunk};
 
 /// A meshing job. The main thread owns the `MeshInput` (an 18×18×18 padded
@@ -47,12 +48,15 @@ pub struct MeshPipeline {
 impl MeshPipeline {
     /// Spawn the mesh worker thread.
     #[must_use]
-    pub fn spawn(registry: Arc<BlockRegistry>) -> Self {
+    pub fn spawn(
+        registry: Arc<BlockRegistry>,
+        render_registry: Arc<BlockRenderRegistry>,
+    ) -> Self {
         let (req_tx, req_rx) = unbounded::<MeshRequest>();
         let (res_tx, res_rx) = unbounded::<MeshDone>();
         let handle = std::thread::Builder::new()
             .name("neworld-mesh-pipeline".into())
-            .spawn(move || worker_loop(req_rx, res_tx, registry))
+            .spawn(move || worker_loop(req_rx, res_tx, registry, render_registry))
             .expect("spawn mesh pipeline worker");
         Self {
             requests: Some(req_tx),
@@ -95,9 +99,10 @@ fn worker_loop(
     requests: Receiver<MeshRequest>,
     results: Sender<MeshDone>,
     registry: Arc<BlockRegistry>,
+    render_registry: Arc<BlockRenderRegistry>,
 ) {
     while let Ok(req) = requests.recv() {
-        let output = mesh_chunk(&req.input, &registry);
+        let output = mesh_chunk(&req.input, &registry, &render_registry);
         if results.send(MeshDone { output }).is_err() {
             break;
         }
@@ -108,16 +113,21 @@ fn worker_loop(
 mod tests {
     use super::*;
     use crate::blocks::{BlockData, register_base_blocks};
+    use crate::client::blocks::{BlockTextureRegistry, register_base_block_visuals};
     use crate::render::mesh::{PADDED_VOLUME, padded_index};
     use cgmath::Vector3;
 
     /// Build a `MeshInput` that places one stone block at the chunk-local
     /// center and air everywhere else (matches the `single_solid_block`
     /// fixture in `gfx::mesh`'s test suite).
-    fn single_block_input() -> (MeshInput, Arc<BlockRegistry>) {
+    fn single_block_input() -> (MeshInput, Arc<BlockRegistry>, Arc<BlockRenderRegistry>) {
         let mut r = BlockRegistry::new();
         let base = register_base_blocks(&mut r);
+        let mut render = BlockRenderRegistry::new();
+        let mut textures = BlockTextureRegistry::new();
+        register_base_block_visuals(&base, &mut render, &mut textures);
         let registry = Arc::new(r);
+        let render = Arc::new(render);
         let buf: Box<[BlockData; PADDED_VOLUME]> =
             vec![BlockData::default(); PADDED_VOLUME]
                 .into_boxed_slice()
@@ -133,13 +143,13 @@ mod tests {
             padded,
             options: crate::render::mesh::MeshOptions::default(),
         };
-        (input, registry)
+        (input, registry, render)
     }
 
     #[test]
     fn worker_meshes_known_input_correctly() {
-        let (input, registry) = single_block_input();
-        let pipeline = MeshPipeline::spawn(registry);
+        let (input, registry, render) = single_block_input();
+        let pipeline = MeshPipeline::spawn(registry, render);
         assert!(pipeline.submit(input));
         // Wait up to ~5 s for the worker to spin up + finish. The mesh job
         // itself is microseconds, but Windows thread spawn latency can spike.

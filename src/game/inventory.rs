@@ -19,6 +19,7 @@
 use egui::{Align2, Color32, Context, FontId, Pos2, Rect, Sense, Stroke, TextureId, Ui, vec2};
 
 use crate::blocks::{BlockRegistry, Id};
+use crate::client::blocks::BlockRenderRegistry;
 use crate::items::ItemStack;
 use crate::worlds::Player;
 
@@ -43,13 +44,14 @@ impl Inventory {
         ctx: &Context,
         player: &mut Player,
         registry: &BlockRegistry,
+        render_registry: &BlockRenderRegistry,
         air_id: Id,
         block_icons: &[TextureId],
     ) {
-        self.render_hotbar(ctx, player, registry, air_id, block_icons);
+        self.render_hotbar(ctx, player, registry, render_registry, air_id, block_icons);
 
         if self.open {
-            self.render_full(ctx, player, registry, air_id, block_icons);
+            self.render_full(ctx, player, registry, render_registry, air_id, block_icons);
         }
         // If the inventory is closed while `self.held` is non-empty, the
         // stack stays cached on the cursor and reappears the next time the
@@ -64,6 +66,7 @@ impl Inventory {
         ctx: &Context,
         player: &mut Player,
         registry: &BlockRegistry,
+        render_registry: &BlockRenderRegistry,
         air_id: Id,
         block_icons: &[TextureId],
     ) {
@@ -84,6 +87,7 @@ impl Inventory {
                             ui,
                             slot,
                             registry,
+                            render_registry,
                             air_id,
                             block_icons,
                             highlighted,
@@ -102,6 +106,7 @@ impl Inventory {
         ctx: &Context,
         player: &mut Player,
         registry: &BlockRegistry,
+        render_registry: &BlockRenderRegistry,
         air_id: Id,
         block_icons: &[TextureId],
     ) {
@@ -128,7 +133,7 @@ impl Inventory {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = 2.0;
                         for col in 0..10 {
-                            self.handle_slot(ui, player, registry, air_id, block_icons, row, col);
+                            self.handle_slot(ui, player, registry, render_registry, air_id, block_icons, row, col);
                         }
                     });
                     ui.add_space(2.0);
@@ -143,6 +148,7 @@ impl Inventory {
                             ui,
                             player,
                             registry,
+                            render_registry,
                             air_id,
                             block_icons,
                             3,
@@ -171,6 +177,7 @@ impl Inventory {
                 rect,
                 self.held,
                 registry,
+                render_registry,
                 air_id,
                 block_icons,
                 false,
@@ -187,12 +194,13 @@ impl Inventory {
         ui: &mut Ui,
         player: &mut Player,
         registry: &BlockRegistry,
+        render_registry: &BlockRenderRegistry,
         air_id: Id,
         block_icons: &[TextureId],
         row: usize,
         col: usize,
     ) {
-        self.handle_slot_with_highlight(ui, player, registry, air_id, block_icons, row, col, false);
+        self.handle_slot_with_highlight(ui, player, registry, render_registry, air_id, block_icons, row, col, false);
     }
 
     /// Render one slot and react to clicks. Mutates the player's slot and
@@ -209,6 +217,7 @@ impl Inventory {
         ui: &mut Ui,
         player: &mut Player,
         registry: &BlockRegistry,
+        render_registry: &BlockRenderRegistry,
         air_id: Id,
         block_icons: &[TextureId],
         row: usize,
@@ -216,7 +225,7 @@ impl Inventory {
         highlighted: bool,
     ) {
         let slot = *player.inventory_item_stack(row, col);
-        let response = Self::draw_slot(ui, slot, registry, air_id, block_icons, highlighted, true);
+        let response = Self::draw_slot(ui, slot, registry, render_registry, air_id, block_icons, highlighted, true);
 
         if response.clicked() {
             self.left_click_slot(player, row, col);
@@ -277,10 +286,12 @@ impl Inventory {
 
     /// Allocate a slot-sized rectangle and paint it. Returns the egui
     /// response so the caller can react to clicks.
+    #[allow(clippy::too_many_arguments)] // grouping into a struct hurts more than it helps here
     fn draw_slot(
         ui: &mut Ui,
         stack: ItemStack,
         registry: &BlockRegistry,
+        render_registry: &BlockRenderRegistry,
         air_id: Id,
         block_icons: &[TextureId],
         highlighted: bool,
@@ -298,6 +309,7 @@ impl Inventory {
             rect,
             stack,
             registry,
+            render_registry,
             air_id,
             block_icons,
             highlighted,
@@ -312,6 +324,7 @@ impl Inventory {
         rect: Rect,
         stack: ItemStack,
         registry: &BlockRegistry,
+        render_registry: &BlockRenderRegistry,
         air_id: Id,
         block_icons: &[TextureId],
         highlighted: bool,
@@ -344,7 +357,7 @@ impl Inventory {
         // when the icon would be out of range (registries with more block
         // ids than texture layers, or block_icons not yet populated in the
         // unit tests).
-        let layer = info.face(0).0 as usize;
+        let layer = render_registry.face(stack.id, 0).0 as usize;
         if let Some(tex_id) = block_icons.get(layer) {
             // Inset by 2 px so the slot border stays visible around the icon.
             let icon_rect = rect.shrink(2.0);
@@ -355,7 +368,7 @@ impl Inventory {
                 Color32::WHITE,
             );
         } else {
-            let label = abbreviate(&info.name);
+            let label = abbreviate(&info.display_name);
             painter.text(
                 rect.center() + vec2(0.0, -4.0),
                 Align2::CENTER_CENTER,

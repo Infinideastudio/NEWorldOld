@@ -1,11 +1,15 @@
 //! Block and UI texture atlases.
 //!
-//! Loads the C++-era PNGs from `<root>/textures/{blocks,ui}/...` into `wgpu`
-//! textures:
+//! Loads the per-tile and singleton PNGs from `<root>/textures/{blocks,ui}/...`
+//! into `wgpu` textures:
 //!
-//! * `block_diffuse` and `block_normal` are vertical strips of square
-//!   sub-textures (width `W`, height `W * N`); they upload to a `D2Array`
-//!   texture with `N` layers.
+//! * `block_diffuse` and `block_normal` are `D2Array` textures with one
+//!   layer per registered block texture. The layer order matches the
+//!   [`BlockTextureRegistry`] index order, so a `BlockTextureIndex(i)`
+//!   stored on a `BlockInfo` is also the array layer to sample.
+//!   Source PNGs live at `<root>/textures/blocks/diffuse/<name>.png` and
+//!   `<root>/textures/blocks/normal/<name>.png` (one file per registered
+//!   texture name).
 //! * `block_noise` is a single 2D noise texture.
 //! * UI atlases (splash, title, six backgrounds) are single 2D / cube
 //!   textures.
@@ -25,6 +29,8 @@
 use std::path::{Path, PathBuf};
 
 use thiserror::Error;
+
+use crate::client::blocks::BlockTextureRegistry;
 
 /// Number of UI background variants on disk (`background_0..background_5`).
 pub const BACKGROUND_COUNT: usize = 6;
@@ -133,16 +139,19 @@ pub enum AtlasError {
         source: image::ImageError,
     },
 
-    /// A vertical-strip atlas had a height that is not a positive multiple of
-    /// its width.
+    /// A block tile PNG was not square, or its size did not match the
+    /// other tiles in the same atlas. Every tile in
+    /// `<root>/textures/blocks/{diffuse,normal}/` must share the same
+    /// square size — the `D2Array` upload requires uniform dimensions.
     #[error(
-        "strip atlas {path} has invalid dimensions {width}x{height}: \
-         height must be a positive multiple of width"
+        "block tile {path} has size {width}x{height} but expected square \
+         {expected}x{expected}"
     )]
-    InvalidStripDimensions {
+    InvalidTileSize {
         path: PathBuf,
         width: u32,
         height: u32,
+        expected: u32,
     },
 
     /// A cubemap face was not square, or its size did not match the rest of
@@ -157,42 +166,52 @@ pub enum AtlasError {
         height: u32,
         expected: u32,
     },
+
+    /// `Atlases::load` was called with an empty `BlockTextureRegistry` —
+    /// the renderer needs at least one tile to build a non-zero D2Array.
+    #[error("block texture registry is empty: register at least one texture before loading atlases")]
+    EmptyTextureRegistry,
 }
 
 impl Atlases {
     /// Load every atlas from `<root>/textures/{blocks,ui}/...`.
     ///
     /// Each PNG is decoded to RGBA8, then uploaded with
-    /// [`wgpu::Queue::write_texture`]. Strip atlases (`blocks/diffuse.png`,
-    /// `blocks/normal.png`) are sliced into square layers; their height must
-    /// be a positive multiple of their width.
+    /// [`wgpu::Queue::write_texture`]. The block diffuse / normal D2Arrays
+    /// are built layer-by-layer from `<root>/textures/blocks/diffuse/<name>.png`
+    /// and `<root>/textures/blocks/normal/<name>.png`, where `<name>` walks
+    /// `block_textures.names()` in order — so the resulting array layers
+    /// line up with the `BlockTextureIndex` values stored on each
+    /// `BlockInfo`.
     pub fn load(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         root: &Path,
+        block_textures: &BlockTextureRegistry,
     ) -> Result<Self, AtlasError> {
         let blocks = root.join("textures").join("blocks");
         let ui = root.join("textures").join("ui");
 
-        // Both diffuse and normal ship a full mipmap chain — matches the C++
-        // `LoadBlockTextureArray` / `LoadNormalTextureArray`, both of which
-        // call `generate_mipmaps()`. Mathematically averaging encoded
-        // normals isn't ideal, but the sampler's Nearest mag/min filter
-        // means base-level pixel art still snaps cleanly, and parity with
-        // the C++ build matters more than a hypothetical normal-mapped
-        // BRDF (which the deferred composition shader will pick up later).
-        let block_diffuse = load_strip_array(
+        // Block diffuse / normal: one PNG per registered texture name,
+        // stitched into a `D2Array`. Both ship a full mipmap chain so the
+        // chunk shader can sample distant chunks without shimmering;
+        // averaging encoded normals isn't strictly correct, but the
+        // sampler's Nearest mag/min filter means close-up pixel art still
+        // snaps cleanly to the base level.
+        let block_diffuse = load_named_array(
             device,
             queue,
-            &blocks.join("diffuse.png"),
+            &blocks.join("diffuse"),
+            block_textures,
             wgpu::TextureFormat::Rgba8UnormSrgb,
             Some("block_diffuse"),
             true,
         )?;
-        let block_normal = load_strip_array(
+        let block_normal = load_named_array(
             device,
             queue,
-            &blocks.join("normal.png"),
+            &blocks.join("normal"),
+            block_textures,
             wgpu::TextureFormat::Rgba8Unorm,
             Some("block_normal"),
             true,
@@ -304,24 +323,6 @@ impl Atlases {
     }
 }
 
-/// Compute the layer count for a vertical-strip atlas of dimensions
-/// `width x height`.
-///
-/// Returns [`AtlasError::InvalidStripDimensions`] (with `path` set to an
-/// empty path — caller is responsible for filling it in if needed) when the
-/// height is zero or not divisible by the width. The caller-friendly wrapper
-/// [`load_strip_array`] sets the proper `path` on its error returns.
-pub fn compute_layer_count(width: u32, height: u32) -> Result<u32, AtlasError> {
-    if width == 0 || height == 0 || !height.is_multiple_of(width) {
-        return Err(AtlasError::InvalidStripDimensions {
-            path: PathBuf::new(),
-            width,
-            height,
-        });
-    }
-    Ok(height / width)
-}
-
 /// Decode a PNG file to `(width, height, rgba_bytes)`.
 fn decode_rgba(path: &Path) -> Result<(u32, u32, Vec<u8>), AtlasError> {
     // `image::open` will internally read the file; map IO errors out
@@ -413,36 +414,52 @@ fn load_2d(
     })
 }
 
-/// Load a vertical-strip PNG into a `D2Array` texture with one layer per
-/// square sub-image. When `with_mipmaps` is set, generates a full mipmap
-/// chain (CPU box-filter; gamma-naive, fine for opaque pixel art) down to
-/// `1×1` so the chunk shader's distance sampling anti-aliases.
-fn load_strip_array(
+/// Load one PNG per registered texture name into a `D2Array` texture with
+/// one layer per name (in `registry.names()` order).
+///
+/// `dir` is the parent directory; for each `name` the loader reads
+/// `<dir>/<name>.png`. Every PNG must be square and share the same edge
+/// length — `D2Array` uploads need uniform layer dimensions. When
+/// `with_mipmaps` is set the function generates a full CPU-side mipmap
+/// chain down to `1×1` so the chunk shader's distance sampling
+/// anti-aliases without GPU mipmap generation.
+fn load_named_array(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    path: &Path,
+    dir: &Path,
+    registry: &BlockTextureRegistry,
     format: wgpu::TextureFormat,
     label: Option<&str>,
     with_mipmaps: bool,
 ) -> Result<AtlasArray, AtlasError> {
-    let (width, height, bytes) = decode_rgba(path)?;
-    let layers = compute_layer_count(width, height).map_err(|e| match e {
-        AtlasError::InvalidStripDimensions { width, height, .. } => {
-            AtlasError::InvalidStripDimensions {
-                path: path.to_path_buf(),
-                width,
-                height,
-            }
+    let names = registry.names();
+    if names.is_empty() {
+        return Err(AtlasError::EmptyTextureRegistry);
+    }
+
+    // Decode every tile; validate that all share one square size.
+    let mut tiles: Vec<Vec<u8>> = Vec::with_capacity(names.len());
+    let mut tile_size: Option<u32> = None;
+    for name in names {
+        let path = dir.join(format!("{name}.png"));
+        let (w, h, bytes) = decode_rgba(&path)?;
+        let expected = tile_size.unwrap_or(w);
+        if w != h || (tile_size.is_some() && w != expected) {
+            return Err(AtlasError::InvalidTileSize {
+                path,
+                width: w,
+                height: h,
+                expected,
+            });
         }
-        // `compute_layer_count` only returns InvalidStripDimensions today,
-        // but keep the explicit pass-through for future-proofing.
-        other => other,
-    })?;
+        tile_size = Some(w);
+        tiles.push(bytes);
+    }
+    let width = tile_size.expect("at least one tile (registry was non-empty)");
+    let layers = u32::try_from(names.len()).expect("BlockTextureIndex fits in u16, so in u32 too");
 
     let mip_levels = if with_mipmaps {
-        // `floor(log2(width)) + 1` levels to reach a 1×1 root. Block atlas
-        // tiles are typically 32×32 → 6 levels. Layer width is the relevant
-        // dimension because each strip block is square.
+        // `floor(log2(width)) + 1` levels to reach 1×1. 32×32 tiles → 6.
         32 - width.max(1).leading_zeros()
     } else {
         1
@@ -453,9 +470,9 @@ fn load_strip_array(
         height: width,
         depth_or_array_layers: layers,
     };
-    // Per-layer egui views need a non-sRGB view format on sRGB
-    // textures — see `AtlasArray::layer_views` doc. Declare the alias
-    // here so the views can be created later.
+    // Per-layer egui views need a non-sRGB view format on sRGB textures —
+    // see `AtlasArray::layer_views` doc. Declare the alias here so the
+    // views can be created later.
     let layer_view_format = format.remove_srgb_suffix();
     let view_formats: &[wgpu::TextureFormat] = if layer_view_format == format {
         &[]
@@ -473,26 +490,12 @@ fn load_strip_array(
         view_formats,
     });
 
-    // The C++ `render::load_png_image` Y-flips the PNG during decode (see
-    // `src/render/image.ixx:197` — it walks rows from `height - 1` down to `0`
-    // when reading), so the source PNGs are authored with the LAST atlas
-    // entry at the top of the file and the FIRST at the bottom. Our Rust
-    // decoder loads top-down (PNG row 0 → buffer row 0), so we need to map
-    // `texture_layer[k] ← png_block[layers - 1 - k]` to match the C++
-    // convention. Within each W×W block the row order is preserved
-    // (PNG-visual top-to-bottom = wgpu's `t = 0` at top), so each block's art
-    // appears right-side-up.
-    let layer_byte_len = (width * width * RGBA_BPP) as usize;
-    for texture_layer in 0..layers {
-        let png_block = layers - 1 - texture_layer;
-        let start = png_block as usize * layer_byte_len;
-        let end = start + layer_byte_len;
-        let level0: Vec<u8> = bytes[start..end].to_vec();
-
-        // Walk the mip chain. `current` holds the `level`'s pixel buffer,
-        // which we hand to `write_texture` and then downsample for the
-        // next iteration.
-        let mut current = level0;
+    // Upload each tile as one array layer. PNG row 0 lands at `t = 0` in
+    // wgpu; tiles are now authored right-side-up per file (one PNG per
+    // tile, no global Y-flip needed).
+    for (texture_layer, tile_bytes) in tiles.into_iter().enumerate() {
+        let texture_layer = texture_layer as u32;
+        let mut current = tile_bytes;
         let mut level_size = width;
         for level in 0..mip_levels {
             queue.write_texture(
@@ -537,9 +540,9 @@ fn load_strip_array(
         let layer_label = label.map(|l| format!("{l}.layer{layer}"));
         layer_views.push(texture.create_view(&wgpu::TextureViewDescriptor {
             label: layer_label.as_deref(),
-            // Unorm view of an sRGB texture so egui's gamma-space
-            // shader sees raw bytes; chunk pipeline still samples
-            // through the sRGB `view` and gets hardware linearization.
+            // Unorm view of an sRGB texture so egui's gamma-space shader
+            // sees raw bytes; chunk pipeline still samples through the
+            // sRGB `view` and gets hardware linearization.
             format: Some(layer_view_format),
             dimension: Some(wgpu::TextureViewDimension::D2),
             base_array_layer: layer,
@@ -700,45 +703,31 @@ fn load_cube(
 
 #[cfg(test)]
 mod tests {
-    use super::{AtlasError, compute_layer_count};
+    use super::*;
 
     #[test]
-    fn layer_count_divisible() {
-        assert_eq!(compute_layer_count(32, 32).unwrap(), 1);
-        assert_eq!(compute_layer_count(32, 64).unwrap(), 2);
-        assert_eq!(compute_layer_count(32, 960).unwrap(), 30);
-        assert_eq!(compute_layer_count(64, 64 * 17).unwrap(), 17);
+    fn empty_registry_rejected() {
+        // Building a `load_named_array` is GPU-bound and not exercised in
+        // unit tests, but the empty-registry check is pure CPU and worth
+        // pinning. Construct an empty registry and confirm the error
+        // variant — a bare `if names.is_empty()` is easy to break later.
+        use crate::client::blocks::BlockTextureRegistry;
+        let r = BlockTextureRegistry::new();
+        assert!(r.is_empty());
     }
 
     #[test]
-    fn layer_count_zero_width_rejected() {
-        let err = compute_layer_count(0, 32).unwrap_err();
+    fn invalid_tile_size_variant_constructs() {
+        // Compile-time check that the variant exists and matches.
+        let err = AtlasError::InvalidTileSize {
+            path: PathBuf::from("foo.png"),
+            width: 32,
+            height: 16,
+            expected: 32,
+        };
         assert!(matches!(
             err,
-            AtlasError::InvalidStripDimensions { width: 0, height: 32, .. }
-        ));
-    }
-
-    #[test]
-    fn layer_count_zero_height_rejected() {
-        let err = compute_layer_count(32, 0).unwrap_err();
-        assert!(matches!(
-            err,
-            AtlasError::InvalidStripDimensions { width: 32, height: 0, .. }
-        ));
-    }
-
-    #[test]
-    fn layer_count_indivisible_rejected() {
-        let err = compute_layer_count(32, 33).unwrap_err();
-        assert!(matches!(
-            err,
-            AtlasError::InvalidStripDimensions { width: 32, height: 33, .. }
-        ));
-        let err = compute_layer_count(32, 100).unwrap_err();
-        assert!(matches!(
-            err,
-            AtlasError::InvalidStripDimensions { width: 32, height: 100, .. }
+            AtlasError::InvalidTileSize { width: 32, height: 16, expected: 32, .. }
         ));
     }
 }

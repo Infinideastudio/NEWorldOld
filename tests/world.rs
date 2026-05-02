@@ -194,7 +194,7 @@ fn async_pipeline_round_trip_matches_sync_load() {
         w.set_center(Vec3i::new(0, 0, 0));
         w.tick_chunk_loading();
         let chunk = w.chunk(target).expect("sync load should produce chunk");
-        chunk.package_to()
+        chunk.package_to(&[])
     };
     assert!(
         !reference_bytes.is_empty(),
@@ -220,7 +220,7 @@ fn async_pipeline_round_trip_matches_sync_load() {
         "async load should have emitted target coord"
     );
     let chunk = w.chunk(target).expect("async load should install chunk");
-    assert_eq!(chunk.package_to(), reference_bytes);
+    assert_eq!(chunk.package_to(&[]), reference_bytes);
 }
 
 #[test]

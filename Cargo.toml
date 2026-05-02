@@ -28,8 +28,12 @@ bytemuck = { version = "1.18", features = ["derive"] }
 # World-layer deps:
 # - sled: pure-Rust K/V store backing TilesStore (replaces LevelDB)
 # - bincode: binary serde format for player save
+# - parking_lot: per-page RwLocks for the transactional page store
+# - dashmap: sharded concurrent HashMap for the page table
 sled = "0.34"
 bincode = { version = "2", features = ["serde"] }
+parking_lot = { version = "0.12", features = ["arc_lock"] }
+dashmap = "6"
 
 # F5/F6: SPMC channels for chunk pipeline workers
 crossbeam-channel = "0.5"

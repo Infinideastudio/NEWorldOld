@@ -34,6 +34,7 @@ use super::{
     OptionsScreen, t,
 };
 use crate::blocks::{BlockRegistry, Id};
+use crate::client::blocks::BlockRenderRegistry;
 use crate::config::Config;
 use crate::game::hud::{Hud, HudFrame};
 use crate::game::inventory::Inventory;
@@ -154,6 +155,7 @@ impl GameScreen {
         ctx: &Context,
         player: &mut Player,
         registry: &BlockRegistry,
+        render_registry: &BlockRenderRegistry,
         air_id: Id,
         block_icons: &[egui::TextureId],
     ) -> Transition {
@@ -274,7 +276,7 @@ impl GameScreen {
             };
             self.hud.render(ctx, &frame);
             self.inventory
-                .render(ctx, player, registry, air_id, block_icons);
+                .render(ctx, player, registry, render_registry, air_id, block_icons);
         }
 
         transition

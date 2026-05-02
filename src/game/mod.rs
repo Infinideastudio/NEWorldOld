@@ -48,6 +48,9 @@ use cgmath::{Matrix4, Point3, SquareMatrix, Vector3};
 use crate::blocks::{
     BaseBlocks, BlockData, BlockRegistry, FaceMapping, State, register_base_blocks,
 };
+use crate::client::blocks::{
+    BlockRenderRegistry, BlockTextureRegistry, register_base_block_visuals,
+};
 use crate::chunks::Chunk;
 use crate::commands::{CommandRegistry, register_base_commands};
 use crate::input::{InputState, Key, MouseButton};
@@ -244,6 +247,10 @@ pub struct Game {
     pub commands: CommandRegistry,
     /// Block registry shared with the mesher.
     registry: Arc<BlockRegistry>,
+    /// Per-block face-texture lookup; client-only. Used to resolve atlas
+    /// layers for the inventory icons, water/ice overlays, and the chunk
+    /// mesher.
+    render_registry: Arc<BlockRenderRegistry>,
     /// `BaseBlocks` ids needed by the raycast predicate and break/place logic.
     pub base_blocks: BaseBlocks,
     /// Tiny LCG state used to jitter break-particle positions / velocities.
@@ -282,6 +289,7 @@ impl Game {
         surface_format: wgpu::TextureFormat,
         surface_size: (u32, u32),
         registry: &Arc<BlockRegistry>,
+        render_registry: &Arc<BlockRenderRegistry>,
         base_blocks: BaseBlocks,
         frame_uniforms: &UniformBuffer<FrameUniforms>,
         atlases: &Atlases,
@@ -383,7 +391,7 @@ impl Game {
         // the top-face texture index — same as the C++ reference. Falls back
         // to layer 0 if `base_blocks.water` somehow isn't registered (only
         // a stripped-down test setup hits that path).
-        let water_layer = u32::from(registry.get(base_blocks.water).face(0).0);
+        let water_layer = u32::from(render_registry.face(base_blocks.water, 0).0);
         let underwater_pipeline = UnderwaterPipeline::new(
             device,
             surface_format,
@@ -402,7 +410,7 @@ impl Game {
         let mut camera = Camera::new(look);
         camera.set_orientation(world.player().orientation());
 
-        let mesh_worker = MeshPipeline::spawn(Arc::clone(registry));
+        let mesh_worker = MeshPipeline::spawn(Arc::clone(registry), Arc::clone(render_registry));
 
         let mut commands = CommandRegistry::new();
         register_base_commands(&mut commands, &base_blocks, Arc::clone(registry));
@@ -444,6 +452,7 @@ impl Game {
             chat_messages: Vec::new(),
             commands,
             registry: Arc::clone(registry),
+            render_registry: Arc::clone(render_registry),
             base_blocks,
             rng: 0x9E37_79B9_7F4A_7C15,
             last_w_press: None,
@@ -1133,8 +1142,8 @@ impl Game {
         // on water / ice without per-block-id constants in the
         // shader. `face(0)` is the surface (top) face's texture index
         // — water/ice use the same texture across all faces.
-        let water_layer = u32::from(self.registry.get(self.base_blocks.water).face(0).0);
-        let ice_layer = u32::from(self.registry.get(self.base_blocks.ice).face(0).0);
+        let water_layer = u32::from(self.render_registry.face(self.base_blocks.water, 0).0);
+        let ice_layer = u32::from(self.render_registry.face(self.base_blocks.ice, 0).0);
         u.material_layers = [water_layer, ice_layer, 0, 0];
         u.player_coord_int = coord_int;
         u.player_coord_mod = coord_mod;
@@ -1483,7 +1492,7 @@ impl Game {
         }
         // Record texture layer before mutation so the particles inherit the
         // broken block's face art.
-        let tex_layer = u32::from(self.registry.get(block.id).face(0).0);
+        let tex_layer = u32::from(self.render_registry.face(block.id, 0).0);
 
         // `set_block` marks the cell's chunk and the parent chunks of its
         // 26 block-neighbours as `updated`; `pump_meshing` picks them up
@@ -1807,13 +1816,31 @@ fn build_mesh_input(world: &World, ccoord: Vec3i, options: MeshOptions) -> MeshI
     }
 }
 
-/// Build a fresh registry + base blocks. Wraps the registry in `Arc` so
-/// background workers can hold cheap clones.
+/// Build a fresh block registry + render registry + texture registry +
+/// base block ids — everything the client needs to spin up a world.
+///
+/// The block registry is server-safe (only `core::blocks` types); the
+/// render and texture registries are client-only and would be skipped in
+/// a future headless server. All three are wrapped in `Arc` so the
+/// renderer, mesher, and async chunk worker can hold cheap clones.
 #[must_use]
-pub fn build_block_registry() -> (Arc<BlockRegistry>, BaseBlocks) {
+pub fn build_block_registry() -> (
+    Arc<BlockRegistry>,
+    Arc<BlockRenderRegistry>,
+    Arc<BlockTextureRegistry>,
+    BaseBlocks,
+) {
     let mut registry = BlockRegistry::new();
     let base = register_base_blocks(&mut registry);
-    (Arc::new(registry), base)
+    let mut render = BlockRenderRegistry::new();
+    let mut textures = BlockTextureRegistry::new();
+    register_base_block_visuals(&base, &mut render, &mut textures);
+    (
+        Arc::new(registry),
+        Arc::new(render),
+        Arc::new(textures),
+        base,
+    )
 }
 
 impl Game {
