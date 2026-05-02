@@ -34,6 +34,7 @@ sled = "0.34"
 bincode = { version = "2", features = ["serde"] }
 parking_lot = { version = "0.12", features = ["arc_lock"] }
 dashmap = "6"
+zstd = "0.13"
 
 # F5/F6: SPMC channels for chunk pipeline workers
 crossbeam-channel = "0.5"

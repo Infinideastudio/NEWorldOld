@@ -7,7 +7,6 @@
 
 pub mod block_update;
 pub mod daylight_cycle;
-pub mod pipeline;
 pub mod player;
 pub mod range_loader;
 pub mod worldgen;

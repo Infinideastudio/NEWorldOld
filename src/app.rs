@@ -38,7 +38,7 @@ use crate::game::{Game, build_block_registry};
 use crate::globalization::I18n;
 use crate::input::{InputState, Key, MouseButton};
 use crate::math::Vec2f;
-use crate::menus::{
+use crate::client::menus::{
     GameScreen, ScreenStack, Transition, WorldAction, WorldActionQueue, default_worlds_root,
     initial_screen_stack,
 };
@@ -568,7 +568,7 @@ impl App {
             game_screen.pitch = game.camera.pitch;
             game_screen.chunk_count = game.world.loaded_count();
             game_screen.rendered_chunks = game.last_rendered_chunks;
-            game_screen.unloaded_chunks = game.world.unloaded_chunks;
+            game_screen.unloaded_chunks = game.range_loader.unloaded_chunks();
             game_screen.meshed_chunks = game.chunk_meshes.len();
             game_screen.creative = matches!(
                 player.game_mode(),
@@ -579,7 +579,9 @@ impl App {
             game_screen.near_wall = player.near_wall();
             game_screen.in_water = player.in_water();
             game_screen.game_time = game.daylight_cycle.game_time();
-            game_screen.updated_blocks = game.world.updated_blocks;
+            // `updated_blocks` is gameplay state on `BlockUpdateQueue` — stub
+            // 0 while block-update writes are stubbed during the migration.
+            game_screen.updated_blocks = 0;
             game_screen.pending_block_updates = game.block_update_queue.len();
             // Read advanced_render from Config — Game keeps a private
             // mirror but the live truth is the config lock.

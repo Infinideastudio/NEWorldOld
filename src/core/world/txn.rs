@@ -19,10 +19,11 @@ use std::sync::Arc;
 use dashmap::DashMap;
 use parking_lot::{ArcRwLockReadGuard, ArcRwLockWriteGuard, RawRwLock};
 
-use super::chunk::{Blocks, Chunk};
-use super::world::{World, block_coord, chunk_coord};
 use crate::blocks::BlockData;
 use crate::math::{Vec3i, Vec3u};
+
+use super::chunk::{Chunk, ChunkData};
+use super::{World, block_coord, chunk_coord};
 
 // ----------------------------------------------------------------------
 //   WorkingSet
@@ -97,14 +98,13 @@ pub enum TxnError {
 //   ReadTxn
 // ----------------------------------------------------------------------
 
-/// One pinned chunk held by a `ReadTxn`. The `chunk` field is the pin
-/// (Arc keeps the chunk alive even if the world evicts it during the
-/// txn); `guard` is an owned `parking_lot` arc-lock guard, so it
-/// doesn't borrow from anything.
+/// One pinned chunk held by a `ReadTxn`. The owned arc-lock `guard`
+/// internally clones the chunk's `Arc<RwLock<Blocks>>`, so the
+/// blocks allocation outlives the guard regardless of what the world
+/// does to the parent `Chunk` — no separate pin field needed.
 struct ReadEntry {
     coord: Vec3i,
-    chunk: Arc<Chunk>,
-    guard: ArcRwLockReadGuard<RawRwLock, Blocks>,
+    guard: ArcRwLockReadGuard<RawRwLock, ChunkData>,
 }
 
 pub struct ReadTxn {
@@ -127,15 +127,8 @@ impl ReadTxn {
     /// Borrow the held cell array at `ccoord`. Returns `None` if the
     /// coord isn't in this txn's working set. Borrowed for the
     /// lifetime of `&self`.
-    pub fn chunk_at(&self, ccoord: Vec3i) -> Option<&Blocks> {
+    pub fn chunk_at(&self, ccoord: Vec3i) -> Option<&ChunkData> {
         self.entry(ccoord).map(|e| &*e.guard)
-    }
-
-    /// Borrow the [`Arc<Chunk>`] at `ccoord`. Useful when callers need
-    /// access to the chunk's atomics (commit_gen/save_gen) without
-    /// re-resolving through the world.
-    pub fn chunk_arc_at(&self, ccoord: Vec3i) -> Option<&Arc<Chunk>> {
-        self.entry(ccoord).map(|e| &e.chunk)
     }
 }
 
@@ -146,7 +139,7 @@ impl ReadTxn {
 struct WriteEntry {
     coord: Vec3i,
     chunk: Arc<Chunk>,
-    guard: ArcRwLockWriteGuard<RawRwLock, Blocks>,
+    guard: ArcRwLockWriteGuard<RawRwLock, ChunkData>,
 }
 
 pub struct WriteTxn {
@@ -227,7 +220,7 @@ fn begin_read_in(
         .zip(resolved)
         .map(|(coord, chunk)| {
             let guard = chunk.read_blocks();
-            ReadEntry { coord, chunk, guard }
+            ReadEntry { coord, guard }
         })
         .collect();
     Ok(ReadTxn { entries })
@@ -248,7 +241,11 @@ fn begin_write_in(
         .zip(resolved)
         .map(|(coord, chunk)| {
             let guard = chunk.write_blocks();
-            WriteEntry { coord, chunk, guard }
+            WriteEntry {
+                coord,
+                chunk,
+                guard,
+            }
         })
         .collect();
     Ok(WriteTxn {
@@ -290,13 +287,12 @@ mod tests {
         register_base_blocks(&mut reg)
     }
 
-    fn fresh_chunk(coord: Vec3i) -> Arc<Chunk> {
-        Arc::new(Chunk::from_gen(coord, Blocks::air_filled(Light::SKY)))
-    }
-
     fn install_chunks(chunks: &DashMap<Vec3i, Arc<Chunk>>, coords: &[Vec3i]) {
         for c in coords {
-            chunks.insert(*c, fresh_chunk(*c));
+            chunks.insert(
+                *c,
+                Arc::new(Chunk::from_gen(ChunkData::air_filled(Light::SKY))),
+            );
         }
     }
 

@@ -2,9 +2,10 @@
 //! primitives the chunk-shaping rules consume.
 //!
 //! `HeightNoise` is just a function over `(x, z)` parameterised by a
-//! seed; `chunk_init` calls it column-by-column to produce terrain
-//! heights. Splitting it out keeps the chunk-init rules small and
-//! lets future biome/cave passes layer on additional noise sources.
+//! seed; [`super::init_generate`] calls it column-by-column to
+//! produce terrain heights. Splitting it out keeps the chunk-shaping
+//! rules small and lets future biome/cave passes layer on additional
+//! noise sources.
 
 /// Sea level. Mirrors `terrain_generation::WATER_LEVEL` in the C++ build.
 pub const WATER_LEVEL: i32 = 96;

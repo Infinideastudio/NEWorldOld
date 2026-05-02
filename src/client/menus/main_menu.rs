@@ -45,7 +45,7 @@ pub struct TitleScreen {
     i18n: Arc<Mutex<I18n>>,
     /// Where the world list and "create world" screen anchor their disk I/O.
     /// Threaded through so the screens don't have to duplicate the dev-vs-
-    /// release path resolution from [`crate::menus::action::default_worlds_root`].
+    /// release path resolution from [`crate::client::menus::action::default_worlds_root`].
     worlds_root: PathBuf,
     /// Mailbox for cross-screen world-lifecycle requests (open / leave /
     /// delete). The world-select screen sends `Enter`; the app drains.

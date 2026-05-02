@@ -5,25 +5,23 @@
 //! - The chunk-coord centre + `render_distance` (in chunks).
 //! - A [`LoadedCore`] optimisation that skips already-loaded shells in
 //!   the bounded shell scan.
-//! - A `HashSet<Vec3i>` of coords currently in flight on the async
-//!   pipeline (so a coord doesn't get re-issued before its result lands).
 //! - A `HashMap<Vec3i, Arc<Chunk>>` keeping every chunk in the load
 //!   window pinned: the `Arc` itself is the pin — eviction drops the
 //!   world's clone, our clone keeps the chunk alive until we drop it.
 //!
 //! Drives the `World`:
 //! - `set_center` updates the centre.
-//! - `tick_chunk_loading[_async]` issues loads for newly-in-window
-//!   chunks and unloads for newly-out-of-window chunks (bounded heaps,
-//!   `MAX_CHUNK_LOADS` / `MAX_CHUNK_UNLOADS` per call).
-//! - `poll_load_results` drains finished pipeline loads, filters by
-//!   window, calls `World::install_chunk` + pins.
+//! - `tick_chunk_loading` issues loads for newly-in-window chunks and
+//!   unloads for newly-out-of-window chunks (bounded heaps,
+//!   `MAX_CHUNK_LOADS` / `MAX_CHUNK_UNLOADS` per call). Loads run
+//!   synchronously: `World::install_chunk` tries disk first; on miss
+//!   it invokes the caller-supplied closure, which calls back into
+//!   [`TerrainGenerator::build_blocks`].
 
 use std::cmp::{Ordering, Reverse};
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap};
 use std::sync::Arc;
 
-use crate::core::game::pipeline::LoadResult;
 use crate::core::game::worldgen::TerrainGenerator;
 use crate::core::world::{Chunk, World, chunk_coord};
 use crate::math::Vec3i;
@@ -96,8 +94,9 @@ pub struct RangeLoader {
     /// `render_distance + LOAD_RADIUS_BUFFER`.
     render_distance: i32,
     loaded_core: LoadedCore,
-    in_flight: HashSet<Vec3i>,
     pins: HashMap<Vec3i, Arc<Chunk>>,
+    /// HUD counter — wraps on overflow; only ever read for display.
+    unloaded_chunks: u32,
 }
 
 impl RangeLoader {
@@ -106,8 +105,8 @@ impl RangeLoader {
             center: Vec3i::new(0, 0, 0),
             render_distance,
             loaded_core: LoadedCore::default(),
-            in_flight: HashSet::new(),
             pins: HashMap::new(),
+            unloaded_chunks: 0,
         }
     }
 
@@ -121,6 +120,11 @@ impl RangeLoader {
 
     pub fn set_render_distance(&mut self, distance: i32) {
         self.render_distance = distance;
+    }
+
+    /// Total chunks evicted by this loader since construction (wraps).
+    pub fn unloaded_chunks(&self) -> u32 {
+        self.unloaded_chunks
     }
 
     /// Update the load-window centre. Shrinks the `LoadedCore` by the
@@ -142,68 +146,17 @@ impl RangeLoader {
             if world.is_loaded(cc) {
                 continue;
             }
-            let (blocks, from_disk) = terrain_gen.build_chunk_sync(world, cc);
-            world.install_chunk(cc, blocks, from_disk);
+            world.install_chunk(cc, || terrain_gen.build_blocks(cc));
             world.mark_neighbour_chunks_updated(cc);
             if let Some(arc) = world.chunk(cc) {
                 self.pins.insert(cc, arc);
             }
         }
         for cc in self.collect_unload_candidates(world) {
-            self.unload_one(world, terrain_gen, cc, /*async_save=*/ false);
-            world.unloaded_chunks = world.unloaded_chunks.wrapping_add(1);
+            self.unload_one(world, cc);
         }
     }
 
-    /// Async sibling: dispatches load requests to the pipeline; never
-    /// blocks. Pair with [`Self::poll_load_results`].
-    pub fn tick_chunk_loading_async(
-        &mut self,
-        world: &mut World,
-        terrain_gen: &mut TerrainGenerator,
-    ) {
-        for cc in self.collect_load_candidates(world) {
-            if terrain_gen.request_load(cc) {
-                self.in_flight.insert(cc);
-            }
-        }
-        for cc in self.collect_unload_candidates(world) {
-            self.unload_one(world, terrain_gen, cc, /*async_save=*/ true);
-            world.unloaded_chunks = world.unloaded_chunks.wrapping_add(1);
-        }
-    }
-
-    /// Drain finished pipeline loads, install in-window ones into the
-    /// world (and pin them), return the list of inserted coords.
-    pub fn poll_load_results(
-        &mut self,
-        world: &mut World,
-        terrain_gen: &mut TerrainGenerator,
-    ) -> Vec<Vec3i> {
-        let drained = terrain_gen.drain_results();
-        let mut inserted = Vec::with_capacity(drained.len());
-        for LoadResult {
-            coord,
-            blocks,
-            from_disk,
-        } in drained
-        {
-            self.in_flight.remove(&coord);
-            let half = self.render_distance + LOAD_RADIUS_BUFFER;
-            let d = coord - self.center;
-            let in_window = d.x.abs() <= half && d.y.abs() <= half && d.z.abs() <= half;
-            if !in_window || world.is_loaded(coord) {
-                continue;
-            }
-            world.install_chunk(coord, blocks, from_disk);
-            world.mark_neighbour_chunks_updated(coord);
-            if let Some(arc) = world.chunk(coord) {
-                self.pins.insert(coord, arc);
-            }
-            inserted.push(coord);
-        }
-        inserted
-    }
 
     // ---- internal ----
 
@@ -261,7 +214,7 @@ impl RangeLoader {
         center: Vec3i,
         world: &World,
     ) {
-        if world.is_loaded(cc) || self.in_flight.contains(&cc) {
+        if world.is_loaded(cc) {
             return;
         }
         let rel = cc - center;
@@ -277,7 +230,7 @@ impl RangeLoader {
         let unload_dist = self.render_distance + LOAD_RADIUS_BUFFER;
         let mut heap: BinaryHeap<Reverse<ByDist>> =
             BinaryHeap::with_capacity(MAX_CHUNK_UNLOADS + 1);
-        for coord in world.loaded_iter() {
+        for coord in world.loaded_coords() {
             let d = coord - center;
             if d.x.abs() > unload_dist || d.y.abs() > unload_dist || d.z.abs() > unload_dist {
                 let dist = d.x * d.x + d.y * d.y + d.z * d.z;
@@ -293,26 +246,14 @@ impl RangeLoader {
             .collect()
     }
 
-    fn unload_one(
-        &mut self,
-        world: &mut World,
-        terrain_gen: &TerrainGenerator,
-        cc: Vec3i,
-        async_save: bool,
-    ) {
+    fn unload_one(&mut self, world: &mut World, cc: Vec3i) {
         // Drop our pin clone first so the chunk's only remaining
         // strong reference (after world.evict) is the world's, which
-        // we're about to remove.
+        // we're about to remove. `World::evict` persists any dirty
+        // bytes synchronously before dropping the slot.
         self.pins.remove(&cc);
-        if let Some((bytes, captured_gen)) = world.package_if_dirty(cc) {
-            if async_save {
-                terrain_gen.request_save(cc, bytes);
-            } else {
-                let _ = world.save_chunk_bytes(cc, &bytes);
-            }
-            world.advance_save_gen(cc, captured_gen);
-        }
         world.evict(cc);
+        self.unloaded_chunks = self.unloaded_chunks.wrapping_add(1);
         self.shrink_loaded_core_for_unload(cc);
     }
 

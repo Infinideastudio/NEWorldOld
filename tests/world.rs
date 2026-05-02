@@ -12,7 +12,7 @@ use std::sync::Arc;
 use neworld::blocks::{BaseBlocks, BlockRegistry, register_base_blocks};
 use neworld::core::game::range_loader::RangeLoader;
 use neworld::core::game::worldgen::{TerrainGenerator, world_tables_for};
-use neworld::core::world::chunk;
+use neworld::core::world::Chunk;
 use neworld::math::{Vec3i, Vec3u};
 use neworld::worlds::{World, block_coord, chunk_coord};
 
@@ -33,7 +33,7 @@ fn build_world(
     let (registry, base) = make_registry();
     let tables = world_tables_for(scratch.path(), name, &registry).expect("world_tables_for");
     let world = World::new_at(scratch.path(), name.to_owned(), tables).expect("World::new_at");
-    let terrain = TerrainGenerator::new(&world, registry, base, 0);
+    let terrain = TerrainGenerator::new(registry, base, 0);
     let loader = RangeLoader::new(render_distance);
     (world, terrain, loader, base)
 }
@@ -127,7 +127,7 @@ fn world_set_center_does_not_unload_existing_chunks() {
     // Slide far away — origin chunk is now outside the window, but no
     // unload tick has happened yet.
     let far = Vec3i::new(10_000, 0, 10_000);
-    loader.set_center(far * chunk::SIZE);
+    loader.set_center(far * Chunk::SIZE as i32);
     assert!(w.is_loaded(cc), "set_center alone must not unload");
 
     // After ticking, the now-distant chunk gets reaped.
@@ -196,60 +196,10 @@ fn world_tick_chunk_loading_is_idempotent() {
 }
 
 #[test]
-fn async_pipeline_round_trip_matches_sync_load() {
-    use neworld::worlds::WorkingSet;
-    // Reference: synchronously load, capture the target chunk's bytes.
-    let scratch = ScratchDir::new("async-roundtrip");
-    let target = Vec3i::new(0, 0, 0);
-
-    let reference_bytes = {
-        let (mut w, mut terrain, mut loader, _base) =
-            build_world(&scratch, "async-roundtrip-ref", 1);
-        loader.set_center(Vec3i::new(0, 0, 0));
-        loader.tick_chunk_loading(&mut w, &mut terrain);
-        let txn = w
-            .begin_read_txn_sync(WorkingSet::Single(target))
-            .expect("sync load should produce chunk");
-        txn.chunk_at(target).expect("present").package_to(&[])
-    };
-    assert!(
-        !reference_bytes.is_empty(),
-        "sync-loaded origin chunk should have data"
-    );
-
-    // Async pipeline: issue a load request and wait for the worker.
-    let (mut w, mut terrain, mut loader, _base) = build_world(&scratch, "async-roundtrip", 1);
-    loader.set_center(Vec3i::new(0, 0, 0));
-    loader.tick_chunk_loading_async(&mut w, &mut terrain);
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-    let mut inserted: Vec<Vec3i> = Vec::new();
-    while std::time::Instant::now() < deadline {
-        let mut got = loader.poll_load_results(&mut w, &mut terrain);
-        inserted.append(&mut got);
-        if w.is_loaded(target) {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(5));
-    }
-    assert!(
-        inserted.contains(&target),
-        "async load should have emitted target coord"
-    );
-    let txn = w
-        .begin_read_txn_sync(WorkingSet::Single(target))
-        .expect("async load should install chunk");
-    assert_eq!(
-        txn.chunk_at(target).expect("present").package_to(&[]),
-        reference_bytes
-    );
-}
-
-#[test]
 fn tiles_store_round_trips_raw_bytes() {
     use neworld::worlds::Store;
     let scratch = ScratchDir::new("tiles");
-    let store =
-        Store::open_at(&scratch.path().join("chunks.db")).expect("TilesStore::open_at");
+    let store = Store::open_at(&scratch.path().join("chunks.db")).expect("TilesStore::open_at");
     let coord = Vec3i::new(-2, 3, 17);
     let payload = b"hello-chunk-bytes-1234567890".to_vec();
     store.save(coord, &payload).expect("save");

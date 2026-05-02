@@ -48,11 +48,12 @@ use cgmath::{Matrix4, Point3, SquareMatrix, Vector3};
 use crate::blocks::{
     BaseBlocks, BlockData, BlockRegistry, FaceMapping, State, register_base_blocks,
 };
-use crate::core::world::chunk;
 use crate::client::blocks::{
     BlockRenderRegistry, BlockTextureRegistry, register_base_block_visuals,
 };
 use crate::commands::{CommandRegistry, register_base_commands};
+use crate::core::game::player::BlockView;
+use crate::core::world::Chunk;
 use crate::input::{InputState, Key, MouseButton};
 use crate::items::ItemStack;
 use crate::math::{Aabbf, Frustumf, Vec3d, Vec3i};
@@ -65,7 +66,6 @@ use crate::render::{
 };
 use crate::textures::Atlases;
 use crate::worlds::chunk_rendering::{ChunkMesh, ChunkPipeline};
-use crate::core::game::player::BlockView;
 use crate::worlds::{GameMode, World, WorldError};
 
 /// Bounded-heap entry for the mesh-dispatch ordering. Local to game
@@ -146,6 +146,11 @@ fn time_of_day(game_time: u32) -> Vector3<f32> {
     let s = angle.sin();
     Vector3::new(angle.cos(), s * SUN_TILT_RAD.cos(), s * SUN_TILT_RAD.sin())
 }
+
+/// Maximum dirty chunks `World::sweep_dirty` flushes per sim tick.
+/// At 30 ticks/sec, this caps at ~960 chunks/sec, comfortably above
+/// the streamer's per-tick generate rate.
+const SWEEP_DIRTY_PER_TICK: usize = 32;
 
 /// Maximum new mesh jobs to issue per frame. Caps the per-frame CPU spike
 /// when many chunks land at once (e.g. on the first frame, or after a fast
@@ -341,11 +346,8 @@ impl Game {
 
         // Build the per-world id translation tables (registry-aware,
         // outside the database).
-        let tables = crate::core::game::worldgen::world_tables_for(
-            worlds_root,
-            &world_name,
-            registry,
-        )?;
+        let tables =
+            crate::core::game::worldgen::world_tables_for(worlds_root, &world_name, registry)?;
 
         let mut world = World::new_at(worlds_root, world_name, tables)?;
 
@@ -365,7 +367,6 @@ impl Game {
         }
 
         let mut terrain_generator = crate::core::game::worldgen::TerrainGenerator::new(
-            &world,
             Arc::clone(registry),
             base_blocks,
             world_seed,
@@ -387,7 +388,7 @@ impl Game {
             player_world.y.floor() as i32,
             player_world.z.floor() as i32,
         ));
-        range_loader.tick_chunk_loading_async(&mut world, &mut terrain_generator);
+        range_loader.tick_chunk_loading(&mut world, &mut terrain_generator);
 
         // Start in basic G-buffer shape (diffuse + depth only). The
         // first `apply_shadow_config` call after construction reads the
@@ -743,9 +744,12 @@ impl Game {
         // so the next `drain_updated_chunks` covers the load-completion
         // case automatically — no Game-side dirty-marking call needed.
         self.range_loader
-            .tick_chunk_loading_async(&mut self.world, &mut self.terrain_generator);
-        self.range_loader
-            .poll_load_results(&mut self.world, &mut self.terrain_generator);
+            .tick_chunk_loading(&mut self.world, &mut self.terrain_generator);
+
+        // Background sweep: drain a few dirty chunks to disk each tick so
+        // the on-quit `save_to_disk` has little remaining work. Bounded so
+        // a backlog can't spike a single tick.
+        self.world.sweep_dirty(SWEEP_DIRTY_PER_TICK);
 
         // Drop cached meshes for any coord that's no longer loaded — happens
         // every tick (not just on insert) so unload-on-walk reaps GPU
@@ -1133,7 +1137,7 @@ impl Game {
         self.sun_dir = time_of_day(self.daylight_cycle.game_time());
 
         let shadow_view_proj = if self.advanced_render {
-            let length = (self.shadow_distance_chunks as f32) * (chunk::SIZE as f32);
+            let length = (self.shadow_distance_chunks as f32) * (Chunk::SIZE as f32);
             shadow_matrix(self.camera.position, self.sun_dir, length)
         } else {
             Matrix4::identity()
@@ -1158,7 +1162,7 @@ impl Game {
         // the diagonal of the loaded cube (so corner chunks fade smoothly into
         // sky), `fog_start` 65% of the way there for a generous fade band.
         let r = self.range_loader.render_distance() as f32;
-        let chunk = chunk::SIZE as f32;
+        let chunk = Chunk::SIZE as f32;
         u.fog_end = (r + 0.5) * SQRT_3_F32 * chunk;
         u.fog_start = u.fog_end * 0.65;
         u.render_distance = r * chunk;
@@ -1178,7 +1182,7 @@ impl Game {
         u.shadow_params = if self.advanced_render {
             [
                 self.shadow_res as f32,
-                (self.shadow_distance_chunks as f32) * (chunk::SIZE as f32),
+                (self.shadow_distance_chunks as f32) * (Chunk::SIZE as f32),
                 0.8,
                 inside_water_flag,
             ]
@@ -1368,7 +1372,7 @@ impl Game {
         ));
         let render_distance = self.range_loader.render_distance();
         let shadow_distance = self.shadow_distance_chunks;
-        let chunk_size = chunk::SIZE as f32;
+        let chunk_size = Chunk::SIZE as f32;
         let camera_visible: Vec<&ChunkMesh> = self
             .chunk_meshes
             .values()
@@ -1889,9 +1893,9 @@ fn build_mesh_input(world: &World, ccoord: Vec3i, options: MeshOptions) -> Optio
     let txn = world.begin_read_txn_sync(WorkingSet::Coords(coords)).ok()?;
 
     let chunk_origin = Vec3i::new(
-        ccoord.x * chunk::SIZE,
-        ccoord.y * chunk::SIZE,
-        ccoord.z * chunk::SIZE,
+        ccoord.x * Chunk::SIZE as i32,
+        ccoord.y * Chunk::SIZE as i32,
+        ccoord.z * Chunk::SIZE as i32,
     );
     let p_size = i32::try_from(PADDED_SIZE).unwrap_or(18);
     for pz in 0..p_size {

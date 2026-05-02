@@ -28,12 +28,10 @@ fn pump_until_loaded(
     let mut idle = 0u32;
     let mut last_count = 0usize;
     while world.loaded_count() < target_count && idle < 256 {
-        loader.tick_chunk_loading_async(world, terrain);
-        let _ = loader.poll_load_results(world, terrain);
+        loader.tick_chunk_loading(world, terrain);
         let now = world.loaded_count();
         if now == last_count {
             idle += 1;
-            std::thread::sleep(std::time::Duration::from_millis(2));
         } else {
             idle = 0;
             last_count = now;
@@ -68,7 +66,7 @@ fn round_trip_world_through_set_block_save_reopen() {
         let mut world =
             World::new_at(scratch.path(), world_name.clone(), tables).expect("World::new_at");
         let mut terrain =
-            TerrainGenerator::new(&world, Arc::clone(&registry), base, seed);
+            TerrainGenerator::new(Arc::clone(&registry), base, seed);
         let mut loader = RangeLoader::new(render_distance);
         loader.set_center(Vec3i::new(0, 0, 0));
         pump_until_loaded(&mut world, &mut terrain, &mut loader, target_chunks);
@@ -108,7 +106,7 @@ fn round_trip_world_through_set_block_save_reopen() {
         let mut world =
             World::new_at(scratch.path(), world_name.clone(), tables).expect("World::new_at");
         let mut terrain =
-            TerrainGenerator::new(&world, Arc::clone(&registry), base, seed);
+            TerrainGenerator::new(Arc::clone(&registry), base, seed);
         let mut loader = RangeLoader::new(render_distance);
         loader.set_center(Vec3i::new(0, 0, 0));
         pump_until_loaded(&mut world, &mut terrain, &mut loader, target_chunks);
@@ -133,7 +131,7 @@ fn slash_command_dispatch_through_full_stack() {
     let tables = world_tables_for(scratch.path(), "smoke-cmd", &registry).expect("tables");
     let mut world =
         World::new_at(scratch.path(), "smoke-cmd".to_owned(), tables).expect("World::new_at");
-    let mut terrain = TerrainGenerator::new(&world, Arc::clone(&registry), base, 0xDEAD_BEEF);
+    let mut terrain = TerrainGenerator::new(Arc::clone(&registry), base, 0xDEAD_BEEF);
     let mut loader = RangeLoader::new(1);
     loader.set_center(Vec3i::new(0, 0, 0));
     pump_until_loaded(&mut world, &mut terrain, &mut loader, 27);
