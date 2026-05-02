@@ -45,7 +45,6 @@ impl Camera {
     /// Construct a camera at `position` with default orientation + projection.
     /// `Game::tick_render` overwrites all of these from the player each frame,
     /// but the initial values determine the first frame's view.
-    #[must_use]
     pub fn new(position: Vec3d) -> Self {
         Self {
             position,
@@ -65,7 +64,6 @@ impl Camera {
     }
 
     /// Unit forward vector in world space.
-    #[must_use]
     pub fn forward(&self) -> Vec3d {
         let cy = self.yaw.cos();
         let sy = self.yaw.sin();
@@ -75,7 +73,6 @@ impl Camera {
     }
 
     /// Unit right vector (perpendicular to forward in the horizontal plane).
-    #[must_use]
     pub fn right(&self) -> Vec3d {
         let cy = self.yaw.cos();
         let sy = self.yaw.sin();
@@ -83,7 +80,6 @@ impl Camera {
     }
 
     /// Right-handed view matrix.
-    #[must_use]
     pub fn view_matrix(&self) -> Matrix4<f32> {
         let eye = Point3::new(
             self.position.x as f32,
@@ -98,7 +94,6 @@ impl Camera {
     /// Reversed-Z perspective projection in wgpu's clip-space convention
     /// (`Z in [0, 1]`, near = 1, far = 0). Pair with `CompareFunction::Greater`
     /// and a 0.0 depth clear at the render-pass level.
-    #[must_use]
     pub fn proj_matrix(&self, aspect: f32) -> Matrix4<f32> {
         OPENGL_TO_WGPU_REVERSED * cgmath::perspective(Rad(self.fov_y), aspect, self.near, self.far)
     }

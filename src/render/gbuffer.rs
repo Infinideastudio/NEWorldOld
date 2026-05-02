@@ -197,7 +197,6 @@ impl GBuffer {
     pub const MATERIAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R16Uint;
     pub const DEPTH_FORMAT: wgpu::TextureFormat = DepthTarget::FORMAT;
 
-    #[must_use]
     pub fn new(device: &wgpu::Device, width: u32, height: u32, advanced: bool) -> Self {
         let width = width.max(1);
         let height = height.max(1);
@@ -237,7 +236,6 @@ impl GBuffer {
         *self = Self::new(device, self.width, self.height, advanced);
     }
 
-    #[must_use]
     pub fn is_advanced(&self) -> bool {
         self.advanced
     }
@@ -246,7 +244,6 @@ impl GBuffer {
     /// for the opaque chunk pass and read as a sampled texture by
     /// the translucent chunk pass (for shader-side discard of
     /// fragments behind opaque) and by the composition pass.
-    #[must_use]
     pub fn opaque_depth_view(&self) -> &wgpu::TextureView {
         self.opaque.depth_view()
     }
@@ -254,13 +251,11 @@ impl GBuffer {
     /// Borrow the translucent depth view — used as the depth
     /// attachment for the translucent chunk pass (so the front-most
     /// translucent fragment wins) and read by composition.
-    #[must_use]
     pub fn translucent_depth_view(&self) -> &wgpu::TextureView {
         self.translucent.depth_view()
     }
 
     /// Current size in pixels (post-clamp).
-    #[must_use]
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
     }

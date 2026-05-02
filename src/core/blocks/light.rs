@@ -17,19 +17,16 @@ impl BlockLight {
     pub const NONE: BlockLight = BlockLight::new(0, 0);
 
     /// Pack `(sky, block)` nibbles. Both must be `<= 15`.
-    #[must_use]
     pub const fn new(sky: u8, block: u8) -> Self {
         assert!(sky <= 15, "BlockLight::new: sky > 15");
         assert!(block <= 15, "BlockLight::new: block > 15");
         Self((sky << 4) | (block & 0x0F))
     }
 
-    #[must_use]
     pub const fn sky(self) -> u8 {
         self.0 >> 4
     }
 
-    #[must_use]
     pub const fn block(self) -> u8 {
         self.0 & 0x0F
     }

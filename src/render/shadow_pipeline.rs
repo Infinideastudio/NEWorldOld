@@ -56,7 +56,6 @@ pub struct ShadowPipeline {
 
 impl ShadowPipeline {
     /// Build the depth-only chunk pipeline + its bind groups.
-    #[must_use]
     pub fn new(
         device: &wgpu::Device,
         frame_uniforms: &UniformBuffer<FrameUniforms>,

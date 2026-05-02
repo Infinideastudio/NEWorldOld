@@ -21,16 +21,11 @@ use std::sync::{Arc, Mutex};
 pub enum WorldAction {
     /// Open or create the world named `name` under `<worlds_root>/<name>/`,
     /// then drop into the in-game UI.
-    Enter {
-        name: String,
-        seed: u32,
-    },
+    Enter { name: String, seed: u32 },
     /// Save the current world (if any) and return to the title screen.
     LeaveToTitle,
     /// Permanently delete the on-disk world named `name`.
-    Delete {
-        name: String,
-    },
+    Delete { name: String },
 }
 
 /// Single-slot mailbox shared between the screens (writers) and the app
@@ -43,7 +38,6 @@ pub struct WorldActionQueue {
 
 impl WorldActionQueue {
     /// Construct an empty mailbox.
-    #[must_use]
     pub fn new() -> Arc<Self> {
         Arc::new(Self::default())
     }
@@ -73,7 +67,6 @@ impl WorldActionQueue {
 /// chunk DBs survive between cargo runs without polluting the launch dir),
 /// or the cwd in a deployed build (matching the C++ build's behaviour).
 /// Net result: worlds live at `<this>/worlds/<name>/`.
-#[must_use]
 pub fn default_worlds_root() -> PathBuf {
     if let Some(dir) = option_env!("CARGO_MANIFEST_DIR") {
         return PathBuf::from(dir);

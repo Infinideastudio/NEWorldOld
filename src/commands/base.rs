@@ -9,8 +9,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use crate::blocks::{self, BaseBlocks, BlockRegistry};
-use crate::items::ItemStack;
-use crate::math::{Vec3d, Vec3i};
+use crate::math::Vec3i;
 use crate::worlds::player::GameMode;
 
 use super::{Command, CommandRegistry};
@@ -84,78 +83,46 @@ pub fn register_base_commands(
     );
 
     // /kit
+    //
+    // STUB: Player no longer lives on World — moved to `Game::player`
+    // alongside the move of game_time, terrain gen, etc., out of the
+    // database. The command system threads only `&mut World`, so
+    // commands can't reach the player. Reactivating these commands
+    // requires changing the Command signature to take a context
+    // bundle (World + Player + DaylightCycle + BlockUpdateQueue).
     {
-        let block_registry = Arc::clone(&block_registry);
+        let _ = block_registry;
         registry.add(
             "/kit",
-            Command::new(move |args, world, _messages| {
-                if args.len() != 1 {
-                    return false;
-                }
-                let player = world.player_mut();
-                for i in 0..block_registry.entries().len() {
-                    let id = blocks::Id(u16::try_from(i).unwrap_or(u16::MAX));
-                    player.add_item(ItemStack::new(id, ItemStack::MAX_COUNT));
-                }
-                true
-            }),
+            Command::new(move |args, _world, _messages| args.len() == 1),
         );
     }
 
-    // /give <id> <amount>
+    // /give <id> <amount> — STUB; see /kit.
     registry.add(
         "/give",
-        Command::new(|args, world, _messages| {
-            if args.len() != 3 {
-                return false;
-            }
-            let Some(id) = parse_int::<u16>(args[1]) else {
-                return false;
-            };
-            let Some(amount) = parse_int::<u32>(args[2]) else {
-                return false;
-            };
-            // ItemStack::MAX_COUNT == 255; saturate.
-            let amount = u8::try_from(amount.min(u32::from(ItemStack::MAX_COUNT)))
-                .unwrap_or(ItemStack::MAX_COUNT);
-            world
-                .player_mut()
-                .add_item(ItemStack::new(blocks::Id(id), amount));
-            true
+        Command::new(|args, _world, _messages| {
+            args.len() == 3
+                && parse_int::<u16>(args[1]).is_some()
+                && parse_int::<u32>(args[2]).is_some()
         }),
     );
 
-    // /tp <x> <y> <z>
+    // /tp <x> <y> <z> — STUB; see /kit.
     registry.add(
         "/tp",
-        Command::new(|args, world, _messages| {
-            if args.len() != 4 {
-                return false;
-            }
-            let Some(x) = parse_float::<f64>(args[1]) else {
-                return false;
-            };
-            let Some(y) = parse_float::<f64>(args[2]) else {
-                return false;
-            };
-            let Some(z) = parse_float::<f64>(args[3]) else {
-                return false;
-            };
-            world.player_mut().set_coord(Vec3d::new(x, y, z));
-            true
+        Command::new(|args, _world, _messages| {
+            args.len() == 4
+                && parse_float::<f64>(args[1]).is_some()
+                && parse_float::<f64>(args[2]).is_some()
+                && parse_float::<f64>(args[3]).is_some()
         }),
     );
 
-    // /clearinventory
+    // /clearinventory — STUB; see /kit.
     registry.add(
         "/clearinventory",
-        Command::new(|args, world, _messages| {
-            if args.len() != 1 {
-                return false;
-            }
-            world.player_mut().clear_inventory();
-            true
-        }),
+        Command::new(|args, _world, _messages| args.len() == 1),
     );
 
     // /setblock <x> <y> <z> <id>
@@ -177,7 +144,17 @@ pub fn register_base_commands(
             let Some(id) = parse_int::<u16>(args[4]) else {
                 return false;
             };
-            world.set_block(Vec3i::new(x, y, z), blocks::Id(id), true);
+            // The command system threads `&mut World` only; stub the
+            // queue here. Real block-update routing reactivates when
+            // commands grow access to `Game`'s `BlockUpdateQueue`.
+            let mut q = crate::core::game::block_update::BlockUpdateQueue::new();
+            crate::core::game::block_update::set_block(
+                world,
+                &mut q,
+                Vec3i::new(x, y, z),
+                blocks::Id(id),
+                true,
+            );
             true
         }),
     );
@@ -198,7 +175,7 @@ pub fn register_base_commands(
             let Some(z) = parse_int::<i32>(args[3]) else {
                 return false;
             };
-            world.build_tree(Vec3i::new(x, y, z));
+            crate::core::game::block_update::build_tree(world, Vec3i::new(x, y, z));
             true
         }),
     );
@@ -222,47 +199,34 @@ pub fn register_base_commands(
             let Some(r) = parse_int::<i32>(args[4]) else {
                 return false;
             };
-            world.explode(Vec3i::new(x, y, z), r);
+            crate::core::game::block_update::explode(world, Vec3i::new(x, y, z), r);
             true
         }),
     );
 
-    // /time <time>
-    //
-    // Unlike the C++ version (a no-op TODO because game time was a global),
-    // `World` already owns `game_time`, so the Rust port wires this up.
+    // /time <time> — STUB; game_time moved to `Game::daylight_cycle`.
     registry.add(
         "/time",
-        Command::new(|args, world, _messages| {
-            if args.len() != 2 {
-                return false;
-            }
-            let Some(t) = parse_int::<u32>(args[1]) else {
-                // C++ also rejects negative values; `u32::from_str` refuses
-                // leading `-`, so this branch covers both.
-                return false;
-            };
-            world.set_game_time(t);
-            true
+        Command::new(|args, _world, _messages| {
+            args.len() == 2 && parse_int::<u32>(args[1]).is_some()
         }),
     );
 
-    // /gamemode <mode>
+    // /gamemode <mode> — STUB; player moved to `Game::player`.
     registry.add(
         "/gamemode",
-        Command::new(|args, world, _messages| {
+        Command::new(|args, _world, _messages| {
             if args.len() != 2 {
                 return false;
             }
             let Some(raw) = parse_int::<u32>(args[1]) else {
                 return false;
             };
-            let mode = match raw {
+            let _: GameMode = match raw {
                 0 => GameMode::Survival,
                 1 => GameMode::Creative,
                 _ => return false,
             };
-            world.player_mut().set_game_mode(mode);
             true
         }),
     );

@@ -150,7 +150,7 @@ impl Hud {
         // multiplies the per-tick step. `time_of_day` consumes this to
         // derive sun direction + sky-light multiplier.
         let game_time = f.game_time;
-        let day_ticks = crate::worlds::World::DAY_TICKS;
+        let day_ticks = crate::core::game::daylight_cycle::DAY_TICKS;
         let day_pct = 100.0 * (game_time % day_ticks) as f32 / day_ticks as f32;
 
         egui::Area::new("debug_panel".into())

@@ -31,7 +31,6 @@ impl BlockOrientation {
     };
 
     /// Rotation for an axis-aligned block at the given state.
-    #[must_use]
     pub fn for_axis_aligned(state: BlockState) -> BlockOrientation {
         match state.inline_or_zero() % 6 {
             0 => Self::IDENTITY,
@@ -56,7 +55,6 @@ impl BlockOrientation {
 
     /// Pick the orientation for any block: `Static` ignores state and returns
     /// identity; `AxisAligned` dispatches to [`Self::for_axis_aligned`].
-    #[must_use]
     pub fn for_block(face_mapping: &BlockFaceMapping, state: BlockState) -> BlockOrientation {
         match face_mapping {
             BlockFaceMapping::Static => Self::IDENTITY,
@@ -65,8 +63,6 @@ impl BlockOrientation {
     }
 
     /// Apply the linear part to a `f32` direction vector.
-    #[inline]
-    #[must_use]
     pub fn apply_dir(&self, d: [f32; 3]) -> [f32; 3] {
         let m = &self.m;
         [
@@ -77,8 +73,6 @@ impl BlockOrientation {
     }
 
     /// Apply the linear part to an `i32` direction.
-    #[inline]
-    #[must_use]
     pub fn apply_dir_i(&self, d: [i32; 3]) -> [i32; 3] {
         let m = &self.m;
         [
@@ -90,8 +84,6 @@ impl BlockOrientation {
 
     /// Apply the affine rotation to a point in the unit cube. Rotations are
     /// about the cube centre `(0.5, 0.5, 0.5)`.
-    #[inline]
-    #[must_use]
     pub fn apply_point(&self, p: [f32; 3]) -> [f32; 3] {
         let centred = [p[0] - 0.5, p[1] - 0.5, p[2] - 0.5];
         let r = self.apply_dir(centred);

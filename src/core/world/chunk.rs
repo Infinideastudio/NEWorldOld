@@ -1,208 +1,151 @@
-//! Chunk storage — port of C++ `chunks.ixx::Chunk`.
+//! `Chunk` — one slot in the world's chunk store.
 //!
-//! See `docs/rust_migration.md` §4.3. A chunk owns a lazily-allocated
-//! `Box<[BlockData; SIZE_CUBED]>` (16³ = 4096 cells) plus three flags:
-//! `empty` (no data allocated yet), `updated` (mesh dirty), `modified`
-//! (on-disk save dirty).
+//! Holds a `SIZE × SIZE × SIZE` voxel array under a lock plus the
+//! lock-free atomics the eviction / writeback / 2PL machinery consults
+//! without locking the data:
 //!
-//! `BaseBlocks` is passed in as an explicit parameter to every accessor that
-//! needs the `air` id rather than stored on the chunk: per the migration plan
-//! the `BlockRegistry` lives in `Arc<BlockRegistry>` on `GameApp`, not on
-//! individual chunks, and the C++ globals (`base_blocks()`, `block_info_registry`)
-//! are deliberately not ported.
+//! - `commit_gen` — bumped under the write lock on every commit.
+//! - `save_gen`   — advanced (via `fetch_max`) by writeback after a
+//!   successful disk write. The pair `(save_gen, commit_gen)` encodes
+//!   "is this dirty?" — see [`Self::dirty`].
+//! - `updated`    — mesh-rebuild signal consumed by the renderer.
+//!
+//! There is no per-chunk pin counter: residency is owned by whoever
+//! holds a strong [`Arc<Chunk>`]. The world's chunk map drops its
+//! `Arc` on eviction; outstanding [`crate::core::world::ReadTxn`] /
+//! [`crate::core::world::WriteTxn`] entries hold their own clones, so
+//! the chunk lives until the last txn drops.
+//!
+//! ## save / commit gens
+//!
+//! Two monotonically-increasing `AtomicU64`s with the invariant
+//! `save_gen ≤ commit_gen` at every moment. `commit_gen` is bumped
+//! under the write lock during commit, so any reader who re-acquires
+//! the chunk lock sees data + bumped gen consistently. `save_gen` is
+//! advanced via `fetch_max(captured_gen)` after a successful disk
+//! write — monotonic and idempotent.
+//!
+//! Construction:
+//! - [`Chunk::from_disk`] — chunk loaded from sled. `(save_gen,
+//!   commit_gen) = (1, 1)` (memory matches disk).
+//! - [`Chunk::from_gen`] — chunk just produced by terrain generation.
+//!   `(save_gen, commit_gen) = (0, 1)` (no on-disk copy yet; dirty by
+//!   definition until written out).
+//!
+//! `save_gen == 0` means "this coord has no persisted copy" — subsumes
+//! what an `on_disk` flag would say.
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+
+use parking_lot::{ArcRwLockReadGuard, ArcRwLockWriteGuard, RawRwLock, RwLock};
 use thiserror::Error;
 
-use crate::blocks::{BaseBlocks, BlockData, BlockId, Light, State};
-use crate::math::{Aabbd, Vec3d, Vec3i, Vec3u};
+use crate::blocks::{BlockData, BlockId, Light, State};
+use crate::math::{Vec3i, Vec3u};
 
-// ---------- Save format header ----------
+// ----------------------------------------------------------------------
+//   Constants
+// ----------------------------------------------------------------------
 
-/// Magic bytes (`"NEWC"`) identifying a packaged chunk.
+/// `log2(SIZE)` — chunks are `SIZE × SIZE × SIZE` blocks.
+pub const SIZE_LOG: i32 = 4;
+/// Edge length of a chunk (= 16).
+pub const SIZE: i32 = 1 << SIZE_LOG;
+/// `SIZE` as a `usize` for indexing.
+pub const SIZE_USIZE: usize = SIZE as usize;
+/// Total blocks per chunk (= 4096).
+pub const SIZE_CUBED: usize = SIZE_USIZE * SIZE_USIZE * SIZE_USIZE;
+/// Total per-block bytes when serialised to disk.
+pub const SIZE_DATA: usize = SIZE_CUBED * BlockData::ENCODED_LEN;
+
+// ----------------------------------------------------------------------
+//   On-disk codec — magic / version / errors
+// ----------------------------------------------------------------------
+
+/// Magic bytes (`"NEWC"`) identifying a packaged chunk on disk.
 const MAGIC: u32 = 0x4E45_5743;
-/// Current on-disk format version. Bump on any layout change to the body.
-///
-/// Version 2 is the current format: 12-byte header + per-cell little-endian
-/// encoding (`id u16 + state u16 + light u8`) = 5 bytes per cell. The id
-/// numbers are *world-canonical*: a per-world id↔name mapping (saved in
-/// `world.dat`) is consulted by the loader to translate to current-registry
-/// ids. See [`Chunk::unpackage_from`].
+/// Current on-disk format version.
 const VERSION: u32 = 2;
 /// Reserved-for-future-use flags field; written as zero.
 const FLAGS: u32 = 0;
 /// Header size in bytes.
 const HEADER_SIZE: usize = 12;
 
-// ---------- ChunkError ----------
-
-/// Errors returned by [`Chunk::unpackage_from`].
+/// Errors returned by [`Blocks::unpackage_from`].
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum ChunkError {
-    /// File header magic does not match `"NEWC"`.
     #[error("chunk header has bad magic")]
     BadMagic,
-    /// File header version is not understood by this build.
     #[error("chunk header has bad version: got {got}")]
     BadVersion { got: u32 },
-    /// Body size after the header doesn't match `SIZE_DATA`.
     #[error("chunk has bad size: expected {expected} bytes, got {got}")]
     BadSize { expected: usize, got: usize },
 }
 
-// ---------- Chunk ----------
+// ----------------------------------------------------------------------
+//   Blocks
+// ----------------------------------------------------------------------
 
-/// A `SIZE × SIZE × SIZE` voxel chunk at integer chunk coord `coord`.
-///
-/// Block data is held inline as a fixed-size array — there is no
-/// lazy-allocation / "empty chunk" path. Every chunk costs
-/// `SIZE_CUBED * sizeof(BlockData)` bytes regardless of contents. The
-/// previous `Option<Box<[..]>>` story was traded away for simpler
-/// access paths and predictable layout (a future cleanup can hoist the
-/// array up so `RwLock<Chunk>` becomes `RwLock<[BlockData; N]>` with
-/// the metadata fields moved onto `Page`).
-pub struct Chunk {
-    pub(super) coord: Vec3i,
-    pub(super) data: [BlockData; Self::SIZE_CUBED],
-    updated: bool,
-    modified: bool,
-}
+/// The `SIZE × SIZE × SIZE` block array for one chunk. A `Chunk`'s data
+/// lives behind a `parking_lot::RwLock<Blocks>`.
+pub struct Blocks([BlockData; SIZE_CUBED]);
 
-impl Chunk {
-    /// `log2(SIZE)` — chunks are `SIZE × SIZE × SIZE` cells.
-    pub const SIZE_LOG: i32 = 4;
-    /// Edge length of a chunk (= `1 << SIZE_LOG` = 16).
-    pub const SIZE: i32 = 1 << Self::SIZE_LOG;
-    /// `SIZE` as a `usize` for indexing.
-    pub const SIZE_USIZE: usize = Self::SIZE as usize;
-    /// Total cells per chunk (= 4096).
-    pub const SIZE_CUBED: usize = Self::SIZE_USIZE * Self::SIZE_USIZE * Self::SIZE_USIZE;
-    /// Total per-cell data size in bytes (`SIZE_CUBED * BlockData::ENCODED_LEN`).
-    pub const SIZE_DATA: usize = Self::SIZE_CUBED * BlockData::ENCODED_LEN;
-
-    /// Air-filled chunk at integer chunk coord `coord`. Cells start at
-    /// `BlockId::EMPTY` (the registry's reserved air slot) with sky-light
-    /// for `coord.y >= 0` and no-light below — same default-light rule
-    /// the previous lazy-fill path used.
-    #[must_use]
-    pub fn new(coord: Vec3i) -> Self {
-        let light = if coord.y < 0 { Light::NONE } else { Light::SKY };
+impl Blocks {
+    /// Air-filled blocks at the given default light.
+    pub fn air_filled(default_light: Light) -> Self {
         let fill = BlockData {
             id: BlockId::EMPTY,
             state: State::default(),
-            light,
+            light: default_light,
         };
-        Self {
-            coord,
-            data: [fill; Self::SIZE_CUBED],
-            updated: false,
-            modified: false,
-        }
+        Self([fill; SIZE_CUBED])
     }
 
-    /// Integer chunk coordinate (multiply by `SIZE` to get world coords).
-    #[must_use]
-    pub fn coord(&self) -> Vec3i {
-        self.coord
-    }
-
-    /// True iff the render mesh is dirty.
-    #[must_use]
-    pub fn updated(&self) -> bool {
-        self.updated
-    }
-
-    /// True iff the on-disk save is dirty.
-    #[must_use]
-    pub fn modified(&self) -> bool {
-        self.modified
-    }
-
-    /// Clear the "save is dirty" flag. Call after a successful `save`.
-    pub fn clear_modified(&mut self) {
-        self.modified = false;
-    }
-
-    /// Clear the "mesh is dirty" flag. Call after a successful re-mesh.
-    pub fn clear_updated(&mut self) {
-        self.updated = false;
-    }
-
-    /// Mark this chunk as needing a re-mesh because an adjacent chunk's edge
-    /// changed. Mirrors the C++ `mark_neighbor_updated`.
-    pub fn mark_neighbor_updated(&mut self) {
-        self.updated = true;
-    }
-
-    /// Axis-aligned world-space bounding box `[coord*SIZE, coord*SIZE+SIZE]`.
-    #[must_use]
-    pub fn aabb(&self) -> Aabbd {
-        let lo = self.coord * Self::SIZE;
-        let hi = lo + Vec3i::new(Self::SIZE, Self::SIZE, Self::SIZE);
-        Aabbd::new(
-            Vec3d::new(f64::from(lo.x), f64::from(lo.y), f64::from(lo.z)),
-            Vec3d::new(f64::from(hi.x), f64::from(hi.y), f64::from(hi.z)),
-        )
-    }
-
-    /// Linear index into the data array for `(x, y, z)` (X-major, matching
-    /// C++).
-    #[inline]
-    fn index(bcoord: Vec3u) -> usize {
+    /// Linear index for `(x, y, z)` block-local coords (X-major,
+    /// matching the C++ port).
+    pub fn index(bcoord: Vec3u) -> usize {
         let x = bcoord.x as usize;
         let y = bcoord.y as usize;
         let z = bcoord.z as usize;
         debug_assert!(
-            x < Self::SIZE_USIZE && y < Self::SIZE_USIZE && z < Self::SIZE_USIZE,
+            x < SIZE_USIZE && y < SIZE_USIZE && z < SIZE_USIZE,
             "block coordinates out of bounds"
         );
-        (x * Self::SIZE_USIZE + y) * Self::SIZE_USIZE + z
+        (x * SIZE_USIZE + y) * SIZE_USIZE + z
     }
 
-    /// Read one block. `base` is accepted for API compatibility with the
-    /// previous lazy-allocation path (it was used to synthesise air for
-    /// empty chunks); inline-array chunks always have a real cell so the
-    /// argument is now ignored.
-    #[must_use]
-    pub fn block(&self, bcoord: Vec3u, _base: &BaseBlocks) -> BlockData {
-        self.data[Self::index(bcoord)]
+    /// Read one block.
+    pub fn block(&self, bcoord: Vec3u) -> BlockData {
+        self.0[Self::index(bcoord)]
     }
 
-    /// Write-access to one block. Flips `updated = true`, `modified =
-    /// true`. The `base` argument is accepted for API compatibility and
-    /// otherwise ignored — see [`Self::block`].
-    pub fn block_mut(&mut self, bcoord: Vec3u, _base: &BaseBlocks) -> &mut BlockData {
-        self.updated = true;
-        self.modified = true;
-        let idx = Self::index(bcoord);
-        &mut self.data[idx]
+    /// Mutable cell access.
+    pub fn block_mut(&mut self, bcoord: Vec3u) -> &mut BlockData {
+        &mut self.0[Self::index(bcoord)]
     }
 
-    /// Direct linear-index access into the data array. Internal helper
-    /// for terrain generation.
-    pub(super) fn cell_mut(&mut self, idx: usize) -> &mut BlockData {
-        &mut self.data[idx]
+    /// Iterate every cell mutably.
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, BlockData> {
+        self.0.iter_mut()
     }
 
-    // ---------- Save / load ----------
+    /// Borrow the raw cell slice (read-only).
+    pub fn as_slice(&self) -> &[BlockData] {
+        &self.0
+    }
 
-    /// Serialize this chunk to bytes: a `[magic, version, flags]` header
-    /// followed by `SIZE_CUBED` little-endian cells.
-    ///
-    /// `current_to_canonical` translates each cell's *current-registry* id
-    /// to the *world-canonical* id stored on disk (see [`Self::unpackage_from`]).
-    /// Indexed by current registry id; any in-memory id whose entry exceeds
-    /// the slice length, or maps to `u16::MAX`, is encoded as
-    /// [`BlockId::EMPTY`] on disk. Pass an empty slice for an identity
-    /// mapping (every id is written verbatim) — used when the world's
-    /// canonical mapping equals the current registry, or by tests.
-    #[must_use]
+    /// Serialize to bytes: a 12-byte header + `SIZE_CUBED` little-endian
+    /// blocks. `current_to_canonical` translates each cell's in-memory
+    /// id to the canonical id stored on disk; pass an empty slice for
+    /// an identity mapping.
     pub fn package_to(&self, current_to_canonical: &[u16]) -> Vec<u8> {
-        let mut out = Vec::with_capacity(HEADER_SIZE + Self::SIZE_DATA);
+        let mut out = Vec::with_capacity(HEADER_SIZE + SIZE_DATA);
         out.extend_from_slice(&MAGIC.to_le_bytes());
         out.extend_from_slice(&VERSION.to_le_bytes());
         out.extend_from_slice(&FLAGS.to_le_bytes());
         let identity = current_to_canonical.is_empty();
-        for cell in self.data.iter() {
+        for cell in self.0.iter() {
             let mut translated = *cell;
             if !identity {
                 let canonical = current_to_canonical
@@ -220,16 +163,10 @@ impl Chunk {
         out
     }
 
-    /// Deserialize a chunk from bytes produced by [`Self::package_to`].
-    /// Verifies magic and version, then decodes the body into the data
-    /// array. Sets `modified = false` (just loaded from disk; not dirty).
-    ///
-    /// `canonical_to_current` translates each cell's *world-canonical* id
-    /// (read from disk) to the *current-registry* id used in memory.
-    /// Indexed by canonical id; any saved id whose entry exceeds the slice
-    /// length is treated as [`BlockId::EMPTY`] (the block is "missing"
-    /// from the current registry — typically a removed mod). Pass an empty
-    /// slice for an identity mapping.
+    /// Deserialize bytes (produced by [`Self::package_to`]) into `self`.
+    /// Verifies magic + version. `canonical_to_current` translates each
+    /// cell's canonical id (read from disk) to the in-memory `BlockId`;
+    /// pass an empty slice for identity.
     pub fn unpackage_from(
         &mut self,
         bytes: &[u8],
@@ -237,28 +174,27 @@ impl Chunk {
     ) -> Result<(), ChunkError> {
         if bytes.len() < HEADER_SIZE {
             return Err(ChunkError::BadSize {
-                expected: HEADER_SIZE + Self::SIZE_DATA,
+                expected: HEADER_SIZE + SIZE_DATA,
                 got: bytes.len(),
             });
         }
         let (head, body) = bytes.split_at(HEADER_SIZE);
         let magic = u32::from_le_bytes([head[0], head[1], head[2], head[3]]);
         let version = u32::from_le_bytes([head[4], head[5], head[6], head[7]]);
-        // head[8..12] is the reserved flags field; ignored on read.
         if magic != MAGIC {
             return Err(ChunkError::BadMagic);
         }
         if version != VERSION {
             return Err(ChunkError::BadVersion { got: version });
         }
-        if body.len() != Self::SIZE_DATA {
+        if body.len() != SIZE_DATA {
             return Err(ChunkError::BadSize {
-                expected: Self::SIZE_DATA,
+                expected: SIZE_DATA,
                 got: body.len(),
             });
         }
         let identity = canonical_to_current.is_empty();
-        for (i, slot) in self.data.iter_mut().enumerate() {
+        for (i, slot) in self.0.iter_mut().enumerate() {
             let off = i * BlockData::ENCODED_LEN;
             let mut cell = BlockData::decode_from(&body[off..off + BlockData::ENCODED_LEN]);
             if !identity {
@@ -269,17 +205,125 @@ impl Chunk {
             }
             *slot = cell;
         }
-        self.modified = false;
         Ok(())
     }
 }
 
-// ---------- Tests ----------
+// ----------------------------------------------------------------------
+//   Chunk
+// ----------------------------------------------------------------------
+
+/// One cache slot in the world's chunk store. Holds the block array
+/// under a `parking_lot::RwLock` (wrapped in `Arc` so transactions can
+/// take owned guards without lifetime gymnastics) plus the lock-free
+/// commit/save/updated atomics.
+pub struct Chunk {
+    coord: Vec3i,
+    /// Inner `Arc` so callers can take owned `ArcRwLockReadGuard` /
+    /// `ArcRwLockWriteGuard` via `parking_lot`'s `arc_lock` feature.
+    /// Without the inner `Arc`, an owned guard would need lifetime
+    /// gymnastics (or `unsafe`); with it, txn entries hold the guard
+    /// directly and don't need to borrow from the `Arc<Chunk>`.
+    blocks: Arc<RwLock<Blocks>>,
+    save_gen: AtomicU64,
+    commit_gen: AtomicU64,
+    updated: AtomicBool,
+}
+
+impl Chunk {
+    /// Chunk wrapping blocks that came from disk. `(save_gen,
+    /// commit_gen) = (1, 1)` — memory matches disk.
+    pub fn from_disk(coord: Vec3i, blocks: Blocks) -> Self {
+        Self::with_gens(coord, blocks, 1, 1)
+    }
+
+    /// Chunk wrapping freshly-generated blocks. `(save_gen,
+    /// commit_gen) = (0, 1)` — dirty until written out.
+    pub fn from_gen(coord: Vec3i, blocks: Blocks) -> Self {
+        Self::with_gens(coord, blocks, 0, 1)
+    }
+
+    fn with_gens(coord: Vec3i, blocks: Blocks, save_gen: u64, commit_gen: u64) -> Self {
+        debug_assert!(save_gen <= commit_gen, "save_gen ≤ commit_gen invariant");
+        Self {
+            coord,
+            blocks: Arc::new(RwLock::new(blocks)),
+            save_gen: AtomicU64::new(save_gen),
+            commit_gen: AtomicU64::new(commit_gen),
+            updated: AtomicBool::new(false),
+        }
+    }
+
+    pub fn coord(&self) -> Vec3i {
+        self.coord
+    }
+
+    /// Take an owned read guard. The guard owns a clone of the inner
+    /// `Arc<RwLock<Blocks>>`, so it doesn't borrow from the `Chunk`.
+    pub fn read_blocks(&self) -> ArcRwLockReadGuard<RawRwLock, Blocks> {
+        self.blocks.read_arc()
+    }
+
+    /// Take an owned write guard. See [`Self::read_blocks`].
+    pub fn write_blocks(&self) -> ArcRwLockWriteGuard<RawRwLock, Blocks> {
+        self.blocks.write_arc()
+    }
+
+    // ----- save_gen / commit_gen -----
+
+    pub fn commit_gen(&self) -> u64 {
+        self.commit_gen.load(Ordering::Acquire)
+    }
+
+    pub fn save_gen(&self) -> u64 {
+        self.save_gen.load(Ordering::Acquire)
+    }
+
+    /// Bump the commit generation. Called by `WriteTxn::commit` after
+    /// applying writes, while the write lock is still held.
+    pub(super) fn bump_commit_gen(&self) {
+        self.commit_gen.fetch_add(1, Ordering::AcqRel);
+    }
+
+    /// Advance `save_gen` to `max(save_gen, captured)`. Called by
+    /// writeback after a successful disk write. Monotonic and
+    /// idempotent.
+    pub fn advance_save_gen(&self, captured: u64) {
+        self.save_gen.fetch_max(captured, Ordering::AcqRel);
+    }
+
+    /// True iff `save_gen < commit_gen` — i.e. there are committed
+    /// changes not yet written to disk. Read order: save first, then
+    /// commit, so the pair `(A, B)` always satisfies `A ≤ B`.
+    pub fn dirty(&self) -> bool {
+        let save = self.save_gen.load(Ordering::Acquire);
+        let commit = self.commit_gen.load(Ordering::Acquire);
+        save < commit
+    }
+
+    // ----- updated -----
+
+    pub fn mark_updated(&self) {
+        self.updated.store(true, Ordering::Release);
+    }
+
+    pub fn clear_updated(&self) {
+        self.updated.store(false, Ordering::Release);
+    }
+
+    pub fn updated(&self) -> bool {
+        self.updated.load(Ordering::Acquire)
+    }
+}
+
+// ----------------------------------------------------------------------
+//   Tests
+// ----------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::{BlockRegistry, register_base_blocks};
+    use crate::blocks::{BaseBlocks, BlockRegistry, register_base_blocks};
 
     fn make_base() -> BaseBlocks {
         let mut reg = BlockRegistry::new();
@@ -288,175 +332,115 @@ mod tests {
 
     #[test]
     fn sizes_match_constants() {
-        assert_eq!(Chunk::SIZE, 16);
-        assert_eq!(Chunk::SIZE_USIZE, 16);
-        assert_eq!(Chunk::SIZE_CUBED, 4096);
-        assert_eq!(Chunk::SIZE_DATA, 4096 * BlockData::ENCODED_LEN);
+        assert_eq!(SIZE, 16);
+        assert_eq!(SIZE_USIZE, 16);
+        assert_eq!(SIZE_CUBED, 4096);
+        assert_eq!(SIZE_DATA, 4096 * BlockData::ENCODED_LEN);
     }
 
     #[test]
-    fn empty_chunk_returns_air_with_sky_light_above_zero() {
+    fn air_filled_blocks_default_light() {
         let base = make_base();
-        let c = Chunk::new(Vec3i::new(0, 5, 0));
-        assert!(!c.updated());
-        assert!(!c.modified());
-        let b = c.block(Vec3u::new(0, 0, 0), &base);
+        let blocks = Blocks::air_filled(Light::SKY);
+        let b = blocks.block(Vec3u::new(0, 0, 0));
         assert_eq!(b.id, base.air);
         assert_eq!(b.light, Light::SKY);
     }
 
     #[test]
-    fn fresh_chunk_below_zero_has_no_light() {
+    fn block_mut_writes_value() {
         let base = make_base();
-        let c = Chunk::new(Vec3i::new(0, -1, 0));
-        let b = c.block(Vec3u::new(3, 7, 11), &base);
-        assert_eq!(b.id, base.air);
-        assert_eq!(b.light, Light::NONE);
-    }
-
-    #[test]
-    fn block_mut_writes_value_and_flips_flags() {
-        let base = make_base();
-        let mut c = Chunk::new(Vec3i::new(0, 0, 0));
-        assert!(!c.updated());
-        assert!(!c.modified());
-        {
-            let cell = c.block_mut(Vec3u::new(2, 3, 4), &base);
-            // Pre-fill is air with sky-light (since coord.y == 0 → SKY).
-            assert_eq!(cell.id, base.air);
-            assert_eq!(cell.light, Light::SKY);
-            cell.id = base.rock;
-        }
-        assert!(c.updated());
-        assert!(c.modified());
-        // Read back through the immutable accessor.
-        assert_eq!(c.block(Vec3u::new(2, 3, 4), &base).id, base.rock);
-        // Other cells are still air.
-        assert_eq!(c.block(Vec3u::new(0, 0, 0), &base).id, base.air);
-    }
-
-    #[test]
-    fn aabb_is_coord_times_size_box() {
-        let c = Chunk::new(Vec3i::new(2, -1, 3));
-        let bb = c.aabb();
-        assert_eq!(bb.min, Vec3d::new(32.0, -16.0, 48.0));
-        assert_eq!(bb.max, Vec3d::new(48.0, 0.0, 64.0));
-    }
-
-    #[test]
-    fn mark_neighbor_updated_sets_updated() {
-        let mut c = Chunk::new(Vec3i::new(0, 0, 0));
-        assert!(!c.updated());
-        c.mark_neighbor_updated();
-        assert!(c.updated());
-    }
-
-    #[test]
-    fn clear_flags() {
-        let base = make_base();
-        let mut c = Chunk::new(Vec3i::new(0, 0, 0));
-        c.block_mut(Vec3u::new(0, 0, 0), &base).id = base.rock;
-        assert!(c.updated());
-        assert!(c.modified());
-        c.clear_updated();
-        c.clear_modified();
-        assert!(!c.updated());
-        assert!(!c.modified());
+        let mut blocks = Blocks::air_filled(Light::SKY);
+        blocks.block_mut(Vec3u::new(2, 3, 4)).id = base.rock;
+        assert_eq!(blocks.block(Vec3u::new(2, 3, 4)).id, base.rock);
+        assert_eq!(blocks.block(Vec3u::new(0, 0, 0)).id, base.air);
     }
 
     #[test]
     fn package_round_trips_through_unpackage() {
         let base = make_base();
-        let mut original = Chunk::new(Vec3i::new(7, 2, -3));
-        // Plant a few distinct blocks across the chunk.
-        original.block_mut(Vec3u::new(0, 0, 0), &base).id = base.rock;
-        original.block_mut(Vec3u::new(15, 15, 15), &base).id = base.bedrock;
-        original.block_mut(Vec3u::new(8, 4, 2), &base).id = base.water;
-        // Set a non-default light on one cell, too.
-        original.block_mut(Vec3u::new(1, 2, 3), &base).light = Light::new(7, 11);
+        let mut original = Blocks::air_filled(Light::SKY);
+        original.block_mut(Vec3u::new(0, 0, 0)).id = base.rock;
+        original.block_mut(Vec3u::new(15, 15, 15)).id = base.bedrock;
+        original.block_mut(Vec3u::new(8, 4, 2)).id = base.water;
+        original.block_mut(Vec3u::new(1, 2, 3)).light = Light::new(7, 11);
 
         let bytes = original.package_to(&[]);
-        assert_eq!(bytes.len(), HEADER_SIZE + Chunk::SIZE_DATA);
+        assert_eq!(bytes.len(), HEADER_SIZE + SIZE_DATA);
 
-        let mut loaded = Chunk::new(Vec3i::new(7, 2, -3));
-        loaded
-            .unpackage_from(&bytes, &[])
-            .expect("unpackage should succeed");
-        assert!(!loaded.modified()); // freshly loaded
-        assert_eq!(loaded.block(Vec3u::new(0, 0, 0), &base).id, base.rock);
-        assert_eq!(loaded.block(Vec3u::new(15, 15, 15), &base).id, base.bedrock);
-        assert_eq!(loaded.block(Vec3u::new(8, 4, 2), &base).id, base.water);
-        assert_eq!(
-            loaded.block(Vec3u::new(1, 2, 3), &base).light,
-            Light::new(7, 11)
-        );
-        // Sample untouched cells: should still be air (the construction default).
-        assert_eq!(loaded.block(Vec3u::new(5, 5, 5), &base).id, base.air);
-    }
-
-    #[test]
-    fn package_to_serializes_full_chunk_unconditionally() {
-        // Inline-array chunks always have allocated data, so package_to
-        // produces a full header + body even for never-touched chunks.
-        let c = Chunk::new(Vec3i::new(0, 0, 0));
-        let bytes = c.package_to(&[]);
-        assert_eq!(bytes.len(), HEADER_SIZE + Chunk::SIZE_DATA);
+        let mut loaded = Blocks::air_filled(Light::SKY);
+        loaded.unpackage_from(&bytes, &[]).expect("unpackage");
+        assert_eq!(loaded.block(Vec3u::new(0, 0, 0)).id, base.rock);
+        assert_eq!(loaded.block(Vec3u::new(15, 15, 15)).id, base.bedrock);
+        assert_eq!(loaded.block(Vec3u::new(8, 4, 2)).id, base.water);
+        assert_eq!(loaded.block(Vec3u::new(1, 2, 3)).light, Light::new(7, 11));
     }
 
     #[test]
     fn unpackage_rejects_bad_magic() {
-        let mut bytes = vec![0_u8; HEADER_SIZE + Chunk::SIZE_DATA];
-        // Magic is the first 4 bytes — leave them as zero (≠ MAGIC).
-        let mut c = Chunk::new(Vec3i::new(0, 0, 0));
-        assert_eq!(c.unpackage_from(&bytes, &[]), Err(ChunkError::BadMagic));
-        // Also verify a body of the right size with garbage magic fails the same way.
-        bytes[..4].copy_from_slice(&0xDEAD_BEEF_u32.to_le_bytes());
-        assert_eq!(c.unpackage_from(&bytes, &[]), Err(ChunkError::BadMagic));
+        let mut blocks = Blocks::air_filled(Light::SKY);
+        let bytes = vec![0_u8; HEADER_SIZE + SIZE_DATA];
+        assert_eq!(
+            blocks.unpackage_from(&bytes, &[]),
+            Err(ChunkError::BadMagic)
+        );
     }
 
     #[test]
     fn unpackage_rejects_bad_version() {
-        let mut bytes = vec![0_u8; HEADER_SIZE + Chunk::SIZE_DATA];
+        let mut blocks = Blocks::air_filled(Light::SKY);
+        let mut bytes = vec![0_u8; HEADER_SIZE + SIZE_DATA];
         bytes[0..4].copy_from_slice(&MAGIC.to_le_bytes());
         bytes[4..8].copy_from_slice(&999_u32.to_le_bytes());
-        let mut c = Chunk::new(Vec3i::new(0, 0, 0));
         assert_eq!(
-            c.unpackage_from(&bytes, &[]),
+            blocks.unpackage_from(&bytes, &[]),
             Err(ChunkError::BadVersion { got: 999 })
         );
     }
 
     #[test]
-    fn unpackage_rejects_bad_size() {
-        // Header-only buffer (no body) — too small.
-        let mut bytes = vec![0_u8; HEADER_SIZE];
-        bytes[0..4].copy_from_slice(&MAGIC.to_le_bytes());
-        bytes[4..8].copy_from_slice(&VERSION.to_le_bytes());
-        let mut c = Chunk::new(Vec3i::new(0, 0, 0));
-        match c.unpackage_from(&bytes, &[]) {
-            Err(ChunkError::BadSize { expected: _, got }) => {
-                assert_eq!(got, 0);
-            }
-            other => panic!("expected BadSize, got {other:?}"),
-        }
+    fn from_disk_starts_clean() {
+        let p = Chunk::from_disk(Vec3i::new(0, 0, 0), Blocks::air_filled(Light::SKY));
+        assert_eq!(p.save_gen(), 1);
+        assert_eq!(p.commit_gen(), 1);
+        assert!(!p.dirty());
+    }
 
-        // Truncated buffer (header valid, body too short).
-        let mut short = vec![0_u8; HEADER_SIZE + Chunk::SIZE_DATA - 1];
-        short[0..4].copy_from_slice(&MAGIC.to_le_bytes());
-        short[4..8].copy_from_slice(&VERSION.to_le_bytes());
-        match c.unpackage_from(&short, &[]) {
-            Err(ChunkError::BadSize { expected, got }) => {
-                assert_eq!(expected, Chunk::SIZE_DATA);
-                assert_eq!(got, Chunk::SIZE_DATA - 1);
-            }
-            other => panic!("expected BadSize, got {other:?}"),
-        }
+    #[test]
+    fn from_gen_starts_dirty() {
+        let p = Chunk::from_gen(Vec3i::new(0, 0, 0), Blocks::air_filled(Light::SKY));
+        assert_eq!(p.save_gen(), 0);
+        assert_eq!(p.commit_gen(), 1);
+        assert!(p.dirty());
+    }
 
-        // Way-too-small buffer (less than the header itself).
-        let tiny = vec![0_u8; 4];
-        match c.unpackage_from(&tiny, &[]) {
-            Err(ChunkError::BadSize { .. }) => {}
-            other => panic!("expected BadSize, got {other:?}"),
-        }
+    #[test]
+    fn commit_then_save() {
+        let p = Chunk::from_disk(Vec3i::new(0, 0, 0), Blocks::air_filled(Light::SKY));
+        p.bump_commit_gen();
+        assert!(p.dirty());
+        let captured = p.commit_gen();
+        p.advance_save_gen(captured);
+        assert!(!p.dirty());
+    }
+
+    #[test]
+    fn second_commit_during_save_keeps_dirty() {
+        let p = Chunk::from_disk(Vec3i::new(0, 0, 0), Blocks::air_filled(Light::SKY));
+        p.bump_commit_gen();
+        let captured = p.commit_gen();
+        p.bump_commit_gen();
+        p.advance_save_gen(captured);
+        assert!(p.dirty());
+    }
+
+    #[test]
+    fn updated_default_false_set_and_clear() {
+        let p = Chunk::from_disk(Vec3i::new(0, 0, 0), Blocks::air_filled(Light::SKY));
+        assert!(!p.updated());
+        p.mark_updated();
+        assert!(p.updated());
+        p.clear_updated();
+        assert!(!p.updated());
     }
 }

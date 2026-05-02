@@ -50,7 +50,6 @@ impl BlockInfo {
     /// `display_name`. Every other field defaults to its zero / false /
     /// neutral value; the chainable setters below override what the block
     /// actually needs.
-    #[must_use]
     pub fn new(
         name: impl Into<Cow<'static, str>>,
         display_name: impl Into<Cow<'static, str>>,
@@ -70,13 +69,11 @@ impl BlockInfo {
     /// `display_name = ""`, every other field default. Inserted at
     /// `BlockId::EMPTY` by `BlockRegistry::new` and **never overwritten**
     /// by `register_base_blocks`.
-    #[must_use]
     pub fn empty() -> Self {
         Self::new("empty", "")
     }
 
     /// Set the `solid` flag (player collides with this block).
-    #[must_use]
     pub fn solid(mut self, v: bool) -> Self {
         self.solid = v;
         self
@@ -84,21 +81,18 @@ impl BlockInfo {
 
     /// Set the `opaque` flag (block hides faces of neighbouring blocks).
     /// Read by the chunk mesher when culling internal faces.
-    #[must_use]
     pub fn opaque(mut self, v: bool) -> Self {
         self.opaque = v;
         self
     }
 
     /// Set the `translucent` flag (block uses the translucent render pass).
-    #[must_use]
     pub fn translucent(mut self, v: bool) -> Self {
         self.translucent = v;
         self
     }
 
     /// Set the hardness (mining time).
-    #[must_use]
     pub fn hardness(mut self, h: f32) -> Self {
         self.hardness = h;
         self
@@ -106,7 +100,6 @@ impl BlockInfo {
 
     /// Set the [`BlockFaceMapping`] used for state-driven placement /
     /// face selection.
-    #[must_use]
     pub fn face_mapping(mut self, m: BlockFaceMapping) -> Self {
         self.face_mapping = m;
         self

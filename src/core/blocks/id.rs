@@ -19,12 +19,12 @@ impl BlockId {
     /// Largest representable id.
     pub const MAX: BlockId = BlockId(u16::MAX);
 
-    #[must_use]
+    
     pub const fn new(value: u16) -> Self {
         Self(value)
     }
 
-    #[must_use]
+    
     pub const fn get(self) -> u16 {
         self.0
     }

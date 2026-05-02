@@ -98,7 +98,6 @@ impl MenuBackground {
     /// target — usually [`crate::render::Gfx::surface_format`]; the
     /// intermediates use the same format so one filter pipeline drives
     /// both passes.
-    #[must_use]
     pub fn new(
         device: &wgpu::Device,
         atlases: &Atlases,

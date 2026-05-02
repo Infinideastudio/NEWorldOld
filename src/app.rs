@@ -211,7 +211,7 @@ impl App {
             // no-op when the value matches; otherwise it rebuilds the
             // height-map cache so subsequent `tick_chunk_loading_async`
             // calls issue loads / unloads for the new window.
-            game.world.set_render_distance(cfg.render_distance);
+            game.range_loader.set_render_distance(cfg.render_distance);
             // Mesh-options live-update. Drops every cached `ChunkMesh` and
             // re-marks the loaded set dirty when any of the three flags
             // changes; no-op otherwise.
@@ -303,7 +303,7 @@ impl App {
                 }
                 WorldAction::Delete { name } => {
                     if let Err(err) =
-                        crate::worlds::World::delete_world_at(&state.worlds_root, &name)
+                        crate::core::world::delete_world_at(&state.worlds_root, &name)
                     {
                         tracing::warn!(error = %err, name, "failed to delete world directory");
                     } else {
@@ -556,7 +556,7 @@ impl App {
 
         // ---------- update game screen with latest frame data ----------
         if let (Some(game), Some(game_screen)) = (state.game.as_ref(), state.game_screen.as_mut()) {
-            let player = game.world.player();
+            let player = &game.player;
             game_screen.fps = state.fps;
             game_screen.ups = state.ups;
             game_screen.camera_pos = [
@@ -578,9 +578,9 @@ impl App {
             game_screen.grounded = player.grounded();
             game_screen.near_wall = player.near_wall();
             game_screen.in_water = player.in_water();
-            game_screen.game_time = game.world.game_time();
+            game_screen.game_time = game.daylight_cycle.game_time();
             game_screen.updated_blocks = game.world.updated_blocks;
-            game_screen.pending_block_updates = game.world.block_update_queue().len();
+            game_screen.pending_block_updates = game.block_update_queue.len();
             // Read advanced_render from Config — Game keeps a private
             // mirror but the live truth is the config lock.
             game_screen.advanced_render = state
@@ -616,7 +616,7 @@ impl App {
                 let air = state.base_blocks.air;
                 match game_screen.tick(
                     ctx,
-                    game.world.player_mut(),
+                    &mut game.player,
                     &state.registry,
                     &state.render_registry,
                     air,

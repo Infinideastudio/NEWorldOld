@@ -22,8 +22,7 @@ use crate::worlds::world::World;
 
 /// Boxed closure type for [`Command::run`]. Pulled out as a type alias so the
 /// `dyn Fn(...)` is named once and clippy `type_complexity` is happy.
-pub type CommandFn =
-    Box<dyn Fn(&[&str], &mut World, &mut Vec<String>) -> bool + Send + Sync>;
+pub type CommandFn = Box<dyn Fn(&[&str], &mut World, &mut Vec<String>) -> bool + Send + Sync>;
 
 /// A single chat command. The closure receives the **whole** token list
 /// (`args[0]` is the command name, including the leading `/`), a mutable
@@ -74,7 +73,6 @@ impl std::fmt::Debug for CommandRegistry {
 
 impl CommandRegistry {
     /// Empty registry.
-    #[must_use]
     pub fn new() -> Self {
         Self {
             entries: HashMap::new(),
@@ -102,12 +100,7 @@ impl CommandRegistry {
     /// command returning `false`, emits `tracing::warn!` and pushes
     /// `"Fail to execute the command: <line>"` to `messages`, then returns
     /// `false`.
-    pub fn execute_on(
-        &self,
-        line: &str,
-        world: &mut World,
-        messages: &mut Vec<String>,
-    ) -> bool {
+    pub fn execute_on(&self, line: &str, world: &mut World, messages: &mut Vec<String>) -> bool {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if let Some(name) = parts.first()
             && let Some(cmd) = self.entries.get(*name)
@@ -124,7 +117,6 @@ impl CommandRegistry {
     /// smallest match for determinism. Returns `None` if nothing matches.
     /// The C++ version uses `std::unordered_map::find_if` which is
     /// order-dependent; sorting the keys here improves on that.
-    #[must_use]
     pub fn try_auto_complete(&self, prefix: &str) -> Option<String> {
         let mut best: Option<&str> = None;
         for key in self.entries.keys() {

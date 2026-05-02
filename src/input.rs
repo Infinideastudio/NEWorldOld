@@ -32,7 +32,6 @@ impl MouseButton {
         MouseButton::X2,
     ];
 
-    #[inline]
     fn mask(self) -> u8 {
         1 << (self as u8)
     }
@@ -44,13 +43,11 @@ pub struct MouseButtons(u8);
 
 impl MouseButtons {
     /// An empty set.
-    #[must_use]
     pub const fn empty() -> Self {
         Self(0)
     }
 
     /// Whether `button` is in the set.
-    #[must_use]
     pub fn contains(self, button: MouseButton) -> bool {
         (self.0 & button.mask()) != 0
     }
@@ -71,7 +68,6 @@ impl MouseButtons {
     }
 
     /// True if the set contains no buttons.
-    #[must_use]
     pub fn is_empty(self) -> bool {
         self.0 == 0
     }
@@ -167,7 +163,6 @@ impl Key {
     /// public API. Must be a multiple of 64.
     const CAPACITY: usize = 128;
 
-    #[inline]
     fn index(self) -> usize {
         self as usize
     }
@@ -184,7 +179,6 @@ impl KeySet {
     const WORDS: usize = Key::CAPACITY / 64;
 
     /// An empty set.
-    #[must_use]
     pub const fn empty() -> Self {
         Self {
             bits: [0; Self::WORDS],
@@ -192,7 +186,6 @@ impl KeySet {
     }
 
     /// Whether `key` is in the set.
-    #[must_use]
     pub fn contains(&self, key: Key) -> bool {
         let i = key.index();
         (self.bits[i / 64] >> (i % 64)) & 1 == 1
@@ -220,7 +213,6 @@ impl KeySet {
     }
 
     /// True if the set contains no keys.
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.bits.iter().all(|w| *w == 0)
     }
@@ -284,44 +276,37 @@ impl Default for InputState {
 
 impl InputState {
     /// Construct an empty snapshot.
-    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Mirrors the C++ `isKeyDown`.
-    #[must_use]
     pub fn is_key_down(&self, key: Key) -> bool {
         self.keys_down.contains(key)
     }
 
     /// Mirrors the C++ `isKeyPressed` — true on the frame the key transitioned
     /// up -> down.
-    #[must_use]
     pub fn is_key_pressed(&self, key: Key) -> bool {
         self.keys_pressed.contains(key)
     }
 
     /// True on the frame `key` transitioned down -> up.
-    #[must_use]
     pub fn is_key_released(&self, key: Key) -> bool {
         self.keys_released.contains(key)
     }
 
     /// Whether `button` is currently held.
-    #[must_use]
     pub fn is_mouse_button_down(&self, button: MouseButton) -> bool {
         self.mouse_buttons.contains(button)
     }
 
     /// True on the frame `button` transitioned up -> down.
-    #[must_use]
     pub fn is_mouse_button_pressed(&self, button: MouseButton) -> bool {
         self.mouse_buttons_pressed.contains(button)
     }
 
     /// True on the frame `button` transitioned down -> up.
-    #[must_use]
     pub fn is_mouse_button_released(&self, button: MouseButton) -> bool {
         self.mouse_buttons_released.contains(button)
     }

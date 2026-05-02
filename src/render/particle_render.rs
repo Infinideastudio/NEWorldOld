@@ -15,9 +15,9 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
+use crate::particles::Particle;
 use crate::render::{FrameUniforms, UniformBuffer};
 use crate::textures::Atlases;
-use crate::particles::Particle;
 
 // ----------------------------------------------------------------------
 //   Vertex layout
@@ -47,7 +47,6 @@ pub struct ParticleVertex {
 
 impl ParticleVertex {
     /// `wgpu` vertex layout descriptor matching this struct.
-    #[must_use]
     pub fn layout() -> wgpu::VertexBufferLayout<'static> {
         const ATTRIBUTES: &[wgpu::VertexAttribute] = &wgpu::vertex_attr_array![
             0 => Float32x3,    // world_pos
@@ -135,7 +134,6 @@ impl Default for ParticleMesh {
 }
 
 impl ParticleMesh {
-    #[must_use]
     pub fn new() -> Self {
         Self {
             buffer: None,
@@ -202,7 +200,6 @@ impl ParticlePipeline {
     /// `frame_uniforms` and `atlases` must outlive the bind groups stored
     /// inside this pipeline (the bind groups hold references to their
     /// resources).
-    #[must_use]
     pub fn new(
         device: &wgpu::Device,
         color_format: wgpu::TextureFormat,
@@ -384,13 +381,10 @@ mod tests {
         // f32 arrays — exact equality is fine here because the inputs are
         // all integer-valued constants.
         let approx_eq = |a: [f32; 3], b: [f32; 3]| {
-            (a[0] - b[0]).abs() < 1e-6
-                && (a[1] - b[1]).abs() < 1e-6
-                && (a[2] - b[2]).abs() < 1e-6
+            (a[0] - b[0]).abs() < 1e-6 && (a[1] - b[1]).abs() < 1e-6 && (a[2] - b[2]).abs() < 1e-6
         };
-        let approx_eq2 = |a: [f32; 2], b: [f32; 2]| {
-            (a[0] - b[0]).abs() < 1e-6 && (a[1] - b[1]).abs() < 1e-6
-        };
+        let approx_eq2 =
+            |a: [f32; 2], b: [f32; 2]| (a[0] - b[0]).abs() < 1e-6 && (a[1] - b[1]).abs() < 1e-6;
         assert!(approx_eq(v[6].world_pos, [1.0, 2.0, 3.0]));
         // First and last UVs of each particle's quad are (0,0) — closes the
         // triangle pair.

@@ -66,7 +66,6 @@ use crate::globalization::I18n;
 /// Build the initial screen stack with the title screen at the bottom. The
 /// app starts here on first launch, with no world loaded behind it; clicking
 /// "Singleplayer" descends into the world select / create flow.
-#[must_use]
 pub fn initial_screen_stack(
     config: Arc<Mutex<Config>>,
     i18n: Arc<Mutex<I18n>>,

@@ -69,7 +69,6 @@ impl ChunkMesh {
     /// uploading: each `position` becomes `position + coord * CHUNK_SIZE`,
     /// removing the need for a per-chunk model uniform. Empty layers
     /// produce `None` buffers.
-    #[must_use]
     pub fn upload(device: &wgpu::Device, mesh: &MeshOutput) -> Self {
         let origin = [
             (mesh.coord.x * CHUNK_SIZE as i32) as f32,
@@ -204,7 +203,6 @@ impl ChunkPipeline {
     /// Compile all four deferred pipelines and build their bind groups.
     /// All four target the G-buffer (no surface format involved); the
     /// composition pass is what eventually writes the surface.
-    #[must_use]
     pub fn new(
         device: &wgpu::Device,
         frame_uniforms: &UniformBuffer<FrameUniforms>,
@@ -510,11 +508,7 @@ impl ChunkPipeline {
     /// Recreate the group-2 (opaque depth) bind group after the
     /// G-buffer's opaque depth attachment has been recreated (resize
     /// or basic ⇄ advanced mode toggle).
-    pub fn rebuild_opaque_depth_bind_group(
-        &mut self,
-        device: &wgpu::Device,
-        gbuffer: &GBuffer,
-    ) {
+    pub fn rebuild_opaque_depth_bind_group(&mut self, device: &wgpu::Device, gbuffer: &GBuffer) {
         self.opaque_depth_bind_group =
             build_opaque_depth_bind_group(device, &self.opaque_depth_layout, gbuffer);
     }
@@ -554,13 +548,11 @@ impl ChunkPipeline {
 
     /// Borrow the bind-group layout used for group 0 (frame uniforms). Useful
     /// for sibling pipelines that want to reuse the layout.
-    #[must_use]
     pub fn frame_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
         &self.frame_layout
     }
 
     /// Borrow the bind-group layout used for group 1 (atlas + sampler).
-    #[must_use]
     pub fn atlas_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
         &self.atlas_layout
     }
@@ -583,7 +575,6 @@ fn build_opaque_depth_bind_group(
 
 /// Re-export to make the stride visible to callers / tests without exposing
 /// the `wgpu::BufferAddress` type alias.
-#[must_use]
 pub const fn vertex_stride() -> u64 {
     VERTEX_STRIDE
 }

@@ -24,19 +24,16 @@ impl ItemStack {
     pub const MAX_COUNT: u8 = 255;
 
     /// Construct a stack of `count` items of the given block id.
-    #[must_use]
     pub const fn new(id: blocks::Id, count: u8) -> Self {
         Self { id, count }
     }
 
     /// True iff `count == 0` (mirrors C++ `bool empty() const noexcept`).
-    #[must_use]
     pub const fn empty(&self) -> bool {
         self.count == 0
     }
 
     /// True iff `count == MAX_COUNT`.
-    #[must_use]
     pub const fn is_full(&self) -> bool {
         self.count == Self::MAX_COUNT
     }

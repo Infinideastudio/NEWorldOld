@@ -92,7 +92,7 @@ struct VsOut {
     // x = sky-light intensity in [0, 1] (raw byte / 255)
     // y = block-light intensity in [0, 1] (raw byte / 255)
     // The CPU mesher applies inverse-square falloff per cell and
-    // averages intensities (not levels) across the 4 cells around
+    // averages intensities (not levels) across the 4 blocks around
     // each face corner — the rasterizer just interpolates the
     // averaged bytes, so we get correct soft AO without re-running
     // the curve here.

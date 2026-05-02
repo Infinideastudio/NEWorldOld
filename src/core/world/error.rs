@@ -4,7 +4,6 @@ use thiserror::Error;
 
 use super::chunk::ChunkError;
 use super::metadata::MetadataError;
-use crate::core::game::player::PlayerError;
 
 #[derive(Debug, Error)]
 pub enum WorldError {
@@ -14,8 +13,6 @@ pub enum WorldError {
     Sled(#[from] sled::Error),
     #[error("chunk codec failure: {0}")]
     Chunk(#[from] ChunkError),
-    #[error("player save/load failure: {0}")]
-    Player(#[from] PlayerError),
     #[error("world metadata failure: {0}")]
     Metadata(#[from] MetadataError),
 }

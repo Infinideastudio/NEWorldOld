@@ -48,7 +48,6 @@ impl ShadowMap {
     /// Allocate a 1×1 placeholder depth texture + comparison sampler.
     /// Adequate for "no shadow" composition — the sample call returns a
     /// constant value and the shader masks it out via `shadow_params.x`.
-    #[must_use]
     pub fn new(device: &wgpu::Device) -> Self {
         Self::with_resolution(device, 1)
     }
@@ -56,7 +55,6 @@ impl ShadowMap {
     /// Allocate a shadow map at the requested square resolution. The
     /// shadow pipeline will call this once it knows the user-configured
     /// `Config::shadow_res`.
-    #[must_use]
     pub fn with_resolution(device: &wgpu::Device, resolution: u32) -> Self {
         let resolution = resolution.max(1);
         let texture = device.create_texture(&wgpu::TextureDescriptor {

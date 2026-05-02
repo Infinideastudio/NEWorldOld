@@ -9,10 +9,19 @@ pub use self::save::PlayerError;
 
 use serde::{Deserialize, Serialize};
 
-use crate::blocks::{BaseBlocks, BlockRegistry, Id};
+use crate::blocks::{BaseBlocks, BlockData, BlockRegistry, Id};
 use crate::items::ItemStack;
 use crate::math::{Aabbd, Eulerd, Vec3d, Vec3i};
-use crate::worlds::world::BlockView;
+
+/// Read-only block lookup used by player physics. Implemented by the
+/// `Game` (which routes through `World` + future hitbox cache); tests
+/// implement it inline against fixed contents.
+pub trait BlockView {
+    fn block(&self, coord: Vec3i) -> Option<BlockData>;
+    fn block_or_air(&self, coord: Vec3i) -> BlockData;
+    fn hitboxes(&self, box_: Aabbd) -> Vec<Aabbd>;
+    fn in_water(&self, box_: Aabbd) -> bool;
+}
 
 /// Gameplay mode — survival enforces fall damage and disables flying;
 /// creative enables flying and allows `cross_wall` toggling.
@@ -53,19 +62,16 @@ impl Player {
 
     // ----- getters -----
 
-    #[must_use]
     pub fn coord(&self) -> Vec3d {
         self.coord
     }
 
     /// Eye coordinate: `coord + (0, LOOK_HEIGHT, 0)`.
-    #[must_use]
     pub fn look_coord(&self) -> Vec3d {
         Vec3d::new(self.coord.x, self.coord.y + Self::LOOK_HEIGHT, self.coord.z)
     }
 
     /// Player hitbox: 0.6 wide, 1.8 tall, centred on the foot x/z.
-    #[must_use]
     pub fn aabb(&self) -> Aabbd {
         Aabbd::new(
             self.coord - Vec3d::new(0.3, 0.0, 0.3),
@@ -73,48 +79,39 @@ impl Player {
         )
     }
 
-    #[must_use]
     pub fn velocity(&self) -> Vec3d {
         self.velocity
     }
 
-    #[must_use]
     pub fn orientation(&self) -> Eulerd {
         self.orientation
     }
 
-    #[must_use]
     pub fn flying(&self) -> bool {
         self.flying
     }
 
-    #[must_use]
     pub fn cross_wall(&self) -> bool {
         self.cross_wall
     }
 
-    #[must_use]
     pub fn grounded(&self) -> bool {
         self.grounded
     }
 
-    #[must_use]
     pub fn near_wall(&self) -> bool {
         self.near_wall
     }
 
-    #[must_use]
     pub fn in_water(&self) -> bool {
         self.in_water
     }
 
-    #[must_use]
     pub fn running(&self) -> bool {
         self.running
     }
 
     /// `RUN_SPEED` if running, else `WALK_SPEED`.
-    #[must_use]
     pub fn speed(&self) -> f64 {
         if self.running {
             Self::RUN_SPEED
@@ -123,24 +120,20 @@ impl Player {
         }
     }
 
-    #[must_use]
     pub fn game_mode(&self) -> GameMode {
         self.game_mode
     }
 
-    #[must_use]
     pub fn held_item_stack_index(&self) -> usize {
         self.held_item_stack_index
     }
 
     /// Reference to the currently-held hotbar slot
     /// (`inventory[3][held_item_stack_index]`).
-    #[must_use]
     pub fn held_item_stack(&self) -> &ItemStack {
         &self.inventory[3][self.held_item_stack_index]
     }
 
-    #[must_use]
     pub fn inventory_item_stack(&self, row: usize, col: usize) -> &ItemStack {
         &self.inventory[row][col]
     }
@@ -334,7 +327,6 @@ impl Player {
     /// validates that the target cell is air (or the placed block isn't
     /// solid / the player has cross-wall) and returns `true` if the caller
     /// may proceed. The caller is responsible for the actual world mutation.
-    #[must_use]
     pub fn validate_block_placement(
         &self,
         view: &impl BlockView,

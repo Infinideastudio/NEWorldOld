@@ -28,14 +28,16 @@ pub struct BlockRenderInfo {
 
 impl BlockRenderInfo {
     /// All faces sampling the same texture index.
-    #[must_use]
     pub const fn uniform(idx: BlockTextureIndex) -> Self {
         Self { faces: [idx; 3] }
     }
 
     /// Explicit `[top, side, bottom]` per-face textures.
-    #[must_use]
-    pub const fn new(top: BlockTextureIndex, side: BlockTextureIndex, bottom: BlockTextureIndex) -> Self {
+    pub const fn new(
+        top: BlockTextureIndex,
+        side: BlockTextureIndex,
+        bottom: BlockTextureIndex,
+    ) -> Self {
         Self {
             faces: [top, side, bottom],
         }
@@ -57,7 +59,6 @@ pub struct BlockRenderRegistry {
 impl BlockRenderRegistry {
     /// Empty registry with a single default entry pre-installed at
     /// [`BlockId::EMPTY`].
-    #[must_use]
     pub fn new() -> Self {
         Self {
             entries: vec![BlockRenderInfo::default()],
@@ -78,7 +79,6 @@ impl BlockRenderRegistry {
     /// Look up render info by id. Out-of-range ids fall back to the
     /// default entry at id 0 — same fallback policy as
     /// `core::BlockRegistry::get`.
-    #[must_use]
     pub fn get(&self, id: BlockId) -> &BlockRenderInfo {
         self.entries
             .get(id.get() as usize)
@@ -86,7 +86,6 @@ impl BlockRenderRegistry {
     }
 
     /// Strict variant: returns `None` when `id` is out of range.
-    #[must_use]
     pub fn try_get(&self, id: BlockId) -> Option<&BlockRenderInfo> {
         self.entries.get(id.get() as usize)
     }
@@ -94,7 +93,6 @@ impl BlockRenderRegistry {
     /// Texture for a specific face *index* (`0 = top`, `1 = side`,
     /// `2 = bottom`) on `id`. Returns `faces[2]` if `face >= 3` —
     /// matches the previous core-side `BlockInfo::face` clamping.
-    #[must_use]
     pub fn face(&self, id: BlockId, face: usize) -> BlockTextureIndex {
         let info = self.get(id);
         info.faces.get(face).copied().unwrap_or(info.faces[2])
@@ -103,7 +101,6 @@ impl BlockRenderRegistry {
     /// Texture for a face *direction* (`0..6`, `[+X, -X, +Y, -Y, +Z, -Z]`)
     /// given the cell's `state` and the core-side `core_info` that holds
     /// the [`BlockFaceMapping`]. The mesher's hot path.
-    #[must_use]
     pub fn face_for(
         &self,
         id: BlockId,
@@ -130,13 +127,11 @@ impl BlockRenderRegistry {
     }
 
     /// Number of registered entries (including the implicit empty slot).
-    #[must_use]
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
     /// True iff only the implicit empty entry has been registered.
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.entries.len() <= 1
     }

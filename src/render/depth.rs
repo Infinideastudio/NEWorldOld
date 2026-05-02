@@ -30,7 +30,6 @@ impl DepthTarget {
     ///
     /// Both dimensions are clamped to a minimum of 1 since `wgpu` rejects
     /// zero-sized textures (which can happen during a window minimize).
-    #[must_use]
     pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
         let width = width.max(1);
         let height = height.max(1);

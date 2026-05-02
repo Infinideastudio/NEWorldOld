@@ -49,7 +49,6 @@ impl EguiRenderer {
     ///
     /// `scale_factor` should be the window's current DPI scale
     /// (`window.scale_factor() as f32`).
-    #[must_use]
     pub fn new(
         device: &wgpu::Device,
         surface_format: wgpu::TextureFormat,
@@ -114,7 +113,6 @@ impl EguiRenderer {
 
     /// The egui context that callers use to build UI between
     /// [`Self::begin_frame`] and [`Self::end_frame`].
-    #[must_use]
     pub fn context(&self) -> &egui::Context {
         &self.context
     }
@@ -202,11 +200,7 @@ impl EguiRenderer {
     ///
     /// Must be called after [`Self::end_frame`] and before
     /// [`Self::update_buffers`].
-    pub fn update_textures(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-    ) {
+    pub fn update_textures(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         for id in self.textures_delta.free.drain(..) {
             self.renderer.free_texture(&id);
         }

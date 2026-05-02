@@ -47,11 +47,7 @@ pub struct MeshPipeline {
 
 impl MeshPipeline {
     /// Spawn the mesh worker thread.
-    #[must_use]
-    pub fn spawn(
-        registry: Arc<BlockRegistry>,
-        render_registry: Arc<BlockRenderRegistry>,
-    ) -> Self {
+    pub fn spawn(registry: Arc<BlockRegistry>, render_registry: Arc<BlockRenderRegistry>) -> Self {
         let (req_tx, req_rx) = unbounded::<MeshRequest>();
         let (res_tx, res_rx) = unbounded::<MeshDone>();
         let handle = std::thread::Builder::new()
@@ -66,7 +62,6 @@ impl MeshPipeline {
     }
 
     /// Submit a meshing job. Returns `false` if the worker channel is closed.
-    #[must_use]
     pub fn submit(&self, input: MeshInput) -> bool {
         match self.requests.as_ref() {
             Some(tx) => tx.send(MeshRequest { input }).is_ok(),
@@ -75,7 +70,6 @@ impl MeshPipeline {
     }
 
     /// Drain every available [`MeshDone`] without blocking.
-    #[must_use]
     pub fn drain(&self) -> Vec<MeshDone> {
         let mut out = Vec::new();
         while let Ok(d) = self.results.try_recv() {
@@ -128,11 +122,10 @@ mod tests {
         register_base_block_visuals(&base, &mut render, &mut textures);
         let registry = Arc::new(r);
         let render = Arc::new(render);
-        let buf: Box<[BlockData; PADDED_VOLUME]> =
-            vec![BlockData::default(); PADDED_VOLUME]
-                .into_boxed_slice()
-                .try_into()
-                .expect("PADDED_VOLUME-sized vec");
+        let buf: Box<[BlockData; PADDED_VOLUME]> = vec![BlockData::default(); PADDED_VOLUME]
+            .into_boxed_slice()
+            .try_into()
+            .expect("PADDED_VOLUME-sized vec");
         let mut padded = buf;
         padded[padded_index(9, 9, 9)] = BlockData {
             id: base.stone,

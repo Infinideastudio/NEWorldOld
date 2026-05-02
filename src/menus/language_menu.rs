@@ -37,7 +37,7 @@ pub struct LanguageScreen {
 }
 
 impl LanguageScreen {
-    #[must_use]
+    
     pub fn new(config: Arc<Mutex<Config>>, i18n: Arc<Mutex<I18n>>) -> Self {
         let entries = list_languages(&lang_dir());
         Self {

@@ -20,12 +20,10 @@ use serde::{Deserialize, Serialize};
 pub struct BlockTextureIndex(pub u16);
 
 impl BlockTextureIndex {
-    #[must_use]
     pub const fn new(value: u16) -> Self {
         Self(value)
     }
 
-    #[must_use]
     pub const fn get(self) -> u16 {
         self.0
     }
@@ -46,7 +44,6 @@ pub struct BlockTextureRegistry {
 }
 
 impl BlockTextureRegistry {
-    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -64,32 +61,26 @@ impl BlockTextureRegistry {
         idx
     }
 
-    #[must_use]
     pub fn get(&self, name: &str) -> Option<BlockTextureIndex> {
         self.by_name.get(name).copied()
     }
 
-    #[must_use]
     pub fn get_or(&self, name: &str, default: BlockTextureIndex) -> BlockTextureIndex {
         self.get(name).unwrap_or(default)
     }
 
-    #[must_use]
     pub fn name(&self, index: BlockTextureIndex) -> Option<&str> {
         self.names.get(index.0 as usize).map(Cow::as_ref)
     }
 
-    #[must_use]
     pub fn names(&self) -> &[Cow<'static, str>] {
         &self.names
     }
 
-    #[must_use]
     pub fn len(&self) -> usize {
         self.names.len()
     }
 
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.names.is_empty()
     }

@@ -169,7 +169,9 @@ pub enum AtlasError {
 
     /// `Atlases::load` was called with an empty `BlockTextureRegistry` —
     /// the renderer needs at least one tile to build a non-zero D2Array.
-    #[error("block texture registry is empty: register at least one texture before loading atlases")]
+    #[error(
+        "block texture registry is empty: register at least one texture before loading atlases"
+    )]
     EmptyTextureRegistry,
 }
 
@@ -310,14 +312,12 @@ impl Atlases {
 
     /// Shared sampler used by the block / UI atlases (Nearest mag/min,
     /// Linear mipmap, Repeat wrap).
-    #[must_use]
     pub fn sampler(&self) -> &wgpu::Sampler {
         &self.sampler
     }
 
     /// Linear-filtered Repeat sampler bound to the noise texture in the
     /// composition pass. Matches the C++ `LoadNoiseTextureArray` config.
-    #[must_use]
     pub fn noise_sampler(&self) -> &wgpu::Sampler {
         &self.noise_sampler
     }
@@ -727,7 +727,12 @@ mod tests {
         };
         assert!(matches!(
             err,
-            AtlasError::InvalidTileSize { width: 32, height: 16, expected: 32, .. }
+            AtlasError::InvalidTileSize {
+                width: 32,
+                height: 16,
+                expected: 32,
+                ..
+            }
         ));
     }
 }

@@ -37,7 +37,7 @@ pub struct CreateWorldScreen {
 }
 
 impl CreateWorldScreen {
-    #[must_use]
+    
     pub fn new(
         worlds_root: PathBuf,
         i18n: Arc<Mutex<I18n>>,

@@ -70,14 +70,13 @@ fn bincode_config() -> Configuration {
 /// canonical id in this world is `i`. The empty slot at index 0 is always
 /// `"empty"`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct WorldMetadata {
+pub struct Metadata {
     pub block_mapping: Vec<String>,
 }
 
-impl WorldMetadata {
+impl Metadata {
     /// Snapshot the current `registry` into a canonical mapping. Each block
     /// id from `0..registry.len()` contributes its internal name.
-    #[must_use]
     pub fn from_registry(registry: &BlockRegistry) -> Self {
         let mut block_mapping = Vec::with_capacity(registry.len());
         for entry in registry.entries() {
@@ -93,10 +92,11 @@ impl WorldMetadata {
             source,
         })?;
         let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes).map_err(|source| MetadataError::Io {
-            path: path.to_path_buf(),
-            source,
-        })?;
+        file.read_to_end(&mut bytes)
+            .map_err(|source| MetadataError::Io {
+                path: path.to_path_buf(),
+                source,
+            })?;
         if bytes.len() < HEADER_SIZE {
             return Err(MetadataError::BadMagic);
         }
@@ -108,10 +108,8 @@ impl WorldMetadata {
         if version != WORLD_META_VERSION {
             return Err(MetadataError::BadVersion { got: version });
         }
-        let (meta, _used) = bincode::serde::decode_from_slice::<Self, _>(
-            &bytes[HEADER_SIZE..],
-            bincode_config(),
-        )?;
+        let (meta, _used) =
+            bincode::serde::decode_from_slice::<Self, _>(&bytes[HEADER_SIZE..], bincode_config())?;
         Ok(meta)
     }
 
@@ -156,7 +154,6 @@ impl WorldMetadata {
     /// names map to [`BlockId::EMPTY`] so chunks referencing an absent block
     /// (e.g. a mod was removed) load as empty rather than failing the
     /// whole world.
-    #[must_use]
     pub fn canonical_to_current(&self, registry: &BlockRegistry) -> Vec<BlockId> {
         self.block_mapping
             .iter()
@@ -178,7 +175,6 @@ impl WorldMetadata {
     /// canonical mapping; current ids whose names aren't in the mapping
     /// are assigned `u16::MAX` (the chunk encoder writes them as
     /// `BlockId::EMPTY`).
-    #[must_use]
     pub fn current_to_canonical(&self, registry: &BlockRegistry) -> Vec<u16> {
         // Build a name → canonical_id reverse lookup once.
         let mut by_name = std::collections::HashMap::new();
@@ -210,7 +206,7 @@ mod tests {
     fn snapshot_then_translate_is_identity_for_same_registry() {
         let mut r = BlockRegistry::new();
         let _base = register_base_blocks(&mut r);
-        let meta = WorldMetadata::from_registry(&r);
+        let meta = Metadata::from_registry(&r);
         // For each registry entry, canonical -> current should round-trip.
         let load = meta.canonical_to_current(&r);
         let save = meta.current_to_canonical(&r);
@@ -224,7 +220,7 @@ mod tests {
     fn missing_canonical_name_maps_to_empty() {
         let mut r = BlockRegistry::new();
         let _base = register_base_blocks(&mut r);
-        let mut meta = WorldMetadata::from_registry(&r);
+        let mut meta = Metadata::from_registry(&r);
         // Pretend the world saved a block that no current mod provides.
         meta.block_mapping.push("ghost.removed_block".to_string());
         let load = meta.canonical_to_current(&r);
@@ -235,10 +231,10 @@ mod tests {
     fn save_load_round_trips_through_temp_file() {
         let mut r = BlockRegistry::new();
         let _base = register_base_blocks(&mut r);
-        let original = WorldMetadata::from_registry(&r);
+        let original = Metadata::from_registry(&r);
         let path = scratch_path("rt");
         original.save_to(&path).expect("save");
-        let loaded = WorldMetadata::load_from(&path).expect("load");
+        let loaded = Metadata::load_from(&path).expect("load");
         assert_eq!(original, loaded);
         let _ = fs::remove_file(&path);
     }
@@ -247,7 +243,7 @@ mod tests {
     fn load_rejects_bad_magic() {
         let path = scratch_path("badmagic");
         fs::write(&path, b"XXXX\x01\x00\x00\x00").expect("write");
-        let err = WorldMetadata::load_from(&path).unwrap_err();
+        let err = Metadata::load_from(&path).unwrap_err();
         assert!(matches!(err, MetadataError::BadMagic));
         let _ = fs::remove_file(&path);
     }
@@ -259,7 +255,7 @@ mod tests {
         bytes.extend_from_slice(&WORLD_META_MAGIC.to_le_bytes());
         bytes.extend_from_slice(&999u32.to_le_bytes());
         fs::write(&path, &bytes).expect("write");
-        let err = WorldMetadata::load_from(&path).unwrap_err();
+        let err = Metadata::load_from(&path).unwrap_err();
         assert!(matches!(err, MetadataError::BadVersion { got: 999 }));
         let _ = fs::remove_file(&path);
     }

@@ -1,13 +1,10 @@
-//! Terrain generation — `Generator` + the per-world noise primitives.
+//! Height noise — `HeightNoise` plus the per-world 2D fractal noise
+//! primitives the chunk-shaping rules consume.
 //!
-//! Direct port of `src/terrain_generation.ixx` per
-//! `docs/rust_migration.md` §4.4. The C++ original kept its state in
-//! module-level globals; here `Generator` owns the seed (and, eventually, a
-//! permutation table once `noise_2d` is reworked to actually consume it).
-//!
-//! The sliding-window 2D height cache lives next door in
-//! [`crate::height_maps`] — same split as the C++ build, where
-//! `terrain_generation.ixx` and `height_maps.ixx` are sibling modules.
+//! `HeightNoise` is just a function over `(x, z)` parameterised by a
+//! seed; `chunk_init` calls it column-by-column to produce terrain
+//! heights. Splitting it out keeps the chunk-init rules small and
+//! lets future biome/cave passes layer on additional noise sources.
 
 /// Sea level. Mirrors `terrain_generation::WATER_LEVEL` in the C++ build.
 pub const WATER_LEVEL: i32 = 96;
@@ -20,7 +17,7 @@ const NOISE_SCALE_Z: f64 = 64.0;
 // Wang-style seed mix constant (golden-ratio multiple of 2^64). The original
 // C++ `noise_2d` only hashed `(x, y)`, so different worlds produced identical
 // terrain — this xor-shift-multiply lifts the seed into the 64-bit hash so
-// `Generator::seed` actually controls the output.
+// `HeightNoise::seed` actually controls the output.
 const SEED_MIX: u64 = 0x9E37_79B9_7F4A_7C15;
 
 fn noise_2d(seed: u32, x: i32, y: i32) -> f64 {
@@ -63,30 +60,27 @@ fn fractal_noise_2d(seed: u32, x: f64, y: f64) -> f64 {
     total
 }
 
-#[inline]
 fn lerp(a: f64, b: f64, t: f64) -> f64 {
     a + (b - a) * t
 }
 
-// ---------- Generator ----------
+// ---------- HeightNoise ----------
 
-/// Per-world terrain generator. Owns the RNG seed; `noise_2d` mixes it
-/// into the hash via [`SEED_MIX`].
+/// Per-world terrain height function. Owns the RNG seed; `noise_2d`
+/// mixes it into the hash via [`SEED_MIX`].
 #[derive(Clone, Debug)]
-pub struct Generator {
+pub struct HeightNoise {
     pub seed: u32,
 }
 
-impl Generator {
-    /// Build a generator for the given world seed.
-    #[must_use]
+impl HeightNoise {
+    /// Build a height noise for the given world seed.
     pub fn new(seed: u32) -> Self {
         Self { seed }
     }
 
     /// Terrain height at `(x, z)`. Direct port of
     /// `terrain_generation::get_height`.
-    #[must_use]
     pub fn height(&self, x: i32, z: i32) -> i32 {
         let xs = f64::from(x) / NOISE_SCALE_X;
         let zs = f64::from(z) / NOISE_SCALE_Z;
@@ -115,11 +109,10 @@ mod tests {
 
     #[test]
     fn height_is_deterministic() {
-        let g = Generator::new(0xdead_beef);
+        let g = HeightNoise::new(0xdead_beef);
         let h1 = g.height(17, -42);
         let h2 = g.height(17, -42);
         assert_eq!(h1, h2);
-        // A handful of nearby coords come back stable across calls.
         for x in -3..=3 {
             for z in -3..=3 {
                 assert_eq!(g.height(x, z), g.height(x, z));
@@ -129,8 +122,8 @@ mod tests {
 
     #[test]
     fn different_seeds_produce_different_terrain() {
-        let g1 = Generator::new(1);
-        let g2 = Generator::new(2);
+        let g1 = HeightNoise::new(1);
+        let g2 = HeightNoise::new(2);
         let mut diffs = 0;
         for x in -8..=8 {
             for z in -8..=8 {
@@ -147,9 +140,7 @@ mod tests {
 
     #[test]
     fn height_produces_sane_values_near_origin() {
-        // Sanity: the function returns *some* finite-looking number, and
-        // varies (not all the same) across nearby coords.
-        let g = Generator::new(0);
+        let g = HeightNoise::new(0);
         let mut seen = std::collections::HashSet::new();
         for x in -8..=8 {
             for z in -8..=8 {

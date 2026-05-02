@@ -42,7 +42,6 @@ pub struct ScreenStack {
 }
 
 impl ScreenStack {
-    #[must_use]
     pub fn new() -> Self {
         Self {
             screens: Vec::new(),
@@ -65,19 +64,16 @@ impl ScreenStack {
     }
 
     /// Borrow the top screen, if any.
-    #[must_use]
     pub fn top(&self) -> Option<&dyn Screen> {
         self.screens.last().map(AsRef::as_ref)
     }
 
     /// Number of screens on the stack.
-    #[must_use]
     pub fn len(&self) -> usize {
         self.screens.len()
     }
 
     /// Whether the stack is empty.
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.screens.is_empty()
     }

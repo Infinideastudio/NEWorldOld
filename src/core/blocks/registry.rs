@@ -25,7 +25,6 @@ pub struct BlockRegistry {
 impl BlockRegistry {
     /// Empty registry with `BlockInfo::empty()` pre-installed at
     /// [`BlockId::EMPTY`].
-    #[must_use]
     pub fn new() -> Self {
         let mut r = Self {
             entries: Vec::new(),
@@ -46,9 +45,8 @@ impl BlockRegistry {
             self.entries[id.get() as usize] = info;
             return id;
         }
-        let id = BlockId(
-            u16::try_from(self.entries.len()).expect("BlockRegistry: id space exhausted"),
-        );
+        let id =
+            BlockId(u16::try_from(self.entries.len()).expect("BlockRegistry: id space exhausted"));
         self.by_name.insert(info.name.clone(), id);
         self.entries.push(info);
         id
@@ -80,7 +78,6 @@ impl BlockRegistry {
 
     /// Look up block info by id. Out-of-range ids return the empty fallback
     /// (`BlockId::EMPTY`'s entry).
-    #[must_use]
     pub fn get(&self, id: BlockId) -> &BlockInfo {
         self.entries
             .get(id.get() as usize)
@@ -88,31 +85,26 @@ impl BlockRegistry {
     }
 
     /// Strict variant: returns `None` when the id is unknown.
-    #[must_use]
     pub fn try_get(&self, id: BlockId) -> Option<&BlockInfo> {
         self.entries.get(id.get() as usize)
     }
 
     /// Resolve a block name to its id.
-    #[must_use]
     pub fn id_of(&self, name: &str) -> Option<BlockId> {
         self.by_name.get(name).copied()
     }
 
     /// All registered entries in id order.
-    #[must_use]
     pub fn entries(&self) -> &[BlockInfo] {
         &self.entries
     }
 
     /// Number of registered blocks (including the reserved empty slot).
-    #[must_use]
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
     /// True iff only the implicit empty entry has been registered.
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.entries.len() <= 1
     }

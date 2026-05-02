@@ -51,7 +51,7 @@ pub const CHUNK_SIZE: usize = 16;
 /// Padded side length: chunk size plus a one-block border on every side.
 pub const PADDED_SIZE: usize = CHUNK_SIZE + 2;
 
-/// Total cells in the padded buffer (`18^3 = 5832`).
+/// Total blocks in the padded buffer (`18^3 = 5832`).
 pub const PADDED_VOLUME: usize = PADDED_SIZE * PADDED_SIZE * PADDED_SIZE;
 
 /// Vertex format consumed by the chunk pipeline (see [D2]).
@@ -114,12 +114,12 @@ pub struct MeshInput {
 #[derive(Clone, Copy, Debug)]
 pub struct MeshOptions {
     /// When true, the per-vertex `light` attribute is averaged over the four
-    /// cells around each face corner (smooth interpolation, soft AO). When
+    /// blocks around each face corner (smooth interpolation, soft AO). When
     /// false, every vertex of a face just uses the in-front cell's
     /// brightness — a flat-lit look that matches the C++ "advanced
     /// rendering off" path.
     pub smooth_lighting: bool,
-    /// When true, coplanar same-id same-tex same-light cells merge into
+    /// When true, coplanar same-id same-tex same-light blocks merge into
     /// strips (1-D greedy mesher). When false every visible face emits its
     /// own quad — useful for visualization / shader debugging.
     pub merge_face: bool,
@@ -158,8 +158,6 @@ pub struct MeshOutput {
 /// Index into the `PADDED_SIZE^3` padded buffer. Padded coords are `0..18`,
 /// so an in-chunk cell `(x, y, z)` (each in `0..16`) maps to padded
 /// `(x + 1, y + 1, z + 1)`.
-#[inline]
-#[must_use]
 pub fn padded_index(x: usize, y: usize, z: usize) -> usize {
     (z * PADDED_SIZE + y) * PADDED_SIZE + x
 }
@@ -215,7 +213,7 @@ const FACE_CORNERS: [[[f32; 3]; 4]; 6] = [
 ];
 
 /// Per-corner world-space offset to apply when extending a 1-D merged quad
-/// by `length` cells along the merge axis. Mirrors C++ `coords_extend` —
+/// by `length` blocks along the merge axis. Mirrors C++ `coords_extend` —
 /// merge-axis is `+Z` for face dirs `0..=3`, `+Y` for `4..=5`. The two
 /// "outer" corners (those already at the high end of the merge axis)
 /// shift, the other two stay put.
@@ -285,7 +283,6 @@ const FACE_OFFSETS: [[i32; 3]; 6] = [
 /// Map a unit-axis integer direction to a face id `0..6`. Used to find
 /// the canonical face id after rotating a world face normal back to the
 /// block's local frame via [`Orientation::apply_dir_i`].
-#[inline]
 fn face_id_from_dir_i(d: [i32; 3]) -> usize {
     if d[0] > 0 {
         0
@@ -308,7 +305,6 @@ fn face_id_from_dir_i(d: [i32; 3]) -> usize {
 /// `-X` → `(z, 1-y)`, `+Z` → `(x, 1-y)`, `-Z` → `(1-x, 1-y)`. With this
 /// projection, identity-orientation state-0 blocks round-trip to the
 /// existing `FACE_UVS` corners exactly.
-#[inline]
 fn project_canon_face_point(face_id: usize, p: [f32; 3]) -> [f32; 2] {
     match face_id {
         0 => [1.0 - p[2], 1.0 - p[1]], // +X
@@ -326,7 +322,6 @@ fn project_canon_face_point(face_id: usize, p: [f32; 3]) -> [f32; 2] {
 /// when greedy-merging — a world extension direction transforms back to
 /// a canonical extension via [`Orientation::apply_dir`], then projects
 /// here onto the canonical face's UV basis.
-#[inline]
 fn project_canon_face_dir(face_id: usize, d: [f32; 3]) -> [f32; 2] {
     match face_id {
         0 => [-d[2], -d[1]], // +X
@@ -392,7 +387,7 @@ fn find_leaf_id(registry: &BlockRegistry) -> Option<Id> {
 const AIR_ID: Id = Id(0);
 
 /// Per-corner sign on the two perpendicular axes of each face direction.
-/// Used to address the 4 AO sample cells around the in-front cell. Indexed
+/// Used to address the 4 AO sample blocks around the in-front cell. Indexed
 /// `[face][corner]` as `(sign_perp_a, sign_perp_b)`. Perp axes are: face
 /// dirs `0..2` → `(Y, Z)`, `2..4` → `(X, Z)`, `4..6` → `(X, Y)`.
 const CORNER_PERP_SIGNS: [[(i32, i32); 4]; 6] = [
@@ -424,7 +419,7 @@ const FACE_PERP_AXES: [(usize, usize); 6] = [
 
 /// Constant factor `K` in the per-cell block-light inverse-square
 /// mapping `intensity = min(1, K / (16 - level)²)`. Tweakable knob —
-/// raising it brightens far-from-source cells (longer reach), lowering
+/// raising it brightens far-from-source blocks (longer reach), lowering
 /// it tightens the falloff near sources.
 const BLOCK_LIGHT_INTENSITY_K: f32 = 16.0;
 
@@ -435,7 +430,6 @@ const BLOCK_LIGHT_INTENSITY_K: f32 = 16.0;
 /// (rather than levels) avoids the "average a level then crush
 /// through inverse-square" trap that turned soft AO bites into
 /// near-black holes.
-#[inline]
 fn block_level_to_intensity(level: u8) -> f32 {
     let dist = 16.0 - f32::from(level);
     (BLOCK_LIGHT_INTENSITY_K / (dist * dist)).min(1.0)
@@ -446,7 +440,6 @@ fn block_level_to_intensity(level: u8) -> f32 {
 /// illuminance rather than a point source, so the inverse-square
 /// curve doesn't apply — a cell's sky level is the fraction of the
 /// hemisphere that reaches it, which is already a linear quantity.
-#[inline]
 fn sky_level_to_intensity(level: u8) -> f32 {
     f32::from(level) / 15.0
 }
@@ -455,7 +448,6 @@ fn sky_level_to_intensity(level: u8) -> f32 {
 /// tap, both in `[0, 1]`. Opaque blocks contribute `(0, 0)` so they
 /// don't drag light through solid geometry — they're always the dark
 /// cell in the 4-tap average around an exposed face corner.
-#[inline]
 fn cell_intensities(block: BlockData, info: &BlockInfo) -> (f32, f32) {
     if info.opaque {
         return (0.0, 0.0);
@@ -467,10 +459,9 @@ fn cell_intensities(block: BlockData, info: &BlockInfo) -> (f32, f32) {
 }
 
 /// Read a padded cell by signed offsets. `pcx, pcy, pcz` are the *padded*
-/// indices of the cell of interest (`1..=16` for in-chunk cells); the
+/// indices of the cell of interest (`1..=16` for in-chunk blocks); the
 /// `dx/dy/dz` step is applied directly. Total result must land in `0..18`
-/// — the AO sampling pattern guarantees this for chunk-interior cells.
-#[inline]
+/// — the AO sampling pattern guarantees this for chunk-interior blocks.
 fn padded_at(padded: &[BlockData; PADDED_VOLUME], pcx: i32, pcy: i32, pcz: i32) -> BlockData {
     debug_assert!(
         (0..PADDED_SIZE as i32).contains(&pcx)
@@ -483,7 +474,6 @@ fn padded_at(padded: &[BlockData; PADDED_VOLUME], pcx: i32, pcy: i32, pcz: i32) 
 
 /// Quantize a `[0, 1]` intensity to a `u8` for packing into the
 /// vertex `light` field. Rounds half-up — `(intensity * 255).round()`.
-#[inline]
 fn intensity_to_byte(intensity: f32) -> u8 {
     (intensity.clamp(0.0, 1.0) * 255.0 + 0.5) as u8
 }
@@ -491,7 +481,6 @@ fn intensity_to_byte(intensity: f32) -> u8 {
 /// Pack two intensity bytes into one `u16` for the vertex pipeline.
 /// Bottom byte = sky, top byte = block (matches the unpack in
 /// `chunk.wgsl::vs_main`).
-#[inline]
 const fn pack_light_bytes(sky: u8, block: u8) -> u16 {
     (block as u16) << 8 | (sky as u16)
 }
@@ -499,7 +488,7 @@ const fn pack_light_bytes(sky: u8, block: u8) -> u16 {
 /// 4-corner smooth-lighting tap for the face on cell at padded coord
 /// `(pcx, pcy, pcz)` facing direction `face_id`. Each corner averages
 /// the sky and block light *intensities* (already mapped through
-/// inverse-square per cell — see [`cell_intensities`]) of 4 cells
+/// inverse-square per cell — see [`cell_intensities`]) of 4 blocks
 /// around the in-front (face-normal-direction) neighbor — the in-front
 /// itself, two perpendicular-axis neighbors, and the diagonal corner.
 /// Sky and block channels are averaged independently and quantized to
@@ -529,7 +518,7 @@ fn corner_lights(
         let (sa, sb) = CORNER_PERP_SIGNS[face_id][c];
         let a_ofs = [step_a[0] * sa, step_a[1] * sa, step_a[2] * sa];
         let b_ofs = [step_b[0] * sb, step_b[1] * sb, step_b[2] * sb];
-        let cells = [
+        let blocks = [
             (ix, iy, iz),
             (ix + a_ofs[0], iy + a_ofs[1], iz + a_ofs[2]),
             (ix + b_ofs[0], iy + b_ofs[1], iz + b_ofs[2]),
@@ -541,7 +530,7 @@ fn corner_lights(
         ];
         let mut sky_sum = 0.0_f32;
         let mut block_sum = 0.0_f32;
-        for (cx, cy, cz) in cells {
+        for (cx, cy, cz) in blocks {
             let b = padded_at(padded, cx, cy, cz);
             let (s, k) = cell_intensities(b, registry.get(b.id));
             sky_sum += s;
@@ -564,7 +553,7 @@ struct Run {
     start: [i32; 3],
     /// Face direction id (0..6).
     face: usize,
-    /// Number of cells already merged *beyond* the start cell. `length == 0`
+    /// Number of blocks already merged *beyond* the start cell. `length == 0`
     /// is a single-cell run.
     length: i32,
     /// Atlas layer index. Two runs merge only if they pick the same layer
@@ -576,27 +565,27 @@ struct Run {
     translucent: bool,
     /// 4-corner packed smooth-light intensities (`sky_byte |
     /// (block_byte << 8)`, one `u16` per corner). The run only
-    /// extends if subsequent cells produce *identical* per-corner
+    /// extends if subsequent blocks produce *identical* per-corner
     /// values.
     ///
-    /// Naively this isn't sufficient: if the cells carried independent
+    /// Naively this isn't sufficient: if the blocks carried independent
     /// gradients along the merge axis, normal (per-cell) rendering
     /// would emit `N` short gradients while a merged run would emit
     /// one long gradient interpolated end-to-end, which is visibly
     /// different in the middle. We can still merge here because of an
     /// invariant of the smooth-lighting algorithm: a corner's light
     /// is the 4-cell average around the *vertex* (the corner shared
-    /// between adjacent cells), not around the cell itself. Adjacent
-    /// cells therefore necessarily agree on the brightness of their
+    /// between adjacent blocks), not around the cell itself. Adjacent
+    /// blocks therefore necessarily agree on the brightness of their
     /// shared corner. So when corner 1 of cell A equals corner 0 of
     /// cell B AND the run-extension check (`r.lights == lights`)
-    /// passes, the two cells' shared corner bytes already match the
+    /// passes, the two blocks' shared corner bytes already match the
     /// continuation of the gradient — extending the run produces the
     /// exact same interpolated brightness at every point as `N`
     /// independent quads would have.
     lights: [u16; 4],
     /// Per-corner base UVs at run start. Run extension also gates on
-    /// `base_uv == cell.base_uv`, so two cells with different
+    /// `base_uv == cell.base_uv`, so two blocks with different
     /// orientations only merge if they happen to produce identical UVs
     /// on this face (which means they look identical on it). For
     /// `FaceMapping::Static` blocks this is always true; for
@@ -606,7 +595,7 @@ struct Run {
     /// Per-corner UV delta per unit length along the merge axis. Replaces
     /// the legacy global `FACE_EXTEND_UV` lookup; folds the per-state
     /// rotation through the canonical-face projection at run start. Also
-    /// gated on for run extension — two cells with matching `base_uv`
+    /// gated on for run extension — two blocks with matching `base_uv`
     /// but mismatched `extend_uv` would tile differently across the
     /// merged span, so they cannot merge.
     extend_uv: [[f32; 2]; 4],
@@ -615,7 +604,6 @@ struct Run {
 /// Per-direction (i, j, k) → (x, y, z) projection. `i, j` index the plane
 /// perpendicular to the merge axis; `k` walks the merge axis. Mirrors the
 /// switch in `chunk_rendering.cpp::_merge_face_render_chunk`.
-#[inline]
 fn project_axes(face_id: usize, i: i32, j: i32, k: i32) -> (i32, i32, i32) {
     match face_id {
         0 | 1 => (i, j, k), // +X / -X — merge along Z
@@ -628,7 +616,7 @@ fn project_axes(face_id: usize, i: i32, j: i32, k: i32) -> (i32, i32, i32) {
 ///
 /// For each of the six face directions, walks the perpendicular plane in
 /// `(i, j)` and accumulates a 1-D run of visible faces along the third axis.
-/// Adjacent cells that share an id, atlas layer, and layer-bucket
+/// Adjacent blocks that share an id, atlas layer, and layer-bucket
 /// (opaque vs translucent) collapse into a single tiled quad — cutting
 /// vertex counts on flat surfaces (terrain top, walls) by `~CHUNK_SIZE×`
 /// in the best case. See the module docs for face-id, winding, UV, and
@@ -638,7 +626,6 @@ fn project_axes(face_id: usize, i: i32, j: i32, k: i32) -> (i32, i32, i32) {
 /// "nice grass" are applied; toggling them in the menu is meant to be
 /// instant, so the caller drops all `ChunkMesh`es and re-marks every
 /// chunk dirty when these change (see `Game::apply_mesh_config`).
-#[must_use]
 pub fn mesh_chunk(
     input: &MeshInput,
     registry: &BlockRegistry,
@@ -742,7 +729,7 @@ pub fn mesh_chunk(
 
                     // Run extension is gated on `merge_face`: with the flag
                     // off, force a flush after every cell so each face
-                    // emits its own quad. With it on, two cells merge
+                    // emits its own quad. With it on, two blocks merge
                     // iff their visual output on this face is identical
                     // — same atlas layer, same per-corner light bytes,
                     // same per-corner UVs (base + extend), same
@@ -819,7 +806,6 @@ fn flat_face_light(
 
 /// Emit the 6 vertices of `run` (after extension along the merge axis) into
 /// the matching output bucket. No-op when `run` is `None`.
-#[inline]
 fn flush_run(opaque: &mut Vec<ChunkVertex>, translucent: &mut Vec<ChunkVertex>, run: Option<Run>) {
     let Some(run) = run else {
         return;
@@ -886,7 +872,7 @@ mod tests {
         (r, render, base)
     }
 
-    /// Build a `MeshInput` whose padded cells are populated by the closure
+    /// Build a `MeshInput` whose padded blocks are populated by the closure
     /// `f(px, py, pz)`. Padded coords run `0..PADDED_SIZE`.
     fn padded_input<F>(coord: Vector3<i32>, mut f: F) -> MeshInput
     where
@@ -950,7 +936,7 @@ mod tests {
     fn single_solid_block_emits_six_faces() {
         let (registry, render, base) = registry_with_base();
         // Stone block at the chunk-local center (8,8,8) → padded (9,9,9).
-        // All other cells (including the padding border) are air, so all
+        // All other blocks (including the padding border) are air, so all
         // 6 faces are visible.
         let input = padded_input(Vector3::new(0, 0, 0), |px, py, pz| {
             if (px, py, pz) == (9, 9, 9) {
@@ -992,7 +978,7 @@ mod tests {
         });
         let output = mesh_chunk(&input, &registry, &render);
         // 16×16 dirt top faces with greedy 1-D merging along Z (the merge
-        // axis for face dir +Y) collapse to 16 strips of 16 cells each → 16
+        // axis for face dir +Y) collapse to 16 strips of 16 blocks each → 16
         // quads × 6 verts = 96 vertices.
         assert_eq!(output.opaque.len(), 16 * 6);
         assert!(output.translucent.is_empty());
@@ -1107,7 +1093,7 @@ mod tests {
         });
         let output = mesh_chunk(&input, &registry, &render);
         // Count distinct face directions in the output. The +Y face strips
-        // collapse from 256 cells to 16 strips (one per x row, each
+        // collapse from 256 blocks to 16 strips (one per x row, each
         // spanning z=0..16). The 4 side faces (±X / ±Z) along the chunk
         // edges should also collapse where possible.
         let plus_y_verts = output.opaque.iter().filter(|v| v.face == 2).count();
@@ -1360,7 +1346,7 @@ mod tests {
 
         let make = |state_a: State, state_b: State| {
             padded_input(Vector3::new(0, 0, 0), move |px, py, pz| {
-                // Two cells at (9,9,9) and (9,9,10) — adjacent along +Z,
+                // Two blocks at (9,9,9) and (9,9,10) — adjacent along +Z,
                 // which is the +Y face's merge axis.
                 if py == 9 && px == 9 && pz == 9 {
                     BlockData {

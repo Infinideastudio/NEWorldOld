@@ -47,7 +47,6 @@ impl UnderwaterPipeline {
     /// attachment the world render pass uses — wgpu rejects pipelines
     /// whose depth-stencil format disagrees with the pass even when the
     /// pipeline never reads or writes the buffer.
-    #[must_use]
     pub fn new(
         device: &wgpu::Device,
         color_format: wgpu::TextureFormat,

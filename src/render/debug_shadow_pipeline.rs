@@ -61,7 +61,6 @@ impl DebugShadowPipeline {
     /// blending so the empty-shadow-map fallback (`vec4(0.2, 0.2, 0.2,
     /// 0.5)` from the fragment shader) is semi-transparent — matches the
     /// C++ `debug_shadow.fsh` behaviour.
-    #[must_use]
     pub fn new(
         device: &wgpu::Device,
         surface_format: wgpu::TextureFormat,
@@ -108,13 +107,10 @@ impl DebugShadowPipeline {
             }],
         });
 
-        let shadow_bind_group =
-            Self::build_shadow_bind_group(device, &shadow_layout, shadow_map);
+        let shadow_bind_group = Self::build_shadow_bind_group(device, &shadow_layout, shadow_map);
 
-        let uniforms = UniformBuffer::<DebugShadowUniforms>::new(
-            device,
-            "gfx::debug_shadow.uniforms",
-        );
+        let uniforms =
+            UniformBuffer::<DebugShadowUniforms>::new(device, "gfx::debug_shadow.uniforms");
         let uniforms_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("gfx::debug_shadow.uniforms_bg"),
             layout: &uniforms_layout,
@@ -194,11 +190,7 @@ impl DebugShadowPipeline {
     /// Recreate the shadow bind group after the underlying shadow texture
     /// view changed (i.e. after `ShadowMap::resize`). Called from
     /// `Game::apply_shadow_config`.
-    pub fn rebuild_shadow_bind_group(
-        &mut self,
-        device: &wgpu::Device,
-        shadow_map: &ShadowMap,
-    ) {
+    pub fn rebuild_shadow_bind_group(&mut self, device: &wgpu::Device, shadow_map: &ShadowMap) {
         self.shadow_bind_group =
             Self::build_shadow_bind_group(device, &self.shadow_layout, shadow_map);
     }

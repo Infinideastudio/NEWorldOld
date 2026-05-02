@@ -31,7 +31,6 @@ impl BlockData {
 
     /// Decode from a 5-byte slice. Caller is responsible for splitting the
     /// chunk body into [`Self::ENCODED_LEN`]-sized chunks.
-    #[must_use]
     pub fn decode_from(bytes: &[u8]) -> Self {
         debug_assert_eq!(bytes.len(), Self::ENCODED_LEN);
         Self {

@@ -102,7 +102,7 @@ pub struct GameScreen {
 }
 
 impl GameScreen {
-    #[must_use]
+    
     pub fn new(
         config: Arc<Mutex<Config>>,
         i18n: Arc<Mutex<I18n>>,

@@ -34,8 +34,6 @@ pub enum BlockFaceMapping {
 /// Map a face direction (`0..6`, `[+X, -X, +Y, -Y, +Z, -Z]`) to a
 /// `BlockInfo::faces` slot under the static layout: top = 0, side = 1,
 /// bottom = 2.
-#[inline]
-#[must_use]
 pub fn face_index_static(face_dir: usize) -> usize {
     match face_dir {
         2 => 0,
@@ -45,8 +43,6 @@ pub fn face_index_static(face_dir: usize) -> usize {
 }
 
 /// Primary axis (`0 = X`, `1 = Y`, `2 = Z`) of a face direction (`0..6`).
-#[inline]
-#[must_use]
 pub fn face_axis(face_dir: usize) -> u8 {
     match face_dir {
         0 | 1 => 0,

@@ -59,8 +59,6 @@ fn ns(id: &str) -> Cow<'static, str> {
 /// their numeric ids. To register the matching face textures, call
 /// `client::blocks::register_base_block_visuals(&base, ...)` with the
 /// result.
-#[must_use]
-#[allow(clippy::similar_names)] // grass / glass — domain-required names.
 pub fn register_base_blocks(blocks: &mut BlockRegistry) -> BaseBlocks {
     // Slot 0 is the registry's reserved empty entry; do NOT overwrite it.
     let air = BlockId::EMPTY;
@@ -108,11 +106,7 @@ pub fn register_base_blocks(blocks: &mut BlockRegistry) -> BaseBlocks {
             .opaque(true)
             .hardness(10.0),
     );
-    let leaf = blocks.add(
-        BlockInfo::new(ns("leaf"), "Leaf")
-            .solid(true)
-            .hardness(0.2),
-    );
+    let leaf = blocks.add(BlockInfo::new(ns("leaf"), "Leaf").solid(true).hardness(0.2));
     let glass = blocks.add(
         BlockInfo::new(ns("glass"), "Glass")
             .solid(true)

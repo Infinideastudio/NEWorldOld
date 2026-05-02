@@ -31,27 +31,23 @@ impl BlockState {
     pub const MAX_PAYLOAD: u16 = VALUE_MASK;
 
     /// Inline state. `value` must fit in 15 bits.
-    #[must_use]
     pub const fn inline(value: u16) -> Self {
         assert!(value <= VALUE_MASK, "BlockState::inline: value > 0x7FFF");
         Self(value)
     }
 
     /// External-storage tag with the given 15-bit index.
-    #[must_use]
     pub const fn external(index: u16) -> Self {
         assert!(index <= VALUE_MASK, "BlockState::external: index > 0x7FFF");
         Self(EXTERNAL_BIT | index)
     }
 
     /// True iff the high bit is set (external storage).
-    #[must_use]
     pub const fn is_external(self) -> bool {
         self.0 & EXTERNAL_BIT != 0
     }
 
     /// 15-bit external index when [`Self::is_external`], else `None`.
-    #[must_use]
     pub const fn external_index(self) -> Option<u16> {
         if self.is_external() {
             Some(self.0 & VALUE_MASK)
@@ -62,7 +58,6 @@ impl BlockState {
 
     /// 15-bit inline value when *not* external, else `None`. The inline
     /// payload is what `face_for` / `Orientation::for_block` consume.
-    #[must_use]
     pub const fn inline_value(self) -> Option<u16> {
         if self.is_external() {
             None
@@ -74,7 +69,6 @@ impl BlockState {
     /// Convenience: inline value or zero when external. The chunk mesher and
     /// orientation table both treat external states as "no inline payload",
     /// which falls back to the canonical placement.
-    #[must_use]
     pub const fn inline_or_zero(self) -> u16 {
         if self.is_external() {
             0
@@ -85,7 +79,6 @@ impl BlockState {
 
     /// Build from an `Option<u16>`: `Some(v)` → inline (panics if
     /// `v > 0x7FFF`), `None` → external with index `0`.
-    #[must_use]
     pub const fn new(value: Option<u16>) -> Self {
         match value {
             None => Self(EXTERNAL_BIT),
@@ -95,7 +88,6 @@ impl BlockState {
 
     /// Inverse of [`Self::new`]: `Some(inline_value)` or `None` when
     /// external.
-    #[must_use]
     pub const fn get(self) -> Option<u16> {
         self.inline_value()
     }

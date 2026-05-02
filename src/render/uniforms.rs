@@ -27,7 +27,6 @@ pub type Mat4f = [[f32; 4]; 4];
 /// cgmath stores `Matrix4` as four `Vector4<f32>` columns (`x`, `y`, `z`, `w`),
 /// matching WGSL's column-major convention; this helper just unpacks them into
 /// nested arrays so the result is `bytemuck::Pod`-friendly.
-#[must_use]
 pub fn mat4_to_array(m: cgmath::Matrix4<f32>) -> Mat4f {
     [m.x.into(), m.y.into(), m.z.into(), m.w.into()]
 }
@@ -149,7 +148,6 @@ impl<T: Pod> UniformBuffer<T> {
     /// to satisfy the WGSL uniform-address-space requirement (a `T` smaller
     /// than 16 bytes is highly unusual but the static asserts at the bottom of
     /// this module catch the common cases).
-    #[must_use]
     pub fn new(device: &wgpu::Device, label: &str) -> Self {
         let size = std::mem::size_of::<T>().max(16) as wgpu::BufferAddress;
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -171,7 +169,6 @@ impl<T: Pod> UniformBuffer<T> {
 
     /// Borrow the buffer as a `BindingResource`, suitable for inclusion in a
     /// `BindGroupEntry`.
-    #[must_use]
     pub fn binding(&self) -> wgpu::BindingResource<'_> {
         wgpu::BindingResource::Buffer(wgpu::BufferBinding {
             buffer: &self.buffer,
@@ -182,7 +179,6 @@ impl<T: Pod> UniformBuffer<T> {
 
     /// Direct access to the underlying `wgpu::Buffer`. Useful when the caller
     /// needs to build a more complex binding (e.g. dynamic offsets).
-    #[must_use]
     pub fn buffer(&self) -> &wgpu::Buffer {
         &self.buffer
     }

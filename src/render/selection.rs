@@ -136,7 +136,6 @@ pub struct SelectionPipeline {
 impl SelectionPipeline {
     /// Compile the pipeline. Reads the same `FrameUniforms` group the chunk
     /// pipeline uses, so a single per-frame upload feeds both.
-    #[must_use]
     pub fn new(
         device: &wgpu::Device,
         color_format: wgpu::TextureFormat,
@@ -390,7 +389,6 @@ impl SelectionPipeline {
     /// Format the pipeline expects on the depth attachment. Provided so the
     /// caller (the render-pass setup in `Game::record_world_pass`) can be
     /// statically asserted against [`DepthTarget::FORMAT`].
-    #[must_use]
     pub const fn depth_format() -> wgpu::TextureFormat {
         DepthTarget::FORMAT
     }

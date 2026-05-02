@@ -19,7 +19,7 @@
 use cgmath::Vector3;
 
 use crate::math::{Aabbd, Vec3d};
-use crate::worlds::BlockView;
+use crate::worlds::player::BlockView;
 
 // ----------------------------------------------------------------------
 //   Simulation constants (mirrored from `src/particles.ixx`)
@@ -97,7 +97,6 @@ impl Particle {
     /// zeroed sub-rect origin. Spawners that want randomized flecks should
     /// overwrite `tex_uv` after calling this — see
     /// [`Particle::with_random_tex_uv`].
-    #[must_use]
     pub fn new(coord: Vec3d, velocity: Vec3d, texture_layer: u32, max_age: f32) -> Self {
         Self {
             coord,
@@ -116,7 +115,6 @@ impl Particle {
     /// `rng_*` should be in `[0, 1]`. This produces a uniformly-random
     /// origin that keeps the `tex_size × tex_size` fragment fully inside
     /// the `[0, 1]` source square (mirrors C++ `throw_particle`).
-    #[must_use]
     pub fn with_random_tex_uv(mut self, rng_x: f32, rng_y: f32) -> Self {
         let span = (1.0 - self.tex_size).max(0.0);
         self.tex_uv = [rng_x.clamp(0.0, 1.0) * span, rng_y.clamp(0.0, 1.0) * span];
@@ -124,7 +122,6 @@ impl Particle {
     }
 
     /// World-space AABB of this particle.
-    #[must_use]
     pub fn aabb(&self) -> Aabbd {
         let half = Vec3d::new(self.extent, self.extent, self.extent);
         Aabbd::new(self.coord - half, self.coord + half)
@@ -142,7 +139,6 @@ pub struct ParticleSystem {
 }
 
 impl ParticleSystem {
-    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -151,17 +147,14 @@ impl ParticleSystem {
         self.particles.push(p);
     }
 
-    #[must_use]
     pub fn particles(&self) -> &[Particle] {
         &self.particles
     }
 
-    #[must_use]
     pub fn len(&self) -> usize {
         self.particles.len()
     }
 
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.particles.is_empty()
     }
@@ -229,7 +222,6 @@ impl ParticleSystem {
     /// Build an empty `ParticleSystem` with at least `capacity` slots
     /// reserved. Useful for spawn-heavy effects (block break = ~10
     /// particles).
-    #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             particles: Vec::with_capacity(capacity),

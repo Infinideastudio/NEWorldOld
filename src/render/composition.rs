@@ -78,7 +78,7 @@ pub struct CompositionPipeline {
 }
 
 impl CompositionPipeline {
-    #[must_use]
+    
     pub fn new(
         device: &wgpu::Device,
         surface_format: wgpu::TextureFormat,
@@ -314,12 +314,12 @@ impl CompositionPipeline {
         pass.draw(0..6, 0..1);
     }
 
-    #[must_use]
+    
     pub fn frame_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
         &self.frame_layout
     }
 
-    #[must_use]
+    
     pub fn advanced_aux_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
         &self.advanced_aux_layout
     }

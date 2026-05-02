@@ -9,7 +9,7 @@
 use cgmath::InnerSpace;
 
 use crate::math::{Vec3d, Vec3i};
-use crate::worlds::BlockView;
+use crate::worlds::player::BlockView;
 
 /// Maximum raycast distance, in blocks. Mirrors C++ `selectDistance`.
 pub const RAYCAST_MAX: f64 = 5.0;
@@ -28,7 +28,6 @@ pub struct Hit {
 ///
 /// `is_solid(view, coord)` decides whether a cell terminates the walk; this
 /// lets callers skip e.g. water blocks.
-#[must_use]
 pub fn raycast<V, F>(
     view: &V,
     origin: Vec3d,

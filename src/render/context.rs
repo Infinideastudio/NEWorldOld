@@ -45,7 +45,6 @@ impl Gfx {
     /// synchronously — fine for one-shot startup. Picks an sRGB surface
     /// format if available, falls back to `caps.formats[0]`. Vsync (`Fifo`)
     /// is the present mode.
-    #[must_use]
     pub fn new(window: Arc<Window>) -> Self {
         let size = window.inner_size();
         let width = size.width.max(1);
@@ -93,7 +92,12 @@ impl Gfx {
         // surface offers first.
         let surface_format = if caps.formats.contains(&wgpu::TextureFormat::Bgra8UnormSrgb) {
             wgpu::TextureFormat::Bgra8UnormSrgb
-        } else if let Some(srgb) = caps.formats.iter().copied().find(wgpu::TextureFormat::is_srgb) {
+        } else if let Some(srgb) = caps
+            .formats
+            .iter()
+            .copied()
+            .find(wgpu::TextureFormat::is_srgb)
+        {
             srgb
         } else {
             caps.formats[0]
@@ -225,7 +229,6 @@ impl Gfx {
     }
 
     /// The pixel format the surface was configured with.
-    #[must_use]
     pub fn surface_format(&self) -> wgpu::TextureFormat {
         self.surface_config.format
     }
@@ -233,51 +236,43 @@ impl Gfx {
     /// The linear (non-sRGB) view format used by the egui pass. See
     /// [`Self::egui_view_format`] field doc for why this differs from
     /// [`Self::surface_format`].
-    #[must_use]
     pub fn egui_view_format(&self) -> wgpu::TextureFormat {
         self.egui_view_format
     }
 
     /// Surface dimensions (width, height) in physical pixels.
-    #[must_use]
     pub fn surface_size(&self) -> (u32, u32) {
         (self.surface_config.width, self.surface_config.height)
     }
 
     /// Borrow the wgpu device.
-    #[must_use]
     pub fn device(&self) -> &wgpu::Device {
         &self.device
     }
 
     /// Borrow the wgpu queue.
-    #[must_use]
     pub fn queue(&self) -> &wgpu::Queue {
         &self.queue
     }
 
     /// Borrow the surface configuration (read-only).
-    #[must_use]
     pub fn surface_config(&self) -> &wgpu::SurfaceConfiguration {
         &self.surface_config
     }
 
     /// Borrow the wgpu adapter (used by later sub-tasks for capability
     /// queries).
-    #[must_use]
     pub fn adapter(&self) -> &wgpu::Adapter {
         &self.adapter
     }
 
     /// Borrow the wgpu instance.
-    #[must_use]
     pub fn instance(&self) -> &wgpu::Instance {
         &self.instance
     }
 
     /// Borrow the backing window (used by `app.rs` to call
     /// `request_redraw()` between frames).
-    #[must_use]
     pub fn window(&self) -> &Arc<Window> {
         &self.window
     }

@@ -6,4 +6,3 @@ pub mod blocks;
 pub mod game;
 pub mod math;
 pub mod world;
-pub mod worldgen;

@@ -48,10 +48,10 @@ use cgmath::{Matrix4, Point3, SquareMatrix, Vector3};
 use crate::blocks::{
     BaseBlocks, BlockData, BlockRegistry, FaceMapping, State, register_base_blocks,
 };
+use crate::core::world::chunk;
 use crate::client::blocks::{
     BlockRenderRegistry, BlockTextureRegistry, register_base_block_visuals,
 };
-use crate::chunks::Chunk;
 use crate::commands::{CommandRegistry, register_base_commands};
 use crate::input::{InputState, Key, MouseButton};
 use crate::items::ItemStack;
@@ -65,8 +65,27 @@ use crate::render::{
 };
 use crate::textures::Atlases;
 use crate::worlds::chunk_rendering::{ChunkMesh, ChunkPipeline};
-use crate::worlds::world::ByDist;
-use crate::worlds::{BlockView, GameMode, World, WorldError};
+use crate::core::game::player::BlockView;
+use crate::worlds::{GameMode, World, WorldError};
+
+/// Bounded-heap entry for the mesh-dispatch ordering. Local to game
+/// because the mesher's heap is ordering on a different distance metric
+/// than the streaming policy's load shells.
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct ByDist {
+    dist: i32,
+    coord: Vec3i,
+}
+impl Ord for ByDist {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.dist.cmp(&other.dist)
+    }
+}
+impl PartialOrd for ByDist {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 pub use camera::Camera;
 pub use raycast::{Hit, RAYCAST_MAX};
@@ -118,7 +137,7 @@ const SUN_TILT_RAD: f32 = 0.35;
 ///
 /// `game_time` is interpreted modulo [`World::DAY_TICKS`].
 fn time_of_day(game_time: u32) -> Vector3<f32> {
-    let day = crate::worlds::World::DAY_TICKS as f32;
+    let day = crate::core::game::daylight_cycle::DAY_TICKS as f32;
     let angle = std::f32::consts::TAU * (game_time as f32) / day;
     // Tilt the great circle around the X (sunrise/sunset) axis so the
     // sun's noon position sits a bit toward +Z instead of straight
@@ -146,6 +165,20 @@ const SQRT_3_F32: f32 = 1.732_050_8;
 /// All the game-side state, owned by `App`.
 pub struct Game {
     pub world: World,
+    /// Owns the chunk pipeline + terrain-generation state. World is
+    /// registry-agnostic; this is the registry-aware counterpart that
+    /// turns coords into chunks.
+    pub terrain_generator: crate::core::game::worldgen::TerrainGenerator,
+    /// Streaming policy: maintains pin guards on every chunk in a
+    /// window around the player, drives loads/unloads through
+    /// `World` + `TerrainGenerator`'s pipeline.
+    pub range_loader: crate::core::game::range_loader::RangeLoader,
+    /// Gameplay write/tick queue. Stub-driven this round.
+    pub block_update_queue: crate::core::game::block_update::BlockUpdateQueue,
+    /// In-game clock (formerly `World::game_time`).
+    pub daylight_cycle: crate::core::game::daylight_cycle::DaylightCycle,
+    /// Player state (formerly `World::player`).
+    pub player: crate::core::game::player::Player,
     pub camera: Camera,
     /// Per-coord GPU mesh. Keyed by chunk coord so dirty-chunk rebuilds
     /// (`[F2]`) and async-mesh delivery (`[F6]`) can swap one entry in O(1),
@@ -306,22 +339,23 @@ impl Game {
             "creating world"
         );
 
-        let mut world = World::new_at(
+        // Build the per-world id translation tables (registry-aware,
+        // outside the database).
+        let tables = crate::core::game::worldgen::world_tables_for(
             worlds_root,
-            world_name,
-            render_distance,
-            world_seed,
-            Arc::clone(registry),
-            base_blocks,
+            &world_name,
+            registry,
         )?;
 
-        // Try to restore the player from disk. If the file is missing or
-        // unreadable, the default player at spawn is left in place.
-        let player_path = world.player_path();
+        let mut world = World::new_at(worlds_root, world_name, tables)?;
+
+        // Try to restore the player from disk; fall back to default.
+        let mut player = crate::core::game::player::Player::default();
+        let player_path = world.dir().join("player.bin");
         if player_path.exists() {
             match crate::worlds::Player::load_from(&player_path) {
                 Ok(p) => {
-                    *world.player_mut() = p;
+                    player = p;
                     tracing::info!(?player_path, "player restored");
                 }
                 Err(err) => {
@@ -330,18 +364,30 @@ impl Game {
             }
         }
 
+        let mut terrain_generator = crate::core::game::worldgen::TerrainGenerator::new(
+            &world,
+            Arc::clone(registry),
+            base_blocks,
+            world_seed,
+        );
+        let daylight_cycle = crate::core::game::daylight_cycle::DaylightCycle::new();
+
+        // Streaming policy + the gameplay block-update queue live
+        // outside `World` (in `core::game`); the game owns instances
+        // and threads them into the world for each tick.
+        let mut range_loader = crate::core::game::range_loader::RangeLoader::new(render_distance);
+        let block_update_queue = crate::core::game::block_update::BlockUpdateQueue::new();
+
         // Pin the load center to the player chunk so the first set of load
         // requests covers the player's actual surroundings. `tick_sim` keeps
         // the center following the player from then on.
-        let player_world = world.player().coord();
-        world.set_center(Vec3i::new(
+        let player_world = player.coord();
+        range_loader.set_center(Vec3i::new(
             player_world.x.floor() as i32,
             player_world.y.floor() as i32,
             player_world.z.floor() as i32,
         ));
-        // Kick the async load pipeline ([F5]) so chunks start streaming in on
-        // frame 1. Meshes follow once load results arrive (see `tick`).
-        world.tick_chunk_loading_async();
+        range_loader.tick_chunk_loading_async(&mut world, &mut terrain_generator);
 
         // Start in basic G-buffer shape (diffuse + depth only). The
         // first `apply_shadow_config` call after construction reads the
@@ -406,9 +452,9 @@ impl Game {
         particle_mesh.rebuild(device, particles.particles(), 0.0);
 
         // Camera starts at the eye position; tick_render keeps it synced.
-        let look = world.player().look_coord();
+        let look = player.look_coord();
         let mut camera = Camera::new(look);
-        camera.set_orientation(world.player().orientation());
+        camera.set_orientation(player.orientation());
 
         let mesh_worker = MeshPipeline::spawn(Arc::clone(registry), Arc::clone(render_registry));
 
@@ -417,6 +463,11 @@ impl Game {
 
         Ok(Self {
             world,
+            terrain_generator,
+            range_loader,
+            block_update_queue,
+            daylight_cycle,
+            player,
             camera,
             chunk_meshes: HashMap::new(),
             chunk_pipeline,
@@ -523,10 +574,10 @@ impl Game {
             let dy = f64::from(input.mouse_motion.y);
             if dx != 0.0 || dy != 0.0 {
                 let gain = self.mouse_speed * MOUSE_LOOK_RAD_PER_PIXEL;
-                let mut o = self.world.player().orientation();
+                let mut o = self.player.orientation();
                 o.heading -= dx * gain;
                 o.pitch -= dy * gain;
-                self.world.player_mut().set_orientation(o);
+                self.player.set_orientation(o);
             }
         }
 
@@ -534,9 +585,8 @@ impl Game {
         // pause / chat — UI overlays still want a coherent view of the world
         // behind them. Camera position is set in `write_frame_uniforms` so it
         // can include the simulation interpolation factor.
-        self.camera
-            .set_orientation(self.world.player().orientation());
-        self.camera.position = self.world.player().look_coord();
+        self.camera.set_orientation(self.player.orientation());
+        self.camera.position = self.player.look_coord();
 
         // Selection raycast is cheap and feels nicer when it tracks the
         // camera at full frame rate.
@@ -556,23 +606,19 @@ impl Game {
             // scrolls (positive = up = previous slot, mirroring most voxel
             // games' convention).
             if input.is_key_pressed(Key::Z) {
-                let cur = self.world.player().held_item_stack_index();
-                self.world
-                    .player_mut()
-                    .set_held_item_stack_index((cur + 9) % 10);
+                let cur = self.player.held_item_stack_index();
+                self.player.set_held_item_stack_index((cur + 9) % 10);
             }
             if input.is_key_pressed(Key::X) {
-                let cur = self.world.player().held_item_stack_index();
-                self.world
-                    .player_mut()
-                    .set_held_item_stack_index((cur + 1) % 10);
+                let cur = self.player.held_item_stack_index();
+                self.player.set_held_item_stack_index((cur + 1) % 10);
             }
             let wheel = input.mouse_wheel_delta;
             if wheel.abs() >= 0.5 {
-                let cur = self.world.player().held_item_stack_index();
+                let cur = self.player.held_item_stack_index();
                 let steps = wheel.round() as i32;
                 let next = ((cur as i32 - steps).rem_euclid(10)) as usize;
-                self.world.player_mut().set_held_item_stack_index(next);
+                self.player.set_held_item_stack_index(next);
             }
             // F3+M → toggle the shadow-map debug overlay. Only honored
             // while advanced rendering is on (shadow pass actually has
@@ -585,15 +631,15 @@ impl Game {
             }
             // Mode toggles. F1 → game mode, F4 → cross-wall (creative only).
             if input.is_key_pressed(Key::F1) {
-                let next = match self.world.player().game_mode() {
+                let next = match self.player.game_mode() {
                     GameMode::Survival => GameMode::Creative,
                     GameMode::Creative => GameMode::Survival,
                 };
-                self.world.player_mut().set_game_mode(next);
+                self.player.set_game_mode(next);
             }
             if input.is_key_pressed(Key::F4) {
-                let cw = self.world.player().cross_wall();
-                self.world.player_mut().set_cross_wall(!cw);
+                let cw = self.player.cross_wall();
+                self.player.set_cross_wall(!cw);
             }
         }
     }
@@ -638,13 +684,13 @@ impl Game {
         } else {
             // Stop sprint if input is gated this tick; matches C++
             // `set_running(false)` when W is not held.
-            self.world.player_mut().set_running(false);
+            self.player.set_running(false);
             self.last_w_press = None;
         }
         // Physics runs unconditionally — gravity should keep applying while
         // a menu is open, just like the C++ build. `World::update_player`
         // hides the player/world borrow split internally (see its docs).
-        self.world.update_player();
+        // Player physics off this round; previously: self.world.update_player();
 
         // Drain the block-update queue. Mirrors the C++ `update_thread` loop
         // calling `process_block_updates()` once per tick. Drives the BFS
@@ -652,12 +698,18 @@ impl Game {
         // place). Suppressed while paused so a paused game stays perfectly
         // frozen.
         if !paused {
-            self.world.process_block_updates();
+            crate::core::game::block_update::process_block_updates(
+                &mut self.world,
+                &mut self.block_update_queue,
+            );
             // Random tick drives slow world dynamics: grass spread / smother
             // and future tickable blocks. Cheap (per-chunk fixed sample
             // count) but skipped while paused so a frozen world stays
             // visually frozen.
-            self.world.random_tick();
+            crate::core::game::block_update::random_tick(
+                &mut self.world,
+                &mut self.block_update_queue,
+            );
             // Advance the in-game clock. F8 (held) multiplies the
             // per-tick step so the user can scrub day/night quickly.
             let step = if input.is_key_down(Key::F8) {
@@ -665,7 +717,7 @@ impl Game {
             } else {
                 1
             };
-            self.world.advance_game_time(step);
+            self.daylight_cycle.advance(step);
             // No drain into a separate dirty queue — `pump_meshing` walks
             // `World::drain_updated_chunks` directly each frame and
             // clears flags only on the chunks it actually meshed.
@@ -674,24 +726,26 @@ impl Game {
         // Slide the chunk grid + height map to follow the player. Mirrors
         // C++ `update_chunk_lists`: only re-pivot when the player crosses a
         // chunk boundary so we don't churn the height-map cache every tick.
-        let player_world = self.world.player().coord();
+        let player_world = self.player.coord();
         let player_block = Vec3i::new(
             player_world.x.floor() as i32,
             player_world.y.floor() as i32,
             player_world.z.floor() as i32,
         );
         let player_chunk = crate::worlds::chunk_coord(player_block);
-        if self.world.center_ccoord() != player_chunk {
-            self.world.set_center(player_block);
+        if self.range_loader.center_ccoord() != player_chunk {
+            self.range_loader.set_center(player_block);
         }
 
         // Drive the async chunk pipeline (F5): issue load/unload requests.
-        // World marks every freshly-arrived chunk's `updated` flag and
-        // those of its 26 neighbours, so the next `drain_updated_chunks`
-        // covers the load-completion case automatically — no Game-side
-        // dirty-marking call needed.
-        self.world.tick_chunk_loading_async();
-        self.world.poll_load_results();
+        // RangeLoader marks every freshly-arrived chunk's `updated` flag
+        // and those of its 26 neighbours via `World::mark_neighbour_chunks_updated`,
+        // so the next `drain_updated_chunks` covers the load-completion
+        // case automatically — no Game-side dirty-marking call needed.
+        self.range_loader
+            .tick_chunk_loading_async(&mut self.world, &mut self.terrain_generator);
+        self.range_loader
+            .poll_load_results(&mut self.world, &mut self.terrain_generator);
 
         // Drop cached meshes for any coord that's no longer loaded — happens
         // every tick (not just on insert) so unload-on-walk reaps GPU
@@ -711,7 +765,7 @@ impl Game {
     /// Process WSAD / Space / Shift / sprint detection and feed the player.
     /// Press-edge events only fire when `first_tick_of_frame` is true.
     fn process_movement_input(&mut self, input: &InputState, first_tick_of_frame: bool) {
-        let player = self.world.player();
+        let player = &self.player;
         let heading = player.orientation().heading;
         let speed = player.speed();
         let flying = player.flying();
@@ -738,7 +792,7 @@ impl Game {
         }
 
         if delta_v.x != 0.0 || delta_v.z != 0.0 {
-            let mut velocity = self.world.player().velocity();
+            let mut velocity = self.player.velocity();
             velocity += delta_v;
             // Walking speed cap — only when grounded / non-flying. Matches
             // C++: horizontal velocity magnitude clipped to `speed`.
@@ -750,7 +804,7 @@ impl Game {
                     velocity.z *= inv;
                 }
             }
-            self.world.player_mut().set_velocity(velocity);
+            self.player.set_velocity(velocity);
         }
 
         // Sprint detection — double-tap W within `SPRINT_DOUBLE_TAP_SECS`.
@@ -762,7 +816,7 @@ impl Game {
                     Some(prev)
                         if now.duration_since(prev).as_secs_f64() <= SPRINT_DOUBLE_TAP_SECS =>
                     {
-                        self.world.player_mut().set_running(true);
+                        self.player.set_running(true);
                         true
                     }
                     _ => false,
@@ -772,18 +826,18 @@ impl Game {
         }
         // Releasing W stops the sprint (mirrors C++ `set_running(false)`).
         if !input.is_key_down(Key::W) {
-            self.world.player_mut().set_running(false);
+            self.player.set_running(false);
             self.last_w_press = None;
         }
 
         // Jump — Space. on_jump consumes a mid-air jump only on press edge.
         if input.is_key_down(Key::Space) {
             let just_pressed = first_tick_of_frame && input.is_key_pressed(Key::Space);
-            self.world.player_mut().on_jump(just_pressed);
+            self.player.on_jump(just_pressed);
         }
         // Crouch — Shift held.
         if input.is_key_down(Key::LeftShift) || input.is_key_down(Key::RightShift) {
-            self.world.player_mut().on_crouch();
+            self.player.on_crouch();
         }
     }
 
@@ -800,7 +854,7 @@ impl Game {
     /// actually entered the worker queue. Skipped or rejected chunks
     /// stay marked and reappear in the next frame's iterator.
     pub fn pump_meshing(&mut self, device: &wgpu::Device) {
-        let player_world = self.world.player().coord();
+        let player_world = self.player.coord();
         let player_chunk = crate::worlds::chunk_coord(Vec3i::new(
             player_world.x.floor() as i32,
             player_world.y.floor() as i32,
@@ -813,14 +867,6 @@ impl Game {
             BinaryHeap::with_capacity(MAX_MESH_DISPATCHES_PER_FRAME + 1);
         for cc in self.world.drain_updated_chunks() {
             if self.meshing_in_flight.contains(&cc) {
-                continue;
-            }
-            // Mesher samples a 1-cell padded neighbourhood; gating on
-            // every neighbour being loaded prevents visible cracks at
-            // the render boundary while a chunk is still streaming its
-            // outer ring in. Skipped chunks stay marked and re-enter
-            // next frame's iterator.
-            if !self.world.has_neighbours_loaded(cc) {
                 continue;
             }
             let d = cc - player_chunk;
@@ -838,12 +884,17 @@ impl Game {
             .map(|e| e.coord)
             .collect();
 
-        // Submit each picked coord. Only successful submits get cleared
-        // — a worker-queue-full rejection leaves the chunk marked so it
-        // retries next frame.
+        // Submit each picked coord. `build_mesh_input` opens a 27-coord
+        // ReadTxn over the chunk + its 26 neighbours; the txn errors
+        // with `BeginError::NotLoaded` if any neighbour is missing,
+        // which is the gate that prevents cracks at the render
+        // boundary. Skipped chunks stay marked and re-enter next
+        // frame's iterator.
         let mut submitted: Vec<Vec3i> = Vec::with_capacity(picked.len());
         for &coord in &picked {
-            let input = build_mesh_input(&self.world, coord, self.mesh_options);
+            let Some(input) = build_mesh_input(&self.world, coord, self.mesh_options) else {
+                continue;
+            };
             if self.mesh_worker.submit(input) {
                 self.meshing_in_flight.insert(coord);
                 submitted.push(coord);
@@ -946,7 +997,7 @@ impl Game {
         if !advanced_render {
             self.show_shadow_map = false;
         }
-        let render_distance = self.world.render_distance();
+        let render_distance = self.range_loader.render_distance();
         // C++ `shadow_distance() = min(MaxShadowDistance, RenderDistance)`.
         self.shadow_distance_chunks = max_shadow_distance.min(render_distance).max(1);
 
@@ -997,7 +1048,7 @@ impl Game {
         // `render_scene`: at α=0 (tick just happened) we show the pre-tick
         // position so motion is continuous; at α=1 (about to tick again) we
         // show the post-tick position.
-        let player = self.world.player();
+        let player = &self.player;
         let look = player.look_coord();
         let velocity = player.velocity();
         let alpha = f64::from(tick_alpha.clamp(0.0, 1.0));
@@ -1079,10 +1130,10 @@ impl Game {
         // Refresh the cached sun direction + sky-light multiplier from
         // the in-game clock. Stored on `Game` so the shadow matrix and
         // the uniform write below see the same vector.
-        self.sun_dir = time_of_day(self.world.game_time());
+        self.sun_dir = time_of_day(self.daylight_cycle.game_time());
 
         let shadow_view_proj = if self.advanced_render {
-            let length = (self.shadow_distance_chunks as f32) * (Chunk::SIZE as f32);
+            let length = (self.shadow_distance_chunks as f32) * (chunk::SIZE as f32);
             shadow_matrix(self.camera.position, self.sun_dir, length)
         } else {
             Matrix4::identity()
@@ -1106,8 +1157,8 @@ impl Game {
         // Fog scales with the live render distance: `fog_end` lands just past
         // the diagonal of the loaded cube (so corner chunks fade smoothly into
         // sky), `fog_start` 65% of the way there for a generous fade band.
-        let r = self.world.render_distance() as f32;
-        let chunk = Chunk::SIZE as f32;
+        let r = self.range_loader.render_distance() as f32;
+        let chunk = chunk::SIZE as f32;
         u.fog_end = (r + 0.5) * SQRT_3_F32 * chunk;
         u.fog_start = u.fog_end * 0.65;
         u.render_distance = r * chunk;
@@ -1127,7 +1178,7 @@ impl Game {
         u.shadow_params = if self.advanced_render {
             [
                 self.shadow_res as f32,
-                (self.shadow_distance_chunks as f32) * (Chunk::SIZE as f32),
+                (self.shadow_distance_chunks as f32) * (chunk::SIZE as f32),
                 0.8,
                 inside_water_flag,
             ]
@@ -1309,15 +1360,15 @@ impl Game {
         // At rd=32 with all chunks meshed this directly cuts the
         // per-frame `CommandEncoder::finish` cost, which scales with
         // recorded command count.
-        let player_world = self.world.player().coord();
+        let player_world = self.player.coord();
         let player_chunk = crate::worlds::chunk_coord(Vec3i::new(
             player_world.x.floor() as i32,
             player_world.y.floor() as i32,
             player_world.z.floor() as i32,
         ));
-        let render_distance = self.world.render_distance();
+        let render_distance = self.range_loader.render_distance();
         let shadow_distance = self.shadow_distance_chunks;
-        let chunk_size = Chunk::SIZE as f32;
+        let chunk_size = chunk::SIZE as f32;
         let camera_visible: Vec<&ChunkMesh> = self
             .chunk_meshes
             .values()
@@ -1497,16 +1548,19 @@ impl Game {
         // `set_block` marks the cell's chunk and the parent chunks of its
         // 26 block-neighbours as `updated`; `pump_meshing` picks them up
         // via `World::drain_updated_chunks`.
-        self.world.set_block(coord, self.base_blocks.air, true);
+        crate::core::game::block_update::set_block(
+            &mut self.world,
+            &mut self.block_update_queue,
+            coord,
+            self.base_blocks.air,
+            true,
+        );
 
         // Drop the broken block into the player's inventory. `add_item`
         // returns false if the inventory is completely full of incompatible
         // stacks; in that case the item is lost (matching the C++ behaviour
         // — there is no in-world dropped-item entity to fall back to yet).
-        let _ = self
-            .world
-            .player_mut()
-            .add_item(ItemStack::new(block.id, 1));
+        let _ = self.player.add_item(ItemStack::new(block.id, 1));
 
         // Spawn debris. Each fleck samples a small random fragment of the
         // broken block's face art (mirrors C++ `throw_particle` choosing a
@@ -1543,7 +1597,7 @@ impl Game {
         let target = hit.coord + hit.normal;
         // Hotbar slot's id determines what gets placed. Empty hotbar = no
         // placement (mirrors C++: `if (!holdingItem.empty())`).
-        let hotbar = *self.world.player().held_item_stack();
+        let hotbar = *self.player.held_item_stack();
         if hotbar.empty() {
             return;
         }
@@ -1555,7 +1609,7 @@ impl Game {
         // Reject placement that would overlap the player's hitbox. C++ does
         // this via `Player::put_block`, which calls `aabb().intersects(...)`;
         // we replicate the same shape here.
-        if player_overlaps_block(&self.world, target) {
+        if player_overlaps_block(&self.player, target) {
             return;
         }
         // Don't replace existing solid blocks (lets `+normal` placement work
@@ -1578,13 +1632,19 @@ impl Game {
         };
         // `set_block_with_state` handles all dirty-mesh marking — see
         // `try_break`.
-        self.world
-            .set_block_with_state(target, placed_id, placed_state, true);
+        crate::core::game::block_update::set_block_with_state(
+            &mut self.world,
+            &mut self.block_update_queue,
+            target,
+            placed_id,
+            placed_state,
+            true,
+        );
 
         // Decrement the hotbar stack. In creative we could keep the stack
         // full, but the C++ build always decrements — so we mirror that.
-        let idx = self.world.player().held_item_stack_index();
-        let slot = self.world.player_mut().inventory_item_stack_mut(3, idx);
+        let idx = self.player.held_item_stack_index();
+        let slot = self.player.inventory_item_stack_mut(3, idx);
         if slot.count > 0 {
             slot.count -= 1;
             if slot.count == 0 {
@@ -1728,8 +1788,7 @@ fn ortho_wgpu_rev(
 /// Predicate: would placing a unit-cube block at `block` overlap the player's
 /// hitbox right now? Mirrors the player-collision check in C++
 /// `Player::put_block` (`player_aabb.intersects(block_aabb)`).
-fn player_overlaps_block(world: &World, block: Vec3i) -> bool {
-    let player = world.player();
+fn player_overlaps_block(player: &crate::core::game::player::Player, block: Vec3i) -> bool {
     if player.cross_wall() {
         return false;
     }
@@ -1758,6 +1817,24 @@ fn player_overlaps_block(world: &World, block: Vec3i) -> bool {
         && p_hi.z > lo.z
 }
 
+/// `BlockView` impl for the bare `World`. Hitbox / water queries are
+/// gameplay-collision concerns the database doesn't track; stub them
+/// to "no obstacles, not in water" until those caches reactivate.
+impl BlockView for World {
+    fn block(&self, coord: Vec3i) -> Option<BlockData> {
+        World::block(self, coord)
+    }
+    fn block_or_air(&self, coord: Vec3i) -> BlockData {
+        World::block_or_air(self, coord)
+    }
+    fn hitboxes(&self, _box_: crate::math::Aabbd) -> Vec<crate::math::Aabbd> {
+        Vec::new()
+    }
+    fn in_water(&self, _box_: crate::math::Aabbd) -> bool {
+        false
+    }
+}
+
 /// Newtype that lets us pass a `&dyn BlockView` through `&impl BlockView`
 /// constraints (needed by `ParticleSystem::tick`'s generic parameter).
 struct BlockViewRef<'a>(&'a dyn BlockView);
@@ -1782,7 +1859,9 @@ impl BlockView for BlockViewRef<'_> {
 /// `options` is captured at submit time so the worker meshes against a stable
 /// view; menu toggles take effect by re-issuing every dirty chunk
 /// (see [`Game::apply_mesh_config`]).
-fn build_mesh_input(world: &World, ccoord: Vec3i, options: MeshOptions) -> MeshInput {
+fn build_mesh_input(world: &World, ccoord: Vec3i, options: MeshOptions) -> Option<MeshInput> {
+    use crate::worlds::WorkingSet;
+
     let air = BlockData::default();
     // Heap-allocate without putting the array on the stack first.
     let v = vec![air; PADDED_VOLUME];
@@ -1792,28 +1871,46 @@ fn build_mesh_input(world: &World, ccoord: Vec3i, options: MeshOptions) -> MeshI
         Err(_) => unreachable!("PADDED_VOLUME constant is correct"),
     };
 
+    // Open a 27-coord ReadTxn over the chunk + its 26 neighbours.
+    // Errors with `NotLoaded` if any of the 27 isn't currently in
+    // memory — this *is* the "all neighbours loaded" gate that
+    // prevents seam cracks at the render boundary; we don't need a
+    // separate `has_neighbours_loaded` check upstream. Each padded
+    // cell read goes through the held guards via array index, no
+    // per-cell DashMap or RwLock acquisition.
+    let mut coords = Vec::with_capacity(27);
+    for dx in -1..=1_i32 {
+        for dy in -1..=1_i32 {
+            for dz in -1..=1_i32 {
+                coords.push(ccoord + Vec3i::new(dx, dy, dz));
+            }
+        }
+    }
+    let txn = world.begin_read_txn_sync(WorkingSet::Coords(coords)).ok()?;
+
     let chunk_origin = Vec3i::new(
-        ccoord.x * Chunk::SIZE,
-        ccoord.y * Chunk::SIZE,
-        ccoord.z * Chunk::SIZE,
+        ccoord.x * chunk::SIZE,
+        ccoord.y * chunk::SIZE,
+        ccoord.z * chunk::SIZE,
     );
     let p_size = i32::try_from(PADDED_SIZE).unwrap_or(18);
     for pz in 0..p_size {
         for py in 0..p_size {
             for px in 0..p_size {
                 let global = chunk_origin + Vec3i::new(px - 1, py - 1, pz - 1);
-                let block = world.block_or_air(global);
+                let block = txn.read(global).expect("inside the 3x3x3 cube");
                 let idx = padded_index(px as usize, py as usize, pz as usize);
                 padded[idx] = block;
             }
         }
     }
+    drop(txn);
 
-    MeshInput {
+    Some(MeshInput {
         coord: ccoord,
         padded,
         options,
-    }
+    })
 }
 
 /// Build a fresh block registry + render registry + texture registry +
@@ -1823,7 +1920,6 @@ fn build_mesh_input(world: &World, ccoord: Vec3i, options: MeshOptions) -> MeshI
 /// render and texture registries are client-only and would be skipped in
 /// a future headless server. All three are wrapped in `Arc` so the
 /// renderer, mesher, and async chunk worker can hold cheap clones.
-#[must_use]
 pub fn build_block_registry() -> (
     Arc<BlockRegistry>,
     Arc<BlockRenderRegistry>,
@@ -1846,7 +1942,6 @@ pub fn build_block_registry() -> (
 impl Game {
     /// Filter chat history to lines whose timestamp is within the recent
     /// decay window, plus everything when chat is open. Public for the HUD.
-    #[must_use]
     pub fn visible_chat_lines(&self, chat_open: bool) -> Vec<&str> {
         let now = Instant::now();
         let cutoff = std::time::Duration::from_secs_f32(CHAT_MESSAGE_LIFETIME_SECS);

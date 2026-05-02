@@ -59,7 +59,7 @@ pub struct TitleScreen {
 }
 
 impl TitleScreen {
-    #[must_use]
+    
     pub fn new(
         config: Arc<Mutex<Config>>,
         i18n: Arc<Mutex<I18n>>,

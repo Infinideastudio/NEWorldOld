@@ -55,7 +55,6 @@ impl I18n {
     /// the configured language file is missing or malformed at boot time —
     /// every `get(_)` returns `""`, so the menu shows blank captions instead
     /// of crashing the app.
-    #[must_use]
     pub fn empty(lang_code: &str) -> Self {
         Self {
             current: lang_code.to_owned(),
@@ -91,13 +90,11 @@ impl I18n {
 
     /// Look up a translated string by key. Returns `""` if the key is not
     /// present (the map is **not** mutated).
-    #[must_use]
     pub fn get(&self, key: &str) -> &str {
         self.lines.get(key).map_or("", String::as_str)
     }
 
     /// The current language code (e.g. `"en_US"`).
-    #[must_use]
     pub fn current(&self) -> &str {
         &self.current
     }
@@ -130,7 +127,6 @@ pub struct LanguageEntry {
 /// Files that fail to read or parse are silently skipped — the language
 /// picker shouldn't crash the menu just because one TOML is malformed.
 /// Returns the list sorted by `code` for stable ordering across runs.
-#[must_use]
 pub fn list_languages(lang_dir: &Path) -> Vec<LanguageEntry> {
     let mut out = Vec::new();
     let Ok(reader) = std::fs::read_dir(lang_dir) else {

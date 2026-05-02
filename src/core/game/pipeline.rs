@@ -1,37 +1,29 @@
 //! Async chunk load/save pipeline ([F5] in `docs/rust_migration.md` §5).
 //!
 //! Spawns one background worker thread that owns a clone of the
-//! `Arc<sled::Db>` plus its own `Generator`, `BaseBlocks`,
-//! `Arc<BlockRegistry>`, and `HeightMap`. The main thread sends
-//! [`LoadRequest`]s through a `crossbeam-channel`; the worker
-//! generates / loads-from-sled the chunk and ships the finished
-//! [`LoadResult`] back. Save requests are fire-and-forget.
-//!
-//! ## `HeightMap` strategy
-//!
-//! The worker carries its **own** `HeightMap` instance. Per the migration
-//! plan §4.6, `HeightMap` is not thread-safe — it's a sliding-window cache
-//! mutated during `init_generate`. The simplest correct option is per-worker
-//! ownership: load requests are processed serially on the worker, so a single
-//! `HeightMap` there suffices, and the main thread's height map stays
-//! independent of the async path.
+//! `Arc<sled::Db>` plus its own `Generator`, `BaseBlocks`, and
+//! `Arc<BlockRegistry>`. The main thread sends [`LoadRequest`]s
+//! through a `crossbeam-channel`; the worker generates /
+//! loads-from-sled the chunk and ships the finished [`LoadResult`]
+//! back. Save requests are fire-and-forget.
 //!
 //! ## Cross-thread chunk identity
 //!
-//! Every cross-thread reference is a coord. The main thread re-resolves
-//! load results through the world's hash map after the worker returns —
-//! so a chunk that was unloaded mid-flight is dropped instead of revived.
+//! Every cross-thread reference is a coord. The main thread
+//! re-resolves load results through the world's chunk map after the
+//! worker returns — so a chunk that was unloaded mid-flight is
+//! dropped instead of revived.
 
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
 
-use crate::blocks::{BaseBlocks, BlockId, BlockRegistry};
-use super::chunk::Chunk;
-use crate::height_maps::HeightMap;
+use crate::blocks::{BaseBlocks, BlockId, BlockRegistry, Light};
+use crate::core::world::Blocks;
 use crate::math::Vec3i;
-use crate::terrain_generation::Generator;
+
+use super::worldgen::{self, HeightNoise};
 
 /// One unit of work for the chunk pipeline worker.
 pub enum LoadRequest {
@@ -43,11 +35,15 @@ pub enum LoadRequest {
     Save(Vec3i, Vec<u8>),
 }
 
-/// Result of a successful [`LoadRequest::Load`]. `chunk` is fully initialized
-/// (post-`init_generate` + `post_init`) and ready for `World::insert`.
+/// Result of a successful [`LoadRequest::Load`]. `blocks` is the
+/// fully-populated cell array, ready to be installed via
+/// `World::install_chunk`. `from_disk` carries whether the array came
+/// from sled (in which case it already matches disk) or was freshly
+/// generated (dirty until it's written out).
 pub struct LoadResult {
     pub coord: Vec3i,
-    pub chunk: Chunk,
+    pub blocks: Blocks,
+    pub from_disk: bool,
 }
 
 /// Owner-side handle for the load/save worker. Drops the request channel on
@@ -61,22 +57,19 @@ pub struct ChunkPipeline {
 }
 
 impl ChunkPipeline {
-    /// Spawn the worker thread. The worker owns its own `HeightMap`; the
-    /// `Generator`, `BaseBlocks`, registry and sled DB handle are shared with
-    /// the main thread via cheap clones.
+    /// Spawn the worker thread. The `Generator`, `BaseBlocks`,
+    /// registry and sled DB handle are shared with the main thread
+    /// via cheap clones.
     ///
-    /// `canonical_to_current` is the per-world id translation: indexed by
-    /// the canonical id stored on disk, each entry is the in-memory
-    /// `BlockId` to substitute when loading. Pass an empty `Vec` for an
-    /// identity mapping (the world's canonical mapping equals the current
-    /// registry — typical for a freshly-created world).
-    #[must_use]
+    /// `canonical_to_current` is the per-world id translation:
+    /// indexed by the canonical id stored on disk, each entry is the
+    /// in-memory `BlockId` to substitute when loading. Pass an empty
+    /// `Vec` for identity (typical for a freshly-created world).
     pub fn spawn(
         registry: Arc<BlockRegistry>,
         base_blocks: BaseBlocks,
-        generator: Generator,
+        noise: HeightNoise,
         db: Arc<sled::Db>,
-        height_map_size: usize,
         canonical_to_current: Arc<Vec<BlockId>>,
     ) -> Self {
         let (req_tx, req_rx) = unbounded::<LoadRequest>();
@@ -89,9 +82,8 @@ impl ChunkPipeline {
                     res_tx,
                     registry,
                     base_blocks,
-                    generator,
+                    noise,
                     db,
-                    height_map_size,
                     canonical_to_current,
                 );
             })
@@ -105,7 +97,6 @@ impl ChunkPipeline {
 
     /// Send a [`LoadRequest::Load`]. Returns `false` if the channel is closed
     /// (worker has exited).
-    #[must_use]
     pub fn request_load(&self, coord: Vec3i) -> bool {
         match self.requests.as_ref() {
             Some(tx) => tx.send(LoadRequest::Load(coord)).is_ok(),
@@ -122,7 +113,6 @@ impl ChunkPipeline {
     }
 
     /// Drain every available [`LoadResult`] without blocking.
-    #[must_use]
     pub fn drain_results(&self) -> Vec<LoadResult> {
         let mut out = Vec::new();
         while let Ok(r) = self.results.try_recv() {
@@ -146,33 +136,33 @@ impl Drop for ChunkPipeline {
 /// Worker entry point. Owns its channel ends + worldgen state for the
 /// thread's whole lifetime (drop-on-exit closes the channels). Processes
 /// requests until the request channel disconnects.
-#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)] // values are dropped on thread exit
+#[allow(clippy::needless_pass_by_value)] // values are dropped on thread exit
 fn worker_loop(
     requests: Receiver<LoadRequest>,
     results: Sender<LoadResult>,
     _registry: Arc<BlockRegistry>,
     base_blocks: BaseBlocks,
-    generator: Generator,
+    noise: HeightNoise,
     db: Arc<sled::Db>,
-    height_map_size: usize,
     canonical_to_current: Arc<Vec<BlockId>>,
 ) {
-    // `_registry` isn't consulted by terrain gen today (which goes through
-    // `BaseBlocks` ids); the Arc is held for the worker's lifetime so future
-    // worldgen extensions can reach for it without re-plumbing.
-    let mut height_map = HeightMap::new(height_map_size);
+    // `_registry` isn't consulted by terrain gen today (which goes
+    // through `BaseBlocks` ids); the Arc is held for the worker's
+    // lifetime so future worldgen extensions can reach for it without
+    // re-plumbing.
     while let Ok(req) = requests.recv() {
         match req {
             LoadRequest::Load(coord) => {
-                let chunk = build_chunk(
-                    coord,
-                    &mut height_map,
-                    &generator,
-                    &base_blocks,
-                    &db,
-                    &canonical_to_current,
-                );
-                if results.send(LoadResult { coord, chunk }).is_err() {
+                let (blocks, from_disk) =
+                    build_chunk(coord, &noise, &base_blocks, &db, &canonical_to_current);
+                if results
+                    .send(LoadResult {
+                        coord,
+                        blocks,
+                        from_disk,
+                    })
+                    .is_err()
+                {
                     break;
                 }
             }
@@ -186,18 +176,21 @@ fn worker_loop(
 }
 
 /// Build a chunk for `coord`: load bytes from sled if present, otherwise
-/// generate fresh terrain. Always runs `post_init` before returning.
+/// generate fresh terrain. Returns the chunk plus whether the bytes came
+/// from disk (so the caller can install the page with `(save_gen,
+/// commit_gen) = (1, 1)`) or from the generator (`(0, 1)` — dirty until
+/// written back).
 fn build_chunk(
     coord: Vec3i,
-    height_map: &mut HeightMap,
-    generator: &Generator,
+    noise: &HeightNoise,
     base_blocks: &BaseBlocks,
     db: &sled::Db,
     canonical_to_current: &[BlockId],
-) -> Chunk {
-    let mut chunk = Chunk::new(coord);
+) -> (Blocks, bool) {
+    let default_light = if coord.y < 0 { Light::NONE } else { Light::SKY };
+    let mut blocks = Blocks::air_filled(default_light);
     let from_disk = match db.get(chunk_key(coord)) {
-        Ok(Some(ivec)) => match chunk.unpackage_from(ivec.as_ref(), canonical_to_current) {
+        Ok(Some(ivec)) => match blocks.unpackage_from(ivec.as_ref(), canonical_to_current) {
             Ok(()) => true,
             Err(err) => {
                 tracing::warn!(?coord, error = %err, "chunk unpackage failed; regenerating");
@@ -211,9 +204,9 @@ fn build_chunk(
         }
     };
     if !from_disk {
-        chunk.init_generate(height_map, generator, base_blocks);
+        worldgen::init_generate(&mut blocks, coord, noise, base_blocks);
     }
-    chunk
+    (blocks, from_disk)
 }
 
 /// Sled key for a chunk coord. Mirrors the layout in `super::store::TilesStore`

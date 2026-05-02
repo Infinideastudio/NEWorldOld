@@ -59,7 +59,6 @@ impl TextRenderer {
     /// Loads the bundled `unicode.ttf` as binary font data into the
     /// fontdb backing the [`FontSystem`]. System fonts are scanned by
     /// [`FontSystem::new`] as a fallback.
-    #[must_use]
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat) -> Self {
         let mut font_system = FontSystem::new();
         // Bundle the unicode font so we never depend on a system font being
@@ -88,7 +87,6 @@ impl TextRenderer {
     }
 
     /// Returns the font metrics used when shaping new lines.
-    #[must_use]
     pub fn default_metrics(&self) -> Metrics {
         self.default_metrics
     }

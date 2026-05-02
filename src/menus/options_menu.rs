@@ -44,7 +44,7 @@ pub struct OptionsScreen {
 }
 
 impl OptionsScreen {
-    #[must_use]
+    
     pub fn new(config: Arc<Mutex<Config>>, i18n: Arc<Mutex<I18n>>) -> Self {
         let pending_ui_scale = config.lock().map_or(1.0, |c| c.ui_scale);
         Self {

@@ -72,7 +72,6 @@ impl Default for Screenshot {
 
 impl Screenshot {
     /// Create a screenshot capturer with no cached buffer.
-    #[must_use]
     pub fn new() -> Self {
         Self { cached: None }
     }
@@ -181,7 +180,6 @@ impl Screenshot {
 /// Compute `bytes_per_row` aligned up to `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`.
 ///
 /// Public for unit tests; trivial otherwise.
-#[must_use]
 pub fn padded_bytes_per_row(width: u32) -> u32 {
     let unaligned = width * BYTES_PER_PIXEL;
     let rem = unaligned % ROW_ALIGNMENT;
@@ -303,7 +301,10 @@ mod tests {
     fn padded_bytes_per_row_is_multiple_of_alignment() {
         for w in [1u32, 2, 7, 100, 333, 1000, 1234, 4096] {
             let p = padded_bytes_per_row(w);
-            assert!(p.is_multiple_of(ROW_ALIGNMENT), "width={w} padded={p} not aligned");
+            assert!(
+                p.is_multiple_of(ROW_ALIGNMENT),
+                "width={w} padded={p} not aligned"
+            );
             assert!(p >= w * BYTES_PER_PIXEL);
             assert!(p < w * BYTES_PER_PIXEL + ROW_ALIGNMENT);
         }

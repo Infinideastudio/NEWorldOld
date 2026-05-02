@@ -18,13 +18,13 @@ use crate::math::Vec3i;
 
 use super::error::WorldError;
 
-pub struct TilesStore {
+pub struct Store {
     /// Wrapped in `Arc` so the async chunk pipeline worker can hold a clone
     /// of the underlying sled handle without borrowing through `&World`.
     db: Arc<sled::Db>,
 }
 
-impl TilesStore {
+impl Store {
     /// Open the sled DB at `db_path`, creating parent directories as needed.
     /// This is the path-explicit constructor — tests + production callers
     /// that already know where to put the world should use this instead of
@@ -41,16 +41,13 @@ impl TilesStore {
     /// relative to the current working directory. Equivalent to
     /// `Self::open_at(&Path::new("worlds").join(world_name).join("chunks.db"))`.
     pub fn open(world_name: &str) -> Result<Self, WorldError> {
-        let path = PathBuf::from("worlds")
-            .join(world_name)
-            .join("chunks.db");
+        let path = PathBuf::from("worlds").join(world_name).join("chunks.db");
         Self::open_at(&path)
     }
 
     /// Cheap clone of the underlying sled DB handle for a worker thread.
     /// `sled::Db` is internally `Arc`-shared and `Send + Sync`; the explicit
     /// `Arc` here just makes the sharing visible at the call site.
-    #[must_use]
     pub fn db_handle(&self) -> Arc<sled::Db> {
         Arc::clone(&self.db)
     }
@@ -82,7 +79,7 @@ impl TilesStore {
     }
 }
 
-impl std::fmt::Debug for TilesStore {
+impl std::fmt::Debug for Store {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TilesStore").finish_non_exhaustive()
     }
