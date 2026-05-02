@@ -58,7 +58,7 @@ impl WorkingSet {
                 v
             }
         };
-        out.sort_by(|a, b| (a.x, a.y, a.z).cmp(&(b.x, b.y, b.z)));
+        out.sort_by_key(|c| (c.x, c.y, c.z));
         out.dedup();
         out
     }

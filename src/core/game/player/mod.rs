@@ -14,22 +14,6 @@ use crate::items::ItemStack;
 use crate::math::{Aabbd, Eulerd, Vec3d, Vec3i};
 use crate::worlds::world::BlockView;
 
-/// Serde adapter for `Eulerd` (which doesn't derive Serialize / Deserialize
-/// itself). Round-trips through a 3-tuple of `f64`s.
-mod euler_serde {
-    use super::Eulerd;
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    pub fn serialize<S: Serializer>(value: &Eulerd, ser: S) -> Result<S::Ok, S::Error> {
-        (value.heading, value.pitch, value.roll).serialize(ser)
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(de: D) -> Result<Eulerd, D::Error> {
-        let (heading, pitch, roll) = <(f64, f64, f64)>::deserialize(de)?;
-        Ok(Eulerd::new(heading, pitch, roll))
-    }
-}
-
 /// Gameplay mode — survival enforces fall damage and disables flying;
 /// creative enables flying and allows `cross_wall` toggling.
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -39,17 +23,11 @@ pub enum GameMode {
     Creative,
 }
 
-/// Player state. Field set mirrors the C++ original; see `player.ixx`.
-///
-/// `orientation` round-trips through a `(heading, pitch, roll)` triple because
-/// `Eulerd` itself doesn't derive `Serialize` / `Deserialize` (it is part of a
-/// foreign module-boundary).
+/// Player state.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)] // mirrors the C++ field set verbatim
 pub struct Player {
     coord: Vec3d,
     velocity: Vec3d,
-    #[serde(with = "euler_serde")]
     orientation: Eulerd,
     flying: bool,
     cross_wall: bool,
@@ -86,12 +64,12 @@ impl Player {
         Vec3d::new(self.coord.x, self.coord.y + Self::LOOK_HEIGHT, self.coord.z)
     }
 
-    /// Player hitbox: 0.6 wide, 1.7 tall, centred on the foot x/z.
+    /// Player hitbox: 0.6 wide, 1.8 tall, centred on the foot x/z.
     #[must_use]
     pub fn aabb(&self) -> Aabbd {
         Aabbd::new(
             self.coord - Vec3d::new(0.3, 0.0, 0.3),
-            self.coord + Vec3d::new(0.3, 1.7, 0.3),
+            self.coord + Vec3d::new(0.3, 1.8, 0.3),
         )
     }
 

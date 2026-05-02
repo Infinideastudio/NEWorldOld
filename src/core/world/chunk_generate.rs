@@ -59,27 +59,21 @@ impl Chunk {
         let size = Self::SIZE;
 
         // Skip generation: chunk is fully above terrain & water surface.
-        // `data` stays `None` so `empty()` reads true.
+        // The construction default already filled it with air at the right
+        // sky-light level, so there's nothing to do.
         if self.coord.y < 0 || (self.coord.y > high && self.coord.y * size > WATER_LEVEL) {
             return;
         }
 
         // Fully below the lowest terrain column: solid rock with optional
-        // bedrock floor at world y=0. Always non-empty, so `data` is left
-        // allocated.
+        // bedrock floor at world y=0.
         if self.coord.y < low {
-            self.ensure_data();
             let rock = BlockData {
                 id: base.rock,
                 state: State(0),
                 light: Light::NONE,
             };
-            for cell in self
-                .data
-                .as_mut()
-                .expect("ensure_data allocated")
-                .iter_mut()
-            {
+            for cell in self.data.iter_mut() {
                 *cell = rock;
             }
             if self.coord.y == 0 {
@@ -95,40 +89,25 @@ impl Chunk {
         }
 
         // Normal generation: mixed terrain + water + air column-by-column.
-        // The chunk's y-range can straddle the surface in unhelpful ways —
-        // e.g. a chunk just above the terrain ceiling might pass the
-        // early-return guard above (because `coord.y == high` not strictly
-        // greater) yet end up with every column finding `h < 0 && wh < 0`.
-        // We tentatively allocate `data` for the per-column writes, track
-        // whether any column produced solid content, and roll back to
-        // `data = None` if not. This keeps `empty() ⇔ data.is_none()`.
-        self.ensure_data();
+        // Pre-fill with no-light air; the per-column writes below restore
+        // sky-light to air cells above the surface.
         let air_no_light = BlockData {
             id: base.air,
             state: State(0),
             light: Light::NONE,
         };
-        for cell in self
-            .data
-            .as_mut()
-            .expect("ensure_data allocated")
-            .iter_mut()
-        {
+        for cell in self.data.iter_mut() {
             *cell = air_no_light;
         }
 
         let sh = WATER_LEVEL + 2 - (self.coord.y * size);
         let wh = WATER_LEVEL - (self.coord.y * size);
         let size_us = Self::SIZE_USIZE;
-        let mut produced_solid = false;
 
         for x in 0..size_us {
             for z in 0..size_us {
                 let base_idx = x * size_us * size_us + z;
                 let h = heights[x][z] - (self.coord.y * size);
-                if h >= 0 || wh >= 0 {
-                    produced_solid = true;
-                }
 
                 if h > sh && h > wh + 1 {
                     // Grass top.
@@ -183,15 +162,6 @@ impl Chunk {
                     self.cell_mut(base_idx).id = base.bedrock;
                 }
             }
-        }
-
-        // Nothing solid landed in any column. The 4 KB block array would be
-        // an exact match for what an empty chunk would virtually produce
-        // (uniform air with `default_light()` for `coord.y >= 0`), so
-        // dropping it is a pure win — keeps the invariant *and* reclaims
-        // the memory.
-        if !produced_solid {
-            self.data = None;
         }
     }
 }

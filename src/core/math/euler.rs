@@ -1,8 +1,9 @@
 //! Heading/pitch/roll Euler angles. Matches the C++ `Euler<T>` rotation order.
 
 use cgmath::{BaseFloat, Matrix, Matrix4, Quaternion, Rad, Rotation3, Vector3};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Euler<T> {
     pub heading: T,
     pub pitch: T,

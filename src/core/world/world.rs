@@ -872,11 +872,7 @@ impl World {
             for &dy in ys {
                 for &dz in zs {
                     let target = cc + Vec3i::new(dx, dy, dz);
-                    self.with_chunk_mut(target, |c| {
-                        if !c.empty() {
-                            c.mark_neighbor_updated();
-                        }
-                    });
+                    self.with_chunk_mut(target, |c| c.mark_neighbor_updated());
                 }
             }
         }
@@ -892,11 +888,7 @@ impl World {
             for dy in -1..=1 {
                 for dx in -1..=1 {
                     let target = ccoord + Vec3i::new(dx, dy, dz);
-                    self.with_chunk_mut(target, |c| {
-                        if !c.empty() {
-                            c.mark_neighbor_updated();
-                        }
-                    });
+                    self.with_chunk_mut(target, |c| c.mark_neighbor_updated());
                 }
             }
         }
@@ -922,12 +914,7 @@ impl World {
 
         // Snapshot coords first so we don't borrow `self.chunks` while
         // mutating it via `set_block`.
-        let coords: Vec<Vec3i> = self
-            .chunks
-            .iter()
-            .filter(|(_, c)| !c.empty())
-            .map(|(c, _)| *c)
-            .collect();
+        let coords: Vec<Vec3i> = self.chunks.keys().copied().collect();
         for cc in coords {
             for _ in 0..RANDOM_TICKS_PER_CHUNK {
                 let r = self.rand_u32();
@@ -1031,12 +1018,7 @@ impl World {
     /// flip — chunk content hasn't changed, but the geometry needs to
     /// be rebuilt against the new rules.
     pub fn mark_all_loaded_for_remesh(&mut self) {
-        let coords: Vec<Vec3i> = self
-            .chunks
-            .iter()
-            .filter(|(_, c)| !c.empty())
-            .map(|(c, _)| *c)
-            .collect();
+        let coords: Vec<Vec3i> = self.chunks.keys().copied().collect();
         for cc in coords {
             self.with_chunk_mut(cc, crate::chunks::Chunk::mark_neighbor_updated);
         }
@@ -1362,7 +1344,7 @@ impl World {
         let coords: Vec<Vec3i> = self
             .chunks
             .iter()
-            .filter(|(_, c)| !c.empty() && c.modified())
+            .filter(|(_, c)| c.modified())
             .map(|(c, _)| *c)
             .collect();
         let save_table = self.chunk_save_table.clone();

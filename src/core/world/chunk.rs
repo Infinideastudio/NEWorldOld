@@ -53,14 +53,16 @@ pub enum ChunkError {
 
 /// A `SIZE × SIZE × SIZE` voxel chunk at integer chunk coord `coord`.
 ///
-/// Block data is heap-allocated lazily on first write — empty chunks (e.g.
-/// pure-air sky chunks) take no per-cell memory until they're modified.
-/// Emptiness is encoded *in* `data`: the invariant `empty() ⇔ data.is_none()`
-/// is maintained by every method that touches `data`. There is no separate
-/// `empty` flag to keep in sync.
+/// Block data is held inline as a fixed-size array — there is no
+/// lazy-allocation / "empty chunk" path. Every chunk costs
+/// `SIZE_CUBED * sizeof(BlockData)` bytes regardless of contents. The
+/// previous `Option<Box<[..]>>` story was traded away for simpler
+/// access paths and predictable layout (a future cleanup can hoist the
+/// array up so `RwLock<Chunk>` becomes `RwLock<[BlockData; N]>` with
+/// the metadata fields moved onto `Page`).
 pub struct Chunk {
     pub(super) coord: Vec3i,
-    pub(super) data: Option<Box<[BlockData; Self::SIZE_CUBED]>>,
+    pub(super) data: [BlockData; Self::SIZE_CUBED],
     updated: bool,
     modified: bool,
 }
@@ -77,12 +79,21 @@ impl Chunk {
     /// Total per-cell data size in bytes (`SIZE_CUBED * BlockData::ENCODED_LEN`).
     pub const SIZE_DATA: usize = Self::SIZE_CUBED * BlockData::ENCODED_LEN;
 
-    /// Empty (no allocated data) chunk at integer chunk coord `coord`.
+    /// Air-filled chunk at integer chunk coord `coord`. Cells start at
+    /// `BlockId::EMPTY` (the registry's reserved air slot) with sky-light
+    /// for `coord.y >= 0` and no-light below — same default-light rule
+    /// the previous lazy-fill path used.
     #[must_use]
     pub fn new(coord: Vec3i) -> Self {
+        let light = if coord.y < 0 { Light::NONE } else { Light::SKY };
+        let fill = BlockData {
+            id: BlockId::EMPTY,
+            state: State::default(),
+            light,
+        };
         Self {
             coord,
-            data: None,
+            data: [fill; Self::SIZE_CUBED],
             updated: false,
             modified: false,
         }
@@ -92,15 +103,6 @@ impl Chunk {
     #[must_use]
     pub fn coord(&self) -> Vec3i {
         self.coord
-    }
-
-    /// True iff no block data has been allocated yet — the chunk reads as
-    /// uniform air with sky/no-light derived from `coord.y`. Equivalent to
-    /// `self.data.is_none()` (the field is the canonical encoding of
-    /// emptiness; see the struct doc).
-    #[must_use]
-    pub fn empty(&self) -> bool {
-        self.data.is_none()
     }
 
     /// True iff the render mesh is dirty.
@@ -142,18 +144,6 @@ impl Chunk {
         )
     }
 
-    /// Default light value for empty / freshly-allocated chunks: full sky if
-    /// at or above y=0, total darkness underground. Mirrors the C++
-    /// `_coord.y() < 0 ? NO_LIGHT : SKY_LIGHT` formula (the C++ code
-    /// branches on the chunk-coord, not the world-coord).
-    fn default_light(&self) -> Light {
-        if self.coord.y < 0 {
-            Light::NONE
-        } else {
-            Light::SKY
-        }
-    }
-
     /// Linear index into the data array for `(x, y, z)` (X-major, matching
     /// C++).
     #[inline]
@@ -168,80 +158,35 @@ impl Chunk {
         (x * Self::SIZE_USIZE + y) * Self::SIZE_USIZE + z
     }
 
-    /// Read one block. For empty chunks returns
-    /// `BlockData { id: base.air, light: default_light(), state: 0 }`.
+    /// Read one block. `base` is accepted for API compatibility with the
+    /// previous lazy-allocation path (it was used to synthesise air for
+    /// empty chunks); inline-array chunks always have a real cell so the
+    /// argument is now ignored.
     #[must_use]
-    pub fn block(&self, bcoord: Vec3u, base: &BaseBlocks) -> BlockData {
-        assert!(
-            bcoord.x < Self::SIZE as u32
-                && bcoord.y < Self::SIZE as u32
-                && bcoord.z < Self::SIZE as u32,
-            "block coordinates out of bounds"
-        );
-        if let Some(data) = &self.data {
-            data[Self::index(bcoord)]
-        } else {
-            BlockData {
-                id: base.air,
-                state: State::default(),
-                light: self.default_light(),
-            }
-        }
+    pub fn block(&self, bcoord: Vec3u, _base: &BaseBlocks) -> BlockData {
+        self.data[Self::index(bcoord)]
     }
 
-    /// Write-access to one block. Lazily allocates the data array (filling
-    /// with air at the chunk's default light) on first call, then flips
-    /// `updated = true`, `modified = true`. Allocation alone makes the
-    /// chunk non-empty under the `empty() ⇔ data.is_none()` invariant — no
-    /// separate `empty` flag to update.
-    pub fn block_mut(&mut self, bcoord: Vec3u, base: &BaseBlocks) -> &mut BlockData {
-        assert!(
-            bcoord.x < Self::SIZE as u32
-                && bcoord.y < Self::SIZE as u32
-                && bcoord.z < Self::SIZE as u32,
-            "block coordinates out of bounds"
-        );
-        if self.data.is_none() {
-            let fill = BlockData {
-                id: base.air,
-                state: State(0),
-                light: self.default_light(),
-            };
-            self.data = Some(Box::new([fill; Self::SIZE_CUBED]));
-        }
+    /// Write-access to one block. Flips `updated = true`, `modified =
+    /// true`. The `base` argument is accepted for API compatibility and
+    /// otherwise ignored — see [`Self::block`].
+    pub fn block_mut(&mut self, bcoord: Vec3u, _base: &BaseBlocks) -> &mut BlockData {
         self.updated = true;
         self.modified = true;
-        let data = self
-            .data
-            .as_mut()
-            .expect("data is Some after lazy allocation");
-        &mut data[Self::index(bcoord)]
+        let idx = Self::index(bcoord);
+        &mut self.data[idx]
     }
 
-    /// If `data` is None, allocate it without changing the empty/updated/modified
-    /// flags. Used internally by terrain generation.
-    pub(super) fn ensure_data(&mut self) {
-        if self.data.is_none() {
-            self.data = Some(Box::new([BlockData::default(); Self::SIZE_CUBED]));
-        }
-    }
-
-    /// Direct linear-index access into the data array, asserting it's been
-    /// allocated. Internal helper for terrain generation.
+    /// Direct linear-index access into the data array. Internal helper
+    /// for terrain generation.
     pub(super) fn cell_mut(&mut self, idx: usize) -> &mut BlockData {
-        self.data
-            .as_mut()
-            .expect("ensure_data called before cell_mut")
-            .as_mut()
-            .get_mut(idx)
-            .expect("index in bounds")
+        &mut self.data[idx]
     }
 
     // ---------- Save / load ----------
 
     /// Serialize this chunk to bytes: a `[magic, version, flags]` header
-    /// followed by `SIZE_CUBED` little-endian cells. Returns an empty `Vec`
-    /// for empty chunks (callers should not save empty chunks).
+    /// followed by `SIZE_CUBED` little-endian cells.
     ///
     /// `current_to_canonical` translates each cell's *current-registry* id
     /// to the *world-canonical* id stored on disk (see [`Self::unpackage_from`]).
@@ -252,15 +197,12 @@ impl Chunk {
     /// canonical mapping equals the current registry, or by tests.
     #[must_use]
     pub fn package_to(&self, current_to_canonical: &[u16]) -> Vec<u8> {
-        let Some(data) = &self.data else {
-            return Vec::new();
-        };
         let mut out = Vec::with_capacity(HEADER_SIZE + Self::SIZE_DATA);
         out.extend_from_slice(&MAGIC.to_le_bytes());
         out.extend_from_slice(&VERSION.to_le_bytes());
         out.extend_from_slice(&FLAGS.to_le_bytes());
         let identity = current_to_canonical.is_empty();
-        for cell in data.iter() {
+        for cell in self.data.iter() {
             let mut translated = *cell;
             if !identity {
                 let canonical = current_to_canonical
@@ -280,9 +222,7 @@ impl Chunk {
 
     /// Deserialize a chunk from bytes produced by [`Self::package_to`].
     /// Verifies magic and version, then decodes the body into the data
-    /// array (allocating it if necessary). Allocation alone makes `empty()`
-    /// read false; sets `modified = false` (just loaded from disk; not
-    /// dirty).
+    /// array. Sets `modified = false` (just loaded from disk; not dirty).
     ///
     /// `canonical_to_current` translates each cell's *world-canonical* id
     /// (read from disk) to the *current-registry* id used in memory.
@@ -317,10 +257,8 @@ impl Chunk {
                 got: body.len(),
             });
         }
-        self.ensure_data();
-        let data = self.data.as_mut().expect("ensure_data allocated");
         let identity = canonical_to_current.is_empty();
-        for (i, slot) in data.iter_mut().enumerate() {
+        for (i, slot) in self.data.iter_mut().enumerate() {
             let off = i * BlockData::ENCODED_LEN;
             let mut cell = BlockData::decode_from(&body[off..off + BlockData::ENCODED_LEN]);
             if !identity {
@@ -360,7 +298,6 @@ mod tests {
     fn empty_chunk_returns_air_with_sky_light_above_zero() {
         let base = make_base();
         let c = Chunk::new(Vec3i::new(0, 5, 0));
-        assert!(c.empty());
         assert!(!c.updated());
         assert!(!c.modified());
         let b = c.block(Vec3u::new(0, 0, 0), &base);
@@ -369,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn empty_chunk_returns_air_with_no_light_below_zero() {
+    fn fresh_chunk_below_zero_has_no_light() {
         let base = make_base();
         let c = Chunk::new(Vec3i::new(0, -1, 0));
         let b = c.block(Vec3u::new(3, 7, 11), &base);
@@ -378,20 +315,18 @@ mod tests {
     }
 
     #[test]
-    fn block_mut_lazily_allocates_and_flips_flags() {
+    fn block_mut_writes_value_and_flips_flags() {
         let base = make_base();
         let mut c = Chunk::new(Vec3i::new(0, 0, 0));
-        assert!(c.empty());
         assert!(!c.updated());
         assert!(!c.modified());
         {
             let cell = c.block_mut(Vec3u::new(2, 3, 4), &base);
-            // Default fill is air with sky-light (since coord.y == 0 → SKY).
+            // Pre-fill is air with sky-light (since coord.y == 0 → SKY).
             assert_eq!(cell.id, base.air);
             assert_eq!(cell.light, Light::SKY);
             cell.id = base.rock;
         }
-        assert!(!c.empty());
         assert!(c.updated());
         assert!(c.modified());
         // Read back through the immutable accessor.
@@ -447,7 +382,6 @@ mod tests {
         loaded
             .unpackage_from(&bytes, &[])
             .expect("unpackage should succeed");
-        assert!(!loaded.empty());
         assert!(!loaded.modified()); // freshly loaded
         assert_eq!(loaded.block(Vec3u::new(0, 0, 0), &base).id, base.rock);
         assert_eq!(loaded.block(Vec3u::new(15, 15, 15), &base).id, base.bedrock);
@@ -456,14 +390,17 @@ mod tests {
             loaded.block(Vec3u::new(1, 2, 3), &base).light,
             Light::new(7, 11)
         );
-        // Sample untouched cells: should still be air (the lazy-fill default).
+        // Sample untouched cells: should still be air (the construction default).
         assert_eq!(loaded.block(Vec3u::new(5, 5, 5), &base).id, base.air);
     }
 
     #[test]
-    fn package_to_returns_empty_for_empty_chunk() {
+    fn package_to_serializes_full_chunk_unconditionally() {
+        // Inline-array chunks always have allocated data, so package_to
+        // produces a full header + body even for never-touched chunks.
         let c = Chunk::new(Vec3i::new(0, 0, 0));
-        assert!(c.package_to(&[]).is_empty());
+        let bytes = c.package_to(&[]);
+        assert_eq!(bytes.len(), HEADER_SIZE + Chunk::SIZE_DATA);
     }
 
     #[test]
