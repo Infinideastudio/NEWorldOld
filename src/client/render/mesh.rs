@@ -142,7 +142,7 @@ impl Default for MeshOptions {
             smooth_lighting: true,
             merge_face: true,
             nice_grass: true,
-            grass_id: BlockId(0),
+            grass_id: BlockId::default(),
         }
     }
 }
@@ -852,10 +852,10 @@ fn emit_run(out: &mut Vec<ChunkVertex>, run: Run) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::blocks::{
-        BlockRenderRegistry, BlockTextureRegistry, register_base_block_visuals,
-    };
-    use crate::core::blocks::{BaseBlocks, BlockState, register_base_blocks};
+    use crate::client::blocks::{BlockRenderRegistry, BlockTextureRegistry};
+    use crate::client::game::base_blocks::register_base_block_visuals;
+    use crate::core::blocks::BlockState;
+    use crate::core::game::base_blocks::{BaseBlocks, register_base_blocks};
 
     /// Build a fresh registry populated with the base game's 19 blocks, plus
     /// the matching `BaseBlocks` ids and the client-side render registry
@@ -923,8 +923,8 @@ mod tests {
 
     #[test]
     fn all_air_chunk_emits_no_quads() {
-        let (registry, render, base) = registry_with_base();
-        let input = padded_input(Vector3::new(0, 0, 0), |_, _, _| block(base.air));
+        let (registry, render, _) = registry_with_base();
+        let input = padded_input(Vector3::new(0, 0, 0), |_, _, _| BlockData::default());
         let output = mesh_chunk(&input, &registry, &render);
         assert_eq!(output.opaque.len() + output.translucent.len(), 0);
     }
@@ -939,7 +939,7 @@ mod tests {
             if (px, py, pz) == (9, 9, 9) {
                 block(base.stone)
             } else {
-                block(base.air)
+                block(BlockId::default())
             }
         });
         let output = mesh_chunk(&input, &registry, &render);
@@ -970,7 +970,7 @@ mod tests {
             if py <= 1 {
                 block(base.dirt)
             } else {
-                block(base.air)
+                block(BlockId::default())
             }
         });
         let output = mesh_chunk(&input, &registry, &render);
@@ -990,7 +990,7 @@ mod tests {
             if (px, py, pz) == (9, 9, 9) {
                 block(base.water)
             } else {
-                block(base.air)
+                block(BlockId::default())
             }
         });
         let output = mesh_chunk(&input, &registry, &render);
@@ -1010,7 +1010,7 @@ mod tests {
             if (px, py, pz) == (9, 9, 9) || (px, py, pz) == (10, 9, 9) {
                 block(base.leaf)
             } else {
-                block(base.air)
+                block(BlockId::default())
             }
         });
         let output = mesh_chunk(&input, &registry, &render);
@@ -1030,7 +1030,7 @@ mod tests {
             if (px, py, pz) == (9, 9, 9) || (px, py, pz) == (10, 9, 9) {
                 block(base.stone)
             } else {
-                block(base.air)
+                block(BlockId::default())
             }
         });
         let output = mesh_chunk(&input, &registry, &render);
@@ -1085,7 +1085,7 @@ mod tests {
             if (py == 0 || py == 1) && (1..=16).contains(&px) && (1..=16).contains(&pz) {
                 block(base.stone)
             } else {
-                block(base.air)
+                block(BlockId::default())
             }
         });
         let output = mesh_chunk(&input, &registry, &render);
@@ -1108,7 +1108,7 @@ mod tests {
             if (px, py, pz) == (9, 9, 9) {
                 block(base.grass)
             } else {
-                block(base.air)
+                block(BlockId::default())
             }
         });
         let output = mesh_chunk(&input, &registry, &render);
@@ -1151,7 +1151,7 @@ mod tests {
                     ..BlockData::default()
                 }
             } else {
-                block(base.air)
+                block(BlockId::default())
             }
         });
         // Greedy merging would still pick the same layer per face for a
@@ -1182,17 +1182,17 @@ mod tests {
         let _ = render; // borrow only used above
 
         // Y-axis (state 0 or 1).
-        for s in [BlockState(0), BlockState(1)] {
+        for s in [BlockState::inline(0), BlockState::inline(1)] {
             let l = wood_face_layers(&base, s);
             assert_eq!(l, [side, side, top, top, side, side], "state {:?}", s);
         }
         // X-axis (state 2 or 3).
-        for s in [BlockState(2), BlockState(3)] {
+        for s in [BlockState::inline(2), BlockState::inline(3)] {
             let l = wood_face_layers(&base, s);
             assert_eq!(l, [top, top, side, side, side, side], "state {:?}", s);
         }
         // Z-axis (state 4 or 5).
-        for s in [BlockState(4), BlockState(5)] {
+        for s in [BlockState::inline(4), BlockState::inline(5)] {
             let l = wood_face_layers(&base, s);
             assert_eq!(l, [side, side, side, side, top, top], "state {:?}", s);
         }
@@ -1229,7 +1229,7 @@ mod tests {
                     ..BlockData::default()
                 }
             } else {
-                block(base.air)
+                block(BlockId::default())
             }
         });
         input.options.merge_face = false;
@@ -1244,7 +1244,7 @@ mod tests {
         // anchor that says "introducing the canonical-projection
         // pipeline doesn't shift state-0 blocks."
         let (registry, render, base) = registry_with_base();
-        let out = solo_wood_mesh(&base, &registry, &render, BlockState(0));
+        let out = solo_wood_mesh(&base, &registry, &render, BlockState::inline(0));
         let expected = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
         for face in 0..6_u32 {
             let uvs = face_quad_uvs(&out, face);
@@ -1270,12 +1270,12 @@ mod tests {
         let (registry, render, base) = registry_with_base();
         // (state, cap_axis_index) — 0 = X, 1 = Y, 2 = Z.
         let cases = [
-            (BlockState(0), 1usize),
-            (BlockState(1), 1),
-            (BlockState(2), 0),
-            (BlockState(3), 0),
-            (BlockState(4), 2),
-            (BlockState(5), 2),
+            (BlockState::inline(0), 1usize),
+            (BlockState::inline(1), 1),
+            (BlockState::inline(2), 0),
+            (BlockState::inline(3), 0),
+            (BlockState::inline(4), 2),
+            (BlockState::inline(5), 2),
         ];
         for (state, cap_axis) in cases {
             let out = solo_wood_mesh(&base, &registry, &render, state);
@@ -1358,7 +1358,7 @@ mod tests {
                         ..BlockData::default()
                     }
                 } else {
-                    block(base.air)
+                    block(BlockId::default())
                 }
             })
         };
@@ -1368,7 +1368,7 @@ mod tests {
         // Same state → +Y faces merge into one quad (6 verts).
         assert_eq!(
             plus_y(&mesh_chunk(
-                &make(BlockState(2), BlockState(2)),
+                &make(BlockState::inline(2), BlockState::inline(2)),
                 &registry,
                 &render
             )),
@@ -1379,7 +1379,7 @@ mod tests {
         // Y-axis (cap) meets X-axis (bark) → different layer, no merge.
         assert_eq!(
             plus_y(&mesh_chunk(
-                &make(BlockState(0), BlockState(2)),
+                &make(BlockState::inline(0), BlockState::inline(2)),
                 &registry,
                 &render
             )),
@@ -1392,7 +1392,7 @@ mod tests {
         // the new predicate is meant to allow through.
         assert_eq!(
             plus_y(&mesh_chunk(
-                &make(BlockState(0), BlockState(1)),
+                &make(BlockState::inline(0), BlockState::inline(1)),
                 &registry,
                 &render
             )),

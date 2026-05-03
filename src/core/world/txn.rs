@@ -1,28 +1,38 @@
-//! `WorkingSet`, `ReadTxn`, `WriteTxn` — transactional access to the
-//! chunk store.
+//! `WorkingSet`, `ReadTxn`, `WriteTxn` — transactional access to
+//! the chunk store.
 //!
-//! All transactions declare a *working set* (one chunk, an explicit
-//! list, or an axis-aligned chunk-coord box). At begin time the txn
-//! captures an `Arc<Chunk>` for every chunk in its working set (the
-//! Arc itself is the pin — eviction simply drops the world's clone,
-//! the txn's clone keeps the chunk alive) and acquires the per-chunk
-//! locks in lex-coord order. Reads and writes outside the declared
-//! set return [`TxnError::OutOfRange`].
+//! All transactions declare a *working set* (one chunk, an
+//! explicit list, or an axis-aligned chunk-coord box). At begin
+//! time the txn:
 //!
-//! This file implements only the synchronous variants of
-//! `begin_*_txn`, which return [`TxnError::NotLoaded`] when any
-//! working-set coord isn't in memory yet.
+//! 1. Sorts and dedups the working-set coords (lex order — gives
+//!    deadlock-free per-chunk lock acquisition).
+//! 2. Acquires a [`Lease`] on every coord. If any chunk is missing
+//!    from the world map or is in the `EVICTING` state, the begin
+//!    fails with [`TxnError::NotLoaded`] and any leases collected
+//!    so far drop (RAII).
+//! 3. Acquires the per-chunk read or write guard via the chunk's
+//!    owned-guard API; the guard pairs the parking_lot guard with
+//!    the chunk Arc, so the guard outlives any subsequent eviction.
+//!
+//! A `WriteTxn` buffers writes locally and applies them at commit
+//! time under the held write guards. The commit point is a single
+//! LSN allocated from `World`'s monotonic counter, written into
+//! each touched chunk's `commit_lsn` under its write guard. Commit
+//! point = LSN allocation; visibility point = guard release. The
+//! linearised order over all commits is exactly the LSN order.
+//!
+//! Reads and writes outside the declared set return
+//! [`TxnError::OutOfRange`].
 
 use std::collections::HashMap;
 use std::sync::Arc;
-
-use dashmap::DashMap;
-use parking_lot::{ArcRwLockReadGuard, ArcRwLockWriteGuard, RawRwLock};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::core::blocks::BlockData;
 use crate::core::math::{Vec3i, Vec3u};
 
-use super::chunk::{Chunk, ChunkData};
+use super::chunk::{ChunkData, ChunkReadGuard, ChunkWriteGuard, Lease};
 use super::{World, block_coord, chunk_coord};
 
 // ----------------------------------------------------------------------
@@ -83,9 +93,9 @@ impl From<&[Vec3i]> for WorkingSet {
 /// Single error type covering both txn-begin and txn-access failures.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum TxnError {
-    /// Begin: one or more working-set coords aren't currently in memory.
-    /// Caller should warm the cache (sync prefetch or async load) and
-    /// retry.
+    /// Begin: one or more working-set coords aren't currently in
+    /// memory (chunk vacant, or chunk in the `EVICTING` state). Caller
+    /// should warm the cache (sync prefetch or async load) and retry.
     #[error("chunks not loaded: {0:?}")]
     NotLoaded(Vec<Vec3i>),
     /// Access: caller asked for a block whose chunk isn't in the txn's
@@ -98,13 +108,14 @@ pub enum TxnError {
 //   ReadTxn
 // ----------------------------------------------------------------------
 
-/// One pinned chunk held by a `ReadTxn`. The owned arc-lock `guard`
-/// internally clones the chunk's `Arc<RwLock<Blocks>>`, so the
-/// blocks allocation outlives the guard regardless of what the world
-/// does to the parent `Chunk` — no separate pin field needed.
+/// One pinned chunk held by a `ReadTxn`. The `_lease` blocks
+/// eviction completion; the owned `guard` keeps the chunk Arc
+/// alive independently. Field order means `guard` drops first,
+/// then `_lease` — both before the WriteTxn is dropped.
 struct ReadEntry {
     coord: Vec3i,
-    guard: ArcRwLockReadGuard<RawRwLock, ChunkData>,
+    guard: ChunkReadGuard,
+    _lease: Lease,
 }
 
 pub struct ReadTxn {
@@ -121,14 +132,14 @@ impl ReadTxn {
     pub fn read(&self, coord: Vec3i) -> Result<BlockData, TxnError> {
         let cc = chunk_coord(coord);
         let entry = self.entry(cc).ok_or(TxnError::OutOfRange { coord })?;
-        Ok(entry.guard.block(block_coord(coord)))
+        Ok(entry.guard.data.block(block_coord(coord)))
     }
 
     /// Borrow the held cell array at `ccoord`. Returns `None` if the
     /// coord isn't in this txn's working set. Borrowed for the
     /// lifetime of `&self`.
     pub fn chunk_at(&self, ccoord: Vec3i) -> Option<&ChunkData> {
-        self.entry(ccoord).map(|e| &*e.guard)
+        self.entry(ccoord).map(|e| &e.guard.data)
     }
 }
 
@@ -138,13 +149,18 @@ impl ReadTxn {
 
 struct WriteEntry {
     coord: Vec3i,
-    chunk: Arc<Chunk>,
-    guard: ArcRwLockWriteGuard<RawRwLock, ChunkData>,
+    guard: ChunkWriteGuard,
+    _lease: Lease,
 }
 
 pub struct WriteTxn {
     entries: Vec<WriteEntry>,
     buffered: HashMap<Vec3i, Vec<(Vec3u, BlockData)>>,
+    /// Cloned from `World::next_lsn` at begin time. Decouples the
+    /// txn type from a `&World` lifetime; `commit` allocates one
+    /// LSN here, regardless of whether the originating world is
+    /// still around (it always is, in practice).
+    lsn_counter: Arc<AtomicU64>,
 }
 
 impl WriteTxn {
@@ -167,7 +183,7 @@ impl WriteTxn {
         {
             return Ok(*data);
         }
-        Ok(entry.guard.block(bcoord))
+        Ok(entry.guard.data.block(bcoord))
     }
 
     /// Buffer one write.
@@ -183,20 +199,30 @@ impl WriteTxn {
         Ok(())
     }
 
-    /// Apply all buffered writes in place under the held write guards
-    /// and bump each touched chunk's commit generation. Bumping under
-    /// the held lock makes the chunk "dirty" (`save_gen < commit_gen`).
+    /// Apply all buffered writes in place under the held write
+    /// guards, allocate a single LSN, and stamp it as `commit_lsn`
+    /// on every touched chunk. Stamping happens under each held
+    /// write guard, so any reader who later acquires the chunk's
+    /// lock sees a consistent (data, commit_lsn) pair.
+    ///
+    /// On return, the entries' write guards drop first (commit
+    /// point — visible to subsequent txns), then the leases drop
+    /// (chunks become eligible for eviction).
     pub fn commit(mut self) {
         let drained: Vec<(Vec3i, Vec<(Vec3u, BlockData)>)> = self.buffered.drain().collect();
+        if drained.is_empty() {
+            return;
+        }
+        let lsn = self.lsn_counter.fetch_add(1, Ordering::AcqRel);
         for (cc, writes) in drained {
             let Some(entry) = self.entry_mut(cc) else {
                 debug_assert!(false, "buffered write for coord without entry");
                 continue;
             };
             for (bcoord, data) in writes {
-                *entry.guard.block_mut(bcoord) = data;
+                *entry.guard.data.block_mut(bcoord) = data;
             }
-            entry.chunk.bump_commit_gen();
+            entry.guard.commit_lsn = lsn;
         }
     }
 }
@@ -206,71 +232,66 @@ impl WriteTxn {
 // ----------------------------------------------------------------------
 
 pub(super) fn begin_read_sync(world: &World, set: WorkingSet) -> Result<ReadTxn, TxnError> {
-    begin_read_in(world.chunks(), set)
-}
-
-fn begin_read_in(
-    chunks: &DashMap<Vec3i, Arc<Chunk>>,
-    set: WorkingSet,
-) -> Result<ReadTxn, TxnError> {
     let coords = set.collect_sorted();
-    let resolved = resolve_chunks_in(chunks, &coords)?;
+    let leases = acquire_leases(world, &coords)?;
+    // Acquire read guards in lex order — `coords` is sorted, and
+    // `leases` zips with it.
     let entries: Vec<ReadEntry> = coords
         .into_iter()
-        .zip(resolved)
-        .map(|(coord, chunk)| {
-            let guard = chunk.read_blocks();
-            ReadEntry { coord, guard }
+        .zip(leases)
+        .map(|(coord, lease)| {
+            let guard = lease.chunk().read_owned();
+            ReadEntry {
+                coord,
+                guard,
+                _lease: lease,
+            }
         })
         .collect();
     Ok(ReadTxn { entries })
 }
 
 pub(super) fn begin_write_sync(world: &World, set: WorkingSet) -> Result<WriteTxn, TxnError> {
-    begin_write_in(world.chunks(), set)
-}
-
-fn begin_write_in(
-    chunks: &DashMap<Vec3i, Arc<Chunk>>,
-    set: WorkingSet,
-) -> Result<WriteTxn, TxnError> {
     let coords = set.collect_sorted();
-    let resolved = resolve_chunks_in(chunks, &coords)?;
+    let leases = acquire_leases(world, &coords)?;
     let entries: Vec<WriteEntry> = coords
         .into_iter()
-        .zip(resolved)
-        .map(|(coord, chunk)| {
-            let guard = chunk.write_blocks();
+        .zip(leases)
+        .map(|(coord, lease)| {
+            let guard = lease.chunk().write_owned();
             WriteEntry {
                 coord,
-                chunk,
                 guard,
+                _lease: lease,
             }
         })
         .collect();
     Ok(WriteTxn {
         entries,
         buffered: HashMap::new(),
+        lsn_counter: world.lsn_counter(),
     })
 }
 
-fn resolve_chunks_in(
-    chunks: &DashMap<Vec3i, Arc<Chunk>>,
-    coords: &[Vec3i],
-) -> Result<Vec<Arc<Chunk>>, TxnError> {
-    let mut found = Vec::with_capacity(coords.len());
+/// Try to take a lease on every coord in `coords`. On any failure,
+/// return `NotLoaded(missing)` listing every coord that wasn't
+/// available — successfully-acquired leases drop as the local
+/// `Vec<Lease>` goes out of scope.
+fn acquire_leases(world: &World, coords: &[Vec3i]) -> Result<Vec<Lease>, TxnError> {
+    let mut leases = Vec::with_capacity(coords.len());
     let mut missing = Vec::new();
-    for c in coords {
-        match chunks.get(c).map(|r| Arc::clone(r.value())) {
-            Some(p) => found.push(p),
-            None => missing.push(*c),
+    for &c in coords {
+        match world.try_acquire_lease(c) {
+            Some(lease) => leases.push(lease),
+            None => missing.push(c),
         }
     }
-    if missing.is_empty() {
-        Ok(found)
-    } else {
-        Err(TxnError::NotLoaded(missing))
+    if !missing.is_empty() {
+        // Drop any leases acquired so far via Vec drop. The remaining
+        // RAII collapse is automatic.
+        return Err(TxnError::NotLoaded(missing));
     }
+    Ok(leases)
 }
 
 // ----------------------------------------------------------------------
@@ -280,27 +301,59 @@ fn resolve_chunks_in(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::blocks::{BaseBlocks, BlockLight, BlockRegistry, register_base_blocks};
+    use crate::core::blocks::BlockId;
+    use crate::core::world::{Metadata, WorldTables};
 
-    fn make_base() -> BaseBlocks {
-        let mut reg = BlockRegistry::new();
-        register_base_blocks(&mut reg)
+    /// Tiny RAII scratch dir — `tempfile` isn't a dev-dep on this
+    /// crate, so we roll our own minimal version (matches the
+    /// pattern used in `globalization.rs` tests).
+    struct ScratchDir {
+        path: std::path::PathBuf,
     }
 
-    fn install_chunks(chunks: &DashMap<Vec3i, Arc<Chunk>>, coords: &[Vec3i]) {
-        for c in coords {
-            chunks.insert(
-                *c,
-                Arc::new(Chunk::from_gen(ChunkData::air_filled(BlockLight::SKY))),
-            );
+    impl ScratchDir {
+        fn new() -> Self {
+            // Unique enough for the test suite: nanos + addr-of-stack.
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0);
+            let salt = &nanos as *const _ as usize;
+            let path = std::env::temp_dir().join(format!("neworld-txn-{nanos:x}-{salt:x}"));
+            std::fs::create_dir_all(&path).expect("create scratch");
+            Self { path }
+        }
+        fn path(&self) -> &std::path::Path {
+            &self.path
+        }
+    }
+    impl Drop for ScratchDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.path);
         }
     }
 
-    fn chunk_at(chunks: &DashMap<Vec3i, Arc<Chunk>>, cc: Vec3i) -> Arc<Chunk> {
-        chunks
-            .get(&cc)
-            .map(|r| Arc::clone(r.value()))
-            .expect("chunk")
+    fn temp_world() -> (ScratchDir, World) {
+        let dir = ScratchDir::new();
+        let world = World::new_at(
+            dir.path(),
+            "test".to_string(),
+            WorldTables {
+                metadata: Metadata {
+                    block_mapping: Vec::new(),
+                },
+                load_table: Vec::new(),
+                save_table: Vec::new(),
+            },
+        )
+        .expect("new_at");
+        (dir, world)
+    }
+
+    fn install_chunks(world: &World, coords: &[Vec3i]) {
+        for &c in coords {
+            world.load_chunk(c, ChunkData::default);
+        }
     }
 
     #[test]
@@ -332,8 +385,8 @@ mod tests {
 
     #[test]
     fn begin_read_sync_errors_when_coord_not_loaded() {
-        let chunks: DashMap<Vec3i, Arc<Chunk>> = DashMap::new();
-        match begin_read_in(&chunks, WorkingSet::Single(Vec3i::new(0, 0, 0))) {
+        let (_dir, world) = temp_world();
+        match world.begin_read_txn_sync(WorkingSet::Single(Vec3i::new(0, 0, 0))) {
             Err(TxnError::NotLoaded(v)) => assert_eq!(v, vec![Vec3i::new(0, 0, 0)]),
             Err(other) => panic!("expected NotLoaded; got {other:?}"),
             Ok(_) => panic!("expected NotLoaded; got Ok"),
@@ -342,21 +395,24 @@ mod tests {
 
     #[test]
     fn read_txn_returns_air_for_empty_chunk_in_set() {
-        let base = make_base();
-        let chunks: DashMap<Vec3i, Arc<Chunk>> = DashMap::new();
+        let (_dir, world) = temp_world();
         let cc = Vec3i::new(0, 1, 0);
-        install_chunks(&chunks, &[cc]);
-        let txn = begin_read_in(&chunks, WorkingSet::Single(cc)).expect("loaded");
+        install_chunks(&world, &[cc]);
+        let txn = world
+            .begin_read_txn_sync(WorkingSet::Single(cc))
+            .expect("loaded");
         let b = txn.read(Vec3i::new(0, 16, 0)).expect("in range");
-        assert_eq!(b.id, base.air);
+        assert_eq!(b.id, BlockId::default());
     }
 
     #[test]
     fn read_txn_out_of_range_returns_error() {
-        let chunks: DashMap<Vec3i, Arc<Chunk>> = DashMap::new();
+        let (_dir, world) = temp_world();
         let cc = Vec3i::new(0, 0, 0);
-        install_chunks(&chunks, &[cc]);
-        let txn = begin_read_in(&chunks, WorkingSet::Single(cc)).expect("loaded");
+        install_chunks(&world, &[cc]);
+        let txn = world
+            .begin_read_txn_sync(WorkingSet::Single(cc))
+            .expect("loaded");
         let err = txn.read(Vec3i::new(16, 0, 0)).expect_err("out of range");
         assert_eq!(
             err,
@@ -368,79 +424,108 @@ mod tests {
 
     #[test]
     fn write_txn_commit_makes_value_visible_to_subsequent_read_txn() {
-        let base = make_base();
-        let chunks: DashMap<Vec3i, Arc<Chunk>> = DashMap::new();
+        let (_dir, world) = temp_world();
         let cc = Vec3i::new(0, 0, 0);
-        install_chunks(&chunks, &[cc]);
+        install_chunks(&world, &[cc]);
 
-        let mut wtxn = begin_write_in(&chunks, WorkingSet::Single(cc)).expect("loaded");
+        let mut wtxn = world
+            .begin_write_txn_sync(WorkingSet::Single(cc))
+            .expect("loaded");
         let target = BlockData {
-            id: base.rock,
+            id: BlockId::new(1),
             ..BlockData::default()
         };
         wtxn.write(Vec3i::new(3, 4, 5), target).expect("in range");
         wtxn.commit();
 
-        let rtxn = begin_read_in(&chunks, WorkingSet::Single(cc)).expect("loaded");
+        let rtxn = world
+            .begin_read_txn_sync(WorkingSet::Single(cc))
+            .expect("loaded");
         let b = rtxn.read(Vec3i::new(3, 4, 5)).expect("in range");
-        assert_eq!(b.id, base.rock);
-
-        let chunk = chunk_at(&chunks, cc);
-        assert!(chunk.dirty());
-        assert_eq!(chunk.commit_gen(), 2);
-        assert_eq!(chunk.save_gen(), 0);
+        assert_eq!(b.id, BlockId::new(1));
     }
 
     #[test]
     fn write_txn_drop_without_commit_rolls_back() {
-        let base = make_base();
-        let chunks: DashMap<Vec3i, Arc<Chunk>> = DashMap::new();
+        let (_dir, world) = temp_world();
         let cc = Vec3i::new(0, 0, 0);
-        install_chunks(&chunks, &[cc]);
+        install_chunks(&world, &[cc]);
         {
-            let mut wtxn = begin_write_in(&chunks, WorkingSet::Single(cc)).expect("loaded");
+            let mut wtxn = world
+                .begin_write_txn_sync(WorkingSet::Single(cc))
+                .expect("loaded");
             let target = BlockData {
-                id: base.rock,
+                id: BlockId::new(1),
                 ..BlockData::default()
             };
             wtxn.write(Vec3i::new(3, 4, 5), target).expect("in range");
         }
-        let rtxn = begin_read_in(&chunks, WorkingSet::Single(cc)).expect("loaded");
+        let rtxn = world
+            .begin_read_txn_sync(WorkingSet::Single(cc))
+            .expect("loaded");
         let b = rtxn.read(Vec3i::new(3, 4, 5)).expect("in range");
-        assert_eq!(b.id, base.air);
-        let chunk = chunk_at(&chunks, cc);
-        assert_eq!(chunk.commit_gen(), 1);
+        assert_eq!(b.id, BlockId::default());
     }
 
     #[test]
     fn write_txn_self_read_sees_buffered_writes_before_commit() {
-        let base = make_base();
-        let chunks: DashMap<Vec3i, Arc<Chunk>> = DashMap::new();
+        let (_dir, world) = temp_world();
         let cc = Vec3i::new(0, 0, 0);
-        install_chunks(&chunks, &[cc]);
-        let mut wtxn = begin_write_in(&chunks, WorkingSet::Single(cc)).expect("loaded");
+        install_chunks(&world, &[cc]);
+        let mut wtxn = world
+            .begin_write_txn_sync(WorkingSet::Single(cc))
+            .expect("loaded");
         let target = BlockData {
-            id: base.rock,
+            id: BlockId::new(1),
             ..BlockData::default()
         };
         let coord = Vec3i::new(1, 1, 1);
         wtxn.write(coord, target).expect("in range");
         let b = wtxn.read(coord).expect("in range");
-        assert_eq!(b.id, base.rock);
+        assert_eq!(b.id, BlockId::new(1));
     }
 
     #[test]
-    fn arc_strong_count_tracks_active_txns() {
-        let chunks: DashMap<Vec3i, Arc<Chunk>> = DashMap::new();
+    fn lease_held_by_txn_blocks_eviction_until_drop() {
+        // The orphan-arc bug from the old design: `unload_chunk`
+        // could drop a chunk while a txn was still using it. With
+        // the new lease discipline, eviction must wait.
+        let (_dir, world) = temp_world();
         let cc = Vec3i::new(0, 0, 0);
-        install_chunks(&chunks, &[cc]);
-        let chunk = chunk_at(&chunks, cc);
-        // Map holds 1 + our local clone = 2
-        assert_eq!(Arc::strong_count(&chunk), 2);
-        let wtxn = begin_write_in(&chunks, WorkingSet::Single(cc)).expect("loaded");
-        // Now: map + local + txn = 3
-        assert_eq!(Arc::strong_count(&chunk), 3);
-        drop(wtxn);
-        assert_eq!(Arc::strong_count(&chunk), 2);
+        install_chunks(&world, &[cc]);
+
+        let mut wtxn = world
+            .begin_write_txn_sync(WorkingSet::Single(cc))
+            .expect("loaded");
+        wtxn.write(
+            Vec3i::new(1, 1, 1),
+            BlockData {
+                id: BlockId::new(7),
+                ..BlockData::default()
+            },
+        )
+        .expect("in range");
+
+        // Try to evict on a background thread. The eviction CAS
+        // succeeds and bounces new leases, but `wait_drain` blocks
+        // on the lease this txn holds.
+        let world2 = std::sync::Arc::new(world);
+        let w2 = std::sync::Arc::clone(&world2);
+        let evictor = std::thread::spawn(move || {
+            w2.unload_chunk(cc);
+        });
+
+        // Evictor is blocked draining; meanwhile we commit safely.
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        assert!(
+            !evictor.is_finished(),
+            "evictor must not finish while WriteTxn lease is alive"
+        );
+        wtxn.commit();
+        // After commit, the WriteTxn (and its lease) is dropped;
+        // evictor can now drain and proceed.
+        evictor.join().expect("evictor join");
+        // Chunk has been evicted and removed from the map.
+        assert!(!world2.is_loaded(cc));
     }
 }

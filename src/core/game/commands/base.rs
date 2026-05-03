@@ -90,7 +90,7 @@ pub fn register_base_commands(registry: &mut CommandRegistry) {
                 return false;
             }
             for i in 0..ctx.registry.len() {
-                let id = BlockId(i as u16);
+                let id = BlockId::new(i as u16);
                 ctx.player
                     .add_item(ItemStack::new(id, ItemStack::MAX_COUNT));
             }
@@ -116,7 +116,7 @@ pub fn register_base_commands(registry: &mut CommandRegistry) {
             // matches the C++-equivalent end state (one MAX_COUNT stack
             // takes the slot; any overflow is silently lost).
             let count = u8::try_from(amount).unwrap_or(u8::MAX);
-            ctx.player.add_item(ItemStack::new(BlockId(id), count));
+            ctx.player.add_item(ItemStack::new(BlockId::new(id), count));
             true
         }),
     );
@@ -191,7 +191,7 @@ pub fn register_base_commands(registry: &mut CommandRegistry) {
                 ctx.base,
                 ctx.registry,
                 Vec3i::new(x, y, z),
-                BlockId(id),
+                BlockId::new(id),
                 true,
             );
             true
@@ -266,5 +266,4 @@ pub fn register_base_commands(registry: &mut CommandRegistry) {
             true
         }),
     );
-
 }

@@ -9,7 +9,8 @@ pub use self::save::PlayerError;
 
 use serde::{Deserialize, Serialize};
 
-use crate::core::blocks::{BaseBlocks, BlockData, BlockId, BlockRegistry};
+use crate::core::blocks::{BlockData, BlockId, BlockRegistry};
+use crate::core::game::base_blocks::BaseBlocks;
 use crate::core::math::{Aabbd, Eulerd, Vec3d, Vec3i};
 use crate::items::ItemStack;
 
@@ -24,7 +25,6 @@ use crate::items::ItemStack;
 /// (which would let entities phase through ungenerated terrain).
 pub trait BlockView {
     fn block(&self, coord: Vec3i) -> Option<BlockData>;
-    fn block_or_air(&self, coord: Vec3i) -> BlockData;
     fn hitboxes(&self, box_: Aabbd) -> Option<Vec<Aabbd>>;
     fn in_water(&self, box_: Aabbd) -> Option<bool>;
 }
@@ -219,7 +219,7 @@ impl Player {
     /// `register_base_blocks` always assigns `Id(0)` to air, so the guard
     /// works without threading `BaseBlocks` through.
     pub fn add_item(&mut self, mut stack: ItemStack) -> bool {
-        if stack.empty() || stack.id == BlockId(0) {
+        if stack.empty() || stack.id == BlockId::default() {
             return true;
         }
         let max = ItemStack::MAX_COUNT;
@@ -379,7 +379,7 @@ impl Player {
         );
         let block_aabb = Aabbd::new(block_min, block_max);
         let placed_solid = registry.get(id).solid;
-        let target_solid = registry.get(view.block_or_air(coord).id).solid;
+        let target_solid = registry.get(view.block(coord).unwrap_or_default().id).solid;
         let player_clear =
             !player_aabb.intersects(&block_aabb, 0.0) || !placed_solid || self.cross_wall;
         player_clear && !target_solid
@@ -412,7 +412,8 @@ impl Default for Player {
 #[allow(clippy::float_cmp)] // exact constants and round-trips throughout
 mod tests {
     use super::*;
-    use crate::core::blocks::{BlockData, BlockRegistry, register_base_blocks};
+    use crate::core::blocks::{BlockData, BlockRegistry};
+    use crate::core::game::base_blocks::register_base_blocks;
 
     /// `BlockView` returning a single block id everywhere — used by the
     /// `validate_block_placement` test that needs a non-air world. Defined
@@ -425,12 +426,6 @@ mod tests {
                 id: self.0,
                 ..Default::default()
             })
-        }
-        fn block_or_air(&self, _coord: Vec3i) -> BlockData {
-            BlockData {
-                id: self.0,
-                ..Default::default()
-            }
         }
         fn hitboxes(&self, _box_: Aabbd) -> Option<Vec<Aabbd>> {
             Some(Vec::new())
@@ -446,9 +441,6 @@ mod tests {
     impl BlockView for EmptyWorld {
         fn block(&self, _coord: Vec3i) -> Option<BlockData> {
             Some(BlockData::default())
-        }
-        fn block_or_air(&self, _coord: Vec3i) -> BlockData {
-            BlockData::default()
         }
         fn hitboxes(&self, _box_: Aabbd) -> Option<Vec<Aabbd>> {
             Some(Vec::new())
@@ -529,16 +521,16 @@ mod tests {
     fn add_item_fills_existing_same_id_stacks_then_empty_slots() {
         let mut p = Player::default();
         // Pre-seed bottom-right slot with id=3 count=200.
-        *p.inventory_item_stack_mut(3, 9) = ItemStack::new(BlockId(3), 200);
+        *p.inventory_item_stack_mut(3, 9) = ItemStack::new(BlockId::new(3), 200);
         // Add 50 more → fits, all in same slot (200 + 50 = 250 ≤ 255).
-        assert!(p.add_item(ItemStack::new(BlockId(3), 50)));
+        assert!(p.add_item(ItemStack::new(BlockId::new(3), 50)));
         assert_eq!(p.inventory_item_stack(3, 9).count, 250);
         // Add 100 more → fills the seeded slot to 255, spills 95 to the
         // first empty slot. Empty pass walks rows in reverse but slots
         // within a row forwards, so the first empty slot is (3, 0).
-        assert!(p.add_item(ItemStack::new(BlockId(3), 100)));
+        assert!(p.add_item(ItemStack::new(BlockId::new(3), 100)));
         assert_eq!(p.inventory_item_stack(3, 9).count, 255);
-        assert_eq!(p.inventory_item_stack(3, 0).id, BlockId(3));
+        assert_eq!(p.inventory_item_stack(3, 0).id, BlockId::new(3));
         assert_eq!(p.inventory_item_stack(3, 0).count, 95);
     }
 
@@ -548,12 +540,12 @@ mod tests {
         // Both call sites should return `true` (no items lost) but leave
         // the inventory untouched.
         let mut p = Player::default();
-        assert!(p.add_item(ItemStack::new(BlockId(0), 5)));
-        assert!(p.add_item(ItemStack::new(BlockId(7), 0)));
+        assert!(p.add_item(ItemStack::new(BlockId::new(0), 5)));
+        assert!(p.add_item(ItemStack::new(BlockId::new(7), 0)));
         for row in &p.inventory {
             for slot in row {
                 assert!(slot.empty(), "no slot should have been filled");
-                assert_eq!(slot.id, BlockId(0));
+                assert_eq!(slot.id, BlockId::new(0));
             }
         }
     }
@@ -565,11 +557,11 @@ mod tests {
         // out and the empty pass also has nothing to do.
         for row in &mut p.inventory {
             for slot in row.iter_mut() {
-                *slot = ItemStack::new(BlockId(1), ItemStack::MAX_COUNT);
+                *slot = ItemStack::new(BlockId::new(1), ItemStack::MAX_COUNT);
             }
         }
         // Try to add 10 more of id=1 — won't fit anywhere.
-        assert!(!p.add_item(ItemStack::new(BlockId(1), 10)));
+        assert!(!p.add_item(ItemStack::new(BlockId::new(1), 10)));
     }
 
     #[test]
@@ -578,13 +570,13 @@ mod tests {
         // Add 200, then 200 — should land in two empty slots (or one slot
         // and a spill, depending on traversal). Either way, all 400 must be
         // accounted for in the inventory.
-        assert!(p.add_item(ItemStack::new(BlockId(5), 200)));
-        assert!(p.add_item(ItemStack::new(BlockId(5), 200)));
+        assert!(p.add_item(ItemStack::new(BlockId::new(5), 200)));
+        assert!(p.add_item(ItemStack::new(BlockId::new(5), 200)));
         let total: u32 = p
             .inventory
             .iter()
             .flatten()
-            .filter(|s| s.id == BlockId(5))
+            .filter(|s| s.id == BlockId::new(5))
             .map(|s| u32::from(s.count))
             .sum();
         assert_eq!(total, 400);
@@ -593,12 +585,12 @@ mod tests {
     #[test]
     fn clear_inventory_resets_every_slot() {
         let mut p = Player::default();
-        *p.inventory_item_stack_mut(0, 0) = ItemStack::new(BlockId(7), 42);
+        *p.inventory_item_stack_mut(0, 0) = ItemStack::new(BlockId::new(7), 42);
         p.clear_inventory();
         for row in &p.inventory {
             for slot in row {
                 assert!(slot.empty());
-                assert_eq!(slot.id, BlockId(0));
+                assert_eq!(slot.id, BlockId::new(0));
             }
         }
     }

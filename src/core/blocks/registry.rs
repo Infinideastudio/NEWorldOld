@@ -18,19 +18,18 @@ use super::{BlockId, BlockInfo};
 /// Owning registry of `BlockInfo` entries.
 #[derive(Clone, Debug)]
 pub struct BlockRegistry {
-    entries: Vec<BlockInfo>,
+    by_id: Vec<BlockInfo>,
     by_name: HashMap<Cow<'static, str>, BlockId>,
 }
 
 impl BlockRegistry {
-    /// Empty registry with `BlockInfo::empty()` pre-installed at
-    /// [`BlockId::EMPTY`].
+    /// Empty registry with `BlockInfo::default()` mapped to the empty block.
     pub fn new() -> Self {
         let mut r = Self {
-            entries: Vec::new(),
+            by_id: Vec::new(),
             by_name: HashMap::new(),
         };
-        r.add(BlockInfo::empty());
+        r.add(BlockInfo::new("empty", "Empty"));
         r
     }
 
@@ -42,51 +41,24 @@ impl BlockRegistry {
     /// Panics if the id space (`u16`) is exhausted.
     pub fn add(&mut self, info: BlockInfo) -> BlockId {
         if let Some(&id) = self.by_name.get(&info.name) {
-            self.entries[id.get() as usize] = info;
+            self.by_id[id.get() as usize] = info;
             return id;
         }
-        let id =
-            BlockId(u16::try_from(self.entries.len()).expect("BlockRegistry: id space exhausted"));
+        let id = BlockId::new(u16::try_from(self.by_id.len()).expect("block ID space exhausted"));
         self.by_name.insert(info.name.clone(), id);
-        self.entries.push(info);
+        self.by_id.push(info);
         id
-    }
-
-    /// Replace the entry at `id` with `info`. The `by_name` index is
-    /// updated: `info`'s name now points at `id`, and the slot's old name
-    /// is removed (unless another slot still holds it). Used by
-    /// `register_base_blocks` to overwrite the reserved empty slot's name
-    /// from `"empty"` to `"air"`.
-    ///
-    /// Panics if `id` is out of range.
-    pub fn set(&mut self, id: BlockId, info: BlockInfo) {
-        let slot = id.get() as usize;
-        assert!(
-            slot < self.entries.len(),
-            "BlockRegistry::set: id {} out of range (len {})",
-            slot,
-            self.entries.len()
-        );
-        let old_name = self.entries[slot].name.clone();
-        // Only drop the old name if no other slot has stolen it.
-        if self.by_name.get(&old_name).copied() == Some(id) {
-            self.by_name.remove(&old_name);
-        }
-        self.by_name.insert(info.name.clone(), id);
-        self.entries[slot] = info;
     }
 
     /// Look up block info by id. Out-of-range ids return the empty fallback
     /// (`BlockId::EMPTY`'s entry).
     pub fn get(&self, id: BlockId) -> &BlockInfo {
-        self.entries
-            .get(id.get() as usize)
-            .unwrap_or(&self.entries[0])
+        self.by_id.get(id.get() as usize).unwrap_or(&self.by_id[0])
     }
 
     /// Strict variant: returns `None` when the id is unknown.
     pub fn try_get(&self, id: BlockId) -> Option<&BlockInfo> {
-        self.entries.get(id.get() as usize)
+        self.by_id.get(id.get() as usize)
     }
 
     /// Resolve a block name to its id.
@@ -96,17 +68,17 @@ impl BlockRegistry {
 
     /// All registered entries in id order.
     pub fn entries(&self) -> &[BlockInfo] {
-        &self.entries
+        &self.by_id
     }
 
     /// Number of registered blocks (including the reserved empty slot).
     pub fn len(&self) -> usize {
-        self.entries.len()
+        self.by_id.len()
     }
 
     /// True iff only the implicit empty entry has been registered.
     pub fn is_empty(&self) -> bool {
-        self.entries.len() <= 1
+        self.by_id.len() <= 1
     }
 }
 
@@ -131,11 +103,11 @@ mod tests {
     fn empty_entry_lives_at_id_zero() {
         let r = BlockRegistry::new();
         assert_eq!(r.len(), 1);
-        let empty = r.get(BlockId::EMPTY);
+        let empty = r.get(BlockId::default());
         assert_eq!(empty.name, "empty");
         assert!(!empty.solid);
         // Out-of-range falls back to id 0.
-        assert_eq!(r.get(BlockId(42)), empty);
+        assert_eq!(r.get(BlockId::new(42)), empty);
     }
 
     #[test]
@@ -143,9 +115,9 @@ mod tests {
         let mut r = BlockRegistry::new();
         let a = r.add(rock("a"));
         let b = r.add(rock("b"));
-        assert_eq!(a, BlockId(1));
-        assert_eq!(b, BlockId(2));
-        assert_eq!(r.id_of("a"), Some(BlockId(1)));
+        assert_eq!(a, BlockId::new(1));
+        assert_eq!(b, BlockId::new(2));
+        assert_eq!(r.id_of("a"), Some(BlockId::new(1)));
         assert_eq!(r.id_of("missing"), None);
     }
 
@@ -159,16 +131,5 @@ mod tests {
         assert_eq!(id, id2);
         assert_eq!(r.get(id).hardness, 99.0);
         assert_eq!(r.len(), 2);
-    }
-
-    #[test]
-    fn set_renames_and_replaces_a_specific_slot() {
-        let mut r = BlockRegistry::new();
-        let mut renamed = BlockInfo::empty();
-        renamed.name = Cow::Borrowed("air");
-        r.set(BlockId::EMPTY, renamed);
-        assert_eq!(r.get(BlockId::EMPTY).name, "air");
-        assert_eq!(r.id_of("air"), Some(BlockId::EMPTY));
-        assert!(r.id_of("empty").is_none(), "old name dropped from index");
     }
 }

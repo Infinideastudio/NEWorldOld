@@ -11,7 +11,8 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::core::blocks::{BaseBlocks, BlockData, BlockLight, BlockRegistry, BlockState};
+use crate::core::blocks::{BlockData, BlockId, BlockLight, BlockRegistry, BlockState};
+use crate::core::game::base_blocks::BaseBlocks;
 use crate::core::math::{Vec3i, Vec3u};
 use crate::core::world::{Chunk, ChunkData, Metadata, WorldError, WorldTables};
 
@@ -45,9 +46,12 @@ pub fn world_tables_for(
         let load = metadata.canonical_to_current(registry);
         let save = metadata.current_to_canonical(registry);
         let load_identity = load.len() == registry.len()
-            && load.iter().enumerate().all(|(i, id)| id.0 as usize == i);
-        let save_identity =
-            save.len() == registry.len() && save.iter().enumerate().all(|(i, &c)| c as usize == i);
+            && load
+                .iter()
+                .enumerate()
+                .all(|(i, id)| id.get() as usize == i);
+        let save_identity = save.len() == registry.len()
+            && save.iter().enumerate().all(|(i, &c)| c.get() as usize == i);
         Ok(WorldTables {
             metadata,
             load_table: if load_identity { Vec::new() } else { load },
@@ -77,12 +81,7 @@ impl TerrainGenerator {
     /// calls the closure on a disk miss, so this never runs for
     /// chunks already on disk.
     pub fn build_blocks(&self, coord: Vec3i) -> ChunkData {
-        let default_light = if coord.y < 0 {
-            BlockLight::NONE
-        } else {
-            BlockLight::SKY
-        };
-        let mut blocks = ChunkData::air_filled(default_light);
+        let mut blocks = ChunkData::default();
         init_generate(&mut blocks, coord, &self.noise, &self.base);
         blocks
     }
@@ -107,7 +106,7 @@ pub(super) fn init_generate(
     let size = Chunk::SIZE as i32;
 
     // Skip generation: chunk is fully above terrain & water surface.
-    if coord.y < 0 || (coord.y > high && coord.y * size > WATER_LEVEL) {
+    if coord.y > high && coord.y * size > WATER_LEVEL {
         return;
     }
 
@@ -115,32 +114,16 @@ pub(super) fn init_generate(
     if coord.y < low {
         let rock = BlockData {
             id: base.rock,
-            state: BlockState(0),
-            light: BlockLight::NONE,
+            state: BlockState::default(),
+            light: BlockLight::default(),
         };
         for cell in blocks.iter_mut() {
             *cell = rock;
-        }
-        if coord.y == 0 {
-            for x in 0..Chunk::SIZE {
-                for z in 0..Chunk::SIZE {
-                    blocks.block_mut(Vec3u::new(x as u32, 0, z as u32)).id = base.bedrock;
-                }
-            }
         }
         return;
     }
 
     // Normal generation: mixed terrain + water + air column-by-column.
-    let air_no_light = BlockData {
-        id: base.air,
-        state: BlockState(0),
-        light: BlockLight::NONE,
-    };
-    for cell in blocks.iter_mut() {
-        *cell = air_no_light;
-    }
-
     let sh = WATER_LEVEL + 2 - (coord.y * size);
     let wh = WATER_LEVEL - (coord.y * size);
 
@@ -171,15 +154,13 @@ pub(super) fn init_generate(
                 }
                 let minh = (h + 1).max(0).min(size);
                 let maxh = (wh + 1).max(0).min(size);
-                let mut sky = (i32::from(BlockLight::SKY.sky())
-                    - (WATER_LEVEL - (maxh - 1 + (coord.y * size))))
-                    .max(0);
+                let mut sky = (15 - (WATER_LEVEL - (maxh - 1 + (coord.y * size)))).max(0);
                 let mut y = maxh - 1;
                 while y >= minh {
                     sky = (sky - 1).max(0);
                     let cell = blocks.block_mut(Vec3u::new(x as u32, y as u32, z as u32));
                     cell.id = base.water;
-                    cell.light = BlockLight::new(sky as u8, BlockLight::SKY.block());
+                    cell.light = BlockLight::sky_and_block(sky as u8, 0);
                     y -= 1;
                 }
             }
@@ -194,8 +175,8 @@ pub(super) fn init_generate(
             let air_lo = (h.max(wh) + 1).max(0).min(size) as usize;
             for y in air_lo..Chunk::SIZE {
                 let cell = blocks.block_mut(Vec3u::new(x as u32, y as u32, z as u32));
-                cell.id = base.air;
-                cell.light = BlockLight::SKY;
+                cell.id = BlockId::default();
+                cell.light = BlockLight::sky_and_block(15, 0);
             }
 
             if coord.y == 0 {

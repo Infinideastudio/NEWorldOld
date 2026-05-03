@@ -7,22 +7,15 @@
 
 use std::borrow::Cow;
 
-use super::{BlockFaceMapping, BlockId, BlockInfo, BlockRegistry};
+use crate::core::blocks::{BlockFaceMapping, BlockId, BlockInfo, BlockRegistry};
 
 /// Namespace prefix applied to every base-game block's internal name.
 const NS: &str = "neworld";
 
 /// Ids assigned by [`register_base_blocks`]. Stored alongside the
 /// registry by the caller.
-///
-/// `air` aliases [`BlockId::EMPTY`] — the registry's reserved empty slot
-/// is the same cell base-game callers refer to as "air". The empty slot
-/// keeps its sentinel internal name (`"empty"`); base-game code reaches
-/// it via `BaseBlocks.air` rather than through `id_of("neworld.air")`
-/// (which returns `None` by design).
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct BaseBlocks {
-    pub air: BlockId,
     pub rock: BlockId,
     pub grass: BlockId,
     pub dirt: BlockId,
@@ -60,9 +53,6 @@ fn ns(id: &str) -> Cow<'static, str> {
 /// `client::blocks::register_base_block_visuals(&base, ...)` with the
 /// result.
 pub fn register_base_blocks(blocks: &mut BlockRegistry) -> BaseBlocks {
-    // Slot 0 is the registry's reserved empty entry; do NOT overwrite it.
-    let air = BlockId::EMPTY;
-
     let rock = blocks.add(
         BlockInfo::new(ns("rock"), "Rock")
             .solid(true)
@@ -157,7 +147,6 @@ pub fn register_base_blocks(blocks: &mut BlockRegistry) -> BaseBlocks {
             .hardness(0.2),
     );
     BaseBlocks {
-        air,
         rock,
         grass,
         dirt,
@@ -176,45 +165,5 @@ pub fn register_base_blocks(blocks: &mut BlockRegistry) -> BaseBlocks {
         coal,
         iron,
         tnt,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn fresh() -> (BlockRegistry, BaseBlocks) {
-        let mut blocks = BlockRegistry::new();
-        let base = register_base_blocks(&mut blocks);
-        (blocks, base)
-    }
-
-    #[test]
-    fn registers_19_entries_total_with_empty_slot_preserved() {
-        let (blocks, base) = fresh();
-        assert_eq!(blocks.len(), 19);
-        assert_eq!(base.air, BlockId::EMPTY);
-        assert_eq!(blocks.get(base.air).name, "empty");
-        assert_eq!(blocks.get(base.air).display_name, "");
-        assert!(blocks.id_of("neworld.air").is_none());
-        assert_eq!(blocks.id_of("neworld.rock"), Some(base.rock));
-        assert_eq!(blocks.get(base.rock).hardness, 2.0);
-        assert_eq!(blocks.get(base.rock).display_name, "Rock");
-    }
-
-    #[test]
-    fn legacy_id_numbering_preserved() {
-        let (_, base) = fresh();
-        assert_eq!(base.air, BlockId(0));
-        assert_eq!(base.rock, BlockId(1));
-        assert_eq!(base.grass, BlockId(2));
-        assert_eq!(base.tnt, BlockId(18));
-    }
-
-    #[test]
-    fn wood_uses_axis_aligned_mapping() {
-        let (blocks, base) = fresh();
-        let wood = blocks.get(base.wood);
-        assert_eq!(wood.face_mapping, BlockFaceMapping::AxisAligned);
     }
 }

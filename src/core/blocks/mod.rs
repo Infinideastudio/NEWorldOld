@@ -19,22 +19,14 @@
 //! registry live in `client::blocks` — none of that is needed by a
 //! headless server.
 
-mod base;
 mod data;
 mod face;
-mod id;
 mod info;
-mod light;
 mod orientation;
 mod registry;
-mod state;
 
-pub use base::{BaseBlocks, register_base_blocks};
-pub use data::BlockData;
+pub use data::{BlockData, BlockId, BlockLight, BlockState};
 pub use face::{BlockFaceMapping, face_axis, face_index_static};
-pub use id::BlockId;
 pub use info::BlockInfo;
-pub use light::BlockLight;
 pub use orientation::BlockOrientation;
 pub use registry::BlockRegistry;
-pub use state::BlockState;

@@ -23,7 +23,8 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use crate::core::blocks::{BaseBlocks, BlockData, BlockId, BlockLight, BlockRegistry, BlockState};
+use super::base_blocks::BaseBlocks;
+use crate::core::blocks::{BlockData, BlockId, BlockLight, BlockRegistry, BlockState};
 use crate::core::math::Vec3i;
 use crate::core::world::{WorkingSet, World, WriteTxn, chunk_coord};
 
@@ -45,36 +46,12 @@ const LIGHT_MAX: u8 = 15;
 /// (`+x, -x, +y, -y, +z, -z`). Order matters: index 2 is the **top**
 /// neighbour, which the skylit shortcut consults.
 const NEIGHBOUR_OFFSETS: [Vec3i; 6] = [
-    Vec3i {
-        x: 1,
-        y: 0,
-        z: 0,
-    },
-    Vec3i {
-        x: -1,
-        y: 0,
-        z: 0,
-    },
-    Vec3i {
-        x: 0,
-        y: 1,
-        z: 0,
-    },
-    Vec3i {
-        x: 0,
-        y: -1,
-        z: 0,
-    },
-    Vec3i {
-        x: 0,
-        y: 0,
-        z: 1,
-    },
-    Vec3i {
-        x: 0,
-        y: 0,
-        z: -1,
-    },
+    Vec3i { x: 1, y: 0, z: 0 },
+    Vec3i { x: -1, y: 0, z: 0 },
+    Vec3i { x: 0, y: 1, z: 0 },
+    Vec3i { x: 0, y: -1, z: 0 },
+    Vec3i { x: 0, y: 0, z: 1 },
+    Vec3i { x: 0, y: 0, z: -1 },
 ];
 
 // ----------------------------------------------------------------------
@@ -284,7 +261,7 @@ fn process_one_in_txn(
     let new_data = BlockData {
         id: curr.id,
         state: curr.state,
-        light: BlockLight::new(sky_light, block_light),
+        light: BlockLight::sky_and_block(sky_light, block_light),
     };
 
     let mut changed = false;
@@ -328,8 +305,12 @@ fn compute_light(
     }
     let skylit = coord.y >= 0 && neighbours[2].light.sky() == LIGHT_MAX;
 
-    if curr.id == base.air {
-        sky = if skylit { LIGHT_MAX } else { sky.saturating_sub(1) };
+    if curr.id == BlockId::default() {
+        sky = if skylit {
+            LIGHT_MAX
+        } else {
+            sky.saturating_sub(1)
+        };
         block = block.saturating_sub(1);
     } else if !registry.get(curr.id).solid {
         sky = sky.saturating_sub(1);
@@ -380,10 +361,7 @@ pub fn process_block_updates(
             let coord = queue
                 .pop_front()
                 .expect("queue is non-empty per the loop guard");
-            by_chunk
-                .entry(chunk_coord(coord))
-                .or_default()
-                .push(coord);
+            by_chunk.entry(chunk_coord(coord)).or_default().push(coord);
         }
         budget -= take;
 

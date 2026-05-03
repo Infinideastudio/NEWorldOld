@@ -156,7 +156,7 @@ mod tests {
         original.set_orientation(Eulerd::new(0.3, 0.4, 0.0));
         original.set_game_mode(GameMode::Creative);
         original.set_held_item_stack_index(4);
-        *original.inventory_item_stack_mut(2, 3) = ItemStack::new(BlockId(7), 42);
+        *original.inventory_item_stack_mut(2, 3) = ItemStack::new(BlockId::new(7), 42);
 
         original.save_to(&path).expect("save");
         let loaded = Player::load_from(&path).expect("load");
@@ -168,7 +168,7 @@ mod tests {
             loaded.held_item_stack_index(),
             original.held_item_stack_index()
         );
-        assert_eq!(loaded.inventory_item_stack(2, 3).id, BlockId(7));
+        assert_eq!(loaded.inventory_item_stack(2, 3).id, BlockId::new(7));
         assert_eq!(loaded.inventory_item_stack(2, 3).count, 42);
         assert!(loaded.flying());
     }

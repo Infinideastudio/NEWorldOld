@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use crate::core::math::Vec3i;
 
-use super::error::WorldError;
+use super::errors::WorldError;
 
 /// Sled-backed K/V store keyed by chunk coord. Cheap-clonable.
 #[derive(Clone)]

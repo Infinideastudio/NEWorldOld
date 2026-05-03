@@ -5,9 +5,11 @@
 //! - The chunk-coord centre + `render_distance` (in chunks).
 //! - A [`LoadedCore`] optimisation that skips already-loaded shells in
 //!   the bounded shell scan.
-//! - A `HashMap<Vec3i, Arc<Chunk>>` keeping every chunk in the load
-//!   window pinned: the `Arc` itself is the pin — eviction drops the
-//!   world's clone, our clone keeps the chunk alive until we drop it.
+//! - A `HashMap<Vec3i, Lease>` keeping every chunk in the load
+//!   window pinned. A `Lease` is the canonical pin in the new
+//!   chunk-store protocol: while it's alive, an `unload_chunk` for
+//!   that coord blocks in its drain step, so the world cannot
+//!   evict a chunk we still need.
 //!
 //! Drives the `World`:
 //! - `set_center` updates the centre.
@@ -20,11 +22,10 @@
 
 use std::cmp::{Ordering, Reverse};
 use std::collections::{BinaryHeap, HashMap};
-use std::sync::Arc;
 
 use crate::core::game::worldgen::TerrainGenerator;
 use crate::core::math::Vec3i;
-use crate::core::world::{Chunk, World, chunk_coord};
+use crate::core::world::{Lease, World, chunk_coord};
 
 // ----------------------------------------------------------------------
 //   Tuning constants
@@ -72,7 +73,7 @@ pub struct RangeLoader {
     /// `render_distance + LOAD_RADIUS_BUFFER`.
     render_distance: i32,
     loaded_distance: i32,
-    pins: HashMap<Vec3i, Arc<Chunk>>,
+    pins: HashMap<Vec3i, Lease>,
     /// HUD counter — wraps on overflow; only ever read for display.
     unloaded_chunks: u32,
 }
@@ -119,15 +120,15 @@ impl RangeLoader {
 
     /// Synchronously load chunks within the window and unload ones
     /// outside.
-    pub fn tick_chunk_loading(&mut self, world: &mut World, terrain_gen: &mut TerrainGenerator) {
+    pub fn tick_chunk_loading(&mut self, world: &World, terrain_gen: &mut TerrainGenerator) {
         for cc in self.collect_load_candidates(world) {
             if world.is_loaded(cc) {
                 continue;
             }
             world.load_chunk(cc, || terrain_gen.build_blocks(cc));
             world.mark_neighbour_chunks_updated(cc);
-            if let Some(arc) = world.chunk(cc) {
-                self.pins.insert(cc, arc);
+            if let Some(lease) = world.try_acquire_lease(cc) {
+                self.pins.insert(cc, lease);
             }
         }
         for cc in self.collect_unload_candidates(world) {
@@ -223,11 +224,11 @@ impl RangeLoader {
             .collect()
     }
 
-    fn unload_one(&mut self, world: &mut World, cc: Vec3i) {
-        // Drop our pin clone first so the chunk's only remaining
-        // strong reference (after world.evict) is the world's, which
-        // we're about to remove. `World::evict` persists any dirty
-        // bytes synchronously before dropping the slot.
+    fn unload_one(&mut self, world: &World, cc: Vec3i) {
+        // Drop our lease first so World::unload_chunk's drain step
+        // doesn't deadlock against our own pin. The eviction
+        // state-machine then runs to completion (CAS → wait_drain
+        // → flush → remove).
         self.pins.remove(&cc);
         world.unload_chunk(cc);
         self.unloaded_chunks = self.unloaded_chunks.wrapping_add(1);

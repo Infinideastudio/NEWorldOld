@@ -9,7 +9,8 @@ mod common;
 
 use std::sync::Arc;
 
-use neworld::core::blocks::{BaseBlocks, BlockRegistry, register_base_blocks};
+use neworld::core::blocks::BlockRegistry;
+use neworld::core::game::base_blocks::{BaseBlocks, register_base_blocks};
 use neworld::core::game::range_loader::RangeLoader;
 use neworld::core::game::worldgen::{TerrainGenerator, world_tables_for};
 use neworld::core::math::{Vec3i, Vec3u};
@@ -77,19 +78,13 @@ fn block_coord_modulo_bitmask() {
 #[test]
 fn world_set_block_then_block_round_trips() {
     let scratch = ScratchDir::new("set-block");
-    let (mut w, mut terrain, mut loader, base, registry) = build_world(&scratch, "set-block", 1);
+    let (w, mut terrain, mut loader, base, registry) = build_world(&scratch, "set-block", 1);
     let mut q = neworld::core::game::block_update::BlockUpdateQueue::new();
     loader.set_center(Vec3i::new(0, 0, 0));
-    loader.tick_chunk_loading(&mut w, &mut terrain);
+    loader.tick_chunk_loading(&w, &mut terrain);
     let coord = Vec3i::new(1, 2, 3);
     neworld::core::game::block_update::set_block(
-        &w,
-        &mut q,
-        &base,
-        &registry,
-        coord,
-        base.stone,
-        false,
+        &w, &mut q, &base, &registry, coord, base.stone, false,
     );
     let got = w.block(coord).expect("loaded");
     assert_eq!(got.id, base.stone);
@@ -100,10 +95,10 @@ fn world_set_block_then_block_round_trips() {
 #[test]
 fn world_block_or_air_returns_air_for_unloaded_coord() {
     let scratch = ScratchDir::new("air");
-    let (w, _terrain, _loader, base, _registry) = build_world(&scratch, "air", 1);
+    let (w, _terrain, _loader, _base, _registry) = build_world(&scratch, "air", 1);
     let far_off = Vec3i::new(100_000, 100_000, 100_000);
-    let b = w.block_or_air(far_off);
-    assert_eq!(b.id, base.air);
+    let b = w.block(far_off);
+    assert_eq!(b, None);
     assert!(w.block(far_off).is_none());
 }
 
@@ -111,9 +106,9 @@ fn world_block_or_air_returns_air_for_unloaded_coord() {
 fn world_loads_chunk_visible_via_read_txn() {
     use neworld::core::world::WorkingSet;
     let scratch = ScratchDir::new("chunk-lookup");
-    let (mut w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "chunk-lookup", 1);
+    let (w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "chunk-lookup", 1);
     loader.set_center(Vec3i::new(0, 0, 0));
-    loader.tick_chunk_loading(&mut w, &mut terrain);
+    loader.tick_chunk_loading(&w, &mut terrain);
     let cc = Vec3i::new(0, 0, 0);
     assert!(w.is_loaded(cc));
     // The chunk is reachable through a 1-coord ReadTxn.
@@ -130,9 +125,9 @@ fn world_set_center_does_not_unload_existing_chunks() {
     // old chunk, the chunk must still be reachable until the next
     // `tick_chunk_loading` reaps it.
     let scratch = ScratchDir::new("set-center");
-    let (mut w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "set-center", 1);
+    let (w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "set-center", 1);
     loader.set_center(Vec3i::new(0, 0, 0));
-    loader.tick_chunk_loading(&mut w, &mut terrain);
+    loader.tick_chunk_loading(&w, &mut terrain);
     let cc = Vec3i::new(0, 0, 0);
     assert!(w.is_loaded(cc));
 
@@ -143,7 +138,7 @@ fn world_set_center_does_not_unload_existing_chunks() {
     assert!(w.is_loaded(cc), "set_center alone must not unload");
 
     // After ticking, the now-distant chunk gets reaped.
-    loader.tick_chunk_loading(&mut w, &mut terrain);
+    loader.tick_chunk_loading(&w, &mut terrain);
     assert!(!w.is_loaded(cc), "tick_chunk_loading should unload it");
 }
 
@@ -154,10 +149,10 @@ fn world_update_block_skips_when_neighbours_unloaded() {
     // coords `-1..=1` on every axis. Block coord (31, 5, 5) sits in chunk
     // (1, 0, 0) — its +x neighbour at (32, 5, 5) is in chunk (2, 0, 0)
     // which stays unloaded, so `update_block` must bail.
-    let (mut w, mut terrain, mut loader, base, registry) = build_world(&scratch, "update-skip", 0);
+    let (w, mut terrain, mut loader, base, registry) = build_world(&scratch, "update-skip", 0);
     let mut q = neworld::core::game::block_update::BlockUpdateQueue::new();
     loader.set_center(Vec3i::new(0, 0, 0));
-    loader.tick_chunk_loading(&mut w, &mut terrain);
+    loader.tick_chunk_loading(&w, &mut terrain);
     let coord = Vec3i::new(31, 5, 5);
     assert!(!neworld::core::game::block_update::update_block(
         &w, &mut q, &base, &registry, coord, true,
@@ -168,11 +163,10 @@ fn world_update_block_skips_when_neighbours_unloaded() {
 #[test]
 fn world_update_block_queues_neighbour_updates_when_all_loaded() {
     let scratch = ScratchDir::new("update-queue");
-    let (mut w, mut terrain, mut loader, base, registry) =
-        build_world(&scratch, "update-queue", 1);
+    let (w, mut terrain, mut loader, base, registry) = build_world(&scratch, "update-queue", 1);
     let mut q = neworld::core::game::block_update::BlockUpdateQueue::new();
     loader.set_center(Vec3i::new(0, 0, 0));
-    loader.tick_chunk_loading(&mut w, &mut terrain);
+    loader.tick_chunk_loading(&w, &mut terrain);
     let coord = Vec3i::new(2, 3, 4);
     let drained_before = q.len();
     let ok =
@@ -191,18 +185,18 @@ fn world_tick_chunk_loading_is_idempotent() {
     // beyond `MAX_CHUNK_LOADS = 64` per tick. Drain to a steady state, then
     // assert one more tick adds nothing.
     let scratch = ScratchDir::new("idempotent");
-    let (mut w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "idempotent", 1);
+    let (w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "idempotent", 1);
     loader.set_center(Vec3i::new(0, 0, 0));
     let mut prev = 0;
     for _ in 0..16 {
-        loader.tick_chunk_loading(&mut w, &mut terrain);
+        loader.tick_chunk_loading(&w, &mut terrain);
         if w.loaded_count() == prev {
             break;
         }
         prev = w.loaded_count();
     }
     let n1 = w.loaded_count();
-    loader.tick_chunk_loading(&mut w, &mut terrain);
+    loader.tick_chunk_loading(&w, &mut terrain);
     let n2 = w.loaded_count();
     assert_eq!(n1, n2, "post-stable tick should not double-load");
 }

@@ -1,163 +1,86 @@
-//! `Chunk` — one slot in the world's chunk store.
+//! `Chunk` — one entry in the world's chunk store, plus the
+//! [`ChunkData`] block array and on-disk codec it wraps.
 //!
-//! Holds a `SIZE × SIZE × SIZE` voxel array under a lock plus the
-//! lock-free atomics the eviction / writeback / 2PL machinery consults
-//! without locking the data:
+//! `Chunk` is both the runtime cache-slot type (lock + atomics +
+//! LSN pair + lease counter + eviction state) and the namespace
+//! for the chunk-geometry constants ([`Chunk::SIZE`],
+//! [`Chunk::SIZE_LOG`]). [`ChunkData`] is the bare
+//! `SIZE × SIZE × SIZE` block array that lives under each
+//! `Chunk`'s `RwLock`.
 //!
-//! - `commit_gen` — bumped under the write lock on every commit.
-//! - `save_gen`   — advanced (via `fetch_max`) by writeback after a
-//!   successful disk write. The pair `(save_gen, commit_gen)` encodes
-//!   "is this dirty?" — see [`Self::dirty`].
-//! - `updated`    — mesh-rebuild signal consumed by the renderer.
+//! ## Pin discipline
 //!
-//! There is no per-chunk pin counter: residency is owned by whoever
-//! holds a strong [`Arc<Chunk>`]. The world's chunk map drops its
-//! `Arc` on eviction; outstanding [`crate::core::world::ReadTxn`] /
-//! [`crate::core::world::WriteTxn`] entries hold their own clones, so
-//! the chunk lives until the last txn drops.
+//! A `Chunk` is reachable from the world's
+//! `DashMap<Vec3i, Arc<Chunk>>` while it's resident. Outside of
+//! the world module, **the only way to obtain a usable reference
+//! is to acquire a [`Lease`]** — an RAII handle that increments
+//! the chunk's lease counter on construction and decrements it on
+//! drop. While any lease is live, eviction cannot finish.
 //!
-//! ## save / commit gens
+//! Eviction is a state machine:
 //!
-//! Two monotonically-increasing `AtomicU64`s with the invariant
-//! `save_gen ≤ commit_gen` at every moment. `commit_gen` is bumped
-//! under the write lock during commit, so any reader who re-acquires
-//! the chunk lock sees data + bumped gen consistently. `save_gen` is
-//! advanced via `fetch_max(captured_gen)` after a successful disk
-//! write — monotonic and idempotent.
+//! 1. The world CAS-flips the chunk's state from `RESIDENT` to
+//!    `EVICTING`. If the CAS fails, the caller bails — somebody
+//!    else is already evicting this chunk.
+//! 2. After the CAS, new [`Chunk::try_acquire_lease`] calls observe
+//!    `EVICTING` and refuse — no fresh leases can appear.
+//! 3. The evictor calls [`Chunk::wait_drain`] until the lease
+//!    counter hits zero (currently a `yield_now` spin — eviction
+//!    is the cold path).
+//! 4. The evictor flushes the chunk to disk and removes it from
+//!    the world map.
 //!
-//! Construction:
-//! - [`Chunk::from_disk`] — chunk loaded from sled. `(save_gen,
-//!   commit_gen) = (1, 1)` (memory matches disk).
-//! - [`Chunk::from_gen`] — chunk just produced by terrain generation.
-//!   `(save_gen, commit_gen) = (0, 1)` (no on-disk copy yet; dirty by
-//!   definition until written out).
+//! With this discipline, a transaction holding a lease and the
+//! `Arc<Chunk>` it points at always agree on identity — the world
+//! cannot install a fresh `Chunk` for the same coord while the
+//! evicting one is still leased. Orphan-arcs are impossible.
 //!
-//! `save_gen == 0` means "this coord has no persisted copy" — subsumes
-//! what an `on_disk` flag would say.
+//! ## Owned guards
+//!
+//! Transactions need to hold the chunk's `RwLock` guard across
+//! many operations, so we hand out *owned* guards: a
+//! [`ChunkReadGuard`] / [`ChunkWriteGuard`] bundles the
+//! parking_lot guard with an `Arc<Chunk>` keepalive. Field
+//! declaration order in the guard struct ensures the lock is
+//! released *before* the keepalive Arc decrements; see the SAFETY
+//! comment on [`Chunk::read_owned`].
+//!
+//! ## LSN pair
+//!
+//! Each chunk carries `commit_lsn` (under the lock; mutated under
+//! the write guard at commit time) and `persisted_lsn` (atomic;
+//! advanced by writeback after a successful disk write). The pair
+//! `persisted_lsn < commit_lsn` means dirty.
+//!
+//! Putting `commit_lsn` *under the lock* fixes the order-inversion
+//! bug in the previous design: any reader who holds the read lock
+//! sees a consistent (data, lsn) pair.
 
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, AtomicUsize, Ordering};
 
-use parking_lot::{ArcRwLockReadGuard, ArcRwLockWriteGuard, RawRwLock, RwLock};
-use thiserror::Error;
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use crate::core::blocks::{BlockData, BlockId, BlockLight, BlockState};
+use crate::core::blocks::{BlockData, BlockId};
 use crate::core::math::Vec3u;
 
-// ----------------------------------------------------------------------
-//   Chunk
-// ----------------------------------------------------------------------
-
-/// One cache slot in the world's chunk store. Holds the block array
-/// under a `parking_lot::RwLock` (wrapped in `Arc` so transactions can
-/// take owned guards without lifetime gymnastics) plus the lock-free
-/// commit/save/updated atomics.
-pub struct Chunk {
-    /// Inner `Arc` so callers can take owned `ArcRwLockReadGuard` /
-    /// `ArcRwLockWriteGuard` via `parking_lot`'s `arc_lock` feature.
-    /// Without the inner `Arc`, an owned guard would need lifetime
-    /// gymnastics (or `unsafe`); with it, txn entries hold the guard
-    /// directly and don't need to borrow from the `Arc<Chunk>`.
-    blocks: Arc<RwLock<ChunkData>>,
-    save_gen: AtomicU64,
-    commit_gen: AtomicU64,
-    updated: AtomicBool,
-}
-
-impl Chunk {
-    /// `log2(SIZE)` — chunks are `SIZE × SIZE × SIZE` blocks.
-    pub const SIZE_LOG: usize = 4;
-
-    /// Edge length of a chunk (= 16).
-    pub const SIZE: usize = 1 << Self::SIZE_LOG;
-
-    /// Chunk wrapping blocks that came from disk. `(save_gen,
-    /// commit_gen) = (1, 1)` — memory matches disk.
-    pub(super) fn from_disk(blocks: ChunkData) -> Self {
-        Self::with_gens(blocks, 1, 1)
-    }
-
-    /// Chunk wrapping freshly-generated blocks. `(save_gen,
-    /// commit_gen) = (0, 1)` — dirty until written out.
-    pub(super) fn from_gen(blocks: ChunkData) -> Self {
-        Self::with_gens(blocks, 0, 1)
-    }
-
-    fn with_gens(blocks: ChunkData, save_gen: u64, commit_gen: u64) -> Self {
-        debug_assert!(save_gen <= commit_gen, "save_gen ≤ commit_gen invariant");
-        Self {
-            blocks: Arc::new(RwLock::new(blocks)),
-            save_gen: AtomicU64::new(save_gen),
-            commit_gen: AtomicU64::new(commit_gen),
-            updated: AtomicBool::new(false),
-        }
-    }
-
-    /// Take an owned read guard. The guard owns a clone of the inner
-    /// `Arc<RwLock<Blocks>>`, so it doesn't borrow from the `Chunk`.
-    pub(super) fn read_blocks(&self) -> ArcRwLockReadGuard<RawRwLock, ChunkData> {
-        self.blocks.read_arc()
-    }
-
-    /// Take an owned write guard. See [`Self::read_blocks`].
-    pub(super) fn write_blocks(&self) -> ArcRwLockWriteGuard<RawRwLock, ChunkData> {
-        self.blocks.write_arc()
-    }
-
-    // ----- save_gen / commit_gen -----
-
-    pub(super) fn commit_gen(&self) -> u64 {
-        self.commit_gen.load(Ordering::Acquire)
-    }
-
-    #[cfg(test)]
-    pub(super) fn save_gen(&self) -> u64 {
-        self.save_gen.load(Ordering::Acquire)
-    }
-
-    /// Bump the commit generation. Called by `WriteTxn::commit` after
-    /// applying writes, while the write lock is still held.
-    pub(super) fn bump_commit_gen(&self) {
-        self.commit_gen.fetch_add(1, Ordering::AcqRel);
-    }
-
-    /// Advance `save_gen` to `max(save_gen, captured)`. Called by
-    /// writeback after a successful disk write. Monotonic and
-    /// idempotent.
-    pub(super) fn advance_save_gen(&self, captured: u64) {
-        self.save_gen.fetch_max(captured, Ordering::AcqRel);
-    }
-
-    /// True iff `save_gen < commit_gen` — i.e. there are committed
-    /// changes not yet written to disk. Read order: save first, then
-    /// commit, so the pair `(A, B)` always satisfies `A ≤ B`.
-    pub(super) fn dirty(&self) -> bool {
-        let save = self.save_gen.load(Ordering::Acquire);
-        let commit = self.commit_gen.load(Ordering::Acquire);
-        save < commit
-    }
-
-    // ----- updated (TODO: factor out to render) -----
-
-    pub(super) fn mark_updated(&self) {
-        self.updated.store(true, Ordering::Release);
-    }
-
-    pub(super) fn clear_updated(&self) {
-        self.updated.store(false, Ordering::Release);
-    }
-
-    pub(super) fn updated(&self) -> bool {
-        self.updated.load(Ordering::Acquire)
-    }
-}
+use super::errors::ChunkError;
 
 // ----------------------------------------------------------------------
-//   ChunkData
+//   Eviction-state encoding
 // ----------------------------------------------------------------------
 
-/// The `SIZE × SIZE × SIZE` block array for one chunk. A `Chunk`'s data
-/// lives behind a `parking_lot::RwLock<ChunkData>`.
+pub(super) const RESIDENT: u8 = 0;
+pub(super) const EVICTING: u8 = 1;
+
+// ----------------------------------------------------------------------
+//   ChunkData — the SIZE × SIZE × SIZE block array
+// ----------------------------------------------------------------------
+
+/// The `SIZE × SIZE × SIZE` block array for one chunk. Lives under
+/// [`ChunkInner`] which itself lives under each [`Chunk`]'s
+/// `RwLock`.
 pub struct ChunkData([BlockData; Chunk::SIZE * Chunk::SIZE * Chunk::SIZE]);
 
 impl ChunkData {
@@ -181,16 +104,6 @@ impl ChunkData {
     /// gives a strong ratio on homogeneous voxel data.
     pub const COMPRESSION_LEVEL: i32 = 3;
 
-    /// Air-filled blocks at the given default light.
-    pub fn air_filled(default_light: BlockLight) -> Self {
-        let fill = BlockData {
-            id: BlockId::EMPTY,
-            state: BlockState::default(),
-            light: default_light,
-        };
-        Self([fill; Chunk::SIZE * Chunk::SIZE * Chunk::SIZE])
-    }
-
     /// Linear index for `(x, y, z)` block-local coords (X-major,
     /// matching the C++ port).
     pub fn index(bcoord: Vec3u) -> usize {
@@ -204,27 +117,23 @@ impl ChunkData {
         (x * Chunk::SIZE + y) * Chunk::SIZE + z
     }
 
-    /// Read one block.
     pub fn block(&self, bcoord: Vec3u) -> BlockData {
         self.0[Self::index(bcoord)]
     }
 
-    /// Mutable cell access.
     pub fn block_mut(&mut self, bcoord: Vec3u) -> &mut BlockData {
         &mut self.0[Self::index(bcoord)]
     }
 
-    /// Iterate every cell mutably.
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, BlockData> {
         self.0.iter_mut()
     }
 
-    /// Borrow the raw cell slice (read-only).
     pub fn as_slice(&self) -> &[BlockData] {
         &self.0
     }
 
-    /// Serialize to bytes: a 12-byte plain header followed by the
+    /// Serialize to bytes: an 8-byte plain header followed by the
     /// zstd-compressed block array (`SIZE_CUBED` little-endian
     /// records before compression). `current_to_canonical` translates
     /// each cell's in-memory id to the canonical id stored on disk;
@@ -233,21 +142,16 @@ impl ChunkData {
     /// Compression typically shrinks chunks 5–200× — homogeneous
     /// chunks (pure air above terrain, pure rock below) collapse
     /// almost to nothing, mixed chunks settle around 4–10×.
-    pub fn package_to(&self, current_to_canonical: &[u16]) -> Vec<u8> {
+    pub fn package_to(&self, current_to_canonical: &[BlockId]) -> Vec<u8> {
         let mut body = Vec::with_capacity(Self::DATA_SIZE);
         let identity = current_to_canonical.is_empty();
         for cell in self.0.iter() {
             let mut translated = *cell;
             if !identity {
-                let canonical = current_to_canonical
-                    .get(cell.id.0 as usize)
+                translated.id = current_to_canonical
+                    .get(cell.id.get() as usize)
                     .copied()
-                    .unwrap_or(u16::MAX);
-                translated.id = if canonical == u16::MAX {
-                    BlockId::EMPTY
-                } else {
-                    BlockId(canonical)
-                };
+                    .unwrap_or(BlockId::default());
             }
             translated.encode_to(&mut body);
         }
@@ -302,9 +206,9 @@ impl ChunkData {
             let mut cell = BlockData::decode_from(&decompressed[off..off + BlockData::ENCODED_LEN]);
             if !identity {
                 cell.id = canonical_to_current
-                    .get(cell.id.0 as usize)
+                    .get(cell.id.get() as usize)
                     .copied()
-                    .unwrap_or(BlockId::EMPTY);
+                    .unwrap_or(BlockId::default());
             }
             *slot = cell;
         }
@@ -312,17 +216,243 @@ impl ChunkData {
     }
 }
 
-/// Errors returned by [`ChunkData::unpackage_from`].
-#[derive(Debug, Error, PartialEq, Eq)]
-pub enum ChunkError {
-    #[error("chunk header has bad magic")]
-    Magic,
-    #[error("chunk header has bad version: got {got}")]
-    Version { got: u32 },
-    #[error("chunk has bad size: expected {expected} bytes, got {got}")]
-    Size { expected: usize, got: usize },
-    #[error("chunk body failed zstd decompression")]
-    Compression,
+impl Default for ChunkData {
+    /// Empty chunk with all blocks set to the default (empty, no light) state.
+    fn default() -> Self {
+        Self([BlockData::default(); Chunk::SIZE * Chunk::SIZE * Chunk::SIZE])
+    }
+}
+
+// ----------------------------------------------------------------------
+//   ChunkInner — what lives under the lock
+// ----------------------------------------------------------------------
+
+/// What lives under each [`Chunk`]'s `RwLock`. Pairing
+/// `commit_lsn` with the data inside the same lock guarantees that
+/// any reader holding the lock sees a consistent (data, lsn) pair.
+pub struct ChunkInner {
+    pub data: ChunkData,
+    pub commit_lsn: u64,
+}
+
+// ----------------------------------------------------------------------
+//   Chunk — the runtime cache slot
+// ----------------------------------------------------------------------
+
+pub struct Chunk {
+    blocks: RwLock<ChunkInner>,
+    persisted_lsn: AtomicU64,
+    leases: AtomicUsize,
+    state: AtomicU8,
+    updated: AtomicBool,
+}
+
+impl Chunk {
+    /// `log2(SIZE)` — chunks are `SIZE × SIZE × SIZE` blocks.
+    pub const SIZE_LOG: usize = 4;
+
+    /// Edge length of a chunk (= 16).
+    pub const SIZE: usize = 1 << Self::SIZE_LOG;
+
+    /// Build a chunk just loaded from disk.
+    /// `(commit_lsn, persisted_lsn) = (0, 0)` — clean.
+    pub(super) fn from_disk(data: ChunkData) -> Arc<Self> {
+        Arc::new(Self {
+            blocks: RwLock::new(ChunkInner {
+                data,
+                commit_lsn: 0,
+            }),
+            persisted_lsn: AtomicU64::new(0),
+            leases: AtomicUsize::new(0),
+            state: AtomicU8::new(RESIDENT),
+            updated: AtomicBool::new(false),
+        })
+    }
+
+    /// Build a chunk for freshly-generated terrain. `lsn` must be a
+    /// non-zero LSN allocated from the world's counter; storing it
+    /// in `commit_lsn` while `persisted_lsn` stays zero marks the
+    /// chunk dirty until writeback.
+    pub(super) fn from_generated(data: ChunkData, lsn: u64) -> Arc<Self> {
+        debug_assert!(lsn > 0, "lsn 0 is reserved for clean from_disk chunks");
+        Arc::new(Self {
+            blocks: RwLock::new(ChunkInner {
+                data,
+                commit_lsn: lsn,
+            }),
+            persisted_lsn: AtomicU64::new(0),
+            leases: AtomicUsize::new(0),
+            state: AtomicU8::new(RESIDENT),
+            updated: AtomicBool::new(false),
+        })
+    }
+
+    // ---- lease + eviction state ----------------------------------------
+
+    /// Try to take a lease. Returns `None` if the chunk is in the
+    /// `EVICTING` state — caller should treat that as "chunk not
+    /// currently available" and retry.
+    ///
+    /// Pattern: optimistic increment, then check state. If we raced
+    /// with [`Self::start_eviction`], we revert. The transient
+    /// `leases >= 1` doesn't reflect a real user — the lease isn't
+    /// returned to the caller.
+    pub(super) fn try_acquire_lease(self: &Arc<Self>) -> Option<Lease> {
+        self.leases.fetch_add(1, Ordering::AcqRel);
+        if self.state.load(Ordering::Acquire) != RESIDENT {
+            self.leases.fetch_sub(1, Ordering::AcqRel);
+            return None;
+        }
+        Some(Lease {
+            chunk: Arc::clone(self),
+        })
+    }
+
+    /// Cheap peek at the eviction state — true iff the chunk is
+    /// `RESIDENT`. Used by [`super::World::is_loaded`] /
+    /// [`super::World::load_chunk`] to decide whether the entry in
+    /// the chunk map is usable as-is or whether to wait/retry.
+    pub(super) fn is_resident(&self) -> bool {
+        self.state.load(Ordering::Acquire) == RESIDENT
+    }
+
+    /// CAS-flip `RESIDENT → EVICTING`. Returns true on success.
+    /// After this returns true, no fresh leases can be acquired.
+    /// The caller must then [`Self::wait_drain`] before flushing.
+    pub(super) fn start_eviction(&self) -> bool {
+        self.state
+            .compare_exchange(RESIDENT, EVICTING, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+    }
+
+    /// Spin (with `yield_now`) until `leases == 0`. Eviction is
+    /// rare and lease holds are short; if this becomes a problem,
+    /// switch to a Condvar.
+    pub(super) fn wait_drain(&self) {
+        while self.leases.load(Ordering::Acquire) > 0 {
+            std::thread::yield_now();
+        }
+    }
+
+    // ---- owned guards (the unsafe lives here) --------------------------
+
+    pub(super) fn read_owned(self: &Arc<Self>) -> ChunkReadGuard {
+        let guard = self.blocks.read();
+        // SAFETY: the returned `ChunkReadGuard` stores
+        // `Arc::clone(self)` alongside the guard. That Arc keeps
+        // the chunk — and thus the RwLock allocation the guard
+        // points at — alive for at least as long as the guard.
+        // `ChunkReadGuard`'s field declaration order ensures the
+        // guard is dropped before the Arc, so the lock is always
+        // released before any potential deallocation.
+        let guard: RwLockReadGuard<'static, ChunkInner> = unsafe { std::mem::transmute(guard) };
+        ChunkReadGuard {
+            guard,
+            _chunk: Arc::clone(self),
+        }
+    }
+
+    pub(super) fn write_owned(self: &Arc<Self>) -> ChunkWriteGuard {
+        let guard = self.blocks.write();
+        // SAFETY: same justification as `read_owned`.
+        let guard: RwLockWriteGuard<'static, ChunkInner> = unsafe { std::mem::transmute(guard) };
+        ChunkWriteGuard {
+            guard,
+            _chunk: Arc::clone(self),
+        }
+    }
+
+    // ---- LSN pair ------------------------------------------------------
+
+    pub(super) fn persisted_lsn(&self) -> u64 {
+        self.persisted_lsn.load(Ordering::Acquire)
+    }
+
+    /// Advance `persisted_lsn` to `max(persisted_lsn, captured)`.
+    /// Called by writeback after a successful disk write.
+    /// Monotonic and idempotent.
+    pub(super) fn advance_persisted_lsn(&self, captured: u64) {
+        self.persisted_lsn.fetch_max(captured, Ordering::AcqRel);
+    }
+
+    /// True iff `persisted_lsn < commit_lsn`. Reads `commit_lsn`
+    /// under the read lock — `dirty()` is intended for cold-path
+    /// callers (sweep, save) where the lock cost is acceptable.
+    pub(super) fn dirty(&self) -> bool {
+        let persisted = self.persisted_lsn.load(Ordering::Acquire);
+        persisted < self.blocks.read().commit_lsn
+    }
+
+    // ---- updated (renderer hook) ---------------------------------------
+
+    pub(super) fn mark_updated(&self) {
+        self.updated.store(true, Ordering::Release);
+    }
+    pub(super) fn clear_updated(&self) {
+        self.updated.store(false, Ordering::Release);
+    }
+    pub(super) fn updated(&self) -> bool {
+        self.updated.load(Ordering::Acquire)
+    }
+}
+
+// ----------------------------------------------------------------------
+//   Lease
+// ----------------------------------------------------------------------
+
+/// RAII pin on a chunk. Holding a `Lease` blocks eviction
+/// completion for the pinned coord; dropping it allows eviction
+/// to proceed (if [`Chunk::start_eviction`] already fired).
+pub struct Lease {
+    chunk: Arc<Chunk>,
+}
+
+impl Lease {
+    pub(super) fn chunk(&self) -> &Arc<Chunk> {
+        &self.chunk
+    }
+}
+
+impl Drop for Lease {
+    fn drop(&mut self) {
+        self.chunk.leases.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
+// ----------------------------------------------------------------------
+//   Owned guards
+// ----------------------------------------------------------------------
+
+/// Owned read guard. Field order is load-bearing: `guard` must
+/// drop first (releasing the lock) before `_chunk` (which may free
+/// the allocation the lock lives in).
+pub struct ChunkReadGuard {
+    guard: RwLockReadGuard<'static, ChunkInner>,
+    _chunk: Arc<Chunk>,
+}
+
+impl Deref for ChunkReadGuard {
+    type Target = ChunkInner;
+    fn deref(&self) -> &ChunkInner {
+        &self.guard
+    }
+}
+
+pub struct ChunkWriteGuard {
+    guard: RwLockWriteGuard<'static, ChunkInner>,
+    _chunk: Arc<Chunk>,
+}
+
+impl Deref for ChunkWriteGuard {
+    type Target = ChunkInner;
+    fn deref(&self) -> &ChunkInner {
+        &self.guard
+    }
+}
+impl DerefMut for ChunkWriteGuard {
+    fn deref_mut(&mut self) -> &mut ChunkInner {
+        &mut self.guard
+    }
 }
 
 // ----------------------------------------------------------------------
@@ -332,39 +462,25 @@ pub enum ChunkError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::blocks::{BaseBlocks, BlockRegistry, register_base_blocks};
+    use crate::core::blocks::BlockLight;
 
-    fn make_base() -> BaseBlocks {
-        let mut reg = BlockRegistry::new();
-        register_base_blocks(&mut reg)
-    }
-
-    #[test]
-    fn air_filled_blocks_default_light() {
-        let base = make_base();
-        let blocks = ChunkData::air_filled(BlockLight::SKY);
-        let b = blocks.block(Vec3u::new(0, 0, 0));
-        assert_eq!(b.id, base.air);
-        assert_eq!(b.light, BlockLight::SKY);
-    }
+    // ---------- ChunkData codec ----------
 
     #[test]
     fn block_mut_writes_value() {
-        let base = make_base();
-        let mut blocks = ChunkData::air_filled(BlockLight::SKY);
-        blocks.block_mut(Vec3u::new(2, 3, 4)).id = base.rock;
-        assert_eq!(blocks.block(Vec3u::new(2, 3, 4)).id, base.rock);
-        assert_eq!(blocks.block(Vec3u::new(0, 0, 0)).id, base.air);
+        let mut blocks = ChunkData::default();
+        blocks.block_mut(Vec3u::new(2, 3, 4)).id = BlockId::new(1);
+        assert_eq!(blocks.block(Vec3u::new(2, 3, 4)).id, BlockId::new(1));
+        assert_eq!(blocks.block(Vec3u::new(0, 0, 0)).id, BlockId::default());
     }
 
     #[test]
     fn package_round_trips_through_unpackage() {
-        let base = make_base();
-        let mut original = ChunkData::air_filled(BlockLight::SKY);
-        original.block_mut(Vec3u::new(0, 0, 0)).id = base.rock;
-        original.block_mut(Vec3u::new(15, 15, 15)).id = base.bedrock;
-        original.block_mut(Vec3u::new(8, 4, 2)).id = base.water;
-        original.block_mut(Vec3u::new(1, 2, 3)).light = BlockLight::new(7, 11);
+        let mut original = ChunkData::default();
+        original.block_mut(Vec3u::new(0, 0, 0)).id = BlockId::new(1);
+        original.block_mut(Vec3u::new(15, 15, 15)).id = BlockId::new(2);
+        original.block_mut(Vec3u::new(8, 4, 2)).id = BlockId::new(3);
+        original.block_mut(Vec3u::new(1, 2, 3)).light = BlockLight::sky_and_block(7, 11);
 
         let bytes = original.package_to(&[]);
         // After zstd compression a near-uniform chunk is much
@@ -372,14 +488,14 @@ mod tests {
         assert!(bytes.len() >= ChunkData::HEADER_SIZE);
         assert!(bytes.len() < ChunkData::HEADER_SIZE + ChunkData::DATA_SIZE);
 
-        let mut loaded = ChunkData::air_filled(BlockLight::SKY);
+        let mut loaded = ChunkData::default();
         loaded.unpackage_from(&bytes, &[]).expect("unpackage");
-        assert_eq!(loaded.block(Vec3u::new(0, 0, 0)).id, base.rock);
-        assert_eq!(loaded.block(Vec3u::new(15, 15, 15)).id, base.bedrock);
-        assert_eq!(loaded.block(Vec3u::new(8, 4, 2)).id, base.water);
+        assert_eq!(loaded.block(Vec3u::new(0, 0, 0)).id, BlockId::new(1));
+        assert_eq!(loaded.block(Vec3u::new(15, 15, 15)).id, BlockId::new(2));
+        assert_eq!(loaded.block(Vec3u::new(8, 4, 2)).id, BlockId::new(3));
         assert_eq!(
             loaded.block(Vec3u::new(1, 2, 3)).light,
-            BlockLight::new(7, 11)
+            BlockLight::sky_and_block(7, 11)
         );
     }
 
@@ -388,7 +504,7 @@ mod tests {
         // Pure-air chunk: zstd should knock the body down to a
         // handful of bytes. Lock in the win so a future codec
         // regression doesn't silently bloat the database.
-        let original = ChunkData::air_filled(BlockLight::SKY);
+        let original = ChunkData::default();
         let bytes = original.package_to(&[]);
         assert!(
             bytes.len() < ChunkData::HEADER_SIZE + 64,
@@ -399,14 +515,14 @@ mod tests {
 
     #[test]
     fn unpackage_rejects_bad_magic() {
-        let mut blocks = ChunkData::air_filled(BlockLight::SKY);
+        let mut blocks = ChunkData::default();
         let bytes = vec![0_u8; ChunkData::HEADER_SIZE + ChunkData::DATA_SIZE];
         assert_eq!(blocks.unpackage_from(&bytes, &[]), Err(ChunkError::Magic));
     }
 
     #[test]
     fn unpackage_rejects_bad_version() {
-        let mut blocks = ChunkData::air_filled(BlockLight::SKY);
+        let mut blocks = ChunkData::default();
         let mut bytes = vec![0_u8; ChunkData::HEADER_SIZE + ChunkData::DATA_SIZE];
         bytes[0..4].copy_from_slice(&ChunkData::MAGIC.to_le_bytes());
         bytes[4..8].copy_from_slice(&999_u32.to_le_bytes());
@@ -416,49 +532,90 @@ mod tests {
         );
     }
 
+    // ---------- Chunk runtime (lease, LSN, eviction state) ----------
+
     #[test]
     fn from_disk_starts_clean() {
-        let p = Chunk::from_disk(ChunkData::air_filled(BlockLight::SKY));
-        assert_eq!(p.save_gen(), 1);
-        assert_eq!(p.commit_gen(), 1);
-        assert!(!p.dirty());
+        let c = Chunk::from_disk(ChunkData::default());
+        assert_eq!(c.persisted_lsn(), 0);
+        assert!(!c.dirty());
     }
 
     #[test]
     fn from_gen_starts_dirty() {
-        let p = Chunk::from_gen(ChunkData::air_filled(BlockLight::SKY));
-        assert_eq!(p.save_gen(), 0);
-        assert_eq!(p.commit_gen(), 1);
-        assert!(p.dirty());
+        let c = Chunk::from_generated(ChunkData::default(), 1);
+        assert_eq!(c.persisted_lsn(), 0);
+        assert!(c.dirty());
     }
 
     #[test]
-    fn commit_then_save() {
-        let p = Chunk::from_disk(ChunkData::air_filled(BlockLight::SKY));
-        p.bump_commit_gen();
-        assert!(p.dirty());
-        let captured = p.commit_gen();
-        p.advance_save_gen(captured);
-        assert!(!p.dirty());
+    fn writeback_clears_dirty() {
+        let c = Chunk::from_generated(ChunkData::default(), 3);
+        assert!(c.dirty());
+        c.advance_persisted_lsn(3);
+        assert!(!c.dirty());
     }
 
     #[test]
-    fn second_commit_during_save_keeps_dirty() {
-        let p = Chunk::from_disk(ChunkData::air_filled(BlockLight::SKY));
-        p.bump_commit_gen();
-        let captured = p.commit_gen();
-        p.bump_commit_gen();
-        p.advance_save_gen(captured);
-        assert!(p.dirty());
+    fn second_commit_during_writeback_keeps_dirty() {
+        // Writeback captured LSN=3, but a later commit bumped
+        // commit_lsn to 4 before the disk write completed; persisted
+        // advances to 3 only, so still dirty.
+        let c = Chunk::from_disk(ChunkData::default());
+        c.write_owned().commit_lsn = 3;
+        let captured = 3;
+        c.write_owned().commit_lsn = 4;
+        c.advance_persisted_lsn(captured);
+        assert!(c.dirty());
+    }
+
+    #[test]
+    fn lease_blocks_then_drains() {
+        let c = Chunk::from_disk(ChunkData::default());
+        let lease = c.try_acquire_lease().expect("acquired");
+        assert!(c.start_eviction());
+        // start_eviction succeeded; new leases now blocked.
+        assert!(c.try_acquire_lease().is_none());
+        drop(lease);
+        c.wait_drain(); // returns immediately
+    }
+
+    #[test]
+    fn cant_acquire_lease_in_evicting_state() {
+        let c = Chunk::from_disk(ChunkData::default());
+        assert!(c.start_eviction());
+        assert!(c.try_acquire_lease().is_none());
+    }
+
+    #[test]
+    fn read_guard_outlives_only_other_arc() {
+        // Drop-order check: hold the only outstanding Arc<Chunk> via
+        // the guard's keepalive, then access through the guard.
+        let c = Chunk::from_disk(ChunkData::default());
+        let g = c.read_owned();
+        drop(c);
+        let _ = g.commit_lsn;
+    }
+
+    #[test]
+    fn write_excludes_concurrent_readers() {
+        let c = Chunk::from_disk(ChunkData::default());
+        let mut w = c.write_owned();
+        w.commit_lsn = 7;
+        // Direct try_read on the lock returns None while writer holds it.
+        assert!(c.blocks.try_read().is_none());
+        drop(w);
+        let r = c.read_owned();
+        assert_eq!(r.commit_lsn, 7);
     }
 
     #[test]
     fn updated_default_false_set_and_clear() {
-        let p = Chunk::from_disk(ChunkData::air_filled(BlockLight::SKY));
-        assert!(!p.updated());
-        p.mark_updated();
-        assert!(p.updated());
-        p.clear_updated();
-        assert!(!p.updated());
+        let c = Chunk::from_disk(ChunkData::default());
+        assert!(!c.updated());
+        c.mark_updated();
+        assert!(c.updated());
+        c.clear_updated();
+        assert!(!c.updated());
     }
 }

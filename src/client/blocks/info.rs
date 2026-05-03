@@ -144,19 +144,19 @@ mod tests {
     #[test]
     fn empty_entry_lives_at_id_zero() {
         let r = BlockRenderRegistry::new();
-        assert_eq!(r.get(BlockId::EMPTY), &BlockRenderInfo::default());
+        assert_eq!(r.get(BlockId::default()), &BlockRenderInfo::default());
         // Out-of-range falls back to id 0.
-        assert_eq!(r.get(BlockId(42)), &BlockRenderInfo::default());
+        assert_eq!(r.get(BlockId::new(42)), &BlockRenderInfo::default());
     }
 
     #[test]
     fn set_grows_with_default_entries() {
         let mut r = BlockRenderRegistry::new();
         let info = BlockRenderInfo::uniform(BlockTextureIndex(7));
-        r.set(BlockId(3), info);
+        r.set(BlockId::new(3), info);
         assert_eq!(r.len(), 4); // ids 0, 1, 2 default; 3 = info.
-        assert_eq!(r.get(BlockId(1)), &BlockRenderInfo::default());
-        assert_eq!(r.get(BlockId(3)), &info);
+        assert_eq!(r.get(BlockId::new(1)), &BlockRenderInfo::default());
+        assert_eq!(r.get(BlockId::new(3)), &info);
     }
 
     #[test]
@@ -167,10 +167,10 @@ mod tests {
             BlockTextureIndex(2),
             BlockTextureIndex(3),
         );
-        r.set(BlockId(1), info);
-        assert_eq!(r.face(BlockId(1), 0), BlockTextureIndex(1));
-        assert_eq!(r.face(BlockId(1), 1), BlockTextureIndex(2));
-        assert_eq!(r.face(BlockId(1), 2), BlockTextureIndex(3));
-        assert_eq!(r.face(BlockId(1), 7), BlockTextureIndex(3)); // clamps to bottom
+        r.set(BlockId::new(1), info);
+        assert_eq!(r.face(BlockId::new(1), 0), BlockTextureIndex(1));
+        assert_eq!(r.face(BlockId::new(1), 1), BlockTextureIndex(2));
+        assert_eq!(r.face(BlockId::new(1), 2), BlockTextureIndex(3));
+        assert_eq!(r.face(BlockId::new(1), 7), BlockTextureIndex(3)); // clamps to bottom
     }
 }

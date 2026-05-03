@@ -252,7 +252,7 @@ mod tests {
     use super::*;
     use cgmath::Zero;
 
-    use crate::core::blocks::{BlockData, BlockId, BlockLight, BlockState};
+    use crate::core::blocks::BlockData;
     use crate::core::math::{Aabbd, Vec3d, Vec3i};
 
     /// A minimal in-memory `BlockView` for unit tests. Reports `solid_floor`
@@ -263,19 +263,7 @@ mod tests {
 
     impl BlockView for GroundFloor {
         fn block(&self, _coord: Vec3i) -> Option<BlockData> {
-            Some(BlockData {
-                id: BlockId::new(0),
-                state: BlockState::default(),
-                light: BlockLight::NONE,
-            })
-        }
-
-        fn block_or_air(&self, _coord: Vec3i) -> BlockData {
-            BlockData {
-                id: BlockId::new(0),
-                state: BlockState::default(),
-                light: BlockLight::NONE,
-            }
+            Some(BlockData::default())
         }
 
         fn hitboxes(&self, box_: Aabbd) -> Option<Vec<Aabbd>> {
@@ -317,19 +305,7 @@ mod tests {
 
     impl BlockView for EmptyWorld {
         fn block(&self, _coord: Vec3i) -> Option<BlockData> {
-            Some(BlockData {
-                id: BlockId::new(0),
-                state: BlockState::default(),
-                light: BlockLight::NONE,
-            })
-        }
-
-        fn block_or_air(&self, _coord: Vec3i) -> BlockData {
-            BlockData {
-                id: BlockId::new(0),
-                state: BlockState::default(),
-                light: BlockLight::NONE,
-            }
+            Some(BlockData::default())
         }
 
         fn hitboxes(&self, _box_: Aabbd) -> Option<Vec<Aabbd>> {

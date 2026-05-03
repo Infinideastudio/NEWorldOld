@@ -20,7 +20,8 @@ use std::collections::HashMap;
 
 use tracing::warn;
 
-use crate::core::blocks::{BaseBlocks, BlockRegistry};
+use crate::core::blocks::BlockRegistry;
+use crate::core::game::base_blocks::BaseBlocks;
 use crate::core::game::block_update::BlockUpdateQueue;
 use crate::core::game::daylight_cycle::DaylightCycle;
 use crate::core::game::player::Player;

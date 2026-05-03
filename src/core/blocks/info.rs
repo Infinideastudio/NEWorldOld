@@ -7,15 +7,6 @@
 //! the same `BlockId` — registered in a separate pass so a server build
 //! never touches the texture registry.
 //!
-//! Built via the chainable [`BlockInfo::new`] constructor:
-//!
-//! ```ignore
-//! BlockInfo::new("neworld.rock", "Rock")
-//!     .solid(true)
-//!     .opaque(true)
-//!     .hardness(2.0)
-//! ```
-//!
 //! All boolean flags default to `false`, hardness to `0.0`, and
 //! `face_mapping` to [`BlockFaceMapping::Static`].
 
@@ -63,14 +54,6 @@ impl BlockInfo {
             hardness: 0.0,
             face_mapping: BlockFaceMapping::Static,
         }
-    }
-
-    /// Build the registry's reserved empty entry — `name = "empty"`,
-    /// `display_name = ""`, every other field default. Inserted at
-    /// `BlockId::EMPTY` by `BlockRegistry::new` and **never overwritten**
-    /// by `register_base_blocks`.
-    pub fn empty() -> Self {
-        Self::new("empty", "")
     }
 
     /// Set the `solid` flag (player collides with this block).
@@ -131,13 +114,5 @@ mod tests {
         assert!(info.solid);
         assert!(info.opaque);
         assert_eq!(info.hardness, 2.0);
-    }
-
-    #[test]
-    fn empty_has_blank_display_name() {
-        let info = BlockInfo::empty();
-        assert_eq!(info.name, "empty");
-        assert_eq!(info.display_name, "");
-        assert!(!info.solid);
     }
 }

@@ -5,6 +5,7 @@
 //! here. None of this code talks to wgpu or egui; it's the half of the
 //! engine that a future headless server build links against.
 
+pub mod base_blocks;
 pub mod block_update;
 pub mod commands;
 pub mod daylight_cycle;

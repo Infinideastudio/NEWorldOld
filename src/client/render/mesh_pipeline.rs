@@ -106,9 +106,11 @@ fn worker_loop(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::blocks::{BlockTextureRegistry, register_base_block_visuals};
+    use crate::client::blocks::BlockTextureRegistry;
+    use crate::client::game::base_blocks::register_base_block_visuals;
     use crate::client::render::mesh::{PADDED_VOLUME, padded_index};
-    use crate::core::blocks::{BlockData, register_base_blocks};
+    use crate::core::blocks::BlockData;
+    use crate::core::game::base_blocks::register_base_blocks;
     use cgmath::Vector3;
 
     /// Build a `MeshInput` that places one stone block at the chunk-local

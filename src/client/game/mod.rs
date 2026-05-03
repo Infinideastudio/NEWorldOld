@@ -33,6 +33,7 @@
 //! * the current selection [`Hit`] and the current view-projection matrix
 //!   (used by the HUD to draw a selection outline overlay).
 
+pub mod base_blocks;
 pub mod camera;
 pub mod hud;
 pub mod inventory;
@@ -45,9 +46,8 @@ use std::time::Instant;
 
 use cgmath::{Matrix4, Point3, SquareMatrix, Vector3};
 
-use crate::client::blocks::{
-    BlockRenderRegistry, BlockTextureRegistry, register_base_block_visuals,
-};
+use crate::client::blocks::{BlockRenderRegistry, BlockTextureRegistry};
+use crate::client::game::base_blocks::register_base_block_visuals;
 use crate::client::render::chunk_rendering::{ChunkMesh, ChunkPipeline};
 use crate::client::render::{
     CompositionFeatures, CompositionPipeline, DebugShadowPipeline, FrameUniforms, GBuffer,
@@ -55,9 +55,8 @@ use crate::client::render::{
     ParticlePipeline, SelectionPipeline, ShadowMap, ShadowPipeline, UnderwaterPipeline,
     UniformBuffer, mat4_to_array, padded_index,
 };
-use crate::core::blocks::{
-    BaseBlocks, BlockData, BlockFaceMapping, BlockRegistry, BlockState, register_base_blocks,
-};
+use crate::core::blocks::{BlockData, BlockFaceMapping, BlockId, BlockRegistry, BlockState};
+use crate::core::game::base_blocks::{BaseBlocks, register_base_blocks};
 use crate::core::game::commands::{CommandRegistry, register_base_commands};
 use crate::core::game::player::{BlockView, GameMode};
 use crate::core::math::{Aabbd, Aabbf, Frustumf, Vec3d, Vec3i};
@@ -145,11 +144,6 @@ fn time_of_day(game_time: u32) -> Vector3<f32> {
     let s = angle.sin();
     Vector3::new(angle.cos(), s * SUN_TILT_RAD.cos(), s * SUN_TILT_RAD.sin())
 }
-
-/// Maximum dirty chunks `World::sweep_dirty` flushes per sim tick.
-/// At 30 ticks/sec, this caps at ~960 chunks/sec, comfortably above
-/// the streamer's per-tick generate rate.
-const SWEEP_DIRTY_PER_TICK: usize = 32;
 
 /// Maximum new mesh jobs to issue per frame. Caps the per-frame CPU spike
 /// when many chunks land at once (e.g. on the first frame, or after a fast
@@ -348,7 +342,7 @@ impl Game {
         let tables =
             crate::core::game::worldgen::world_tables_for(worlds_root, &world_name, registry)?;
 
-        let mut world = World::new_at(worlds_root, world_name, tables)?;
+        let world = World::new_at(worlds_root, world_name, tables)?;
 
         // Try to restore the player from disk; fall back to default.
         let mut player = crate::core::game::player::Player::default();
@@ -387,7 +381,7 @@ impl Game {
             player_world.y.floor() as i32,
             player_world.z.floor() as i32,
         ));
-        range_loader.tick_chunk_loading(&mut world, &mut terrain_generator);
+        range_loader.tick_chunk_loading(&world, &mut terrain_generator);
 
         // Start in basic G-buffer shape (diffuse + depth only). The
         // first `apply_shadow_config` call after construction reads the
@@ -746,12 +740,7 @@ impl Game {
         // so the next `drain_updated_chunks` covers the load-completion
         // case automatically — no Game-side dirty-marking call needed.
         self.range_loader
-            .tick_chunk_loading(&mut self.world, &mut self.terrain_generator);
-
-        // Background sweep: drain a few dirty chunks to disk each tick so
-        // the on-quit `save_to_disk` has little remaining work. Bounded so
-        // a backlog can't spike a single tick.
-        self.world.sweep_dirty(SWEEP_DIRTY_PER_TICK);
+            .tick_chunk_loading(&self.world, &mut self.terrain_generator);
 
         // Drop cached meshes for any coord that's no longer loaded — happens
         // every tick (not just on insert) so unload-on-walk reaps GPU
@@ -1087,7 +1076,8 @@ impl Game {
             eye.y.floor() as i32,
             eye.z.floor() as i32,
         );
-        let underwater = self.world.block_or_air(eye_block).id == self.base_blocks.water;
+        let underwater =
+            self.world.block(eye_block).unwrap_or_default().id == self.base_blocks.water;
         self.underwater_pipeline.set_enabled(queue, underwater);
 
         // Inverse view-projection — composition unprojects screen-space +
@@ -1535,12 +1525,11 @@ impl Game {
     fn update_selection(&mut self) {
         let origin = self.camera.position;
         let dir = self.camera.forward();
-        let air = self.base_blocks.air;
-        let water = self.base_blocks.water;
         let view = WorldHitView::new(&self.world, &self.registry, &self.base_blocks);
         self.selected = raycast::raycast(&view, origin, dir, RAYCAST_MAX, |w, c| {
-            let id = w.block_or_air(c).id;
-            id != air && id != water
+            let id = w.block(c).unwrap_or(BlockData::default()).id;
+            let info = self.registry.get(id);
+            info.solid
         });
     }
 
@@ -1551,11 +1540,10 @@ impl Game {
         let Some(hit) = self.selected else {
             return;
         };
-        let coord = hit.coord;
-        let block = self.world.block_or_air(coord);
-        if block.id == self.base_blocks.air {
+        let Some(block) = self.world.block(hit.coord) else {
             return;
-        }
+        };
+
         // Record texture layer before mutation so the particles inherit the
         // broken block's face art.
         let tex_layer = u32::from(self.render_registry.face(block.id, 0).0);
@@ -1568,8 +1556,8 @@ impl Game {
             &mut self.block_update_queue,
             &self.base_blocks,
             &self.registry,
-            coord,
-            self.base_blocks.air,
+            hit.coord,
+            BlockId::default(),
             true,
         );
 
@@ -1584,11 +1572,11 @@ impl Game {
         // `psize × psize` sub-rect at a random origin) so a single break
         // shows visually distinct flecks instead of 10 identical thumbnails.
         for _ in 0..PARTICLES_PER_BREAK {
-            let px = f64::from(coord.x) + self.rand_unit();
-            let py = f64::from(coord.y) + self.rand_unit();
-            let pz = f64::from(coord.z) + self.rand_unit();
+            let px = f64::from(hit.coord.x) + self.rand_unit();
+            let py = f64::from(hit.coord.y) + self.rand_unit();
+            let pz = f64::from(hit.coord.z) + self.rand_unit();
             let vx = (self.rand_unit() - 0.5) * 0.4;
-            let vy = self.rand_unit() * 0.3;
+            let vy = (self.rand_unit() - 0.5) * 0.4;
             let vz = (self.rand_unit() - 0.5) * 0.4;
             let rng_u = self.rand_unit() as f32;
             let rng_v = self.rand_unit() as f32;
@@ -1619,8 +1607,7 @@ impl Game {
             return;
         }
         let placed_id = hotbar.id;
-        // Don't try to place air or non-solid placeholder ids.
-        if placed_id == self.base_blocks.air {
+        if placed_id == BlockId::default() {
             return;
         }
         // Reject placement that would overlap the player's hitbox. C++ does
@@ -1632,8 +1619,8 @@ impl Game {
         // Don't replace existing solid blocks (lets `+normal` placement work
         // even if the normal happens to be zero — the ray-start-inside-solid
         // case).
-        let existing = self.world.block_or_air(target).id;
-        if existing != self.base_blocks.air && existing != self.base_blocks.water {
+        let existing = self.world.block(target).unwrap_or_default().id;
+        if existing != BlockId::default() && existing != self.base_blocks.water {
             return;
         }
         // For orientation-bearing blocks (logs etc.), pick the placement
@@ -1704,19 +1691,19 @@ impl Game {
 /// input, including the zero vector (a ray-start-inside-solid hit).
 fn state_from_face_normal(normal: Vec3i) -> BlockState {
     if normal.y > 0 {
-        BlockState(0)
+        BlockState::inline(0)
     } else if normal.y < 0 {
-        BlockState(1)
+        BlockState::inline(1)
     } else if normal.x > 0 {
-        BlockState(2)
+        BlockState::inline(2)
     } else if normal.x < 0 {
-        BlockState(3)
+        BlockState::inline(3)
     } else if normal.z > 0 {
-        BlockState(4)
+        BlockState::inline(4)
     } else if normal.z < 0 {
-        BlockState(5)
+        BlockState::inline(5)
     } else {
-        BlockState(0)
+        BlockState::inline(0)
     }
 }
 
@@ -1861,9 +1848,6 @@ impl BlockView for WorldHitView<'_> {
     fn block(&self, coord: Vec3i) -> Option<BlockData> {
         self.world.block(coord)
     }
-    fn block_or_air(&self, coord: Vec3i) -> BlockData {
-        self.world.block_or_air(coord)
-    }
     fn hitboxes(&self, box_: Aabbd) -> Option<Vec<Aabbd>> {
         crate::core::game::hit_test::hitboxes(self.world, self.registry, box_)
     }
@@ -1974,25 +1958,5 @@ impl Game {
             .into_iter()
             .rev()
             .collect()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn state_from_face_normal_covers_six_axis_directions() {
-        // ±Y caps map to states 0 / 1 (Y-axis log, default upright).
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 1, 0)), BlockState(0));
-        assert_eq!(state_from_face_normal(Vec3i::new(0, -1, 0)), BlockState(1));
-        // ±X caps map to states 2 / 3.
-        assert_eq!(state_from_face_normal(Vec3i::new(1, 0, 0)), BlockState(2));
-        assert_eq!(state_from_face_normal(Vec3i::new(-1, 0, 0)), BlockState(3));
-        // ±Z caps map to states 4 / 5.
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, 1)), BlockState(4));
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, -1)), BlockState(5));
-        // Zero normal (ray started inside solid) falls back to vertical.
-        assert_eq!(state_from_face_normal(Vec3i::new(0, 0, 0)), BlockState(0));
     }
 }

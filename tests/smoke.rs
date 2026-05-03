@@ -10,7 +10,8 @@ mod common;
 
 use std::sync::Arc;
 
-use neworld::core::blocks::{BlockRegistry, register_base_blocks};
+use neworld::core::blocks::{BlockRegistry};
+use neworld::core::game::base_blocks::register_base_blocks;
 use neworld::core::game::block_update::BlockUpdateQueue;
 use neworld::core::game::commands::{CommandContext, CommandRegistry, register_base_commands};
 use neworld::core::game::daylight_cycle::DaylightCycle;
@@ -86,13 +87,7 @@ fn round_trip_world_through_set_block_save_reopen() {
 
         let mut q = neworld::core::game::block_update::BlockUpdateQueue::new();
         neworld::core::game::block_update::set_block(
-            &world,
-            &mut q,
-            &base,
-            &registry,
-            coord,
-            stone_id,
-            false,
+            &world, &mut q, &base, &registry, coord, stone_id, false,
         );
         assert_eq!(
             world.block(coord).expect("block still loaded").id,
@@ -156,7 +151,7 @@ fn slash_command_dispatch_through_full_stack() {
     // `/setblock <x> <y> <z> <id>` — exercises argument parsing, world
     // mutation, and the registry dispatch path. The C++ command takes a
     // numeric block id (matching the Rust port).
-    let stone_id_int: u16 = base.stone.0;
+    let stone_id_int: u16 = base.stone.get();
     let line = format!("/setblock 4 6 8 {stone_id_int}");
     let mut messages = Vec::<String>::new();
     {

@@ -1,14 +1,34 @@
 //! `World` — the chunk-store database, registry-agnostic.
 //!
-//! Owns a `DashMap<Vec3i, Arc<Chunk>>` plus the per-world canonical
-//! id translation tables and the world's directory + sled store.
-//! Knows nothing about the block registry, base blocks, terrain
-//! generation, the player, or the game clock — those all live in
-//! `core::game::*` modules and consume `World` via its small,
-//! number-only API.
+//! Owns a `DashMap<Vec3i, Arc<Chunk>>` plus a monotonic LSN counter,
+//! the per-world canonical id translation tables, and the world's
+//! directory + sled store. Knows nothing about the block registry,
+//! base blocks, terrain generation, the player, or the game clock —
+//! those all live in `core::game::*` modules and consume `World`
+//! via its small, number-only API.
 //!
-//! **Storage encapsulation.** The sled-backed [`Store`] is a private
-//! implementation detail of `World`; nothing outside this module can
+//! ## Concurrency model — strict 2PL with lease pinning
+//!
+//! Each map entry is an [`Arc<Chunk>`](Chunk) carrying the block
+//! array under a `RwLock`, an LSN pair, and a lease counter.
+//! The **only** way to gain access to a chunk's data is to
+//! acquire a [`Lease`] (RAII; pins the chunk against eviction)
+//! and then take an owned `RwLock` guard from it. Transactions
+//! hold one lease per chunk in their working set.
+//!
+//! Eviction is a state machine: the world CAS-flips the chunk
+//! from `RESIDENT` to `EVICTING` (refusing new leases), waits for
+//! outstanding leases to drop, flushes, then removes the entry.
+//! See [`chunk`] for the full discipline.
+//!
+//! Each `WriteTxn::commit` allocates one LSN from
+//! [`World::next_lsn`]; that LSN becomes the chunks' `commit_lsn`
+//! under their write guards. The pair `persisted_lsn < commit_lsn`
+//! drives writeback's "dirty" flag; the LSN ordering itself
+//! linearises all committed write txns into a single sequence.
+//!
+//! **Storage encapsulation.** The sled-backed [`Store`] is a
+//! private implementation detail; nothing outside this module can
 //! reach it. Disk-load on chunk install, dirty-flush on eviction,
 //! the periodic [`World::sweep_dirty`] sweep, and the `save_to_disk`
 //! fence all run through `World`.
@@ -16,8 +36,10 @@
 //! **Save policy.**
 //! - [`World::load_chunk`] tries to load the chunk from disk first;
 //!   only on miss does it call the caller-supplied generator closure.
-//! - [`World::unload_chunk`] drops a chunk from memory; persists it
-//!   if it has uncommitted changes.
+//! - [`World::unload_chunk`] starts the eviction state machine:
+//!   refuse new leases, drain, flush, remove. If a chunk has
+//!   uncommitted changes they are persisted synchronously first; on
+//!   I/O failure the chunk is still removed and the error is logged.
 //! - [`World::sweep_dirty`] flushes up to a budget of dirty chunks
 //!   each call; intended to be called periodically so on-quit save
 //!   has little remaining work.
@@ -31,23 +53,25 @@
 //! them to a renderer-side dirty-set.
 
 mod chunk;
-mod error;
+mod errors;
 mod metadata;
 mod store;
 mod txn;
 
-pub use chunk::{Chunk, ChunkData};
-pub use error::WorldError;
+pub use chunk::{Chunk, ChunkData, Lease};
+pub use errors::WorldError;
 pub use metadata::Metadata;
 pub use store::Store;
 pub use txn::{ReadTxn, TxnError, WorkingSet, WriteTxn};
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use dashmap::DashMap;
+use dashmap::mapref::entry::Entry;
 
-use crate::core::blocks::{BlockData, BlockId, BlockLight, BlockState};
+use crate::core::blocks::{BlockData, BlockId};
 use crate::core::math::{Vec3i, Vec3u};
 
 // ----------------------------------------------------------------------
@@ -88,8 +112,8 @@ pub struct WorldTables {
     /// id, gives the in-memory `BlockId`. Empty `Vec` means identity.
     pub load_table: Vec<BlockId>,
     /// Translation applied when saving a chunk: indexed by in-memory
-    /// id, gives the canonical id (`u16`). Empty `Vec` means identity.
-    pub save_table: Vec<u16>,
+    /// id, gives the canonical `BlockId`. Empty `Vec` means identity.
+    pub save_table: Vec<BlockId>,
 }
 
 // ----------------------------------------------------------------------
@@ -102,12 +126,17 @@ pub struct World {
     store: Store,
     metadata: Metadata,
     chunk_load_table: Vec<BlockId>,
-    chunk_save_table: Vec<u16>,
-    /// Sharded `Vec3i → Arc<Chunk>` map. Lookups clone the `Arc<Chunk>`
-    /// and drop the shard guard immediately. The `Arc` itself is the
-    /// pin: eviction drops the world's clone, while txn entries hold
-    /// their own clones to keep the chunk alive.
+    chunk_save_table: Vec<BlockId>,
+    /// Sharded `Vec3i → Arc<Chunk>` map. Lookups clone the
+    /// `Arc<Chunk>` and drop the shard guard immediately. The Arc
+    /// itself does not pin the chunk against eviction — only a
+    /// [`Lease`] does.
     chunks: DashMap<Vec3i, Arc<Chunk>>,
+    /// Monotone source of commit ordering. Each `WriteTxn::commit`
+    /// (and each [`Chunk::from_gen`]) allocates one. Starts at 1;
+    /// LSN 0 is reserved as the "clean from_disk" sentinel in
+    /// [`Chunk`].
+    next_lsn: Arc<AtomicU64>,
 }
 
 impl World {
@@ -127,6 +156,7 @@ impl World {
             chunk_load_table: tables.load_table,
             chunk_save_table: tables.save_table,
             chunks: DashMap::new(),
+            next_lsn: Arc::new(AtomicU64::new(1)),
         })
     }
 
@@ -168,7 +198,9 @@ impl World {
     // ---- chunk presence / iteration -------------------------------------
 
     pub fn is_loaded(&self, ccoord: Vec3i) -> bool {
-        self.chunks.contains_key(&ccoord)
+        self.chunks
+            .get(&ccoord)
+            .is_some_and(|r| r.value().is_resident())
     }
 
     pub fn loaded_count(&self) -> usize {
@@ -179,15 +211,31 @@ impl World {
         self.chunks.iter().map(|r| *r.key()).collect()
     }
 
-    /// Look up the chunk at `ccoord`. Holding the returned Arc pins
-    /// the chunk against eviction.
-    pub(super) fn chunk(&self, ccoord: Vec3i) -> Option<Arc<Chunk>> {
-        self.chunks.get(&ccoord).map(|r| Arc::clone(r.value()))
+    /// Try to acquire a lease on the chunk at `ccoord`. Returns
+    /// `None` if no chunk is mapped at that coord, or if the chunk
+    /// is in the `EVICTING` state.
+    ///
+    /// A `Lease` is the canonical pin token in the new design:
+    /// while it's alive, [`Self::unload_chunk`] for that coord
+    /// will block in its drain step until the lease is dropped.
+    /// Long-lived pin holders (e.g. the streaming range loader)
+    /// store leases instead of `Arc<Chunk>` clones.
+    pub fn try_acquire_lease(&self, ccoord: Vec3i) -> Option<Lease> {
+        let chunk = self.chunks.get(&ccoord)?;
+        chunk.value().try_acquire_lease()
     }
 
-    /// Direct access to the chunk map for the [`txn`] internals.
-    pub(super) fn chunks(&self) -> &DashMap<Vec3i, Arc<Chunk>> {
-        &self.chunks
+    /// Allocate the next commit LSN. Called by [`WriteTxn::commit`]
+    /// and by [`Self::load_chunk`] for freshly-generated terrain.
+    pub(super) fn next_lsn(&self) -> u64 {
+        self.next_lsn.fetch_add(1, Ordering::AcqRel)
+    }
+
+    /// Hand out a clone of the LSN counter Arc — `WriteTxn` carries
+    /// one to allocate an LSN at commit time without holding a
+    /// reference back to the world.
+    pub(super) fn lsn_counter(&self) -> Arc<AtomicU64> {
+        Arc::clone(&self.next_lsn)
     }
 
     // ---- transactional read/write entry points --------------------------
@@ -209,23 +257,13 @@ impl World {
     // ---- single-coord block lookup --------------------------------------
 
     /// Single-coord block lookup. Routes through a 1-coord `ReadTxn`.
-    /// **Inefficient on hot paths** — one DashMap lookup, Arc clone,
-    /// and lock acquire per call. For multi-cell reads against the
-    /// same chunk(s), open one `ReadTxn` and reuse it.
+    /// **Inefficient on hot paths** — one DashMap lookup, lease
+    /// acquire, and lock acquire per call. For multi-cell reads
+    /// against the same chunk(s), open one `ReadTxn` and reuse it.
     pub fn block(&self, coord: Vec3i) -> Option<BlockData> {
         let cc = chunk_coord(coord);
         let txn = self.begin_read_txn_sync(WorkingSet::Single(cc)).ok()?;
         txn.read(coord).ok()
-    }
-
-    /// Single-coord block lookup with an air fallback.
-    /// **Inefficient on hot paths** — see [`Self::block`].
-    pub fn block_or_air(&self, coord: Vec3i) -> BlockData {
-        self.block(coord).unwrap_or(BlockData {
-            id: BlockId::EMPTY,
-            state: BlockState::default(),
-            light: BlockLight::NONE,
-        })
     }
 
     // ---- chunk load / unload --------------------------------------------
@@ -236,34 +274,62 @@ impl World {
     /// hand in pre-generated blocks (e.g. from an async worker)
     /// without wasting them on hits.
     ///
-    /// No-op if a chunk is already loaded at `ccoord` (race-safe).
-    pub fn load_chunk<F>(&mut self, ccoord: Vec3i, init: F)
+    /// No-op if a resident chunk already exists at `ccoord`. If the
+    /// chunk is mid-eviction, spins until the evictor finishes and
+    /// then re-tries the install.
+    pub fn load_chunk<F>(&self, ccoord: Vec3i, init: F)
     where
         F: FnOnce() -> ChunkData,
     {
-        match self.chunks.entry(ccoord) {
-            dashmap::mapref::entry::Entry::Occupied(_) => {}
-            dashmap::mapref::entry::Entry::Vacant(slot) => {
-                let chunk = match self.try_load_from_disk(ccoord) {
-                    Ok(Some(blocks)) => Chunk::from_disk(blocks),
-                    Ok(None) => Chunk::from_gen(init()),
-                    Err(err) => {
-                        tracing::warn!(?ccoord, error = %err, "chunk disk load failed; regenerating");
-                        Chunk::from_gen(init())
+        // The init closure can only be moved into one branch, so we
+        // wrap it in Option to satisfy the borrow checker across loop
+        // iterations.
+        let mut init = Some(init);
+        loop {
+            match self.chunks.entry(ccoord) {
+                Entry::Occupied(o) => {
+                    let s = Arc::clone(o.get());
+                    drop(o);
+                    if s.is_resident() {
+                        return;
                     }
-                };
-                slot.insert(Arc::new(chunk));
+                    // EVICTING — wait for the evictor to finish, then retry.
+                    std::thread::yield_now();
+                    continue;
+                }
+                Entry::Vacant(vacant) => {
+                    let new_chunk = match self.try_load_from_disk(ccoord) {
+                        Ok(Some(data)) => Chunk::from_disk(data),
+                        Ok(None) => {
+                            let f = init.take().expect("init only consumed once");
+                            Chunk::from_generated(f(), self.next_lsn())
+                        }
+                        Err(err) => {
+                            tracing::warn!(?ccoord, error = %err, "chunk disk load failed; regenerating");
+                            let f = init.take().expect("init only consumed once");
+                            Chunk::from_generated(f(), self.next_lsn())
+                        }
+                    };
+                    vacant.insert(new_chunk);
+                    return;
+                }
             }
         }
     }
 
-    /// Drop the chunk at `ccoord` from the map. If the chunk has
-    /// uncommitted changes, persists them synchronously first; on
-    /// I/O failure the chunk is still removed and the error is
-    /// logged. The Arc may stay alive in callers' clones; the slot
-    /// just becomes unreachable for future lookups.
-    pub fn unload_chunk(&mut self, ccoord: Vec3i) {
-        if let Err(err) = self.flush_chunk(ccoord) {
+    /// Evict the chunk at `ccoord`. Runs the full eviction
+    /// state-machine: CAS to `EVICTING`, drain outstanding leases,
+    /// flush if dirty, remove from the map. No-op if no chunk is
+    /// mapped or if another thread is already evicting this chunk.
+    pub fn unload_chunk(&self, ccoord: Vec3i) {
+        let Some(chunk) = self.chunks.get(&ccoord).map(|r| Arc::clone(r.value())) else {
+            return;
+        };
+        if !chunk.start_eviction() {
+            return;
+        }
+        chunk.wait_drain();
+        if let Err(err) = self.flush_chunk(ccoord, &chunk) {
             tracing::warn!(?ccoord, error = %err, "chunk save on unloading failed");
         }
         self.chunks.remove(&ccoord);
@@ -276,37 +342,43 @@ impl World {
     /// calls so [`Self::save_to_disk`] on quit has little to do.
     /// Errors during individual flushes are logged and swallowed —
     /// the sweep keeps going and surfaces nothing to the caller.
-    pub fn sweep_dirty(&self, budget: usize) -> usize {
+    pub fn sweep_dirty(&self, budget: usize) -> Result<usize, WorldError> {
         if budget == 0 {
-            return 0;
+            return Ok(0);
         }
-        // Collect dirty coords first so we don't hold shard guards
-        // across the per-chunk flush (which itself locks).
-        let mut dirty: Vec<Vec3i> = Vec::with_capacity(budget);
+        // Collect Arc clones (so we don't hold shard guards across
+        // the per-chunk flush, which itself takes the chunk's lock).
+        let mut dirty: Vec<(Vec3i, Arc<Chunk>)> = Vec::with_capacity(budget);
         for r in self.chunks.iter() {
             if dirty.len() >= budget {
                 break;
             }
             if r.value().dirty() {
-                dirty.push(*r.key());
+                dirty.push((*r.key(), Arc::clone(r.value())));
             }
         }
         let mut written = 0;
-        for cc in dirty {
-            match self.flush_chunk(cc) {
+        for (cc, chunk) in dirty {
+            match self.flush_chunk(cc, &chunk) {
                 Ok(()) => written += 1,
                 Err(err) => tracing::warn!(?cc, error = %err, "sweep flush failed"),
             }
         }
-        written
+        self.store.flush()?;
+        Ok(written)
     }
 
     /// Persist every dirty chunk to disk and write `world.dat`. Does
     /// not save the player — that's the caller's responsibility (the
     /// player lives outside `World`).
-    pub fn save_to_disk(&mut self) -> Result<(), WorldError> {
-        for cc in self.loaded_coords() {
-            self.flush_chunk(cc)?;
+    pub fn save_to_disk(&self) -> Result<(), WorldError> {
+        let snapshot: Vec<(Vec3i, Arc<Chunk>)> = self
+            .chunks
+            .iter()
+            .map(|r| (*r.key(), Arc::clone(r.value())))
+            .collect();
+        for (cc, chunk) in snapshot {
+            self.flush_chunk(cc, &chunk)?;
         }
         self.store.flush()?;
         self.metadata.save_to(&self.dir.join("world.dat"))?;
@@ -321,12 +393,7 @@ impl World {
         let Some(bytes) = self.store.load(coord)? else {
             return Ok(None);
         };
-        let default_light = if coord.y < 0 {
-            BlockLight::NONE
-        } else {
-            BlockLight::SKY
-        };
-        let mut blocks = ChunkData::air_filled(default_light);
+        let mut blocks = ChunkData::default();
         match blocks.unpackage_from(&bytes, &self.chunk_load_table) {
             Ok(()) => Ok(Some(blocks)),
             Err(err) => {
@@ -336,28 +403,24 @@ impl World {
         }
     }
 
-    /// Snapshot the chunk at `ccoord`, write it to sled if dirty, and
-    /// advance its persisted-state counter. No-op if the chunk isn't
-    /// loaded or isn't dirty.
-    fn flush_chunk(&self, ccoord: Vec3i) -> Result<(), WorldError> {
-        let Some(chunk) = self.chunk(ccoord) else {
-            return Ok(());
-        };
-        if !chunk.dirty() {
-            return Ok(());
+    /// Snapshot the chunk at `ccoord`, write it to sled if dirty,
+    /// and advance its `persisted_lsn`. Captures the LSN under the
+    /// read lock — fixes the order-inversion in the old
+    /// gen-captured-before-lock flush.
+    fn flush_chunk(&self, ccoord: Vec3i, chunk: &Arc<Chunk>) -> Result<(), WorldError> {
+        let bytes;
+        let captured_lsn;
+        {
+            let guard = chunk.read_owned();
+            if guard.commit_lsn <= chunk.persisted_lsn() {
+                return Ok(());
+            }
+            captured_lsn = guard.commit_lsn;
+            tracing::info!(?ccoord, lsn = captured_lsn, "flushing dirty chunk");
+            bytes = guard.data.package_to(&self.chunk_save_table);
         }
-        let txn = self
-            .begin_read_txn_sync(WorkingSet::Single(ccoord))
-            .map_err(|_| WorldError::Io(std::io::Error::other("chunk gone before flush")))?;
-        let captured_gen = chunk.commit_gen();
-        let blocks = match txn.chunk_at(ccoord) {
-            Some(b) => b,
-            None => return Ok(()),
-        };
-        let bytes = blocks.package_to(&self.chunk_save_table);
-        drop(txn);
         self.store.save(ccoord, &bytes)?;
-        chunk.advance_save_gen(captured_gen);
+        chunk.advance_persisted_lsn(captured_lsn);
         Ok(())
     }
 
@@ -376,8 +439,8 @@ impl World {
     /// by the renderer after it dispatches a remesh for each).
     pub fn clear_updated_chunks(&self, coords: &[Vec3i]) {
         for &cc in coords {
-            if let Some(p) = self.chunk(cc) {
-                p.clear_updated();
+            if let Some(s) = self.chunks.get(&cc) {
+                s.value().clear_updated();
             }
         }
     }
@@ -398,8 +461,8 @@ impl World {
             for dy in -1..=1 {
                 for dx in -1..=1 {
                     let target = ccoord + Vec3i::new(dx, dy, dz);
-                    if let Some(p) = self.chunk(target) {
-                        p.mark_updated();
+                    if let Some(s) = self.chunks.get(&target) {
+                        s.value().mark_updated();
                     }
                 }
             }

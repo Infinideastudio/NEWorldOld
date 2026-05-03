@@ -10,9 +10,10 @@
 
 use std::borrow::Cow;
 
-use crate::core::blocks::BaseBlocks;
-
-use super::{BlockRenderInfo, BlockRenderRegistry, BlockTextureIndex, BlockTextureRegistry};
+use crate::client::blocks::{
+    BlockRenderInfo, BlockRenderRegistry, BlockTextureIndex, BlockTextureRegistry,
+};
+use crate::core::game::base_blocks::BaseBlocks;
 
 fn faces(textures: &mut BlockTextureRegistry, names: [&str; 3]) -> [BlockTextureIndex; 3] {
     names.map(|n| textures.register(Cow::Owned(n.to_string())))
@@ -145,7 +146,8 @@ pub fn register_base_block_visuals(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::blocks::{BlockRegistry, register_base_blocks};
+    use crate::core::blocks::BlockRegistry;
+    use crate::core::game::base_blocks::register_base_blocks;
 
     #[test]
     fn populates_render_registry_for_every_base_block() {

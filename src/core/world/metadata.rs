@@ -22,13 +22,14 @@
 
 use std::fs;
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use bincode::config::Configuration;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
 use crate::core::blocks::{BlockId, BlockRegistry};
+
+use super::errors::MetadataError;
 
 /// Magic bytes for the world metadata file (`b"NEWD"` little-endian).
 pub const WORLD_META_MAGIC: u32 = 0x4E45_5744;
@@ -36,29 +37,6 @@ pub const WORLD_META_MAGIC: u32 = 0x4E45_5744;
 pub const WORLD_META_VERSION: u32 = 1;
 /// Size of the magic + version preamble.
 const HEADER_SIZE: usize = 8;
-
-#[derive(Debug, Error)]
-pub enum MetadataError {
-    /// I/O failure reading or writing the metadata file.
-    #[error("world metadata I/O error at {path}: {source}")]
-    Io {
-        path: PathBuf,
-        #[source]
-        source: std::io::Error,
-    },
-    /// File does not start with the expected `b"NEWD"` magic.
-    #[error("world metadata: bad magic (file is not a NEWorld world.dat)")]
-    BadMagic,
-    /// Save format version is not recognised.
-    #[error("world metadata: unsupported version {got}")]
-    BadVersion { got: u32 },
-    /// Bincode failed to encode the metadata body.
-    #[error("world metadata: bincode encode error: {0}")]
-    Encode(#[from] bincode::error::EncodeError),
-    /// Bincode failed to decode the metadata body.
-    #[error("world metadata: bincode decode error: {0}")]
-    Decode(#[from] bincode::error::DecodeError),
-}
 
 fn bincode_config() -> Configuration {
     bincode::config::standard()
@@ -157,16 +135,7 @@ impl Metadata {
     pub fn canonical_to_current(&self, registry: &BlockRegistry) -> Vec<BlockId> {
         self.block_mapping
             .iter()
-            .map(|name| {
-                if name == "empty" {
-                    // Slot 0 is always the empty entry; preserve that id
-                    // verbatim regardless of whether the current registry
-                    // exposes it under a different name.
-                    BlockId::EMPTY
-                } else {
-                    registry.id_of(name).unwrap_or(BlockId::EMPTY)
-                }
-            })
+            .map(|name| registry.id_of(name).unwrap_or_default())
             .collect()
     }
 
@@ -175,16 +144,21 @@ impl Metadata {
     /// canonical mapping; current ids whose names aren't in the mapping
     /// are assigned `u16::MAX` (the chunk encoder writes them as
     /// `BlockId::EMPTY`).
-    pub fn current_to_canonical(&self, registry: &BlockRegistry) -> Vec<u16> {
+    pub fn current_to_canonical(&self, registry: &BlockRegistry) -> Vec<BlockId> {
         // Build a name → canonical_id reverse lookup once.
         let mut by_name = std::collections::HashMap::new();
         for (i, name) in self.block_mapping.iter().enumerate() {
-            by_name.insert(name.as_str(), i as u16);
+            by_name.insert(name.as_str(), BlockId::new(i as u16));
         }
         registry
             .entries()
             .iter()
-            .map(|info| by_name.get(info.name.as_ref()).copied().unwrap_or(u16::MAX))
+            .map(|info| {
+                by_name
+                    .get(info.name.as_ref())
+                    .copied()
+                    .unwrap_or(BlockId::default())
+            })
             .collect()
     }
 }
@@ -192,7 +166,8 @@ impl Metadata {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::blocks::register_base_blocks;
+    use crate::core::blocks::BlockInfo;
+    use std::path::PathBuf;
     use std::sync::atomic::{AtomicU64, Ordering};
 
     fn scratch_path(tag: &str) -> PathBuf {
@@ -202,35 +177,40 @@ mod tests {
         std::env::temp_dir().join(format!("neworld-meta-{tag}-{pid}-{n}.dat"))
     }
 
+    fn make_registry() -> BlockRegistry {
+        let mut r = BlockRegistry::new();
+        r.add(BlockInfo::new("stone", "Stone").solid(true).opaque(true));
+        r.add(BlockInfo::new("dirt", "Dirt").solid(true).opaque(true));
+        r.add(BlockInfo::new("grass", "Grass").solid(true).opaque(true));
+        r
+    }
+
     #[test]
     fn snapshot_then_translate_is_identity_for_same_registry() {
-        let mut r = BlockRegistry::new();
-        let _base = register_base_blocks(&mut r);
+        let r = make_registry();
         let meta = Metadata::from_registry(&r);
         // For each registry entry, canonical -> current should round-trip.
         let load = meta.canonical_to_current(&r);
         let save = meta.current_to_canonical(&r);
         for i in 0..r.len() {
-            assert_eq!(load[i], BlockId(i as u16));
-            assert_eq!(save[i], i as u16);
+            assert_eq!(load[i], BlockId::new(i as u16));
+            assert_eq!(save[i], BlockId::new(i as u16));
         }
     }
 
     #[test]
     fn missing_canonical_name_maps_to_empty() {
-        let mut r = BlockRegistry::new();
-        let _base = register_base_blocks(&mut r);
+        let r = make_registry();
         let mut meta = Metadata::from_registry(&r);
         // Pretend the world saved a block that no current mod provides.
         meta.block_mapping.push("ghost.removed_block".to_string());
         let load = meta.canonical_to_current(&r);
-        assert_eq!(load.last().copied(), Some(BlockId::EMPTY));
+        assert_eq!(load.last().copied(), Some(BlockId::default()));
     }
 
     #[test]
     fn save_load_round_trips_through_temp_file() {
-        let mut r = BlockRegistry::new();
-        let _base = register_base_blocks(&mut r);
+        let r = make_registry();
         let original = Metadata::from_registry(&r);
         let path = scratch_path("rt");
         original.save_to(&path).expect("save");

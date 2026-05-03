@@ -185,11 +185,8 @@ mod tests {
             Some(BlockData {
                 id,
                 state: BlockState::default(),
-                light: BlockLight::NONE,
+                light: BlockLight::default(),
             })
-        }
-        fn block_or_air(&self, coord: Vec3i) -> BlockData {
-            self.block(coord).unwrap()
         }
         fn hitboxes(&self, _box_: Aabbd) -> Option<Vec<Aabbd>> {
             Some(Vec::new())
@@ -212,11 +209,8 @@ mod tests {
             Some(BlockData {
                 id,
                 state: BlockState::default(),
-                light: BlockLight::NONE,
+                light: BlockLight::default(),
             })
-        }
-        fn block_or_air(&self, coord: Vec3i) -> BlockData {
-            self.block(coord).unwrap()
         }
         fn hitboxes(&self, _: Aabbd) -> Option<Vec<Aabbd>> {
             Some(Vec::new())
@@ -227,7 +221,7 @@ mod tests {
     }
 
     fn solid_predicate<V: BlockView>(view: &V, coord: Vec3i) -> bool {
-        view.block_or_air(coord).id != BlockId::new(0)
+        view.block(coord).unwrap_or_default().id != BlockId::new(0)
     }
 
     #[test]

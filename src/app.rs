@@ -123,7 +123,7 @@ struct AppState {
     render_registry: Arc<crate::client::blocks::BlockRenderRegistry>,
     /// Base block ids resolved from `registry`. `Copy`, so cheap to clone
     /// when constructing a new `Game`.
-    base_blocks: crate::core::blocks::BaseBlocks,
+    base_blocks: crate::core::game::base_blocks::BaseBlocks,
     /// Egui texture id for each layer of the block-diffuse atlas. Indexed by
     /// `BlockInfo::face(0).0` so the inventory can paint the front-face art
     /// of each block. Built once at startup, after both `egui_renderer` and
@@ -375,7 +375,7 @@ impl App {
     /// Save the current world (if any) and drop both `game` and
     /// `game_screen`. Push a fresh title screen so the user lands somewhere.
     fn leave_world_to_title(state: &mut AppState) {
-        if let Some(mut game) = state.game.take() {
+        if let Some(game) = state.game.take() {
             if let Err(err) = game.world.save_to_disk() {
                 tracing::error!(error = %err, "save_to_disk failed on leave-to-title");
             }

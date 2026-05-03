@@ -13,9 +13,10 @@
 //! lets callers wrap a `World` plus the registry / `BaseBlocks` it
 //! lacks awareness of — see `WorldHitView` in `client::game`.
 
-use crate::core::blocks::{BaseBlocks, BlockData, BlockRegistry};
+use super::base_blocks::BaseBlocks;
+use crate::core::blocks::{BlockData, BlockRegistry};
 use crate::core::math::{Aabbd, Vec3d, Vec3i};
-use crate::core::world::{World, WorkingSet, chunk_coord};
+use crate::core::world::{WorkingSet, World, chunk_coord};
 
 /// Every solid-block AABB whose cell sits in the cube around `box_`
 /// (`±2` cells of padding, matching the C++ original). The caller

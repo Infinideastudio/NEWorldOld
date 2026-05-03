@@ -8,13 +8,13 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::core::blocks;
+use crate::core::blocks::BlockId;
 
 /// A stack of `count` items of block id `id`. `Default` is the empty stack
 /// (`Id::default()`, count 0), matching the C++ `ItemStack()` default.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default, Serialize, Deserialize)]
 pub struct ItemStack {
-    pub id: blocks::BlockId,
+    pub id: BlockId,
     pub count: u8,
 }
 
@@ -24,7 +24,7 @@ impl ItemStack {
     pub const MAX_COUNT: u8 = 255;
 
     /// Construct a stack of `count` items of the given block id.
-    pub const fn new(id: blocks::BlockId, count: u8) -> Self {
+    pub const fn new(id: BlockId, count: u8) -> Self {
         Self { id, count }
     }
 
@@ -67,16 +67,16 @@ mod tests {
 
     #[test]
     fn is_full_at_max_count() {
-        let s = ItemStack::new(blocks::BlockId(7), ItemStack::MAX_COUNT);
+        let s = ItemStack::new(BlockId::new(7), ItemStack::MAX_COUNT);
         assert!(s.is_full());
-        let almost = ItemStack::new(blocks::BlockId(7), ItemStack::MAX_COUNT - 1);
+        let almost = ItemStack::new(BlockId::new(7), ItemStack::MAX_COUNT - 1);
         assert!(!almost.is_full());
     }
 
     #[test]
     fn merge_same_id_under_cap_drains_source() {
-        let mut dst = ItemStack::new(blocks::BlockId(3), 10);
-        let mut src = ItemStack::new(blocks::BlockId(3), 20);
+        let mut dst = ItemStack::new(BlockId::new(3), 10);
+        let mut src = ItemStack::new(BlockId::new(3), 20);
         dst.merge_into(&mut src);
         assert_eq!(dst.count, 30);
         assert_eq!(src.count, 0);
@@ -85,8 +85,8 @@ mod tests {
 
     #[test]
     fn merge_same_id_overflow_fills_dst_and_leaves_remainder() {
-        let mut dst = ItemStack::new(blocks::BlockId(3), 200);
-        let mut src = ItemStack::new(blocks::BlockId(3), 100);
+        let mut dst = ItemStack::new(BlockId::new(3), 200);
+        let mut src = ItemStack::new(BlockId::new(3), 100);
         dst.merge_into(&mut src);
         assert_eq!(dst.count, ItemStack::MAX_COUNT);
         assert_eq!(src.count, 45); // 200 + 100 - 255
@@ -95,8 +95,8 @@ mod tests {
 
     #[test]
     fn merge_different_ids_is_a_noop() {
-        let mut dst = ItemStack::new(blocks::BlockId(3), 10);
-        let mut src = ItemStack::new(blocks::BlockId(4), 20);
+        let mut dst = ItemStack::new(BlockId::new(3), 10);
+        let mut src = ItemStack::new(BlockId::new(4), 20);
         dst.merge_into(&mut src);
         assert_eq!(dst.count, 10);
         assert_eq!(src.count, 20);
