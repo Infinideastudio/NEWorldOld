@@ -9,8 +9,10 @@
 mod common;
 
 use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
-use neworld::core::blocks::{BlockRegistry};
+use neworld::core::blocks::BlockRegistry;
 use neworld::core::game::base_blocks::register_base_blocks;
 use neworld::core::game::block_update::BlockUpdateQueue;
 use neworld::core::game::commands::{CommandContext, CommandRegistry, register_base_commands};
@@ -31,7 +33,7 @@ fn pump_until_loaded(
 ) {
     let mut idle = 0u32;
     let mut last_count = 0usize;
-    while world.loaded_count() < target_count && idle < 256 {
+    while world.loaded_count() < target_count && idle < 60_000 {
         loader.tick_chunk_loading(world, terrain);
         let now = world.loaded_count();
         if now == last_count {
@@ -40,6 +42,7 @@ fn pump_until_loaded(
             idle = 0;
             last_count = now;
         }
+        thread::sleep(Duration::from_millis(1));
     }
 }
 

@@ -25,8 +25,8 @@ use bytemuck::{Pod, Zeroable};
 use cgmath::{Deg, Matrix4, SquareMatrix, perspective};
 use wgpu::util::DeviceExt;
 
-use crate::client::render::uniforms::FilterUniforms;
 use crate::client::game::camera::OPENGL_TO_WGPU_REVERSED;
+use crate::client::render::uniforms::FilterUniforms;
 use crate::textures::Atlases;
 
 const SKY_SHADER_SRC: &str = include_str!("../../../shaders/menu_background.wgsl");

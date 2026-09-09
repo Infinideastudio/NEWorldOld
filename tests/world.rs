@@ -8,6 +8,8 @@
 mod common;
 
 use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
 use neworld::core::blocks::BlockRegistry;
 use neworld::core::game::base_blocks::{BaseBlocks, register_base_blocks};
@@ -44,6 +46,25 @@ fn build_world(
     (world, terrain, loader, base, registry)
 }
 
+fn pump_until_loaded(
+    world: &mut World,
+    terrain: &mut TerrainGenerator,
+    loader: &mut RangeLoader,
+    target_count: usize,
+) {
+    for _ in 0..60_000 {
+        if world.loaded_count() >= target_count {
+            return;
+        }
+        loader.tick_chunk_loading(world, terrain);
+        thread::sleep(Duration::from_millis(1));
+    }
+    panic!(
+        "timed out loading {target_count} chunks; got {}",
+        world.loaded_count()
+    );
+}
+
 // ---------- coord helpers ----------
 
 #[test]
@@ -78,10 +99,10 @@ fn block_coord_modulo_bitmask() {
 #[test]
 fn world_set_block_then_block_round_trips() {
     let scratch = ScratchDir::new("set-block");
-    let (w, mut terrain, mut loader, base, registry) = build_world(&scratch, "set-block", 1);
+    let (mut w, mut terrain, mut loader, base, registry) = build_world(&scratch, "set-block", 1);
     let mut q = neworld::core::game::block_update::BlockUpdateQueue::new();
     loader.set_center(Vec3i::new(0, 0, 0));
-    loader.tick_chunk_loading(&w, &mut terrain);
+    pump_until_loaded(&mut w, &mut terrain, &mut loader, 125);
     let coord = Vec3i::new(1, 2, 3);
     neworld::core::game::block_update::set_block(
         &w, &mut q, &base, &registry, coord, base.stone, false,
@@ -106,9 +127,10 @@ fn world_block_or_air_returns_air_for_unloaded_coord() {
 fn world_loads_chunk_visible_via_read_txn() {
     use neworld::core::world::WorkingSet;
     let scratch = ScratchDir::new("chunk-lookup");
-    let (w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "chunk-lookup", 1);
+    let (mut w, mut terrain, mut loader, _base, _registry) =
+        build_world(&scratch, "chunk-lookup", 1);
     loader.set_center(Vec3i::new(0, 0, 0));
-    loader.tick_chunk_loading(&w, &mut terrain);
+    pump_until_loaded(&mut w, &mut terrain, &mut loader, 125);
     let cc = Vec3i::new(0, 0, 0);
     assert!(w.is_loaded(cc));
     // The chunk is reachable through a 1-coord ReadTxn.
@@ -125,9 +147,9 @@ fn world_set_center_does_not_unload_existing_chunks() {
     // old chunk, the chunk must still be reachable until the next
     // `tick_chunk_loading` reaps it.
     let scratch = ScratchDir::new("set-center");
-    let (w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "set-center", 1);
+    let (mut w, mut terrain, mut loader, _base, _registry) = build_world(&scratch, "set-center", 1);
     loader.set_center(Vec3i::new(0, 0, 0));
-    loader.tick_chunk_loading(&w, &mut terrain);
+    pump_until_loaded(&mut w, &mut terrain, &mut loader, 125);
     let cc = Vec3i::new(0, 0, 0);
     assert!(w.is_loaded(cc));
 
@@ -138,7 +160,13 @@ fn world_set_center_does_not_unload_existing_chunks() {
     assert!(w.is_loaded(cc), "set_center alone must not unload");
 
     // After ticking, the now-distant chunk gets reaped.
-    loader.tick_chunk_loading(&w, &mut terrain);
+    for _ in 0..8 {
+        if !w.is_loaded(cc) {
+            break;
+        }
+        loader.tick_chunk_loading(&w, &mut terrain);
+        thread::sleep(Duration::from_millis(1));
+    }
     assert!(!w.is_loaded(cc), "tick_chunk_loading should unload it");
 }
 
@@ -163,10 +191,10 @@ fn world_update_block_skips_when_neighbours_unloaded() {
 #[test]
 fn world_update_block_queues_neighbour_updates_when_all_loaded() {
     let scratch = ScratchDir::new("update-queue");
-    let (w, mut terrain, mut loader, base, registry) = build_world(&scratch, "update-queue", 1);
+    let (mut w, mut terrain, mut loader, base, registry) = build_world(&scratch, "update-queue", 1);
     let mut q = neworld::core::game::block_update::BlockUpdateQueue::new();
     loader.set_center(Vec3i::new(0, 0, 0));
-    loader.tick_chunk_loading(&w, &mut terrain);
+    pump_until_loaded(&mut w, &mut terrain, &mut loader, 125);
     let coord = Vec3i::new(2, 3, 4);
     let drained_before = q.len();
     let ok =

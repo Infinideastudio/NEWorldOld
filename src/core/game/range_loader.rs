@@ -21,7 +21,7 @@
 //!   [`TerrainGenerator::build_blocks`].
 
 use std::cmp::{Ordering, Reverse};
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use crate::core::game::worldgen::TerrainGenerator;
 use crate::core::math::Vec3i;
@@ -76,6 +76,7 @@ pub struct RangeLoader {
     pins: HashMap<Vec3i, Lease>,
     /// HUD counter — wraps on overflow; only ever read for display.
     unloaded_chunks: u32,
+    pending_tiles: HashSet<(i32, i32)>,
 }
 
 impl RangeLoader {
@@ -86,6 +87,7 @@ impl RangeLoader {
             loaded_distance: -1,
             pins: HashMap::new(),
             unloaded_chunks: 0,
+            pending_tiles: HashSet::new(),
         }
     }
 
@@ -121,8 +123,25 @@ impl RangeLoader {
     /// Synchronously load chunks within the window and unload ones
     /// outside.
     pub fn tick_chunk_loading(&mut self, world: &World, terrain_gen: &mut TerrainGenerator) {
+        let ready_tiles = terrain_gen.drain_results();
+        if !ready_tiles.is_empty() {
+            // Candidate shells may have advanced while their tile was still
+            // computing. Revisit the window now that those chunks can load.
+            self.loaded_distance = -1;
+        }
+        for tile in ready_tiles {
+            self.pending_tiles.remove(&tile);
+        }
         for cc in self.collect_load_candidates(world) {
             if world.is_loaded(cc) {
+                continue;
+            }
+            let tile = TerrainGenerator::tile_for_chunk(cc);
+            if !terrain_gen.has_tile(tile) {
+                if self.pending_tiles.insert(tile) {
+                    terrain_gen.request_tile(tile);
+                    std::thread::yield_now();
+                }
                 continue;
             }
             world.load_chunk(cc, || terrain_gen.build_blocks(cc));
@@ -130,6 +149,9 @@ impl RangeLoader {
             if let Some(lease) = world.try_acquire_lease(cc) {
                 self.pins.insert(cc, lease);
             }
+        }
+        if !self.pending_tiles.is_empty() {
+            self.loaded_distance = -1;
         }
         for cc in self.collect_unload_candidates(world) {
             self.unload_one(world, cc);

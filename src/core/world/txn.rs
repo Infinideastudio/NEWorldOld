@@ -341,6 +341,8 @@ mod tests {
             WorldTables {
                 metadata: Metadata {
                     block_mapping: Vec::new(),
+                    seed: 0,
+                    seed_needs_migration: false,
                 },
                 load_table: Vec::new(),
                 save_table: Vec::new(),
