@@ -34,7 +34,7 @@ use super::errors::MetadataError;
 /// Magic bytes for the world metadata file (`b"NEWD"` little-endian).
 pub const WORLD_META_MAGIC: u32 = 0x4E45_5744;
 /// Current world metadata format version.
-pub const WORLD_META_VERSION: u32 = 1;
+pub const WORLD_META_VERSION: u32 = 2;
 /// Size of the magic + version preamble.
 const HEADER_SIZE: usize = 8;
 
@@ -50,17 +50,24 @@ fn bincode_config() -> Configuration {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Metadata {
     pub block_mapping: Vec<String>,
+    pub seed: u32,
+    #[serde(skip)]
+    pub seed_needs_migration: bool,
 }
 
 impl Metadata {
     /// Snapshot the current `registry` into a canonical mapping. Each block
     /// id from `0..registry.len()` contributes its internal name.
-    pub fn from_registry(registry: &BlockRegistry) -> Self {
+    pub fn from_registry(registry: &BlockRegistry, seed: u32) -> Self {
         let mut block_mapping = Vec::with_capacity(registry.len());
         for entry in registry.entries() {
             block_mapping.push(entry.name.to_string());
         }
-        Self { block_mapping }
+        Self {
+            block_mapping,
+            seed,
+            seed_needs_migration: false,
+        }
     }
 
     /// Load metadata from `path`. Validates magic + version before decoding.
@@ -83,8 +90,19 @@ impl Metadata {
             return Err(MetadataError::BadMagic);
         }
         let version = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
-        if version != WORLD_META_VERSION {
+        if version != 1 && version != WORLD_META_VERSION {
             return Err(MetadataError::BadVersion { got: version });
+        }
+        if version == 1 {
+            let (legacy, _used) = bincode::serde::decode_from_slice::<LegacyMetadata, _>(
+                &bytes[HEADER_SIZE..],
+                bincode_config(),
+            )?;
+            return Ok(Self {
+                block_mapping: legacy.block_mapping,
+                seed: 0,
+                seed_needs_migration: true,
+            });
         }
         let (meta, _used) =
             bincode::serde::decode_from_slice::<Self, _>(&bytes[HEADER_SIZE..], bincode_config())?;
@@ -163,6 +181,11 @@ impl Metadata {
     }
 }
 
+#[derive(Deserialize)]
+struct LegacyMetadata {
+    block_mapping: Vec<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,7 +211,7 @@ mod tests {
     #[test]
     fn snapshot_then_translate_is_identity_for_same_registry() {
         let r = make_registry();
-        let meta = Metadata::from_registry(&r);
+        let meta = Metadata::from_registry(&r, 123);
         // For each registry entry, canonical -> current should round-trip.
         let load = meta.canonical_to_current(&r);
         let save = meta.current_to_canonical(&r);
@@ -201,7 +224,7 @@ mod tests {
     #[test]
     fn missing_canonical_name_maps_to_empty() {
         let r = make_registry();
-        let mut meta = Metadata::from_registry(&r);
+        let mut meta = Metadata::from_registry(&r, 123);
         // Pretend the world saved a block that no current mod provides.
         meta.block_mapping.push("ghost.removed_block".to_string());
         let load = meta.canonical_to_current(&r);
@@ -211,7 +234,7 @@ mod tests {
     #[test]
     fn save_load_round_trips_through_temp_file() {
         let r = make_registry();
-        let original = Metadata::from_registry(&r);
+        let original = Metadata::from_registry(&r, 123);
         let path = scratch_path("rt");
         original.save_to(&path).expect("save");
         let loaded = Metadata::load_from(&path).expect("load");

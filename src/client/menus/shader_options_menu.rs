@@ -30,7 +30,6 @@ pub struct ShaderOptionsScreen {
 }
 
 impl ShaderOptionsScreen {
-    
     pub fn new(config: Arc<Mutex<Config>>, i18n: Arc<Mutex<I18n>>) -> Self {
         Self { config, i18n }
     }

@@ -59,7 +59,6 @@ pub struct TitleScreen {
 }
 
 impl TitleScreen {
-    
     pub fn new(
         config: Arc<Mutex<Config>>,
         i18n: Arc<Mutex<I18n>>,
@@ -114,7 +113,10 @@ impl Screen for TitleScreen {
             (FlexItem::new(Sizer::height(
                 MENU_ROW_HEIGHT,
                 Flex::row(vec![
-                    FlexItem::flex(1.0, Button::new(&options_label).clicked(&mut options_clicked)),
+                    FlexItem::flex(
+                        1.0,
+                        Button::new(&options_label).clicked(&mut options_clicked),
+                    ),
                     FlexItem::new(Spacer::width(MENU_COL_SPACING)),
                     FlexItem::flex(1.0, Button::new(&exit_label).clicked(&mut exit_clicked)),
                 ])

@@ -339,8 +339,13 @@ impl Game {
 
         // Build the per-world id translation tables (registry-aware,
         // outside the database).
-        let tables =
-            crate::core::game::worldgen::world_tables_for(worlds_root, &world_name, registry)?;
+        let tables = crate::core::game::worldgen::world_tables_for_seed(
+            worlds_root,
+            &world_name,
+            registry,
+            world_seed,
+        )?;
+        let world_seed = tables.metadata.seed;
 
         let world = World::new_at(worlds_root, world_name, tables)?;
 
