@@ -1,6 +1,6 @@
 # WorldGen 合入方案
 
-@bridgekat
+@JelawatIHPC
 
 将独立地形生成器 [`D:\Rust\WorldGen`](https://github.com/) (`terrain_gen` crate) 合入 NEWorld 的最终实施方案。本文档为方案规约与 PR 计划；实现工作在 `feat/worldgen` 分支上完成。
 
